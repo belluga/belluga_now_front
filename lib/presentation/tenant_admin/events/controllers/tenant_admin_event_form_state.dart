@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 
 class TenantAdminEventFormState {
   static const Object _undefined = Object();
@@ -12,6 +13,7 @@ class TenantAdminEventFormState {
     required this.selectedVenueId,
     required this.selectedTypeSlug,
     required this.selectedRelatedAccountProfileIds,
+    required this.profileGroups,
     required this.occurrences,
     required this.occurrenceLocalIds,
     required this.programmingItemLocalIdsByOccurrenceKey,
@@ -29,6 +31,7 @@ class TenantAdminEventFormState {
       selectedVenueId: null,
       selectedTypeSlug: null,
       selectedRelatedAccountProfileIds: <String>[],
+      profileGroups: <TenantAdminNestedProfileGroup>[],
       occurrences: <TenantAdminEventOccurrence>[],
       occurrenceLocalIds: <String>[],
       programmingItemLocalIdsByOccurrenceKey: <String, List<String>>{},
@@ -45,6 +48,7 @@ class TenantAdminEventFormState {
   final String? selectedVenueId;
   final String? selectedTypeSlug;
   final List<String> selectedRelatedAccountProfileIds;
+  final List<TenantAdminNestedProfileGroup> profileGroups;
   final List<TenantAdminEventOccurrence> occurrences;
   final List<String> occurrenceLocalIds;
   final Map<String, List<String>> programmingItemLocalIdsByOccurrenceKey;
@@ -60,6 +64,7 @@ class TenantAdminEventFormState {
     Object? selectedVenueId = _undefined,
     Object? selectedTypeSlug = _undefined,
     List<String>? selectedRelatedAccountProfileIds,
+    List<TenantAdminNestedProfileGroup>? profileGroups,
     List<TenantAdminEventOccurrence>? occurrences,
     List<String>? occurrenceLocalIds,
     Map<String, List<String>>? programmingItemLocalIdsByOccurrenceKey,
@@ -81,6 +86,7 @@ class TenantAdminEventFormState {
           : selectedTypeSlug as String?,
       selectedRelatedAccountProfileIds: selectedRelatedAccountProfileIds ??
           this.selectedRelatedAccountProfileIds,
+      profileGroups: profileGroups ?? this.profileGroups,
       occurrences: occurrences ?? this.occurrences,
       occurrenceLocalIds: occurrenceLocalIds ?? this.occurrenceLocalIds,
       programmingItemLocalIdsByOccurrenceKey:

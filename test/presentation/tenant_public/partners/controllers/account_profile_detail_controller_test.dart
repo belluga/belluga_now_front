@@ -163,7 +163,7 @@ void main() {
     expect(controller.distanceLabelFor(profile, event), '752 m');
   });
 
-  test('toggleFavorite is allowed for anonymous users', () {
+  test('toggleFavorite requires authentication for anonymous users', () {
     final accountProfileRepository = _FakeAccountProfilesRepository();
     final controller = AccountProfileDetailController(
       accountProfilesRepository: accountProfileRepository,
@@ -172,10 +172,10 @@ void main() {
 
     final result = controller.toggleFavorite('507f1f77bcf86cd799439011');
 
-    expect(result, AccountProfileFavoriteToggleOutcome.toggled);
+    expect(result, AccountProfileFavoriteToggleOutcome.requiresAuthentication);
     expect(
       accountProfileRepository.toggleFavoriteCalls,
-      ['507f1f77bcf86cd799439011'],
+      isEmpty,
     );
   });
 

@@ -45,6 +45,8 @@ import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
+import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_screen_controller.dart';
+import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_store_platform.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_choice.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_contract.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_launch_target.dart';
@@ -1387,17 +1389,28 @@ void main() {
     expect(accountProfilesRepository.toggleFavoriteCalls, 1);
   });
 
-  testWidgets('anonymous user can favorite linked profile in event detail',
+  testWidgets(
+      'web anonymous linked profile favorite promotes app instead of phone login',
       (tester) async {
     final userEventsRepository = _FakeUserEventsRepository();
     final invitesRepository = _FakeInvitesRepository();
     final accountProfilesRepository = _FakeAccountProfilesRepository();
+    final authRepository = _FakeAuthRepository(authorized: false);
+    final appDataRepository = _FakeAppDataRepository(_buildAppData());
+    GetIt.I.registerSingleton<AppData>(_buildAppData());
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
+    GetIt.I.registerSingleton<AppPromotionScreenController>(
+      AppPromotionScreenController(
+        appDataRepository: appDataRepository,
+        preferredStorePlatformResolver: () => AppPromotionStorePlatform.android,
+      ),
+    );
     GetIt.I.registerSingleton<ImmersiveEventDetailController>(
       ImmersiveEventDetailController(
         userEventsRepository: userEventsRepository,
         invitesRepository: invitesRepository,
-        authRepository: _FakeAuthRepository(authorized: false),
-        appDataRepository: _FakeAppDataRepository(_buildAppData()),
+        authRepository: authRepository,
+        appDataRepository: appDataRepository,
         accountProfilesRepository: accountProfilesRepository,
       ),
     );
@@ -1429,6 +1442,7 @@ void main() {
                   ),
                 ],
               ),
+              isWebRuntime: true,
             ),
           ),
         ),
@@ -1449,7 +1463,14 @@ void main() {
     iconButton.onPressed?.call();
     await tester.pumpAndSettle();
 
-    expect(accountProfilesRepository.toggleFavoriteCalls, 1);
+    expect(find.text('Entrar para favoritar'), findsNothing);
+    expect(find.byKey(const Key('app_promotion_modal')), findsOneWidget);
+    expect(
+      find.byKey(const Key('app_promotion_store_badge_android')),
+      findsOneWidget,
+    );
+    expect(accountProfilesRepository.toggleFavoriteCalls, 0);
+    expect(router.lastPushedPath, isNull);
     expect(router.lastReplacedPath, isNull);
     expect(_takeAllExceptions(tester), isEmpty);
   });

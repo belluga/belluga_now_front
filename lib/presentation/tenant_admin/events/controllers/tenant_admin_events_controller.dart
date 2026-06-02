@@ -17,6 +17,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profi
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
@@ -30,6 +31,7 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_form_state.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_type_form_state.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_nested_profile_group_operations.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:image_picker/image_picker.dart';
@@ -526,6 +528,15 @@ class TenantAdminEventsController implements Disposable {
       programmingItemLocalIdsByOccurrenceKey[occurrenceLocalIds[index]] =
           _newProgrammingItemKeys(localOccurrences[index].programmingItems);
     }
+    final profileGroups =
+        existingEvent?.profileGroups ?? const <TenantAdminNestedProfileGroup>[];
+    final selectedRelatedAccountProfileIds = profileGroups.isNotEmpty
+        ? TenantAdminNestedProfileGroupOperations.memberIds(profileGroups)
+        : [
+            ...?existingEvent?.eventParties
+                .where((party) => party.partyType != 'venue')
+                .map((party) => party.partyRefId),
+          ];
     final nextState = TenantAdminEventFormState(
       startAt: firstOccurrence?.dateTimeStart == null
           ? null
@@ -540,11 +551,8 @@ class TenantAdminEventsController implements Disposable {
       publicationStatus: existingEvent?.publication.status ?? 'draft',
       selectedVenueId: existingEvent?.placeRef?.id,
       selectedTypeSlug: existingEvent?.type.slug.trim(),
-      selectedRelatedAccountProfileIds: [
-        ...?existingEvent?.eventParties
-            .where((party) => party.partyType != 'venue')
-            .map((party) => party.partyRefId),
-      ],
+      selectedRelatedAccountProfileIds: selectedRelatedAccountProfileIds,
+      profileGroups: profileGroups,
       occurrences: localOccurrences,
       occurrenceLocalIds: occurrenceLocalIds,
       programmingItemLocalIdsByOccurrenceKey:
@@ -700,6 +708,75 @@ class TenantAdminEventsController implements Disposable {
     _replaceEventFormState(
       current.copyWith(selectedRelatedAccountProfileIds: next),
     );
+  }
+
+  void addEventProfileGroup() {
+    final current = eventFormStateStreamValue.value;
+    if (current.profileGroups.length >= 12) {
+      submitErrorMessageStreamValue.addValue('Limite de grupos atingido.');
+      return;
+    }
+    _replaceEventFormState(
+      current.copyWith(
+        profileGroups: TenantAdminNestedProfileGroupOperations.append(
+          current.profileGroups,
+        ),
+      ),
+    );
+  }
+
+  void renameEventProfileGroup(String groupId, String label) {
+    final current = eventFormStateStreamValue.value;
+    _replaceEventFormState(
+      current.copyWith(
+        profileGroups: TenantAdminNestedProfileGroupOperations.rename(
+          current.profileGroups,
+          groupId: groupId,
+          label: label,
+        ),
+      ),
+    );
+  }
+
+  void removeEventProfileGroup(String groupId) {
+    final current = eventFormStateStreamValue.value;
+    _applyEventProfileGroups(
+      TenantAdminNestedProfileGroupOperations.remove(
+        current.profileGroups,
+        groupId: groupId,
+      ),
+    );
+  }
+
+  void moveEventProfileGroup(String groupId, int delta) {
+    final current = eventFormStateStreamValue.value;
+    _replaceEventFormState(
+      current.copyWith(
+        profileGroups: TenantAdminNestedProfileGroupOperations.move(
+          current.profileGroups,
+          groupId: groupId,
+          delta: delta,
+        ),
+      ),
+    );
+  }
+
+  void toggleEventProfileGroupMember({
+    required String groupId,
+    required String profileId,
+    required bool selected,
+  }) {
+    final current = eventFormStateStreamValue.value;
+    final nextGroups = TenantAdminNestedProfileGroupOperations.toggleMember(
+      current.profileGroups,
+      groupId: groupId,
+      profileId: profileId,
+      selected: selected,
+      onLimit: () => submitErrorMessageStreamValue.addValue(
+        'Limite de perfis no grupo atingido.',
+      ),
+    );
+    _applyEventProfileGroups(nextGroups);
   }
 
   void reorderRelatedAccountProfile({
@@ -1108,6 +1185,100 @@ class TenantAdminEventsController implements Disposable {
         programmingItems: programmingItems,
       );
     }, sort: false);
+  }
+
+  void addOccurrenceProfileGroup(String occurrenceKey) {
+    _replaceOccurrenceByKey(occurrenceKey, (occurrence) {
+      if (occurrence.profileGroups.length >= 12) {
+        submitErrorMessageStreamValue.addValue('Limite de grupos atingido.');
+        return occurrence;
+      }
+      return _applyOccurrenceProfileGroups(
+        occurrence,
+        TenantAdminNestedProfileGroupOperations.append(
+          occurrence.profileGroups,
+        ),
+      );
+    }, sort: false);
+  }
+
+  void renameOccurrenceProfileGroup({
+    required String occurrenceKey,
+    required String groupId,
+    required String label,
+  }) {
+    _replaceOccurrenceByKey(
+      occurrenceKey,
+      (occurrence) => _copyOccurrence(
+        occurrence,
+        profileGroups: TenantAdminNestedProfileGroupOperations.rename(
+          occurrence.profileGroups,
+          groupId: groupId,
+          label: label,
+        ),
+      ),
+      sort: false,
+    );
+  }
+
+  void removeOccurrenceProfileGroup({
+    required String occurrenceKey,
+    required String groupId,
+  }) {
+    _replaceOccurrenceByKey(
+      occurrenceKey,
+      (occurrence) => _applyOccurrenceProfileGroups(
+        occurrence,
+        TenantAdminNestedProfileGroupOperations.remove(
+          occurrence.profileGroups,
+          groupId: groupId,
+        ),
+      ),
+      sort: false,
+    );
+  }
+
+  void moveOccurrenceProfileGroup({
+    required String occurrenceKey,
+    required String groupId,
+    required int delta,
+  }) {
+    _replaceOccurrenceByKey(
+      occurrenceKey,
+      (occurrence) => _copyOccurrence(
+        occurrence,
+        profileGroups: TenantAdminNestedProfileGroupOperations.move(
+          occurrence.profileGroups,
+          groupId: groupId,
+          delta: delta,
+        ),
+      ),
+      sort: false,
+    );
+  }
+
+  void toggleOccurrenceProfileGroupMember({
+    required String occurrenceKey,
+    required String groupId,
+    required String profileId,
+    required bool selected,
+  }) {
+    _replaceOccurrenceByKey(
+      occurrenceKey,
+      (occurrence) {
+        final nextGroups = TenantAdminNestedProfileGroupOperations.toggleMember(
+          occurrence.profileGroups,
+          groupId: groupId,
+          profileId: profileId,
+          selected: selected,
+          onLimit: () => submitErrorMessageStreamValue.addValue(
+            'Limite de perfis no grupo atingido.',
+          ),
+        );
+        return _applyOccurrenceProfileGroups(occurrence, nextGroups);
+      },
+      sort: false,
+    );
   }
 
   void addOccurrenceProgrammingItem(
@@ -1939,7 +2110,7 @@ class TenantAdminEventsController implements Disposable {
     try {
       final results = await Future.wait<Object>([
         _fetchAllPhysicalHostCandidates(accountSlug: normalizedAccountSlug),
-        _eventsRepository.loadEventAccountProfileCandidates(
+        _eventsRepository.fetchAllEventAccountProfileCandidates(
           candidateType:
               TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
           accountSlug: _toNullableEventsText(normalizedAccountSlug),
@@ -1951,15 +2122,15 @@ class TenantAdminEventsController implements Disposable {
       }
 
       final venues = results[0] as List<TenantAdminAccountProfile>;
-      final firstRelatedAccountProfilePage =
-          results[1] as TenantAdminPagedResult<TenantAdminAccountProfile>;
+      final relatedAccountProfiles =
+          results[1] as List<TenantAdminAccountProfile>;
 
       venueCandidatesStreamValue.addValue(List.unmodifiable(venues));
       relatedAccountProfileCandidatesStreamValue.addValue(
         List.unmodifiable(
           _mergeAccountProfiles(
             relatedAccountProfileCandidatesStreamValue.value,
-            firstRelatedAccountProfilePage.items,
+            relatedAccountProfiles,
           ),
         ),
       );
@@ -2350,6 +2521,19 @@ class TenantAdminEventsController implements Disposable {
     eventFormStateStreamValue.addValue(nextState);
   }
 
+  void _applyEventProfileGroups(
+    List<TenantAdminNestedProfileGroup> profileGroups,
+  ) {
+    final current = eventFormStateStreamValue.value;
+    _replaceEventFormState(
+      current.copyWith(
+        profileGroups: profileGroups,
+        selectedRelatedAccountProfileIds:
+            TenantAdminNestedProfileGroupOperations.memberIds(profileGroups),
+      ),
+    );
+  }
+
   void _syncEventDateTimeControllers(TenantAdminEventFormState state) {
     eventStartController.text = _formatDateTime(state.startAt);
     eventEndController.text = _formatDateTime(state.endAt);
@@ -2372,6 +2556,7 @@ class TenantAdminEventsController implements Disposable {
       ),
       relatedAccountProfileIdValues: occurrence.relatedAccountProfileIds,
       relatedAccountProfiles: occurrence.relatedAccountProfiles,
+      profileGroups: occurrence.profileGroups,
       programmingItems: occurrence.programmingItems,
       taxonomyTerms: occurrence.taxonomyTerms,
     );
@@ -2383,6 +2568,7 @@ class TenantAdminEventsController implements Disposable {
     required DateTime? endAt,
     List<TenantAdminAccountProfileIdValue>? relatedAccountProfileIdValues,
     List<TenantAdminAccountProfile>? relatedAccountProfiles,
+    List<TenantAdminNestedProfileGroup>? profileGroups,
     List<TenantAdminEventProgrammingItem>? programmingItems,
   }) {
     if (startAt == null) {
@@ -2399,6 +2585,7 @@ class TenantAdminEventsController implements Disposable {
       endAt: endAt,
       relatedAccountProfileIds: relatedAccountProfileIdValues,
       relatedAccountProfiles: relatedAccountProfiles,
+      profileGroups: profileGroups,
       programmingItems: programmingItems,
     );
     final next = current.occurrences.toList(growable: true);
@@ -2480,6 +2667,7 @@ class TenantAdminEventsController implements Disposable {
     Object? endAt = _undefinedDateTime,
     List<TenantAdminAccountProfileIdValue>? relatedAccountProfileIds,
     List<TenantAdminAccountProfile>? relatedAccountProfiles,
+    List<TenantAdminNestedProfileGroup>? profileGroups,
     List<TenantAdminEventProgrammingItem>? programmingItems,
     TenantAdminTaxonomyTerms? taxonomyTerms,
   }) {
@@ -2498,9 +2686,73 @@ class TenantAdminEventsController implements Disposable {
           relatedAccountProfileIds ?? occurrence.relatedAccountProfileIds,
       relatedAccountProfiles:
           relatedAccountProfiles ?? occurrence.relatedAccountProfiles,
+      profileGroups: profileGroups ?? occurrence.profileGroups,
       programmingItems: programmingItems ?? occurrence.programmingItems,
       taxonomyTerms: taxonomyTerms ?? occurrence.taxonomyTerms,
     );
+  }
+
+  TenantAdminEventOccurrence _applyOccurrenceProfileGroups(
+    TenantAdminEventOccurrence occurrence,
+    List<TenantAdminNestedProfileGroup> profileGroups,
+  ) {
+    final profileIds = TenantAdminNestedProfileGroupOperations.memberIds(
+      profileGroups,
+    );
+    return _copyOccurrence(
+      occurrence,
+      relatedAccountProfileIds:
+          profileIds.map(TenantAdminAccountProfileIdValue.new).toList(),
+      relatedAccountProfiles: _knownProfilesForIds(
+        profileIds,
+        occurrence.relatedAccountProfiles,
+      ),
+      profileGroups: profileGroups,
+      programmingItems: _filterProgrammingItemsByProfileIds(
+        occurrence.programmingItems,
+        profileIds,
+      ),
+    );
+  }
+
+  List<TenantAdminAccountProfile> _knownProfilesForIds(
+    List<String> profileIds,
+    List<TenantAdminAccountProfile> currentProfiles,
+  ) {
+    final candidatesById = <String, TenantAdminAccountProfile>{
+      for (final profile in currentProfiles) profile.id: profile,
+      for (final profile in relatedAccountProfileCandidatesStreamValue.value)
+        profile.id: profile,
+      for (final event in eventsStreamValue.value ?? const <TenantAdminEvent>[])
+        for (final profile in event.relatedAccountProfiles) profile.id: profile,
+    };
+    return profileIds
+        .map((profileId) => candidatesById[profileId])
+        .whereType<TenantAdminAccountProfile>()
+        .toList(growable: false);
+  }
+
+  List<TenantAdminEventProgrammingItem> _filterProgrammingItemsByProfileIds(
+    List<TenantAdminEventProgrammingItem> items,
+    List<String> allowedProfileIds,
+  ) {
+    final allowed = allowedProfileIds.toSet();
+    return items
+        .map(
+          (item) => TenantAdminEventProgrammingItem(
+            timeValue: tenantAdminRequiredText(item.time),
+            endTimeValue: tenantAdminOptionalText(item.endTime),
+            titleValue: tenantAdminOptionalText(item.title),
+            accountProfileIdValues: item.accountProfileIds
+                .where((entry) => allowed.contains(entry.value))
+                .toList(growable: false),
+            linkedAccountProfiles: item.linkedAccountProfiles
+                .where((profile) => allowed.contains(profile.id))
+                .toList(growable: false),
+            placeRef: item.placeRef,
+          ),
+        )
+        .toList(growable: false);
   }
 
   int _occurrenceIndexByKey(
@@ -2659,6 +2911,7 @@ class TenantAdminEventsController implements Disposable {
       'selectedVenueId': state.selectedVenueId,
       'selectedTypeSlug': state.selectedTypeSlug,
       'selectedRelatedProfileIds': state.selectedRelatedAccountProfileIds,
+      'profileGroups': _profileGroupsFingerprint(state.profileGroups),
       'occurrences': [
         for (final occurrence in state.occurrences)
           _occurrenceFingerprint(occurrence),
@@ -2684,6 +2937,7 @@ class TenantAdminEventsController implements Disposable {
         for (final profile in occurrence.relatedAccountProfiles)
           _accountProfileFingerprint(profile),
       ],
+      'profileGroups': _profileGroupsFingerprint(occurrence.profileGroups),
       'programmingItems': [
         for (final item in occurrence.programmingItems)
           _programmingItemFingerprint(item),
@@ -2692,6 +2946,23 @@ class TenantAdminEventsController implements Disposable {
         _taxonomyTermsToSelectionMap(occurrence.taxonomyTerms),
       ),
     };
+  }
+
+  List<Map<String, Object?>> _profileGroupsFingerprint(
+    List<TenantAdminNestedProfileGroup> groups,
+  ) {
+    return [
+      for (final group in groups)
+        <String, Object?>{
+          'id': group.id,
+          'label': group.label,
+          'order': group.order,
+          'accountProfileIds': [
+            for (final profileId in group.accountProfileIdValues)
+              profileId.value,
+          ],
+        },
+    ];
   }
 
   Map<String, Object?> _programmingItemFingerprint(

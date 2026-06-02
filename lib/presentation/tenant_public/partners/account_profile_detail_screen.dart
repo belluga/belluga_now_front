@@ -14,7 +14,7 @@ import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
-import 'package:belluga_now/presentation/shared/promotion/support/web_installed_app_handoff.dart';
+import 'package:belluga_now/presentation/shared/favorites/account_profile_favorite_auth_gate.dart';
 import 'package:belluga_now/presentation/shared/sharing/public_share_launcher.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
 import 'package:belluga_now/presentation/shared/visuals/resolved_profile_type_visual.dart';
@@ -958,27 +958,18 @@ class _AccountProfileDetailScreenState
 
   void _handleFavoriteTap(String accountProfileId) {
     final redirectPath = _safeRedirectPath();
-    if (widget.isWebRuntime && !_controller.isAuthorized) {
-      launchWebInstalledAppHandoffOrPromotion(
-        context: context,
-        redirectPath: redirectPath,
-        actionType: AuthWallActionType.favorite,
-        payload: {'partnerId': accountProfileId},
-      );
-      return;
-    }
-
     final result = _controller.toggleFavorite(accountProfileId);
     if (result != AccountProfileFavoriteToggleOutcome.requiresAuthentication) {
       return;
     }
-    AuthWallTelemetry.trackTriggered(
-      actionType: AuthWallActionType.favorite,
-      redirectPath: redirectPath,
-      payload: {'partnerId': accountProfileId},
+    unawaited(
+      AccountProfileFavoriteAuthGate.handleRequiredAuthentication(
+        context: context,
+        accountProfileId: accountProfileId,
+        redirectPath: redirectPath,
+        isWebRuntime: widget.isWebRuntime,
+      ),
     );
-    final encodedRedirect = Uri.encodeQueryComponent(redirectPath);
-    _safeRouterReplacePath('/auth/login?redirect=$encodedRedirect');
   }
 
   Future<void> _shareAccountProfile(AccountProfileModel accountProfile) async {
@@ -1195,14 +1186,6 @@ class _AccountProfileDetailScreenState
   void _safeRouterPushPath(String path) {
     try {
       context.router.pushPath(path);
-    } catch (_) {
-      // Tests and non-router surfaces can ignore this safely.
-    }
-  }
-
-  void _safeRouterReplacePath(String path) {
-    try {
-      context.router.replacePath(path);
     } catch (_) {
       // Tests and non-router surfaces can ignore this safely.
     }

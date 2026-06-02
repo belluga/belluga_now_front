@@ -27,6 +27,7 @@ import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admi
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_source_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_upload_field.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_confirmation_dialog.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_nested_profile_groups_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_xfile_preview.dart';
 import 'package:flutter/material.dart';
@@ -867,56 +868,33 @@ class _TenantAdminEventFormScreenState
     List<TenantAdminAccountProfile> relatedAccountProfiles, {
     required TenantAdminEventFormState formState,
   }) {
-    final profilesById = <String, TenantAdminAccountProfile>{
-      for (final profile in relatedAccountProfiles) profile.id: profile,
-      for (final profile in widget.existingEvent?.relatedAccountProfiles ?? [])
-        profile.id: profile,
-    };
-    final selectedEntries = formState.selectedRelatedAccountProfileIds
-        .map(
-          (profileId) => MapEntry<String, TenantAdminAccountProfile?>(
-            profileId,
-            profilesById[profileId],
-          ),
-        )
-        .toList(growable: false);
-
-    return TenantAdminFormSectionCard(
-      title: 'Perfis relacionados',
-      description:
-          'Selecione os perfis relacionados ao evento. A ordem aqui define o fallback da imagem pública do evento.',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (selectedEntries.isEmpty)
-            Text(
-              'Nenhum perfil relacionado selecionado.',
-              style: Theme.of(context).textTheme.bodySmall,
-            )
-          else ...[
-            for (var index = 0; index < selectedEntries.length; index++)
-              _buildRelatedAccountProfileCard(
-                profileId: selectedEntries[index].key,
-                profile: selectedEntries[index].value,
-                index: index,
-                totalCount: selectedEntries.length,
-              ),
-          ],
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: () =>
-                _openRelatedAccountProfilePickerSheet(formState: formState),
-            icon: const Icon(Icons.add),
-            label: const Text('Adicionar perfil'),
-          ),
-          if (relatedAccountProfiles.isEmpty) ...[
-            const SizedBox(height: 8),
-            Text(
-              'Use a busca para localizar perfis relacionados além da primeira página carregada.',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
-        ],
+    return TenantAdminNestedProfileGroupsEditor(
+      keyPrefix: 'EventProfile',
+      title: 'Abas de perfis relacionados',
+      selectorTitle: 'Perfis',
+      emptyCandidatesText: 'Nenhum perfil disponivel.',
+      emptySelectionText: 'Selecionar perfis',
+      selectedCountLabel: 'perfil(is) selecionado(s)',
+      searchLabelText: 'Buscar perfil',
+      emptySearchText: 'Nenhum perfil encontrado.',
+      groups: formState.profileGroups,
+      candidatesStreamValue:
+          _controller.relatedAccountProfileCandidatesStreamValue,
+      profileTypes: const [],
+      addButtonKey: const Key('TenantAdminEventProfileGroupAdd'),
+      onAddGroup: _controller.addEventProfileGroup,
+      onRenameGroup: _controller.renameEventProfileGroup,
+      onMoveGroup: _controller.moveEventProfileGroup,
+      onRemoveGroup: _controller.removeEventProfileGroup,
+      onSelectionChanged: (
+        groupId,
+        profileId,
+        selected,
+      ) =>
+          _controller.toggleEventProfileGroupMember(
+        groupId: groupId,
+        profileId: profileId,
+        selected: selected,
       ),
     );
   }
@@ -1041,85 +1019,6 @@ class _TenantAdminEventFormScreenState
               onPressed: canEditProgramming ? addProgrammingItem : null,
               icon: const Icon(Icons.add),
               label: const Text('Adicionar item de programação'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRelatedAccountProfileCard({
-    required String profileId,
-    required TenantAdminAccountProfile? profile,
-    required int index,
-    required int totalCount,
-  }) {
-    return Card(
-      key: Key('tenantAdminRelatedProfileChip_$profileId'),
-      margin: const EdgeInsets.only(bottom: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Padding(
-                  padding: EdgeInsets.only(top: 2),
-                  child: Icon(Icons.person_outline),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        profile?.displayName ?? 'Perfil relacionado $profileId',
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        profile == null
-                            ? 'Perfil não disponível na lista atual'
-                            : (profile.slug ?? profile.id),
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                IconButton(
-                  tooltip: 'Mover para cima',
-                  onPressed: index <= 0
-                      ? null
-                      : () => _controller.reorderRelatedAccountProfile(
-                            profileId: profileId,
-                            newIndex: index - 1,
-                          ),
-                  icon: const Icon(Icons.arrow_upward),
-                ),
-                IconButton(
-                  tooltip: 'Mover para baixo',
-                  onPressed: index >= totalCount - 1
-                      ? null
-                      : () => _controller.reorderRelatedAccountProfile(
-                            profileId: profileId,
-                            newIndex: index + 1,
-                          ),
-                  icon: const Icon(Icons.arrow_downward),
-                ),
-                IconButton(
-                  tooltip: 'Remover perfil relacionado',
-                  onPressed: () =>
-                      _controller.removeRelatedAccountProfile(profileId),
-                  icon: const Icon(Icons.close),
-                ),
-              ],
             ),
           ],
         ),
@@ -1320,6 +1219,7 @@ class _TenantAdminEventFormScreenState
             ),
             relatedAccountProfileIdValues: occurrence.relatedAccountProfileIds,
             relatedAccountProfiles: occurrence.relatedAccountProfiles,
+            profileGroups: occurrence.profileGroups,
             programmingItems: occurrence.programmingItems,
             taxonomyTerms: occurrence.taxonomyTerms,
           ),
@@ -1378,23 +1278,6 @@ class _TenantAdminEventFormScreenState
         accountSlug: widget.accountSlugForOwnCreate,
       );
     });
-  }
-
-  Future<void> _openRelatedAccountProfilePickerSheet({
-    required TenantAdminEventFormState formState,
-  }) async {
-    final selectedAccountProfile = await _pickRelatedAccountProfile(
-      excludedProfileIds: formState.selectedRelatedAccountProfileIds.toSet(),
-    );
-
-    if (selectedAccountProfile == null || !mounted) {
-      return;
-    }
-
-    _controller.addRelatedAccountProfile(
-      selectedAccountProfile.id,
-      profile: selectedAccountProfile,
-    );
   }
 
   Future<TenantAdminAccountProfile?> _pickRelatedAccountProfile({
@@ -1947,6 +1830,7 @@ class _TenantAdminEventFormScreenState
             .map(TenantAdminAccountProfileIdValue.new)
             .toList(growable: false),
         relatedAccountProfiles: selectedRelatedAccountProfiles,
+        profileGroups: formState.profileGroups,
         taxonomyTerms: (() {
           final terms = TenantAdminTaxonomyTerms();
           for (final taxonomyTerm in taxonomyTerms) {

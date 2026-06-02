@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/partners/value_objects/account_profile_type_v
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
+import 'package:belluga_now/domain/schedule/event_profile_group.dart';
 import 'package:belluga_now/domain/schedule/event_programming_item.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
@@ -38,6 +39,7 @@ EventModel eventModelFromRaw({
   required DateTimeValue? dateTimeEnd,
   List<ArtistResume> artists = const <ArtistResume>[],
   List<EventLinkedAccountProfile> linkedAccountProfiles = const [],
+  List<EventProfileGroup> profileGroups = const [],
   List<EventOccurrenceOption> occurrences = const [],
   List<EventProgrammingItem> programmingItems = const [],
   required CityCoordinate? coordinate,
@@ -64,6 +66,7 @@ EventModel eventModelFromRaw({
     dateTimeStart: dateTimeStart,
     dateTimeEnd: dateTimeEnd,
     linkedAccountProfiles: resolvedLinkedAccountProfiles,
+    profileGroups: profileGroups,
     occurrences: occurrences,
     programmingItems: programmingItems,
     coordinate: coordinate,

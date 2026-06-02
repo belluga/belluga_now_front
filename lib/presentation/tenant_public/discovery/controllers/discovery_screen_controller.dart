@@ -8,6 +8,7 @@ import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/discovery_filters_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/account_profiles_repository_contract_values.dart';
@@ -35,6 +36,7 @@ class DiscoveryScreenController extends Object
     AppDataRepositoryContract? appDataRepository,
     ScheduleRepositoryContract? scheduleRepository,
     LocationOriginServiceContract? locationOriginService,
+    AuthRepositoryContract? authRepository,
   })  : _accountProfilesRepository = accountProfilesRepository ??
             GetIt.I.get<AccountProfilesRepositoryContract>(),
         _discoveryFiltersRepository = discoveryFiltersRepository ??
@@ -47,13 +49,18 @@ class DiscoveryScreenController extends Object
                 : null),
         _scheduleRepository = scheduleRepository,
         _locationOriginService = locationOriginService ??
-            GetIt.I.get<LocationOriginServiceContract>();
+            GetIt.I.get<LocationOriginServiceContract>(),
+        _authRepository = authRepository ??
+            (GetIt.I.isRegistered<AuthRepositoryContract>()
+                ? GetIt.I.get<AuthRepositoryContract>()
+                : null);
 
   final AccountProfilesRepositoryContract _accountProfilesRepository;
   final DiscoveryFiltersRepositoryContract? _discoveryFiltersRepository;
   final AppDataRepositoryContract? _appDataRepository;
   ScheduleRepositoryContract? _scheduleRepository;
   final LocationOriginServiceContract _locationOriginService;
+  final AuthRepositoryContract? _authRepository;
 
   static const Duration _searchDebounceDuration = Duration(milliseconds: 350);
   static const String _discoveryAccountProfilesSurface =
@@ -527,6 +534,9 @@ class DiscoveryScreenController extends Object
   }
 
   FavoriteToggleOutcome toggleFavorite(String accountProfileId) {
+    if (!isAuthorized) {
+      return FavoriteToggleOutcome.requiresAuthentication;
+    }
     final current = Set<String>.from(favoriteIdsStreamValue.value);
     if (current.contains(accountProfileId)) {
       current.remove(accountProfileId);
@@ -548,6 +558,8 @@ class DiscoveryScreenController extends Object
   }
 
   StreamValue<Set<String>> get favoriteIdsStream => favoriteIdsStreamValue;
+
+  bool get isAuthorized => _authRepository?.isAuthorized ?? false;
 
   Future<void> _loadFavoriteIds() async {
     final ids = Set<String>.from(

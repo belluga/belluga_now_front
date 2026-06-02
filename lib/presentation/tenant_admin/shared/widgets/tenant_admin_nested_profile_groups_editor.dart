@@ -37,6 +37,13 @@ class TenantAdminNestedProfileGroupsEditor extends StatelessWidget {
     required this.onMoveGroup,
     required this.onRemoveGroup,
     required this.onSelectionChanged,
+    this.title = 'Abas de contas vinculadas',
+    this.selectorTitle = 'Accounts',
+    this.emptyCandidatesText = 'Nenhuma Account disponivel.',
+    this.emptySelectionText = 'Selecionar Accounts',
+    this.selectedCountLabel = 'Account(s) selecionada(s)',
+    this.searchLabelText = 'Buscar Account',
+    this.emptySearchText = 'Nenhuma Account encontrada.',
   });
 
   final String keyPrefix;
@@ -49,11 +56,18 @@ class TenantAdminNestedProfileGroupsEditor extends StatelessWidget {
   final TenantAdminNestedProfileGroupMove onMoveGroup;
   final ValueChanged<String> onRemoveGroup;
   final TenantAdminNestedProfileGroupSelectionChanged onSelectionChanged;
+  final String title;
+  final String selectorTitle;
+  final String emptyCandidatesText;
+  final String emptySelectionText;
+  final String selectedCountLabel;
+  final String searchLabelText;
+  final String emptySearchText;
 
   @override
   Widget build(BuildContext context) {
     return TenantAdminFormSectionCard(
-      title: 'Abas de contas vinculadas',
+      title: title,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -69,6 +83,12 @@ class TenantAdminNestedProfileGroupsEditor extends StatelessWidget {
               onMoveGroup: onMoveGroup,
               onRemoveGroup: onRemoveGroup,
               onSelectionChanged: onSelectionChanged,
+              selectorTitle: selectorTitle,
+              emptyCandidatesText: emptyCandidatesText,
+              emptySelectionText: emptySelectionText,
+              selectedCountLabel: selectedCountLabel,
+              searchLabelText: searchLabelText,
+              emptySearchText: emptySearchText,
             ),
             const SizedBox(height: 12),
           ],
@@ -96,6 +116,12 @@ class _TenantAdminNestedProfileGroupEditor extends StatelessWidget {
     required this.onMoveGroup,
     required this.onRemoveGroup,
     required this.onSelectionChanged,
+    required this.selectorTitle,
+    required this.emptyCandidatesText,
+    required this.emptySelectionText,
+    required this.selectedCountLabel,
+    required this.searchLabelText,
+    required this.emptySearchText,
   });
 
   final String keyPrefix;
@@ -108,71 +134,94 @@ class _TenantAdminNestedProfileGroupEditor extends StatelessWidget {
   final TenantAdminNestedProfileGroupMove onMoveGroup;
   final ValueChanged<String> onRemoveGroup;
   final TenantAdminNestedProfileGroupSelectionChanged onSelectionChanged;
+  final String selectorTitle;
+  final String emptyCandidatesText;
+  final String emptySelectionText;
+  final String selectedCountLabel;
+  final String searchLabelText;
+  final String emptySearchText;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      key: Key('${keyPrefix}NestedGroup_${group.id}'),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        border: Border.all(color: colorScheme.outlineVariant),
-        borderRadius: BorderRadius.circular(8),
-      ),
+    return Semantics(
+      container: true,
+      label:
+          'Grupo ${group.label}; ${group.accountProfileIdValues.length} item(s) selecionado(s)',
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  key: Key('${keyPrefix}NestedGroupLabel_${group.id}'),
-                  initialValue: group.label,
-                  decoration: const InputDecoration(labelText: 'Nome da aba'),
-                  onChanged: (value) => onRenameGroup(group.id, value),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Nome da aba e obrigatorio.';
-                    }
-                    return null;
+          Container(
+            key: Key('${keyPrefix}NestedGroup_${group.id}'),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              border: Border.all(color: colorScheme.outlineVariant),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        key: Key('${keyPrefix}NestedGroupLabel_${group.id}'),
+                        initialValue: group.label,
+                        decoration:
+                            const InputDecoration(labelText: 'Nome da aba'),
+                        onChanged: (value) => onRenameGroup(group.id, value),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Nome da aba e obrigatorio.';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Mover para cima',
+                      onPressed:
+                          index == 0 ? null : () => onMoveGroup(group.id, -1),
+                      icon: const Icon(Icons.arrow_upward),
+                    ),
+                    IconButton(
+                      tooltip: 'Mover para baixo',
+                      onPressed: index >= total - 1
+                          ? null
+                          : () => onMoveGroup(group.id, 1),
+                      icon: const Icon(Icons.arrow_downward),
+                    ),
+                    IconButton(
+                      tooltip: 'Remover grupo',
+                      onPressed: () => onRemoveGroup(group.id),
+                      icon: const Icon(Icons.delete_outline),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  selectorTitle,
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+                const SizedBox(height: 8),
+                StreamValueBuilder<List<TenantAdminAccountProfile>>(
+                  streamValue: candidatesStreamValue,
+                  builder: (context, candidates) {
+                    return _TenantAdminNestedAccountSelector(
+                      keyPrefix: keyPrefix,
+                      group: group,
+                      candidates: candidates,
+                      profileTypes: profileTypes,
+                      onSelectionChanged: onSelectionChanged,
+                      emptyCandidatesText: emptyCandidatesText,
+                      emptySelectionText: emptySelectionText,
+                      selectedCountLabel: selectedCountLabel,
+                      searchLabelText: searchLabelText,
+                      emptySearchText: emptySearchText,
+                    );
                   },
                 ),
-              ),
-              IconButton(
-                tooltip: 'Mover para cima',
-                onPressed: index == 0 ? null : () => onMoveGroup(group.id, -1),
-                icon: const Icon(Icons.arrow_upward),
-              ),
-              IconButton(
-                tooltip: 'Mover para baixo',
-                onPressed:
-                    index >= total - 1 ? null : () => onMoveGroup(group.id, 1),
-                icon: const Icon(Icons.arrow_downward),
-              ),
-              IconButton(
-                tooltip: 'Remover grupo',
-                onPressed: () => onRemoveGroup(group.id),
-                icon: const Icon(Icons.delete_outline),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Accounts',
-            style: Theme.of(context).textTheme.labelLarge,
-          ),
-          const SizedBox(height: 8),
-          StreamValueBuilder<List<TenantAdminAccountProfile>>(
-            streamValue: candidatesStreamValue,
-            builder: (context, candidates) {
-              return _TenantAdminNestedAccountSelector(
-                keyPrefix: keyPrefix,
-                group: group,
-                candidates: candidates,
-                profileTypes: profileTypes,
-                onSelectionChanged: onSelectionChanged,
-              );
-            },
+              ],
+            ),
           ),
         ],
       ),
@@ -187,6 +236,11 @@ class _TenantAdminNestedAccountSelector extends StatefulWidget {
     required this.candidates,
     required this.profileTypes,
     required this.onSelectionChanged,
+    required this.emptyCandidatesText,
+    required this.emptySelectionText,
+    required this.selectedCountLabel,
+    required this.searchLabelText,
+    required this.emptySearchText,
   });
 
   final String keyPrefix;
@@ -194,6 +248,11 @@ class _TenantAdminNestedAccountSelector extends StatefulWidget {
   final List<TenantAdminAccountProfile> candidates;
   final List<TenantAdminProfileTypeDefinition> profileTypes;
   final TenantAdminNestedProfileGroupSelectionChanged onSelectionChanged;
+  final String emptyCandidatesText;
+  final String emptySelectionText;
+  final String selectedCountLabel;
+  final String searchLabelText;
+  final String emptySearchText;
 
   @override
   State<_TenantAdminNestedAccountSelector> createState() =>
@@ -299,7 +358,7 @@ class _TenantAdminNestedAccountSelectorState
   @override
   Widget build(BuildContext context) {
     if (widget.candidates.isEmpty) {
-      return const Text('Nenhuma Account disponivel.');
+      return Text(widget.emptyCandidatesText);
     }
 
     final selected = _selectedCandidates();
@@ -336,8 +395,8 @@ class _TenantAdminNestedAccountSelectorState
                       alignment: Alignment.centerLeft,
                       child: Text(
                         _selectedIds.isEmpty
-                            ? 'Selecionar Accounts'
-                            : '${_selectedIds.length} Account(s) selecionada(s)',
+                            ? widget.emptySelectionText
+                            : '${_selectedIds.length} ${widget.selectedCountLabel}',
                       ),
                     ),
                   ),
@@ -391,7 +450,7 @@ class _TenantAdminNestedAccountSelectorState
                         onPressed: _searchController.clear,
                         icon: const Icon(Icons.close),
                       ),
-                labelText: 'Buscar Account',
+                labelText: widget.searchLabelText,
               ),
             ),
             const SizedBox(height: 8),
@@ -424,9 +483,9 @@ class _TenantAdminNestedAccountSelectorState
             ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 260),
               child: filtered.isEmpty
-                  ? const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                      child: Text('Nenhuma Account encontrada.'),
+                  ? Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Text(widget.emptySearchText),
                     )
                   : SingleChildScrollView(
                       primary: false,

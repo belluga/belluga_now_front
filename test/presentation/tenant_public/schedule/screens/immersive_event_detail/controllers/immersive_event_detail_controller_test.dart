@@ -8,16 +8,23 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
+import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
+import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
+import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/schedule/event_profile_group.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_profile_group_order_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_values.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
@@ -82,6 +89,23 @@ void main() {
     expect(userEventsRepository.confirmCalls, 1);
     expect(invitesRepository.acceptInviteCalls, 0);
     expect(controller.isConfirmedStreamValue.value, isTrue);
+  });
+
+  test('anonymous linked profile favorite requires authentication', () {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    final accountProfilesRepository = _FakeAccountProfilesRepository();
+    final controller = ImmersiveEventDetailController(
+      userEventsRepository: userEventsRepository,
+      invitesRepository: invitesRepository,
+      authRepository: _FakeAuthRepository(authorized: false),
+      accountProfilesRepository: accountProfilesRepository,
+    );
+
+    final result = controller.toggleLinkedProfileFavorite('artist-1');
+
+    expect(result, LinkedProfileFavoriteToggleOutcome.requiresAuthentication);
+    expect(accountProfilesRepository.toggleFavoriteCalls, 0);
   });
 
   test('confirm attendance drops duplicate requests while pending', () async {
@@ -408,7 +432,23 @@ void main() {
       start: secondStart,
       end: secondEnd,
     );
+    final profileGroups = [
+      _buildProfileGroup(
+        id: 'bandas-customizadas',
+        label: 'Bandas Customizadas',
+        order: 0,
+        profiles: [
+          _buildLinkedProfile(
+            id: 'profile-alpha',
+            displayName: 'Artista Alpha',
+            profileType: 'tipo-alpha',
+            slug: 'artista-alpha',
+          ),
+        ],
+      ),
+    ];
     final event = _buildEvent(
+      profileGroups: profileGroups,
       occurrences: [
         _buildOccurrence(
           id: 'occurrence-first',
@@ -427,6 +467,14 @@ void main() {
     expect(selectedEvent?.dateTimeStart.value, secondStart);
     expect(selectedEvent?.dateTimeEnd?.value, secondEnd);
     expect(selectedEvent?.selectedOccurrenceId, 'occurrence-second');
+    expect(
+      selectedEvent?.profileGroups.map((group) => group.label),
+      ['Bandas Customizadas'],
+    );
+    expect(
+      selectedEvent?.profileGroups.single.profiles.single.displayName,
+      'Artista Alpha',
+    );
   });
 }
 
@@ -753,8 +801,66 @@ class _FakeAuthRepository extends AuthRepositoryContract {
   String get userToken => authorized ? 'token' : '';
 }
 
+class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
+  int toggleFavoriteCalls = 0;
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<PagedAccountProfilesResult> fetchAccountProfilesPage({
+    required AccountProfilesRepositoryContractPrimInt page,
+    required AccountProfilesRepositoryContractPrimInt pageSize,
+    AccountProfilesRepositoryContractPrimString? query,
+    AccountProfilesRepositoryContractPrimString? typeFilter,
+    List<AccountProfilesRepositoryContractPrimString>? typeFilters,
+    List<dynamic>? taxonomyFilters,
+  }) async {
+    return pagedAccountProfilesResultFromRaw(
+      profiles: const <AccountProfileModel>[],
+      hasMore: false,
+    );
+  }
+
+  @override
+  Future<AccountProfileModel?> getAccountProfileBySlug(
+    AccountProfilesRepositoryContractPrimString slug,
+  ) async =>
+      null;
+
+  @override
+  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+    AccountProfilesRepositoryContractPrimInt? pageSize,
+    List<AccountProfilesRepositoryContractPrimString>? typeFilters,
+    List<dynamic>? taxonomyFilters,
+  }) async =>
+      const <AccountProfileModel>[];
+
+  @override
+  Future<void> toggleFavorite(
+    AccountProfilesRepositoryContractPrimString accountProfileId,
+  ) async {
+    toggleFavoriteCalls += 1;
+  }
+
+  @override
+  AccountProfilesRepositoryContractPrimBool isFavorite(
+    AccountProfilesRepositoryContractPrimString accountProfileId,
+  ) {
+    return AccountProfilesRepositoryContractPrimBool.fromRaw(
+      false,
+      defaultValue: false,
+    );
+  }
+
+  @override
+  List<AccountProfileModel> getFavoriteAccountProfiles() =>
+      const <AccountProfileModel>[];
+}
+
 EventModel _buildEvent({
   List<EventOccurrenceOption> occurrences = const [],
+  List<EventProfileGroup> profileGroups = const [],
 }) {
   final resolvedOccurrences = occurrences.isEmpty
       ? [
@@ -792,6 +898,7 @@ EventModel _buildEvent({
       ..parse(DateTime(2026, 3, 15, 20).toIso8601String()),
     dateTimeEnd: null,
     artists: const [],
+    profileGroups: profileGroups,
     occurrences: resolvedOccurrences,
     coordinate: null,
     tags: const <String>['show'],
@@ -801,6 +908,35 @@ EventModel _buildEvent({
     sentInvites: null,
     friendsGoing: null,
     totalConfirmedValue: EventTotalConfirmedValue()..parse('0'),
+  );
+}
+
+EventProfileGroup _buildProfileGroup({
+  required String id,
+  required String label,
+  required int order,
+  List<EventLinkedAccountProfile> profiles =
+      const <EventLinkedAccountProfile>[],
+}) {
+  return EventProfileGroup(
+    idValue: EventLinkedAccountProfileTextValue(id),
+    labelValue: EventLinkedAccountProfileTextValue(label),
+    orderValue: EventProfileGroupOrderValue(order),
+    profiles: profiles,
+  );
+}
+
+EventLinkedAccountProfile _buildLinkedProfile({
+  required String id,
+  required String displayName,
+  required String profileType,
+  required String slug,
+}) {
+  return EventLinkedAccountProfile(
+    idValue: EventLinkedAccountProfileTextValue(id),
+    displayNameValue: EventLinkedAccountProfileTextValue(displayName),
+    profileTypeValue: AccountProfileTypeValue(profileType),
+    slugValue: SlugValue()..parse(slug),
   );
 }
 

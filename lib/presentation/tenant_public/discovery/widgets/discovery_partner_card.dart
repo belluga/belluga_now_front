@@ -320,6 +320,7 @@ class _CardImage extends StatelessWidget {
                     color: Colors.black.withValues(alpha: 0.36),
                   ),
                   child: IconButton(
+                    key: Key('discoveryFavoriteButton_${partner.id}'),
                     onPressed: onFavoriteTap,
                     icon: Icon(
                       isFavorite ? Icons.favorite : Icons.favorite_border,

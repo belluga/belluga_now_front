@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
@@ -37,6 +38,7 @@ class TenantAdminEvent {
     TenantAdminOptionalTextValue? venueDisplayNameValue,
     List<TenantAdminAccountProfileIdValue>? relatedAccountProfileIdValues,
     this.relatedAccountProfiles = const <TenantAdminAccountProfile>[],
+    List<TenantAdminNestedProfileGroup>? profileGroups,
     this.eventParties = const <TenantAdminEventParty>[],
     TenantAdminTaxonomyTerms? taxonomyTerms,
     TenantAdminOptionalDateTimeValue? createdAtValue,
@@ -49,6 +51,9 @@ class TenantAdminEvent {
             List<TenantAdminAccountProfileIdValue>.unmodifiable(
           relatedAccountProfileIdValues ??
               const <TenantAdminAccountProfileIdValue>[],
+        ),
+        profileGroups = List<TenantAdminNestedProfileGroup>.unmodifiable(
+          profileGroups ?? const <TenantAdminNestedProfileGroup>[],
         ),
         createdAtValue =
             createdAtValue ?? TenantAdminOptionalDateTimeValue(null),
@@ -71,6 +76,7 @@ class TenantAdminEvent {
   final TenantAdminEventPublication publication;
   final List<TenantAdminAccountProfileIdValue> relatedAccountProfileIdValues;
   final List<TenantAdminAccountProfile> relatedAccountProfiles;
+  final List<TenantAdminNestedProfileGroup> profileGroups;
   final List<TenantAdminEventParty> eventParties;
   final TenantAdminTaxonomyTerms taxonomyTerms;
   final TenantAdminOptionalDateTimeValue createdAtValue;

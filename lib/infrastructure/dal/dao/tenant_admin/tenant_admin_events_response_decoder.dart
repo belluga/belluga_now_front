@@ -3,6 +3,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dar
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
@@ -132,6 +133,7 @@ class TenantAdminEventsResponseDecoder {
     final relatedAccountProfiles = _decodeRelatedAccountProfiles(
       row['linked_account_profiles'],
     );
+    final profileGroups = _decodeProfileGroups(row['profile_groups']);
 
     final taxonomyTermsRaw = _asList(row['taxonomy_terms']);
     final taxonomyTerms = taxonomyTermsRaw
@@ -241,6 +243,7 @@ class TenantAdminEventsResponseDecoder {
         ),
         relatedAccountProfileIdValues: relatedAccountProfileIds,
         relatedAccountProfiles: relatedAccountProfiles,
+        profileGroups: profileGroups,
         eventParties: eventParties,
         taxonomyTerms: (() {
           final terms = TenantAdminTaxonomyTerms();
@@ -288,6 +291,7 @@ class TenantAdminEventsResponseDecoder {
       ),
       relatedAccountProfileIdValues: relatedAccountProfileIds,
       relatedAccountProfiles: relatedAccountProfiles,
+      profileGroups: profileGroups,
       eventParties: eventParties,
       taxonomyTerms: (() {
         final terms = TenantAdminTaxonomyTerms();
@@ -354,6 +358,7 @@ class TenantAdminEventsResponseDecoder {
       ),
       relatedAccountProfileIdValues: ownProfileIds,
       relatedAccountProfiles: ownProfiles,
+      profileGroups: _decodeProfileGroups(item['profile_groups']),
       programmingItems: _mapProgrammingItems(item['programming_items']),
       taxonomyTerms: ownTaxonomyTerms,
     );
@@ -380,6 +385,37 @@ class TenantAdminEventsResponseDecoder {
         .where((value) => value != null && value.isNotEmpty)
         .cast<String>()
         .map(TenantAdminAccountProfileIdValue.new)
+        .toList(growable: false);
+  }
+
+  List<TenantAdminNestedProfileGroup> _decodeProfileGroups(Object? raw) {
+    return _asList(raw)
+        .map(_asMap)
+        .where((group) => group.isNotEmpty)
+        .map((group) {
+          final id = _asString(group['id']) ?? _asString(group['key']) ?? '';
+          final label = _asString(group['label']) ?? '';
+          if (id.trim().isEmpty || label.trim().isEmpty) {
+            return null;
+          }
+
+          return TenantAdminNestedProfileGroup(
+            idValue: TenantAdminNestedProfileGroupTextValue(id),
+            labelValue: TenantAdminNestedProfileGroupTextValue(label),
+            orderValue: TenantAdminNestedProfileGroupOrderValue(
+              group['order'],
+            ),
+            accountProfileIdValues: _asList(
+              group['account_profile_ids'] ?? group['profile_ids'],
+            )
+                .map(_asString)
+                .where((value) => value != null && value.isNotEmpty)
+                .cast<String>()
+                .map(TenantAdminNestedProfileGroupTextValue.new)
+                .toList(growable: false),
+          );
+        })
+        .whereType<TenantAdminNestedProfileGroup>()
         .toList(growable: false);
   }
 

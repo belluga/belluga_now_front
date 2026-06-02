@@ -19,6 +19,7 @@ import 'package:belluga_now/domain/services/tenant_admin_location_selection_cont
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profile_create_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profile_edit_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_nested_profile_group_operations.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:image_picker/image_picker.dart';
@@ -972,7 +973,9 @@ class TenantAdminAccountProfilesController implements Disposable {
     }
     _updateCreateState(
       createStateStreamValue.value.copyWith(
-        nestedProfileGroups: _appendNestedProfileGroup(groups),
+        nestedProfileGroups: TenantAdminNestedProfileGroupOperations.append(
+          groups,
+        ),
       ),
     );
   }
@@ -985,7 +988,9 @@ class TenantAdminAccountProfilesController implements Disposable {
     }
     _updateEditState(
       editStateStreamValue.value.copyWith(
-        nestedProfileGroups: _appendNestedProfileGroup(groups),
+        nestedProfileGroups: TenantAdminNestedProfileGroupOperations.append(
+          groups,
+        ),
       ),
     );
   }
@@ -993,10 +998,10 @@ class TenantAdminAccountProfilesController implements Disposable {
   void renameCreateNestedProfileGroup(String groupId, String label) {
     _updateCreateState(
       createStateStreamValue.value.copyWith(
-        nestedProfileGroups: _renameNestedProfileGroup(
+        nestedProfileGroups: TenantAdminNestedProfileGroupOperations.rename(
           createStateStreamValue.value.nestedProfileGroups,
-          groupId,
-          label,
+          groupId: groupId,
+          label: label,
         ),
       ),
     );
@@ -1005,10 +1010,10 @@ class TenantAdminAccountProfilesController implements Disposable {
   void renameEditNestedProfileGroup(String groupId, String label) {
     _updateEditState(
       editStateStreamValue.value.copyWith(
-        nestedProfileGroups: _renameNestedProfileGroup(
+        nestedProfileGroups: TenantAdminNestedProfileGroupOperations.rename(
           editStateStreamValue.value.nestedProfileGroups,
-          groupId,
-          label,
+          groupId: groupId,
+          label: label,
         ),
       ),
     );
@@ -1017,9 +1022,9 @@ class TenantAdminAccountProfilesController implements Disposable {
   void removeCreateNestedProfileGroup(String groupId) {
     _updateCreateState(
       createStateStreamValue.value.copyWith(
-        nestedProfileGroups: _removeNestedProfileGroup(
+        nestedProfileGroups: TenantAdminNestedProfileGroupOperations.remove(
           createStateStreamValue.value.nestedProfileGroups,
-          groupId,
+          groupId: groupId,
         ),
       ),
     );
@@ -1028,9 +1033,9 @@ class TenantAdminAccountProfilesController implements Disposable {
   void removeEditNestedProfileGroup(String groupId) {
     _updateEditState(
       editStateStreamValue.value.copyWith(
-        nestedProfileGroups: _removeNestedProfileGroup(
+        nestedProfileGroups: TenantAdminNestedProfileGroupOperations.remove(
           editStateStreamValue.value.nestedProfileGroups,
-          groupId,
+          groupId: groupId,
         ),
       ),
     );
@@ -1039,10 +1044,10 @@ class TenantAdminAccountProfilesController implements Disposable {
   void moveCreateNestedProfileGroup(String groupId, int delta) {
     _updateCreateState(
       createStateStreamValue.value.copyWith(
-        nestedProfileGroups: _moveNestedProfileGroup(
+        nestedProfileGroups: TenantAdminNestedProfileGroupOperations.move(
           createStateStreamValue.value.nestedProfileGroups,
-          groupId,
-          delta,
+          groupId: groupId,
+          delta: delta,
         ),
       ),
     );
@@ -1051,10 +1056,10 @@ class TenantAdminAccountProfilesController implements Disposable {
   void moveEditNestedProfileGroup(String groupId, int delta) {
     _updateEditState(
       editStateStreamValue.value.copyWith(
-        nestedProfileGroups: _moveNestedProfileGroup(
+        nestedProfileGroups: TenantAdminNestedProfileGroupOperations.move(
           editStateStreamValue.value.nestedProfileGroups,
-          groupId,
-          delta,
+          groupId: groupId,
+          delta: delta,
         ),
       ),
     );
@@ -1065,7 +1070,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     required String profileId,
     required bool selected,
   }) {
-    final next = _toggleNestedProfileGroupMember(
+    final next = TenantAdminNestedProfileGroupOperations.toggleMember(
       createStateStreamValue.value.nestedProfileGroups,
       groupId: groupId,
       profileId: profileId,
@@ -1083,7 +1088,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     required String profileId,
     required bool selected,
   }) {
-    final next = _toggleNestedProfileGroupMember(
+    final next = TenantAdminNestedProfileGroupOperations.toggleMember(
       editStateStreamValue.value.nestedProfileGroups,
       groupId: groupId,
       profileId: profileId,
@@ -1148,111 +1153,6 @@ class TenantAdminAccountProfilesController implements Disposable {
 
   void resetCreateState() {
     _updateCreateState(TenantAdminAccountProfileCreateDraft.initial());
-  }
-
-  List<TenantAdminNestedProfileGroup> _appendNestedProfileGroup(
-    List<TenantAdminNestedProfileGroup> groups,
-  ) {
-    final nextOrder = groups.length;
-    return _normalizeNestedProfileGroupOrders([
-      ...groups,
-      TenantAdminNestedProfileGroup(
-        idValue: TenantAdminNestedProfileGroupTextValue(
-          'grupo-${DateTime.now().microsecondsSinceEpoch}',
-        ),
-        labelValue: TenantAdminNestedProfileGroupTextValue('Novo grupo'),
-        orderValue: TenantAdminNestedProfileGroupOrderValue(nextOrder),
-      ),
-    ]);
-  }
-
-  List<TenantAdminNestedProfileGroup> _renameNestedProfileGroup(
-    List<TenantAdminNestedProfileGroup> groups,
-    String groupId,
-    String label,
-  ) {
-    return groups
-        .map(
-          (group) => group.id == groupId
-              ? group.copyWith(
-                  labelValue: TenantAdminNestedProfileGroupTextValue(label),
-                )
-              : group,
-        )
-        .toList(growable: false);
-  }
-
-  List<TenantAdminNestedProfileGroup> _removeNestedProfileGroup(
-    List<TenantAdminNestedProfileGroup> groups,
-    String groupId,
-  ) {
-    return _normalizeNestedProfileGroupOrders(
-      groups.where((group) => group.id != groupId).toList(growable: false),
-    );
-  }
-
-  List<TenantAdminNestedProfileGroup> _moveNestedProfileGroup(
-    List<TenantAdminNestedProfileGroup> groups,
-    String groupId,
-    int delta,
-  ) {
-    final next = [...groups]
-      ..sort((left, right) => left.order.compareTo(right.order));
-    final index = next.indexWhere((group) => group.id == groupId);
-    if (index < 0) {
-      return groups;
-    }
-    final target = (index + delta).clamp(0, next.length - 1);
-    if (target == index) {
-      return groups;
-    }
-    final group = next.removeAt(index);
-    next.insert(target, group);
-    return _normalizeNestedProfileGroupOrders(next);
-  }
-
-  List<TenantAdminNestedProfileGroup> _toggleNestedProfileGroupMember(
-    List<TenantAdminNestedProfileGroup> groups, {
-    required String groupId,
-    required String profileId,
-    required bool selected,
-    required VoidCallback onLimit,
-  }) {
-    return groups.map((group) {
-      if (group.id != groupId) {
-        return group;
-      }
-      final current = group.accountProfileIdValues
-          .map((entry) => entry.value)
-          .toList(growable: true);
-      if (selected) {
-        if (current.contains(profileId)) {
-          return group;
-        }
-        if (current.length >= 50) {
-          onLimit();
-          return group;
-        }
-        current.add(profileId);
-      } else {
-        current.removeWhere((entry) => entry == profileId);
-      }
-      return group.copyWith(
-        accountProfileIdValues:
-            current.map(TenantAdminNestedProfileGroupTextValue.new).toList(),
-      );
-    }).toList(growable: false);
-  }
-
-  List<TenantAdminNestedProfileGroup> _normalizeNestedProfileGroupOrders(
-    List<TenantAdminNestedProfileGroup> groups,
-  ) {
-    return [
-      for (var index = 0; index < groups.length; index++)
-        groups[index].copyWith(
-          orderValue: TenantAdminNestedProfileGroupOrderValue(index),
-        ),
-    ];
   }
 
   void _updateEditState(TenantAdminAccountProfileEditDraft state) {

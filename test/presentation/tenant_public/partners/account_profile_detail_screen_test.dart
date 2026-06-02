@@ -18,6 +18,7 @@ import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/static_assets_repository_contract.dart';
@@ -27,6 +28,8 @@ import 'package:belluga_now/domain/static_assets/public_static_asset_model.dart'
 import 'package:belluga_now/presentation/tenant_public/partners/account_profile_detail_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_state.dart';
+import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_screen_controller.dart';
+import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_store_platform.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_contract.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_choice.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_launch_target.dart';
@@ -40,6 +43,7 @@ import 'package:get_it/get_it.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:stream_value/core/stream_value.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 import 'package:visibility_detector/visibility_detector.dart';
@@ -348,6 +352,96 @@ void main() {
     );
     expect(router.lastPushedPath, isNull);
     expect(router.lastReplacedPath, isNull);
+  });
+
+  testWidgets(
+      'web anonymous favorite action promotes app instead of phone login',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final authRepository = _FakeAuthRepository(authorized: false);
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+      authRepository: authRepository,
+    );
+    final router = _RecordingStackRouter();
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+    _registerAppPromotionController();
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: router,
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildArtistProfile(),
+          isWebRuntime: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('accountProfileFavoriteAction')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Entrar para favoritar'), findsNothing);
+    expect(find.byKey(const Key('app_promotion_modal')), findsOneWidget);
+    expect(
+      find.byKey(const Key('app_promotion_store_badge_android')),
+      findsOneWidget,
+    );
+    expect(
+      repository
+          .isFavorite(
+            AccountProfilesRepositoryContractPrimString.fromRaw(
+              _buildArtistProfile().id,
+            ),
+          )
+          .value,
+      isFalse,
+    );
+    expect(router.lastPushedPath, isNull);
+    expect(router.lastReplacedPath, isNull);
+  });
+
+  testWidgets(
+      'non-web anonymous favorite action redirects to login with replay path',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(authorized: false),
+    );
+    final router = _RecordingStackRouter();
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: router,
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildArtistProfile(),
+          isWebRuntime: false,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('accountProfileFavoriteAction')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('app_promotion_modal')), findsNothing);
+    expect(
+      repository
+          .isFavorite(
+            AccountProfilesRepositoryContractPrimString.fromRaw(
+              _buildArtistProfile().id,
+            ),
+          )
+          .value,
+      isFalse,
+    );
+    expect(router.lastPushedPath, isNull);
+    expect(
+      router.lastReplacedPath,
+      '/auth/login?redirect=%2Fparceiro%2Fteste',
+    );
   });
 
   testWidgets('account profile WhatsApp action uses public profile payload',
@@ -2937,6 +3031,52 @@ AccountProfileModel _buildProfileWithCrowdedLiveAgenda() {
       ),
     ],
   );
+}
+
+void _registerAppPromotionController() {
+  final appDataRepository = _FakeAppDataRepository(_buildAppData());
+  GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
+  GetIt.I.registerSingleton<AppPromotionScreenController>(
+    AppPromotionScreenController(
+      appDataRepository: appDataRepository,
+      preferredStorePlatformResolver: () => AppPromotionStorePlatform.android,
+    ),
+  );
+}
+
+class _FakeAppDataRepository extends AppDataRepositoryContract {
+  _FakeAppDataRepository(this._appData);
+
+  final AppData _appData;
+
+  @override
+  AppData get appData => _appData;
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  StreamValue<ThemeMode?> get themeModeStreamValue =>
+      StreamValue<ThemeMode?>(defaultValue: ThemeMode.system);
+
+  @override
+  ThemeMode get themeMode => ThemeMode.system;
+
+  @override
+  Future<void> setThemeMode(AppThemeModeValue mode) async {}
+
+  @override
+  StreamValue<DistanceInMetersValue> get maxRadiusMetersStreamValue =>
+      StreamValue<DistanceInMetersValue>(
+        defaultValue: DistanceInMetersValue(defaultValue: 5000),
+      );
+
+  @override
+  DistanceInMetersValue get maxRadiusMeters =>
+      DistanceInMetersValue(defaultValue: 5000);
+
+  @override
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {}
 }
 
 AppData _buildAppData({

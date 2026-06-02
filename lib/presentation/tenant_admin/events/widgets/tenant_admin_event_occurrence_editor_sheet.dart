@@ -9,6 +9,7 @@ import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_programming_item_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/widgets/tenant_admin_account_profile_location_picker_sheet.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_nested_profile_groups_editor.dart';
 import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
@@ -189,24 +190,6 @@ class _TenantAdminEventOccurrenceEditorSheetState
     }
     setState(() {
       widget.controller.updateOccurrenceEnd(widget.occurrenceKey, picked);
-      _errorMessage = null;
-    });
-  }
-
-  Future<void> _addRelatedProfile() async {
-    final selected = await widget.pickRelatedAccountProfile(
-      excludedProfileIds: widget.occurrence.relatedAccountProfileIds
-          .map((profileId) => profileId.value)
-          .toSet(),
-    );
-    if (selected == null || !mounted) {
-      return;
-    }
-    setState(() {
-      widget.controller.addOccurrenceRelatedProfile(
-        widget.occurrenceKey,
-        selected,
-      );
       _errorMessage = null;
     });
   }
@@ -420,48 +403,47 @@ class _TenantAdminEventOccurrenceEditorSheetState
             ),
             _buildOccurrenceTaxonomySection(context),
             const Divider(height: 28),
-            Text(
-              'Perfis próprios da ocorrência',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            const SizedBox(height: 8),
-            if (widget.occurrence.relatedAccountProfileIds.isEmpty)
-              Text(
-                'Nenhum perfil próprio nesta data.',
-                style: Theme.of(context).textTheme.bodySmall,
-              )
-            else
-              for (final profileId
-                  in widget.occurrence.relatedAccountProfileIds)
-                ListTile(
-                  key: Key('tenantAdminOccurrenceProfile_${profileId.value}'),
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.person_outline),
-                  title: Text(
-                    TenantAdminEventOccurrenceEditorDraft.profileDisplayName(
-                      profileId.value,
-                      widget.occurrence.relatedAccountProfiles,
-                    ),
-                  ),
-                  trailing: IconButton(
-                    tooltip: 'Remover perfil da ocorrência',
-                    onPressed: () {
-                      setState(() {
-                        widget.controller.removeOccurrenceRelatedProfile(
-                          widget.occurrenceKey,
-                          profileId.value,
-                        );
-                        _errorMessage = null;
-                      });
-                    },
-                    icon: const Icon(Icons.close),
-                  ),
-                ),
-            OutlinedButton.icon(
-              key: const Key('tenantAdminOccurrenceAddProfileButton'),
-              onPressed: _addRelatedProfile,
-              icon: const Icon(Icons.add),
-              label: const Text('Adicionar perfil próprio'),
+            TenantAdminNestedProfileGroupsEditor(
+              keyPrefix: 'OccurrenceProfile',
+              title: 'Abas de perfis próprios da ocorrência',
+              selectorTitle: 'Perfis',
+              emptyCandidatesText: 'Nenhum perfil disponivel.',
+              emptySelectionText: 'Selecionar perfis',
+              selectedCountLabel: 'perfil(is) selecionado(s)',
+              searchLabelText: 'Buscar perfil',
+              emptySearchText: 'Nenhum perfil encontrado.',
+              groups: widget.occurrence.profileGroups,
+              candidatesStreamValue:
+                  widget.controller.relatedAccountProfileCandidatesStreamValue,
+              profileTypes: const [],
+              addButtonKey: const Key('TenantAdminOccurrenceProfileGroupAdd'),
+              onAddGroup: () => widget.controller.addOccurrenceProfileGroup(
+                widget.occurrenceKey,
+              ),
+              onRenameGroup: (groupId, label) =>
+                  widget.controller.renameOccurrenceProfileGroup(
+                occurrenceKey: widget.occurrenceKey,
+                groupId: groupId,
+                label: label,
+              ),
+              onMoveGroup: (groupId, delta) =>
+                  widget.controller.moveOccurrenceProfileGroup(
+                occurrenceKey: widget.occurrenceKey,
+                groupId: groupId,
+                delta: delta,
+              ),
+              onRemoveGroup: (groupId) =>
+                  widget.controller.removeOccurrenceProfileGroup(
+                occurrenceKey: widget.occurrenceKey,
+                groupId: groupId,
+              ),
+              onSelectionChanged: (groupId, profileId, selected) =>
+                  widget.controller.toggleOccurrenceProfileGroupMember(
+                occurrenceKey: widget.occurrenceKey,
+                groupId: groupId,
+                profileId: profileId,
+                selected: selected,
+              ),
             ),
             const Divider(height: 28),
             Text(

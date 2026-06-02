@@ -279,44 +279,46 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
                         ),
                         const SizedBox(width: 8),
                       ],
-                      flexibleSpace: FlexibleSpaceBar(
-                        background: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            widget.heroContentBuilder
-                                    ?.call(context, _activateTab) ??
-                                widget.heroContent!,
-                            // Scrim gradient for icon visibility
-                            Positioned(
-                              top: 0,
-                              left: 0,
-                              right: 0,
-                              height: 120,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [
-                                      Colors.black.withValues(alpha: 0.3),
-                                      Colors.transparent,
-                                    ],
-                                  ),
+                      flexibleSpace: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          widget.heroContentBuilder?.call(
+                                context,
+                                _activateTab,
+                              ) ??
+                              widget.heroContent!,
+                          // Scrim gradient for icon visibility
+                          Positioned(
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            height: 120,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.black.withValues(alpha: 0.3),
+                                    Colors.transparent,
+                                  ],
                                 ),
                               ),
                             ),
-                            if (heroActions.isNotEmpty && !innerBoxIsScrolled)
-                              Positioned(
-                                top: mediaQuery.padding.top + 12,
-                                right: 12,
-                                child: _buildExpandedHeroActionRail(
-                                  context: context,
-                                  actions: heroActions,
-                                  innerBoxIsScrolled: innerBoxIsScrolled,
-                                ),
+                          ),
+                          if (heroActions.isNotEmpty && !innerBoxIsScrolled)
+                            Positioned(
+                              top: mediaQuery.padding.top +
+                                  widget.collapsedToolbarHeight +
+                                  8,
+                              right: 12,
+                              child: _buildExpandedHeroActionRail(
+                                context: context,
+                                actions: heroActions,
+                                innerBoxIsScrolled: innerBoxIsScrolled,
                               ),
-                          ],
-                        ),
+                            ),
+                        ],
                       ),
                     ),
                     // Optional content between hero and tabs

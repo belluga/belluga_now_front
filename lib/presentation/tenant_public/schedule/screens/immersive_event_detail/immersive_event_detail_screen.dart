@@ -18,6 +18,7 @@ import 'package:belluga_now/domain/repositories/invites_repository_contract.dart
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
 import 'package:belluga_now/application/sharing/event_invite_share_payload.dart';
+import 'package:belluga_now/presentation/shared/favorites/account_profile_favorite_auth_gate.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/widgets/invite_candidate_picker.dart';
 import 'package:belluga_now/presentation/shared/promotion/support/web_installed_app_handoff.dart';
 import 'package:belluga_now/presentation/shared/sharing/public_share_launcher.dart';
@@ -54,6 +55,7 @@ class ImmersiveEventDetailScreen extends StatefulWidget {
     this.colorScheme,
     this.directionsAppChooser,
     this.shareLauncher,
+    this.isWebRuntime = kIsWeb,
     super.key,
   });
 
@@ -61,6 +63,7 @@ class ImmersiveEventDetailScreen extends StatefulWidget {
   final ColorScheme? colorScheme;
   final DirectionsAppChooserContract? directionsAppChooser;
   final Future<void> Function(ShareParams params)? shareLauncher;
+  final bool isWebRuntime;
 
   @override
   State<ImmersiveEventDetailScreen> createState() =>
@@ -434,6 +437,30 @@ class _ImmersiveEventDetailScreenState
     required EventModel event,
     required Set<String> favoriteAccountProfileIds,
   }) {
+    if (event.profileGroups.isNotEmpty) {
+      return event.profileGroups
+          .where((group) => group.profiles.isNotEmpty)
+          .map(
+            (group) => ImmersiveTabItem(
+              title: group.label,
+              content: LinkedProfileCategorySection(
+                title: group.label,
+                profiles: group.profiles,
+                profileTypeRegistry: _controller.profileTypeRegistry,
+                favoriteAccountProfileIds: favoriteAccountProfileIds,
+                isFavoritable: (profile) =>
+                    _controller.isLinkedProfileFavoritable(
+                  profile.profileType,
+                ),
+                onFavoriteTap: (profile) =>
+                    _handleLinkedProfileFavoriteTap(profile),
+              ),
+              footer: null,
+            ),
+          )
+          .toList(growable: false);
+    }
+
     final groupedProfiles = _groupLinkedProfilesByType(event);
 
     return groupedProfiles.entries
@@ -503,8 +530,14 @@ class _ImmersiveEventDetailScreenState
       return null;
     }
 
-    final dynamicTypes = _groupLinkedProfilesByType(event).keys.toList();
-    final typeOffset = dynamicTypes.indexOf(type);
+    final dynamicKeys = event.profileGroups.isNotEmpty
+        ? [
+            for (final group in event.profileGroups)
+              if (group.profiles.any((profile) => profile.profileType == type))
+                type,
+          ]
+        : _groupLinkedProfilesByType(event).keys.toList();
+    final typeOffset = dynamicKeys.indexOf(type);
     if (typeOffset < 0) {
       return null;
     }
@@ -966,27 +999,18 @@ class _ImmersiveEventDetailScreenState
   void _handleLinkedProfileFavoriteTap(EventLinkedAccountProfile profile) {
     final accountProfileId = profile.id;
     final redirectPath = _linkedProfileRedirectPath(profile);
-    if (kIsWeb && !_controller.isAuthorized) {
-      launchWebInstalledAppHandoffOrPromotion(
-        context: context,
-        redirectPath: redirectPath,
-        actionType: AuthWallActionType.favorite,
-        payload: {'partnerId': accountProfileId},
-      );
-      return;
-    }
-
     final result = _controller.toggleLinkedProfileFavorite(accountProfileId);
     if (result != LinkedProfileFavoriteToggleOutcome.requiresAuthentication) {
       return;
     }
-    AuthWallTelemetry.trackTriggered(
-      actionType: AuthWallActionType.favorite,
-      redirectPath: redirectPath,
-      payload: {'partnerId': accountProfileId},
+    unawaited(
+      AccountProfileFavoriteAuthGate.handleRequiredAuthentication(
+        context: context,
+        accountProfileId: accountProfileId,
+        redirectPath: redirectPath,
+        isWebRuntime: widget.isWebRuntime,
+      ),
     );
-    final encodedRedirect = Uri.encodeQueryComponent(redirectPath);
-    context.router.replacePath('/auth/login?redirect=$encodedRedirect');
   }
 
   String _linkedProfileRedirectPath(EventLinkedAccountProfile profile) {

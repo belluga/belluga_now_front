@@ -74,6 +74,74 @@ void main() {
     expect(dto.id, 'occ-42');
   });
 
+  test('parses public profile groups for custom dynamic event tabs', () {
+    final dto = EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439022',
+      'slug': 'evt-groups',
+      'type': {
+        'id': 'type-1',
+        'name': 'Feira',
+        'slug': 'feira',
+        'description': '',
+      },
+      'title': 'Evento com grupos',
+      'content': '',
+      'location': 'Guarapari',
+      'date_time_start': '2026-03-03T10:00:00+00:00',
+      'linked_account_profiles': [
+        {
+          'id': 'artist-1',
+          'display_name': 'Artista A',
+          'slug': 'artista-a',
+          'profile_type': 'artist',
+        },
+        {
+          'id': 'producer-1',
+          'display_name': 'Produtor B',
+          'slug': 'produtor-b',
+          'profile_type': 'producer',
+        },
+      ],
+      'profile_groups': [
+        {
+          'id': 'expositores',
+          'label': 'Expositores',
+          'order': 1,
+          'profiles': [
+            {
+              'id': 'producer-1',
+              'display_name': 'Produtor B',
+              'slug': 'produtor-b',
+              'profile_type': 'producer',
+            },
+          ],
+        },
+        {
+          'id': 'atracoes',
+          'label': 'Atrações',
+          'order': 0,
+          'profiles': [
+            {
+              'id': 'artist-1',
+              'display_name': 'Artista A',
+              'slug': 'artista-a',
+              'profile_type': 'artist',
+            },
+          ],
+        },
+      ],
+    });
+
+    final domain = dto.toDomain();
+
+    expect(domain.profileGroups, hasLength(2));
+    expect(domain.profileGroups[0].id, 'atracoes');
+    expect(domain.profileGroups[0].label, 'Atrações');
+    expect(domain.profileGroups[0].profiles.single.displayName, 'Artista A');
+    expect(domain.profileGroups[1].id, 'expositores');
+    expect(domain.profileGroups[1].profiles.single.profileType, 'producer');
+  });
+
   test('preserves sanitized rich html content for public event rendering', () {
     final dto = EventDTO.fromJson({
       'event_id': '507f1f77bcf86cd799439011',

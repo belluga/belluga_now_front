@@ -12,6 +12,7 @@ import 'package:belluga_now/domain/partners/value_objects/account_profile_type_v
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
+import 'package:belluga_now/domain/schedule/event_profile_group.dart';
 import 'package:belluga_now/domain/schedule/event_programming_item.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
@@ -20,6 +21,7 @@ import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_values.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_profile_group_order_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_type_id_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
@@ -56,6 +58,7 @@ class EventDTO {
     this.dateTimeEnd,
     this.artists = const [],
     this.linkedAccountProfiles = const [],
+    this.profileGroups = const [],
     this.occurrences = const [],
     this.programmingItems = const [],
     this.isConfirmed = false,
@@ -80,6 +83,7 @@ class EventDTO {
   final String? dateTimeEnd;
   final List<EventArtistDTO> artists;
   final List<EventLinkedAccountProfile> linkedAccountProfiles;
+  final List<EventProfileGroup> profileGroups;
   final List<EventOccurrenceOption> occurrences;
   final List<EventProgrammingItem> programmingItems;
   final bool isConfirmed;
@@ -145,6 +149,7 @@ class EventDTO {
           _asNullableString(json['ends_at']) ??
           _asNullableString(json['end_time']),
       linkedAccountProfiles: legacyLinkedProfiles,
+      profileGroups: _resolveProfileGroups(json['profile_groups']),
       occurrences: _resolveOccurrences(
         occurrencesRaw: json['occurrences'],
         fallbackOccurrenceId: selectedOccurrenceId,
@@ -213,6 +218,7 @@ class EventDTO {
           dateTimeEnd != null ? (DateTimeValue()..parse(dateTimeEnd!)) : null,
       venue: venueDomain,
       linkedAccountProfiles: linkedAccountProfiles,
+      profileGroups: profileGroups,
       occurrences: occurrences,
       programmingItems: programmingItems,
       coordinate: coordinate,
@@ -438,6 +444,43 @@ class EventDTO {
         .toList(growable: false);
 
     return List<EventLinkedAccountProfile>.unmodifiable(resolved);
+  }
+
+  static List<EventProfileGroup> _resolveProfileGroups(Object? raw) {
+    if (raw is! List) {
+      return const [];
+    }
+
+    final groups = <EventProfileGroup>[];
+    for (var index = 0; index < raw.length; index++) {
+      final group = _asMap(raw[index]);
+      final id = _asNullableString(group['id'] ?? group['key'])?.trim() ?? '';
+      final label = _asNullableString(group['label'])?.trim() ?? '';
+      if (id.isEmpty || label.isEmpty) {
+        continue;
+      }
+
+      final profiles = _resolveLinkedAccountProfiles(
+        linkedProfilesRaw: group['profiles'],
+      );
+      if (profiles.isEmpty) {
+        continue;
+      }
+
+      groups.add(
+        EventProfileGroup(
+          idValue: EventLinkedAccountProfileTextValue(id),
+          labelValue: EventLinkedAccountProfileTextValue(label),
+          orderValue: EventProfileGroupOrderValue(
+            _asInt(group['order'] ?? index),
+          ),
+          profiles: profiles,
+        ),
+      );
+    }
+
+    groups.sort((left, right) => left.order.compareTo(right.order));
+    return List<EventProfileGroup>.unmodifiable(groups);
   }
 
   static List<EventOccurrenceOption> _resolveOccurrences({

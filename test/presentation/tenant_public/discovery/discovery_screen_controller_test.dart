@@ -18,6 +18,7 @@ import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/discovery_filters_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
@@ -27,12 +28,15 @@ import 'package:belluga_now/domain/repositories/value_objects/user_location_repo
 import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
 import 'package:flutter/material.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/controllers/discovery_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/discovery_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_filter_chips.dart';
+import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_screen_controller.dart';
+import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_store_platform.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:mockito/mockito.dart';
@@ -77,7 +81,7 @@ void main() {
     controller.onDispose();
   });
 
-  test('toggle favorite is allowed for anonymous users', () async {
+  test('toggle favorite requires authentication for anonymous users', () async {
     final artist = _profile(id: _mongoId('c'), type: 'artist', name: 'Artist');
     final repository = _FakeAccountProfilesRepository(
       pages: {
@@ -89,13 +93,14 @@ void main() {
     );
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(authorized: false),
     );
 
     await controller.init();
     final outcome = controller.toggleFavorite(artist.id);
 
-    expect(outcome, FavoriteToggleOutcome.toggled);
-    expect(repository.toggleCalls, [artist.id]);
+    expect(outcome, FavoriteToggleOutcome.requiresAuthentication);
+    expect(repository.toggleCalls, isEmpty);
     controller.onDispose();
   });
 
@@ -689,6 +694,68 @@ void main() {
 
     expect(find.text('Tocando agora'), findsOneWidget);
     expect(find.text('Artista UI'), findsOneWidget);
+
+    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+  });
+
+  testWidgets(
+      'DiscoveryScreen web anonymous favorite promotes app instead of phone login',
+      (tester) async {
+    final artist = _profile(
+      id: _mongoId('fav-web'),
+      type: 'artist',
+      name: 'Artista Favoritavel',
+    );
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: pagedAccountProfilesResultFromRaw(
+          profiles: [artist],
+          hasMore: false,
+        ),
+      },
+    );
+    final authRepository = _FakeAuthRepository(authorized: false);
+    final controller = _buildDiscoveryController(
+      accountProfilesRepository: repository,
+      authRepository: authRepository,
+    );
+    GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/descobrir'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: const DiscoveryScreen(isWebRuntime: true),
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 120));
+
+    await tester.tap(find.byKey(Key('discoveryFavoriteButton_${artist.id}')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Entrar para favoritar'), findsNothing);
+    expect(find.byKey(const Key('app_promotion_modal')), findsOneWidget);
+    expect(
+      find.byKey(const Key('app_promotion_store_badge_android')),
+      findsOneWidget,
+    );
+    expect(repository.toggleCalls, isEmpty);
+    expect(router.lastPushedPath, isNull);
+    expect(router.lastReplacedPath, isNull);
 
     await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
   });
@@ -1639,6 +1706,7 @@ void main() {
     );
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(authorized: true),
     );
 
     await controller.init();
@@ -1780,12 +1848,21 @@ DiscoveryScreenController _buildDiscoveryController({
   required AccountProfilesRepositoryContract accountProfilesRepository,
   DiscoveryFiltersRepositoryContract? discoveryFiltersRepository,
   ScheduleRepositoryContract? scheduleRepository,
+  AuthRepositoryContract? authRepository,
 }) {
   if (!GetIt.I.isRegistered<AppDataRepositoryContract>()) {
     GetIt.I.registerSingleton<AppDataRepositoryContract>(
       _FakeAppDataRepository(
         appData: _buildAppData(),
         maxRadiusMeters: _buildAppData().mapRadiusDefaultMeters,
+      ),
+    );
+  }
+  if (!GetIt.I.isRegistered<AppPromotionScreenController>()) {
+    GetIt.I.registerSingleton<AppPromotionScreenController>(
+      AppPromotionScreenController(
+        appDataRepository: GetIt.I.get<AppDataRepositoryContract>(),
+        preferredStorePlatformResolver: () => AppPromotionStorePlatform.android,
       ),
     );
   }
@@ -1805,6 +1882,7 @@ DiscoveryScreenController _buildDiscoveryController({
     discoveryFiltersRepository: discoveryFiltersRepository,
     scheduleRepository: scheduleRepository,
     locationOriginService: GetIt.I.get<LocationOriginServiceContract>(),
+    authRepository: authRepository,
   );
 }
 
@@ -1827,6 +1905,8 @@ class _FakeDiscoveryFiltersRepository
 }
 
 class _RecordingStackRouter extends Mock implements StackRouter {
+  String? lastPushedPath;
+  String? lastReplacedPath;
   bool canPopResult = false;
   int canPopCallCount = 0;
   int popCallCount = 0;
@@ -1859,6 +1939,36 @@ class _RecordingStackRouter extends Mock implements StackRouter {
   }) async {
     replaceAllRoutes.add(List<PageRouteInfo<dynamic>>.from(routes));
   }
+
+  @override
+  Future<T?> pushPath<T extends Object?>(
+    String path, {
+    bool includePrefixMatches = false,
+    OnNavigationFailure? onFailure,
+  }) async {
+    lastPushedPath = path;
+    return null;
+  }
+
+  @override
+  Future<T?> replacePath<T extends Object?>(
+    String path, {
+    bool includePrefixMatches = false,
+    OnNavigationFailure? onFailure,
+  }) async {
+    lastReplacedPath = path;
+    return null;
+  }
+}
+
+class _FakeAuthRepository extends Fake
+    implements AuthRepositoryContract<UserContract> {
+  _FakeAuthRepository({required this.authorized});
+
+  final bool authorized;
+
+  @override
+  bool get isAuthorized => authorized;
 }
 
 class _FakeRootStackRouter extends Fake implements RootStackRouter {

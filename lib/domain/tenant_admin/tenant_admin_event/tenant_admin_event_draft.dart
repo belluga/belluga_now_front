@@ -14,6 +14,7 @@ class TenantAdminEventDraft {
     TenantAdminFlagValue? removeCoverValue,
     List<TenantAdminAccountProfileIdValue>? relatedAccountProfileIdValues,
     List<TenantAdminAccountProfile>? relatedAccountProfiles,
+    List<TenantAdminNestedProfileGroup>? profileGroups,
     TenantAdminTaxonomyTerms? taxonomyTerms,
   })  : coverUrlValue = coverUrlValue ?? TenantAdminOptionalUrlValue(),
         removeCoverValue = removeCoverValue ?? TenantAdminFlagValue(false),
@@ -24,6 +25,9 @@ class TenantAdminEventDraft {
         ),
         relatedAccountProfiles = List<TenantAdminAccountProfile>.unmodifiable(
           relatedAccountProfiles ?? const <TenantAdminAccountProfile>[],
+        ),
+        profileGroups = List<TenantAdminNestedProfileGroup>.unmodifiable(
+          profileGroups ?? const <TenantAdminNestedProfileGroup>[],
         ),
         taxonomyTerms = taxonomyTerms ?? const TenantAdminTaxonomyTerms.empty();
 
@@ -39,6 +43,7 @@ class TenantAdminEventDraft {
   final TenantAdminFlagValue removeCoverValue;
   final List<TenantAdminAccountProfileIdValue> relatedAccountProfileIdValues;
   final List<TenantAdminAccountProfile> relatedAccountProfiles;
+  final List<TenantAdminNestedProfileGroup> profileGroups;
   final TenantAdminTaxonomyTerms taxonomyTerms;
 
   String get title => titleValue.value;

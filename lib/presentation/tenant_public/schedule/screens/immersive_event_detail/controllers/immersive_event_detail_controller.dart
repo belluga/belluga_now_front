@@ -186,7 +186,7 @@ class ImmersiveEventDetailController implements Disposable {
     return registry.pluralLabelForType(ProfileTypeKeyValue(normalized));
   }
 
-  bool get _isAuthorized => _authRepository?.isAuthorized ?? true;
+  bool get _isAuthorized => _authRepository?.isAuthorized ?? false;
 
   bool get isAuthorized => _isAuthorized;
 
@@ -213,6 +213,9 @@ class ImmersiveEventDetailController implements Disposable {
   LinkedProfileFavoriteToggleOutcome toggleLinkedProfileFavorite(
     String accountProfileId,
   ) {
+    if (!_isAuthorized) {
+      return LinkedProfileFavoriteToggleOutcome.requiresAuthentication;
+    }
     final repository = _accountProfilesRepository;
     if (repository == null) {
       return LinkedProfileFavoriteToggleOutcome.unavailable;
@@ -336,6 +339,7 @@ class ImmersiveEventDetailController implements Disposable {
       dateTimeStart: selectedOccurrence.dateTimeStartValue,
       dateTimeEnd: _dateTimeEndForSelectedOccurrence(selectedOccurrence),
       linkedAccountProfiles: event.linkedAccountProfiles,
+      profileGroups: event.profileGroups,
       occurrences: updatedOccurrences,
       programmingItems: selectedOccurrence.programmingItems,
       coordinate: event.coordinate,

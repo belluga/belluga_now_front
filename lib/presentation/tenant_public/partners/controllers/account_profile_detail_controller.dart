@@ -118,7 +118,7 @@ class AccountProfileDetailController implements Disposable {
       _proximityPreferencesRepository?.proximityPreferenceStreamValue ??
       _emptyProximityPreferenceStreamValue;
 
-  bool get isAuthorized => _authRepository?.isAuthorized ?? true;
+  bool get isAuthorized => _authRepository?.isAuthorized ?? false;
 
   Future<void> loadResolvedAccountProfile(
       AccountProfileModel accountProfile) async {
@@ -148,6 +148,9 @@ class AccountProfileDetailController implements Disposable {
   }
 
   AccountProfileFavoriteToggleOutcome toggleFavorite(String accountProfileId) {
+    if (!isAuthorized) {
+      return AccountProfileFavoriteToggleOutcome.requiresAuthentication;
+    }
     _accountProfilesRepository.toggleFavorite(
       AccountProfilesRepositoryContractPrimString.fromRaw(accountProfileId),
     );
