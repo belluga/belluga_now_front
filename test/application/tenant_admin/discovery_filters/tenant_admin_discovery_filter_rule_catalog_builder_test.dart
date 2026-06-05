@@ -79,6 +79,35 @@ void main() {
       isNotEmpty,
     );
   });
+
+  test('build exposes only poi enabled account profile types for map filters',
+      () {
+    final catalog = builder.build(
+      accountTypes: [
+        _accountType(
+          type: 'restaurant',
+          label: 'Restaurantes',
+          isPoiEnabled: true,
+        ),
+        _accountType(
+          type: 'sponsor',
+          label: 'Patrocinadores',
+          isPoiEnabled: false,
+        ),
+      ],
+      staticTypes: const [],
+      eventTypes: const [],
+      taxonomies: const [],
+      termsBySlug: TenantAdminTaxonomyTermsBySlug.fromMap(const {}),
+    );
+
+    expect(
+      catalog
+          .typesForSource(TenantAdminMapFilterSource.accountProfile)
+          .map((option) => option.slug),
+      <String>['restaurant'],
+    );
+  });
 }
 
 TenantAdminEventType _eventType({
@@ -94,6 +123,7 @@ TenantAdminEventType _eventType({
 TenantAdminProfileTypeDefinition _accountType({
   required String type,
   required String label,
+  bool isPoiEnabled = true,
 }) {
   return TenantAdminProfileTypeDefinition(
     typeValue: _requiredText(type),
@@ -101,7 +131,7 @@ TenantAdminProfileTypeDefinition _accountType({
     allowedTaxonomiesValue: TenantAdminTrimmedStringListValue(),
     capabilities: TenantAdminProfileTypeCapabilities(
       isFavoritable: TenantAdminFlagValue(true),
-      isPoiEnabled: TenantAdminFlagValue(true),
+      isPoiEnabled: TenantAdminFlagValue(isPoiEnabled),
       hasBio: TenantAdminFlagValue(false),
       hasContent: TenantAdminFlagValue(false),
       hasTaxonomies: TenantAdminFlagValue(false),

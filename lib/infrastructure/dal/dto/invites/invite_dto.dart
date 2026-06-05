@@ -17,9 +17,13 @@ import 'package:belluga_now/domain/invites/value_objects/invite_location_value.d
 import 'package:belluga_now/domain/invites/value_objects/invite_message_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_occurrence_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_tag_value.dart';
+import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
+import 'package:belluga_now/domain/schedule/event_profile_group.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_inviter_candidate_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/schedule/event_public_profile_payload_decoder.dart';
 
 class InviteDto {
   InviteDto({
@@ -36,6 +40,9 @@ class InviteDto {
     required this.additionalInviters,
     required this.inviterCandidates,
     required this.occurrenceId,
+    this.linkedAccountProfiles = const [],
+    this.profileGroups = const [],
+    this.venueAccountProfileId,
     this.inviterName,
     this.inviterAvatarUrl,
     this.inviterPrincipalKind,
@@ -53,6 +60,9 @@ class InviteDto {
   final String message;
   final List<String> tags;
   final String attendancePolicy;
+  final List<EventLinkedAccountProfile> linkedAccountProfiles;
+  final List<EventProfileGroup> profileGroups;
+  final String? venueAccountProfileId;
   final String? inviterName;
   final String? inviterAvatarUrl;
   final List<String> additionalInviters;
@@ -101,6 +111,14 @@ class InviteDto {
         (json['occurrence_id'] ?? targetRefMap?['occurrence_id'] ?? '')
             .toString()
             .trim();
+    final linkedAccountProfiles =
+        EventPublicProfilePayloadDecoder.resolveLinkedAccountProfiles(
+      linkedProfilesRaw: json['linked_account_profiles'],
+    );
+    final profileGroups = EventPublicProfilePayloadDecoder.resolveProfileGroups(
+      json['profile_groups'],
+      linkedAccountProfiles: linkedAccountProfiles,
+    );
     final id = legacyInviteId.isNotEmpty
         ? legacyInviteId
         : _groupKey(eventId, occurrenceId);
@@ -121,6 +139,9 @@ class InviteDto {
           const <String>[],
       attendancePolicy:
           (json['attendance_policy'] ?? 'free_confirmation_only').toString(),
+      linkedAccountProfiles: linkedAccountProfiles,
+      profileGroups: profileGroups,
+      venueAccountProfileId: json['venue_account_profile_id']?.toString(),
       inviterName: legacyInviterName,
       inviterAvatarUrl: json['inviter_avatar_url']?.toString(),
       additionalInviters: (json['additional_inviters'] as List<dynamic>?)
@@ -157,6 +178,48 @@ class InviteDto {
       'message': message,
       'tags': tags,
       'attendance_policy': attendancePolicy,
+      'linked_account_profiles': linkedAccountProfiles
+          .map(
+            (profile) => <String, dynamic>{
+              'id': profile.id,
+              'display_name': profile.displayName,
+              'profile_type': profile.profileType,
+              'slug': profile.slug,
+              'avatar_url': profile.avatarUrl,
+              'cover_url': profile.coverUrl,
+              'party_type': profile.partyType,
+              'location_address': profile.locationAddress,
+              'latitude': profile.locationLat,
+              'longitude': profile.locationLng,
+              'can_open_public_detail': profile.canOpenPublicDetail,
+              'public_detail_path': profile.publicDetailPath,
+              'taxonomy_terms': profile.taxonomyTerms.items
+                  .map(
+                    (term) => <String, dynamic>{
+                      'type': term.typeValue.value,
+                      'value': term.valueValue.value,
+                      'name': term.nameValue.value,
+                      'taxonomy_name': term.taxonomyNameValue.value,
+                      'label': term.labelValue.value,
+                    },
+                  )
+                  .toList(growable: false),
+            },
+          )
+          .toList(growable: false),
+      'profile_groups': profileGroups
+          .map(
+            (group) => <String, dynamic>{
+              'id': group.id,
+              'label': group.label,
+              'order': group.order,
+              'account_profile_ids': group.accountProfileIdValues
+                  .map((id) => id.value)
+                  .toList(growable: false),
+            },
+          )
+          .toList(growable: false),
+      'venue_account_profile_id': venueAccountProfileId,
       'inviter_name': inviterName,
       'inviter_avatar_url': inviterAvatarUrl,
       'additional_inviters': additionalInviters,
@@ -289,6 +352,14 @@ class InviteDto {
           .map((inviter) => InviteAdditionalInviterNameValue()..parse(inviter))
           .toList(growable: false),
       inviters: resolvedInviters,
+      linkedAccountProfiles: linkedAccountProfiles,
+      profileGroups: profileGroups,
+      venueAccountProfileIdValue:
+          venueAccountProfileId == null || venueAccountProfileId!.trim().isEmpty
+              ? null
+              : EventLinkedAccountProfileTextValue(
+                  venueAccountProfileId!.trim(),
+                ),
     );
   }
 

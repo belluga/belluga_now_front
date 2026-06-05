@@ -1,4 +1,5 @@
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/immersive_tab_bar.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class ImmersiveHeaderDelegate extends SliverPersistentHeaderDelegate {
@@ -54,6 +55,7 @@ class ImmersiveHeaderDelegate extends SliverPersistentHeaderDelegate {
   bool shouldRebuild(covariant ImmersiveHeaderDelegate oldDelegate) {
     return oldDelegate.currentTabIndex != currentTabIndex ||
         oldDelegate.tabs.length != tabs.length ||
+        !listEquals(oldDelegate.tabs, tabs) ||
         oldDelegate.colorScheme != colorScheme ||
         oldDelegate.topPadding != topPadding;
   }

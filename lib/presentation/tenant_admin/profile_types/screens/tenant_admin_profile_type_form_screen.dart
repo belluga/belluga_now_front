@@ -281,17 +281,47 @@ class _TenantAdminProfileTypeFormScreenState
                               children: [
                                 SwitchListTile(
                                   contentPadding: EdgeInsets.zero,
+                                  title: const Text('Consultavel'),
+                                  subtitle: const Text(
+                                    'Permite listar, buscar e selecionar perfis deste tipo nas superfícies operacionais e públicas.',
+                                  ),
+                                  value: capabilities.isQueryable,
+                                  onChanged: (value) =>
+                                      _controller.updateCapabilities(
+                                    isQueryable: value,
+                                  ),
+                                ),
+                                SwitchListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  title: const Text(
+                                    'Pagina publica habilitada',
+                                  ),
+                                  subtitle: const Text(
+                                    'Permite abrir a rota pública direta do perfil quando existir slug público.',
+                                  ),
+                                  value: capabilities.isPubliclyNavigable,
+                                  onChanged: (value) =>
+                                      _controller.updateCapabilities(
+                                    isPubliclyNavigable: value,
+                                  ),
+                                ),
+                                SwitchListTile(
+                                  contentPadding: EdgeInsets.zero,
                                   title: const Text(
                                     'Descoberta publica habilitada',
                                   ),
-                                  subtitle: const Text(
-                                    'Permite exibir perfis deste tipo nas superficies publicas do tenant.',
+                                  subtitle: Text(
+                                    capabilities.isQueryable
+                                        ? 'Permite exibir perfis deste tipo nas superfícies públicas do tenant.'
+                                        : 'Requer capacidade de consulta habilitada.',
                                   ),
                                   value: capabilities.isPubliclyDiscoverable,
-                                  onChanged: (value) =>
-                                      _controller.updateCapabilities(
-                                    isPubliclyDiscoverable: value,
-                                  ),
+                                  onChanged: capabilities.isQueryable
+                                      ? (value) =>
+                                          _controller.updateCapabilities(
+                                            isPubliclyDiscoverable: value,
+                                          )
+                                      : null,
                                 ),
                                 SwitchListTile(
                                   contentPadding: EdgeInsets.zero,

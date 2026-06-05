@@ -39,7 +39,6 @@ void main() {
               width: 360,
               child: EventLiveNowCard(
                 event: event,
-                assumedDuration: const Duration(hours: 5),
               ),
             ),
           ),
@@ -47,8 +46,8 @@ void main() {
       ),
     );
 
-    expect(find.textContaining('07:00 às 09:00'), findsOneWidget);
-    expect(find.textContaining('07:00 -'), findsNothing);
+    expect(find.textContaining('7h às 9h'), findsOneWidget);
+    expect(find.textContaining('07:00'), findsNothing);
     expect(find.textContaining('12:00'), findsNothing);
   });
 }

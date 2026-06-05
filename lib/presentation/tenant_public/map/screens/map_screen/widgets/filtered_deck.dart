@@ -17,6 +17,7 @@ class FilteredDeck extends StatelessWidget {
     required this.pageController,
     required this.cardBuilder,
     required this.onPrimaryAction,
+    required this.showPrimaryActionForPoi,
     required this.secondaryActionForPoi,
     required this.onRoute,
     required this.referencePointActionForPoi,
@@ -33,6 +34,7 @@ class FilteredDeck extends StatelessWidget {
   final PageController pageController;
   final PoiDetailCardBuilder cardBuilder;
   final ValueChanged<CityPoiModel> onPrimaryAction;
+  final bool Function(CityPoiModel poi) showPrimaryActionForPoi;
   final PoiCardSecondaryAction? Function(CityPoiModel poi)
       secondaryActionForPoi;
   final ValueChanged<CityPoiModel> onRoute;
@@ -68,6 +70,7 @@ class FilteredDeck extends StatelessWidget {
                 colorScheme: colorScheme,
                 cardBuilder: cardBuilder,
                 onPrimaryAction: onPrimaryAction,
+                showPrimaryActionForPoi: showPrimaryActionForPoi,
                 secondaryActionForPoi: secondaryActionForPoi,
                 onRoute: onRoute,
                 referencePointActionForPoi: referencePointActionForPoi,
@@ -115,6 +118,7 @@ class _FilteredDeckPage extends StatefulWidget {
     required this.colorScheme,
     required this.cardBuilder,
     required this.onPrimaryAction,
+    required this.showPrimaryActionForPoi,
     required this.secondaryActionForPoi,
     required this.onRoute,
     required this.referencePointActionForPoi,
@@ -128,6 +132,7 @@ class _FilteredDeckPage extends StatefulWidget {
   final ColorScheme colorScheme;
   final PoiDetailCardBuilder cardBuilder;
   final ValueChanged<CityPoiModel> onPrimaryAction;
+  final bool Function(CityPoiModel poi) showPrimaryActionForPoi;
   final PoiCardSecondaryAction? Function(CityPoiModel poi)
       secondaryActionForPoi;
   final ValueChanged<CityPoiModel> onRoute;
@@ -184,6 +189,7 @@ class _FilteredDeckPageState extends State<_FilteredDeckPage> {
                   widget.controller.selectPoi(poi);
                   widget.onPrimaryAction(poi);
                 },
+                showPrimaryAction: widget.showPrimaryActionForPoi(poi),
                 secondaryAction: widget.secondaryActionForPoi(poi),
                 onRoute: () => widget.onRoute(poi),
                 referencePointAction: widget.referencePointActionForPoi(poi),

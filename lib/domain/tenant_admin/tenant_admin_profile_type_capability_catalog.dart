@@ -6,7 +6,19 @@ class TenantAdminProfileTypeCapabilityCatalog {
 
   static final definitions = <_TenantAdminProfileTypeCapabilityDefinition>[
     _TenantAdminProfileTypeCapabilityDefinition(
+      keyValue: TenantAdminProfileTypeCapabilityKey.isQueryable,
+      defaultValue: TenantAdminFlagValue(true),
+    ),
+    _TenantAdminProfileTypeCapabilityDefinition(
+      keyValue: TenantAdminProfileTypeCapabilityKey.isPubliclyNavigable,
+      defaultValue: TenantAdminFlagValue(true),
+    ),
+    _TenantAdminProfileTypeCapabilityDefinition(
       keyValue: TenantAdminProfileTypeCapabilityKey.isPubliclyDiscoverable,
+      defaultValue: TenantAdminFlagValue(true),
+      requiredKeys: {
+        TenantAdminProfileTypeCapabilityKey.isQueryable,
+      },
     ),
     _TenantAdminProfileTypeCapabilityDefinition(
       keyValue: TenantAdminProfileTypeCapabilityKey.isFavoritable,

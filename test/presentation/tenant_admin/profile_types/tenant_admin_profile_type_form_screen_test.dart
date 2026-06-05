@@ -199,6 +199,53 @@ void main() {
     expect(controller.currentCapabilities.isFavoritable, isFalse);
   });
 
+  testWidgets(
+    'disables public discovery toggle when queryability is off and keeps public page toggle editable',
+    (tester) async {
+      final controller = _TestProfileTypesController(impactCount: 0);
+      await _pumpFormScreen(
+        tester,
+        controller: controller,
+        definition: tenantAdminProfileTypeDefinitionFromRaw(
+          type: 'artist',
+          label: 'Artist',
+          allowedTaxonomies: const [],
+          capabilities: TenantAdminProfileTypeCapabilities(
+            isQueryable: TenantAdminFlagValue(false),
+            isPubliclyNavigable: TenantAdminFlagValue(true),
+            isPubliclyDiscoverable: TenantAdminFlagValue(true),
+            isFavoritable: TenantAdminFlagValue(true),
+            isPoiEnabled: TenantAdminFlagValue(false),
+            hasBio: TenantAdminFlagValue(true),
+            hasContent: TenantAdminFlagValue(true),
+            hasTaxonomies: TenantAdminFlagValue(true),
+            hasAvatar: TenantAdminFlagValue(true),
+            hasCover: TenantAdminFlagValue(true),
+            hasEvents: TenantAdminFlagValue(true),
+          ),
+        ),
+      );
+
+      final queryableToggle = tester.widget<SwitchListTile>(
+        find.widgetWithText(SwitchListTile, 'Consultavel'),
+      );
+      final discoverableToggle = tester.widget<SwitchListTile>(
+        find.widgetWithText(SwitchListTile, 'Descoberta publica habilitada'),
+      );
+      final publicPageToggle = tester.widget<SwitchListTile>(
+        find.widgetWithText(SwitchListTile, 'Pagina publica habilitada'),
+      );
+
+      expect(queryableToggle.value, isFalse);
+      expect(discoverableToggle.value, isFalse);
+      expect(discoverableToggle.onChanged, isNull);
+      expect(publicPageToggle.value, isTrue);
+      expect(publicPageToggle.onChanged, isNotNull);
+      expect(find.text('Requer capacidade de consulta habilitada.'),
+          findsOneWidget);
+    },
+  );
+
   testWidgets('renders shared marker icon picker in POI visual editor', (
     tester,
   ) async {
@@ -536,6 +583,8 @@ class _FakeAccountProfilesRepository
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
     TenantAdminAccountProfilesRepoString? accountId,
+    TenantAdminAccountProfilesRepoBool? queryableOnly,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async {
     return const <TenantAdminAccountProfile>[];
   }

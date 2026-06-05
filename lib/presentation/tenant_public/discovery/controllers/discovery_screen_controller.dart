@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
@@ -89,6 +90,8 @@ class DiscoveryScreenController extends Object
   bool _isProgrammaticSearchTextChange = false;
   bool _isRevealingDiscoveryFilterPanel = false;
   String? _lastOriginSignature;
+  DiscoveryFilterCatalog _baselineDiscoveryFilterCatalog =
+      const DiscoveryFilterCatalog(surface: _discoveryAccountProfilesSurface);
 
   final ScrollController scrollController = ScrollController();
   final searchQueryStreamValue = StreamValue<String>(defaultValue: '');
@@ -200,7 +203,10 @@ class DiscoveryScreenController extends Object
         discoveryFilterSelectionStreamValue.value.isNotEmpty;
     final catalogFuture = loadPublicDiscoveryFilterCatalog(
       restoredSelection: restoredSelection,
-    );
+    ).then((_) {
+      _baselineDiscoveryFilterCatalog = discoveryFilterCatalogStreamValue.value;
+      _reconcileRuntimeDiscoveryFilterCatalog();
+    });
     if (mustAwaitCatalogBeforeResults) {
       await catalogFuture;
     } else {
@@ -394,6 +400,9 @@ class DiscoveryScreenController extends Object
       hasMoreStreamValue.addValue(pageResult.hasMore);
 
       _updateAvailableTypes();
+      if (_reconcileRuntimeDiscoveryFilterCatalog()) {
+        return;
+      }
       if (_shouldSyncNearby(
         query: query,
         selectedType: selectedType,
@@ -697,6 +706,45 @@ class DiscoveryScreenController extends Object
         )
         .where((entry) => entry.isValid)
         .toList(growable: false);
+  }
+
+  bool _reconcileRuntimeDiscoveryFilterCatalog() {
+    final facets =
+        _accountProfilesRepository.publicDiscoveryFilterFacetsStreamValue.value;
+    if (facets == null || _baselineDiscoveryFilterCatalog.isEmpty) {
+      return false;
+    }
+
+    final runtimeCatalog = facets.applyToCatalog(_baselineDiscoveryFilterCatalog);
+    if (!_sameDiscoveryFilterCatalog(
+      discoveryFilterCatalogStreamValue.value,
+      runtimeCatalog,
+    )) {
+      discoveryFilterCatalogStreamValue.addValue(runtimeCatalog);
+    }
+
+    final repairedSelection = repairPublicDiscoveryFilterSelection(
+      discoveryFilterSelectionStreamValue.value,
+      catalogOverride: runtimeCatalog,
+    );
+    if (samePublicDiscoveryFilterSelection(
+      discoveryFilterSelectionStreamValue.value,
+      repairedSelection,
+    )) {
+      return false;
+    }
+
+    discoveryFilterSelectionStreamValue.addValue(repairedSelection);
+    unawaited(persistPublicDiscoveryFilterSelection(repairedSelection));
+    _scheduleReload(immediate: true);
+    return true;
+  }
+
+  bool _sameDiscoveryFilterCatalog(
+    DiscoveryFilterCatalog left,
+    DiscoveryFilterCatalog right,
+  ) {
+    return jsonEncode(left.toJson()) == jsonEncode(right.toJson());
   }
 
   void _updateAvailableTypes() {

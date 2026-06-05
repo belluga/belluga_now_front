@@ -1090,6 +1090,80 @@ void main() {
     );
 
     test(
+      'home agenda runtime facets use backend universe instead of current page items',
+      () async {
+        final catalog = _homeEventsFilterCatalogWithMultipleTypes();
+        final primaryFilter = catalog.filters.first;
+        final secondaryFilter = catalog.filters.last;
+        final scheduleRepository = _FakeScheduleRepository(
+          pages: <int, List<EventModel>>{
+            1: <EventModel>[
+              _buildHomeAgendaEvent(
+                occurrenceId: '100000000000000000000001',
+                slug: 'home-facet-event',
+                title: 'Only Current Page Show',
+              ),
+            ],
+          },
+          homeAgendaRuntimeFacets: DiscoveryFilterRuntimeFacets.fromJson(
+            <String, Object?>{
+              'surface': 'home.events',
+              'filter_keys': <String>[
+                primaryFilter.key,
+                secondaryFilter.key,
+              ],
+              'taxonomy_options': <String, Object?>{
+                _fixtureTaxonomyKey(1): <String, Object?>{
+                  'key': _fixtureTaxonomyKey(1),
+                  'label': 'Runtime Taxonomy',
+                  'terms': <Object?>[
+                    <String, Object?>{
+                      'value': _fixtureTaxonomyTermValue(1),
+                      'label': _fixtureTaxonomyTermLabel(1),
+                    },
+                  ],
+                },
+              },
+            },
+          ),
+        );
+        final controller = _buildAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+            catalog: catalog,
+          ),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(
+            _buildAppData(
+              minKm: 1,
+              defaultKm: 5,
+              maxKm: 15,
+            ),
+          ),
+        );
+
+        await controller.init();
+
+        expect(
+          controller.displayStateStreamValue.value?.events
+              .map((event) => event.type.slug.value)
+              .toList(),
+          <String>['show'],
+        );
+        expect(
+          controller.discoveryFilterCatalogStreamValue.value.filters
+              .map((filter) => filter.key)
+              .toList(),
+          <String>[primaryFilter.key, secondaryFilter.key],
+        );
+
+        controller.onDispose();
+      },
+    );
+
+    test(
       'home agenda hides expanded filter panel on scroll without clearing selection',
       () async {
         final catalog = _homeEventsFilterCatalog();
@@ -3248,6 +3322,7 @@ void main() {
         );
         expect(filterTopLeft.dy, greaterThanOrEqualTo(0));
         expect(filterTopLeft.dy, lessThan(320));
+        expect(find.text(primaryFilter.label), findsOneWidget);
         expect(
           controller.isDiscoveryFilterPanelVisibleStreamValue.value,
           isTrue,
@@ -4161,13 +4236,23 @@ class _FakeDiscoveryFiltersRepository
 }
 
 class _FakeScheduleRepository implements ScheduleRepositoryContract {
+  _FakeScheduleRepository({
+    this.pages = const <int, List<EventModel>>{},
+    this.homeAgendaRuntimeFacets,
+  });
+
   @override
   final StreamValue<List<EventModel>?> homeAgendaStreamValue =
       StreamValue<List<EventModel>?>();
   @override
   final StreamValue<List<EventModel>?> discoveryLiveNowEventsStreamValue =
       StreamValue<List<EventModel>?>(defaultValue: null);
+  @override
+  final homeAgendaDiscoveryFilterFacetsStreamValue =
+      StreamValue<DiscoveryFilterRuntimeFacets?>(defaultValue: null);
 
+  final Map<int, List<EventModel>> pages;
+  final DiscoveryFilterRuntimeFacets? homeAgendaRuntimeFacets;
   int getEventsPageCallCount = 0;
   double? lastOriginLat;
   double? lastOriginLng;
@@ -4285,6 +4370,8 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
       originLng: originLng?.value,
       maxDistanceMeters: maxDistanceMeters?.value,
     );
+    homeAgendaDiscoveryFilterFacetsStreamValue
+        .addValue(homeAgendaRuntimeFacets);
     return events;
   }
 
@@ -4337,6 +4424,8 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
       originLng: originLng?.value,
       maxDistanceMeters: maxDistanceMeters?.value,
     );
+    homeAgendaDiscoveryFilterFacetsStreamValue
+        .addValue(homeAgendaRuntimeFacets);
     return nextEvents;
   }
 
@@ -4367,7 +4456,9 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
       nextFetchGate = null;
       await fetchGate.future;
     }
-    return const <EventModel>[];
+    return List<EventModel>.unmodifiable(
+      pages[page] ?? const <EventModel>[],
+    );
   }
 
   List<String>? _categoryLabels(List<ScheduleRepoString>? categories) {
@@ -4452,7 +4543,6 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   Stream<EventDeltaModel> watchEventsStream({
     ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
-    List<ScheduleRepoString>? tags,
     ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
     List<ScheduleRepoString>? occurrenceIds,
@@ -4470,7 +4560,6 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     required ScheduleRepositoryContractDeltaHandler onDelta,
     ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
-    List<ScheduleRepoString>? tags,
     ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
     List<ScheduleRepoString>? occurrenceIds,
@@ -4483,7 +4572,6 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     return watchEventsStream(
       searchQuery: searchQuery,
       categories: categories,
-      tags: tags,
       taxonomy: taxonomy,
       confirmedOnly: confirmedOnly,
       originLat: originLat,
@@ -4656,7 +4744,6 @@ class _PayloadScheduleBackend implements ScheduleBackendContract {
     bool liveNowOnly = false,
     String? searchQuery,
     List<String>? categories,
-    List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
     List<String>? occurrenceIds,
@@ -4678,7 +4765,6 @@ class _PayloadScheduleBackend implements ScheduleBackendContract {
   Stream<EventDeltaDTO> watchEventsStream({
     String? searchQuery,
     List<String>? categories,
-    List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
     List<String>? occurrenceIds,
@@ -4748,7 +4834,6 @@ class _AutoPageRegressionBackend implements ScheduleBackendContract {
     bool liveNowOnly = false,
     String? searchQuery,
     List<String>? categories,
-    List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
     List<String>? occurrenceIds,
@@ -4774,7 +4859,6 @@ class _AutoPageRegressionBackend implements ScheduleBackendContract {
   Stream<EventDeltaDTO> watchEventsStream({
     String? searchQuery,
     List<String>? categories,
-    List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
     List<String>? occurrenceIds,
@@ -4866,7 +4950,6 @@ class _LargePagedHomeAgendaBackend implements ScheduleBackendContract {
     bool liveNowOnly = false,
     String? searchQuery,
     List<String>? categories,
-    List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
     List<String>? occurrenceIds,
@@ -4896,7 +4979,6 @@ class _LargePagedHomeAgendaBackend implements ScheduleBackendContract {
   Stream<EventDeltaDTO> watchEventsStream({
     String? searchQuery,
     List<String>? categories,
-    List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
     List<String>? occurrenceIds,
@@ -4981,7 +5063,6 @@ class _ProductionLikePagedHomeAgendaBackend implements ScheduleBackendContract {
     bool liveNowOnly = false,
     String? searchQuery,
     List<String>? categories,
-    List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
     List<String>? occurrenceIds,
@@ -5067,7 +5148,6 @@ class _ProductionLikePagedHomeAgendaBackend implements ScheduleBackendContract {
   Stream<EventDeltaDTO> watchEventsStream({
     String? searchQuery,
     List<String>? categories,
-    List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
     List<String>? occurrenceIds,
@@ -5150,7 +5230,6 @@ class _ScrollableAgendaBackend implements ScheduleBackendContract {
     bool liveNowOnly = false,
     String? searchQuery,
     List<String>? categories,
-    List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
     List<String>? occurrenceIds,
@@ -5175,7 +5254,6 @@ class _ScrollableAgendaBackend implements ScheduleBackendContract {
   Stream<EventDeltaDTO> watchEventsStream({
     String? searchQuery,
     List<String>? categories,
-    List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
     List<String>? occurrenceIds,
@@ -5272,7 +5350,6 @@ class _AnonymousHomeRangeScrollBackend implements ScheduleBackendContract {
     bool liveNowOnly = false,
     String? searchQuery,
     List<String>? categories,
-    List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
     List<String>? occurrenceIds,
@@ -5288,7 +5365,6 @@ class _AnonymousHomeRangeScrollBackend implements ScheduleBackendContract {
         maxDistanceMeters == null ||
         searchQuery != null && searchQuery.trim().isNotEmpty ||
         (categories?.isNotEmpty ?? false) ||
-        (tags?.isNotEmpty ?? false) ||
         (taxonomy?.isNotEmpty ?? false) ||
         (occurrenceIds?.isNotEmpty ?? false)) {
       return EventPageDTO(events: const <EventDTO>[], hasMore: false);
@@ -5331,7 +5407,6 @@ class _AnonymousHomeRangeScrollBackend implements ScheduleBackendContract {
   Stream<EventDeltaDTO> watchEventsStream({
     String? searchQuery,
     List<String>? categories,
-    List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
     List<String>? occurrenceIds,
@@ -5416,7 +5491,6 @@ class _MalformedAgendaPayloadBackend implements ScheduleBackendContract {
     bool liveNowOnly = false,
     String? searchQuery,
     List<String>? categories,
-    List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
     List<String>? occurrenceIds,
@@ -5462,7 +5536,6 @@ class _MalformedAgendaPayloadBackend implements ScheduleBackendContract {
   Stream<EventDeltaDTO> watchEventsStream({
     String? searchQuery,
     List<String>? categories,
-    List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
     List<String>? occurrenceIds,
@@ -5517,7 +5590,6 @@ class _CountingPayloadScheduleBackend extends _PayloadScheduleBackend {
     bool liveNowOnly = false,
     String? searchQuery,
     List<String>? categories,
-    List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
     List<String>? occurrenceIds,
@@ -5533,7 +5605,6 @@ class _CountingPayloadScheduleBackend extends _PayloadScheduleBackend {
       liveNowOnly: liveNowOnly,
       searchQuery: searchQuery,
       categories: categories,
-      tags: tags,
       taxonomy: taxonomy,
       confirmedOnly: confirmedOnly,
       originLat: originLat,
@@ -5587,7 +5658,6 @@ class _HomeVsGenericPagedBackend implements ScheduleBackendContract {
     bool liveNowOnly = false,
     String? searchQuery,
     List<String>? categories,
-    List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
     List<String>? occurrenceIds,
@@ -5630,7 +5700,6 @@ class _HomeVsGenericPagedBackend implements ScheduleBackendContract {
   Stream<EventDeltaDTO> watchEventsStream({
     String? searchQuery,
     List<String>? categories,
-    List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
     List<String>? occurrenceIds,
@@ -5693,7 +5762,6 @@ class _FailingOnceThenDataBackend implements ScheduleBackendContract {
     bool liveNowOnly = false,
     String? searchQuery,
     List<String>? categories,
-    List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
     List<String>? occurrenceIds,
@@ -5718,7 +5786,6 @@ class _FailingOnceThenDataBackend implements ScheduleBackendContract {
   Stream<EventDeltaDTO> watchEventsStream({
     String? searchQuery,
     List<String>? categories,
-    List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
     List<String>? occurrenceIds,
@@ -5782,7 +5849,6 @@ class _TransientEmptyThenFreshDataBackend implements ScheduleBackendContract {
     bool liveNowOnly = false,
     String? searchQuery,
     List<String>? categories,
-    List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
     List<String>? occurrenceIds,
@@ -5831,7 +5897,6 @@ class _TransientEmptyThenFreshDataBackend implements ScheduleBackendContract {
   Stream<EventDeltaDTO> watchEventsStream({
     String? searchQuery,
     List<String>? categories,
-    List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
     List<String>? occurrenceIds,

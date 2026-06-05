@@ -1,3 +1,4 @@
+import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/value_objects/account_profiles_repository_contract_values.dart';
@@ -26,6 +27,8 @@ abstract class AccountProfilesRepositoryContract {
       StreamValue<List<AccountProfileModel>>(defaultValue: const []);
   final discoveryNearbyAccountProfilesStreamValue =
       StreamValue<List<AccountProfileModel>>(defaultValue: const []);
+  final publicDiscoveryFilterFacetsStreamValue =
+      StreamValue<DiscoveryFilterRuntimeFacets?>(defaultValue: null);
 
   /// Stream of favorite account profile IDs
   final favoriteAccountProfileIdsStreamValue =
@@ -241,10 +244,14 @@ abstract class AccountProfilesRepositoryContract {
         defaultValue: true,
       );
       hasMorePagedAccountProfilesStreamValue.addValue(_paginationState.hasMore);
+      publicDiscoveryFilterFacetsStreamValue.addValue(
+        result.discoveryFilterFacets,
+      );
       pagedAccountProfilesStreamValue.addValue(
         pagedAccountProfilesResultFromRaw(
           profiles: accumulatedProfiles,
           hasMore: result.hasMore,
+          discoveryFilterFacets: result.discoveryFilterFacets,
         ),
       );
       discoveryFilteredAccountProfilesStreamValue.addValue(
@@ -264,6 +271,7 @@ abstract class AccountProfilesRepositoryContract {
         _paginationState.hasMore,
       );
       if (page.value == 1) {
+        publicDiscoveryFilterFacetsStreamValue.addValue(null);
         discoveryFilteredAccountProfilesStreamValue.addValue(
           const <AccountProfileModel>[],
         );
@@ -271,6 +279,7 @@ abstract class AccountProfilesRepositoryContract {
           pagedAccountProfilesResultFromRaw(
             profiles: <AccountProfileModel>[],
             hasMore: false,
+            discoveryFilterFacets: null,
           ),
         );
       } else {
@@ -281,6 +290,8 @@ abstract class AccountProfilesRepositoryContract {
           pagedAccountProfilesResultFromRaw(
             profiles: currentProfiles,
             hasMore: false,
+            discoveryFilterFacets:
+                publicDiscoveryFilterFacetsStreamValue.value,
           ),
         );
       }
@@ -327,6 +338,7 @@ abstract class AccountProfilesRepositoryContract {
         defaultValue: false,
       ),
     );
+    publicDiscoveryFilterFacetsStreamValue.addValue(null);
   }
 
   List<AccountProfileModel> _filterDiscoveryMvpProfiles(

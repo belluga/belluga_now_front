@@ -25,6 +25,9 @@ final class AccountProfileFavoriteAuthGate {
       await AppPromotionModal.show(
         context,
         redirectPath: redirectPath,
+        title: 'Escolha seus favoritos pelo app',
+        supportingText:
+            'Use o app para salvar perfis favoritos e receber novidades.',
       );
       return;
     }

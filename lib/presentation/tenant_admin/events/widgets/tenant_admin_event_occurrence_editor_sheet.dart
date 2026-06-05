@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
@@ -529,6 +530,27 @@ class _TenantAdminEventProgrammingItemEditorSheetState
       TenantAdminEventProgrammingItemDraft(existing: widget.existing);
   String? _errorMessage;
 
+  @override
+  void initState() {
+    super.initState();
+    _synchronizeDraftWithOccurrence();
+  }
+
+  void _synchronizeDraftWithOccurrence() {
+    final occurrence = widget.controller.occurrenceForKey(widget.occurrenceKey);
+    final allowedProfileIds = occurrence?.relatedAccountProfileIds
+            .map((profileId) => profileId.value)
+            .toSet() ??
+        <String>{};
+
+    _draft.linkedProfileIds.removeWhere(
+      (profileId) => !allowedProfileIds.contains(profileId.value),
+    );
+    _draft.linkedProfiles.removeWhere(
+      (profile) => !allowedProfileIds.contains(profile.id),
+    );
+  }
+
   String get _selectedLocationLabel {
     final selectedId = _draft.selectedLocationProfileId;
     if (selectedId == null || selectedId.isEmpty) {
@@ -556,8 +578,27 @@ class _TenantAdminEventProgrammingItemEditorSheetState
     });
   }
 
-  Future<void> _addOccurrenceProfile() async {
+  Future<void> _addOccurrenceProfile({
+    required String groupId,
+  }) async {
     final occurrence = widget.controller.occurrenceForKey(widget.occurrenceKey);
+    final profileGroups =
+        occurrence?.profileGroups ?? const <TenantAdminNestedProfileGroup>[];
+    if (profileGroups.isEmpty) {
+      setState(() {
+        _errorMessage =
+            'Crie uma aba de perfis próprios da ocorrência antes de adicionar perfis pela programação.';
+      });
+      return;
+    }
+    final selectedGroupId =
+        profileGroups.any((group) => group.id == groupId) ? groupId : null;
+    if (selectedGroupId == null) {
+      setState(() {
+        _errorMessage = 'Grupo da ocorrência inválido.';
+      });
+      return;
+    }
     final selected = await widget.pickRelatedAccountProfile(
       excludedProfileIds: occurrence?.relatedAccountProfileIds
               .map((profileId) => profileId.value)
@@ -568,9 +609,10 @@ class _TenantAdminEventProgrammingItemEditorSheetState
       return;
     }
     setState(() {
-      widget.controller.addOccurrenceRelatedProfile(
-        widget.occurrenceKey,
-        selected,
+      widget.controller.addOccurrenceRelatedProfileToGroup(
+        occurrenceKey: widget.occurrenceKey,
+        groupId: selectedGroupId,
+        profile: selected,
       );
       _draft.upsertLinkedProfile(selected);
       _errorMessage = null;
@@ -657,6 +699,8 @@ class _TenantAdminEventProgrammingItemEditorSheetState
     final occurrence = widget.controller.occurrenceForKey(widget.occurrenceKey);
     final occurrenceRelatedProfiles = occurrence?.relatedAccountProfiles ??
         const <TenantAdminAccountProfile>[];
+    final occurrenceProfileGroups =
+        occurrence?.profileGroups ?? const <TenantAdminNestedProfileGroup>[];
     final availableOccurrenceProfileIds = _draft.availableOccurrenceProfileIds(
       occurrenceRelatedProfiles,
     );
@@ -774,16 +818,60 @@ class _TenantAdminEventProgrammingItemEditorSheetState
                   icon: const Icon(Icons.link),
                   label: const Text('Vincular perfil da data'),
                 ),
-                OutlinedButton.icon(
+              ],
+            ),
+            if (occurrenceProfileGroups.isEmpty) ...[
+              const SizedBox(height: 12),
+              Tooltip(
+                message:
+                    'Crie uma aba de perfis próprios da ocorrência antes de adicionar perfis pela programação.',
+                child: OutlinedButton.icon(
                   key: const Key(
                     'tenantAdminProgrammingAddOccurrenceProfileButton',
                   ),
-                  onPressed: _addOccurrenceProfile,
+                  onPressed: null,
                   icon: const Icon(Icons.person_add_alt_1_outlined),
                   label: const Text('Adicionar perfil à data'),
                 ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                key: const Key(
+                  'tenantAdminProgrammingAddOccurrenceProfileGroupRequiredText',
+                ),
+                'Crie uma aba de perfis próprios da ocorrência antes de adicionar perfis pela programação.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+            ] else ...[
+              const SizedBox(height: 12),
+              Text(
+                'Adicionar perfil à data',
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+              const SizedBox(height: 8),
+              for (final group in occurrenceProfileGroups) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    key: Key(
+                      'tenantAdminProgrammingAddOccurrenceProfileButton_${group.id}',
+                    ),
+                    onPressed: () => _addOccurrenceProfile(groupId: group.id),
+                    icon: const Icon(Icons.person_add_alt_1_outlined),
+                    label: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        group.label,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
               ],
-            ),
+            ],
             const SizedBox(height: 16),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,

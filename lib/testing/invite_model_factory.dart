@@ -16,6 +16,9 @@ import 'package:belluga_now/domain/invites/value_objects/invite_location_value.d
 import 'package:belluga_now/domain/invites/value_objects/invite_message_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_occurrence_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_tag_value.dart';
+import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
+import 'package:belluga_now/domain/schedule/event_profile_group.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 
@@ -36,6 +39,9 @@ InviteModel buildInviteModelFromPrimitives({
   InviteInviterPrincipal? inviterPrincipal,
   List<String> additionalInviters = const [],
   List<InviteInviter> inviters = const [],
+  List<EventLinkedAccountProfile> linkedAccountProfiles = const [],
+  List<EventProfileGroup> profileGroups = const [],
+  String? venueAccountProfileId,
 }) {
   final eventImageUri = Uri.parse(eventImageUrl);
   final parsedTags = tags
@@ -128,5 +134,19 @@ InviteModel buildInviteModelFromPrimitives({
         .map((inviter) => InviteAdditionalInviterNameValue()..parse(inviter))
         .toList(growable: false),
     inviters: resolvedInviters,
+    linkedAccountProfiles: linkedAccountProfiles,
+    profileGroups: profileGroups,
+    venueAccountProfileIdValue:
+        _eventLinkedAccountProfileTextValueOrNull(venueAccountProfileId),
   );
+}
+
+EventLinkedAccountProfileTextValue? _eventLinkedAccountProfileTextValueOrNull(
+  String? raw,
+) {
+  final normalized = raw?.trim();
+  if (normalized == null || normalized.isEmpty) {
+    return null;
+  }
+  return EventLinkedAccountProfileTextValue(normalized);
 }

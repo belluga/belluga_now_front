@@ -34,6 +34,8 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
 
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
     TenantAdminAccountProfilesRepoString? accountId,
+    TenantAdminAccountProfilesRepoBool? queryableOnly,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   });
   Future<TenantAdminAccountProfile> fetchAccountProfile(
       TenantAdminAccountProfilesRepoString accountProfileId);

@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/extensions/compute_on_color.dart';
 import 'package:belluga_now/application/sharing/account_profile_public_share_payload.dart';
-import 'package:belluga_now/application/extensions/event_data_formating.dart';
 import 'package:belluga_now/application/rich_text/account_profile_rich_text_block.dart';
 import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
 import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
@@ -29,6 +28,7 @@ import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_directions_section.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
+import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/invite_status_icon.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/upcoming_event_card.dart';
@@ -36,7 +36,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart' hide Marker;
 import 'package:flutter_map/flutter_map.dart';
-import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -307,100 +306,19 @@ class _AccountProfileDetailScreenState
 
   Widget _buildCollapsedTitle(AccountProfileModel accountProfile) {
     final colorScheme = Theme.of(context).colorScheme;
-    final taxonomyLabels = _taxonomyLabels(accountProfile);
-    final chipBackground = colorScheme.secondaryContainer;
-    final chipForeground = chipBackground.computeIconColor(
-      context,
-      candidates: [
-        colorScheme.onSecondaryContainer,
-        colorScheme.onSurface,
-        Colors.black,
-        Colors.white,
-      ],
-    );
-    if (taxonomyLabels.isEmpty) {
-      return Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          key: const Key('immersiveCollapsedTitle'),
-          accountProfile.name,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: colorScheme.onSurface,
-                fontWeight: FontWeight.w800,
-              ),
-        ),
-      );
-    }
-
-    return Semantics(
-      key: const Key('accountProfileCollapsedTaxonomySummary'),
-      container: true,
-      label: '${accountProfile.name}. ${taxonomyLabels.join(', ')}',
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            key: const Key('immersiveCollapsedTitle'),
-            accountProfile.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: colorScheme.onSurface,
-                  fontWeight: FontWeight.w800,
-                ),
-          ),
-          const SizedBox(height: 4),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                for (var index = 0; index < taxonomyLabels.length; index++) ...[
-                  if (index > 0) const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: chipBackground,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      taxonomyLabels[index],
-                      maxLines: 1,
-                      overflow: TextOverflow.visible,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: chipForeground,
-                            fontWeight: FontWeight.w800,
-                          ),
-                    ),
-                  ),
-                ],
-              ],
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        key: const Key('immersiveCollapsedTitle'),
+        accountProfile.name,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.w800,
             ),
-          ),
-        ],
       ),
     );
-  }
-
-  List<String> _taxonomyLabels(AccountProfileModel accountProfile) {
-    final seen = <String>{};
-    final labels = <String>[];
-    for (final tag in accountProfile.tags) {
-      final label = tag.value.trim();
-      if (label.isEmpty) {
-        continue;
-      }
-      final normalized = label.toLowerCase();
-      if (seen.add(normalized)) {
-        labels.add(label);
-      }
-    }
-    return labels;
   }
 
   List<ImmersiveHeroAction> _buildHeroActions(
@@ -584,13 +502,15 @@ class _AccountProfileDetailScreenState
       ],
     );
 
-    return SizedBox(
+    final currentButton = SizedBox(
       width: double.infinity,
       child: FilledButton.icon(
         key: const Key('accountProfileHeroReferencePointButton'),
-        onPressed: () => unawaited(
-          _handleReferencePointTap(accountProfile),
-        ),
+        onPressed: isCurrent
+            ? () {}
+            : () => unawaited(
+                  _handleReferencePointTap(accountProfile),
+                ),
         icon: Icon(
           isCurrent ? Icons.check_circle_rounded : Icons.location_on_outlined,
         ),
@@ -610,14 +530,28 @@ class _AccountProfileDetailScreenState
         ),
       ),
     );
+    if (!isCurrent) {
+      return currentButton;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        currentButton,
+        const SizedBox(height: 8),
+        TextButton.icon(
+          key: const Key('accountProfileHeroClearReferencePointButton'),
+          onPressed: () => unawaited(_handleClearReferencePointTap()),
+          icon: const Icon(Icons.location_off_outlined),
+          label: const Text('Cancelar ponto de referência'),
+        ),
+      ],
+    );
   }
 
   Future<void> _handleReferencePointTap(
     AccountProfileModel accountProfile,
   ) async {
-    if (_controller.isCurrentReferencePoint(accountProfile)) {
-      return;
-    }
     final confirmed =
         await _showReferencePointConfirmationDialog(accountProfile);
     if (!mounted || !confirmed) {
@@ -641,6 +575,29 @@ class _AccountProfileDetailScreenState
     }
   }
 
+  Future<void> _handleClearReferencePointTap() async {
+    final confirmed = await _showClearReferencePointDialog();
+    if (!mounted || !confirmed) {
+      return;
+    }
+    try {
+      final cleared = await _controller.clearReferencePoint();
+      if (!mounted) {
+        return;
+      }
+      _showStatusMessage(
+        cleared
+            ? 'Ponto de referência removido.'
+            : 'Não foi possível remover o ponto de referência.',
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      _showStatusMessage('Não foi possível remover o ponto de referência.');
+    }
+  }
+
   Future<bool> _showReferencePointConfirmationDialog(
     AccountProfileModel accountProfile,
   ) async {
@@ -655,8 +612,23 @@ class _AccountProfileDetailScreenState
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Todas as distâncias serão calculadas a partir desse local:',
+              Text.rich(
+                TextSpan(
+                  text: 'Todas as ',
+                  children: [
+                    const TextSpan(
+                      text: 'distâncias',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    const TextSpan(text: ' serão '),
+                    const TextSpan(
+                      text: 'calculadas',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    const TextSpan(text: ' a partir desse local:'),
+                  ],
+                ),
+                key: const Key('accountProfileReferencePointDialogCopy'),
                 style: Theme.of(dialogContext).textTheme.bodyLarge,
               ),
               const SizedBox(height: 16),
@@ -664,20 +636,76 @@ class _AccountProfileDetailScreenState
                 dialogContext,
                 accountProfile,
               ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  key: const Key('accountProfileReferencePointConfirmButton'),
+                  onPressed: () => dialogContext.router.maybePop(true),
+                  icon: const Icon(Icons.location_on_outlined),
+                  label: const Text('Usar como Ponto de Referência'),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: TextButton(
+                  key: const Key('accountProfileReferencePointCancelButton'),
+                  onPressed: () => dialogContext.router.maybePop(false),
+                  child: const Text('Cancelar'),
+                ),
+              ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => unawaited(dialogContext.router.maybePop(false)),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton.icon(
-              key: const Key('accountProfileReferencePointConfirmButton'),
-              onPressed: () => unawaited(dialogContext.router.maybePop(true)),
-              icon: const Icon(Icons.location_on_outlined),
-              label: const Text('Usar como Ponto de Referência'),
-            ),
-          ],
+        );
+      },
+    );
+    return result ?? false;
+  }
+
+  Future<bool> _showClearReferencePointDialog() async {
+    final result = await showRouteScopedDialog<bool>(
+      context: context,
+      useRootNavigator: false,
+      builder: (dialogContext) {
+        return AlertDialog(
+          key: const Key('accountProfileClearReferencePointDialog'),
+          contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Cancelar ponto de referência?',
+                style: Theme.of(dialogContext).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'As distâncias voltarão a usar sua localização atual.',
+                style: Theme.of(dialogContext).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  key: const Key(
+                      'accountProfileClearReferencePointConfirmButton'),
+                  onPressed: () => dialogContext.router.maybePop(true),
+                  icon: const Icon(Icons.location_off_outlined),
+                  label: const Text('Cancelar ponto de referência'),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: TextButton(
+                  key: const Key('accountProfileClearReferencePointKeepButton'),
+                  onPressed: () => dialogContext.router.maybePop(false),
+                  child: const Text('Manter'),
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -1313,7 +1341,7 @@ class _AccountProfileDetailScreenState
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            _eventDateLabel(e),
+                            e.agendaScheduleLabel,
                             style: const TextStyle(fontSize: 11),
                           ),
                         ],
@@ -1848,7 +1876,7 @@ class _AccountProfileDetailScreenState
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            _eventExpandedTimeRangeLabel(event),
+                            event.expandedScheduleLabel,
                             style: Theme.of(context)
                                 .textTheme
                                 .titleSmall
@@ -1888,7 +1916,7 @@ class _AccountProfileDetailScreenState
       data: UpcomingEventCardData(
         imageUri: event.imageUri,
         headline: _agendaPrimaryLabel(accountProfile, event),
-        metaLabel: _eventDateLabel(event),
+        metaLabel: event.agendaScheduleLabel,
         counterparts: _agendaCounterparts(accountProfile, event)
             .map(
               (counterpart) => (
@@ -2196,37 +2224,6 @@ class _AccountProfileDetailScreenState
       size: 16,
       color: iconColor,
     );
-  }
-
-  String _eventDateLabel(PartnerEventView event) {
-    final start = event.startDateTime;
-    final weekday = DateFormat.E().format(start);
-    final day = start.day.toString().padLeft(2, '0');
-    final end = event.endDateTime;
-    if (end == null) {
-      return '$weekday, $day • ${start.timeLabel}'.toUpperCase();
-    }
-    final sameDay = start.year == end.year &&
-        start.month == end.month &&
-        start.day == end.day;
-    if (sameDay) {
-      return '${weekday.toUpperCase()}, $day • ${start.timeLabel} às ${end.timeLabel}';
-    }
-    final endWeekday = DateFormat.E().format(end).toUpperCase();
-    final endDay = end.day.toString().padLeft(2, '0');
-    return '${weekday.toUpperCase()}, $day • ${start.timeLabel} às '
-        '$endWeekday, $endDay • ${end.timeLabel}';
-  }
-
-  String _eventExpandedTimeRangeLabel(PartnerEventView event) {
-    final start = event.startDateTime;
-    final end = event.endDateTime ?? start.add(const Duration(hours: 3));
-    final startWeekday = DateFormat.E().format(start).toUpperCase();
-    final startDay = start.day.toString().padLeft(2, '0');
-    final endWeekday = DateFormat.E().format(end).toUpperCase();
-    final endDay = end.day.toString().padLeft(2, '0');
-    return '$startWeekday, $startDay • ${start.timeLabel} às '
-        '$endWeekday, $endDay • ${end.timeLabel}';
   }
 
   Color? _agendaStatusTint({
@@ -2566,6 +2563,7 @@ class _AccountProfileDetailScreenState
     final colorScheme = Theme.of(context).colorScheme;
     final memberProfile = _profileFromNestedMember(member);
     final resolvedVisual = _controller.resolvedVisualFor(memberProfile);
+    final memberPath = _nestedProfileMemberPath(member);
     final labels = member.tags
         .map((tag) => tag.value.trim())
         .where((label) => label.isNotEmpty)
@@ -2577,9 +2575,8 @@ class _AccountProfileDetailScreenState
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
-        onTap: member.slug.trim().isEmpty
-            ? null
-            : () => _safeRouterPushPath('/parceiro/${member.slug}'),
+        onTap:
+            memberPath == null ? null : () => _safeRouterPushPath(memberPath),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Row(
@@ -2635,16 +2632,36 @@ class _AccountProfileDetailScreenState
                         ),
                 ),
               ),
-              const SizedBox(width: 10),
-              Icon(
-                Icons.chevron_right,
-                color: colorScheme.onSurfaceVariant,
-              ),
+              if (memberPath != null) ...[
+                const SizedBox(width: 10),
+                Icon(
+                  Icons.chevron_right,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ],
             ],
           ),
         ),
       ),
     );
+  }
+
+  String? _nestedProfileMemberPath(AccountProfileNestedGroupMember member) {
+    if (!member.canOpenPublicDetail) {
+      return null;
+    }
+
+    final publicDetailPath = member.publicDetailPath?.trim();
+    if (publicDetailPath != null && publicDetailPath.isNotEmpty) {
+      return publicDetailPath;
+    }
+
+    final slug = member.slug.trim();
+    if (slug.isEmpty) {
+      return null;
+    }
+
+    return '/parceiro/$slug';
   }
 
   AccountProfileModel _profileFromNestedMember(
@@ -2653,7 +2670,7 @@ class _AccountProfileDetailScreenState
     return AccountProfileModel(
       idValue: member.idValue,
       nameValue: member.nameValue,
-      slugValue: member.slugValue,
+      slugValue: member.slugValue ?? (SlugValue()..parse(member.id)),
       profileTypeValue: member.profileTypeValue,
       avatarValue: member.avatarValue,
       coverValue: member.coverValue,

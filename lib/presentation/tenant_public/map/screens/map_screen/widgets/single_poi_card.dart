@@ -12,6 +12,7 @@ class SinglePoiCard extends StatelessWidget {
     required this.colorScheme,
     required this.cardBuilder,
     required this.onPrimaryAction,
+    required this.showPrimaryAction,
     required this.secondaryAction,
     required this.onRoute,
     required this.referencePointAction,
@@ -25,6 +26,7 @@ class SinglePoiCard extends StatelessWidget {
   final ColorScheme colorScheme;
   final PoiDetailCardBuilder cardBuilder;
   final ValueChanged<CityPoiModel> onPrimaryAction;
+  final bool showPrimaryAction;
   final PoiCardSecondaryAction? secondaryAction;
   final ValueChanged<CityPoiModel> onRoute;
   final PoiCardReferencePointAction? referencePointAction;
@@ -52,6 +54,7 @@ class SinglePoiCard extends StatelessWidget {
             poi: poi,
             colorScheme: colorScheme,
             onPrimaryAction: () => onPrimaryAction(poi),
+            showPrimaryAction: showPrimaryAction,
             secondaryAction: secondaryAction,
             onRoute: () => onRoute(poi),
             referencePointAction: referencePointAction,

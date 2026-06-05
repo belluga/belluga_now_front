@@ -156,7 +156,7 @@ void main() {
       expect(enabledDto.toDomain().capabilities.isFavoritable, isTrue);
     });
 
-    test('defaults public discoverability independently when flag is absent',
+    test('defaults queryability and public navigation on when flags are absent',
         () {
       final dto = TenantAdminProfileTypeDTO.fromJson({
         'type': 'artist',
@@ -167,8 +167,27 @@ void main() {
         },
       });
 
-      expect(dto.toDomain().capabilities.isPubliclyDiscoverable, isFalse);
+      expect(dto.toDomain().capabilities.isQueryable, isTrue);
+      expect(dto.toDomain().capabilities.isPubliclyNavigable, isTrue);
+      expect(dto.toDomain().capabilities.isPubliclyDiscoverable, isTrue);
       expect(dto.toDomain().capabilities.isFavoritable, isTrue);
+    });
+
+    test('normalizes public discoverability behind queryability', () {
+      final dto = TenantAdminProfileTypeDTO.fromJson({
+        'type': 'artist',
+        'label': 'Artist',
+        'allowed_taxonomies': const [],
+        'capabilities': {
+          'is_queryable': false,
+          'is_publicly_discoverable': true,
+          'is_publicly_navigable': true,
+        },
+      });
+
+      expect(dto.toDomain().capabilities.isQueryable, isFalse);
+      expect(dto.toDomain().capabilities.isPubliclyDiscoverable, isFalse);
+      expect(dto.toDomain().capabilities.isPubliclyNavigable, isTrue);
     });
 
     test('parses nested profile group capability for account profile types',

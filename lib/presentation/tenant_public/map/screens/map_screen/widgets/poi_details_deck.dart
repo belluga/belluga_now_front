@@ -111,6 +111,8 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
                                     pageController: _pageController,
                                     cardBuilder: _cardBuilder,
                                     onPrimaryAction: _handlePoiAction,
+                                    showPrimaryActionForPoi:
+                                        _showPrimaryActionForPoi,
                                     secondaryActionForPoi:
                                         _secondaryActionForPoi,
                                     onRoute: _handleRoute,
@@ -144,6 +146,10 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
                                       colorScheme: scheme,
                                       cardBuilder: _cardBuilder,
                                       onPrimaryAction: _handlePoiAction,
+                                      showPrimaryAction:
+                                          _showPrimaryActionForPoi(
+                                        selectedPoi,
+                                      ),
                                       secondaryAction: _secondaryActionForPoi(
                                         selectedPoi,
                                       ),
@@ -185,6 +191,7 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
     return PoiCardReferencePointAction(
       isActive: _controller.isPoiReferencePoint(poi),
       onTap: () => unawaited(_handleReferencePointTap(poi)),
+      onClear: () => unawaited(_handleClearReferencePointTap()),
     );
   }
 
@@ -197,6 +204,14 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
       return;
     }
     await _controller.setPoiAsReferencePoint(poi);
+  }
+
+  Future<void> _handleClearReferencePointTap() async {
+    final confirmed = await _showClearReferencePointConfirmationDialog();
+    if (!mounted || !confirmed) {
+      return;
+    }
+    await _controller.clearReferencePoint();
   }
 
   Future<bool> _showReferencePointConfirmationDialog(CityPoiModel poi) async {
@@ -215,8 +230,23 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Todas as distâncias serão calculadas a partir desse local:',
+              Text.rich(
+                const TextSpan(
+                  text: 'Todas as ',
+                  children: [
+                    TextSpan(
+                      text: 'distâncias',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    TextSpan(text: ' serão '),
+                    TextSpan(
+                      text: 'calculadas',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    TextSpan(text: ' a partir desse local:'),
+                  ],
+                ),
+                key: const Key('poiReferencePointDialogCopy'),
                 style: Theme.of(dialogContext).textTheme.bodyLarge,
               ),
               const SizedBox(height: 16),
@@ -225,20 +255,74 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
                 poi: poi,
                 profile: profile,
               ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  key: const Key('poiReferencePointConfirmButton'),
+                  onPressed: () => dialogContext.router.maybePop(true),
+                  icon: const Icon(Icons.location_on_outlined),
+                  label: const Text('Usar como Ponto de Referência'),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: TextButton(
+                  key: const Key('poiReferencePointCancelButton'),
+                  onPressed: () => dialogContext.router.maybePop(false),
+                  child: const Text('Cancelar'),
+                ),
+              ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => unawaited(dialogContext.router.maybePop(false)),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton.icon(
-              key: const Key('poiReferencePointConfirmButton'),
-              onPressed: () => unawaited(dialogContext.router.maybePop(true)),
-              icon: const Icon(Icons.location_on_outlined),
-              label: const Text('Usar como Ponto de Referência'),
-            ),
-          ],
+        );
+      },
+    );
+    return result ?? false;
+  }
+
+  Future<bool> _showClearReferencePointConfirmationDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      useRootNavigator: false,
+      builder: (dialogContext) {
+        return AlertDialog(
+          key: const Key('poiClearReferencePointDialog'),
+          contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Cancelar ponto de referência?',
+                style: Theme.of(dialogContext).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'As distâncias voltarão a usar sua localização atual.',
+                style: Theme.of(dialogContext).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  key: const Key('poiClearReferencePointConfirmButton'),
+                  onPressed: () => dialogContext.router.maybePop(true),
+                  icon: const Icon(Icons.location_off_outlined),
+                  label: const Text('Cancelar ponto de referência'),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: TextButton(
+                  onPressed: () => dialogContext.router.maybePop(false),
+                  child: const Text('Manter'),
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -447,6 +531,13 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
     );
   }
 
+  bool _showPrimaryActionForPoi(CityPoiModel poi) {
+    if (_isPartnerPoi(poi)) {
+      return _resolvePartnerSlug(poi).isNotEmpty;
+    }
+    return true;
+  }
+
   Future<void> _handleRoute(CityPoiModel poi) async {
     _controller.logDirectionsOpened(poi);
     final target = _directionsTargetFromPoi(poi);
@@ -506,6 +597,23 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
   }
 
   String _resolvePartnerSlug(CityPoiModel poi) {
+    final profile = _controller.hydratedAccountProfileForPoi(poi);
+    if (profile != null) {
+      if (!profile.canOpenPublicDetail) {
+        return '';
+      }
+      final publicDetailPath = profile.publicDetailPath?.trim();
+      if (publicDetailPath != null && publicDetailPath.isNotEmpty) {
+        final fromPublicPath = _extractSlugFromPath(publicDetailPath);
+        if (fromPublicPath.isNotEmpty) {
+          return fromPublicPath;
+        }
+      }
+      final hydratedSlug = profile.slug.trim();
+      if (hydratedSlug.isNotEmpty) {
+        return hydratedSlug;
+      }
+    }
     final slug = poi.refSlug?.trim() ?? '';
     if (slug.isNotEmpty) {
       return slug;
@@ -553,7 +661,7 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
   }
 
   PoiCardSecondaryAction? _secondaryActionForPoi(CityPoiModel poi) {
-    if (_isPartnerPoi(poi)) {
+    if (_isPartnerPoi(poi) && _canSharePartnerPoi(poi)) {
       return PoiCardSecondaryAction(
         icon: Icons.share_outlined,
         tooltip: 'Compartilhar',
@@ -674,6 +782,16 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
   }
 
   String? _resolvePartnerSharePath(CityPoiModel poi) {
+    final profile = _controller.hydratedAccountProfileForPoi(poi);
+    if (profile != null) {
+      if (!profile.canOpenPublicDetail) {
+        return null;
+      }
+      final publicDetailPath = profile.publicDetailPath?.trim();
+      if (publicDetailPath != null && publicDetailPath.isNotEmpty) {
+        return publicDetailPath;
+      }
+    }
     final slug = _resolvePartnerSlug(poi);
     if (slug.isNotEmpty) {
       return '/parceiro/$slug';
@@ -684,6 +802,9 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
     }
     return null;
   }
+
+  bool _canSharePartnerPoi(CityPoiModel poi) =>
+      (_resolvePartnerSharePath(poi)?.trim().isNotEmpty ?? false);
 
   String? _resolveEventSharePath(
     CityPoiModel poi, {

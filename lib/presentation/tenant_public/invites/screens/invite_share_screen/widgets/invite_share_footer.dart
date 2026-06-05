@@ -11,12 +11,14 @@ class InviteShareFooter extends StatelessWidget {
     required this.shareUri,
     required this.isGeneratingShareCode,
     required this.onRetryShareCode,
+    this.participantGroups = const [],
   });
 
   final InviteModel invite;
   final Uri? shareUri;
   final bool isGeneratingShareCode;
   final VoidCallback onRetryShareCode;
+  final List<EventInviteShareParticipantGroup> participantGroups;
 
   @override
   Widget build(BuildContext context) {
@@ -61,7 +63,8 @@ class InviteShareFooter extends StatelessWidget {
                   EventInviteSharePayloadBuilder.preview(
                     eventName: invite.eventName,
                     location: invite.location,
-                    eventDateTime: invite.eventDateTime,
+                    eventScheduleLabel: invite.eventDateFlyerLabel,
+                    inviterName: invite.inviterName,
                   ),
                   style: theme.textTheme.bodySmall
                       ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
@@ -78,11 +81,14 @@ class InviteShareFooter extends StatelessWidget {
                 : resolvedShareUri == null
                     ? onRetryShareCode
                     : () {
-                        final payload = EventInviteSharePayloadBuilder.build(
+                        final payload =
+                            EventInviteSharePayloadBuilder.buildInvitation(
                           eventName: invite.eventName,
                           location: invite.location,
-                          eventDateTime: invite.eventDateTime,
-                          publicUri: resolvedShareUri,
+                          eventScheduleLabel: invite.eventDateFlyerLabel,
+                          inviteUri: resolvedShareUri,
+                          inviterName: invite.inviterName,
+                          participantGroups: participantGroups,
                         );
                         SharePlus.instance.share(
                           ShareParams(

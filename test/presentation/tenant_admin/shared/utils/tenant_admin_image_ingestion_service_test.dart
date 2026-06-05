@@ -12,7 +12,9 @@ import 'package:image_picker/image_picker.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  const expectedCoverAspectRatio = 560 / 512;
+  const expectedLegacyCoverAspectRatio = 560 / 512;
+  const expectedEventHeroCoverAspectRatio = 5 / 7;
+  const expectedAccountProfileHeroCoverAspectRatio = 15 / 16;
 
   const pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
   final fallbackTempDir =
@@ -54,7 +56,7 @@ void main() {
     expect(decoded.height, lessThanOrEqualTo(1024));
   });
 
-  test('prepareXFile normalizes cover to 560:512 ratio and existing bounds',
+  test('prepareXFile keeps legacy cover at 560:512 ratio and existing bounds',
       () async {
     final service = TenantAdminImageIngestionService();
     final source =
@@ -69,9 +71,61 @@ void main() {
     final decoded = img.decodeImage(bytes);
     expect(decoded, isNotNull);
     final ratio = decoded!.width / decoded.height;
-    expect((ratio - expectedCoverAspectRatio).abs(), lessThan(0.02));
+    expect((ratio - expectedLegacyCoverAspectRatio).abs(), lessThan(0.02));
     expect(decoded.width, lessThanOrEqualTo(1920));
     expect(decoded.height, lessThanOrEqualTo(1080));
+  });
+
+  test('prepareXFile normalizes event hero cover to 5:7 ratio and bounds',
+      () async {
+    final service = TenantAdminImageIngestionService();
+    final source = await _writeImage(
+      width: 2400,
+      height: 1800,
+      name: 'event_hero_cover_source.png',
+    );
+
+    final output = await service.prepareXFile(
+      source,
+      slot: TenantAdminImageSlot.eventHeroCover,
+    );
+
+    final bytes = await output.readAsBytes();
+    final decoded = img.decodeImage(bytes);
+    expect(decoded, isNotNull);
+    final ratio = decoded!.width / decoded.height;
+    expect((ratio - expectedEventHeroCoverAspectRatio).abs(), lessThan(0.02));
+    expect(decoded.width, lessThanOrEqualTo(1800));
+    expect(decoded.height, lessThanOrEqualTo(2520));
+    expect(output.mimeType, 'image/jpeg');
+  });
+
+  test(
+      'prepareXFile normalizes account profile hero cover to 15:16 ratio and bounds',
+      () async {
+    final service = TenantAdminImageIngestionService();
+    final source = await _writeImage(
+      width: 2400,
+      height: 1800,
+      name: 'account_profile_hero_cover_source.png',
+    );
+
+    final output = await service.prepareXFile(
+      source,
+      slot: TenantAdminImageSlot.accountProfileHeroCover,
+    );
+
+    final bytes = await output.readAsBytes();
+    final decoded = img.decodeImage(bytes);
+    expect(decoded, isNotNull);
+    final ratio = decoded!.width / decoded.height;
+    expect(
+      (ratio - expectedAccountProfileHeroCoverAspectRatio).abs(),
+      lessThan(0.02),
+    );
+    expect(decoded.width, lessThanOrEqualTo(1800));
+    expect(decoded.height, lessThanOrEqualTo(1920));
+    expect(output.mimeType, 'image/jpeg');
   });
 
   test('prepareXFile preserves all non-cover slot aspect ratios', () async {
@@ -333,7 +387,7 @@ void main() {
     final decoded = img.decodeImage(await output.readAsBytes());
     expect(decoded, isNotNull);
     final ratio = decoded!.width / decoded.height;
-    expect((ratio - expectedCoverAspectRatio).abs(), lessThan(0.02));
+    expect((ratio - expectedLegacyCoverAspectRatio).abs(), lessThan(0.02));
     expect(decoded.width, lessThanOrEqualTo(1920));
     expect(decoded.height, lessThanOrEqualTo(1080));
   });

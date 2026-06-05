@@ -7,6 +7,26 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart
 class TenantAdminAccountProfilesRequestEncoder {
   const TenantAdminAccountProfilesRequestEncoder();
 
+  Map<String, dynamic> encodeFetchAccountProfilesQuery({
+    String? accountId,
+    bool queryableOnly = false,
+    String? excludeAccountProfileId,
+  }) {
+    final payload = <String, dynamic>{};
+    if (accountId != null && accountId.trim().isNotEmpty) {
+      payload['account_id'] = accountId.trim();
+    }
+    if (queryableOnly) {
+      payload['queryable_only'] = true;
+    }
+    if (excludeAccountProfileId != null &&
+        excludeAccountProfileId.trim().isNotEmpty) {
+      payload['exclude_account_profile_id'] = excludeAccountProfileId.trim();
+    }
+
+    return payload;
+  }
+
   Map<String, dynamic> encodeCreateAccountProfile({
     required String accountId,
     required String profileType,

@@ -230,119 +230,97 @@ class _PrimaryFilterChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = _ChipPalette.resolve(context, item.colorHex, isActive);
-
-    if (!isActive) {
-      return Semantics(
-        key: ValueKey<String>('discoveryFilterPrimarySemantics_${item.key}'),
-        container: true,
-        button: true,
-        focusable: true,
-        label: item.label,
-        onTap: isLoading ? null : () => onToggle(item),
-        child: ExcludeSemantics(
-          child: Tooltip(
-            message: item.label,
-            child: Material(
-              key: ValueKey<String>('discoveryFilterPrimary_${item.key}'),
-              color: palette.backgroundColor,
-              shape: const CircleBorder(),
-              child: InkWell(
-                onTap: isLoading ? null : () => onToggle(item),
-                customBorder: const CircleBorder(),
-                child: SizedBox(
-                  width: 48,
-                  height: 48,
-                  child: Center(
-                    child: iconBuilder?.call(
-                          context,
-                          item,
-                          false,
-                          palette.foregroundColor,
-                        ) ??
-                        Icon(
-                          Icons.filter_alt_rounded,
-                          size: 20,
-                          color: palette.foregroundColor,
-                        ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
+    final semanticsKey = isActive
+        ? 'discoveryFilterSelectedPrimarySemantics_${item.key}'
+        : 'discoveryFilterPrimarySemantics_${item.key}';
+    final chipKey = isActive
+        ? 'discoveryFilterSelectedPrimary_${item.key}'
+        : 'discoveryFilterPrimary_${item.key}';
 
     return Semantics(
-      key: ValueKey<String>(
-        'discoveryFilterSelectedPrimarySemantics_${item.key}',
-      ),
+      key: ValueKey<String>(semanticsKey),
       container: true,
       button: true,
       focusable: true,
       label: item.label,
-      selected: true,
-      toggled: true,
+      selected: isActive,
+      toggled: isActive,
       onTap: isLoading ? null : () => onToggle(item),
       child: ExcludeSemantics(
-        child: DecoratedBox(
-          key: ValueKey<String>('discoveryFilterSelectedPrimary_${item.key}'),
-          decoration: BoxDecoration(
-            color: palette.backgroundColor,
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                iconBuilder?.call(
-                      context,
-                      item,
-                      true,
-                      palette.foregroundColor,
-                    ) ??
-                    Icon(
-                      Icons.tune_rounded,
-                      size: 20,
-                      color: palette.foregroundColor,
-                    ),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    item.label,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: palette.foregroundColor,
-                          fontWeight: FontWeight.w700,
+        child: Tooltip(
+          message: item.label,
+          child: DecoratedBox(
+            key: ValueKey<String>(chipKey),
+            decoration: BoxDecoration(
+              color: palette.backgroundColor,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: isLoading ? null : () => onToggle(item),
+                borderRadius: BorderRadius.circular(999),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      iconBuilder?.call(
+                            context,
+                            item,
+                            isActive,
+                            palette.foregroundColor,
+                          ) ??
+                          Icon(
+                            isActive
+                                ? Icons.tune_rounded
+                                : Icons.filter_alt_rounded,
+                            size: 20,
+                            color: palette.foregroundColor,
+                          ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          item.label,
+                          overflow: TextOverflow.ellipsis,
+                          style:
+                              Theme.of(context).textTheme.labelLarge?.copyWith(
+                                    color: palette.foregroundColor,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                         ),
+                      ),
+                      if (isActive) ...[
+                        const SizedBox(width: 10),
+                        if (isLoading)
+                          SizedBox(
+                            key: ValueKey<String>(
+                              'discoveryFilterPrimaryLoading_${item.key}',
+                            ),
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                palette.foregroundColor,
+                              ),
+                            ),
+                          )
+                        else
+                          _ChipClearButton(
+                            key: ValueKey<String>(
+                              'discoveryFilterPrimaryClear_${item.key}',
+                            ),
+                            palette: palette,
+                            tooltip: 'Remover filtro',
+                            onTap: () => onToggle(item),
+                          ),
+                      ],
+                    ],
                   ),
                 ),
-                const SizedBox(width: 10),
-                if (isLoading)
-                  SizedBox(
-                    key: ValueKey<String>(
-                      'discoveryFilterPrimaryLoading_${item.key}',
-                    ),
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        palette.foregroundColor,
-                      ),
-                    ),
-                  )
-                else
-                  _ChipClearButton(
-                    key: ValueKey<String>(
-                      'discoveryFilterPrimaryClear_${item.key}',
-                    ),
-                    palette: palette,
-                    tooltip: 'Remover filtro',
-                    onTap: () => onToggle(item),
-                  ),
-              ],
+              ),
             ),
           ),
         ),

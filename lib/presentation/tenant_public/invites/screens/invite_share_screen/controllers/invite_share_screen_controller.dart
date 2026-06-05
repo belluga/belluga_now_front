@@ -758,6 +758,14 @@ class InviteShareScreenController with Disposable {
     );
   }
 
+  Uri? buildTenantPublicUriFromPath(String? rawPath) {
+    final normalizedPath = rawPath?.trim();
+    if (normalizedPath == null || normalizedPath.isEmpty) {
+      return null;
+    }
+    return _appData.mainDomainValue.value.resolve(normalizedPath);
+  }
+
   List<InviteFriendResumeWithStatus> _mergeFriendsWithStatus(
     List<InviteFriendResume> friends,
     List<SentInviteStatus> sentInvites,

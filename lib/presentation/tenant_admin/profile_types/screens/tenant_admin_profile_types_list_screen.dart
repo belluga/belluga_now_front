@@ -177,6 +177,9 @@ class _TenantAdminProfileTypesListScreenState
         }
         final type = loadedTypes[index];
         final subtitle = [
+          if (type.capabilities.isQueryable) 'Consultável',
+          if (type.capabilities.isPubliclyNavigable) 'Página pública',
+          if (type.capabilities.isPubliclyDiscoverable) 'Descoberta pública',
           if (type.capabilities.isPoiEnabled) 'POI habilitado',
           if (type.capabilities.isFavoritable) 'Favoritavel',
           if (type.capabilities.hasBio) 'Bio',

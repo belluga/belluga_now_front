@@ -21,18 +21,22 @@ class DiscoveryPartnerCard extends StatelessWidget {
   final bool isFavorite;
   final bool isFavoritable;
   final VoidCallback onFavoriteTap;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final ResolvedAccountProfileVisual resolvedVisual;
   final bool showDetails;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final canOpenPublicDetail = onTap != null;
+    final semanticLabel = canOpenPublicDetail
+        ? 'Abrir perfil ${partner.name}'
+        : 'Perfil ${partner.name}';
 
     return Semantics(
       container: true,
-      button: true,
-      label: 'Abrir perfil ${partner.name}',
+      button: canOpenPublicDetail,
+      label: semanticLabel,
       onTap: onTap,
       child: InkWell(
         borderRadius: BorderRadius.circular(26),

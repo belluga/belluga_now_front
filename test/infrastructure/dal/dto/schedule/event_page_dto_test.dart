@@ -103,4 +103,36 @@ void main() {
     expect(page.events.single.id, '507f1f77bcf86cd799439031');
     expect(page.events.single.slug, 'evento-valido');
   });
+
+  test('parses runtime discovery facets from agenda payload', () {
+    final page = EventPageDTO.fromJson({
+      'items': const [],
+      'has_more': true,
+      'discovery_filter_facets': {
+        'surface': 'home.events',
+        'filter_keys': ['show', 'fair'],
+        'taxonomy_options': {
+          'mood': {
+            'key': 'mood',
+            'label': 'Clima',
+            'terms': [
+              {'value': 'sunset', 'label': 'Sunset'},
+              {'value': 'night', 'label': 'Night'},
+            ],
+          },
+        },
+      },
+    });
+
+    expect(page.hasMore, isTrue);
+    expect(page.discoveryFilterFacets, isNotNull);
+    expect(page.discoveryFilterFacets?.surface, 'home.events');
+    expect(page.discoveryFilterFacets?.filterKeys, <String>{'show', 'fair'});
+    expect(
+      page.discoveryFilterFacets?.taxonomyOptionsByKey['mood']?.terms
+          .map((term) => term.value)
+          .toList(),
+      <String>['sunset', 'night'],
+    );
+  });
 }

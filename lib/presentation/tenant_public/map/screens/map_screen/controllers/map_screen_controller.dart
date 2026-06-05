@@ -341,6 +341,26 @@ class MapScreenController implements Disposable {
     }
   }
 
+  Future<bool> clearReferencePoint() async {
+    final repository = _proximityPreferencesRepository;
+    if (repository == null) {
+      statusMessageStreamValue.addValue(
+        'Não foi possível remover o ponto de referência.',
+      );
+      return false;
+    }
+    try {
+      await repository.clearFixedReference();
+      statusMessageStreamValue.addValue('Ponto de referência removido.');
+      return true;
+    } catch (_) {
+      statusMessageStreamValue.addValue(
+        'Não foi possível remover o ponto de referência.',
+      );
+      return false;
+    }
+  }
+
   EventModel? hydratedEventForPoi(CityPoiModel poi) {
     return _poiRepository.hydratedEventForPoi(poi);
   }
@@ -1398,7 +1418,11 @@ class MapScreenController implements Disposable {
     final categoryLabelValue = normalizedProfileType.isEmpty
         ? null
         : _parseTypeLabelValue(normalizedProfileType);
-    final canonicalProfilePath = '/parceiro/${profile.slug}';
+    final canonicalProfilePath = profile.canOpenPublicDetail
+        ? (profile.publicDetailPath?.trim().isNotEmpty == true
+              ? profile.publicDetailPath!.trim()
+              : '/parceiro/${profile.slug}')
+        : null;
 
     return poi.copyWith(
       descriptionValue: mergedDescription,
@@ -1409,9 +1433,11 @@ class MapScreenController implements Disposable {
           coverUrl == null ? null : _parseImageUriValue(coverUrl),
       coordinate: mergedCoordinate,
       visual: mergedVisual,
-      refSlugValue:
-          poi.refSlug == null ? _parseReferenceSlugValue(profile.slug) : null,
-      refPathValue: poi.refPath?.trim() == canonicalProfilePath
+      refSlugValue: poi.refSlug == null && profile.canOpenPublicDetail
+          ? _parseReferenceSlugValue(profile.slug)
+          : null,
+      refPathValue: canonicalProfilePath == null ||
+              poi.refPath?.trim() == canonicalProfilePath
           ? null
           : _parseReferencePathValue(canonicalProfilePath),
     );

@@ -994,6 +994,7 @@ void main() {
       find.byKey(_primaryFilterKey(primaryFilter)),
       findsOneWidget,
     );
+    expect(find.text(primaryFilter.label), findsOneWidget);
     expect(find.text(taxonomyGroup.label), findsNothing);
 
     await tester.tap(
@@ -1563,6 +1564,68 @@ void main() {
     controller.onDispose();
   });
 
+  test(
+      'discovery runtime facets use backend universe instead of current page items',
+      () async {
+    final catalog = _accountProfileDiscoveryFilterCatalogWithMultipleTypes();
+    final firstFilter = catalog.filters.first;
+    final secondFilter = catalog.filters.last;
+    final runtimeFacets = DiscoveryFilterRuntimeFacets.fromJson(
+      <String, Object?>{
+        'surface': 'discovery.account_profiles',
+        'filter_keys': <String>[firstFilter.key, secondFilter.key],
+        'taxonomy_options': <String, Object?>{
+          _fixtureTaxonomyKey(1): <String, Object?>{
+            'key': _fixtureTaxonomyKey(1),
+            'label': 'Runtime Taxonomy',
+            'terms': <Object?>[
+              <String, Object?>{
+                'value': _fixtureTaxonomyTermValue(1),
+                'label': _fixtureTaxonomyTermLabel(1),
+              },
+            ],
+          },
+        },
+      },
+    );
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: pagedAccountProfilesResultFromRaw(
+          profiles: [
+            _profile(
+              id: _mongoId('rt1'),
+              type: 'venue',
+              name: 'Only Current Page Venue',
+            ),
+          ],
+          hasMore: false,
+          discoveryFilterFacets: runtimeFacets,
+        ),
+      },
+    );
+    final controller = _buildDiscoveryController(
+      accountProfilesRepository: repository,
+      discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+        catalog: catalog,
+      ),
+    );
+
+    await controller.init();
+
+    expect(
+      controller.filteredPartnersStreamValue.value
+          .map((profile) => profile.type),
+      <String>['venue'],
+    );
+    expect(
+      controller.discoveryFilterCatalogStreamValue.value.filters
+          .map((filter) => filter.key)
+          .toList(),
+      <String>[firstFilter.key, secondFilter.key],
+    );
+    controller.onDispose();
+  });
+
   test('discovery hides expanded filter panel on scroll without clearing state',
       () async {
     final repository = _FakeAccountProfilesRepository(
@@ -2111,6 +2174,7 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
     result = pagedAccountProfilesResultFromRaw(
       profiles: profiles,
       hasMore: result.hasMore,
+      discoveryFilterFacets: result.discoveryFilterFacets,
     );
 
     return result;
@@ -2505,7 +2569,6 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
   Stream<EventDeltaModel> watchEventsStream({
     ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
-    List<ScheduleRepoString>? tags,
     ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
     List<ScheduleRepoString>? occurrenceIds,
@@ -2523,7 +2586,6 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
     required ScheduleRepositoryContractDeltaHandler onDelta,
     ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
-    List<ScheduleRepoString>? tags,
     ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
     List<ScheduleRepoString>? occurrenceIds,
@@ -2536,7 +2598,6 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
     return watchEventsStream(
       searchQuery: searchQuery,
       categories: categories,
-      tags: tags,
       taxonomy: taxonomy,
       confirmedOnly: confirmedOnly,
       originLat: originLat,

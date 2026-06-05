@@ -198,11 +198,17 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                                   builder: (context, nearby) {
                                                     return DiscoveryNearbyRow(
                                                       items: nearby,
-                                                      onTap: (partner) =>
-                                                          context.router.push(
-                                                        PartnerDetailRoute(
-                                                            slug: partner.slug),
-                                                      ),
+                                                      onTap: (partner) {
+                                                        if (!partner
+                                                            .canOpenPublicDetail) {
+                                                          return;
+                                                        }
+                                                        context.router.push(
+                                                          PartnerDetailRoute(
+                                                            slug: partner.slug,
+                                                          ),
+                                                        );
+                                                      },
                                                       resolvedVisualForItem:
                                                           _controller
                                                               .resolvedVisualForAccountProfile,
@@ -332,10 +338,15 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                                     }
                                                   },
                                                   onPartnerTap: (partner) =>
-                                                      context.router.push(
-                                                    PartnerDetailRoute(
-                                                        slug: partner.slug),
-                                                  ),
+                                                      partner
+                                                              .canOpenPublicDetail
+                                                          ? context.router.push(
+                                                              PartnerDetailRoute(
+                                                                slug:
+                                                                    partner.slug,
+                                                              ),
+                                                            )
+                                                          : null,
                                                   resolvedVisualForPartner:
                                                       _controller
                                                           .resolvedVisualForAccountProfile,
@@ -423,6 +434,13 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
   }
 
   String _partnerDetailRedirectPath(AccountProfileModel partner) {
+    if (!partner.canOpenPublicDetail) {
+      return buildRedirectPathFromRouteMatch(context.routeData.route);
+    }
+    final publicDetailPath = partner.publicDetailPath?.trim();
+    if (publicDetailPath != null && publicDetailPath.isNotEmpty) {
+      return publicDetailPath;
+    }
     final slug = partner.slug.trim();
     if (slug.isEmpty) {
       return buildRedirectPathFromRouteMatch(context.routeData.route);

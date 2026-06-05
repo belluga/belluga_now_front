@@ -3,6 +3,7 @@ import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
+import 'package:belluga_now/domain/schedule/event_schedule_display.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
@@ -77,6 +78,23 @@ class VenueEventResume {
     }
     return TimezoneConverter.utcToLocal(date);
   }
+
+  EventScheduleDisplay get scheduleDisplay => EventScheduleDisplay(
+        startValue: startDateTimeValue,
+        endValue: endDateTimeValue,
+      );
+
+  VenueEventResumePrimString get detailScheduleLabel =>
+      scheduleDisplay.detailLabel;
+
+  VenueEventResumePrimString get agendaScheduleLabel =>
+      scheduleDisplay.agendaLabel;
+
+  VenueEventResumePrimString get compactScheduleLabel =>
+      scheduleDisplay.compactRangeLabel;
+
+  VenueEventResumePrimString get flyerScheduleLabel =>
+      scheduleDisplay.flyerLabel;
 
   VenueEventResumePrimString get location => locationValue.value;
   VenueEventResumePrimString? get eventTypeLabel {

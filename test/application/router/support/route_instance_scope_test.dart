@@ -59,8 +59,7 @@ void main() {
     expect(child.disposed, isTrue);
   });
 
-  testWidgets('re-exposes the route scope inside dialogs and bottom sheets',
-      (tester) async {
+  testWidgets('re-exposes the route scope inside dialogs', (tester) async {
     var nextId = 0;
     GetIt.I.registerFactory<_ProbeController>(
       () => _ProbeController(++nextId),
@@ -68,7 +67,6 @@ void main() {
 
     _ProbeController? routeController;
     _ProbeController? dialogController;
-    _ProbeController? sheetController;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -89,39 +87,13 @@ void main() {
                               RouteInstanceScope.get<_ProbeController>(
                             dialogContext,
                           );
-                          return AlertDialog(
-                            content: const Text('Dialog'),
-                            actions: [
-                              TextButton(
-                                onPressed: () =>
-                                    Navigator.of(dialogContext).pop(),
-                                child: const Text('Fechar'),
-                              ),
-                            ],
+                          return const AlertDialog(
+                            content: Text('Dialog'),
                           );
                         },
                       );
                     },
                     child: const Text('Dialog'),
-                  ),
-                  TextButton(
-                    key: const Key('openRouteScopedSheet'),
-                    onPressed: () {
-                      showRouteScopedModalBottomSheet<void>(
-                        context: context,
-                        builder: (sheetContext) {
-                          sheetController =
-                              RouteInstanceScope.get<_ProbeController>(
-                            sheetContext,
-                          );
-                          return TextButton(
-                            onPressed: () => Navigator.of(sheetContext).pop(),
-                            child: const Text('Fechar sheet'),
-                          );
-                        },
-                      );
-                    },
-                    child: const Text('Sheet'),
                   ),
                 ],
               );
@@ -135,9 +107,50 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(identical(routeController, dialogController), isTrue);
+  });
 
-    await tester.tap(find.text('Fechar'));
-    await tester.pumpAndSettle();
+  testWidgets('re-exposes the route scope inside bottom sheets',
+      (tester) async {
+    var nextId = 0;
+    GetIt.I.registerFactory<_ProbeController>(
+      () => _ProbeController(++nextId),
+    );
+
+    _ProbeController? routeController;
+    _ProbeController? sheetController;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: RouteInstanceScope(
+          child: Builder(
+            builder: (context) {
+              routeController =
+                  RouteInstanceScope.get<_ProbeController>(context);
+              return Column(
+                children: [
+                  TextButton(
+                    key: const Key('openRouteScopedSheet'),
+                    onPressed: () {
+                      showRouteScopedModalBottomSheet<void>(
+                        context: context,
+                        builder: (sheetContext) {
+                          sheetController =
+                              RouteInstanceScope.get<_ProbeController>(
+                            sheetContext,
+                          );
+                          return const Text('Sheet');
+                        },
+                      );
+                    },
+                    child: const Text('Sheet'),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
 
     await tester.tap(find.byKey(const Key('openRouteScopedSheet')));
     await tester.pumpAndSettle();

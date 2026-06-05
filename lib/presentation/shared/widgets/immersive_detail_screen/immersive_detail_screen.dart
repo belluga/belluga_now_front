@@ -123,6 +123,11 @@ class ImmersiveDetailScreen extends StatefulWidget {
 
 class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
   late final ImmersiveDetailScreenController _controller;
+  double _horizontalDragDistance = 0;
+  Offset? _horizontalDragStartGlobalPosition;
+
+  static const double _horizontalDragDistanceThreshold = 80;
+  static const double _horizontalDragVelocityThreshold = 120;
 
   @override
   void initState() {
@@ -214,112 +219,151 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
             return GestureDetector(
               key: const Key('immersiveSwipeSurface'),
               behavior: HitTestBehavior.translucent,
+              onHorizontalDragStart: (details) {
+                _horizontalDragDistance = 0;
+                _horizontalDragStartGlobalPosition = details.globalPosition;
+              },
+              onHorizontalDragUpdate: (details) {
+                _horizontalDragDistance += details.primaryDelta ?? 0;
+              },
               onHorizontalDragEnd: (details) {
-                final primaryVelocity = details.primaryVelocity;
-                if (primaryVelocity == null) {
+                final swipeSignal = _resolveHorizontalSwipeSignal(details);
+                _horizontalDragDistance = 0;
+                final dragStartGlobalPosition =
+                    _horizontalDragStartGlobalPosition;
+                _horizontalDragStartGlobalPosition = null;
+                if (swipeSignal == null) {
                   return;
                 }
-                if (_handleActiveTabHorizontalSwipe(primaryVelocity)) {
+                if (_handleActiveTabHorizontalSwipe(
+                  swipeSignal,
+                  dragStartGlobalPosition: dragStartGlobalPosition,
+                )) {
                   return;
                 }
-                _controller.onHorizontalSwipeEnd(primaryVelocity);
+                _controller.onHorizontalSwipeEnd(swipeSignal);
               },
               child: NestedScrollView(
                 key: _controller.nestedScrollViewKey,
                 controller: _controller.scrollController,
                 headerSliverBuilder: (context, innerBoxIsScrolled) {
                   return [
-                    SliverAppBar(
-                      expandedHeight: appBarExpandedHeight,
-                      toolbarHeight: widget.collapsedToolbarHeight,
-                      pinned: true,
-                      stretch: true,
-                      backgroundColor: colorScheme.surface,
-                      title: innerBoxIsScrolled
-                          ? widget.collapsedTitle ??
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  key: const Key('immersiveCollapsedTitle'),
-                                  widget.title,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium
-                                      ?.copyWith(
-                                        color: colorScheme.onSurface,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                ),
-                              )
-                          : null,
-                      centerTitle: widget.centerCollapsedTitle,
-                      leading: _buildAppBarActionButton(
-                        context: context,
-                        icon: Icons.arrow_back,
-                        innerBoxIsScrolled: innerBoxIsScrolled,
-                        tooltip: 'Voltar',
-                        padding: const EdgeInsets.only(
-                          left: 8,
-                          right: 4,
-                        ),
-                        onPressed: widget.backPolicy.handleBack,
-                      ),
-                      actions: [
-                        if (innerBoxIsScrolled)
-                          ..._buildCollapsedHeroActions(
+                    SliverLayoutBuilder(
+                      builder: (context, constraints) {
+                        final collapseDistance =
+                            appBarExpandedHeight - minimumHeroHeight;
+                        final collapsedChromeThreshold =
+                            collapseDistance <= 0 ? 0.0 : collapseDistance;
+                        final isHeroChromeCollapsed =
+                            constraints.scrollOffset >=
+                                collapsedChromeThreshold;
+
+                        return SliverAppBar(
+                          expandedHeight: appBarExpandedHeight,
+                          toolbarHeight: widget.collapsedToolbarHeight,
+                          pinned: true,
+                          stretch: true,
+                          backgroundColor: colorScheme.surface,
+                          title: isHeroChromeCollapsed
+                              ? widget.collapsedTitle ??
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      key: const Key('immersiveCollapsedTitle'),
+                                      widget.title,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(
+                                            color: colorScheme.onSurface,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                    ),
+                                  )
+                              : null,
+                          centerTitle: widget.centerCollapsedTitle,
+                          leading: _buildAppBarActionButton(
                             context: context,
-                            actions: heroActions,
-                            innerBoxIsScrolled: innerBoxIsScrolled,
-                          ),
-                        ...?widget.appBarActionsBuilder?.call(
-                          context,
-                          innerBoxIsScrolled,
-                        ),
-                        const SizedBox(width: 8),
-                      ],
-                      flexibleSpace: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          widget.heroContentBuilder?.call(
-                                context,
-                                _activateTab,
-                              ) ??
-                              widget.heroContent!,
-                          // Scrim gradient for icon visibility
-                          Positioned(
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            height: 120,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    Colors.black.withValues(alpha: 0.3),
-                                    Colors.transparent,
-                                  ],
-                                ),
-                              ),
+                            icon: Icons.arrow_back,
+                            innerBoxIsScrolled: isHeroChromeCollapsed,
+                            tooltip: 'Voltar',
+                            padding: const EdgeInsets.only(
+                              left: 8,
+                              right: 4,
                             ),
+                            onPressed: widget.backPolicy.handleBack,
                           ),
-                          if (heroActions.isNotEmpty && !innerBoxIsScrolled)
-                            Positioned(
-                              top: mediaQuery.padding.top +
-                                  widget.collapsedToolbarHeight +
-                                  8,
-                              right: 12,
-                              child: _buildExpandedHeroActionRail(
+                          actions: [
+                            if (isHeroChromeCollapsed)
+                              ..._buildCollapsedHeroActions(
                                 context: context,
                                 actions: heroActions,
-                                innerBoxIsScrolled: innerBoxIsScrolled,
+                                innerBoxIsScrolled: isHeroChromeCollapsed,
                               ),
+                            ...?widget.appBarActionsBuilder?.call(
+                              context,
+                              isHeroChromeCollapsed,
                             ),
-                        ],
-                      ),
+                            const SizedBox(width: 8),
+                          ],
+                          flexibleSpace: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              widget.heroContentBuilder?.call(
+                                    context,
+                                    _activateTab,
+                                  ) ??
+                                  widget.heroContent!,
+                              if (isHeroChromeCollapsed)
+                                Positioned(
+                                  top: 0,
+                                  left: 0,
+                                  right: 0,
+                                  height: mediaQuery.padding.top +
+                                      widget.collapsedToolbarHeight,
+                                  child: ColoredBox(
+                                    key: const Key(
+                                      'immersiveCollapsedToolbarScrim',
+                                    ),
+                                    color: colorScheme.surface,
+                                  ),
+                                ),
+                              if (!isHeroChromeCollapsed)
+                                Positioned(
+                                  top: 0,
+                                  left: 0,
+                                  right: 0,
+                                  height: 120,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topCenter,
+                                        end: Alignment.bottomCenter,
+                                        colors: [
+                                          Colors.black.withValues(alpha: 0.3),
+                                          Colors.transparent,
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              if (heroActions.isNotEmpty &&
+                                  !isHeroChromeCollapsed)
+                                Positioned(
+                                  top: mediaQuery.padding.top + 8,
+                                  right: 12,
+                                  child: _buildExpandedHeroActionRail(
+                                    context: context,
+                                    actions: heroActions,
+                                    innerBoxIsScrolled: isHeroChromeCollapsed,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                     // Optional content between hero and tabs
                     if (widget.betweenHeroAndTabs != null)
@@ -677,7 +721,10 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
     return brightness == Brightness.dark ? Colors.white : Colors.black87;
   }
 
-  bool _handleActiveTabHorizontalSwipe(double primaryVelocity) {
+  bool _handleActiveTabHorizontalSwipe(
+    double primaryVelocity, {
+    required Offset? dragStartGlobalPosition,
+  }) {
     if (widget.tabs.isEmpty) {
       return false;
     }
@@ -685,7 +732,25 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
       0,
       widget.tabs.length - 1,
     );
-    final handler = widget.tabs[safeIndex].onHorizontalSwipeEnd;
+    final gestureTabIndex = _tabIndexAtGlobalPosition(dragStartGlobalPosition);
+    if (gestureTabIndex != null &&
+        _handleTabHorizontalSwipe(
+          index: gestureTabIndex,
+          primaryVelocity: primaryVelocity,
+        )) {
+      return true;
+    }
+    return _handleTabHorizontalSwipe(
+      index: safeIndex,
+      primaryVelocity: primaryVelocity,
+    );
+  }
+
+  bool _handleTabHorizontalSwipe({
+    required int index,
+    required double primaryVelocity,
+  }) {
+    final handler = widget.tabs[index].onHorizontalSwipeEnd;
     if (handler == null) {
       return false;
     }
@@ -695,7 +760,37 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
           ? ImmersiveHorizontalSwipeDirection.forward
           : ImmersiveHorizontalSwipeDirection.backward,
       activateTab: _activateTab,
-      currentTabIndex: safeIndex,
+      currentTabIndex: index,
     );
+  }
+
+  int? _tabIndexAtGlobalPosition(Offset? globalPosition) {
+    if (globalPosition == null) {
+      return null;
+    }
+    for (final entry in _controller.tabItems.asMap().entries) {
+      final renderObject = entry.value.key.currentContext?.findRenderObject();
+      if (renderObject is! RenderBox || !renderObject.hasSize) {
+        continue;
+      }
+      final topLeft = renderObject.localToGlobal(Offset.zero);
+      final rect = topLeft & renderObject.size;
+      if (rect.contains(globalPosition)) {
+        return entry.key;
+      }
+    }
+    return null;
+  }
+
+  double? _resolveHorizontalSwipeSignal(DragEndDetails details) {
+    final primaryVelocity = details.primaryVelocity;
+    if (primaryVelocity != null &&
+        primaryVelocity.abs() >= _horizontalDragVelocityThreshold) {
+      return primaryVelocity;
+    }
+    if (_horizontalDragDistance.abs() >= _horizontalDragDistanceThreshold) {
+      return _horizontalDragDistance.isNegative ? -1 : 1;
+    }
+    return null;
   }
 }

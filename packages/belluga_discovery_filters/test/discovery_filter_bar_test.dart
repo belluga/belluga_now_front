@@ -35,7 +35,7 @@ void main() {
     expect(
         find.byKey(const ValueKey<String>('discoveryFilterPrimary_profiles')),
         findsOneWidget);
-    expect(find.text('Perfis'), findsNothing);
+    expect(find.text('Perfis'), findsOneWidget);
 
     await tester.tap(
       find.byKey(const ValueKey<String>('discoveryFilterPrimaryClear_events')),
@@ -224,7 +224,8 @@ void main() {
     );
   });
 
-  testWidgets('selected primary shows loading affordance while inactive options stay actionable',
+  testWidgets(
+      'selected primary shows loading affordance while inactive options stay actionable',
       (tester) async {
     DiscoveryFilterSelection? changedSelection;
 
@@ -287,6 +288,8 @@ void main() {
       ),
       findsOneWidget,
     );
+    expect(find.text('Eventos'), findsOneWidget);
+    expect(find.text('Perfis'), findsOneWidget);
 
     await tester.tap(
       find.byKey(
@@ -468,9 +471,14 @@ void main() {
   });
 
   test('horizontal primary row does not prebuild unused chip widgets', () {
-    final source = File(
+    const candidates = <String>[
+      'lib/src/discovery_filter_bar.dart',
       'packages/belluga_discovery_filters/lib/src/discovery_filter_bar.dart',
-    ).readAsStringSync();
+    ];
+    final sourceFile = candidates
+        .map(File.new)
+        .firstWhere((file) => file.existsSync());
+    final source = sourceFile.readAsStringSync();
 
     expect(source, isNot(contains('final chips = filters')));
     expect(source, contains('discoveryFilterPrimaryList'));

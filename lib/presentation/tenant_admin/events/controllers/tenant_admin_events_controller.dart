@@ -571,7 +571,7 @@ class TenantAdminEventsController implements Disposable {
     eventCoverRemoveStreamValue.addValue(false);
     relatedAccountProfileCandidatesStreamValue.addValue(
       List.unmodifiable(
-        existingEvent?.relatedAccountProfiles ?? const [],
+        _knownRelatedProfilesFromEvent(existingEvent),
       ),
     );
     _replaceEventFormState(nextState);
@@ -1145,23 +1145,35 @@ class TenantAdminEventsController implements Disposable {
     );
   }
 
-  void addOccurrenceRelatedProfile(
-    String occurrenceKey,
-    TenantAdminAccountProfile profile,
-  ) {
+  void addOccurrenceRelatedProfileToGroup({
+    required String occurrenceKey,
+    required String groupId,
+    required TenantAdminAccountProfile profile,
+  }) {
     _replaceOccurrenceByKey(occurrenceKey, (occurrence) {
-      final relatedIds = occurrence.relatedAccountProfileIds.toList();
-      if (!relatedIds.any((entry) => entry.value == profile.id)) {
-        relatedIds.add(TenantAdminAccountProfileIdValue(profile.id));
+      if (!occurrence.profileGroups.any((group) => group.id == groupId)) {
+        submitErrorMessageStreamValue.addValue('Grupo da ocorrência inválido.');
+        return occurrence;
       }
-      final relatedProfiles = occurrence.relatedAccountProfiles
+      final knownProfiles = occurrence.relatedAccountProfiles
           .where((entry) => entry.id != profile.id)
           .toList(growable: true)
         ..add(profile);
-      return _copyOccurrence(
-        occurrence,
-        relatedAccountProfileIds: relatedIds,
-        relatedAccountProfiles: relatedProfiles,
+      final nextGroups = TenantAdminNestedProfileGroupOperations.toggleMember(
+        occurrence.profileGroups,
+        groupId: groupId,
+        profileId: profile.id,
+        selected: true,
+        onLimit: () => submitErrorMessageStreamValue.addValue(
+          'Limite de perfis no grupo atingido.',
+        ),
+      );
+      return _applyOccurrenceProfileGroups(
+        _copyOccurrence(
+          occurrence,
+          relatedAccountProfiles: knownProfiles,
+        ),
+        nextGroups,
       );
     }, sort: false);
   }
@@ -2730,6 +2742,23 @@ class TenantAdminEventsController implements Disposable {
         .map((profileId) => candidatesById[profileId])
         .whereType<TenantAdminAccountProfile>()
         .toList(growable: false);
+  }
+
+  List<TenantAdminAccountProfile> _knownRelatedProfilesFromEvent(
+    TenantAdminEvent? event,
+  ) {
+    if (event == null) {
+      return const <TenantAdminAccountProfile>[];
+    }
+
+    return _mergeAccountProfiles(
+      event.relatedAccountProfiles,
+      [
+        for (final occurrence in event.occurrences) ...occurrence.relatedAccountProfiles,
+        for (final occurrence in event.occurrences)
+          for (final item in occurrence.programmingItems) ...item.linkedAccountProfiles,
+      ],
+    );
   }
 
   List<TenantAdminEventProgrammingItem> _filterProgrammingItemsByProfileIds(

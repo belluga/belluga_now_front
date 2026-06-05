@@ -11,6 +11,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profi
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
@@ -179,6 +180,85 @@ void main() {
       controller
           .eventFormStateStreamValue.value.selectedRelatedAccountProfileIds,
       ['artist-1', 'producer-1'],
+    );
+  });
+
+  test(
+      'initEventForm seeds related profile cache with occurrence-owned profiles',
+      () {
+    final controller = TenantAdminEventsController(
+      eventsRepository: _TrackingEventsRepository(),
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+      landlordAuthRepository:
+          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
+    );
+    final occurrenceArtist = tenantAdminAccountProfileFromRaw(
+      id: 'occ-artist-1',
+      accountId: 'acc-occ-artist-1',
+      profileType: 'artist',
+      displayName: 'Occurrence Artist',
+    );
+    final occurrenceExhibitor = tenantAdminAccountProfileFromRaw(
+      id: 'occ-exhibitor-1',
+      accountId: 'acc-occ-exhibitor-1',
+      profileType: 'exhibitor',
+      displayName: 'Occurrence Exhibitor',
+    );
+    final existingEvent = TenantAdminEvent(
+      eventIdValue: tenantAdminRequiredText('evt-occ-cache'),
+      slugValue: tenantAdminRequiredText('evt-occ-cache'),
+      titleValue: tenantAdminRequiredText('Evento em edição'),
+      contentValue: tenantAdminOptionalText('Conteúdo'),
+      type: TenantAdminEventType(
+        idValue: tenantAdminOptionalText('type-1'),
+        nameValue: tenantAdminRequiredText('Show'),
+        slugValue: tenantAdminRequiredText('show'),
+      ),
+      occurrences: <TenantAdminEventOccurrence>[
+        TenantAdminEventOccurrence(
+          dateTimeStartValue: tenantAdminDateTime(DateTime.utc(2026, 6, 7, 3)),
+        ),
+        TenantAdminEventOccurrence(
+          occurrenceIdValue: tenantAdminOptionalText('occurrence-2'),
+          dateTimeStartValue: tenantAdminDateTime(DateTime.utc(2026, 6, 8, 3)),
+          relatedAccountProfileIdValues: [
+            TenantAdminAccountProfileIdValue(occurrenceArtist.id),
+            TenantAdminAccountProfileIdValue(occurrenceExhibitor.id),
+          ],
+          relatedAccountProfiles: [
+            occurrenceArtist,
+            occurrenceExhibitor,
+          ],
+          profileGroups: [
+            TenantAdminNestedProfileGroup(
+              idValue: TenantAdminNestedProfileGroupTextValue('outro-grupo'),
+              labelValue:
+                  TenantAdminNestedProfileGroupTextValue('Outro Grupo'),
+              orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+              accountProfileIdValues: [
+                TenantAdminNestedProfileGroupTextValue(occurrenceArtist.id),
+                TenantAdminNestedProfileGroupTextValue(
+                  occurrenceExhibitor.id,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
+      publication: TenantAdminEventPublication(
+        statusValue: tenantAdminRequiredText('draft'),
+      ),
+    );
+
+    controller.initEventForm(existingEvent: existingEvent);
+
+    expect(
+      controller.relatedAccountProfileCandidatesStreamValue.value
+          .map((profile) => profile.id),
+      containsAll([
+        occurrenceArtist.id,
+        occurrenceExhibitor.id,
+      ]),
     );
   });
 

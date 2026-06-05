@@ -213,6 +213,60 @@ void main() {
   });
 
   test(
+      'event detail init replaces stale same-target profile groups with route-resolved event',
+      () {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    final staleEvent = _buildEvent(
+      profileGroups: [
+        _buildProfileGroup(
+          id: 'palco-sexta',
+          label: 'Palco Sexta',
+          order: 0,
+          profiles: [
+            _buildLinkedProfile(
+              id: 'profile-band',
+              displayName: 'Banda Sexta',
+              profileType: 'banda',
+              slug: 'banda-sexta',
+            ),
+          ],
+        ),
+      ],
+    );
+    final freshEvent = _buildEvent(
+      profileGroups: [
+        _buildProfileGroup(
+          id: 'palco-sabado',
+          label: 'Palco Sabado',
+          order: 0,
+          profiles: [
+            _buildLinkedProfile(
+              id: 'profile-band-sabado',
+              displayName: 'Banda Sabado',
+              profileType: 'banda',
+              slug: 'banda-sabado',
+            ),
+          ],
+        ),
+      ],
+    );
+    invitesRepository.setImmersiveSelectedEvent(staleEvent);
+    final controller = ImmersiveEventDetailController(
+      userEventsRepository: userEventsRepository,
+      invitesRepository: invitesRepository,
+      authRepository: _FakeAuthRepository(authorized: true),
+    );
+
+    controller.init(freshEvent);
+
+    expect(
+      controller.eventStreamValue.value?.profileGroups.map((group) => group.id),
+      ['palco-sabado'],
+    );
+  });
+
+  test(
       'event detail init refreshes sent invite summary for selected occurrence',
       () async {
     final userEventsRepository = _FakeUserEventsRepository();
@@ -474,6 +528,114 @@ void main() {
     expect(
       selectedEvent?.profileGroups.single.profiles.single.displayName,
       'Artista Alpha',
+    );
+  });
+
+  test(
+      'select occurrence preserves aggregate profile groups while selecting programming occurrence',
+      () {
+    final controller = ImmersiveEventDetailController(
+      userEventsRepository: _FakeUserEventsRepository(),
+      invitesRepository: _FakeInvitesRepository(),
+      authRepository: _FakeAuthRepository(authorized: true),
+    );
+    final bandProfile = _buildLinkedProfile(
+      id: 'profile-band',
+      displayName: 'Banda Azul',
+      profileType: 'banda',
+      slug: 'banda-azul',
+    );
+    final exhibitorProfile = _buildLinkedProfile(
+      id: 'profile-exhibitor',
+      displayName: 'Expositor Sol',
+      profileType: 'expositor',
+      slug: 'expositor-sol',
+    );
+    final secondOccurrence = _buildOccurrence(
+      id: 'occurrence-second',
+      start: DateTime(2026, 3, 16, 16),
+      profileGroups: [
+        _buildProfileGroup(
+          id: 'vila-expositores',
+          label: 'Vila Expositores',
+          order: 0,
+          accountProfileIds: ['profile-exhibitor'],
+        ),
+      ],
+    );
+    final event = _buildEvent(
+      linkedAccountProfiles: [bandProfile, exhibitorProfile],
+      profileGroups: [
+        _buildProfileGroup(
+          id: 'palco-bandas',
+          label: 'Palco Bandas',
+          order: 0,
+          accountProfileIds: ['profile-band'],
+        ),
+        _buildProfileGroup(
+          id: 'vila-expositores',
+          label: 'Vila Expositores',
+          order: 1,
+          accountProfileIds: ['profile-exhibitor'],
+        ),
+      ],
+      occurrences: [
+        _buildOccurrence(
+          id: 'occurrence-first',
+          start: DateTime(2026, 3, 15, 18),
+          isSelected: true,
+          profileGroups: [
+            _buildProfileGroup(
+              id: 'palco-bandas',
+              label: 'Palco Bandas',
+              order: 0,
+              accountProfileIds: ['profile-band'],
+            ),
+          ],
+        ),
+        secondOccurrence,
+      ],
+    );
+
+    controller.init(event);
+    controller.selectOccurrence(event, secondOccurrence);
+
+    final selectedEvent = controller.eventStreamValue.value;
+    expect(selectedEvent?.selectedOccurrenceId, 'occurrence-second');
+    expect(
+      selectedEvent?.profileGroups.map((group) => group.label),
+      ['Palco Bandas', 'Vila Expositores'],
+    );
+    expect(
+      selectedEvent?.profileGroups
+          .singleWhere((group) => group.label == 'Vila Expositores')
+          .accountProfileIdValues
+          .map((id) => id.value),
+      ['profile-exhibitor'],
+    );
+    expect(
+      selectedEvent?.profileGroups
+          .singleWhere((group) => group.label == 'Palco Bandas')
+          .accountProfileIdValues
+          .map((id) => id.value),
+      ['profile-band'],
+    );
+    expect(
+      selectedEvent?.occurrences
+          .singleWhere(
+            (occurrence) => occurrence.occurrenceId == 'occurrence-second',
+          )
+          .profileGroups
+          .single
+          .accountProfileIdValues
+          .map((id) => id.value),
+      ['profile-exhibitor'],
+    );
+    expect(
+      selectedEvent?.linkedAccountProfiles
+          .singleWhere((profile) => profile.id == 'profile-exhibitor')
+          .displayName,
+      'Expositor Sol',
     );
   });
 }
@@ -861,6 +1023,8 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
 EventModel _buildEvent({
   List<EventOccurrenceOption> occurrences = const [],
   List<EventProfileGroup> profileGroups = const [],
+  List<EventLinkedAccountProfile> linkedAccountProfiles =
+      const <EventLinkedAccountProfile>[],
 }) {
   final resolvedOccurrences = occurrences.isEmpty
       ? [
@@ -898,6 +1062,7 @@ EventModel _buildEvent({
       ..parse(DateTime(2026, 3, 15, 20).toIso8601String()),
     dateTimeEnd: null,
     artists: const [],
+    linkedAccountProfiles: linkedAccountProfiles,
     profileGroups: profileGroups,
     occurrences: resolvedOccurrences,
     coordinate: null,
@@ -917,12 +1082,15 @@ EventProfileGroup _buildProfileGroup({
   required int order,
   List<EventLinkedAccountProfile> profiles =
       const <EventLinkedAccountProfile>[],
+  List<String> accountProfileIds = const <String>[],
 }) {
   return EventProfileGroup(
     idValue: EventLinkedAccountProfileTextValue(id),
     labelValue: EventLinkedAccountProfileTextValue(label),
     orderValue: EventProfileGroupOrderValue(order),
     profiles: profiles,
+    accountProfileIdValues:
+        accountProfileIds.map(EventLinkedAccountProfileTextValue.new).toList(),
   );
 }
 
@@ -945,6 +1113,7 @@ EventOccurrenceOption _buildOccurrence({
   required DateTime start,
   DateTime? end,
   bool isSelected = false,
+  List<EventProfileGroup> profileGroups = const <EventProfileGroup>[],
 }) {
   final endValue = DomainOptionalDateTimeValue()..parse(end?.toIso8601String());
 
@@ -957,6 +1126,7 @@ EventOccurrenceOption _buildOccurrence({
     isSelectedValue: EventOccurrenceFlagValue()..parse(isSelected.toString()),
     hasLocationOverrideValue: EventOccurrenceFlagValue()..parse('false'),
     programmingCountValue: EventProgrammingCountValue()..parse('0'),
+    profileGroups: profileGroups,
   );
 }
 

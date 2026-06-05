@@ -117,6 +117,53 @@ void main() {
       expect(backend.lastUpsert?.fixedReference?['entity_slug'], 'hotel-base');
     },
   );
+
+  test(
+    'clearFixedReference removes fixed reference and restores live location',
+    () async {
+      final backend = _FakeProximityPreferencesBackend(
+        remote: ProximityPreferenceDTO.fromJson({
+          'max_distance_meters': 25000,
+          'location_preference': {
+            'mode': 'fixed_reference',
+            'fixed_reference': {
+              'source_kind': 'entity_reference',
+              'coordinate': {'lat': -20.6736, 'lng': -40.4976},
+              'label': 'Hotel Base',
+              'entity_namespace': 'account_profile',
+              'entity_type': 'hotel',
+              'entity_id': 'profile-1',
+              'entity_slug': 'hotel-base',
+            },
+          },
+        }),
+      );
+      final appDataRepository = _FakeAppDataRepository();
+      final repository = ProximityPreferencesRepository(
+        appDataRepository: appDataRepository,
+        backend: backend,
+      );
+      await repository.syncAfterIdentityReady();
+
+      await repository.clearFixedReference();
+
+      expect(
+        repository
+            .proximityPreference?.locationPreference.usesLiveDeviceLocation,
+        isTrue,
+      );
+      expect(backend.lastUpsert?.mode, 'live_device_location');
+      expect(backend.lastUpsert?.fixedReference, isNull);
+      expect(
+        appDataRepository.locationOriginSettings?.usesUserLiveLocation,
+        isTrue,
+      );
+      expect(
+        appDataRepository.locationOriginSettings?.fixedLocationReference,
+        isNull,
+      );
+    },
+  );
 }
 
 class _FakeProximityPreferencesBackend

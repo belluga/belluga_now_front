@@ -12,6 +12,10 @@ import 'package:belluga_now/domain/invites/value_objects/invite_location_value.d
 import 'package:belluga_now/domain/invites/value_objects/invite_message_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_occurrence_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_tag_value.dart';
+import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
+import 'package:belluga_now/domain/schedule/event_profile_group.dart';
+import 'package:belluga_now/domain/schedule/event_schedule_display.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:value_object_pattern/domain/exceptions/value_exceptions.dart';
@@ -34,9 +38,16 @@ class InviteModel {
     this.inviterPrincipal,
     List<InviteAdditionalInviterNameValue>? additionalInviterValues,
     this.inviters = const [],
+    List<EventLinkedAccountProfile> linkedAccountProfiles = const [],
+    List<EventProfileGroup> profileGroups = const [],
+    this.venueAccountProfileIdValue,
   })  : tagValues = List.unmodifiable(tagValues),
         additionalInviterValues =
-            List.unmodifiable(additionalInviterValues ?? const []);
+            List.unmodifiable(additionalInviterValues ?? const []),
+        linkedAccountProfiles = List<EventLinkedAccountProfile>.unmodifiable(
+          linkedAccountProfiles,
+        ),
+        profileGroups = List<EventProfileGroup>.unmodifiable(profileGroups);
 
   final InviteIdValue idValue;
   final InviteEventIdValue eventIdValue;
@@ -54,6 +65,9 @@ class InviteModel {
   final InviteInviterPrincipal? inviterPrincipal;
   final List<InviteAdditionalInviterNameValue> additionalInviterValues;
   final List<InviteInviter> inviters;
+  final List<EventLinkedAccountProfile> linkedAccountProfiles;
+  final List<EventProfileGroup> profileGroups;
+  final EventLinkedAccountProfileTextValue? venueAccountProfileIdValue;
 
   String get id => idValue.value;
   String get eventId => eventIdValue.value;
@@ -67,6 +81,13 @@ class InviteModel {
     return date;
   }
 
+  EventScheduleDisplay get eventScheduleDisplay => EventScheduleDisplay(
+        startValue: eventDateValue,
+      );
+
+  String get eventDateDetailLabel => eventScheduleDisplay.detailLabel;
+  String get eventDateFlyerLabel => eventScheduleDisplay.flyerLabel;
+
   Uri get eventImageUri => eventImageValue.value;
   String get eventImageUrl => eventImageUri.toString();
   String get location => locationValue.value;
@@ -74,6 +95,14 @@ class InviteModel {
   String get message => messageValue.value;
   String? get occurrenceId => occurrenceIdValue.value;
   String get attendancePolicy => attendancePolicyValue.value;
+  String? get venueAccountProfileId {
+    final id = venueAccountProfileIdValue?.value.trim();
+    if (id == null || id.isEmpty) {
+      return null;
+    }
+    return id;
+  }
+
   String? get inviterName => primaryInviter?.name ?? inviterNameValue?.value;
   Uri? get inviterAvatarUri {
     final primaryAvatarUrl = primaryInviter?.avatarUrl?.trim();
@@ -133,6 +162,9 @@ class InviteModel {
       inviterPrincipal: inviterPrincipal,
       additionalInviterValues: additionalInviterValues,
       inviters: nextInviters,
+      linkedAccountProfiles: linkedAccountProfiles,
+      profileGroups: profileGroups,
+      venueAccountProfileIdValue: venueAccountProfileIdValue,
     );
   }
 }

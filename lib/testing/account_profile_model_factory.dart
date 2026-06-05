@@ -5,6 +5,8 @@ import 'package:belluga_now/domain/partners/projections/partner_profile_module_d
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_public_detail_path_value.dart';
+import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
@@ -30,6 +32,8 @@ AccountProfileModel buildAccountProfileModelFromPrimitives({
   double? locationLat,
   double? locationLng,
   List<AccountProfileNestedGroup>? nestedProfileGroups,
+  bool canOpenPublicDetail = true,
+  String? publicDetailPath,
 }) {
   ThumbUriValue? avatarValue;
   if (avatarUrl != null && avatarUrl.isNotEmpty) {
@@ -68,6 +72,12 @@ AccountProfileModel buildAccountProfileModelFromPrimitives({
     locationLongitudeValue = LongitudeValue()..parse(locationLng.toString());
   }
 
+  final canOpenPublicDetailValue =
+      DomainBooleanValue(defaultValue: canOpenPublicDetail, isRequired: false)
+        ..parse(canOpenPublicDetail.toString());
+  final resolvedPublicDetailPath =
+      canOpenPublicDetail ? (publicDetailPath ?? '/parceiro/$slug') : null;
+
   return AccountProfileModel(
     idValue: MongoIDValue()..parse(id),
     nameValue: TitleValue()..parse(name),
@@ -89,6 +99,10 @@ AccountProfileModel buildAccountProfileModelFromPrimitives({
     locationLatitudeValue: locationLatitudeValue,
     locationLongitudeValue: locationLongitudeValue,
     nestedProfileGroupValues: nestedProfileGroups,
+    canOpenPublicDetailValue: canOpenPublicDetailValue,
+    publicDetailPathValue: resolvedPublicDetailPath == null
+        ? null
+        : AccountProfilePublicDetailPathValue(resolvedPublicDetailPath),
   );
 }
 

@@ -48,12 +48,18 @@ class TenantAdminAccountProfilesRepository
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
     TenantAdminAccountProfilesRepoString? accountId,
+    TenantAdminAccountProfilesRepoBool? queryableOnly,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async {
     try {
+      final queryParameters = _requestEncoder.encodeFetchAccountProfilesQuery(
+        accountId: accountId?.value,
+        queryableOnly: queryableOnly?.value ?? false,
+        excludeAccountProfileId: excludeAccountProfileId?.value,
+      );
       final response = await _dio.get(
         '$_apiBaseUrl/v1/account_profiles',
-        queryParameters:
-            accountId == null ? null : {'account_id': accountId.value},
+        queryParameters: queryParameters.isEmpty ? null : queryParameters,
         options: Options(headers: _buildHeaders()),
       );
       final dtos = _responseDecoder.decodeAccountProfileList(response.data);

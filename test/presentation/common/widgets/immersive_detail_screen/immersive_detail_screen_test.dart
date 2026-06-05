@@ -104,6 +104,24 @@ void main() {
     },
   );
 
+  test(
+    'tab header rebuilds when labels change without changing tab count',
+    () {
+      final oldDelegate = ImmersiveHeaderDelegate(
+        tabs: const ['Sobre', 'Programação', 'Palco Sexta', 'Como Chegar'],
+        currentTabIndex: 1,
+        onTabTapped: (_) {},
+      );
+      final newDelegate = ImmersiveHeaderDelegate(
+        tabs: const ['Sobre', 'Programação', 'Palco Sábado', 'Como Chegar'],
+        currentTabIndex: 1,
+        onTabTapped: (_) {},
+      );
+
+      expect(newDelegate.shouldRebuild(oldDelegate), isTrue);
+    },
+  );
+
   testWidgets(
     'tab tap keeps the target section start visible with taller collapsed app bar',
     (tester) async {
@@ -450,6 +468,12 @@ void main() {
       expect(find.byKey(const Key('testWhatsappHeroAction')), findsOneWidget);
       expect(find.byKey(const Key('immersiveHeroMoreAction')), findsNothing);
 
+      final backTop = tester.getTopLeft(find.byIcon(Icons.arrow_back)).dy;
+      final primaryTop =
+          tester.getTopLeft(find.byKey(const Key('testPrimaryHeroAction'))).dy;
+      expect(primaryTop, greaterThanOrEqualTo(0));
+      expect(primaryTop, lessThanOrEqualTo(backTop + 12));
+
       await tester.tap(find.byKey(const Key('testWhatsappHeroAction')));
       await tester.pumpAndSettle();
 
@@ -517,6 +541,90 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(shareCalls, 1);
+    },
+  );
+
+  testWidgets(
+    'partially collapsed hero keeps expanded chrome until content is clear',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await _pumpImmersiveScreen(
+        tester,
+        ImmersiveDetailScreen(
+          title: 'Long Profile Title',
+          collapsedToolbarHeight: 72,
+          centerCollapsedTitle: false,
+          backPolicy: _FakeBackPolicy(),
+          heroContent: Stack(
+            children: [
+              Container(color: Colors.black),
+              const Positioned(
+                left: 16,
+                bottom: 24,
+                child: Text('Expanded hero title'),
+              ),
+            ],
+          ),
+          heroActions: [
+            ImmersiveHeroAction(
+              key: const Key('testPartialPrimaryAction'),
+              label: 'Favoritar',
+              icon: Icons.favorite_border,
+              isPrimary: true,
+              onPressed: () {},
+            ),
+            ImmersiveHeroAction(
+              key: const Key('testPartialShareAction'),
+              label: 'Compartilhar',
+              icon: Icons.share,
+              onPressed: () {},
+            ),
+          ],
+          tabs: [
+            ImmersiveTabItem(
+              title: 'Sobre',
+              content: const SizedBox(height: 1400, child: Text('Section')),
+            ),
+          ],
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      await tester.drag(
+        find.byKey(const Key('immersiveSwipeSurface')),
+        const Offset(0, -120),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('immersiveCollapsedToolbarScrim')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const Key('immersiveCollapsedTitle')),
+        findsNothing,
+      );
+      expect(find.byKey(const Key('testPartialPrimaryAction')), findsOneWidget);
+      expect(find.byKey(const Key('testPartialShareAction')), findsOneWidget);
+      expect(find.byKey(const Key('immersiveHeroMoreAction')), findsNothing);
+
+      await tester.drag(
+        find.byKey(const Key('immersiveSwipeSurface')),
+        const Offset(0, -700),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('immersiveCollapsedTitle')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('testPartialPrimaryAction')), findsOneWidget);
+      expect(find.byKey(const Key('testPartialShareAction')), findsNothing);
+      expect(find.byKey(const Key('immersiveHeroMoreAction')), findsOneWidget);
     },
   );
 

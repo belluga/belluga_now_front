@@ -127,6 +127,10 @@ class _TenantAdminProfileTypeDetailScreenState
       builder: (context, detailDefinition) {
         final definition = detailDefinition ?? widget.definition;
         final capabilities = <String>[
+          if (definition.capabilities.isQueryable) 'Consultável',
+          if (definition.capabilities.isPubliclyNavigable) 'Página pública',
+          if (definition.capabilities.isPubliclyDiscoverable)
+            'Descoberta pública',
           if (definition.capabilities.isFavoritable) 'Favoritavel',
           if (definition.capabilities.isPoiEnabled) 'POI habilitado',
           if (definition.capabilities.hasBio) 'Bio',

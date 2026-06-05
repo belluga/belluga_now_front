@@ -85,6 +85,18 @@ class ProximityPreferencesRepository
   }
 
   @override
+  Future<void> clearFixedReference() async {
+    final next = _currentPreference.copyWith(
+      locationPreference:
+          const ProximityLocationPreference.liveDeviceLocation(),
+    );
+    final persisted = await _backend.upsert(
+      ProximityPreferenceDTO.fromDomain(next),
+    );
+    await _apply(persisted.toDomain());
+  }
+
+  @override
   Future<void> setRouteReferencePointPolicy(
     RouteReferencePointPolicyValue policyValue,
   ) async {

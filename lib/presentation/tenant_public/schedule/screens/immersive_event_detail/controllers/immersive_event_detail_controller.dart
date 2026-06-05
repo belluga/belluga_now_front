@@ -21,6 +21,8 @@ import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
+import 'package:belluga_now/domain/schedule/event_programming_item.dart';
+import 'package:belluga_now/domain/schedule/event_profile_group.dart';
 
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
@@ -76,6 +78,7 @@ class ImmersiveEventDetailController implements Disposable {
       _confirmedOccurrenceIdsSubscription;
   StreamSubscription<Set<AccountProfilesRepositoryContractPrimString>>?
       _favoriteProfileIdsSubscription;
+  String? _pendingWarmOccurrenceRouteId;
   StreamValue<EventModel?> get eventStreamValue =>
       _invitesRepository.immersiveSelectedEventStreamValue;
   StreamValue<List<InviteModel>> get receivedInvitesStreamValue =>
@@ -86,15 +89,21 @@ class ImmersiveEventDetailController implements Disposable {
   void init(EventModel event) {
     final resolvedEvent = _alignEventToSelectedOccurrence(event);
     final currentEvent = eventStreamValue.value;
-    final hasSameSelectedTarget =
-        _isSameSelectedEventTarget(currentEvent, resolvedEvent);
-    final effectiveEvent = hasSameSelectedTarget && currentEvent != null
-        ? currentEvent
-        : resolvedEvent;
-    if (!hasSameSelectedTarget) {
+    final suppressWarmRouteDuplicate =
+        _isPendingWarmOccurrenceRoute(currentEvent, resolvedEvent);
+    if (!_hasSameSelectedOccurrenceProjection(currentEvent, resolvedEvent) &&
+        !suppressWarmRouteDuplicate) {
       _invitesRepository.setImmersiveSelectedEvent(resolvedEvent);
     }
-    _hydrateState(effectiveEvent);
+    if (suppressWarmRouteDuplicate) {
+      _pendingWarmOccurrenceRouteId = null;
+    } else if (_pendingWarmOccurrenceRouteId != null &&
+        _pendingWarmOccurrenceRouteId != resolvedEvent.selectedOccurrenceId) {
+      _pendingWarmOccurrenceRouteId = null;
+    }
+    _hydrateState(suppressWarmRouteDuplicate && currentEvent != null
+        ? currentEvent
+        : resolvedEvent);
     _bindFavoriteAccountProfileState();
   }
 
@@ -104,19 +113,9 @@ class ImmersiveEventDetailController implements Disposable {
       return;
     }
     final selectedEvent = _eventWithSelectedOccurrence(event, occurrenceId);
+    _pendingWarmOccurrenceRouteId = occurrenceId;
     _invitesRepository.setImmersiveSelectedEvent(selectedEvent);
     _hydrateState(selectedEvent);
-  }
-
-  bool _isSameSelectedEventTarget(
-    EventModel? current,
-    EventModel candidate,
-  ) {
-    if (current == null) {
-      return false;
-    }
-    return current.id.value == candidate.id.value &&
-        current.selectedOccurrenceId == candidate.selectedOccurrenceId;
   }
 
   // Reactive state
@@ -323,6 +322,7 @@ class ImmersiveEventDetailController implements Disposable {
             hasLocationOverrideValue: occurrence.hasLocationOverrideValue,
             programmingCountValue: occurrence.programmingCountValue,
             programmingItems: occurrence.programmingItems,
+            profileGroups: occurrence.profileGroups,
           ),
         )
         .toList(growable: false);
@@ -373,6 +373,66 @@ class ImmersiveEventDetailController implements Disposable {
       return event;
     }
     return _eventWithSelectedOccurrence(event, occurrenceId);
+  }
+
+  bool _hasSameSelectedOccurrenceProjection(
+      EventModel? left, EventModel right) {
+    if (left == null) {
+      return false;
+    }
+    return left.id.value == right.id.value &&
+        left.selectedOccurrenceId == right.selectedOccurrenceId &&
+        _profileGroupSignature(left.profileGroups) ==
+            _profileGroupSignature(right.profileGroups) &&
+        _programmingSignature(left.programmingItems) ==
+            _programmingSignature(right.programmingItems);
+  }
+
+  bool _isPendingWarmOccurrenceRoute(EventModel? current, EventModel resolved) {
+    final pendingOccurrenceId = _pendingWarmOccurrenceRouteId?.trim();
+    if (current == null ||
+        pendingOccurrenceId == null ||
+        pendingOccurrenceId.isEmpty) {
+      return false;
+    }
+    return current.id.value == resolved.id.value &&
+        current.selectedOccurrenceId == pendingOccurrenceId &&
+        resolved.selectedOccurrenceId == pendingOccurrenceId;
+  }
+
+  String _profileGroupSignature(List<EventProfileGroup> groups) {
+    return groups.map((group) {
+      final profileIds = group.profiles
+          .map((profile) => profile.id.trim())
+          .where((id) => id.isNotEmpty)
+          .join(',');
+      final memberIds = group.accountProfileIdValues
+          .map((profileId) => profileId.value)
+          .join(',');
+      return [
+        group.id,
+        group.label,
+        group.order,
+        profileIds,
+        memberIds,
+      ].join(':');
+    }).join('|');
+  }
+
+  String _programmingSignature(List<EventProgrammingItem> items) {
+    return items.map((item) {
+      final profileIds = item.linkedAccountProfiles
+          .map((profile) => profile.id.trim())
+          .where((id) => id.isNotEmpty)
+          .join(',');
+      return [
+        item.time,
+        item.endTime ?? '',
+        item.title ?? '',
+        profileIds,
+        item.locationProfile?.id.trim() ?? '',
+      ].join(':');
+    }).join('|');
   }
 
   void _applyConfirmationState(String occurrenceId) {

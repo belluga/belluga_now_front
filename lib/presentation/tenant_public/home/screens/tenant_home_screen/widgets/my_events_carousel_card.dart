@@ -1,5 +1,4 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/application/extensions/event_data_formating.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/carousel_card.dart';
@@ -28,12 +27,8 @@ class MyEventsCarouselCard extends StatelessWidget {
     final inferredEnd = explicitEnd ?? start.add(const Duration(hours: 3));
     final now = DateTime.now();
     final isLiveNow = now.isAfter(start) && now.isBefore(inferredEnd);
-    final timeLabel = explicitEnd == null
-        ? start.timeLabel
-        : '${start.timeLabel} às ${explicitEnd.timeLabel}';
-    final scheduleLabel = isLiveNow
-        ? timeLabel
-        : '${start.dayLabel} ${start.monthLabel} • $timeLabel';
+    final scheduleLabel =
+        isLiveNow ? event.agendaScheduleLabel : event.detailScheduleLabel;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 

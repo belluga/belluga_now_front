@@ -93,7 +93,7 @@ void main() {
   });
 
   test(
-      'favorites section resolves profile navigation by slug, search otherwise',
+      'favorites section resolves profile navigation when contract allows, search otherwise',
       () async {
     final controller = FavoritesSectionController(
       favoriteRepository: _FakeFavoriteRepository(),
@@ -101,7 +101,13 @@ void main() {
     );
 
     final profileTarget = await controller.resolveNavigationTarget(
-      _favoriteResume(title: 'Com Slug', slug: 'com-slug'),
+      _favoriteResume(
+        title: 'Com Slug',
+        slug: 'com-slug',
+        targetType: 'account_profile',
+        canOpenPublicDetail: true,
+        publicDetailPath: '/parceiro/com-slug',
+      ),
     );
 
     expect(profileTarget, isA<FavoriteNavigationPartner>());
@@ -123,7 +129,30 @@ void main() {
     controller.onDispose();
   });
 
-  test('favorites section resolves compact preview using cover then type visual',
+  test(
+      'favorites section blocks unavailable account profile targets before slug fallback',
+      () async {
+    final controller = FavoritesSectionController(
+      favoriteRepository: _FakeFavoriteRepository(),
+      appDataRepository: _FakeAppDataRepository(),
+    );
+
+    final unavailableTarget = await controller.resolveNavigationTarget(
+      _favoriteResume(
+        title: 'Sem rota',
+        slug: 'sem-rota',
+        targetType: 'account_profile',
+        canOpenPublicDetail: false,
+      ),
+    );
+
+    expect(unavailableTarget, isA<FavoriteNavigationUnavailable>());
+
+    controller.onDispose();
+  });
+
+  test(
+      'favorites section resolves compact preview using cover then type visual',
       () async {
     final controller = FavoritesSectionController(
       favoriteRepository: _FakeFavoriteRepository(),
@@ -141,7 +170,8 @@ void main() {
     );
 
     expect(coverResolved, isNotNull);
-    expect(coverResolved!.compactImageUrl, 'https://cdn.test/profile-cover.png');
+    expect(
+        coverResolved!.compactImageUrl, 'https://cdn.test/profile-cover.png');
 
     final typeVisualResolved = controller.resolvedVisualFor(
       _favoriteResume(
@@ -204,6 +234,8 @@ FavoriteResume _favoriteResume({
   String? targetType,
   String? profileType,
   String? coverUrl,
+  bool canOpenPublicDetail = false,
+  String? publicDetailPath,
   DateTime? nextEventOccurrenceAt,
   String? liveNowEventOccurrenceId,
 }) {
@@ -221,6 +253,8 @@ FavoriteResume _favoriteResume({
     targetType: targetType,
     profileType: profileType,
     coverImageUriValue: coverImageUriValue,
+    canOpenPublicDetail: canOpenPublicDetail,
+    publicDetailPath: publicDetailPath,
     nextEventOccurrenceAt: nextEventOccurrenceAt,
     liveNowEventOccurrenceId: liveNowEventOccurrenceId,
   );

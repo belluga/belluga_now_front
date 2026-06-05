@@ -6,6 +6,7 @@ import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/schedule/event_linked_account_profile_taxonomy_terms.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 
@@ -14,36 +15,49 @@ class EventLinkedAccountProfile {
     required this.idValue,
     required this.displayNameValue,
     required this.profileTypeValue,
-    required this.slugValue,
+    this.slugValue,
     this.avatarUrlValue,
     this.coverUrlValue,
     this.partyTypeValue,
     this.locationAddressValue,
     this.locationLatitudeValue,
     this.locationLongitudeValue,
+    DomainBooleanValue? canOpenPublicDetailValue,
+    this.publicDetailPathValue,
     EventLinkedAccountProfileTaxonomyTerms? taxonomyTerms,
-  }) : taxonomyTerms = taxonomyTerms ??
+  })  : canOpenPublicDetailValue = DomainBooleanValue(
+          defaultValue: false,
+          isRequired: false,
+        )..parse((canOpenPublicDetailValue?.value ?? false).toString()),
+        taxonomyTerms = taxonomyTerms ??
             const EventLinkedAccountProfileTaxonomyTerms.empty();
 
   final EventLinkedAccountProfileTextValue idValue;
   final EventLinkedAccountProfileTextValue displayNameValue;
   final AccountProfileTypeValue profileTypeValue;
-  final SlugValue slugValue;
+  final SlugValue? slugValue;
   final ThumbUriValue? avatarUrlValue;
   final ThumbUriValue? coverUrlValue;
   final EventLinkedAccountProfileTextValue? partyTypeValue;
   final EventLinkedAccountProfileTextValue? locationAddressValue;
   final LatitudeValue? locationLatitudeValue;
   final LongitudeValue? locationLongitudeValue;
+  final DomainBooleanValue canOpenPublicDetailValue;
+  final EventLinkedAccountProfileTextValue? publicDetailPathValue;
   final EventLinkedAccountProfileTaxonomyTerms taxonomyTerms;
 
   String get id => idValue.value;
   String get displayName => displayNameValue.value;
   String get profileType => profileTypeValue.value;
-  String get slug => slugValue.value;
+  String get slug => slugValue?.value ?? '';
   String? get avatarUrl => avatarUrlValue?.value.toString();
   String? get coverUrl => coverUrlValue?.value.toString();
   String? get partyType => partyTypeValue?.value;
+  bool get canOpenPublicDetail => canOpenPublicDetailValue.value;
+  String? get publicDetailPath =>
+      publicDetailPathValue?.value.trim().isEmpty == true
+          ? null
+          : publicDetailPathValue?.value.trim();
   String? get locationAddress {
     final value = locationAddressValue?.value.trim();
     if (value == null || value.isEmpty) {

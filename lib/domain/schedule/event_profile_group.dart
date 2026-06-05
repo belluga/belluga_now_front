@@ -9,12 +9,19 @@ class EventProfileGroup {
     required this.orderValue,
     List<EventLinkedAccountProfile> profiles =
         const <EventLinkedAccountProfile>[],
-  }) : profiles = List<EventLinkedAccountProfile>.unmodifiable(profiles);
+    List<EventLinkedAccountProfileTextValue> accountProfileIdValues =
+        const <EventLinkedAccountProfileTextValue>[],
+  })  : profiles = List<EventLinkedAccountProfile>.unmodifiable(profiles),
+        accountProfileIdValues =
+            List<EventLinkedAccountProfileTextValue>.unmodifiable(
+          accountProfileIdValues.where((id) => id.value.isNotEmpty),
+        );
 
   final EventLinkedAccountProfileTextValue idValue;
   final EventLinkedAccountProfileTextValue labelValue;
   final EventProfileGroupOrderValue orderValue;
   final List<EventLinkedAccountProfile> profiles;
+  final List<EventLinkedAccountProfileTextValue> accountProfileIdValues;
 
   String get id => idValue.value;
   String get label => labelValue.value;

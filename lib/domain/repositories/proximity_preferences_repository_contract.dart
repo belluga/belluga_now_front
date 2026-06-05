@@ -24,6 +24,8 @@ abstract class ProximityPreferencesRepositoryContract {
     required FixedLocationReference fixedReference,
   }) async {}
 
+  Future<void> clearFixedReference() async {}
+
   Future<void> setRouteReferencePointPolicy(
     RouteReferencePointPolicyValue policyValue,
   ) async {}

@@ -1499,7 +1499,7 @@ class _TenantAdminEventFormScreenState
     try {
       _controller.setEventCoverBusy(true);
       final picked = await _controller.pickImageFromDevice(
-        slot: TenantAdminImageSlot.cover,
+        slot: TenantAdminImageSlot.eventHeroCover,
       );
       if (picked == null || !mounted) {
         return;
@@ -1507,7 +1507,7 @@ class _TenantAdminEventFormScreenState
       final cropped = await showTenantAdminImageCropSheet(
         context: context,
         sourceFile: picked,
-        slot: TenantAdminImageSlot.cover,
+        slot: TenantAdminImageSlot.eventHeroCover,
         readBytesForCrop: _controller.readImageBytesForCrop,
         prepareCroppedFile: (croppedData, cropSlot) =>
             _controller.prepareCroppedImage(croppedData, slot: cropSlot),
@@ -1545,7 +1545,7 @@ class _TenantAdminEventFormScreenState
       final cropped = await showTenantAdminImageCropSheet(
         context: context,
         sourceFile: sourceFile,
-        slot: TenantAdminImageSlot.cover,
+        slot: TenantAdminImageSlot.eventHeroCover,
         readBytesForCrop: _controller.readImageBytesForCrop,
         prepareCroppedFile: (croppedData, cropSlot) =>
             _controller.prepareCroppedImage(croppedData, slot: cropSlot),
@@ -1778,7 +1778,7 @@ class _TenantAdminEventFormScreenState
     try {
       final coverUpload = await _controller.buildImageUpload(
         selectedCover,
-        slot: TenantAdminImageSlot.cover,
+        slot: TenantAdminImageSlot.eventHeroCover,
       );
       final removeCover =
           _isEditing && selectedCover == null && isCoverMarkedForRemoval;

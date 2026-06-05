@@ -1,3 +1,4 @@
+import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
@@ -7,10 +8,13 @@ import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/partners/projections/value_objects/partner_projection_text_values.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_public_detail_path_value.dart';
 import 'package:belluga_now/domain/repositories/value_objects/account_profiles_repository_taxonomy_filter.dart';
 import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
+import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
@@ -102,8 +106,11 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       final data = _extractDataList(raw);
 
       final currentPage = _parsePageValue(raw['current_page']) ?? page;
+      final hasMoreFlag = _asBool(raw['has_more']);
       final lastPage = _parsePageValue(raw['last_page']);
-      final hasMore = lastPage != null
+      final hasMore = raw.containsKey('has_more')
+          ? hasMoreFlag
+          : lastPage != null
           ? currentPage < lastPage
           : raw['next_page_url'] != null;
 
@@ -111,6 +118,9 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       return pagedAccountProfilesResultFromRaw(
         profiles: _parseProfiles(data, distanceOrigin: distanceOrigin),
         hasMore: hasMore,
+        discoveryFilterFacets: _parseDiscoveryFilterFacets(
+          raw['discovery_filter_facets'],
+        ),
       );
     } on DioException catch (error) {
       final statusCode = error.response?.statusCode;
@@ -228,6 +238,18 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     }
   }
 
+  DiscoveryFilterRuntimeFacets? _parseDiscoveryFilterFacets(Object? raw) {
+    if (raw is! Map) {
+      return null;
+    }
+
+    return DiscoveryFilterRuntimeFacets.fromJson(
+      raw.map(
+        (key, value) => MapEntry<String, Object?>(key.toString(), value),
+      ),
+    );
+  }
+
   @override
   Future<AccountProfileModel?> fetchAccountProfileBySlug(String slug) async {
     final normalizedSlug = slug.trim();
@@ -330,6 +352,13 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       if (content != null && content.isNotEmpty) {
         contentValue = DescriptionValue()..parse(content);
       }
+      final publicDetailPath =
+          json['public_detail_path']?.toString().trim().isNotEmpty == true
+              ? json['public_detail_path']?.toString().trim()
+              : null;
+      final canOpenPublicDetail = json['can_open_public_detail'] == true &&
+          ((publicDetailPath != null && publicDetailPath.isNotEmpty) ||
+              slug.trim().isNotEmpty);
       AccountProfileLocationAddressValue? locationAddressValue;
       if (locationAddress != null) {
         locationAddressValue = AccountProfileLocationAddressValue()
@@ -362,6 +391,12 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           locationAddressValue: locationAddressValue,
           locationLatitudeValue: locationLatitudeValue,
           locationLongitudeValue: locationLongitudeValue,
+          canOpenPublicDetailValue:
+              DomainBooleanValue(defaultValue: false, isRequired: false)
+                ..parse(canOpenPublicDetail.toString()),
+          publicDetailPathValue: publicDetailPath == null
+              ? null
+              : AccountProfilePublicDetailPathValue(publicDetailPath),
         ),
       );
     }
@@ -415,12 +450,23 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           (json['display_name'] ?? json['name'])?.toString().trim() ?? '';
       final slug = json['slug']?.toString().trim() ?? '';
       final profileType = json['profile_type']?.toString().trim() ?? '';
+      final publicDetailPath =
+          json['public_detail_path']?.toString().trim().isNotEmpty == true
+              ? json['public_detail_path']?.toString().trim()
+              : null;
+      final canOpenPublicDetail = json['can_open_public_detail'] == true &&
+          ((publicDetailPath != null && publicDetailPath.isNotEmpty) ||
+              slug.isNotEmpty);
       if (id.isEmpty ||
           displayName.isEmpty ||
-          slug.isEmpty ||
           profileType.isEmpty ||
           !seen.add(id)) {
         continue;
+      }
+
+      SlugValue? slugValue;
+      if (slug.isNotEmpty) {
+        slugValue = SlugValue()..parse(slug);
       }
 
       ThumbUriValue? avatarValue;
@@ -440,10 +486,17 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
         AccountProfileNestedGroupMember(
           idValue: MongoIDValue()..parse(id),
           nameValue: TitleValue()..parse(displayName),
-          slugValue: SlugValue()..parse(slug),
+          slugValue: slugValue,
           profileTypeValue: AccountProfileTypeValue(profileType),
           avatarValue: avatarValue,
           coverValue: coverValue,
+          canOpenPublicDetailValue: DomainBooleanValue(
+            defaultValue: false,
+            isRequired: false,
+          )..parse(canOpenPublicDetail.toString()),
+          publicDetailPathValue: publicDetailPath == null
+              ? null
+              : AccountProfileNestedGroupMemberTextValue(publicDetailPath),
           tagValues: _extractTags(json['taxonomy_terms'])
               .map(AccountProfileTagValue.new)
               .toList(growable: false),
@@ -705,6 +758,28 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     if (raw is int) return raw;
     if (raw is String) return int.tryParse(raw);
     return null;
+  }
+
+  bool _asBool(Object? value) {
+    if (value is bool) {
+      return value;
+    }
+    if (value is num) {
+      return value != 0;
+    }
+
+    switch (value?.toString().trim().toLowerCase()) {
+      case '1':
+      case 'true':
+      case 'yes':
+        return true;
+      case '0':
+      case 'false':
+      case 'no':
+        return false;
+      default:
+        return false;
+    }
   }
 
   double? _resolveDistanceMeters(

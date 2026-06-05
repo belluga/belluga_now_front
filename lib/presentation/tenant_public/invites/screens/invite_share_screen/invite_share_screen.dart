@@ -8,6 +8,7 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/invites/projections/friend_resume.dart';
 import 'package:belluga_now/domain/invites/projections/friend_resume_with_status.dart';
+import 'package:belluga_now/application/schedule/event_related_profile_groups.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_external_contact_share_target.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_share_screen_controller.dart';
@@ -213,6 +214,7 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
                     shareUri: _controller.buildShareUri(shareCode),
                     isGeneratingShareCode: isGeneratingShareCode,
                     onRetryShareCode: _controller.reloadShareCode,
+                    participantGroups: _participantGroupsForShare(),
                   );
                 },
               );
@@ -661,11 +663,28 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
   }
 
   String _buildShareText(Uri shareUri) {
-    return EventInviteSharePayloadBuilder.build(
+    return EventInviteSharePayloadBuilder.buildInvitation(
       eventName: widget.invite.eventName,
       location: widget.invite.location,
-      eventDateTime: widget.invite.eventDateTime,
-      publicUri: shareUri,
+      eventScheduleLabel: widget.invite.eventDateFlyerLabel,
+      inviteUri: shareUri,
+      inviterName: widget.invite.inviterName,
+      participantGroups: _participantGroupsForShare(),
     ).message;
+  }
+
+  List<EventInviteShareParticipantGroup> _participantGroupsForShare() {
+    return EventRelatedProfileGroups.fromParts(
+      profileGroups: widget.invite.profileGroups,
+      linkedAccountProfiles: widget.invite.linkedAccountProfiles,
+      venueId: widget.invite.venueAccountProfileId,
+    )
+        .map(
+          (group) => (
+            label: group.label,
+            names: group.profileNames,
+          ),
+        )
+        .toList(growable: false);
   }
 }

@@ -16,6 +16,25 @@ void main() {
     expect(dto.eventName, 'Invite Event');
   });
 
+  test('decodeRequiredInviteDto hydrates linked profiles and profile groups',
+      () {
+    final dto = decoder.decodeRequiredInviteDto(
+      _buildInvitePayload(),
+      context: 'preview',
+    );
+    final domain = dto.toDomain();
+
+    expect(domain.venueAccountProfileId, 'venue-1');
+    expect(domain.linkedAccountProfiles, hasLength(3));
+    expect(domain.profileGroups, hasLength(2));
+    expect(domain.profileGroups.first.label, 'Bandas');
+    expect(
+      domain.profileGroups.first.accountProfileIdValues.first.value,
+      'band-1',
+    );
+    expect(domain.linkedAccountProfiles[1].displayName, 'Du Jorge');
+  });
+
   test('decodeRequiredInviteDto rejects non-object payload', () {
     expect(
       () => decoder.decodeRequiredInviteDto(
@@ -99,6 +118,38 @@ Map<String, dynamic> _buildInvitePayload({
     'host_name': 'Belluga',
     'message': 'Bora?',
     'tags': ['music'],
+    'linked_account_profiles': [
+      {
+        'id': 'venue-1',
+        'display_name': 'Promotion Smoke Perfil Público',
+        'profile_type': 'venue',
+      },
+      {
+        'id': 'band-1',
+        'display_name': 'Du Jorge',
+        'profile_type': 'artist',
+      },
+      {
+        'id': 'exhibitor-1',
+        'display_name': 'QA Discovery Tag Sem Tags',
+        'profile_type': 'exhibitor',
+      },
+    ],
+    'profile_groups': [
+      {
+        'id': 'bandas',
+        'label': 'Bandas',
+        'order': 0,
+        'account_profile_ids': ['band-1'],
+      },
+      {
+        'id': 'expositores',
+        'label': 'Expositores',
+        'order': 1,
+        'account_profile_ids': ['exhibitor-1'],
+      },
+    ],
+    'venue_account_profile_id': 'venue-1',
     'attendance_policy': 'free_confirmation_only',
     'inviter_candidates': [
       {

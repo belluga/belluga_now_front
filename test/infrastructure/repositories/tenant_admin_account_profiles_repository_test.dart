@@ -204,6 +204,29 @@ void main() {
     ]);
   });
 
+  test('fetchAccountProfiles sends queryable selector filters when requested',
+      () async {
+    final adapter = _ProfileListMediaAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+    await repository.fetchAccountProfiles(
+      queryableOnly: tenantAdminAccountProfilesRepoBool(
+        true,
+        defaultValue: true,
+      ),
+      excludeAccountProfileId: tenantAdminAccountProfilesRepoString(
+        'profile-1',
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
+
+    final request = adapter.requests.single;
+    expect(request.queryParameters['queryable_only'], isTrue);
+    expect(request.queryParameters['exclude_account_profile_id'], 'profile-1');
+  });
+
   test(
     'updateAccountProfile sends explicit remove avatar/cover flags',
     () async {

@@ -1,3 +1,4 @@
+import 'package:belluga_now/application/schedule/event_related_profile_group_summary.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/widgets/invite_info_row.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/widgets/inviter_pill.dart';
@@ -11,8 +12,10 @@ class InviteContentCard extends StatelessWidget {
     required this.dateLabel,
     required this.location,
     required this.host,
+    required this.showHost,
     required this.inviter,
     required this.extraInviters,
+    required this.participantGroups,
     required this.onViewDetails,
   });
 
@@ -21,8 +24,10 @@ class InviteContentCard extends StatelessWidget {
   final String dateLabel;
   final String location;
   final String host;
+  final bool showHost;
   final String inviter;
   final int extraInviters;
+  final List<EventRelatedProfileGroupSummary> participantGroups;
   final VoidCallback onViewDetails;
 
   @override
@@ -107,12 +112,35 @@ class InviteContentCard extends StatelessWidget {
                     text: location,
                     maxLines: 1,
                   ),
-                  SizedBox(height: secondaryGap),
-                  InviteInfoRow(
-                    icon: Icons.music_note,
-                    text: host,
-                    maxLines: 1,
-                  ),
+                  if (showHost) ...[
+                    SizedBox(height: secondaryGap),
+                    InviteInfoRow(
+                      icon: Icons.storefront_outlined,
+                      text: host,
+                      maxLines: 1,
+                    ),
+                  ],
+                  if (participantGroups.isNotEmpty) ...[
+                    SizedBox(height: secondaryGap),
+                    Text(
+                      'Participantes',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: Colors.white.withValues(alpha: 0.88),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    SizedBox(height: secondaryGap),
+                    ...participantGroups.take(isCompact ? 2 : 3).map(
+                          (group) => Padding(
+                            padding: EdgeInsets.only(bottom: secondaryGap),
+                            child: InviteInfoRow(
+                              icon: Icons.groups_2_outlined,
+                              text: _participantLine(group),
+                              maxLines: 2,
+                            ),
+                          ),
+                        ),
+                  ],
                   if (isCompact)
                     SizedBox(height: primaryGap)
                   else
@@ -152,5 +180,29 @@ class InviteContentCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _participantLine(EventRelatedProfileGroupSummary group) {
+    final names = <String>[];
+    final seen = <String>{};
+    for (final name in group.profileNames) {
+      final normalized = name.trim();
+      if (normalized.isEmpty || !seen.add(normalized.toLowerCase())) {
+        continue;
+      }
+      names.add(normalized);
+    }
+
+    if (names.isEmpty) {
+      return group.label;
+    }
+
+    final visibleNames = names.take(2).join(', ');
+    final remainingCount = names.length - 2;
+    final compactNames = remainingCount > 0
+        ? '$visibleNames, e mais $remainingCount'
+        : visibleNames;
+    final label = group.label.trim();
+    return label.isEmpty ? compactNames : '$label: $compactNames';
   }
 }

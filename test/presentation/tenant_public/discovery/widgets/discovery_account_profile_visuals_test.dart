@@ -418,6 +418,102 @@ void main() {
   });
 
   testWidgets(
+      'DiscoveryPartnerCard removes button semantics when public detail is unavailable',
+      (tester) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      final registry = _buildAppData().profileTypeRegistry;
+      final partner = buildAccountProfileModelFromPrimitives(
+        id: '507f1f77bcf86cd799439028',
+        name: 'Perfil Sem Rota',
+        slug: 'perfil-sem-rota',
+        type: 'artist',
+        canOpenPublicDetail: false,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 240,
+              child: DiscoveryPartnerCard(
+                partner: partner,
+                isFavorite: false,
+                isFavoritable: true,
+                onFavoriteTap: () {},
+                onTap: null,
+                resolvedVisual: AccountProfileVisualResolver.resolve(
+                  accountProfile: partner,
+                  registry: registry,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(
+        find.bySemanticsLabel(RegExp('Abrir perfil Perfil Sem Rota')),
+        findsNothing,
+      );
+      expect(
+        find.bySemanticsLabel(RegExp('Perfil Perfil Sem Rota')),
+        findsOneWidget,
+      );
+    } finally {
+      semantics.dispose();
+    }
+  });
+
+  testWidgets(
+      'DiscoveryNearbyRow removes button semantics when public detail is unavailable',
+      (tester) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      final registry = _buildAppData().profileTypeRegistry;
+      final items = <AccountProfileModel>[
+        buildAccountProfileModelFromPrimitives(
+          id: '507f1f77bcf86cd799439029',
+          name: 'Sem Navegação',
+          slug: 'sem-navegacao',
+          type: 'artist',
+          canOpenPublicDetail: false,
+        ),
+      ];
+      var tapped = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: DiscoveryNearbyRow(
+              items: items,
+              onTap: (_) => tapped = true,
+              resolvedVisualForItem: (item) =>
+                  AccountProfileVisualResolver.resolve(
+                accountProfile: item,
+                registry: registry,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(
+        find.bySemanticsLabel(RegExp('Abrir perfil Sem Navegação')),
+        findsNothing,
+      );
+      final staticLabel = find.bySemanticsLabel(RegExp('Perfil Sem Navegação'));
+      expect(staticLabel, findsOneWidget);
+
+      await tester.tap(find.text('Sem Navegação'));
+      await tester.pump();
+      expect(tapped, isFalse);
+    } finally {
+      semantics.dispose();
+    }
+  });
+
+  testWidgets(
       'DiscoveryNearbyRow uses compact precedence and type visuals without halo',
       (tester) async {
     final registry = _buildAppData().profileTypeRegistry;

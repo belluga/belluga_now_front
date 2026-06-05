@@ -83,7 +83,6 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
     bool liveNowOnly = false,
     String? searchQuery,
     List<String>? categories,
-    List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
     List<String>? occurrenceIds,
@@ -112,9 +111,6 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
     }
     if (categories != null && categories.isNotEmpty) {
       params['categories'] = categories;
-    }
-    if (tags != null && tags.isNotEmpty) {
-      params['tags'] = tags;
     }
     if (taxonomy != null && taxonomy.isNotEmpty) {
       for (var index = 0; index < taxonomy.length; index += 1) {
@@ -175,7 +171,6 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
   Stream<EventDeltaDTO> watchEventsStream({
     String? searchQuery,
     List<String>? categories,
-    List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
     List<String>? occurrenceIds,
@@ -204,11 +199,6 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
     if (categories != null && categories.isNotEmpty) {
       for (final category in categories) {
         addParam('categories[]', category.toString());
-      }
-    }
-    if (tags != null && tags.isNotEmpty) {
-      for (final tag in tags) {
-        addParam('tags[]', tag.toString());
       }
     }
     if (taxonomy != null && taxonomy.isNotEmpty) {

@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
+import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/domain/favorite/favorite.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
@@ -133,6 +134,59 @@ void main() {
         const ['genre']);
     expect(backend.lastTaxonomyFilters.map((filter) => filter.term.value),
         const ['rock']);
+  });
+
+  test('fetchAccountProfilesPage preserves backend runtime discovery facets',
+      () async {
+    final runtimeFacets = DiscoveryFilterRuntimeFacets.fromJson(
+      <String, Object?>{
+        'surface': 'discovery.account_profiles',
+        'filter_keys': <String>['artist', 'venue'],
+        'taxonomy_options': <String, Object?>{
+          'cuisine': <String, Object?>{
+            'key': 'cuisine',
+            'label': 'Cozinha',
+            'terms': <Object?>[
+              <String, Object?>{
+                'value': 'italian',
+                'label': 'Italiano',
+              },
+            ],
+          },
+        },
+      },
+    );
+    final backend = _StubAccountProfilesBackend(
+      accountProfiles: [
+        buildAccountProfileModelFromPrimitives(
+          id: _generateMongoId(),
+          name: 'Artist One',
+          slug: 'artist-one',
+          type: 'artist',
+        ),
+      ],
+      discoveryFilterFacets: runtimeFacets,
+    );
+    final repository = AccountProfilesRepository(
+      backend: backend,
+      favoriteBackend: _StubFavoriteBackend(favorites: const []),
+      favoriteAccountProfileIds: const {},
+    );
+
+    final page = await repository.fetchAccountProfilesPage(
+      page: AccountProfilesRepositoryContractPrimInt.fromRaw(1),
+      pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
+    );
+
+    expect(page.discoveryFilterFacets, isNotNull);
+    expect(page.discoveryFilterFacets?.surface, 'discovery.account_profiles');
+    expect(page.discoveryFilterFacets?.filterKeys, <String>{'artist', 'venue'});
+    expect(
+      page.discoveryFilterFacets?.taxonomyOptionsByKey['cuisine']?.terms
+          .map((entry) => entry.value)
+          .toList(),
+      <String>['italian'],
+    );
   });
 
   test(
@@ -618,10 +672,12 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
   _StubAccountProfilesBackend({
     required this.accountProfiles,
     this.nearbyProfiles = const <AccountProfileModel>[],
+    this.discoveryFilterFacets,
   });
 
   final List<AccountProfileModel> accountProfiles;
   final List<AccountProfileModel> nearbyProfiles;
+  final DiscoveryFilterRuntimeFacets? discoveryFilterFacets;
   List<String>? lastAllowedTypes;
   List<String>? lastTypeFilters;
   List<AccountProfilesRepositoryTaxonomyFilter> lastTaxonomyFilters =
@@ -656,6 +712,7 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
     return pagedAccountProfilesResultFromRaw(
       profiles: accountProfiles.sublist(start, end),
       hasMore: end < accountProfiles.length,
+      discoveryFilterFacets: discoveryFilterFacets,
     );
   }
 

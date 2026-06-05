@@ -1,3 +1,4 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_screen_controller.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/widgets/app_promotion_shared_widgets.dart';
 import 'package:flutter/material.dart';
@@ -8,22 +9,33 @@ class AppPromotionModal extends StatelessWidget {
     super.key,
     required this.controller,
     required this.redirectPath,
+    this.title,
+    this.supportingText,
   });
 
   final AppPromotionScreenController controller;
   final String redirectPath;
+  final String? title;
+  final String? supportingText;
 
   static Future<void> show(
     BuildContext context, {
     required String redirectPath,
     AppPromotionScreenController? controller,
+    String? title,
+    String? supportingText,
   }) {
     final resolvedController = controller ?? _resolveController();
-    return showDialog<void>(
+    return showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
       builder: (dialogContext) => AppPromotionModal(
         controller: resolvedController,
         redirectPath: resolvedController.normalizeRedirectPath(redirectPath),
+        title: title,
+        supportingText: supportingText,
       ),
     );
   }
@@ -40,58 +52,70 @@ class AppPromotionModal extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final iconUrl = controller.iconUrlForBrightness(theme.brightness);
-    final title = '${controller.appDisplayName} fica melhor no app';
+    final resolvedTitle =
+        title ?? '${controller.appDisplayName} fica melhor no app';
+    final resolvedSupportingText = supportingText ??
+        'Continue no app para destravar as ações e a experiência completa.';
 
-    return AlertDialog(
+    return SafeArea(
       key: const Key('app_promotion_modal'),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-      contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
-      actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      title: Text(
-        title,
-        key: const Key('app_promotion_modal_title'),
-        textAlign: TextAlign.center,
-        style: theme.textTheme.titleLarge?.copyWith(
-          fontWeight: FontWeight.w800,
-          height: 1.15,
+      top: false,
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          bottom: 16 + MediaQuery.viewInsetsOf(context).bottom,
         ),
-      ),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AppPromotionBrandIcon(
-              colorScheme: colorScheme,
-              iconUrl: iconUrl,
-              size: 72,
-              iconSize: 42,
-              borderRadius: 20,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Continue no app para destravar as ações e a experiência completa.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
+        child: SingleChildScrollView(
+          child: Column(
+            key: const Key('app_promotion_modal_body'),
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                resolvedTitle,
+                key: const Key('app_promotion_modal_title'),
+                textAlign: TextAlign.center,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  height: 1.12,
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            AppPromotionStoreActions(
-              controller: controller,
-              redirectPath: redirectPath,
-              compact: true,
-            ),
-          ],
+              if (resolvedSupportingText.trim().isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  resolvedSupportingText.trim(),
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+              Center(
+                child: AppPromotionBrandIcon(
+                  colorScheme: colorScheme,
+                  iconUrl: iconUrl,
+                  size: 76,
+                  iconSize: 46,
+                  borderRadius: 22,
+                ),
+              ),
+              const SizedBox(height: 16),
+              AppPromotionStoreActions(
+                controller: controller,
+                redirectPath: redirectPath,
+                compact: true,
+              ),
+              TextButton(
+                key: const Key('app_promotion_modal_dismiss_button'),
+                onPressed: () => context.router.maybePop(),
+                child: const Text('Agora não'),
+              ),
+            ],
+          ),
         ),
       ),
-      actions: [
-        TextButton(
-          key: const Key('app_promotion_modal_dismiss_button'),
-          onPressed: () => Navigator.of(context).maybePop(),
-          child: const Text('Agora não'),
-        ),
-      ],
     );
   }
 }

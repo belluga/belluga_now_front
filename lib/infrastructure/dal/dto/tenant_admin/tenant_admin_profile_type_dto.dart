@@ -9,6 +9,8 @@ class TenantAdminProfileTypeDTO {
     required this.pluralLabel,
     required this.allowedTaxonomies,
     this.visual,
+    required this.isQueryable,
+    required this.isPubliclyNavigable,
     required this.isPubliclyDiscoverable,
     required this.isFavoritable,
     required this.isPoiEnabled,
@@ -27,6 +29,8 @@ class TenantAdminProfileTypeDTO {
   final String pluralLabel;
   final List<String> allowedTaxonomies;
   final TenantAdminPoiVisual? visual;
+  final bool isQueryable;
+  final bool isPubliclyNavigable;
   final bool isPubliclyDiscoverable;
   final bool isFavoritable;
   final bool isPoiEnabled;
@@ -77,8 +81,9 @@ class TenantAdminProfileTypeDTO {
               : json['label']?.toString() ?? '',
       allowedTaxonomies: allowed,
       visual: tenantAdminPoiVisualFromRaw(visualRaw),
-      isPubliclyDiscoverable:
-          capabilityMap['is_publicly_discoverable'] ?? false,
+      isQueryable: capabilityMap['is_queryable'] ?? true,
+      isPubliclyNavigable: capabilityMap['is_publicly_navigable'] ?? true,
+      isPubliclyDiscoverable: capabilityMap['is_publicly_discoverable'] ?? true,
       isFavoritable: capabilityMap['is_favoritable'] ?? false,
       isPoiEnabled: capabilityMap['is_poi_enabled'] ?? false,
       isReferenceLocationEnabled:
@@ -130,6 +135,8 @@ class TenantAdminProfileTypeDTO {
       allowedTaxonomies: allowedTaxonomies,
       visual: visual,
       capabilities: TenantAdminProfileTypeCapabilities(
+        isQueryable: TenantAdminFlagValue(isQueryable),
+        isPubliclyNavigable: TenantAdminFlagValue(isPubliclyNavigable),
         isPubliclyDiscoverable: TenantAdminFlagValue(isPubliclyDiscoverable),
         isFavoritable: TenantAdminFlagValue(isFavoritable),
         isPoiEnabled: TenantAdminFlagValue(isPoiEnabled),

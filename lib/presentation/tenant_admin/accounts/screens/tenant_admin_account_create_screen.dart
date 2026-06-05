@@ -620,9 +620,9 @@ class _TenantAdminAccountCreateScreenState
                         state.coverWebUrl!.isNotEmpty),
                 onRemove: () => _clearImage(isAvatar: false),
                 initialWebUrl: state.coverWebUrl,
-                slot: TenantAdminImageSlot.cover,
+                slot: TenantAdminImageSlot.accountProfileHeroCover,
                 pickFromDevice: () => _controller.pickImageFromDevice(
-                  slot: TenantAdminImageSlot.cover,
+                  slot: TenantAdminImageSlot.accountProfileHeroCover,
                 ),
                 fetchImageFromUrlForCrop: _controller.fetchImageFromUrlForCrop,
                 readBytesForCrop: _controller.readImageBytesForCrop,

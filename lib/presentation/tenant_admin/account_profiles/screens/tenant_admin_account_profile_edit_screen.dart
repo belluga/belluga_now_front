@@ -470,7 +470,7 @@ class _TenantAdminAccountProfileEditScreenState
     final coverUpload = _hasCover(state.selectedProfileType)
         ? await _controller.buildImageUpload(
             state.coverFile,
-            slot: TenantAdminImageSlot.cover,
+            slot: TenantAdminImageSlot.accountProfileHeroCover,
           )
         : null;
     _controller.submitAutoSaveImages(
@@ -1335,9 +1335,9 @@ class _TenantAdminAccountProfileEditScreenState
                   const ValueKey('accountProfileEditCoverRemoveButton'),
               onRemove: () => _clearImage(isAvatar: false),
               initialWebUrl: coverUrl,
-              slot: TenantAdminImageSlot.cover,
+              slot: TenantAdminImageSlot.accountProfileHeroCover,
               pickFromDevice: () => _controller.pickImageFromDevice(
-                slot: TenantAdminImageSlot.cover,
+                slot: TenantAdminImageSlot.accountProfileHeroCover,
               ),
               fetchImageFromUrlForCrop: _controller.fetchImageFromUrlForCrop,
               readBytesForCrop: _controller.readImageBytesForCrop,

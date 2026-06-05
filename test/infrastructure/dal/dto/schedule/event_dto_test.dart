@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('parses agenda occurrence payload shape without throwing', () {
     final dto = EventDTO.fromJson({
-      'event_id': 'evt-1',
+      'event_id': '507f1f77bcf86cd799439011',
       'occurrence_id': 'occ-1',
       'slug': 'rock-night-occ-1',
       'title': 'Rock Night',
@@ -25,7 +25,7 @@ void main() {
         },
       },
       'venue': {
-        'id': 'venue-1',
+        'id': '507f1f77bcf86cd799439012',
         'display_name': 'Arena Central',
         'slug': 'arena-central',
       },
@@ -41,10 +41,14 @@ void main() {
           'profile_type': 'artist',
         },
       ],
-      'tags': ['music'],
+      'tags': ['legacy-ignored'],
+      'taxonomy_terms': [
+        {'type': 'genre', 'value': 'music', 'name': 'Music'},
+      ],
     });
+    final domain = dto.toDomain();
 
-    expect(dto.id, 'evt-1');
+    expect(dto.id, '507f1f77bcf86cd799439011');
     expect(dto.slug, 'rock-night-occ-1');
     expect(dto.title, 'Rock Night');
     expect(dto.location, 'Arena Central');
@@ -52,6 +56,14 @@ void main() {
     expect(dto.dateTimeEnd, '2026-03-03T22:00:00+00:00');
     expect(dto.linkedAccountProfiles, hasLength(1));
     expect(dto.type.id, 'type-1');
+    expect(domain.taxonomyTags.map((tag) => tag.value).toList(), ['Music']);
+    expect(dto.toJson(), isNot(contains('tags')));
+    expect(
+      dto.toJson()['taxonomy_terms'],
+      [
+        {'type': 'canonical_label', 'value': 'Music', 'name': 'Music'},
+      ],
+    );
   });
 
   test('uses occurrence_id as fallback id when event_id is missing', () {
@@ -72,6 +84,26 @@ void main() {
     });
 
     expect(dto.id, 'occ-42');
+  });
+
+  test('ignores legacy raw tags when canonical taxonomy_terms are absent', () {
+    final dto = EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439099',
+      'slug': 'legacy-event',
+      'type': {
+        'id': 'type-1',
+        'name': 'Show',
+        'slug': 'show',
+        'description': '',
+      },
+      'title': 'Legacy Event',
+      'content': '',
+      'location': 'Guarapari',
+      'date_time_start': '2026-03-03T10:00:00+00:00',
+      'tags': ['legacy-only'],
+    });
+
+    expect(dto.toDomain().taxonomyTags, isEmpty);
   });
 
   test('parses public profile groups for custom dynamic event tabs', () {
@@ -140,6 +172,209 @@ void main() {
     expect(domain.profileGroups[0].profiles.single.displayName, 'Artista A');
     expect(domain.profileGroups[1].id, 'expositores');
     expect(domain.profileGroups[1].profiles.single.profileType, 'producer');
+  });
+
+  test('parses linked profile navigation contract without requiring slug', () {
+    final dto = EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439055',
+      'slug': 'evt-navigation-contract',
+      'type': {
+        'id': 'type-1',
+        'name': 'Feira',
+        'slug': 'feira',
+        'description': '',
+      },
+      'title': 'Evento navegacao',
+      'content': '',
+      'location': 'Guarapari',
+      'date_time_start': '2026-03-03T10:00:00+00:00',
+      'linked_account_profiles': [
+        {
+          'id': 'profile-clickable',
+          'display_name': 'Perfil clicável',
+          'profile_type': 'artist',
+          'slug': 'perfil-clicavel',
+          'can_open_public_detail': true,
+          'public_detail_path': '/parceiro/perfil-clicavel',
+        },
+        {
+          'id': 'profile-static',
+          'display_name': 'Perfil estático',
+          'profile_type': 'artist',
+          'can_open_public_detail': false,
+        },
+      ],
+    });
+
+    final clickable = dto.linkedAccountProfiles.first;
+    final staticProfile = dto.linkedAccountProfiles.last;
+
+    expect(clickable.canOpenPublicDetail, isTrue);
+    expect(clickable.publicDetailPath, '/parceiro/perfil-clicavel');
+    expect(clickable.slug, 'perfil-clicavel');
+    expect(staticProfile.canOpenPublicDetail, isFalse);
+    expect(staticProfile.publicDetailPath, isNull);
+    expect(staticProfile.slug, isEmpty);
+  });
+
+  test(
+      'parses occurrence profile groups with member ids for occurrence switches',
+      () {
+    final dto = EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439091',
+      'occurrence_id': '507f1f77bcf86cd799439092',
+      'slug': 'festival-com-ocorrencias',
+      'type': {
+        'id': 'show',
+        'name': 'Show',
+        'slug': 'show',
+        'description': '',
+      },
+      'title': 'Festival com Ocorrencias',
+      'content': 'Descricao',
+      'location': 'Praca Central',
+      'date_time_start': '2026-03-04T17:00:00+00:00',
+      'linked_account_profiles': [
+        {
+          'id': 'profile-band',
+          'display_name': 'Banda Azul',
+          'slug': 'banda-azul',
+          'profile_type': 'banda',
+        },
+        {
+          'id': 'profile-exhibitor',
+          'display_name': 'Expositor Sol',
+          'slug': 'expositor-sol',
+          'profile_type': 'expositor',
+        },
+      ],
+      'profile_groups': [
+        {
+          'id': 'palco-bandas',
+          'label': 'Palco Bandas',
+          'order': 0,
+          'profiles': [
+            {
+              'id': 'profile-band',
+              'display_name': 'Banda Azul',
+              'slug': 'banda-azul',
+              'profile_type': 'banda',
+            },
+          ],
+        },
+      ],
+      'occurrences': [
+        {
+          'occurrence_id': '507f1f77bcf86cd799439092',
+          'date_time_start': '2026-03-04T17:00:00+00:00',
+          'is_selected': true,
+          'profile_groups': [
+            {
+              'id': 'palco-bandas',
+              'label': 'Palco Bandas',
+              'order': 0,
+              'account_profile_ids': ['profile-band'],
+            },
+          ],
+        },
+        {
+          'occurrence_id': '507f1f77bcf86cd799439093',
+          'date_time_start': '2026-03-05T17:00:00+00:00',
+          'is_selected': false,
+          'profile_groups': [
+            {
+              'id': 'vila-expositores',
+              'label': 'Vila Expositores',
+              'order': 0,
+              'account_profile_ids': ['profile-exhibitor'],
+            },
+          ],
+        },
+      ],
+    });
+
+    final domain = dto.toDomain();
+
+    expect(domain.occurrences, hasLength(2));
+    expect(domain.occurrences.first.profileGroups.single.label, 'Palco Bandas');
+    expect(
+      domain.occurrences.first.profileGroups.single.accountProfileIdValues
+          .map((id) => id.value),
+      ['profile-band'],
+    );
+    expect(
+        domain.occurrences.last.profileGroups.single.label, 'Vila Expositores');
+    expect(domain.occurrences.last.profileGroups.single.profiles.single.id,
+        'profile-exhibitor');
+    expect(
+      domain.occurrences.last.profileGroups.single.accountProfileIdValues
+          .map((id) => id.value),
+      ['profile-exhibitor'],
+    );
+  });
+
+  test('hydrates top-level profile groups from member ids and linked profiles',
+      () {
+    final dto = EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439101',
+      'occurrence_id': '507f1f77bcf86cd799439102',
+      'slug': 'festival-com-grupos-por-id',
+      'type': {
+        'id': 'festival',
+        'name': 'Festival',
+        'slug': 'festival',
+        'description': '',
+      },
+      'title': 'Festival com Grupos por Id',
+      'content': 'Descricao',
+      'location': 'Praca Central',
+      'date_time_start': '2026-03-04T17:00:00+00:00',
+      'linked_account_profiles': [
+        {
+          'id': 'profile-band',
+          'display_name': 'Banda Azul',
+          'slug': 'banda-azul',
+          'profile_type': 'banda',
+        },
+        {
+          'id': 'profile-exhibitor',
+          'display_name': 'Expositor Sol',
+          'slug': 'expositor-sol',
+          'profile_type': 'expositor',
+        },
+      ],
+      'profile_groups': [
+        {
+          'id': 'palco-bandas',
+          'label': 'Palco Bandas',
+          'order': 0,
+          'account_profile_ids': ['profile-band'],
+        },
+        {
+          'id': 'vila-expositores',
+          'label': 'Vila Expositores',
+          'order': 1,
+          'account_profile_ids': ['profile-exhibitor'],
+        },
+      ],
+      'occurrences': [
+        {
+          'occurrence_id': '507f1f77bcf86cd799439102',
+          'date_time_start': '2026-03-04T17:00:00+00:00',
+          'is_selected': true,
+        },
+      ],
+    });
+
+    final domain = dto.toDomain();
+
+    expect(domain.profileGroups, hasLength(2));
+    expect(domain.profileGroups.first.label, 'Palco Bandas');
+    expect(
+        domain.profileGroups.first.profiles.single.displayName, 'Banda Azul');
+    expect(domain.profileGroups.last.label, 'Vila Expositores');
+    expect(
+        domain.profileGroups.last.profiles.single.displayName, 'Expositor Sol');
   });
 
   test('preserves sanitized rich html content for public event rendering', () {
@@ -427,38 +662,34 @@ void main() {
     expect(domain.linkedAccountProfiles.first.slug, 'ananda-torres');
   });
 
-  test('throws when linked account profile slug is missing after enrichment',
+  test('keeps linked account profile readable when public detail is disabled',
       () {
-    expect(
-      () => EventDTO.fromJson({
-        'event_id': '69a77aa3680219d56909081b',
-        'slug': 'evt-missing-linked-slug',
-        'type': {
-          'id': 'show',
-          'name': 'Show',
-          'slug': 'show',
-          'description': '',
+    final dto = EventDTO.fromJson({
+      'event_id': '69a77aa3680219d56909081b',
+      'slug': 'evt-missing-linked-slug',
+      'type': {
+        'id': 'show',
+        'name': 'Show',
+        'slug': 'show',
+        'description': '',
+      },
+      'title': 'Evento inconsistente',
+      'content': 'Descricao',
+      'location': 'Carvoeiro',
+      'date_time_start': '2026-03-03T10:00:00+00:00',
+      'linked_account_profiles': [
+        {
+          'id': 'artist-1',
+          'display_name': 'Ananda Torres',
+          'profile_type': 'artist',
+          'can_open_public_detail': false,
         },
-        'title': 'Evento inconsistente',
-        'content': 'Descricao',
-        'location': 'Carvoeiro',
-        'date_time_start': '2026-03-03T10:00:00+00:00',
-        'linked_account_profiles': [
-          {
-            'id': 'artist-1',
-            'display_name': 'Ananda Torres',
-            'profile_type': 'artist',
-          },
-        ],
-      }),
-      throwsA(
-        isA<FormatException>().having(
-          (error) => error.message,
-          'message',
-          contains('linked_account_profiles[artist-1].slug'),
-        ),
-      ),
-    );
+      ],
+    });
+
+    expect(dto.linkedAccountProfiles, hasLength(1));
+    expect(dto.linkedAccountProfiles.first.slug, isEmpty);
+    expect(dto.linkedAccountProfiles.first.canOpenPublicDetail, isFalse);
   });
 
   test('parses event detail occurrences and selected programming items', () {

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/guards/location_permission_gate_runtime.dart';
@@ -496,6 +497,7 @@ class _FakeProximityPreferencesRepository
   }
 
   FixedLocationReference? lastFixedReference;
+  int clearFixedReferenceCalls = 0;
 
   @override
   Future<void> setFixedReference({
@@ -503,6 +505,19 @@ class _FakeProximityPreferencesRepository
   }) async {
     lastFixedReference = fixedReference;
     setCurrentPreference(_preferenceWith(fixedReference));
+  }
+
+  @override
+  Future<void> clearFixedReference() async {
+    clearFixedReferenceCalls += 1;
+    lastFixedReference = null;
+    setCurrentPreference(
+      ProximityPreference(
+        maxDistanceMetersValue: DistanceInMetersValue.fromRaw(25000),
+        locationPreference:
+            const ProximityLocationPreference.liveDeviceLocation(),
+      ),
+    );
   }
 
   ProximityPreference _preferenceWith(FixedLocationReference fixedReference) {
@@ -522,6 +537,9 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   @override
   final StreamValue<List<EventModel>?> discoveryLiveNowEventsStreamValue =
       StreamValue<List<EventModel>?>(defaultValue: null);
+  @override
+  final homeAgendaDiscoveryFilterFacetsStreamValue =
+      StreamValue<DiscoveryFilterRuntimeFacets?>(defaultValue: null);
 
   final Map<String, EventModel?> eventsBySlug = <String, EventModel?>{};
   final List<String> requestedSlugs = <String>[];
@@ -629,7 +647,6 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   Stream<EventDeltaModel> watchEventsStream({
     ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
-    List<ScheduleRepoString>? tags,
     ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
     List<ScheduleRepoString>? occurrenceIds,
@@ -647,7 +664,6 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     required ScheduleRepositoryContractDeltaHandler onDelta,
     ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
-    List<ScheduleRepoString>? tags,
     ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
     List<ScheduleRepoString>? occurrenceIds,
@@ -4995,6 +5011,57 @@ void main() {
       },
     );
 
+    testWidgets(
+      'account profile poi without public detail hides detail and share actions',
+      (tester) async {
+        final router = _RecordingStackRouter()..canPopResult = false;
+        final localAccountProfilesRepository = _FakeAccountProfilesRepository();
+        final localPoiRepository = _buildPoiRepository(
+          mapRepository: mapRepository,
+          accountProfilesRepository: localAccountProfilesRepository,
+        );
+        final localController = _buildMapController(
+          poiRepository: localPoiRepository,
+          userLocationRepository: userLocationRepository,
+          telemetryRepository: telemetry,
+          appData: _buildAppData(),
+        );
+        addTearDown(() async {
+          await localController.onDispose();
+        });
+        localAccountProfilesRepository.profilesBySlug['casa-marracini'] =
+            buildAccountProfileModelFromPrimitives(
+          id: '507f1f77bcf86cd799439011',
+          name: 'Casa Marracini',
+          slug: 'casa-marracini',
+          type: 'artist',
+          canOpenPublicDetail: false,
+        );
+        final poi = _buildPoi(
+          id: 'poi-partner',
+          name: 'Casa Marracini',
+          refType: 'account_profile',
+          refId: '507f1f77bcf86cd799439011',
+          refSlug: 'casa-marracini',
+          refPath: '/parceiro/casa-marracini',
+          category: CityPoiCategory.restaurant,
+        );
+
+        await localPoiRepository.ensurePoiHydrated(poi);
+        localController.selectPoi(poi);
+
+        await _pumpPoiDetailDeck(
+          tester,
+          controller: localController,
+          router: router,
+        );
+
+        expect(find.text('Traçar rota'), findsOneWidget);
+        expect(find.text('Ver detalhes'), findsNothing);
+        expect(find.byTooltip('Compartilhar'), findsNothing);
+      },
+    );
+
     test(
       'map controller saves eligible account profile poi as ponto de referência',
       () async {
@@ -5164,9 +5231,7 @@ void main() {
 
         expect(localProximityRepository.lastFixedReference, isNull);
         expect(
-          find.text(
-            'Todas as distâncias serão calculadas a partir desse local:',
-          ),
+          find.byKey(const Key('poiReferencePointDialogCopy')),
           findsOneWidget,
         );
         final previewCard = find.byKey(
@@ -5192,6 +5257,104 @@ void main() {
         expect(fixedReference!.entityNamespace, 'account_profile');
         expect(fixedReference.entityId, '507f1f77bcf86cd799439011');
         expect(fixedReference.label, 'Casa Marracini');
+
+        await localController.onDispose();
+      },
+    );
+
+    testWidgets(
+      'map deck clears current account profile reference point with confirmation',
+      (tester) async {
+        final localAccountProfilesRepository = _FakeAccountProfilesRepository();
+        final localStaticAssetsRepository = _FakeStaticAssetsRepository();
+        localAccountProfilesRepository.profilesBySlug['casa-marracini'] =
+            buildAccountProfileModelFromPrimitives(
+          id: '507f1f77bcf86cd799439011',
+          name: 'Casa Marracini',
+          slug: 'casa-marracini',
+          type: 'artist',
+          locationLat: -20.7389,
+          locationLng: -40.8212,
+        );
+        final fixedReference = FixedLocationReference(
+          sourceKind: FixedLocationReferenceSourceKind.entityReference,
+          coordinate: _buildCoordinate('-20.7389', '-40.8212'),
+          labelValue: ProximityPreferenceOptionalTextValue.fromRaw(
+            'Casa Marracini',
+          ),
+          entityNamespaceValue:
+              ProximityPreferenceOptionalTextValue.fromRaw('account_profile'),
+          entityTypeValue: ProximityPreferenceOptionalTextValue.fromRaw(
+            'artist',
+          ),
+          entityIdValue: ProximityPreferenceOptionalTextValue.fromRaw(
+            '507f1f77bcf86cd799439011',
+          ),
+          entitySlugValue:
+              ProximityPreferenceOptionalTextValue.fromRaw('casa-marracini'),
+        );
+        final localProximityRepository = _FakeProximityPreferencesRepository(
+          fixedReference: fixedReference,
+        );
+        final localPoiRepository = _buildPoiRepository(
+          mapRepository: mapRepository,
+          accountProfilesRepository: localAccountProfilesRepository,
+          staticAssetsRepository: localStaticAssetsRepository,
+        );
+        final localController = _buildMapController(
+          poiRepository: localPoiRepository,
+          userLocationRepository: userLocationRepository,
+          telemetryRepository: telemetry,
+          appData: _buildAppData(artistReferenceLocationEnabled: true),
+          proximityPreferencesRepository: localProximityRepository,
+        );
+        final poi = _buildPoi(
+          id: 'poi-partner',
+          name: 'Casa Marracini',
+          refType: 'account_profile',
+          refId: '507f1f77bcf86cd799439011',
+          refSlug: 'casa-marracini',
+          refPath: '/parceiro/casa-marracini',
+          category: CityPoiCategory.restaurant,
+        );
+
+        await localPoiRepository.ensurePoiHydrated(poi);
+        localController.selectPoi(poi);
+
+        await _pumpPoiDetailDeckWithAutoRouter(
+          tester,
+          controller: localController,
+        );
+
+        expect(
+          find.byKey(const Key('poiCardCurrentReferencePointButton')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const Key('poiCardClearReferencePointButton')),
+          findsOneWidget,
+        );
+
+        await tester
+            .tap(find.byKey(const Key('poiCardClearReferencePointButton')));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(const Key('poiClearReferencePointDialog')),
+          findsOneWidget,
+        );
+
+        await tester.tap(
+          find.byKey(const Key('poiClearReferencePointConfirmButton')),
+        );
+        await tester.pumpAndSettle();
+
+        expect(localProximityRepository.clearFixedReferenceCalls, 1);
+        expect(localProximityRepository.lastFixedReference, isNull);
+        expect(
+          find.byKey(const Key('poiCardSetReferencePointButton')),
+          findsOneWidget,
+        );
 
         await localController.onDispose();
       },

@@ -11,6 +11,7 @@ abstract class PoiBaseCard extends StatelessWidget {
     required this.poi,
     required this.colorScheme,
     required this.onPrimaryAction,
+    this.showPrimaryAction = true,
     required this.secondaryAction,
     required this.onRoute,
     this.referencePointAction,
@@ -21,6 +22,7 @@ abstract class PoiBaseCard extends StatelessWidget {
   final CityPoiModel poi;
   final ColorScheme colorScheme;
   final VoidCallback onPrimaryAction;
+  final bool showPrimaryAction;
   final PoiCardSecondaryAction? secondaryAction;
   final VoidCallback onRoute;
   final PoiCardReferencePointAction? referencePointAction;
@@ -221,23 +223,25 @@ abstract class PoiBaseCard extends StatelessWidget {
                             label: Text(routeActionLabel(context)),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: FilledButton.tonal(
-                            onPressed: onPrimaryAction,
-                            style: FilledButton.styleFrom(
-                              minimumSize: Size.fromHeight(buttonHeight),
-                              backgroundColor:
-                                  colorScheme.surfaceContainerHighest,
-                              foregroundColor: colorScheme.onSurface,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(18),
+                        if (showPrimaryAction) ...[
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: FilledButton.tonal(
+                              onPressed: onPrimaryAction,
+                              style: FilledButton.styleFrom(
+                                minimumSize: Size.fromHeight(buttonHeight),
+                                backgroundColor:
+                                    colorScheme.surfaceContainerHighest,
+                                foregroundColor: colorScheme.onSurface,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                                elevation: 0,
                               ),
-                              elevation: 0,
+                              child: Text(primaryActionLabel(context)),
                             ),
-                            child: Text(primaryActionLabel(context)),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                     if (referencePointAction != null) ...[
@@ -455,22 +459,33 @@ class _ReferencePointButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final minimumHeight = compact ? 40.0 : 46.0;
     if (action.isActive) {
-      return SizedBox(
-        width: double.infinity,
-        child: FilledButton.tonalIcon(
-          key: const Key('poiCardCurrentReferencePointButton'),
-          onPressed: action.onTap,
-          icon: const Icon(Icons.check_circle_rounded),
-          label: const Text('Ponto de referência'),
-          style: FilledButton.styleFrom(
-            minimumSize: Size.fromHeight(minimumHeight),
-            backgroundColor: colorScheme.secondaryContainer,
-            foregroundColor: colorScheme.onSecondaryContainer,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          FilledButton.tonalIcon(
+            key: const Key('poiCardCurrentReferencePointButton'),
+            onPressed: action.onTap,
+            icon: const Icon(Icons.check_circle_rounded),
+            label: const Text('Ponto de referência'),
+            style: FilledButton.styleFrom(
+              minimumSize: Size.fromHeight(minimumHeight),
+              backgroundColor: colorScheme.secondaryContainer,
+              foregroundColor: colorScheme.onSecondaryContainer,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
             ),
           ),
-        ),
+          if (action.onClear != null) ...[
+            const SizedBox(height: 4),
+            TextButton.icon(
+              key: const Key('poiCardClearReferencePointButton'),
+              onPressed: action.onClear,
+              icon: const Icon(Icons.location_off_outlined),
+              label: const Text('Cancelar ponto de referência'),
+            ),
+          ],
+        ],
       );
     }
 

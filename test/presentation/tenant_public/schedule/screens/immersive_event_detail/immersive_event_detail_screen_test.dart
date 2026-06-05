@@ -39,10 +39,13 @@ import 'package:belluga_now/domain/proximity_preferences/proximity_preference.da
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
+import 'package:belluga_now/domain/schedule/event_profile_group.dart';
 import 'package:belluga_now/domain/schedule/event_programming_item.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_profile_group_order_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_screen_controller.dart';
@@ -63,6 +66,7 @@ import 'package:belluga_now/domain/value_objects/thumb_type_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/presentation/shared/icons/map_marker_visual_resolver.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/controllers/immersive_event_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/immersive_event_detail_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/event_programming_section.dart';
@@ -153,6 +157,80 @@ void main() {
       router.lastReplacedPath,
       '/auth/login?redirect=%2Fagenda%2Fevento%2Fevento-de-teste',
     );
+  });
+
+  testWidgets(
+      'web anonymous confirm presence promotes app with canonical modal',
+      (tester) async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    final appDataRepository = _FakeAppDataRepository(_buildAppData());
+    GetIt.I.registerSingleton<AppData>(_buildAppData());
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
+    GetIt.I.registerSingleton<AppPromotionScreenController>(
+      AppPromotionScreenController(
+        appDataRepository: appDataRepository,
+        preferredStorePlatformResolver: () => AppPromotionStorePlatform.android,
+      ),
+    );
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: false),
+        appDataRepository: appDataRepository,
+      ),
+    );
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(
+              event: _buildEvent(),
+              isWebRuntime: true,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await tester.tap(find.textContaining('Confirmar Presença'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('app_promotion_modal')), findsOneWidget);
+    expect(find.text('Confirme presença pelo app'), findsOneWidget);
+    expect(
+      find.text(
+        'Use o app para confirmar sua presença e acompanhar esse evento.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('app_promotion_modal_body')), findsOneWidget);
+    expect(
+      find.byKey(const Key('app_promotion_store_badge_android')),
+      findsOneWidget,
+    );
+    expect(userEventsRepository.confirmCalls, 0);
+    expect(invitesRepository.acceptInviteCalls, 0);
+    expect(router.lastPushedPath, isNull);
+    expect(router.lastReplacedPath, isNull);
+    expect(_takeAllExceptions(tester), isEmpty);
   });
 
   testWidgets(
@@ -354,11 +432,14 @@ void main() {
 
     expect(find.text('Agora não'), findsOneWidget);
     expect(find.text('Bóora!'), findsOneWidget);
-    expect(find.text('16/03 às 09:00'), findsOneWidget);
-    expect(find.text('15/03 às 20:00'), findsNothing);
+    expect(
+      find.text('Seg, 16 mar · 9h'),
+      findsWidgets,
+    );
+    expect(find.text('Dom, 15 mar · 20h'), findsNothing);
   });
 
-  testWidgets('event detail hero renders explicit schedule range with às',
+  testWidgets('event detail hero renders explicit schedule range with h labels',
       (tester) async {
     GetIt.I.registerSingleton<ImmersiveEventDetailController>(
       ImmersiveEventDetailController(
@@ -397,8 +478,11 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.textContaining('20:00 às'), findsOneWidget);
-    expect(find.textContaining('20:00 -'), findsNothing);
+    expect(
+      find.textContaining('Dom, 15 mar · 20h às 22h'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('20:00'), findsNothing);
   });
 
   testWidgets('event detail uses sixty-five percent immersive hero height',
@@ -446,7 +530,7 @@ void main() {
   });
 
   testWidgets(
-      'event detail share action uses the public event route without creating invite code',
+      'event detail authenticated share action creates invite response link',
       (tester) async {
     final userEventsRepository = _FakeUserEventsRepository();
     final invitesRepository = _FakeInvitesRepository();
@@ -510,21 +594,180 @@ void main() {
     await tester.tap(find.byKey(const Key('immersiveHeroShareAction')));
     await tester.pumpAndSettle();
 
-    expect(invitesRepository.createShareCodeCalls, 0);
+    expect(invitesRepository.createShareCodeCalls, 1);
+    expect(
+      invitesRepository.lastCreateShareEventId,
+      '507f1f77bcf86cd799439011',
+    );
+    expect(
+      invitesRepository.lastCreateShareOccurrenceId,
+      'occurrence-selected',
+    );
     expect(sharedSubjects, ['Convite para Evento de Teste']);
-    expect(sharedTexts.single, contains('Bora para Evento de Teste?'));
+    expect(sharedTexts.single, startsWith('Convite para Evento de Teste.'));
     expect(
       sharedTexts.single,
-      contains('segunda-feira, 16 de março às 9h'),
+      contains('Seg, 16 mar · 9h'),
     );
+    expect(sharedTexts.single, contains('Responder ao convite:'));
     expect(sharedTexts.single,
-        contains('https://tenant.test/agenda/evento/evento-de-teste'));
-    expect(sharedTexts.single, contains('occurrence=occurrence-selected'));
+        contains('https://tenant.test/invite?code=CODE123'));
+    expect(
+      sharedTexts.single,
+      isNot(contains('https://tenant.test/agenda/evento/evento-de-teste')),
+    );
+    expect(sharedTexts.single, isNot(contains('Detalhes:')));
+    expect(sharedTexts.single, isNot(contains('Como chegar:')));
+    expect(sharedTexts.single, isNot(contains('/mapa')));
     expect(sharedTexts.single, isNot(contains('2026-03-16')));
   });
 
   testWidgets(
-      'event detail invite hero action opens the canonical invite route',
+      'event detail web anonymous share action keeps neutral public event route',
+      (tester) async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    final sharedTexts = <String?>[];
+    final sharedSubjects = <String?>[];
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: false),
+        appDataRepository: _FakeAppDataRepository(_buildAppData()),
+      ),
+    );
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(
+              event: _buildEvent(
+                venue: _buildVenueResume(),
+                occurrences: [
+                  _buildOccurrence(
+                    id: 'occurrence-selected',
+                    start: DateTime(2026, 3, 16, 9),
+                    isSelected: true,
+                  ),
+                ],
+              ),
+              isWebRuntime: true,
+              shareLauncher: (params) async {
+                sharedTexts.add(params.text);
+                sharedSubjects.add(params.subject);
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await tester.tap(find.byKey(const Key('immersiveHeroShareAction')));
+    await tester.pumpAndSettle();
+
+    expect(invitesRepository.createShareCodeCalls, 0);
+    expect(sharedSubjects, ['Evento de Teste']);
+    expect(sharedTexts.single, startsWith('Evento de Teste'));
+    expect(sharedTexts.single, contains('Seg, 16 mar · 9h'));
+    expect(sharedTexts.single, contains('Ver evento:'));
+    expect(sharedTexts.single,
+        contains('https://tenant.test/agenda/evento/evento-de-teste'));
+    expect(sharedTexts.single, contains('occurrence=occurrence-selected'));
+    expect(sharedTexts.single, isNot(contains('Convite para')));
+    expect(sharedTexts.single, isNot(contains('te convidou')));
+    expect(sharedTexts.single, isNot(contains('Responder ao convite:')));
+    expect(sharedTexts.single, isNot(contains('2026-03-16')));
+  });
+
+  testWidgets(
+      'event detail authenticated WhatsApp action uses invite response link',
+      (tester) async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    final launchedUris = <Uri>[];
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+        appDataRepository: _FakeAppDataRepository(_buildAppData()),
+      ),
+    );
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(
+              event: _buildEvent(
+                occurrences: [
+                  _buildOccurrence(
+                    id: 'occurrence-selected',
+                    start: DateTime(2026, 3, 16, 9),
+                    isSelected: true,
+                  ),
+                ],
+              ),
+              externalUrlLauncher: (uri, {required mode}) async {
+                launchedUris.add(uri);
+                return true;
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await tester.tap(find.byKey(const Key('immersiveHeroWhatsappAction')));
+    await tester.pumpAndSettle();
+
+    expect(invitesRepository.createShareCodeCalls, 1);
+    expect(
+        invitesRepository.lastCreateShareOccurrenceId, 'occurrence-selected');
+    expect(launchedUris, hasLength(1));
+    expect(launchedUris.single.scheme, 'whatsapp');
+    final text = launchedUris.single.queryParameters['text']!;
+    expect(text, startsWith('Convite para Evento de Teste.'));
+    expect(text, contains('Responder ao convite:'));
+    expect(text, contains('https://tenant.test/invite?code=CODE123'));
+    expect(text, isNot(contains('/agenda/evento/')));
+    expect(text, isNot(contains('Detalhes:')));
+    expect(text, isNot(contains('Como chegar:')));
+  });
+
+  testWidgets('event detail invite hero action opens composer route directly',
       (tester) async {
     final userEventsRepository = _FakeUserEventsRepository();
     final invitesRepository = _FakeInvitesRepository();
@@ -580,6 +823,79 @@ void main() {
     expect(pushedRoute.args!.invite, isNotNull);
     expect(pushedRoute.args!.invite!.occurrenceId, 'occurrence-selected');
     expect(invitesRepository.createShareCodeCalls, 0);
+  });
+
+  testWidgets(
+      'web anonymous invite composer action promotes app with canonical modal',
+      (tester) async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    final appDataRepository = _FakeAppDataRepository(_buildAppData());
+    GetIt.I.registerSingleton<AppData>(_buildAppData());
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
+    GetIt.I.registerSingleton<AppPromotionScreenController>(
+      AppPromotionScreenController(
+        appDataRepository: appDataRepository,
+        preferredStorePlatformResolver: () => AppPromotionStorePlatform.android,
+      ),
+    );
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: false),
+        appDataRepository: appDataRepository,
+      ),
+    );
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(
+              event: _buildEvent(),
+              isWebRuntime: true,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await tester.tap(find.byKey(const Key('immersiveHeroInviteAction')));
+    await tester.pumpAndSettle();
+
+    expect(router.lastPushedRoute, isNull);
+    expect(router.lastPushedPath, isNull);
+    expect(router.lastReplacedPath, isNull);
+    expect(find.byKey(const Key('app_promotion_modal')), findsOneWidget);
+    expect(find.text('Convide pessoas pelo app'), findsOneWidget);
+    expect(
+      find.text(
+        'Use o app para escolher contatos, acompanhar envios e gerenciar convites.',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('app_promotion_store_badge_android')),
+      findsOneWidget,
+    );
+    expect(invitesRepository.createShareCodeCalls, 0);
+    expect(_takeAllExceptions(tester), isEmpty);
   });
 
   testWidgets(
@@ -645,7 +961,7 @@ void main() {
 
     expect(find.text('Agora não'), findsOneWidget);
     expect(find.text('Bóora!'), findsOneWidget);
-    expect(find.text('16/03 às 09:00'), findsOneWidget);
+    expect(find.text('Seg, 16 mar · 9h'), findsWidgets);
   });
 
   testWidgets(
@@ -653,12 +969,13 @@ void main() {
       (tester) async {
     final userEventsRepository = _FakeUserEventsRepository();
     final invitesRepository = _FakeInvitesRepository();
+    final controller = ImmersiveEventDetailController(
+      userEventsRepository: userEventsRepository,
+      invitesRepository: invitesRepository,
+      authRepository: _FakeAuthRepository(authorized: true),
+    );
     GetIt.I.registerSingleton<ImmersiveEventDetailController>(
-      ImmersiveEventDetailController(
-        userEventsRepository: userEventsRepository,
-        invitesRepository: invitesRepository,
-        authRepository: _FakeAuthRepository(authorized: true),
-      ),
+      controller,
     );
 
     final router = _RecordingStackRouter()..canPopResult = false;
@@ -988,14 +1305,9 @@ void main() {
 
     expect(find.byKey(const Key('immersiveTabSelected_1')), findsOneWidget);
 
-    final swipeSurface = tester.widget<GestureDetector>(
+    await tester.drag(
       find.byKey(const Key('immersiveSwipeSurface')),
-    );
-    swipeSurface.onHorizontalDragEnd?.call(
-      DragEndDetails(
-        velocity: const Velocity(pixelsPerSecond: Offset(-1000, 0)),
-        primaryVelocity: -1000,
-      ),
+      const Offset(-320, 0),
     );
     await tester.pump();
     await tester.pumpAndSettle();
@@ -1167,7 +1479,7 @@ void main() {
   });
 
   testWidgets(
-      'horizontal swipe inside Programação returns the section body to the top before opening the next occurrence',
+      'horizontal swipe inside scrolled Programação keeps Programação anchored before opening the next occurrence',
       (tester) async {
     final userEventsRepository = _FakeUserEventsRepository();
     final invitesRepository = _FakeInvitesRepository();
@@ -1267,14 +1579,9 @@ void main() {
     final beforeSwipeDy = tester.getTopLeft(selectorViewport).dy;
     expect(beforeSwipeDy, lessThan(0));
 
-    final swipeSurface = tester.widget<GestureDetector>(
+    await tester.drag(
       find.byKey(const Key('immersiveSwipeSurface')),
-    );
-    swipeSurface.onHorizontalDragEnd?.call(
-      DragEndDetails(
-        velocity: const Velocity(pixelsPerSecond: Offset(-1000, 0)),
-        primaryVelocity: -1000,
-      ),
+      const Offset(-320, 0),
     );
     await tester.pump();
     await tester.pumpAndSettle();
@@ -1282,7 +1589,7 @@ void main() {
     final afterSwipeDy = tester.getTopLeft(selectorViewport).dy;
     expect(selectedOccurrenceId, 'occ-2');
     expect(afterSwipeDy, greaterThan(beforeSwipeDy));
-    expect(afterSwipeDy, greaterThanOrEqualTo(0));
+    expect(afterSwipeDy, greaterThanOrEqualTo(88));
   });
 
   testWidgets(
@@ -1387,6 +1694,86 @@ void main() {
         .tap(find.byKey(const Key('linkedProfileFavoriteButton_artist-1')));
     await tester.pumpAndSettle();
     expect(accountProfilesRepository.toggleFavoriteCalls, 1);
+  });
+
+  testWidgets(
+      'does not navigate linked profile card without public detail permission',
+      (
+    tester,
+  ) async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    final accountProfilesRepository = _FakeAccountProfilesRepository();
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+        appDataRepository: _FakeAppDataRepository(_buildAppData()),
+        accountProfilesRepository: accountProfilesRepository,
+      ),
+    );
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(
+              event: _buildEvent(
+                isConfirmed: true,
+                linkedProfiles: [
+                  _buildLinkedAccountProfile(
+                    id: 'artist-static',
+                    displayName: 'Perfil sem rota',
+                    profileType: 'artist',
+                    slug: 'perfil-sem-rota',
+                    canOpenPublicDetail: false,
+                  ),
+                ],
+                profileGroups: [
+                  EventProfileGroup(
+                    idValue: EventLinkedAccountProfileTextValue('artists'),
+                    labelValue: EventLinkedAccountProfileTextValue('Artists'),
+                    orderValue: EventProfileGroupOrderValue(0),
+                    profiles: [
+                      _buildLinkedAccountProfile(
+                        id: 'artist-static',
+                        displayName: 'Perfil sem rota',
+                        profileType: 'artist',
+                        slug: 'perfil-sem-rota',
+                        canOpenPublicDetail: false,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    await _tapImmersiveTab(tester, 1);
+    await tester.tap(
+      find.byKey(const Key('linkedProfileCardTapTarget_artist-static')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(router.lastPushedRoute, isNull);
   });
 
   testWidgets(
@@ -1545,6 +1932,62 @@ void main() {
     expect(find.byKey(const Key('immersiveTabSelected_1')), findsOneWidget);
   });
 
+  testWidgets('event hero fades cover into the themed page surface',
+      (tester) async {
+    const surface = Color(0xFFF8F1EC);
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+        appDataRepository: _FakeAppDataRepository(_buildAppData()),
+      ),
+    );
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          theme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: Colors.teal,
+            ).copyWith(surface: surface),
+          ),
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(
+              event: _buildEvent(),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final fade = tester.widget<Container>(
+      find.byKey(const Key('eventHeroFadeGradient')),
+    );
+    final decoration = fade.decoration as BoxDecoration;
+    final gradient = decoration.gradient as LinearGradient;
+
+    expect(gradient.colors.last, surface);
+    expect(gradient.stops?.last, 1.0);
+  });
+
   testWidgets(
       'event hero compact chip opens first available profile type tab when first profile is untyped',
       (tester) async {
@@ -1624,7 +2067,7 @@ void main() {
   });
 
   testWidgets(
-      'event hero keeps three linked profiles expanded and opens first profile type tab',
+      'event hero compacts multiple linked profiles and opens first profile type tab',
       (tester) async {
     final userEventsRepository = _FakeUserEventsRepository();
     final invitesRepository = _FakeInvitesRepository();
@@ -1682,20 +2125,257 @@ void main() {
     );
     expect(
       find.byKey(const Key('eventHeroCounterpartChip_artist-2')),
-      findsOneWidget,
+      findsNothing,
     );
     expect(
       find.byKey(const Key('eventHeroCounterpartChip_artist-3')),
-      findsOneWidget,
+      findsNothing,
     );
-    expect(find.byKey(const Key('eventHeroMoreProfilesChip')), findsNothing);
+    expect(find.byKey(const Key('eventHeroMoreProfilesChip')), findsOneWidget);
+    expect(find.text('e mais 2'), findsOneWidget);
 
-    await tester.tap(
-      find.byKey(const Key('eventHeroCounterpartChip_artist-1')),
-    );
+    await tester.tap(find.byKey(const Key('eventHeroMoreProfilesChip')));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('immersiveTabSelected_1')), findsOneWidget);
+  });
+
+  testWidgets(
+      'event hero keeps taxonomy tags above the title and profiles below it',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+        appDataRepository: _FakeAppDataRepository(_buildAppData()),
+      ),
+    );
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+    final linkedProfiles = [
+      _buildLinkedAccountProfile(
+        id: 'artist-1',
+        displayName: 'Artista com Nome Longo 1',
+        profileType: 'artist',
+        slug: 'artista-1',
+      ),
+      _buildLinkedAccountProfile(
+        id: 'artist-2',
+        displayName: 'Artista com Nome Longo 2',
+        profileType: 'artist',
+        slug: 'artista-2',
+      ),
+    ];
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(
+              event: _buildEvent(
+                linkedProfiles: linkedProfiles,
+                tags: const [
+                  'Super Festival Gastronomico Com Nome Muito Grande',
+                  'Musica Instrumental Experimental Noturna',
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final taxonomyStripFinder =
+        find.byKey(const Key('eventHeroTaxonomyTagStrip'));
+    final categoryChipFinder = find.byKey(const Key('eventHeroCategoryChip'));
+    final categoryChipText = find.descendant(
+      of: categoryChipFinder,
+      matching: find.text('Show tipo'),
+    );
+    final categoryChipIconFinder =
+        find.byKey(const Key('eventHeroCategoryChipIcon'));
+    final titleText =
+        tester.widget<Text>(find.byKey(const Key('eventHeroTitle')));
+
+    expect(categoryChipFinder, findsOneWidget);
+    expect(categoryChipText, findsOneWidget);
+    expect(categoryChipIconFinder, findsOneWidget);
+    expect(
+      tester.widget<Icon>(categoryChipIconFinder).icon,
+      MapMarkerVisualResolver.resolveIcon('music'),
+    );
+    expect(find.byKey(const Key('eventHeroCounterpartStrip')), findsOneWidget);
+    expect(titleText.style?.shadows, isNotNull);
+    expect(titleText.style?.shadows, hasLength(2));
+    expect(titleText.style?.shadows?.first.offset, Offset.zero);
+    expect(titleText.style?.shadows?.first.blurRadius, 12);
+    expect(titleText.style?.shadows?.last.offset, const Offset(0, 1));
+    expect(titleText.style?.shadows?.last.blurRadius, 24);
+
+    final titleTop = tester
+        .getTopLeft(
+          find.byKey(const Key('eventHeroTitle')),
+        )
+        .dy;
+    final categoryChipTop = tester.getTopLeft(categoryChipFinder).dy;
+    final firstChipTop = tester
+        .getTopLeft(
+          find.byKey(
+            const Key(
+              'eventHeroTaxonomyTagChip_Super Festival Gastronomico Com Nome Muito Grande',
+            ),
+          ),
+        )
+        .dy;
+    final secondChipTop = tester
+        .getTopLeft(
+          find.byKey(
+            const Key(
+              'eventHeroTaxonomyTagChip_Musica Instrumental Experimental Noturna',
+            ),
+          ),
+        )
+        .dy;
+    final profileChipTop = tester
+        .getTopLeft(
+          find.byKey(const Key('eventHeroCounterpartChip_artist-1')),
+        )
+        .dy;
+
+    expect(categoryChipTop, lessThan(firstChipTop));
+    expect(firstChipTop, lessThan(titleTop));
+    expect(secondChipTop, closeTo(firstChipTop, 0.5));
+    expect(tester.getBottomLeft(taxonomyStripFinder).dy, lessThan(titleTop));
+    expect(profileChipTop, greaterThan(titleTop));
+  });
+
+  testWidgets(
+      'event hero taxonomy strip keeps one line and collapses overflow into counter chip',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+        appDataRepository: _FakeAppDataRepository(_buildAppData()),
+      ),
+    );
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: ImmersiveEventDetailScreen(
+              event: _buildEvent(
+                tags: const [
+                  'Show tipo',
+                  'Super Festival Gastronomico Com Nome Muito Grande',
+                  'Musica Instrumental Experimental Noturna',
+                  'Ao Vivo',
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.byKey(const Key('eventHeroCategoryChip')), findsOneWidget);
+    expect(
+      find.byKey(
+        const Key('eventHeroTaxonomyTagChip_Show tipo'),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.byKey(
+        const Key(
+          'eventHeroTaxonomyTagChip_Super Festival Gastronomico Com Nome Muito Grande',
+        ),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(
+        const Key(
+            'eventHeroTaxonomyTagChip_Musica Instrumental Experimental Noturna'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+        find.byKey(const Key('eventHeroTaxonomyOverflowChip')), findsOneWidget);
+    expect(find.text('+1'), findsOneWidget);
+    expect(find.text('Ao Vivo'), findsNothing);
+
+    final firstChipTop = tester
+        .getTopLeft(
+          find.byKey(
+            const Key(
+              'eventHeroTaxonomyTagChip_Super Festival Gastronomico Com Nome Muito Grande',
+            ),
+          ),
+        )
+        .dy;
+    final secondChipTop = tester
+        .getTopLeft(
+          find.byKey(
+            const Key(
+              'eventHeroTaxonomyTagChip_Musica Instrumental Experimental Noturna',
+            ),
+          ),
+        )
+        .dy;
+    final overflowChipTop = tester
+        .getTopLeft(
+          find.byKey(const Key('eventHeroTaxonomyOverflowChip')),
+        )
+        .dy;
+
+    expect(secondChipTop, closeTo(firstChipTop, 0.5));
+    expect(overflowChipTop, closeTo(firstChipTop, 0.5));
   });
 
   testWidgets(
@@ -1787,12 +2467,13 @@ void main() {
       (tester) async {
     final userEventsRepository = _FakeUserEventsRepository();
     final invitesRepository = _FakeInvitesRepository();
+    final controller = ImmersiveEventDetailController(
+      userEventsRepository: userEventsRepository,
+      invitesRepository: invitesRepository,
+      authRepository: _FakeAuthRepository(authorized: true),
+    );
     GetIt.I.registerSingleton<ImmersiveEventDetailController>(
-      ImmersiveEventDetailController(
-        userEventsRepository: userEventsRepository,
-        invitesRepository: invitesRepository,
-        authRepository: _FakeAuthRepository(authorized: true),
-      ),
+      controller,
     );
 
     final router = _RecordingStackRouter();
@@ -1804,39 +2485,62 @@ void main() {
       type: const RouteType.material(),
     );
 
+    var selectedOccurrenceId = 'occ-2';
+
+    EventModel buildEvent() {
+      return _buildEvent(
+        occurrences: [
+          _buildOccurrence(
+            id: 'occ-1',
+            start: DateTime(2026, 3, 15, 20),
+            end: DateTime(2026, 3, 15, 22),
+            isSelected: selectedOccurrenceId == 'occ-1',
+          ),
+          _buildOccurrence(
+            id: 'occ-2',
+            start: DateTime(2026, 3, 16, 20),
+            end: DateTime(2026, 3, 16, 22),
+            isSelected: selectedOccurrenceId == 'occ-2',
+            programmingCount: 1,
+          ),
+        ],
+        programmingItems: selectedOccurrenceId == 'occ-2'
+            ? [
+                _buildProgrammingItem(
+                  time: '17:00',
+                  title: 'Show da data atual',
+                ),
+              ]
+            : const [],
+      );
+    }
+
     await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: RouteDataScope(
-            routeData: routeData,
-            child: ImmersiveEventDetailScreen(
-              event: _buildEvent(
-                occurrences: [
-                  _buildOccurrence(
-                    id: 'occ-1',
-                    start: DateTime(2026, 3, 15, 20),
-                    end: DateTime(2026, 3, 15, 22),
-                  ),
-                  _buildOccurrence(
-                    id: 'occ-2',
-                    start: DateTime(2026, 3, 16, 20),
-                    end: DateTime(2026, 3, 16, 22),
-                    isSelected: true,
-                    programmingCount: 1,
-                  ),
-                ],
-                programmingItems: [
-                  _buildProgrammingItem(
-                    time: '17:00',
-                    title: 'Show da data atual',
-                  ),
-                ],
+      StatefulBuilder(
+        builder: (context, setState) {
+          router.onNavigateRoute = (route) {
+            final occurrenceId = route.queryParams.optString('occurrence');
+            if (occurrenceId == null || occurrenceId.isEmpty) {
+              return;
+            }
+            setState(() {
+              selectedOccurrenceId = occurrenceId;
+            });
+          };
+
+          return StackRouterScope(
+            controller: router,
+            stateHash: 0,
+            child: MaterialApp(
+              home: RouteDataScope(
+                routeData: routeData,
+                child: ImmersiveEventDetailScreen(
+                  event: buildEvent(),
+                ),
               ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
 
@@ -1910,17 +2614,158 @@ void main() {
     await tester.pump();
 
     expect(router.lastReplacedPath, isNull);
-    expect(router.lastNavigatedRoute, isA<ImmersiveEventDetailRoute>());
-    final route = router.lastNavigatedRoute! as ImmersiveEventDetailRoute;
+    expect(router.lastNavigatedRoute, isNull);
+    expect(router.lastReplacedRoute, isA<ImmersiveEventDetailRoute>());
+    final route = router.lastReplacedRoute! as ImmersiveEventDetailRoute;
     expect(route.rawPathParams['slug'], 'evento-de-teste');
     expect(route.rawQueryParams['occurrence'], 'occ-1');
     expect(route.rawQueryParams['tab'], 'programming');
+    expect(controller.eventStreamValue.value?.selectedOccurrenceId, 'occ-1');
     await tester.pumpAndSettle();
     expect(
       find.byKey(const Key('eventDateCurrentBadge_occ-1')),
       findsNothing,
     );
     expect(find.text('Show da data atual'), findsNothing);
+  });
+
+  testWidgets(
+      'event detail aggregates profile tabs from every occurrence while selected occurrence changes programming only',
+      (tester) async {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+      ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+      ),
+    );
+
+    final band = _buildLinkedAccountProfile(
+      id: 'band-1',
+      displayName: 'Du Jorge',
+      profileType: 'band',
+      slug: 'du-jorge',
+    );
+    final exhibitor = _buildLinkedAccountProfile(
+      id: 'expo-1',
+      displayName: 'Agro Sul',
+      profileType: 'producer',
+      slug: 'agro-sul',
+    );
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(
+        fullPath: '/agenda/evento/evento-de-teste',
+        queryParams: const {'tab': 'programming'},
+      ),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+    var selectedOccurrenceId = 'occ-1';
+
+    EventModel buildEvent() {
+      final selectedFirst = selectedOccurrenceId == 'occ-1';
+      final firstProgrammingItems = [
+        _buildProgrammingItem(
+          time: '20:00',
+          title: 'Show da primeira data',
+        ),
+      ];
+      final secondProgrammingItems = [
+        _buildProgrammingItem(
+          time: '20:00',
+          title: 'Feira da segunda data',
+        ),
+      ];
+      return _buildEvent(
+        linkedProfiles: [band, exhibitor],
+        occurrences: [
+          _buildOccurrence(
+            id: 'occ-1',
+            start: DateTime(2026, 3, 15, 20),
+            isSelected: selectedFirst,
+            programmingCount: 1,
+            programmingItems: firstProgrammingItems,
+            profileGroups: [
+              _buildProfileGroup(
+                id: 'bandas-occ-1',
+                label: 'Bandas',
+                accountProfileIds: ['band-1'],
+              ),
+            ],
+          ),
+          _buildOccurrence(
+            id: 'occ-2',
+            start: DateTime(2026, 3, 16, 20),
+            isSelected: !selectedFirst,
+            programmingCount: 1,
+            programmingItems: secondProgrammingItems,
+            profileGroups: [
+              _buildProfileGroup(
+                id: 'expositores-occ-2',
+                label: 'Expositores',
+                accountProfileIds: ['expo-1'],
+              ),
+            ],
+          ),
+        ],
+        programmingItems:
+            selectedFirst ? firstProgrammingItems : secondProgrammingItems,
+      );
+    }
+
+    await tester.pumpWidget(
+      StatefulBuilder(
+        builder: (context, setState) {
+          router.onNavigateRoute = (route) {
+            final occurrenceId = route.queryParams.optString('occurrence');
+            if (occurrenceId == null || occurrenceId.isEmpty) {
+              return;
+            }
+            setState(() {
+              selectedOccurrenceId = occurrenceId;
+            });
+          };
+
+          return StackRouterScope(
+            controller: router,
+            stateHash: 0,
+            child: MaterialApp(
+              home: RouteDataScope(
+                routeData: routeData,
+                child: ImmersiveEventDetailScreen(event: buildEvent()),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 450));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Bandas'), findsWidgets);
+    expect(find.text('Expositores'), findsWidgets);
+    await _tapImmersiveTab(tester, 2);
+    expect(find.text('Du Jorge'), findsWidgets);
+    await _tapImmersiveTab(tester, 3);
+    expect(find.text('Agro Sul'), findsWidgets);
+
+    await _tapImmersiveTab(tester, 1);
+    await tester.tap(find.byKey(const Key('eventDateCard_occ-2')));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(selectedOccurrenceId, 'occ-2');
+    expect(find.text('Bandas'), findsWidgets);
+    expect(find.text('Expositores'), findsWidgets);
+    expect(find.text('Feira da segunda data'), findsOneWidget);
+    expect(find.text('Show da primeira data'), findsNothing);
   });
 
   testWidgets('event detail programming tab renders occurrence schedule',
@@ -2852,9 +3697,9 @@ void main() {
     await tester.tap(find.byKey(const Key('eventDateCard_occ-1')));
     await tester.pump();
 
-    expect(router.lastReplacedPath, isNull);
-    expect(router.lastNavigatedRoute, isA<ImmersiveEventDetailRoute>());
-    final route = router.lastNavigatedRoute! as ImmersiveEventDetailRoute;
+    expect(router.lastNavigatedRoute, isNull);
+    expect(router.lastReplacedRoute, isA<ImmersiveEventDetailRoute>());
+    final route = router.lastReplacedRoute! as ImmersiveEventDetailRoute;
     expect(route.rawPathParams['slug'], 'evento-de-teste');
     expect(route.rawQueryParams['occurrence'], 'occ-1');
     expect(route.rawQueryParams['tab'], 'programming');
@@ -3798,6 +4643,7 @@ class _RecordingStackRouter extends Mock implements StackRouter {
   String? lastReplacedPath;
   PageRouteInfo? lastPushedRoute;
   PageRouteInfo? lastNavigatedRoute;
+  PageRouteInfo? lastReplacedRoute;
   void Function(PageRouteInfo route)? onNavigateRoute;
   bool canPopResult = true;
   int popCallCount = 0;
@@ -3833,6 +4679,16 @@ class _RecordingStackRouter extends Mock implements StackRouter {
     OnNavigationFailure? onFailure,
   }) async {
     lastNavigatedRoute = route;
+    onNavigateRoute?.call(route);
+    return null;
+  }
+
+  @override
+  Future<T?> replace<T extends Object?>(
+    PageRouteInfo route, {
+    OnNavigationFailure? onFailure,
+  }) async {
+    lastReplacedRoute = route;
     onNavigateRoute?.call(route);
     return null;
   }
@@ -4268,6 +5124,8 @@ EventLinkedAccountProfile _buildLinkedAccountProfile({
   String? locationAddress,
   double? locationLat,
   double? locationLng,
+  bool canOpenPublicDetail = true,
+  String? publicDetailPath,
   List<EventLinkedAccountProfileTaxonomyTerm> taxonomyTerms = const [],
 }) {
   final taxonomyTermsGroup = EventLinkedAccountProfileTaxonomyTerms();
@@ -4296,6 +5154,13 @@ EventLinkedAccountProfile _buildLinkedAccountProfile({
         locationLat == null ? null : (LatitudeValue()..parse('$locationLat')),
     locationLongitudeValue:
         locationLng == null ? null : (LongitudeValue()..parse('$locationLng')),
+    canOpenPublicDetailValue: DomainBooleanValue(
+      defaultValue: false,
+      isRequired: false,
+    )..parse(canOpenPublicDetail.toString()),
+    publicDetailPathValue: EventLinkedAccountProfileTextValue(
+      publicDetailPath ?? '/parceiro/$slug',
+    ),
     taxonomyTerms: taxonomyTermsGroup,
   );
 }
@@ -4355,11 +5220,13 @@ ThumbUriValue? _thumbUriValueOrNull(String? rawUrl) {
 EventModel _buildEvent({
   PartnerResume? venue,
   List<EventLinkedAccountProfile> linkedProfiles = const [],
+  List<EventProfileGroup> profileGroups = const [],
   List<EventOccurrenceOption> occurrences = const [],
   List<EventProgrammingItem> programmingItems = const [],
   String? contentHtml,
   DateTime? endDateTime,
   bool isConfirmed = false,
+  List<String> tags = const <String>['show'],
 }) {
   return eventModelFromRaw(
     id: MongoIDValue()..parse('507f1f77bcf86cd799439011'),
@@ -4392,10 +5259,11 @@ EventModel _buildEvent({
           ..parse(endDateTime.toIso8601String())),
     artists: const [],
     linkedAccountProfiles: linkedProfiles,
+    profileGroups: profileGroups,
     occurrences: occurrences,
     programmingItems: programmingItems,
     coordinate: null,
-    tags: const <String>['show'],
+    tags: tags,
     isConfirmedValue: EventIsConfirmedValue()..parse(isConfirmed.toString()),
     confirmedAt: null,
     receivedInvites: null,
@@ -4422,6 +5290,7 @@ EventOccurrenceOption _buildOccurrence({
   bool hasLocationOverride = false,
   int programmingCount = 0,
   List<EventProgrammingItem> programmingItems = const [],
+  List<EventProfileGroup> profileGroups = const [],
 }) {
   final endValue = DomainOptionalDateTimeValue()..parse(end?.toIso8601String());
   return EventOccurrenceOption(
@@ -4436,6 +5305,24 @@ EventOccurrenceOption _buildOccurrence({
     programmingCountValue: EventProgrammingCountValue()
       ..parse(programmingCount.toString()),
     programmingItems: programmingItems,
+    profileGroups: profileGroups,
+  );
+}
+
+EventProfileGroup _buildProfileGroup({
+  required String id,
+  required String label,
+  int order = 0,
+  List<EventLinkedAccountProfile> profiles = const [],
+  List<String> accountProfileIds = const [],
+}) {
+  return EventProfileGroup(
+    idValue: EventLinkedAccountProfileTextValue(id),
+    labelValue: EventLinkedAccountProfileTextValue(label),
+    orderValue: EventProfileGroupOrderValue(order),
+    profiles: profiles,
+    accountProfileIdValues:
+        accountProfileIds.map(EventLinkedAccountProfileTextValue.new).toList(),
   );
 }
 

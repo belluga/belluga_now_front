@@ -133,6 +133,8 @@ class _FakeAccountProfilesRepository
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
     TenantAdminAccountProfilesRepoString? accountId,
+    TenantAdminAccountProfilesRepoBool? queryableOnly,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async =>
       [];
 
@@ -688,6 +690,31 @@ void main() {
 
       expect(controller.currentCapabilities.isPubliclyDiscoverable, isTrue);
       expect(controller.currentCapabilities.isFavoritable, isTrue);
+    },
+  );
+
+  test(
+    'disables public discovery when queryability is turned off without affecting public navigation',
+    () async {
+      final repository = _FakeAccountProfilesRepository([]);
+      final controller = TenantAdminProfileTypesController(
+        repository: repository,
+      );
+
+      controller.updateCapabilities(
+        isQueryable: true,
+        isPubliclyNavigable: true,
+        isPubliclyDiscoverable: true,
+      );
+      expect(controller.currentCapabilities.isQueryable, isTrue);
+      expect(controller.currentCapabilities.isPubliclyNavigable, isTrue);
+      expect(controller.currentCapabilities.isPubliclyDiscoverable, isTrue);
+
+      controller.updateCapabilities(isQueryable: false);
+
+      expect(controller.currentCapabilities.isQueryable, isFalse);
+      expect(controller.currentCapabilities.isPubliclyDiscoverable, isFalse);
+      expect(controller.currentCapabilities.isPubliclyNavigable, isTrue);
     },
   );
 

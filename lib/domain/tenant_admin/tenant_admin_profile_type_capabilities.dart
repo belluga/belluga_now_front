@@ -6,6 +6,8 @@ export 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_
 
 class TenantAdminProfileTypeCapabilities {
   factory TenantAdminProfileTypeCapabilities({
+    TenantAdminFlagValue? isQueryable,
+    TenantAdminFlagValue? isPubliclyNavigable,
     TenantAdminFlagValue? isPubliclyDiscoverable,
     required TenantAdminFlagValue isFavoritable,
     required TenantAdminFlagValue isPoiEnabled,
@@ -19,6 +21,12 @@ class TenantAdminProfileTypeCapabilities {
     TenantAdminFlagValue? hasNestedProfileGroups,
   }) {
     final normalized = TenantAdminProfileTypeCapabilityStateValue({
+      if (isQueryable != null)
+        TenantAdminProfileTypeCapabilityKey.isQueryable.apiValue:
+            isQueryable.value,
+      if (isPubliclyNavigable != null)
+        TenantAdminProfileTypeCapabilityKey.isPubliclyNavigable.apiValue:
+            isPubliclyNavigable.value,
       if (isPubliclyDiscoverable != null)
         TenantAdminProfileTypeCapabilityKey.isPubliclyDiscoverable.apiValue:
             isPubliclyDiscoverable.value,
@@ -42,6 +50,12 @@ class TenantAdminProfileTypeCapabilities {
     }).normalized();
 
     return TenantAdminProfileTypeCapabilities._(
+      isQueryable: normalized.flagValue(
+        TenantAdminProfileTypeCapabilityKey.isQueryable,
+      ),
+      isPubliclyNavigable: normalized.flagValue(
+        TenantAdminProfileTypeCapabilityKey.isPubliclyNavigable,
+      ),
       isPubliclyDiscoverable: normalized.flagValue(
         TenantAdminProfileTypeCapabilityKey.isPubliclyDiscoverable,
       ),
@@ -79,6 +93,8 @@ class TenantAdminProfileTypeCapabilities {
   }
 
   TenantAdminProfileTypeCapabilities._({
+    required TenantAdminFlagValue isQueryable,
+    required TenantAdminFlagValue isPubliclyNavigable,
     required TenantAdminFlagValue isPubliclyDiscoverable,
     required TenantAdminFlagValue isFavoritable,
     required TenantAdminFlagValue isPoiEnabled,
@@ -90,7 +106,9 @@ class TenantAdminProfileTypeCapabilities {
     required TenantAdminFlagValue hasCover,
     required TenantAdminFlagValue hasEvents,
     required TenantAdminFlagValue hasNestedProfileGroups,
-  })  : isPubliclyDiscoverableValue = isPubliclyDiscoverable,
+  })  : isQueryableValue = isQueryable,
+        isPubliclyNavigableValue = isPubliclyNavigable,
+        isPubliclyDiscoverableValue = isPubliclyDiscoverable,
         isFavoritableValue = isFavoritable,
         isPoiEnabledValue = isPoiEnabled,
         isReferenceLocationEnabledValue = isReferenceLocationEnabled,
@@ -102,6 +120,8 @@ class TenantAdminProfileTypeCapabilities {
         hasEventsValue = hasEvents,
         hasNestedProfileGroupsValue = hasNestedProfileGroups;
 
+  final TenantAdminFlagValue isQueryableValue;
+  final TenantAdminFlagValue isPubliclyNavigableValue;
   final TenantAdminFlagValue isPubliclyDiscoverableValue;
   final TenantAdminFlagValue isFavoritableValue;
   final TenantAdminFlagValue isPoiEnabledValue;
@@ -114,6 +134,8 @@ class TenantAdminProfileTypeCapabilities {
   final TenantAdminFlagValue hasEventsValue;
   final TenantAdminFlagValue hasNestedProfileGroupsValue;
 
+  bool get isQueryable => isQueryableValue.value;
+  bool get isPubliclyNavigable => isPubliclyNavigableValue.value;
   bool get isPubliclyDiscoverable => isPubliclyDiscoverableValue.value;
   bool get isFavoritable => isFavoritableValue.value;
   bool get isPoiEnabled => isPoiEnabledValue.value;
@@ -128,6 +150,10 @@ class TenantAdminProfileTypeCapabilities {
 
   TenantAdminProfileTypeCapabilityStateValue toCapabilityMap() {
     return TenantAdminProfileTypeCapabilityStateValue({
+      TenantAdminProfileTypeCapabilityKey.isQueryable.apiValue:
+          isQueryableValue.value,
+      TenantAdminProfileTypeCapabilityKey.isPubliclyNavigable.apiValue:
+          isPubliclyNavigableValue.value,
       TenantAdminProfileTypeCapabilityKey.isPubliclyDiscoverable.apiValue:
           isPubliclyDiscoverableValue.value,
       TenantAdminProfileTypeCapabilityKey.isFavoritable.apiValue:

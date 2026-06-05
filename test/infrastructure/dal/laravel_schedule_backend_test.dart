@@ -43,7 +43,6 @@ void main() {
       showPastOnly: true,
       confirmedOnly: true,
       categories: const ['music'],
-      tags: const ['live'],
       taxonomy: const [
         {'type': 'genre', 'value': 'jazz'},
       ],
@@ -57,7 +56,6 @@ void main() {
     expect(uri.queryParameters['past_only'], '1');
     expect(uri.queryParameters['confirmed_only'], '1');
     expect(uri.queryParametersAll['categories[]'], ['music']);
-    expect(uri.queryParametersAll['tags[]'], ['live']);
     expect(uri.queryParameters['taxonomy[0][type]'], 'genre');
     expect(uri.queryParameters['taxonomy[0][value]'], 'jazz');
     expect(

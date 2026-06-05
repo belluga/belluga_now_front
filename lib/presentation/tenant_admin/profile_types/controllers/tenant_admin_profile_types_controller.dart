@@ -66,7 +66,9 @@ class TenantAdminProfileTypesController implements Disposable {
       StreamValue<String?>();
   static final TenantAdminProfileTypeCapabilities _emptyCapabilities =
       TenantAdminProfileTypeCapabilities(
-    isPubliclyDiscoverable: TenantAdminFlagValue(false),
+    isQueryable: TenantAdminFlagValue(true),
+    isPubliclyNavigable: TenantAdminFlagValue(true),
+    isPubliclyDiscoverable: TenantAdminFlagValue(true),
     isFavoritable: TenantAdminFlagValue(false),
     isPoiEnabled: TenantAdminFlagValue(false),
     hasBio: TenantAdminFlagValue(false),
@@ -204,6 +206,10 @@ class TenantAdminProfileTypesController implements Disposable {
             : null;
     capabilitiesStreamValue.addValue(
       TenantAdminProfileTypeCapabilities(
+        isQueryable: TenantAdminFlagValue(capabilities.isQueryable),
+        isPubliclyNavigable: TenantAdminFlagValue(
+          capabilities.isPubliclyNavigable,
+        ),
         isPubliclyDiscoverable: TenantAdminFlagValue(
           capabilities.isPubliclyDiscoverable,
         ),
@@ -409,6 +415,8 @@ class TenantAdminProfileTypesController implements Disposable {
   }
 
   void updateCapabilities({
+    bool? isQueryable,
+    bool? isPubliclyNavigable,
     bool? isPubliclyDiscoverable,
     bool? isFavoritable,
     bool? isPoiEnabled,
@@ -423,6 +431,14 @@ class TenantAdminProfileTypesController implements Disposable {
   }) {
     final current = currentCapabilities;
     final next = Map<String, dynamic>.from(current.toCapabilityMap().toJson());
+    if (isQueryable != null) {
+      next[TenantAdminProfileTypeCapabilityKey.isQueryable.apiValue] =
+          isQueryable;
+    }
+    if (isPubliclyNavigable != null) {
+      next[TenantAdminProfileTypeCapabilityKey.isPubliclyNavigable.apiValue] =
+          isPubliclyNavigable;
+    }
     if (isPubliclyDiscoverable != null) {
       next[TenantAdminProfileTypeCapabilityKey
           .isPubliclyDiscoverable.apiValue] = isPubliclyDiscoverable;
@@ -469,6 +485,12 @@ class TenantAdminProfileTypesController implements Disposable {
     ).normalized();
     capabilitiesStreamValue.addValue(
       TenantAdminProfileTypeCapabilities(
+        isQueryable: normalized.flagValue(
+          TenantAdminProfileTypeCapabilityKey.isQueryable,
+        ),
+        isPubliclyNavigable: normalized.flagValue(
+          TenantAdminProfileTypeCapabilityKey.isPubliclyNavigable,
+        ),
         isPubliclyDiscoverable: normalized.flagValue(
           TenantAdminProfileTypeCapabilityKey.isPubliclyDiscoverable,
         ),

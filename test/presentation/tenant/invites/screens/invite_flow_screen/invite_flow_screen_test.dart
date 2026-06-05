@@ -8,6 +8,11 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
+import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/app_data/app_publication_settings.dart';
+import 'package:belluga_now/domain/app_data/value_object/app_publication_store_url_value.dart';
+import 'package:belluga_now/domain/app_data/value_object/domain_value.dart';
+import 'package:belluga_now/domain/app_data/value_object/environment_name_value.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
@@ -21,6 +26,8 @@ import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_inviter_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_inviter_name_value.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
@@ -28,9 +35,14 @@ import 'package:belluga_now/domain/repositories/telemetry_repository_contract.da
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
+import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/schedule/event_profile_group.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_profile_group_order_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_type_id_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/invite_flow_screen.dart';
@@ -49,10 +61,14 @@ import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
+import 'package:belluga_now/domain/tenant/value_objects/icon_url_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/color_value.dart';
+import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
+import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_screen_controller.dart';
+import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_store_platform.dart';
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
   _FakeInvitesRepository({
@@ -553,7 +569,105 @@ void main() {
     );
 
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    expect(find.text('Bóra pro App!'), findsNothing);
+  });
+
+  testWidgets(
+      'Invite flow renders grouped participants and avoids duplicate host metadata',
+      (tester) async {
+    final invite = _buildInviteWithParticipantGroups('grouped-1');
+    final controller = InviteFlowScreenController(
+      repository: _FakeInvitesRepository(initialInvites: [invite]),
+      userEventsRepository: _FakeUserEventsRepository(),
+      telemetryRepository: _FakeTelemetryRepository(),
+    );
+    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
+
+    final router = _RecordingStackRouter(canPopValue: true);
+    final routeData = _buildRouteData(
+      router,
+      path: '/invite',
+      queryParams: const {},
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: const InviteFlowScreen(),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    controller.markImageLoaded(invite.eventImageUrl);
+    await tester.pump();
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 150));
+      if (find.text('Participantes').evaluate().isNotEmpty) {
+        break;
+      }
+    }
+
+    expect(find.text('Promotion Smoke Perfil Público'), findsOneWidget);
+    expect(find.text('Participantes'), findsOneWidget);
+    expect(find.textContaining('Bandas: Du Jorge'), findsOneWidget);
+    expect(find.textContaining('Expositores: QA Discovery Tag Sem Tags'),
+        findsOneWidget);
+    expect(find.byIcon(Icons.storefront_outlined), findsNothing);
+  });
+
+  testWidgets('Invite flow web anonymous fallback uses canonical app promotion',
+      (tester) async {
+    final controller = InviteFlowScreenController(
+      repository: _FakeInvitesRepository(initialInvites: const []),
+      userEventsRepository: _FakeUserEventsRepository(),
+      telemetryRepository: _FakeTelemetryRepository(),
+      authRepository: _FakeAuthRepository(authorized: false),
+    );
+    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
+    _registerAppPromotionController();
+
+    final router = _RecordingStackRouter(canPopValue: false);
+    final routeData = _buildRouteData(router, queryParams: const {});
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: const InviteFlowCoordinator(
+              invites: [],
+              decisionResult: null,
+              requiresAuthentication: false,
+              isInitialized: true,
+              isWebRuntime: true,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('app_promotion_modal')), findsOneWidget);
+    expect(find.text('Aceite convites pelo app'), findsOneWidget);
+    expect(
+      find.text(
+        'Use o app para confirmar presença, enviar convites e acompanhar seus eventos.',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('app_promotion_store_badge_android')),
+      findsOneWidget,
+    );
+    expect(router.lastReplacedPath, isNull);
   });
 
   testWidgets(
@@ -1069,6 +1183,60 @@ InviteModel _buildInviteWithPrimaryInviter(String id) {
   );
 }
 
+InviteModel _buildInviteWithParticipantGroups(String id) {
+  const venueId = 'venue-1';
+  const bandId = 'band-1';
+  const exhibitorId = 'exhibitor-1';
+
+  return buildInviteModelFromPrimitives(
+    id: id,
+    eventId: 'event-$id',
+    eventName: 'Event $id',
+    eventDateTime: DateTime(2026, 1, 1, 18),
+    eventImageUrl: 'https://example.com/$id.jpg',
+    location: 'Promotion Smoke Perfil Público',
+    hostName: 'Promotion Smoke Perfil Público',
+    message: 'Invite $id',
+    tags: const ['music'],
+    linkedAccountProfiles: [
+      _linkedProfile(
+        id: venueId,
+        name: 'Promotion Smoke Perfil Público',
+        profileType: 'venue',
+      ),
+      _linkedProfile(
+        id: bandId,
+        name: 'Du Jorge',
+        profileType: 'artist',
+      ),
+      _linkedProfile(
+        id: exhibitorId,
+        name: 'QA Discovery Tag Sem Tags',
+        profileType: 'exhibitor',
+      ),
+    ],
+    profileGroups: [
+      EventProfileGroup(
+        idValue: EventLinkedAccountProfileTextValue('bandas'),
+        labelValue: EventLinkedAccountProfileTextValue('Bandas'),
+        orderValue: EventProfileGroupOrderValue(0),
+        accountProfileIdValues: [
+          EventLinkedAccountProfileTextValue(bandId),
+        ],
+      ),
+      EventProfileGroup(
+        idValue: EventLinkedAccountProfileTextValue('expositores'),
+        labelValue: EventLinkedAccountProfileTextValue('Expositores'),
+        orderValue: EventProfileGroupOrderValue(1),
+        accountProfileIdValues: [
+          EventLinkedAccountProfileTextValue(exhibitorId),
+        ],
+      ),
+    ],
+    venueAccountProfileId: venueId,
+  );
+}
+
 InviteModel _buildInviteWithEmptyCandidateIds(String id) {
   return buildInviteModelFromPrimitives(
     id: id,
@@ -1095,6 +1263,18 @@ InviteModel _buildInviteWithEmptyCandidateIds(String id) {
         nameValue: InviteInviterNameValue()..parse('Convidador B'),
       ),
     ],
+  );
+}
+
+EventLinkedAccountProfile _linkedProfile({
+  required String id,
+  required String name,
+  required String profileType,
+}) {
+  return EventLinkedAccountProfile(
+    idValue: EventLinkedAccountProfileTextValue(id),
+    displayNameValue: EventLinkedAccountProfileTextValue(name),
+    profileTypeValue: AccountProfileTypeValue(profileType),
   );
 }
 
@@ -1129,6 +1309,146 @@ RouteData _buildRouteData(
     pendingChildren: const [],
     type: const RouteType.material(),
   );
+}
+
+void _registerAppPromotionController() {
+  final repository = _FakeAppDataRepository(
+    appName: 'Bóora!',
+    mainDomain: Uri.parse('https://tenant.example'),
+    iconLightUrl: Uri.parse('https://tenant.example/icon-light.png'),
+    iconDarkUrl: Uri.parse('https://tenant.example/icon-dark.png'),
+    publicationSettings: _publicationSettings(
+      androidEnabled: true,
+      iosEnabled: false,
+    ),
+  );
+  GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+  GetIt.I.registerSingleton<AppPromotionScreenController>(
+    AppPromotionScreenController(
+      appDataRepository: repository,
+      preferredStorePlatformResolver: () => AppPromotionStorePlatform.android,
+    ),
+  );
+}
+
+AppPublicationSettings _publicationSettings({
+  required bool androidEnabled,
+  required bool iosEnabled,
+}) {
+  return AppPublicationSettings(
+    hasExplicitConfigValue: _publicationBool(true),
+    android: AppPublicationPlatformSettings(
+      enabledValue: _publicationBool(androidEnabled),
+      storeUrlValue: _publicationStoreUrl(
+        androidEnabled
+            ? 'https://play.google.com/store/apps/details?id=app'
+            : null,
+      ),
+    ),
+    ios: AppPublicationPlatformSettings(
+      enabledValue: _publicationBool(iosEnabled),
+      storeUrlValue: _publicationStoreUrl(
+        iosEnabled ? 'https://apps.apple.com/br/app/id123' : null,
+      ),
+    ),
+  );
+}
+
+DomainBooleanValue _publicationBool(bool raw) {
+  final value = DomainBooleanValue();
+  value.parse(raw.toString());
+  return value;
+}
+
+AppPublicationStoreUrlValue _publicationStoreUrl(String? raw) {
+  final value = AppPublicationStoreUrlValue();
+  value.parse(raw);
+  return value;
+}
+
+class _FakeAppDataRepository extends AppDataRepositoryContract {
+  _FakeAppDataRepository({
+    required String appName,
+    required Uri mainDomain,
+    required Uri iconLightUrl,
+    required Uri iconDarkUrl,
+    required AppPublicationSettings publicationSettings,
+  }) : _appData = _FakeAppData(
+          appName: appName,
+          mainDomain: mainDomain,
+          iconLightUrl: iconLightUrl,
+          iconDarkUrl: iconDarkUrl,
+          publicationSettings: publicationSettings,
+        );
+
+  final AppData _appData;
+
+  @override
+  AppData get appData => _appData;
+
+  @override
+  StreamValue<DistanceInMetersValue> get maxRadiusMetersStreamValue =>
+      StreamValue<DistanceInMetersValue>(
+        defaultValue: DistanceInMetersValue.fromRaw(1000, defaultValue: 1000),
+      );
+
+  @override
+  DistanceInMetersValue get maxRadiusMeters =>
+      DistanceInMetersValue.fromRaw(1000, defaultValue: 1000);
+
+  @override
+  bool get hasPersistedMaxRadiusPreference => false;
+
+  @override
+  ThemeMode get themeMode => ThemeMode.dark;
+
+  @override
+  StreamValue<ThemeMode?> get themeModeStreamValue =>
+      StreamValue<ThemeMode?>(defaultValue: ThemeMode.dark);
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {}
+
+  @override
+  Future<void> setThemeMode(AppThemeModeValue mode) async {}
+}
+
+class _FakeAppData extends Fake implements AppData {
+  _FakeAppData({
+    required String appName,
+    required Uri mainDomain,
+    required Uri iconLightUrl,
+    required Uri iconDarkUrl,
+    required AppPublicationSettings publicationSettings,
+  })  : _mainDomainValue = DomainValue(defaultValue: mainDomain),
+        _nameValue = EnvironmentNameValue()..parse(appName),
+        _mainIconLightUrl = IconUrlValue(defaultValue: iconLightUrl),
+        _mainIconDarkUrl = IconUrlValue(defaultValue: iconDarkUrl),
+        _publicationSettings = publicationSettings;
+
+  final DomainValue _mainDomainValue;
+  final EnvironmentNameValue _nameValue;
+  final IconUrlValue _mainIconLightUrl;
+  final IconUrlValue _mainIconDarkUrl;
+  final AppPublicationSettings _publicationSettings;
+
+  @override
+  DomainValue get mainDomainValue => _mainDomainValue;
+
+  @override
+  EnvironmentNameValue get nameValue => _nameValue;
+
+  @override
+  IconUrlValue get mainIconLightUrl => _mainIconLightUrl;
+
+  @override
+  IconUrlValue get mainIconDarkUrl => _mainIconDarkUrl;
+
+  @override
+  AppPublicationSettings get publicationSettings => _publicationSettings;
 }
 
 class _TestHttpOverrides extends HttpOverrides {

@@ -1,6 +1,8 @@
 typedef TenantAdminProfileTypeCapabilityKeyPrimString = String;
 
 enum TenantAdminProfileTypeCapabilityKey {
+  isQueryable,
+  isPubliclyNavigable,
   isPubliclyDiscoverable,
   isFavoritable,
   isInviteable,
@@ -15,6 +17,9 @@ enum TenantAdminProfileTypeCapabilityKey {
   hasNestedProfileGroups;
 
   TenantAdminProfileTypeCapabilityKeyPrimString get apiValue => switch (this) {
+        TenantAdminProfileTypeCapabilityKey.isQueryable => 'is_queryable',
+        TenantAdminProfileTypeCapabilityKey.isPubliclyNavigable =>
+          'is_publicly_navigable',
         TenantAdminProfileTypeCapabilityKey.isPubliclyDiscoverable =>
           'is_publicly_discoverable',
         TenantAdminProfileTypeCapabilityKey.isFavoritable => 'is_favoritable',

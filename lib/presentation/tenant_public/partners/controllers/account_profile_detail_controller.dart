@@ -202,6 +202,15 @@ class AccountProfileDetailController implements Disposable {
     return true;
   }
 
+  Future<bool> clearReferencePoint() async {
+    final repository = _proximityPreferencesRepository;
+    if (repository == null) {
+      return false;
+    }
+    await repository.clearFixedReference();
+    return true;
+  }
+
   ResolvedAccountProfileVisual resolvedVisualFor(
     AccountProfileModel accountProfile,
   ) {

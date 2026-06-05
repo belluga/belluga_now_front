@@ -224,6 +224,16 @@ void main() {
             relatedAccountProfileIdValues: [
               TenantAdminAccountProfileIdValue('artist-1'),
             ],
+            profileGroups: [
+              TenantAdminNestedProfileGroup(
+                idValue: TenantAdminNestedProfileGroupTextValue('bandas'),
+                labelValue: TenantAdminNestedProfileGroupTextValue('Bandas'),
+                orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+                accountProfileIdValues: [
+                  TenantAdminNestedProfileGroupTextValue('artist-1'),
+                ],
+              ),
+            ],
             programmingItems: [
               TenantAdminEventProgrammingItem(
                 timeValue: tenantAdminRequiredText('17:00'),
@@ -249,6 +259,14 @@ void main() {
     final occurrence =
         (payload['occurrences'] as List<Object?>).first as Map<String, dynamic>;
 
+    expect(occurrence['profile_groups'], [
+      {
+        'id': 'bandas',
+        'label': 'Bandas',
+        'order': 0,
+        'account_profile_ids': ['artist-1'],
+      },
+    ]);
     expect(occurrence['event_parties'], [
       {
         'party_ref_id': 'artist-1',
@@ -274,6 +292,41 @@ void main() {
         },
       },
     ]);
+  });
+
+  test(
+      'omits legacy occurrence related ids when no occurrence group is present',
+      () {
+    const encoder = TenantAdminEventsRequestEncoder();
+    final payload = encoder.encodeDraft(
+      TenantAdminEventDraft(
+        titleValue: tenantAdminRequiredText('Evento'),
+        contentValue: tenantAdminOptionalText('Conteudo'),
+        type: TenantAdminEventType(
+          nameValue: tenantAdminRequiredText('Show'),
+          slugValue: tenantAdminRequiredText('show'),
+        ),
+        occurrences: [
+          TenantAdminEventOccurrence(
+            dateTimeStartValue: tenantAdminDateTime(
+              DateTime(2026, 4, 5, 20),
+            ),
+            relatedAccountProfileIdValues: [
+              TenantAdminAccountProfileIdValue('legacy-occurrence-profile'),
+            ],
+          ),
+        ],
+        publication: TenantAdminEventPublication(
+          statusValue: tenantAdminRequiredText('draft'),
+        ),
+      ),
+    );
+
+    final occurrence =
+        (payload['occurrences'] as List<Object?>).first as Map<String, dynamic>;
+
+    expect(occurrence.containsKey('profile_groups'), isFalse);
+    expect(occurrence.containsKey('event_parties'), isFalse);
   });
 }
 

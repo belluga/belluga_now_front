@@ -5,7 +5,6 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_contract.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_exception.dart';
-import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_public_web_image_spec.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_slot.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
@@ -123,7 +122,7 @@ class TenantAdminImageIngestionService {
     if (file == null) {
       return null;
     }
-    final spec = _specForSlot(slot);
+    final spec = tenantAdminImageSlotSpecFor(slot);
     var bytes = await file.readAsBytes();
     if (bytes.length > _maxOutputBytes || file.mimeType != spec.mimeType) {
       final prepared = await prepareXFile(file, slot: slot);
@@ -157,7 +156,7 @@ class TenantAdminImageIngestionService {
       );
     }
 
-    final spec = _specForSlot(slot);
+    final spec = tenantAdminImageSlotSpecFor(slot);
     final ratio = spec.aspectRatio;
     final cropped =
         applyAspectCrop ? _centerCropToRatio(decoded, ratio) : decoded;
@@ -293,74 +292,10 @@ class TenantAdminImageIngestionService {
     return fallback;
   }
 
-  _TenantAdminImageSlotSpec _specForSlot(TenantAdminImageSlot slot) {
-    return switch (slot) {
-      TenantAdminImageSlot.avatar => const _TenantAdminImageSlotSpec(
-          aspectRatio: 1.0,
-          maxWidth: 1024,
-          maxHeight: 1024,
-          mimeType: 'image/jpeg',
-          fileExtension: 'jpg',
-        ),
-      TenantAdminImageSlot.cover => const _TenantAdminImageSlotSpec(
-          aspectRatio: 560 / 512,
-          maxWidth: 1920,
-          maxHeight: 1080,
-          mimeType: 'image/jpeg',
-          fileExtension: 'jpg',
-        ),
-      TenantAdminImageSlot.lightLogo ||
-      TenantAdminImageSlot.darkLogo =>
-        const _TenantAdminImageSlotSpec(
-          aspectRatio: 18 / 5,
-          maxWidth: 1800,
-          maxHeight: 500,
-          mimeType: 'image/png',
-          fileExtension: 'png',
-        ),
-      TenantAdminImageSlot.lightIcon ||
-      TenantAdminImageSlot.darkIcon ||
-      TenantAdminImageSlot.pwaIcon ||
-      TenantAdminImageSlot.mapFilter ||
-      TenantAdminImageSlot.typeVisual =>
-        const _TenantAdminImageSlotSpec(
-          aspectRatio: 1.0,
-          maxWidth: 1024,
-          maxHeight: 1024,
-          mimeType: 'image/png',
-          fileExtension: 'png',
-        ),
-      TenantAdminImageSlot.publicWebDefaultImage =>
-        const _TenantAdminImageSlotSpec(
-          aspectRatio: tenantAdminPublicWebDefaultImageAspectRatio,
-          maxWidth: tenantAdminPublicWebDefaultImageWidth,
-          maxHeight: tenantAdminPublicWebDefaultImageHeight,
-          mimeType: 'image/jpeg',
-          fileExtension: 'jpg',
-        ),
-    };
-  }
-
   String _buildOutputFileName(
     TenantAdminImageSlot slot, {
     required String extension,
   }) {
     return '${slot.name}_${DateTime.now().millisecondsSinceEpoch}.$extension';
   }
-}
-
-class _TenantAdminImageSlotSpec {
-  const _TenantAdminImageSlotSpec({
-    required this.aspectRatio,
-    required this.maxWidth,
-    required this.maxHeight,
-    required this.mimeType,
-    required this.fileExtension,
-  });
-
-  final double aspectRatio;
-  final int maxWidth;
-  final int maxHeight;
-  final String mimeType;
-  final String fileExtension;
 }

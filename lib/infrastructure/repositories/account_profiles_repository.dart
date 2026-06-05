@@ -105,6 +105,7 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
     return pagedAccountProfilesResultFromRaw(
       profiles: filtered,
       hasMore: result.hasMore,
+      discoveryFilterFacets: result.discoveryFilterFacets,
     );
   }
 

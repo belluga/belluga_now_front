@@ -1,5 +1,4 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/application/extensions/event_data_formating.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/modular_app/modules/discovery_module.dart';
@@ -16,12 +15,14 @@ import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/static_assets_repository_contract.dart';
+import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/static_assets/public_static_asset_model.dart';
@@ -383,6 +384,11 @@ void main() {
 
     expect(find.text('Entrar para favoritar'), findsNothing);
     expect(find.byKey(const Key('app_promotion_modal')), findsOneWidget);
+    expect(find.text('Escolha seus favoritos pelo app'), findsOneWidget);
+    expect(
+      find.text('Use o app para salvar perfis favoritos e receber novidades.'),
+      findsOneWidget,
+    );
     expect(
       find.byKey(const Key('app_promotion_store_badge_android')),
       findsOneWidget,
@@ -795,7 +801,7 @@ void main() {
     );
     final sliverAppBar = tester.widget<SliverAppBar>(find.byType(SliverAppBar));
     final collapsedHeaderCenter = tester.getCenter(
-      find.byKey(const Key('accountProfileCollapsedTaxonomySummary')),
+      find.byKey(const Key('immersiveCollapsedTitle')),
     );
     final navigationToolbarRect =
         tester.getRect(find.byType(NavigationToolbar));
@@ -807,7 +813,7 @@ void main() {
         findsNothing);
     expect(find.byKey(const Key('immersiveCollapsedTitle')), findsOneWidget);
     expect(find.text('Cafe de la Musique'), findsWidgets);
-    expect(collapsedTitle.maxLines, 1);
+    expect(collapsedTitle.maxLines, 2);
     expect(collapsedTitle.overflow, TextOverflow.ellipsis);
     expect(sliverAppBar.toolbarHeight, 72);
     expect((collapsedHeaderCenter.dy - toolbarCenterY).abs(),
@@ -815,7 +821,7 @@ void main() {
   });
 
   testWidgets(
-      'collapsed header keeps taxonomy labels readable after hero scroll',
+      'collapsed header keeps only the account title readable after hero scroll',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 640));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -845,68 +851,25 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('immersiveCollapsedTitle')), findsOneWidget);
-    final collapsedTitle = tester.widget<Text>(
-      find.byKey(const Key('immersiveCollapsedTitle')),
+    final collapsedTitleFinder = find.byKey(
+      const Key('immersiveCollapsedTitle'),
     );
-    final collapsedTaxonomy = find.byKey(
-      const Key('accountProfileCollapsedTaxonomySummary'),
-    );
-    final collapsedTaxonomyRect = tester.getRect(collapsedTaxonomy);
+    final collapsedTitle = tester.widget<Text>(collapsedTitleFinder);
+    final collapsedTitleRect = tester.getRect(collapsedTitleFinder);
     final navigationToolbarRect =
         tester.getRect(find.byType(NavigationToolbar));
 
-    expect(collapsedTitle.maxLines, 1);
-    expect(collapsedTaxonomy, findsOneWidget);
+    expect(collapsedTitle.maxLines, 2);
     expect(
-      collapsedTaxonomyRect.top,
+      collapsedTitleRect.top,
       greaterThanOrEqualTo(navigationToolbarRect.top - 0.5),
     );
     expect(
-      collapsedTaxonomyRect.bottom,
+      collapsedTitleRect.bottom,
       lessThanOrEqualTo(navigationToolbarRect.bottom + 0.5),
     );
-    expect(
-      find.descendant(
-        of: collapsedTaxonomy,
-        matching: find.text('Sunset Premium'),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(
-        of: collapsedTaxonomy,
-        matching: find.text('Teatro Experimental'),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(
-        of: collapsedTaxonomy,
-        matching: find.text('Gastronomia Autoral'),
-      ),
-      findsOneWidget,
-    );
-  });
-
-  testWidgets(
-      'collapsed taxonomy chips choose foreground from rendered background contrast',
-      (tester) async {
-    await _expectCollapsedTaxonomyChipContrast(
-      tester,
-      chipBackground: const Color(0xFFFFFFFF),
-      unsafeForegroundCandidate: const Color(0xFFFDFDFD),
-    );
-  });
-
-  testWidgets(
-      'collapsed taxonomy chips choose foreground from dark background contrast',
-      (tester) async {
-    await _expectCollapsedTaxonomyChipContrast(
-      tester,
-      chipBackground: const Color(0xFF000000),
-      unsafeForegroundCandidate: const Color(0xFF010101),
-      brightness: Brightness.dark,
-    );
+    expect(find.byKey(const Key('accountProfileCollapsedTaxonomySummary')),
+        findsNothing);
   });
 
   testWidgets('live agenda highlight navigates to the highlighted event',
@@ -958,12 +921,7 @@ void main() {
     GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
 
     final liveEvent = _buildArtistAgendaEvents().first;
-    final expectedSchedule =
-        '${DateFormat.E().format(liveEvent.startDateTime).toUpperCase()}, '
-        '${liveEvent.startDateTime.day.toString().padLeft(2, '0')} • ${liveEvent.startDateTime.timeLabel} às '
-        '${DateFormat.E().format((liveEvent.endDateTime ?? liveEvent.startDateTime.add(const Duration(hours: 3)))).toUpperCase()}, '
-        '${(liveEvent.endDateTime ?? liveEvent.startDateTime.add(const Duration(hours: 3))).day.toString().padLeft(2, '0')} • '
-        '${(liveEvent.endDateTime ?? liveEvent.startDateTime.add(const Duration(hours: 3))).timeLabel}';
+    final expectedSchedule = liveEvent.expandedScheduleLabel;
 
     await tester.pumpWidget(
       _buildRoutedTestApp(
@@ -1289,6 +1247,66 @@ void main() {
     await tester.pump();
 
     expect(router.lastPushedPath, '/parceiro/ananda-torres');
+  });
+
+  testWidgets(
+      'renders non navigable nested members without chevron and does not navigate',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+    final router = _RecordingStackRouter();
+
+    final nonNavigableGroup = AccountProfileNestedGroup(
+      idValue: AccountProfileNestedGroupIdValue('parceiros'),
+      labelValue: AccountProfileNestedGroupLabelValue('Parceiros'),
+      orderValue: AccountProfileNestedGroupOrderValue(0),
+      profiles: [
+        AccountProfileNestedGroupMember(
+          idValue: MongoIDValue()..parse('507f1f77bcf86cd799439082'),
+          nameValue: TitleValue()..parse('Parceiro Sem Link'),
+          profileTypeValue: AccountProfileTypeValue('guest_public'),
+          canOpenPublicDetailValue: DomainBooleanValue(
+            defaultValue: false,
+            isRequired: false,
+          )..parse('false'),
+          tagValues: [AccountProfileTagValue('Convidado')],
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: router,
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildVenueFullProfile().copyWith(
+            nestedProfileGroupValues: [nonNavigableGroup],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.byKey(const Key('immersiveTabLabel_3')));
+    await tester.tap(find.byKey(const Key('immersiveTabLabel_3')));
+    await tester.pumpAndSettle();
+
+    final cardFinder = find.byKey(
+      const Key('accountProfileNestedCard_parceiros_507f1f77bcf86cd799439082'),
+    );
+    expect(cardFinder, findsOneWidget);
+    expect(
+      find.descendant(
+          of: cardFinder, matching: find.byIcon(Icons.chevron_right)),
+      findsNothing,
+    );
+
+    await tester.tap(cardFinder);
+    await tester.pump();
+
+    expect(router.lastPushedPath, isNull);
   });
 
   testWidgets(
@@ -1761,9 +1779,7 @@ void main() {
 
     expect(proximityRepository.lastFixedReference, isNull);
     expect(
-      find.text(
-        'Todas as distâncias serão calculadas a partir desse local:',
-      ),
+      find.byKey(const Key('accountProfileReferencePointDialogCopy')),
       findsOneWidget,
     );
     final previewCard = find.byKey(
@@ -1814,8 +1830,7 @@ void main() {
     GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
 
     await tester.pumpWidget(
-      _buildRoutedTestApp(
-        router: _RecordingStackRouter(),
+      _buildAutoRouteTestApp(
         child: AccountProfileDetailScreen(accountProfile: profile),
       ),
     );
@@ -1823,6 +1838,29 @@ void main() {
 
     expect(find.text('Ponto de referência'), findsOneWidget);
     expect(find.text('Usar como ponto de referência'), findsNothing);
+    expect(
+      find.byKey(const Key('accountProfileHeroClearReferencePointButton')),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(const Key('accountProfileHeroClearReferencePointButton')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('accountProfileClearReferencePointDialog')),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(const Key('accountProfileClearReferencePointConfirmButton')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(proximityRepository.clearFixedReferenceCalls, 1);
+    expect(proximityRepository.lastFixedReference, isNull);
+    expect(find.text('Usar como ponto de referência'), findsOneWidget);
   });
 
   testWidgets('hero hides reference point action when capability is disabled',
@@ -2173,61 +2211,6 @@ void main() {
   });
 }
 
-Future<void> _expectCollapsedTaxonomyChipContrast(
-  WidgetTester tester, {
-  required Color chipBackground,
-  required Color unsafeForegroundCandidate,
-  Brightness brightness = Brightness.light,
-}) async {
-  await tester.binding.setSurfaceSize(const Size(390, 640));
-  addTearDown(() => tester.binding.setSurfaceSize(null));
-
-  final repository = _FakeAccountProfilesRepository();
-  final controller = AccountProfileDetailController(
-    accountProfilesRepository: repository,
-  );
-  GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
-
-  await tester.pumpWidget(
-    _buildRoutedTestApp(
-      router: _RecordingStackRouter(),
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blue,
-          brightness: brightness,
-        ).copyWith(
-          secondaryContainer: chipBackground,
-          onSecondaryContainer: unsafeForegroundCandidate,
-        ),
-      ),
-      child: AccountProfileDetailScreen(
-        accountProfile: _buildArtistProfileWithManyTaxonomies(),
-      ),
-    ),
-  );
-  await tester.pumpAndSettle();
-
-  await tester.drag(find.byType(NestedScrollView), const Offset(0, -1000));
-  await tester.pumpAndSettle();
-  await tester.drag(find.byType(NestedScrollView), const Offset(0, -1000));
-  await tester.pumpAndSettle();
-
-  final collapsedTaxonomy = find.byKey(
-    const Key('accountProfileCollapsedTaxonomySummary'),
-  );
-  final label = tester.widget<Text>(
-    find.descendant(
-      of: collapsedTaxonomy,
-      matching: find.text('Sunset Premium'),
-    ),
-  );
-  final foreground = label.style?.color;
-
-  expect(foreground, isNotNull);
-  expect(
-      _contrastRatio(chipBackground, foreground!), greaterThanOrEqualTo(4.5));
-}
-
 Widget _buildAutoRouteTestApp({
   required Widget child,
   ThemeData? theme,
@@ -2290,18 +2273,6 @@ Widget _buildRoutedTestApp({
       ),
     ),
   );
-}
-
-double _contrastRatio(Color background, Color foreground) {
-  final backgroundLuminance = background.computeLuminance();
-  final foregroundLuminance = foreground.computeLuminance();
-  final brighter = backgroundLuminance > foregroundLuminance
-      ? backgroundLuminance
-      : foregroundLuminance;
-  final darker = backgroundLuminance > foregroundLuminance
-      ? foregroundLuminance
-      : backgroundLuminance;
-  return (brighter + 0.05) / (darker + 0.05);
 }
 
 class _RecordingStackRouter extends Fake implements StackRouter {
@@ -2455,6 +2426,7 @@ class _FakeProximityPreferencesRepository
   }
 
   FixedLocationReference? lastFixedReference;
+  int clearFixedReferenceCalls = 0;
 
   @override
   Future<void> setFixedReference({
@@ -2462,6 +2434,19 @@ class _FakeProximityPreferencesRepository
   }) async {
     lastFixedReference = fixedReference;
     setCurrentPreference(_preferenceWith(fixedReference));
+  }
+
+  @override
+  Future<void> clearFixedReference() async {
+    clearFixedReferenceCalls += 1;
+    lastFixedReference = null;
+    setCurrentPreference(
+      ProximityPreference(
+        maxDistanceMetersValue: DistanceInMetersValue.fromRaw(25000),
+        locationPreference:
+            const ProximityLocationPreference.liveDeviceLocation(),
+      ),
+    );
   }
 
   ProximityPreference _preferenceWith(FixedLocationReference fixedReference) {
@@ -2915,6 +2900,13 @@ AccountProfileNestedGroup _buildNestedAccountProfileGroup() {
         nameValue: TitleValue()..parse('Ananda Torres'),
         slugValue: SlugValue()..parse('ananda-torres'),
         profileTypeValue: AccountProfileTypeValue('artist'),
+        canOpenPublicDetailValue: DomainBooleanValue(
+          defaultValue: false,
+          isRequired: false,
+        )..parse('true'),
+        publicDetailPathValue: AccountProfileNestedGroupMemberTextValue(
+          '/parceiro/ananda-torres',
+        ),
         tagValues: [AccountProfileTagValue('Música')],
       ),
     ],

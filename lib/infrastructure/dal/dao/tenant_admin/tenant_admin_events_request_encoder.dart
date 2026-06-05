@@ -162,19 +162,23 @@ class TenantAdminEventsRequestEncoder {
       );
     }
 
-    payload['event_parties'] = _profileIdsForParties(
-      profileGroups: occurrence.profileGroups,
-      fallbackProfileIds: occurrence.relatedAccountProfileIds
-          .map((profileId) => profileId.value)
-          .toList(growable: false),
-    ).map((profileId) {
-      return <String, dynamic>{
-        'party_ref_id': profileId,
-        'permissions': <String, dynamic>{
-          'can_edit': true,
-        },
-      };
-    }).toList(growable: false);
+    if (occurrence.profileGroups.isNotEmpty ||
+        occurrence.relatedAccountProfileIds.isEmpty) {
+      final occurrencePartyIds = occurrence.profileGroups.isEmpty
+          ? const <String>[]
+          : _profileIdsForParties(
+              profileGroups: occurrence.profileGroups,
+              fallbackProfileIds: const <String>[],
+            );
+      payload['event_parties'] = occurrencePartyIds.map((profileId) {
+        return <String, dynamic>{
+          'party_ref_id': profileId,
+          'permissions': <String, dynamic>{
+            'can_edit': true,
+          },
+        };
+      }).toList(growable: false);
+    }
 
     payload['taxonomy_terms'] = occurrence.taxonomyTerms
         .map((term) => <String, dynamic>{

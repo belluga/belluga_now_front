@@ -36,7 +36,12 @@ void main() {
     await _openModal(tester);
 
     expect(find.byKey(const Key('app_promotion_modal')), findsOneWidget);
+    expect(find.byKey(const Key('app_promotion_modal_body')), findsOneWidget);
     expect(find.text('Bóora! fica melhor no app'), findsOneWidget);
+    final brandSize =
+        tester.getSize(find.byKey(const Key('app_promotion_brand_icon')));
+    expect(brandSize.width, lessThan(120));
+    expect(brandSize.height, lessThan(120));
     expect(
       find.byKey(const Key('app_promotion_store_badge_android')),
       findsOneWidget,
@@ -45,6 +50,33 @@ void main() {
       find.byKey(const Key('app_promotion_store_badge_ios')),
       findsNothing,
     );
+  });
+
+  testWidgets('modal renders contextual action copy when provided',
+      (tester) async {
+    _registerPromotionController(
+      preferredStorePlatformResolver: () => AppPromotionStorePlatform.android,
+      publicationSettings: _publicationSettings(
+        androidEnabled: true,
+        iosEnabled: false,
+      ),
+    );
+
+    await _openModal(
+      tester,
+      title: 'Confirme presença pelo app',
+      supportingText:
+          'Use o app para confirmar sua presença e acompanhar esse evento.',
+    );
+
+    expect(find.text('Confirme presença pelo app'), findsOneWidget);
+    expect(
+      find.text(
+        'Use o app para confirmar sua presença e acompanhar esse evento.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Bóora! fica melhor no app'), findsNothing);
   });
 
   testWidgets('modal renders iOS-only publication target', (tester) async {
@@ -137,7 +169,11 @@ void main() {
   });
 }
 
-Future<void> _openModal(WidgetTester tester) async {
+Future<void> _openModal(
+  WidgetTester tester, {
+  String? title,
+  String? supportingText,
+}) async {
   await tester.pumpWidget(
     MaterialApp(
       home: Scaffold(
@@ -146,6 +182,8 @@ Future<void> _openModal(WidgetTester tester) async {
             onPressed: () => AppPromotionModal.show(
               context,
               redirectPath: '/parceiro/qa-discovery-tag-longa',
+              title: title,
+              supportingText: supportingText,
             ),
             child: const Text('Open modal'),
           ),

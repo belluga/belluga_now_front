@@ -10,6 +10,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
@@ -266,8 +267,17 @@ void main() {
           ),
           TenantAdminEventOccurrence(
             dateTimeStartValue: tenantAdminDateTime(DateTime(2026, 3, 6, 17)),
-            relatedAccountProfileIdValues: [
-              TenantAdminAccountProfileIdValue('507f1f77bcf86cd799439021'),
+            profileGroups: [
+              TenantAdminNestedProfileGroup(
+                idValue: TenantAdminNestedProfileGroupTextValue('bandas'),
+                labelValue: TenantAdminNestedProfileGroupTextValue('Bandas'),
+                orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+                accountProfileIdValues: [
+                  TenantAdminNestedProfileGroupTextValue(
+                    '507f1f77bcf86cd799439021',
+                  ),
+                ],
+              ),
             ],
             programmingItems: [
               TenantAdminEventProgrammingItem(
@@ -298,6 +308,19 @@ void main() {
       );
     }
 
+    expect(
+      hasField('occurrences[1][profile_groups][0][id]', 'bandas'),
+      isTrue,
+    );
+    expect(
+      hasField('occurrences[1][profile_groups][0][label]', 'Bandas'),
+      isTrue,
+    );
+    expect(
+      hasField('occurrences[1][profile_groups][0][account_profile_ids][]',
+          '507f1f77bcf86cd799439021'),
+      isTrue,
+    );
     expect(
       hasField('occurrences[1][event_parties][0][party_ref_id]',
           '507f1f77bcf86cd799439021'),

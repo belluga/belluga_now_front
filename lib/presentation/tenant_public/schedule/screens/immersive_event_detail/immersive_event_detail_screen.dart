@@ -4,6 +4,11 @@ import 'package:belluga_now/application/invites/invite_from_event_factory.dart';
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
+import 'package:belluga_now/domain/schedule/event_profile_group.dart';
+import 'package:belluga_now/application/schedule/event_related_profile_groups.dart';
+import 'package:belluga_now/application/schedule/event_related_profile_group_summary.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_profile_group_order_value.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
@@ -20,6 +25,7 @@ import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
 import 'package:belluga_now/application/sharing/event_invite_share_payload.dart';
 import 'package:belluga_now/presentation/shared/favorites/account_profile_favorite_auth_gate.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/widgets/invite_candidate_picker.dart';
+import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/widgets/app_promotion_modal.dart';
 import 'package:belluga_now/presentation/shared/promotion/support/web_installed_app_handoff.dart';
 import 'package:belluga_now/presentation/shared/sharing/public_share_launcher.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_common_tabs.dart';
@@ -55,6 +61,7 @@ class ImmersiveEventDetailScreen extends StatefulWidget {
     this.colorScheme,
     this.directionsAppChooser,
     this.shareLauncher,
+    this.externalUrlLauncher,
     this.isWebRuntime = kIsWeb,
     super.key,
   });
@@ -63,6 +70,7 @@ class ImmersiveEventDetailScreen extends StatefulWidget {
   final ColorScheme? colorScheme;
   final DirectionsAppChooserContract? directionsAppChooser;
   final Future<void> Function(ShareParams params)? shareLauncher;
+  final ExternalUrlLauncher? externalUrlLauncher;
   final bool isWebRuntime;
 
   @override
@@ -325,11 +333,18 @@ class _ImmersiveEventDetailScreenState
   Future<void> _handleConfirmAttendance() async {
     final routeRedirectPath =
         buildRedirectPathFromRouteMatch(context.routeData.route);
-    if (kIsWeb && !_controller.isAuthorized) {
-      launchWebInstalledAppHandoffOrPromotion(
-        context: context,
-        redirectPath: routeRedirectPath,
+    if (widget.isWebRuntime && !_controller.isAuthorized) {
+      AuthWallTelemetry.trackTriggered(
         actionType: AuthWallActionType.confirmAttendance,
+        redirectPath: routeRedirectPath,
+        allowPendingActionReplay: false,
+      );
+      await AppPromotionModal.show(
+        context,
+        redirectPath: routeRedirectPath,
+        title: 'Confirme presença pelo app',
+        supportingText:
+            'Use o app para confirmar sua presença e acompanhar esse evento.',
       );
       return;
     }
@@ -344,7 +359,10 @@ class _ImmersiveEventDetailScreenState
   }
 
   Future<void> _shareSelectedEvent(EventModel event) async {
-    final payload = _buildEventPublicSharePayload(event);
+    final payload = await _buildEventSharePayload(event);
+    if (!mounted) {
+      return;
+    }
     if (payload == null) {
       _showStatusMessage(
         'Não foi possível compartilhar ${event.title.value}.',
@@ -371,7 +389,10 @@ class _ImmersiveEventDetailScreenState
   }
 
   Future<void> _shareSelectedEventOnWhatsApp(EventModel event) async {
-    final payload = _buildEventPublicSharePayload(event);
+    final payload = await _buildEventSharePayload(event);
+    if (!mounted) {
+      return;
+    }
     if (payload == null) {
       _showStatusMessage(
         'Não foi possível compartilhar ${event.title.value}.',
@@ -384,6 +405,7 @@ class _ImmersiveEventDetailScreenState
         text: payload.message,
         subject: payload.subject,
         fallbackShareLauncher: widget.shareLauncher,
+        externalUrlLauncher: widget.externalUrlLauncher,
       );
     } catch (_) {
       if (!mounted) {
@@ -393,6 +415,31 @@ class _ImmersiveEventDetailScreenState
         'Não foi possível compartilhar ${event.title.value}.',
       );
     }
+  }
+
+  Future<({String subject, String message})?> _buildEventSharePayload(
+    EventModel event,
+  ) async {
+    if (!_controller.isAuthorized) {
+      return _buildEventPublicSharePayload(event);
+    }
+
+    final inviteUri = await _controller.createShareUriForSelectedEvent();
+    if (inviteUri == null) {
+      return null;
+    }
+
+    final invite = InviteFromEventFactory.build(
+      event: event,
+      fallbackImageUri: _controller.defaultEventImageUri,
+    );
+    return EventInviteSharePayloadBuilder.buildInvitation(
+      eventName: invite.eventName,
+      location: invite.location,
+      eventScheduleLabel: event.flyerScheduleLabel,
+      inviteUri: inviteUri,
+      participantGroups: _participantGroupsForEventShare(event),
+    );
   }
 
   ({String subject, String message})? _buildEventPublicSharePayload(
@@ -411,11 +458,12 @@ class _ImmersiveEventDetailScreenState
       event: event,
       fallbackImageUri: _controller.defaultEventImageUri,
     );
-    return EventInviteSharePayloadBuilder.build(
+    return EventInviteSharePayloadBuilder.buildPublicShare(
       eventName: invite.eventName,
       location: invite.location,
-      eventDateTime: invite.eventDateTime,
+      eventScheduleLabel: event.flyerScheduleLabel,
       publicUri: publicUri,
+      participantGroups: _participantGroupsForEventShare(event),
     );
   }
 
@@ -433,95 +481,42 @@ class _ImmersiveEventDetailScreenState
     ).toString();
   }
 
+  List<EventInviteShareParticipantGroup> _participantGroupsForEventShare(
+    EventModel event,
+  ) {
+    return _aggregatedRelatedProfileGroups(event)
+        .map(
+          (group) => (
+            label: group.label,
+            names: group.profileNames,
+          ),
+        )
+        .toList(growable: false);
+  }
+
   List<ImmersiveTabItem> _buildDynamicProfileTabs({
     required EventModel event,
     required Set<String> favoriteAccountProfileIds,
   }) {
-    if (event.profileGroups.isNotEmpty) {
-      return event.profileGroups
-          .where((group) => group.profiles.isNotEmpty)
-          .map(
-            (group) => ImmersiveTabItem(
-              title: group.label,
-              content: LinkedProfileCategorySection(
-                title: group.label,
-                profiles: group.profiles,
-                profileTypeRegistry: _controller.profileTypeRegistry,
-                favoriteAccountProfileIds: favoriteAccountProfileIds,
-                isFavoritable: (profile) =>
-                    _controller.isLinkedProfileFavoritable(
-                  profile.profileType,
-                ),
-                onFavoriteTap: (profile) =>
-                    _handleLinkedProfileFavoriteTap(profile),
-              ),
-              footer: null,
-            ),
-          )
-          .toList(growable: false);
-    }
-
-    final groupedProfiles = _groupLinkedProfilesByType(event);
-
-    return groupedProfiles.entries
-        .map((entry) {
-          final type = entry.key;
-          final profiles = entry.value;
-          if (profiles.isEmpty) {
-            return null;
-          }
-
-          final title = _controller.profileTypePluralLabelFor(
-            type,
-            fallback: _humanizeTypeKey(type),
-          );
-
-          return ImmersiveTabItem(
-            title: title,
+    return _aggregatedRelatedProfileGroups(event)
+        .map(
+          (group) => ImmersiveTabItem(
+            title: group.label,
             content: LinkedProfileCategorySection(
-              title: title,
-              profiles: profiles,
+              title: group.label,
+              profiles: group.profiles,
               profileTypeRegistry: _controller.profileTypeRegistry,
               favoriteAccountProfileIds: favoriteAccountProfileIds,
               isFavoritable: (profile) =>
                   _controller.isLinkedProfileFavoritable(profile.profileType),
+              onProfileTap: _openLinkedProfile,
               onFavoriteTap: (profile) =>
                   _handleLinkedProfileFavoriteTap(profile),
             ),
             footer: null,
-          );
-        })
-        .whereType<ImmersiveTabItem>()
+          ),
+        )
         .toList(growable: false);
-  }
-
-  Map<String, List<EventLinkedAccountProfile>> _groupLinkedProfilesByType(
-    EventModel event,
-  ) {
-    final venueId = event.venue?.id;
-    final groupedProfiles = <String, List<EventLinkedAccountProfile>>{};
-
-    for (final profile in event.linkedAccountProfiles) {
-      if (profile.id == venueId) {
-        continue;
-      }
-
-      final type = profile.profileType.trim();
-      if (type.isEmpty) {
-        continue;
-      }
-
-      final bucket = groupedProfiles.putIfAbsent(
-        type,
-        () => <EventLinkedAccountProfile>[],
-      );
-      if (bucket.any((existing) => existing.id == profile.id)) {
-        continue;
-      }
-      bucket.add(profile);
-    }
-
-    return groupedProfiles;
   }
 
   int? _linkedProfileTabIndex(EventModel event, String profileType) {
@@ -530,18 +525,45 @@ class _ImmersiveEventDetailScreenState
       return null;
     }
 
-    final dynamicKeys = event.profileGroups.isNotEmpty
-        ? [
-            for (final group in event.profileGroups)
-              if (group.profiles.any((profile) => profile.profileType == type))
-                type,
-          ]
-        : _groupLinkedProfilesByType(event).keys.toList();
-    final typeOffset = dynamicKeys.indexOf(type);
-    if (typeOffset < 0) {
+    final groups = _aggregatedRelatedProfileGroups(event);
+    final groupOffset = groups.indexWhere(
+      (group) => group.profiles.any((profile) => profile.profileType == type),
+    );
+    if (groupOffset < 0) {
       return null;
     }
 
+    return _firstDynamicTabIndex(event) + groupOffset;
+  }
+
+  int? _linkedProfileTabIndexForHeroTap(
+    EventModel event,
+    EventLinkedAccountProfile profile,
+  ) {
+    final groups = _aggregatedRelatedProfileGroups(event);
+    final exactGroupOffset = groups.indexWhere(
+      (group) => group.profiles.any((candidate) => candidate.id == profile.id),
+    );
+    if (exactGroupOffset >= 0) {
+      return _firstDynamicTabIndex(event) + exactGroupOffset;
+    }
+
+    final directIndex = _linkedProfileTabIndex(event, profile.profileType);
+    if (directIndex != null) {
+      return directIndex;
+    }
+
+    if (groups.isEmpty || groups.first.profiles.isEmpty) {
+      return null;
+    }
+
+    return _linkedProfileTabIndex(
+      event,
+      groups.first.profiles.first.profileType,
+    );
+  }
+
+  int _firstDynamicTabIndex(EventModel event) {
     var firstDynamicTabIndex = 0;
     if (_hasAboutContent(event)) {
       firstDynamicTabIndex += 1;
@@ -549,45 +571,33 @@ class _ImmersiveEventDetailScreenState
     if (event.hasAnyProgrammingItems) {
       firstDynamicTabIndex += 1;
     }
-
-    return firstDynamicTabIndex + typeOffset;
-  }
-
-  int? _linkedProfileTabIndexForHeroTap(
-    EventModel event,
-    EventLinkedAccountProfile profile,
-  ) {
-    final directIndex = _linkedProfileTabIndex(event, profile.profileType);
-    if (directIndex != null) {
-      return directIndex;
-    }
-
-    final availableTypes = _groupLinkedProfilesByType(event).keys;
-    if (availableTypes.isEmpty) {
-      return null;
-    }
-
-    return _linkedProfileTabIndex(event, availableTypes.first);
-  }
-
-  String _humanizeTypeKey(String raw) {
-    final normalized = raw.trim().replaceAll(RegExp(r'[_-]+'), ' ');
-    if (normalized.isEmpty) {
-      return raw;
-    }
-    return normalized
-        .split(' ')
-        .where((part) => part.isNotEmpty)
-        .map(
-          (part) =>
-              '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}',
-        )
-        .join(' ');
+    return firstDynamicTabIndex;
   }
 
   void _openInviteFlow(EventModel event) {
+    if (widget.isWebRuntime && !_controller.isAuthorized) {
+      unawaited(_showInviteComposerPromotion());
+      return;
+    }
+
     final invite = _buildInviteFromEvent(event);
     context.router.push(InviteShareRoute(invite: invite));
+  }
+
+  Future<void> _showInviteComposerPromotion() {
+    const redirectPath = '/convites/compartilhar';
+    AuthWallTelemetry.trackTriggered(
+      actionType: AuthWallActionType.sendInvite,
+      redirectPath: redirectPath,
+      allowPendingActionReplay: false,
+    );
+    return AppPromotionModal.show(
+      context,
+      redirectPath: redirectPath,
+      title: 'Convide pessoas pelo app',
+      supportingText:
+          'Use o app para escolher contatos, acompanhar envios e gerenciar convites.',
+    );
   }
 
   Future<void> _handleAcceptInvite(InviteModel invite) {
@@ -729,7 +739,7 @@ class _ImmersiveEventDetailScreenState
     }
     _controller.selectOccurrence(event, occurrence);
     unawaited(
-      context.router.navigate(
+      context.router.replace(
         ImmersiveEventDetailRoute(
           eventSlug: event.slug,
           occurrenceId: occurrenceId,
@@ -760,11 +770,14 @@ class _ImmersiveEventDetailScreenState
         direction == ImmersiveHorizontalSwipeDirection.forward ? 1 : -1;
     final targetIndex = selectedIndex + step;
     if (targetIndex >= 0 && targetIndex < occurrences.length) {
-      unawaited(_scrollProgrammingSectionToTop());
       _openOccurrence(
         event,
         occurrences[targetIndex],
         tab: 'programming',
+      );
+      _realignActiveProgrammingTab(
+        activateTab: activateTab,
+        currentTabIndex: currentTabIndex,
       );
       return true;
     }
@@ -794,17 +807,16 @@ class _ImmersiveEventDetailScreenState
     activateTab(currentTabIndex + delta);
   }
 
-  Future<void> _scrollProgrammingSectionToTop() async {
-    final targetContext = _programmingSectionAnchorKey.currentContext;
-    if (targetContext == null) {
-      return;
-    }
-    await Scrollable.ensureVisible(
-      targetContext,
-      duration: const Duration(milliseconds: 260),
-      curve: Curves.easeOutCubic,
-      alignment: 0,
-    );
+  void _realignActiveProgrammingTab({
+    required ValueChanged<int> activateTab,
+    required int currentTabIndex,
+  }) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      activateTab(currentTabIndex);
+    });
   }
 
   int _resolveInitialTabIndex(
@@ -993,7 +1005,36 @@ class _ImmersiveEventDetailScreenState
     return InviteFromEventFactory.build(
       event: event,
       fallbackImageUri: _controller.defaultEventImageUri,
+      profileGroups: _aggregatedProfileGroupsForInvite(event),
     );
+  }
+
+  List<EventRelatedProfileGroupSummary> _aggregatedRelatedProfileGroups(
+    EventModel event,
+  ) {
+    return EventRelatedProfileGroups.fromAggregatedEvent(
+      event,
+      labelResolver: (profileType, fallback) =>
+          _controller.profileTypePluralLabelFor(
+        profileType,
+        fallback: fallback,
+      ),
+    );
+  }
+
+  List<EventProfileGroup> _aggregatedProfileGroupsForInvite(EventModel event) {
+    final groups = _aggregatedRelatedProfileGroups(event);
+    return [
+      for (var index = 0; index < groups.length; index += 1)
+        EventProfileGroup(
+          idValue: EventLinkedAccountProfileTextValue(
+            'event-participants-$index',
+          ),
+          labelValue: EventLinkedAccountProfileTextValue(groups[index].label),
+          orderValue: EventProfileGroupOrderValue(index),
+          profiles: groups[index].profiles,
+        ),
+    ];
   }
 
   void _handleLinkedProfileFavoriteTap(EventLinkedAccountProfile profile) {
@@ -1013,12 +1054,65 @@ class _ImmersiveEventDetailScreenState
     );
   }
 
+  void _openLinkedProfile(EventLinkedAccountProfile profile) {
+    final route = _linkedProfileDetailRoute(profile);
+    if (route == null) {
+      return;
+    }
+    context.router.push(route);
+  }
+
   String _linkedProfileRedirectPath(EventLinkedAccountProfile profile) {
-    final slug = profile.slug.trim();
-    if (slug.isEmpty) {
+    final publicDetailPath = profile.publicDetailPath?.trim();
+    if (publicDetailPath != null && publicDetailPath.isNotEmpty) {
+      return publicDetailPath;
+    }
+
+    final slug = _partnerSlugFromProfile(profile);
+    if (slug == null) {
       return buildRedirectPathFromRouteMatch(context.routeData.route);
     }
     return '/parceiro/$slug';
+  }
+
+  PartnerDetailRoute? _linkedProfileDetailRoute(
+    EventLinkedAccountProfile profile,
+  ) {
+    final slug = _partnerSlugFromProfile(profile);
+    if (slug == null) {
+      return null;
+    }
+
+    return PartnerDetailRoute(slug: slug);
+  }
+
+  String? _partnerSlugFromProfile(EventLinkedAccountProfile profile) {
+    if (!profile.canOpenPublicDetail) {
+      return null;
+    }
+
+    final directSlug = profile.slug.trim();
+    if (directSlug.isNotEmpty) {
+      return directSlug;
+    }
+
+    final path = profile.publicDetailPath?.trim();
+    if (path == null || path.isEmpty) {
+      return null;
+    }
+
+    final uri = Uri.tryParse(path);
+    if (uri == null) {
+      return null;
+    }
+
+    final segments = uri.pathSegments;
+    if (segments.length < 2 || segments.first != 'parceiro') {
+      return null;
+    }
+
+    final slug = segments[1].trim();
+    return slug.isEmpty ? null : slug;
   }
 }
 

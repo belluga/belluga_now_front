@@ -29,6 +29,8 @@ class FavoritePreviewDTO {
     this.imageUrl,
     this.coverUrl,
     this.profileType,
+    this.canOpenPublicDetail = false,
+    this.publicDetailPath,
     this.assetPath,
     this.badgeIconCodePoint,
     this.badgeFontFamily,
@@ -79,6 +81,13 @@ class FavoritePreviewDTO {
         (target['display_name'] ?? json['title'] ?? targetId).toString().trim();
     final slug =
         (navigation['target_slug'] ?? target['slug'])?.toString().trim();
+    final publicDetailPath =
+        (navigation['target_path'] ?? target['public_detail_path'])
+            ?.toString()
+            .trim();
+    final canOpenPublicDetail =
+        navigation['can_open_public_detail'] == true ||
+        target['can_open_public_detail'] == true;
 
     DateTime? parseDate(dynamic value) {
       if (value is String && value.trim().isNotEmpty) {
@@ -106,6 +115,10 @@ class FavoritePreviewDTO {
       imageUrl: target['avatar_url']?.toString(),
       coverUrl: target['cover_url']?.toString(),
       profileType: target['profile_type']?.toString().trim(),
+      canOpenPublicDetail: canOpenPublicDetail,
+      publicDetailPath: publicDetailPath?.isNotEmpty == true
+          ? publicDetailPath
+          : null,
       assetPath: null,
       isPrimary: false,
     );
@@ -125,6 +138,8 @@ class FavoritePreviewDTO {
   final String? imageUrl;
   final String? coverUrl;
   final String? profileType;
+  final bool canOpenPublicDetail;
+  final String? publicDetailPath;
   final String? assetPath;
   final int? badgeIconCodePoint;
   final String? badgeFontFamily;
@@ -211,6 +226,8 @@ class FavoritePreviewDTO {
       targetType: targetType,
       profileType: _trimOrNull(profileType),
       coverImageUriValue: _thumbUriFromString(coverUrl),
+      canOpenPublicDetail: canOpenPublicDetail,
+      publicDetailPath: _trimOrNull(publicDetailPath),
       nextEventOccurrenceAt: nextEventOccurrenceAt,
       lastEventOccurrenceAt: lastEventOccurrenceAt,
       liveNowEventOccurrenceId: _trimOrNull(liveNowEventOccurrenceId),

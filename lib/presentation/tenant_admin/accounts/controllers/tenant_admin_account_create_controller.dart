@@ -381,7 +381,7 @@ class TenantAdminAccountCreateController implements Disposable {
     );
     final coverUpload = await buildImageUpload(
       createStateStreamValue.value.coverFile,
-      slot: TenantAdminImageSlot.cover,
+      slot: TenantAdminImageSlot.accountProfileHeroCover,
     );
     return createAccountOnboarding(
       name: nameController.text.trim(),

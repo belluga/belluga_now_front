@@ -214,14 +214,22 @@ class _FakeAccountProfilesRepository
   String? lastUpdateDisplayName;
   String? lastUpdateBio;
   String? lastUpdateContent;
+  bool? lastFetchQueryableOnly;
+  String? lastFetchExcludeAccountProfileId;
   List<TenantAdminNestedProfileGroup>? lastCreateNestedProfileGroups;
   List<TenantAdminNestedProfileGroup>? lastUpdateNestedProfileGroups;
 
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
     TenantAdminAccountProfilesRepoString? accountId,
+    TenantAdminAccountProfilesRepoBool? queryableOnly,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async =>
-      _profiles;
+      () {
+        lastFetchQueryableOnly = queryableOnly?.value;
+        lastFetchExcludeAccountProfileId = excludeAccountProfileId?.value;
+        return _profiles;
+      }();
 
   @override
   Future<TenantAdminAccountProfile> createAccountProfile({
@@ -727,6 +735,41 @@ void main() {
     );
 
     expect(profilesRepository.lastUpdateNestedProfileGroups, groups);
+  });
+
+  test(
+      'loadNestedProfileCandidates requests backend queryable-only candidates and excludes current profile',
+      () async {
+    final profilesRepository = _FakeAccountProfilesRepository(
+      [
+        tenantAdminAccountProfileFromRaw(
+          id: 'profile-1',
+          accountId: 'acc-1',
+          profileType: 'venue',
+          displayName: 'Perfil atual',
+          slug: 'perfil-atual',
+        ),
+        tenantAdminAccountProfileFromRaw(
+          id: 'profile-2',
+          accountId: 'acc-2',
+          profileType: 'artist',
+          displayName: 'Perfil candidato',
+          slug: 'perfil-candidato',
+        ),
+      ],
+      const [],
+    );
+    final controller = TenantAdminAccountProfilesController(
+      profilesRepository: profilesRepository,
+      accountsRepository: _FakeAccountsRepository(),
+      taxonomiesRepository: _FakeTaxonomiesRepository(),
+      locationSelectionService: TenantAdminLocationSelectionService(),
+    );
+
+    await controller.loadNestedProfileCandidates(excludeProfileId: 'profile-1');
+
+    expect(profilesRepository.lastFetchQueryableOnly, isTrue);
+    expect(profilesRepository.lastFetchExcludeAccountProfileId, 'profile-1');
   });
 
   test(

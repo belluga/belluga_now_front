@@ -252,18 +252,24 @@ class TenantAdminAccountProfilesController implements Disposable {
 
   Future<void> loadNestedProfileCandidates({String? excludeProfileId}) async {
     try {
-      final profiles = await _profilesRepository.fetchAccountProfiles();
-      if (_isDisposed) return;
       final normalizedExclude = excludeProfileId?.trim();
+      final filteredProfiles = await _profilesRepository.fetchAccountProfiles(
+        queryableOnly: tenantAdminAccountProfilesRepoBool(
+          true,
+          defaultValue: true,
+        ),
+        excludeAccountProfileId:
+            normalizedExclude == null || normalizedExclude.isEmpty
+                ? null
+                : tenantAdminAccountProfilesRepoString(
+                    normalizedExclude,
+                    defaultValue: '',
+                    isRequired: true,
+                  ),
+      );
+      if (_isDisposed) return;
       nestedProfileCandidatesStreamValue.addValue(
-        profiles
-            .where(
-              (profile) =>
-                  normalizedExclude == null ||
-                  normalizedExclude.isEmpty ||
-                  profile.id != normalizedExclude,
-            )
-            .toList(growable: false),
+        filteredProfiles.toList(growable: false),
       );
     } catch (_) {
       if (_isDisposed) return;
