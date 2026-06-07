@@ -927,7 +927,7 @@ class EventDTO {
       slugValue: slugValue,
       type: InviteAccountProfileType.mercadoProducer,
       canOpenPublicDetail:
-          dto['can_open_public_detail'] == true && publicDetailPath.isNotEmpty,
+          _asBool(dto['can_open_public_detail']) && publicDetailPath.isNotEmpty,
       publicDetailPathValue: AccountProfilePublicDetailPathValue(
         publicDetailPath,
       ),
