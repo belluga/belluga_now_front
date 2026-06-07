@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 
 import 'route_instance_store.dart';
 
@@ -57,21 +56,11 @@ class RouteInstanceScope extends StatefulWidget {
   }
 
   static T get<T extends Object>(BuildContext context) {
-    final store = maybeStoreOf(context);
-    if (store != null) {
-      return store.get<T>();
-    }
-
-    return GetIt.I.get<T>();
+    return storeOf(context).get<T>();
   }
 
   static T read<T extends Object>(BuildContext context) {
-    final store = maybeReadStoreOf(context);
-    if (store != null) {
-      return store.get<T>();
-    }
-
-    return GetIt.I.get<T>();
+    return readStoreOf(context).get<T>();
   }
 
   @override
@@ -149,7 +138,7 @@ Future<T?> showRouteScopedDialog<T>({
   TraversalEdgeBehavior? traversalEdgeBehavior,
   bool? requestFocus,
 }) {
-  final store = RouteInstanceScope.maybeStoreOf(context);
+  final store = RouteInstanceScope.readStoreOf(context);
   return showDialog<T>(
     context: context,
     barrierDismissible: barrierDismissible,
@@ -192,7 +181,7 @@ Future<T?> showRouteScopedModalBottomSheet<T>({
   AnimationStyle? sheetAnimationStyle,
   bool? requestFocus,
 }) {
-  final store = RouteInstanceScope.maybeStoreOf(context);
+  final store = RouteInstanceScope.readStoreOf(context);
   return showModalBottomSheet<T>(
     context: context,
     backgroundColor: backgroundColor,
@@ -223,14 +212,10 @@ Future<T?> showRouteScopedModalBottomSheet<T>({
 }
 
 Widget _wrapWithRouteStore({
-  required RouteInstanceStore? store,
+  required RouteInstanceStore store,
   required WidgetBuilder builder,
   required BuildContext context,
 }) {
-  if (store == null) {
-    return builder(context);
-  }
-
   return RouteInstanceScope(
     store: store,
     disposeStore: false,

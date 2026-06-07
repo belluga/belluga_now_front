@@ -61,10 +61,8 @@ class FavoritesSectionView extends StatelessWidget {
       switch (target) {
         case FavoriteNavigationPrimary():
           return;
-        case FavoriteNavigationPartner():
-          router.push(
-            PartnerDetailRoute(slug: target.slug),
-          );
+        case FavoriteNavigationPath():
+          router.pushPath(target.path);
           return;
         case FavoriteNavigationUnavailable():
           return;

@@ -61,7 +61,7 @@ void main() {
     expect(
       dto.toJson()['taxonomy_terms'],
       [
-        {'type': 'canonical_label', 'value': 'Music', 'name': 'Music'},
+        {'type': 'genre', 'value': 'music', 'name': 'Music'},
       ],
     );
   });

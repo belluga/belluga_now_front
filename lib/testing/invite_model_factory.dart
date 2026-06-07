@@ -19,12 +19,14 @@ import 'package:belluga_now/domain/invites/value_objects/invite_tag_value.dart';
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_profile_group.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 
 InviteModel buildInviteModelFromPrimitives({
   required String id,
   required String eventId,
+  String? eventSlug,
   required String eventName,
   required DateTime eventDateTime,
   required String eventImageUrl,
@@ -113,6 +115,7 @@ InviteModel buildInviteModelFromPrimitives({
   return InviteModel(
     idValue: InviteIdValue()..parse(id),
     eventIdValue: InviteEventIdValue()..parse(eventId),
+    eventSlugValue: SlugValue()..parse((eventSlug ?? eventId).trim()),
     eventNameValue: TitleValue()..parse(eventName),
     eventDateValue: InviteEventDateValue(isRequired: true)
       ..parse(eventDateTime.toIso8601String()),

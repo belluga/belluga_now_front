@@ -12,6 +12,7 @@ import 'package:belluga_now/domain/invites/value_objects/invite_tag_value.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_profile_group.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
@@ -58,6 +59,7 @@ final class InviteFromEventFactory {
     return InviteModel(
       idValue: InviteIdValue()..parse(inviteId),
       eventIdValue: InviteEventIdValue()..parse(eventId),
+      eventSlugValue: SlugValue()..parse(event.slug),
       eventNameValue: TitleValue()..parse(eventName),
       eventDateValue: InviteEventDateValue(isRequired: true)
         ..parse(eventDate.toIso8601String()),

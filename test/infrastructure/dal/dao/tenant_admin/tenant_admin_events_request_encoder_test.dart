@@ -295,7 +295,7 @@ void main() {
   });
 
   test(
-      'omits legacy occurrence related ids when no occurrence group is present',
+      'encodes legacy occurrence related ids as canonical event parties when no occurrence group is present',
       () {
     const encoder = TenantAdminEventsRequestEncoder();
     final payload = encoder.encodeDraft(
@@ -326,7 +326,12 @@ void main() {
         (payload['occurrences'] as List<Object?>).first as Map<String, dynamic>;
 
     expect(occurrence.containsKey('profile_groups'), isFalse);
-    expect(occurrence.containsKey('event_parties'), isFalse);
+    expect(occurrence['event_parties'], [
+      {
+        'party_ref_id': 'legacy-occurrence-profile',
+        'permissions': {'can_edit': true},
+      },
+    ]);
   });
 }
 

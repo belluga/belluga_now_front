@@ -3630,6 +3630,58 @@ void main() {
       },
     );
 
+    test(
+      'matches account profile reference points even before poi hydration completes',
+      () async {
+        final fixedReference = FixedLocationReference(
+          sourceKind: FixedLocationReferenceSourceKind.entityReference,
+          coordinate: _buildCoordinate('-20.7389', '-40.8212'),
+          labelValue: ProximityPreferenceOptionalTextValue.fromRaw(
+            'Casa Marracini',
+          ),
+          entityNamespaceValue:
+              ProximityPreferenceOptionalTextValue.fromRaw('account_profile'),
+          entityTypeValue: ProximityPreferenceOptionalTextValue.fromRaw(
+            'artist',
+          ),
+          entityIdValue: ProximityPreferenceOptionalTextValue.fromRaw(
+            '507f1f77bcf86cd799439011',
+          ),
+          entitySlugValue:
+              ProximityPreferenceOptionalTextValue.fromRaw('casa-marracini'),
+        );
+        final localController = _buildMapController(
+          poiRepository: _buildPoiRepository(
+            mapRepository: mapRepository,
+            accountProfilesRepository: _FakeAccountProfilesRepository(),
+            staticAssetsRepository: _FakeStaticAssetsRepository(),
+          ),
+          userLocationRepository: userLocationRepository,
+          telemetryRepository: telemetry,
+          appData: _buildAppData(artistReferenceLocationEnabled: true),
+          proximityPreferencesRepository: _FakeProximityPreferencesRepository(
+            fixedReference: fixedReference,
+          ),
+        );
+        addTearDown(() async {
+          await localController.onDispose();
+        });
+
+        final poi = _buildPoi(
+          id: 'poi-partner',
+          name: 'Casa Marracini',
+          refType: 'account_profile',
+          refId: '507f1f77bcf86cd799439011',
+          refSlug: 'casa-marracini',
+          refPath: '/parceiro/casa-marracini',
+          category: CityPoiCategory.restaurant,
+        );
+
+        expect(localController.hydratedAccountProfileForPoi(poi), isNull);
+        expect(localController.isPoiReferencePoint(poi), isTrue);
+      },
+    );
+
     test('hydrates initial poi before refreshIfPermitted completes', () async {
       final refreshCompleter = Completer<bool>();
       userLocationRepository.refreshIfPermittedCompleter = refreshCompleter;
@@ -4983,6 +5035,28 @@ void main() {
       'ver detalhes pushes partner detail route for account profile poi',
       (tester) async {
         final router = _RecordingStackRouter()..canPopResult = false;
+        final localAccountProfilesRepository = _FakeAccountProfilesRepository();
+        final localPoiRepository = _buildPoiRepository(
+          mapRepository: mapRepository,
+          accountProfilesRepository: localAccountProfilesRepository,
+        );
+        final localController = _buildMapController(
+          poiRepository: localPoiRepository,
+          userLocationRepository: userLocationRepository,
+          telemetryRepository: telemetry,
+          appData: _buildAppData(),
+        );
+        addTearDown(() async {
+          await localController.onDispose();
+        });
+        localAccountProfilesRepository.profilesBySlug['casa-marracini'] =
+            buildAccountProfileModelFromPrimitives(
+          id: '507f1f77bcf86cd799439011',
+          name: 'Casa Marracini',
+          slug: 'casa-marracini',
+          type: 'artist',
+          canOpenPublicDetail: true,
+        );
         final poi = _buildPoi(
           id: 'poi-partner',
           name: 'Casa Marracini',
@@ -4993,11 +5067,12 @@ void main() {
           category: CityPoiCategory.restaurant,
         );
 
-        controller.selectPoi(poi);
+        await localPoiRepository.ensurePoiHydrated(poi);
+        localController.selectPoi(poi);
 
         await _pumpPoiDetailDeck(
           tester,
-          controller: controller,
+          controller: localController,
           router: router,
         );
 
@@ -5059,6 +5134,47 @@ void main() {
         expect(find.text('Traçar rota'), findsOneWidget);
         expect(find.text('Ver detalhes'), findsNothing);
         expect(find.byTooltip('Compartilhar'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'account profile poi without hydrated public profile does not infer detail route from stale map metadata',
+      (tester) async {
+        final router = _RecordingStackRouter()..canPopResult = false;
+        final localPoiRepository = _buildPoiRepository(
+          mapRepository: mapRepository,
+          accountProfilesRepository: _FakeAccountProfilesRepository(),
+        );
+        final localController = _buildMapController(
+          poiRepository: localPoiRepository,
+          userLocationRepository: userLocationRepository,
+          telemetryRepository: telemetry,
+          appData: _buildAppData(),
+        );
+        addTearDown(() async {
+          await localController.onDispose();
+        });
+        final poi = _buildPoi(
+          id: 'poi-partner-stale',
+          name: 'Casa Marracini',
+          refType: 'account_profile',
+          refId: '507f1f77bcf86cd799439011',
+          refSlug: 'casa-marracini',
+          refPath: '/parceiro/casa-marracini',
+          category: CityPoiCategory.restaurant,
+        );
+
+        localController.selectPoi(poi);
+
+        await _pumpPoiDetailDeck(
+          tester,
+          controller: localController,
+          router: router,
+        );
+
+        expect(find.text('Ver detalhes'), findsNothing);
+        expect(find.byTooltip('Compartilhar'), findsNothing);
+        expect(router.pushedRoutes, isEmpty);
       },
     );
 

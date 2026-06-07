@@ -110,10 +110,26 @@ void main() {
       ),
     );
 
-    expect(profileTarget, isA<FavoriteNavigationPartner>());
+    expect(profileTarget, isA<FavoriteNavigationPath>());
     expect(
-      (profileTarget as FavoriteNavigationPartner).slug,
-      'com-slug',
+      (profileTarget as FavoriteNavigationPath).path,
+      '/parceiro/com-slug',
+    );
+
+    final pathTarget = await controller.resolveNavigationTarget(
+      _favoriteResume(
+        title: 'Path Only',
+        slug: null,
+        targetType: 'account_profile',
+        canOpenPublicDetail: true,
+        publicDetailPath: '/parceiro/path-only',
+      ),
+    );
+
+    expect(pathTarget, isA<FavoriteNavigationPath>());
+    expect(
+      (pathTarget as FavoriteNavigationPath).path,
+      '/parceiro/path-only',
     );
 
     final searchTarget = await controller.resolveNavigationTarget(
@@ -297,6 +313,7 @@ class _FakeAppData extends Fake implements AppData {
           typeValue: ProfileTypeKeyValue('artist'),
           labelValue: ProfileTypeLabelValue()..parse('Artist'),
           capabilities: ProfileTypeCapabilities(
+            isPubliclyDiscoverableValue: _flag(true),
             isFavoritableValue: _flag(true),
             isPoiEnabledValue: _flag(false),
             hasBioValue: _flag(true),

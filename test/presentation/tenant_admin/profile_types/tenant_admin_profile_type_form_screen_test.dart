@@ -200,7 +200,7 @@ void main() {
   });
 
   testWidgets(
-    'disables public discovery toggle when queryability is off and keeps public page toggle editable',
+    'keeps public discovery toggle editable when queryability is off',
     (tester) async {
       final controller = _TestProfileTypesController(impactCount: 0);
       await _pumpFormScreen(
@@ -226,25 +226,62 @@ void main() {
         ),
       );
 
-      final queryableToggle = tester.widget<SwitchListTile>(
-        find.widgetWithText(SwitchListTile, 'Consultavel'),
+      final discoverableFinder = find.widgetWithText(
+        SwitchListTile,
+        'Descoberta publica habilitada',
       );
       final discoverableToggle = tester.widget<SwitchListTile>(
-        find.widgetWithText(SwitchListTile, 'Descoberta publica habilitada'),
-      );
-      final publicPageToggle = tester.widget<SwitchListTile>(
-        find.widgetWithText(SwitchListTile, 'Pagina publica habilitada'),
+        discoverableFinder,
       );
 
-      expect(queryableToggle.value, isFalse);
-      expect(discoverableToggle.value, isFalse);
-      expect(discoverableToggle.onChanged, isNull);
-      expect(publicPageToggle.value, isTrue);
-      expect(publicPageToggle.onChanged, isNotNull);
-      expect(find.text('Requer capacidade de consulta habilitada.'),
-          findsOneWidget);
+      expect(discoverableToggle.value, isTrue);
+      expect(discoverableToggle.onChanged, isNotNull);
+      expect(
+        find.text('Requer capacidade de consulta habilitada.'),
+        findsNothing,
+      );
+
+      await tester.tap(discoverableFinder);
+      await tester.pumpAndSettle();
+
+      expect(controller.currentCapabilities.isQueryable, isFalse);
+      expect(controller.currentCapabilities.isPubliclyDiscoverable, isFalse);
     },
   );
+
+  testWidgets('toggles inviteable capability in profile type form',
+      (tester) async {
+    final controller = _TestProfileTypesController(impactCount: 0);
+    await _pumpFormScreen(
+      tester,
+      controller: controller,
+      definition: tenantAdminProfileTypeDefinitionFromRaw(
+        type: 'artist',
+        label: 'Artist',
+        allowedTaxonomies: const [],
+        capabilities: TenantAdminProfileTypeCapabilities(
+          isInviteable: TenantAdminFlagValue(false),
+          isFavoritable: TenantAdminFlagValue(false),
+          isPoiEnabled: TenantAdminFlagValue(false),
+          hasBio: TenantAdminFlagValue(false),
+          hasContent: TenantAdminFlagValue(false),
+          hasTaxonomies: TenantAdminFlagValue(false),
+          hasAvatar: TenantAdminFlagValue(false),
+          hasCover: TenantAdminFlagValue(false),
+          hasEvents: TenantAdminFlagValue(false),
+        ),
+      ),
+    );
+
+    final toggle = find.widgetWithText(SwitchListTile, 'Convidavel');
+    await tester.ensureVisible(toggle);
+    expect(tester.widget<SwitchListTile>(toggle).value, isFalse);
+
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+
+    expect(controller.currentCapabilities.isInviteable, isTrue);
+  });
 
   testWidgets('renders shared marker icon picker in POI visual editor', (
     tester,

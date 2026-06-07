@@ -16,9 +16,6 @@ class TenantAdminProfileTypeCapabilityCatalog {
     _TenantAdminProfileTypeCapabilityDefinition(
       keyValue: TenantAdminProfileTypeCapabilityKey.isPubliclyDiscoverable,
       defaultValue: TenantAdminFlagValue(true),
-      requiredKeys: {
-        TenantAdminProfileTypeCapabilityKey.isQueryable,
-      },
     ),
     _TenantAdminProfileTypeCapabilityDefinition(
       keyValue: TenantAdminProfileTypeCapabilityKey.isFavoritable,

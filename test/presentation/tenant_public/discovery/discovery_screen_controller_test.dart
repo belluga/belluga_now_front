@@ -55,7 +55,7 @@ void main() {
     await GetIt.I.reset();
   });
 
-  test('available discovery types include only favoritable profile types',
+  test('available discovery types include only publicly discoverable profile types',
       () async {
     final repository = _FakeAccountProfilesRepository(
       pages: {
@@ -758,6 +758,58 @@ void main() {
     expect(router.lastReplacedPath, isNull);
 
     await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+  });
+
+  testWidgets(
+      'DiscoveryScreen partner taps prefer canonical public detail path over slug route',
+      (tester) async {
+    final profile = buildAccountProfileModelFromPrimitives(
+      id: _mongoId('path-pref'),
+      name: 'Perfil Path',
+      slug: 'perfil-path',
+      type: 'artist',
+      publicDetailPath: '/perfil-customizado/perfil-path',
+    );
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: pagedAccountProfilesResultFromRaw(
+          profiles: [profile],
+          hasMore: false,
+        ),
+      },
+    );
+    final controller = _buildDiscoveryController(
+      accountProfilesRepository: repository,
+    );
+    GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/descobrir'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: const DiscoveryScreen(),
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 120));
+
+    await tester.tap(find.text('Perfil Path').first);
+    await tester.pumpAndSettle();
+
+    expect(router.lastPushedPath, '/perfil-customizado/perfil-path');
   });
 
   testWidgets('DiscoveryFilterChips uses the shared bordered chip styling',
@@ -2833,6 +2885,7 @@ AppData _buildAppData() {
         'label': 'Artist',
         'allowed_taxonomies': const [],
         'capabilities': {
+          'is_publicly_discoverable': true,
           'is_favoritable': true,
           'is_poi_enabled': false,
         },
@@ -2842,6 +2895,7 @@ AppData _buildAppData() {
         'label': 'Curator',
         'allowed_taxonomies': const [],
         'capabilities': {
+          'is_publicly_discoverable': false,
           'is_favoritable': false,
           'is_poi_enabled': false,
         },

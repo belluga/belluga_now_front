@@ -330,7 +330,7 @@ class _AccountProfileDetailScreenState
       if (isFavoritable)
         ImmersiveHeroAction(
           key: const Key('accountProfileFavoriteAction'),
-          label: isFav ? 'Favoritado' : 'Favoritar',
+          label: isFav ? 'Perfil favoritado' : 'Favoritar perfil',
           icon: Icons.favorite_border,
           activeIcon: Icons.favorite,
           isPrimary: true,
@@ -2655,13 +2655,7 @@ class _AccountProfileDetailScreenState
     if (publicDetailPath != null && publicDetailPath.isNotEmpty) {
       return publicDetailPath;
     }
-
-    final slug = member.slug.trim();
-    if (slug.isEmpty) {
-      return null;
-    }
-
-    return '/parceiro/$slug';
+    return null;
   }
 
   AccountProfileModel _profileFromNestedMember(

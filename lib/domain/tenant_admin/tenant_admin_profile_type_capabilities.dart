@@ -9,6 +9,7 @@ class TenantAdminProfileTypeCapabilities {
     TenantAdminFlagValue? isQueryable,
     TenantAdminFlagValue? isPubliclyNavigable,
     TenantAdminFlagValue? isPubliclyDiscoverable,
+    TenantAdminFlagValue? isInviteable,
     required TenantAdminFlagValue isFavoritable,
     required TenantAdminFlagValue isPoiEnabled,
     TenantAdminFlagValue? isReferenceLocationEnabled,
@@ -30,6 +31,9 @@ class TenantAdminProfileTypeCapabilities {
       if (isPubliclyDiscoverable != null)
         TenantAdminProfileTypeCapabilityKey.isPubliclyDiscoverable.apiValue:
             isPubliclyDiscoverable.value,
+      if (isInviteable != null)
+        TenantAdminProfileTypeCapabilityKey.isInviteable.apiValue:
+            isInviteable.value,
       TenantAdminProfileTypeCapabilityKey.isFavoritable.apiValue:
           isFavoritable.value,
       TenantAdminProfileTypeCapabilityKey.isPoiEnabled.apiValue:
@@ -58,6 +62,9 @@ class TenantAdminProfileTypeCapabilities {
       ),
       isPubliclyDiscoverable: normalized.flagValue(
         TenantAdminProfileTypeCapabilityKey.isPubliclyDiscoverable,
+      ),
+      isInviteable: normalized.flagValue(
+        TenantAdminProfileTypeCapabilityKey.isInviteable,
       ),
       isFavoritable: normalized.flagValue(
         TenantAdminProfileTypeCapabilityKey.isFavoritable,
@@ -96,6 +103,7 @@ class TenantAdminProfileTypeCapabilities {
     required TenantAdminFlagValue isQueryable,
     required TenantAdminFlagValue isPubliclyNavigable,
     required TenantAdminFlagValue isPubliclyDiscoverable,
+    required TenantAdminFlagValue isInviteable,
     required TenantAdminFlagValue isFavoritable,
     required TenantAdminFlagValue isPoiEnabled,
     required TenantAdminFlagValue isReferenceLocationEnabled,
@@ -109,6 +117,7 @@ class TenantAdminProfileTypeCapabilities {
   })  : isQueryableValue = isQueryable,
         isPubliclyNavigableValue = isPubliclyNavigable,
         isPubliclyDiscoverableValue = isPubliclyDiscoverable,
+        isInviteableValue = isInviteable,
         isFavoritableValue = isFavoritable,
         isPoiEnabledValue = isPoiEnabled,
         isReferenceLocationEnabledValue = isReferenceLocationEnabled,
@@ -123,6 +132,7 @@ class TenantAdminProfileTypeCapabilities {
   final TenantAdminFlagValue isQueryableValue;
   final TenantAdminFlagValue isPubliclyNavigableValue;
   final TenantAdminFlagValue isPubliclyDiscoverableValue;
+  final TenantAdminFlagValue isInviteableValue;
   final TenantAdminFlagValue isFavoritableValue;
   final TenantAdminFlagValue isPoiEnabledValue;
   final TenantAdminFlagValue isReferenceLocationEnabledValue;
@@ -137,6 +147,7 @@ class TenantAdminProfileTypeCapabilities {
   bool get isQueryable => isQueryableValue.value;
   bool get isPubliclyNavigable => isPubliclyNavigableValue.value;
   bool get isPubliclyDiscoverable => isPubliclyDiscoverableValue.value;
+  bool get isInviteable => isInviteableValue.value;
   bool get isFavoritable => isFavoritableValue.value;
   bool get isPoiEnabled => isPoiEnabledValue.value;
   bool get isReferenceLocationEnabled => isReferenceLocationEnabledValue.value;
@@ -156,6 +167,8 @@ class TenantAdminProfileTypeCapabilities {
           isPubliclyNavigableValue.value,
       TenantAdminProfileTypeCapabilityKey.isPubliclyDiscoverable.apiValue:
           isPubliclyDiscoverableValue.value,
+      TenantAdminProfileTypeCapabilityKey.isInviteable.apiValue:
+          isInviteableValue.value,
       TenantAdminProfileTypeCapabilityKey.isFavoritable.apiValue:
           isFavoritableValue.value,
       TenantAdminProfileTypeCapabilityKey.isPoiEnabled.apiValue:

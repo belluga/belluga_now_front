@@ -232,8 +232,7 @@ void main() {
           profileGroups: [
             TenantAdminNestedProfileGroup(
               idValue: TenantAdminNestedProfileGroupTextValue('outro-grupo'),
-              labelValue:
-                  TenantAdminNestedProfileGroupTextValue('Outro Grupo'),
+              labelValue: TenantAdminNestedProfileGroupTextValue('Outro Grupo'),
               orderValue: TenantAdminNestedProfileGroupOrderValue(0),
               accountProfileIdValues: [
                 TenantAdminNestedProfileGroupTextValue(occurrenceArtist.id),
@@ -322,6 +321,79 @@ void main() {
           .toList(growable: false),
       ['artist-1'],
     );
+  });
+
+  test(
+      'occurrence profile-group changes clear stale programming profile links for removed members',
+      () {
+    final controller = TenantAdminEventsController(
+      eventsRepository: _TrackingEventsRepository(),
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+      landlordAuthRepository:
+          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
+    );
+    final occurrenceProfile = tenantAdminAccountProfileFromRaw(
+      id: 'artist-1',
+      accountId: 'acc-artist-1',
+      profileType: 'artist',
+      displayName: 'Artist A',
+    );
+
+    controller.initEventForm();
+    controller.upsertOccurrence(
+      index: null,
+      occurrence: TenantAdminEventOccurrence(
+        dateTimeStartValue: tenantAdminDateTime(DateTime(2026, 4, 22, 20)),
+        relatedAccountProfileIdValues:
+            List<TenantAdminAccountProfileIdValue>.of(
+          [
+            TenantAdminAccountProfileIdValue('artist-1'),
+          ],
+        ),
+        relatedAccountProfiles: [occurrenceProfile],
+        profileGroups: [
+          TenantAdminNestedProfileGroup(
+            idValue: TenantAdminNestedProfileGroupTextValue('bandas'),
+            labelValue: TenantAdminNestedProfileGroupTextValue('Bandas'),
+            orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+            accountProfileIdValues: [
+              TenantAdminNestedProfileGroupTextValue('artist-1'),
+            ],
+          ),
+        ],
+        programmingItems: List<TenantAdminEventProgrammingItem>.of([
+          TenantAdminEventProgrammingItem(
+            timeValue: tenantAdminRequiredText('20:00'),
+            titleValue: tenantAdminOptionalText('Show principal'),
+            accountProfileIdValues: List<TenantAdminAccountProfileIdValue>.of([
+              TenantAdminAccountProfileIdValue('artist-1'),
+            ]),
+            linkedAccountProfiles: [occurrenceProfile],
+          ),
+        ]),
+      ),
+    );
+
+    controller.toggleOccurrenceProfileGroupMember(
+      occurrenceKey: (controller.primaryOccurrenceKey())!,
+      groupId: 'bandas',
+      profileId: 'artist-1',
+      selected: false,
+    );
+
+    final occurrence =
+        controller.eventFormStateStreamValue.value.occurrences.single;
+    expect(occurrence.relatedAccountProfileIds, isEmpty);
+    expect(occurrence.relatedAccountProfiles, isEmpty);
+    expect(
+      occurrence.programmingItems.single.accountProfileIds,
+      isEmpty,
+    );
+    expect(
+      occurrence.programmingItems.single.linkedAccountProfiles,
+      isEmpty,
+    );
+    expect(occurrence.programmingItems.single.title, 'Show principal');
   });
 
   test(

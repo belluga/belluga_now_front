@@ -67,6 +67,7 @@ import 'package:belluga_now/domain/value_objects/color_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
+import 'package:belluga_now/infrastructure/dal/dto/invites/invite_dto.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_screen_controller.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_store_platform.dart';
 
@@ -411,7 +412,10 @@ class _FakeScheduleRepository extends Fake
 }
 
 void main() {
+  HttpOverrides? previousHttpOverrides;
+
   setUpAll(() async {
+    previousHttpOverrides = HttpOverrides.current;
     HttpOverrides.global = _TestHttpOverrides();
     await initializeDateFormatting('pt_BR');
   });
@@ -422,6 +426,10 @@ void main() {
 
   tearDown(() async {
     await GetIt.I.reset();
+  });
+
+  tearDownAll(() {
+    HttpOverrides.global = previousHttpOverrides;
   });
 
   testWidgets('Decision result pushes InviteShareRoute', (tester) async {
@@ -537,6 +545,118 @@ void main() {
     expect(router.replaceAllCalled, isTrue);
     expect(router.lastReplaced?.first, isA<TenantHomeRoute>());
   });
+
+  testWidgets('Ver detalhes opens public event route using invite slug', (
+    tester,
+  ) async {
+    final invite = buildInviteModelFromPrimitives(
+      id: 'invite-1',
+      eventId: '665f0c8f8c9b7c0012ab34cd',
+      eventSlug: 'pw-event-share-boundary-store-release-5',
+      eventName: 'Invite Event',
+      eventDateTime: DateTime(2026, 1, 1, 18),
+      eventImageUrl: 'https://example.com/event.jpg',
+      location: 'Guarapari',
+      hostName: 'Belluga',
+      message: 'Bora?',
+      tags: const ['music'],
+      occurrenceId: 'occ-1',
+    );
+    final controller = InviteFlowScreenController(
+      repository: _FakeInvitesRepository(initialInvites: [invite]),
+      userEventsRepository: _FakeUserEventsRepository(),
+      telemetryRepository: _FakeTelemetryRepository(),
+    );
+    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
+
+    final router = _RecordingStackRouter(canPopValue: true);
+    final routeData = _buildRouteData(router, queryParams: const {});
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: const InviteFlowScreen(),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    controller.markImageLoaded(invite.eventImageUrl);
+    await tester.pump();
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 150));
+      if (find.text('Ver detalhes').evaluate().isNotEmpty) {
+        break;
+      }
+    }
+
+    await tester.tap(find.text('Ver detalhes'));
+    await tester.pumpAndSettle();
+
+    expect(router.lastPushed, isA<ImmersiveEventDetailRoute>());
+    final route = router.lastPushed! as ImmersiveEventDetailRoute;
+    expect(route.args?.eventSlug, 'pw-event-share-boundary-store-release-5');
+    expect(route.args?.occurrenceId, 'occ-1');
+  });
+
+  testWidgets(
+    'Ver detalhes shows feedback instead of navigating when invite slug is absent',
+    (tester) async {
+      final invite = InviteDto(
+        id: 'invite-1',
+        eventId: '665f0c8f8c9b7c0012ab34cd',
+        eventSlug: '',
+        eventName: 'Invite Event',
+        eventDate: '2026-01-01T18:00:00.000',
+        eventImageUrl: 'https://example.com/event.jpg',
+        location: 'Guarapari',
+        hostName: 'Belluga',
+        message: 'Bora?',
+        tags: const ['music'],
+        attendancePolicy: 'free_confirmation_only',
+        additionalInviters: const [],
+        inviterCandidates: const [],
+        occurrenceId: 'occ-1',
+      ).toDomain();
+      final controller = InviteFlowScreenController(
+        repository: _FakeInvitesRepository(initialInvites: [invite]),
+        userEventsRepository: _FakeUserEventsRepository(),
+        telemetryRepository: _FakeTelemetryRepository(),
+      );
+      GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
+
+      final router = _RecordingStackRouter(canPopValue: true);
+      final routeData = _buildRouteData(router, queryParams: const {});
+
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: RouteDataScope(
+              routeData: routeData,
+              child: const InviteFlowScreen(),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.tap(find.text('Ver detalhes'));
+      await tester.pumpAndSettle();
+
+      expect(router.lastPushed, isNull);
+      expect(
+        find.text('Os detalhes deste evento ainda não estão disponíveis.'),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('Invite flow shows loading state before initialization',
       (tester) async {
@@ -668,6 +788,45 @@ void main() {
       findsOneWidget,
     );
     expect(router.lastReplacedPath, isNull);
+  });
+
+  testWidgets(
+      'Invite flow renders the invite immediately without waiting for image precache',
+      (tester) async {
+    final invite = _buildInviteWithPrimaryInviter('1');
+    final controller = InviteFlowScreenController(
+      repository: _FakeInvitesRepository(initialInvites: [invite]),
+      userEventsRepository: _FakeUserEventsRepository(),
+      telemetryRepository: _FakeTelemetryRepository(),
+    );
+    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
+
+    final router = _RecordingStackRouter(canPopValue: false);
+    final routeData = _buildRouteData(router, queryParams: const {});
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: InviteFlowCoordinator(
+              invites: [invite],
+              decisionResult: null,
+              requiresAuthentication: false,
+              isInitialized: true,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('Event 1'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 
   testWidgets(

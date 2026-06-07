@@ -45,12 +45,12 @@ final class EventRelatedProfileGroups {
     EventRelatedProfileGroupLabelResolver? labelResolver,
   }) {
     final groups = <EventProfileGroup>[
+      ..._orderedGroups(eventProfileGroups),
       for (final occurrenceGroups in occurrenceProfileGroups)
         ..._orderedGroups(occurrenceGroups),
-      ..._orderedGroups(eventProfileGroups),
     ];
 
-    final summaries = _mergedSummariesByLabel(
+    final summaries = _mergedSummariesByGroupId(
       profileGroups: groups,
       linkedAccountProfiles: linkedAccountProfiles,
       venueId: venueId,
@@ -158,7 +158,7 @@ final class EventRelatedProfileGroups {
       ..sort((left, right) => left.order.compareTo(right.order));
   }
 
-  static List<EventRelatedProfileGroupSummary> _mergedSummariesByLabel({
+  static List<EventRelatedProfileGroupSummary> _mergedSummariesByGroupId({
     required List<EventProfileGroup> profileGroups,
     required List<EventLinkedAccountProfile> linkedAccountProfiles,
     String? venueId,
@@ -179,14 +179,21 @@ final class EventRelatedProfileGroups {
         continue;
       }
 
+      final groupId = group.id.trim();
       final bucket = buckets.putIfAbsent(
-        key,
-        () => _MutableProfileGroupSummary(label),
+        groupId.isEmpty ? key : groupId,
+        () => _MutableProfileGroupSummary(label, group.order),
       );
+      if (group.order < bucket.order) {
+        bucket.order = group.order;
+      }
       bucket.addAll(profiles);
     }
 
-    return buckets.values
+    final orderedBuckets = buckets.values.toList(growable: false)
+      ..sort((left, right) => left.order.compareTo(right.order));
+
+    return orderedBuckets
         .map(
           (bucket) => EventRelatedProfileGroupSummary(
             label: bucket.label,
@@ -265,9 +272,10 @@ final class EventRelatedProfileGroups {
 }
 
 final class _MutableProfileGroupSummary {
-  _MutableProfileGroupSummary(this.label);
+  _MutableProfileGroupSummary(this.label, this.order);
 
   final String label;
+  int order;
   final List<EventLinkedAccountProfile> _profiles = [];
   final Set<String> _seenProfileKeys = {};
 

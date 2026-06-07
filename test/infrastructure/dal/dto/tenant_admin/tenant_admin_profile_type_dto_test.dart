@@ -30,7 +30,7 @@ void main() {
       expect(definition.visual?.iconColor, '#FFFFFF');
     });
 
-    test('falls back to legacy poi_visual for account profile types', () {
+    test('ignores legacy poi_visual without canonical visual payload', () {
       final dto = TenantAdminProfileTypeDTO.fromJson({
         'type': 'artist',
         'label': 'Artist',
@@ -41,11 +41,7 @@ void main() {
 
       final definition = dto.toDomain();
 
-      expect(definition.visual?.mode, TenantAdminPoiVisualMode.image);
-      expect(
-        definition.visual?.imageSource,
-        TenantAdminPoiVisualImageSource.avatar,
-      );
+      expect(definition.visual, isNull);
     });
 
     test('parses canonical visual payload for static profile types', () {
@@ -156,8 +152,7 @@ void main() {
       expect(enabledDto.toDomain().capabilities.isFavoritable, isTrue);
     });
 
-    test('defaults queryability and public navigation on when flags are absent',
-        () {
+    test('treats omitted public capability flags as disabled on decode', () {
       final dto = TenantAdminProfileTypeDTO.fromJson({
         'type': 'artist',
         'label': 'Artist',
@@ -167,13 +162,13 @@ void main() {
         },
       });
 
-      expect(dto.toDomain().capabilities.isQueryable, isTrue);
-      expect(dto.toDomain().capabilities.isPubliclyNavigable, isTrue);
-      expect(dto.toDomain().capabilities.isPubliclyDiscoverable, isTrue);
+      expect(dto.toDomain().capabilities.isQueryable, isFalse);
+      expect(dto.toDomain().capabilities.isPubliclyNavigable, isFalse);
+      expect(dto.toDomain().capabilities.isPubliclyDiscoverable, isFalse);
       expect(dto.toDomain().capabilities.isFavoritable, isTrue);
     });
 
-    test('normalizes public discoverability behind queryability', () {
+    test('keeps public discoverability independent from queryability', () {
       final dto = TenantAdminProfileTypeDTO.fromJson({
         'type': 'artist',
         'label': 'Artist',
@@ -186,8 +181,23 @@ void main() {
       });
 
       expect(dto.toDomain().capabilities.isQueryable, isFalse);
-      expect(dto.toDomain().capabilities.isPubliclyDiscoverable, isFalse);
+      expect(dto.toDomain().capabilities.isPubliclyDiscoverable, isTrue);
       expect(dto.toDomain().capabilities.isPubliclyNavigable, isTrue);
+    });
+
+    test('parses inviteable capability independently', () {
+      final dto = TenantAdminProfileTypeDTO.fromJson({
+        'type': 'artist',
+        'label': 'Artist',
+        'allowed_taxonomies': const [],
+        'capabilities': {
+          'is_inviteable': true,
+          'is_favoritable': false,
+        },
+      });
+
+      expect(dto.toDomain().capabilities.isInviteable, isTrue);
+      expect(dto.toDomain().capabilities.isFavoritable, isFalse);
     });
 
     test('parses nested profile group capability for account profile types',

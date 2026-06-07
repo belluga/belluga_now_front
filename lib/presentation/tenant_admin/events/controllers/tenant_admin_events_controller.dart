@@ -1205,11 +1205,27 @@ class TenantAdminEventsController implements Disposable {
         submitErrorMessageStreamValue.addValue('Limite de grupos atingido.');
         return occurrence;
       }
+      final appendedGroups = TenantAdminNestedProfileGroupOperations.append(
+        occurrence.profileGroups,
+      );
+      final seededGroups = occurrence.profileGroups.isEmpty &&
+              occurrence.relatedAccountProfileIds.isNotEmpty &&
+              appendedGroups.isNotEmpty
+          ? [
+              appendedGroups.first.copyWith(
+                accountProfileIdValues: occurrence.relatedAccountProfileIds
+                    .map(
+                      (profileId) => TenantAdminNestedProfileGroupTextValue(
+                          profileId.value),
+                    )
+                    .toList(growable: false),
+              ),
+              ...appendedGroups.skip(1),
+            ]
+          : appendedGroups;
       return _applyOccurrenceProfileGroups(
         occurrence,
-        TenantAdminNestedProfileGroupOperations.append(
-          occurrence.profileGroups,
-        ),
+        seededGroups,
       );
     }, sort: false);
   }
@@ -2754,9 +2770,11 @@ class TenantAdminEventsController implements Disposable {
     return _mergeAccountProfiles(
       event.relatedAccountProfiles,
       [
-        for (final occurrence in event.occurrences) ...occurrence.relatedAccountProfiles,
         for (final occurrence in event.occurrences)
-          for (final item in occurrence.programmingItems) ...item.linkedAccountProfiles,
+          ...occurrence.relatedAccountProfiles,
+        for (final occurrence in event.occurrences)
+          for (final item in occurrence.programmingItems)
+            ...item.linkedAccountProfiles,
       ],
     );
   }

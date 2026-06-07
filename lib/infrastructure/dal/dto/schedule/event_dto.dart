@@ -68,6 +68,7 @@ class EventDTO {
     this.sentInvites,
     this.friendsGoing,
     this.tags = const [],
+    this.taxonomyTerms = const [],
   });
 
   final String id;
@@ -93,6 +94,7 @@ class EventDTO {
   final List<Map<String, dynamic>>? sentInvites;
   final List<Map<String, dynamic>>? friendsGoing;
   final List<String> tags;
+  final List<Map<String, dynamic>> taxonomyTerms;
 
   factory EventDTO.fromJson(Map<String, dynamic> json) {
     final typePayload = _asMap(json['type']);
@@ -118,6 +120,10 @@ class EventDTO {
             json['artists'],
           );
     final selectedOccurrenceId = _asNullableString(json['occurrence_id']);
+
+    final taxonomyTerms = _resolveCanonicalTaxonomyTerms(
+      json['taxonomy_terms'],
+    );
 
     return EventDTO(
       id: _asString(json['id']) ??
@@ -171,7 +177,8 @@ class EventDTO {
       receivedInvites: _asMapList(json['received_invites']),
       sentInvites: _asMapList(json['sent_invites']),
       friendsGoing: _asMapList(json['friends_going']),
-      tags: _resolveCanonicalTaxonomyLabels(json['taxonomy_terms']),
+      tags: _resolveCanonicalTaxonomyLabels(taxonomyTerms),
+      taxonomyTerms: taxonomyTerms,
     );
   }
 
@@ -919,16 +926,28 @@ class EventDTO {
       'received_invites': receivedInvites,
       'sent_invites': sentInvites,
       'friends_going': friendsGoing,
-      'taxonomy_terms': tags
-          .map(
-            (label) => <String, String>{
-              'type': 'canonical_label',
-              'value': label,
-              'name': label,
-            },
-          )
+      'taxonomy_terms': taxonomyTerms
+          .map((term) => Map<String, dynamic>.from(term))
           .toList(growable: false),
     };
+  }
+
+  static List<Map<String, dynamic>> _resolveCanonicalTaxonomyTerms(
+      Object? raw) {
+    if (raw is! List) {
+      return const <Map<String, dynamic>>[];
+    }
+
+    final terms = <Map<String, dynamic>>[];
+    for (final entry in raw) {
+      final term = _asMap(entry);
+      if (term.isEmpty) {
+        continue;
+      }
+      terms.add(Map<String, dynamic>.unmodifiable(term));
+    }
+
+    return List<Map<String, dynamic>>.unmodifiable(terms);
   }
 
   static List<String> _resolveCanonicalTaxonomyLabels(Object? raw) {

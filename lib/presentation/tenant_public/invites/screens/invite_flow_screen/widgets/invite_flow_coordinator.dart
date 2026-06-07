@@ -14,7 +14,6 @@ import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_fl
 import 'package:belluga_now/presentation/tenant_public/invites/widgets/invite_candidate_picker.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_screen_controller.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/widgets/app_promotion_modal.dart';
-import 'package:belluga_now/presentation/shared/promotion/support/web_installed_app_handoff.dart';
 import 'package:belluga_now/presentation/shared/widgets/route_back_scope.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -102,12 +101,6 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
       builder: (context, loadedImages) {
         final invite = invites.first;
         final remaining = invites.length - 1;
-        final isReady = widget.requiresAuthentication ||
-            loadedImages.contains(invite.eventImageUrl);
-
-        if (!isReady) {
-          return const Center(child: CircularProgressIndicator());
-        }
 
         return InviteHeroCard(
           invite: invite,
@@ -173,9 +166,19 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
   }
 
   void _openEventDetails(InviteModel invite) {
+    final eventSlug = invite.eventSlug.trim();
+    if (eventSlug.isEmpty) {
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        const SnackBar(
+          content:
+              Text('Os detalhes deste evento ainda não estão disponíveis.'),
+        ),
+      );
+      return;
+    }
     context.router.push(
       ImmersiveEventDetailRoute(
-        eventSlug: invite.eventId,
+        eventSlug: eventSlug,
         occurrenceId: invite.occurrenceId,
       ),
     );
@@ -186,12 +189,9 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
     InviteDecision decision,
   ) async {
     if (widget.isWebRuntime && !_controller.isAuthorized) {
-      launchWebInstalledAppHandoffOrPromotion(
-        context: context,
-        redirectPath: _inviteOccurrenceRedirectPath(invite),
-        actionType: decision == InviteDecision.accepted
-            ? AuthWallActionType.acceptInvite
-            : null,
+      await _showWebInviteDecisionPromotion(
+        invite: invite,
+        decision: decision,
       );
       return;
     }
@@ -224,10 +224,14 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
 
   void _openAuthForInviteDecision(InviteModel invite) {
     if (widget.isWebRuntime && !_controller.isAuthorized) {
-      launchWebInstalledAppHandoffOrPromotion(
-        context: context,
-        redirectPath: _inviteOccurrenceRedirectPath(invite),
-        actionType: AuthWallActionType.acceptInvite,
+      unawaited(
+        AppPromotionModal.show(
+          context,
+          redirectPath: _inviteOccurrenceRedirectPath(invite),
+          title: 'Aceite convites pelo app',
+          supportingText:
+              'Use o app para confirmar presença, enviar convites e acompanhar seus eventos.',
+        ),
       );
       return;
     }
@@ -253,6 +257,28 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
           ),
         ),
       ),
+    );
+  }
+
+  Future<void> _showWebInviteDecisionPromotion({
+    required InviteModel invite,
+    required InviteDecision decision,
+  }) async {
+    final redirectPath = _inviteOccurrenceRedirectPath(invite);
+    AuthWallTelemetry.trackTriggered(
+      actionType: AuthWallActionType.acceptInvite,
+      redirectPath: redirectPath,
+      allowPendingActionReplay: false,
+    );
+    await AppPromotionModal.show(
+      context,
+      redirectPath: redirectPath,
+      title: decision == InviteDecision.accepted
+          ? 'Aceite convites pelo app'
+          : 'Responda convites pelo app',
+      supportingText: decision == InviteDecision.accepted
+          ? 'Use o app para confirmar presença, enviar convites e acompanhar seus eventos.'
+          : 'Use o app para aceitar ou recusar convites e acompanhar seus eventos.',
     );
   }
 
@@ -360,7 +386,7 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
   }
 
   String _inviteOccurrenceRedirectPath(InviteModel invite) {
-    final eventSlug = invite.eventId.trim();
+    final eventSlug = invite.eventSlug.trim();
     if (eventSlug.isEmpty) {
       return _promotionRedirectPath();
     }
