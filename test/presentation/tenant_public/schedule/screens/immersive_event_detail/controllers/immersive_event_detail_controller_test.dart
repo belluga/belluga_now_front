@@ -268,6 +268,50 @@ void main() {
   });
 
   test(
+      'event detail init replaces stale same-target occurrence tags with route-resolved event',
+      () {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    final staleEvent = _buildEvent(
+      tags: const ['Showcase'],
+      occurrences: [
+        _buildOccurrence(
+          id: '507f1f77bcf86cd799439012',
+          start: DateTime(2026, 3, 15, 20),
+          end: DateTime(2026, 3, 15, 22),
+          isSelected: true,
+          tags: const ['Showcase'],
+        ),
+      ],
+    );
+    final freshEvent = _buildEvent(
+      tags: const ['Instrumental'],
+      occurrences: [
+        _buildOccurrence(
+          id: '507f1f77bcf86cd799439012',
+          start: DateTime(2026, 3, 15, 20),
+          end: DateTime(2026, 3, 15, 22),
+          isSelected: true,
+          tags: const ['Instrumental'],
+        ),
+      ],
+    );
+    invitesRepository.setImmersiveSelectedEvent(staleEvent);
+    final controller = ImmersiveEventDetailController(
+      userEventsRepository: userEventsRepository,
+      invitesRepository: invitesRepository,
+      authRepository: _FakeAuthRepository(authorized: true),
+    );
+
+    controller.init(freshEvent);
+
+    expect(
+      controller.eventStreamValue.value?.tags.map((tag) => tag.value),
+      ['Instrumental'],
+    );
+  });
+
+  test(
       'event detail init refreshes sent invite summary for selected occurrence',
       () async {
     final userEventsRepository = _FakeUserEventsRepository();

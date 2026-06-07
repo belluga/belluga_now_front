@@ -415,6 +415,7 @@ class ImmersiveEventDetailController implements Disposable {
             _profileGroupSignature(right.profileGroups) &&
         _occurrenceSignature(left.occurrences) ==
             _occurrenceSignature(right.occurrences) &&
+        _tagSignature(left.tags) == _tagSignature(right.tags) &&
         _programmingSignature(left.programmingItems) ==
             _programmingSignature(right.programmingItems);
   }
@@ -465,6 +466,7 @@ class ImmersiveEventDetailController implements Disposable {
         ),
         occurrence.programmingCount,
         _profileGroupSignature(occurrence.profileGroups),
+        _tagSignature(occurrence.tags),
         _programmingSignature(occurrence.programmingItems),
       ].join(':');
     }).join('|');

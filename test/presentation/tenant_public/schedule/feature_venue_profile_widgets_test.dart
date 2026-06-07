@@ -1,3 +1,5 @@
+import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/partners/services/partner_profile_config_builder.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_public_detail_path_value.dart';
 import 'package:belluga_now/domain/invites/invite_partner_type.dart';
@@ -102,6 +104,51 @@ void main() {
     );
 
     expect(find.text('Ver perfil'), findsOneWidget);
+  });
+
+  testWidgets('Venue card pushes partner detail route with the canonical slug',
+      (tester) async {
+    final venue = PartnerResume(
+      idValue: MongoIDValue()
+        ..parse(MockScheduleBackend.generateMongoId('test-venue-route')),
+      nameValue: InvitePartnerNameValue()..parse('Venue Navegavel'),
+      slugValue: null,
+      type: InviteAccountProfileType.mercadoProducer,
+      canOpenPublicDetail: true,
+      publicDetailPathValue: AccountProfilePublicDetailPathValue(
+        '/parceiro/venue-navegavel',
+      ),
+      taglineValue: InvitePartnerTaglineValue()..parse('Address'),
+    );
+    final router = RootStackRouter.build(
+      routes: [
+        NamedRouteDef(
+          name: 'VenueCardHostRoute',
+          path: '/',
+          builder: (_, __) => Scaffold(body: VenueCard(venue: venue)),
+        ),
+        NamedRouteDef(
+          name: PartnerDetailRoute.name,
+          path: '/parceiro/:slug',
+          builder: (_, data) => Scaffold(
+            body: Text('detail:${data.params.getString('slug')}'),
+          ),
+        ),
+      ],
+    )..ignorePopCompleters = true;
+
+    await tester.pumpWidget(
+      MaterialApp.router(
+        routeInformationParser: router.defaultRouteParser(),
+        routerDelegate: router.delegate(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Ver perfil'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('detail:venue-navegavel'), findsOneWidget);
   });
 
   testWidgets('Venue card hides profile button when public detail is disabled',
