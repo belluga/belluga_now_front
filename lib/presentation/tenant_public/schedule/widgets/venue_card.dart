@@ -1,5 +1,4 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/partner/partner_resume.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
@@ -13,10 +12,10 @@ class VenueCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final navigableSlug = venue.navigableSlug;
+    final publicDetailPath = venue.publicDetailPath?.trim();
     final canOpen = venue.canOpenPublicDetail &&
-        navigableSlug != null &&
-        navigableSlug.isNotEmpty;
+        publicDetailPath != null &&
+        publicDetailPath.isNotEmpty;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -78,7 +77,7 @@ class VenueCard extends StatelessWidget {
           if (canOpen)
             TextButton(
               onPressed: () {
-                context.router.push(PartnerDetailRoute(slug: navigableSlug!));
+                context.router.pushPath(publicDetailPath!);
               },
               child: const Text('Ver perfil'),
             ),
