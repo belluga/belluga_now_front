@@ -377,6 +377,69 @@ void main() {
         domain.profileGroups.last.profiles.single.displayName, 'Expositor Sol');
   });
 
+  test(
+      'hydrates occurrence profile groups from occurrence-owned linked profiles when root aggregate is incomplete',
+      () {
+    final dto = EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439191',
+      'occurrence_id': '507f1f77bcf86cd799439192',
+      'slug': 'festival-com-perfis-locais',
+      'type': {
+        'id': 'festival',
+        'name': 'Festival',
+        'slug': 'festival',
+        'description': '',
+      },
+      'title': 'Festival com Perfis Locais',
+      'content': 'Descricao',
+      'location': 'Praca Central',
+      'date_time_start': '2026-03-04T17:00:00+00:00',
+      'linked_account_profiles': [
+        {
+          'id': 'profile-band',
+          'display_name': 'Banda Azul',
+          'slug': 'banda-azul',
+          'profile_type': 'banda',
+        },
+      ],
+      'occurrences': [
+        {
+          'occurrence_id': '507f1f77bcf86cd799439192',
+          'date_time_start': '2026-03-04T17:00:00+00:00',
+          'is_selected': true,
+          'own_linked_account_profiles': [
+            {
+              'id': 'profile-exhibitor',
+              'display_name': 'Expositor Sol',
+              'slug': 'expositor-sol',
+              'profile_type': 'expositor',
+            },
+          ],
+          'profile_groups': [
+            {
+              'id': 'vila-expositores',
+              'label': 'Vila Expositores',
+              'order': 0,
+              'account_profile_ids': ['profile-exhibitor'],
+            },
+          ],
+        },
+      ],
+    });
+
+    final domain = dto.toDomain();
+
+    expect(domain.occurrences, hasLength(1));
+    expect(domain.occurrences.single.profileGroups, hasLength(1));
+    expect(domain.occurrences.single.profileGroups.single.label,
+        'Vila Expositores');
+    expect(
+      domain
+          .occurrences.single.profileGroups.single.profiles.single.displayName,
+      'Expositor Sol',
+    );
+  });
+
   test('preserves sanitized rich html content for public event rendering', () {
     final dto = EventDTO.fromJson({
       'event_id': '507f1f77bcf86cd799439011',

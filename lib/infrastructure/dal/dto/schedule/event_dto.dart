@@ -428,6 +428,13 @@ class EventDTO {
               occurrenceId == fallbackOccurrenceId.trim());
       final dateTimeEndValue = DomainOptionalDateTimeValue();
       dateTimeEndValue.parse(_asNullableString(row['date_time_end']));
+      final occurrenceLinkedAccountProfiles = _mergeLinkedAccountProfiles(
+        linkedAccountProfiles,
+        _resolveLinkedAccountProfiles(
+          linkedProfilesRaw: row['linked_account_profiles'] ??
+              row['own_linked_account_profiles'],
+        ),
+      );
 
       resolved.add(
         EventOccurrenceOption(
@@ -446,13 +453,37 @@ class EventDTO {
           programmingItems: _resolveProgrammingItems(row['programming_items']),
           profileGroups: _resolveProfileGroups(
             row['profile_groups'],
-            linkedAccountProfiles: linkedAccountProfiles,
+            linkedAccountProfiles: occurrenceLinkedAccountProfiles,
           ),
         ),
       );
     }
 
     return List<EventOccurrenceOption>.unmodifiable(resolved);
+  }
+
+  static List<EventLinkedAccountProfile> _mergeLinkedAccountProfiles(
+    List<EventLinkedAccountProfile> primary,
+    List<EventLinkedAccountProfile> secondary,
+  ) {
+    if (secondary.isEmpty) {
+      return primary;
+    }
+
+    final knownIds = <String>{
+      for (final profile in primary)
+        if (profile.id.trim().isNotEmpty) profile.id.trim(),
+    };
+    final merged = <EventLinkedAccountProfile>[...primary];
+    for (final profile in secondary) {
+      final profileId = profile.id.trim();
+      if (profileId.isEmpty || knownIds.contains(profileId)) {
+        continue;
+      }
+      knownIds.add(profileId);
+      merged.add(profile);
+    }
+    return List<EventLinkedAccountProfile>.unmodifiable(merged);
   }
 
   static List<EventProgrammingItem> _resolveProgrammingItems(Object? raw) {

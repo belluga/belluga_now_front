@@ -230,8 +230,7 @@ void main() {
     expect(groups.map((group) => group.label), ['Expositores', 'Bandas']);
   });
 
-  test(
-      'aggregated groups keep distinct groups when labels match but ids differ',
+  test('aggregated groups merge members when labels match even if ids differ',
       () {
     final firstBand = _profile(
       id: 'band-1',
@@ -264,10 +263,9 @@ void main() {
       linkedAccountProfiles: [firstBand, secondBand],
     );
 
-    expect(groups, hasLength(2));
-    expect(groups.map((group) => group.label), ['Bandas', 'Bandas']);
-    expect(groups.first.profileNames, ['Du Jorge']);
-    expect(groups.last.profileNames, ['Banda Norte']);
+    expect(groups, hasLength(1));
+    expect(groups.single.label, 'Bandas');
+    expect(groups.single.profileNames, ['Du Jorge', 'Banda Norte']);
   });
 
   test(
