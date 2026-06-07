@@ -174,4 +174,29 @@ void main() {
 
     expect(find.text('Ver perfil'), findsNothing);
   });
+
+  testWidgets(
+      'Venue card hides profile button when flag is true but path is empty',
+      (tester) async {
+    final venue = PartnerResume(
+      idValue: MongoIDValue()
+        ..parse(MockScheduleBackend.generateMongoId('test-venue-empty-path')),
+      nameValue: InvitePartnerNameValue()..parse('Venue Sem Path'),
+      slugValue: SlugValue()..parse('venue-sem-path'),
+      type: InviteAccountProfileType.mercadoProducer,
+      canOpenPublicDetail: true,
+      publicDetailPathValue: AccountProfilePublicDetailPathValue(''),
+      taglineValue: InvitePartnerTaglineValue()..parse('Address'),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: VenueCard(venue: venue),
+        ),
+      ),
+    );
+
+    expect(find.text('Ver perfil'), findsNothing);
+  });
 }
