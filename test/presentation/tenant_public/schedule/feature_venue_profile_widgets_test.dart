@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/partners/services/partner_profile_config_builder.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_public_detail_path_value.dart';
 import 'package:belluga_now/domain/invites/invite_partner_type.dart';
 import 'package:belluga_now/domain/partner/partner_resume.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_name_value.dart';
@@ -85,6 +86,10 @@ void main() {
       nameValue: InvitePartnerNameValue()..parse('Test Venue'),
       slugValue: SlugValue()..parse('test-venue'),
       type: InviteAccountProfileType.mercadoProducer,
+      canOpenPublicDetail: true,
+      publicDetailPathValue: AccountProfilePublicDetailPathValue(
+        '/parceiro/test-venue',
+      ),
       taglineValue: InvitePartnerTaglineValue()..parse('Address'),
     );
 
@@ -97,5 +102,29 @@ void main() {
     );
 
     expect(find.text('Ver perfil'), findsOneWidget);
+  });
+
+  testWidgets('Venue card hides profile button when public detail is disabled',
+      (tester) async {
+    final venue = PartnerResume(
+      idValue: MongoIDValue()
+        ..parse(MockScheduleBackend.generateMongoId('test-venue-hidden')),
+      nameValue: InvitePartnerNameValue()..parse('Venue Fechado'),
+      slugValue: SlugValue()..parse('venue-fechado'),
+      type: InviteAccountProfileType.mercadoProducer,
+      canOpenPublicDetail: false,
+      publicDetailPathValue: AccountProfilePublicDetailPathValue(''),
+      taglineValue: InvitePartnerTaglineValue()..parse('Address'),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: VenueCard(venue: venue),
+        ),
+      ),
+    );
+
+    expect(find.text('Ver perfil'), findsNothing);
   });
 }

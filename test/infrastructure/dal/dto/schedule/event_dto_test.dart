@@ -217,6 +217,38 @@ void main() {
     expect(staticProfile.slug, isEmpty);
   });
 
+  test('parses venue navigation contract from explicit public detail fields',
+      () {
+    final dto = EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439056',
+      'slug': 'evt-venue-navigation-contract',
+      'type': {
+        'id': 'type-1',
+        'name': 'Feira',
+        'slug': 'feira',
+        'description': '',
+      },
+      'title': 'Evento venue navegavel',
+      'content': '',
+      'location': 'Guarapari',
+      'venue': {
+        'id': '507f1f77bcf86cd799439057',
+        'display_name': 'Venue navegavel',
+        'slug': 'venue-navegavel',
+        'can_open_public_detail': true,
+        'public_detail_path': '/parceiro/venue-navegavel',
+      },
+      'date_time_start': '2026-03-03T10:00:00+00:00',
+    });
+
+    final venue = dto.toDomain().venue;
+
+    expect(venue, isNotNull);
+    expect(venue?.canOpenPublicDetail, isTrue);
+    expect(venue?.publicDetailPath, '/parceiro/venue-navegavel');
+    expect(venue?.navigableSlug, 'venue-navegavel');
+  });
+
   test(
       'parses occurrence profile groups with member ids for occurrence switches',
       () {
@@ -893,5 +925,49 @@ void main() {
     expect(dto.location, 'Transmissao ao vivo');
     expect(domain.location.value, 'Transmissao ao vivo');
     expect(domain.hasProgrammingItems, isTrue);
+  });
+
+  test('parses effective occurrence taxonomy labels for selected occurrence',
+      () {
+    final dto = EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439085',
+      'occurrence_id': '507f1f77bcf86cd799439086',
+      'slug': 'festival-taxonomia-por-ocorrencia',
+      'type': {
+        'id': 'show',
+        'name': 'Show',
+        'slug': 'show',
+        'description': '',
+      },
+      'title': 'Festival taxonomia por ocorrencia',
+      'content': 'Descricao',
+      'location': 'Praca Central',
+      'date_time_start': '2026-03-04T17:00:00+00:00',
+      'taxonomy_terms': [
+        {
+          'type': 'event_style',
+          'value': 'showcase',
+          'label': 'Showcase',
+        },
+      ],
+      'occurrences': [
+        {
+          'occurrence_id': '507f1f77bcf86cd799439086',
+          'date_time_start': '2026-03-04T17:00:00+00:00',
+          'is_selected': true,
+          'taxonomy_terms': [
+            {
+              'type': 'event_style',
+              'value': 'instrumental',
+              'label': 'Instrumental',
+            },
+          ],
+        },
+      ],
+    });
+
+    final occurrence = dto.toDomain().occurrences.single;
+
+    expect(occurrence.tags.map((tag) => tag.value), ['Instrumental']);
   });
 }

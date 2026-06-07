@@ -13,8 +13,10 @@ class VenueCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final slug = venue.slug;
-    final canOpen = slug != null && slug.isNotEmpty;
+    final navigableSlug = venue.navigableSlug;
+    final canOpen = venue.canOpenPublicDetail &&
+        navigableSlug != null &&
+        navigableSlug.isNotEmpty;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -76,7 +78,7 @@ class VenueCard extends StatelessWidget {
           if (canOpen)
             TextButton(
               onPressed: () {
-                context.router.push(PartnerDetailRoute(slug: slug));
+                context.router.push(PartnerDetailRoute(slug: navigableSlug!));
               },
               child: const Text('Ver perfil'),
             ),

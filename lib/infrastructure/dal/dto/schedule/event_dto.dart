@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/partner/value_objects/invite_partner_hero_ima
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_logo_image_value.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_name_value.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_tagline_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_public_detail_path_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_tag_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
@@ -33,6 +34,7 @@ import 'package:belluga_now/domain/value_objects/domain_optional_date_time_value
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
+import 'package:belluga_now/domain/venue_event/value_objects/venue_event_tag_value.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_artist_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_public_profile_payload_decoder.dart';
@@ -435,6 +437,9 @@ class EventDTO {
               row['own_linked_account_profiles'],
         ),
       );
+      final occurrenceTaxonomyTerms = _resolveCanonicalTaxonomyTerms(
+        row['taxonomy_terms'],
+      );
 
       resolved.add(
         EventOccurrenceOption(
@@ -455,6 +460,9 @@ class EventDTO {
             row['profile_groups'],
             linkedAccountProfiles: occurrenceLinkedAccountProfiles,
           ),
+          tags: _resolveCanonicalTaxonomyLabels(
+            occurrenceTaxonomyTerms,
+          ).map(VenueEventTagValue.new).toList(growable: false),
         ),
       );
     }
@@ -920,6 +928,10 @@ class EventDTO {
         ..parse(dto['display_name']?.toString() ?? ''),
       slugValue: slugValue,
       type: InviteAccountProfileType.mercadoProducer,
+      canOpenPublicDetail: dto['can_open_public_detail'] == true,
+      publicDetailPathValue: AccountProfilePublicDetailPathValue(
+        dto['public_detail_path']?.toString() ?? '',
+      ),
       taglineValue: taglineValue,
       logoImageValue: logoImageValue,
       heroImageValue: heroImageValue,

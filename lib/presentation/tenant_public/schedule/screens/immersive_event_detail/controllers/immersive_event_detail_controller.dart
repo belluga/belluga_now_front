@@ -23,9 +23,9 @@ import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 import 'package:belluga_now/domain/schedule/event_programming_item.dart';
 import 'package:belluga_now/domain/schedule/event_profile_group.dart';
-
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
+import 'package:belluga_now/domain/venue_event/value_objects/venue_event_tag_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_values.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -329,6 +329,7 @@ class ImmersiveEventDetailController implements Disposable {
             programmingCountValue: occurrence.programmingCountValue,
             programmingItems: occurrence.programmingItems,
             profileGroups: occurrence.profileGroups,
+            tags: occurrence.tags,
           ),
         )
         .toList(growable: false);
@@ -351,7 +352,9 @@ class ImmersiveEventDetailController implements Disposable {
           ? event.programmingItems
           : selectedOccurrence.programmingItems,
       coordinate: event.coordinate,
-      tags: event.tags,
+      tags: selectedOccurrence.tags.isNotEmpty
+          ? selectedOccurrence.tags
+          : event.tags,
       isConfirmedValue: event.isConfirmedValue,
       confirmedAtValue: event.confirmedAtValue,
       receivedInvites: event.receivedInvites,
@@ -389,7 +392,9 @@ class ImmersiveEventDetailController implements Disposable {
     final hasMatchingProgramming =
         _programmingSignature(event.programmingItems) ==
             _programmingSignature(selectedOccurrence.programmingItems);
-    if (hasMatchingSchedule && hasMatchingProgramming) {
+    final hasMatchingTags =
+        _tagSignature(event.tags) == _tagSignature(selectedOccurrence.tags);
+    if (hasMatchingSchedule && hasMatchingProgramming && hasMatchingTags) {
       return event;
     }
     return _eventWithSelectedOccurrence(event, occurrenceId);
@@ -483,6 +488,15 @@ class ImmersiveEventDetailController implements Disposable {
         item.locationProfile?.id.trim() ?? '',
       ].join(':');
     }).join('|');
+  }
+
+  String _tagSignature(Iterable<dynamic> tags) {
+    return tags
+        .map((tag) => tag is VenueEventTagValue
+            ? tag.value.trim()
+            : tag.toString().trim())
+        .where((tag) => tag.isNotEmpty)
+        .join('|');
   }
 
   void _applyConfirmationState(String occurrenceId) {
