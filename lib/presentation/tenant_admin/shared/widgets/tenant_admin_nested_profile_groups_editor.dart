@@ -410,9 +410,16 @@ class _TenantAdminNestedAccountSelectorState
                 runSpacing: 8,
                 children: selected
                     .map(
-                      (profile) => InputChip(
-                        label: Text(profile.displayName),
-                        onDeleted: () => _toggleProfile(profile, false),
+                      (profile) => Semantics(
+                        label: 'Perfil selecionado ${profile.displayName}',
+                        button: true,
+                        child: InputChip(
+                          key: Key(
+                            '${widget.keyPrefix}NestedAccountSelectedChip_${widget.group.id}_${profile.id}',
+                          ),
+                          label: Text(profile.displayName),
+                          onDeleted: () => _toggleProfile(profile, false),
+                        ),
                       ),
                     )
                     .toList(growable: false),
