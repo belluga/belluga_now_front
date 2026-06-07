@@ -347,10 +347,7 @@ final class EventPublicProfilePayloadDecoder {
     }
 
     final publicDetailPath = _resolvePublicDetailPath(profile);
-    final slug = _asNullableString(_extractProfileSlug(profile))?.trim() ?? '';
-
-    return (publicDetailPath != null && publicDetailPath.isNotEmpty) ||
-        slug.isNotEmpty;
+    return publicDetailPath != null && publicDetailPath.isNotEmpty;
   }
 
   static String? _resolvePublicDetailPath(Map<String, dynamic> profile) {

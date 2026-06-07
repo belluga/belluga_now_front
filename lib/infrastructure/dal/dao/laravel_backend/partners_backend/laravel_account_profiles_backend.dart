@@ -357,8 +357,8 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
               ? json['public_detail_path']?.toString().trim()
               : null;
       final canOpenPublicDetail = json['can_open_public_detail'] == true &&
-          ((publicDetailPath != null && publicDetailPath.isNotEmpty) ||
-              slug.trim().isNotEmpty);
+          publicDetailPath != null &&
+          publicDetailPath.isNotEmpty;
       AccountProfileLocationAddressValue? locationAddressValue;
       if (locationAddress != null) {
         locationAddressValue = AccountProfileLocationAddressValue()
@@ -455,8 +455,8 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
               ? json['public_detail_path']?.toString().trim()
               : null;
       final canOpenPublicDetail = json['can_open_public_detail'] == true &&
-          ((publicDetailPath != null && publicDetailPath.isNotEmpty) ||
-              slug.isNotEmpty);
+          publicDetailPath != null &&
+          publicDetailPath.isNotEmpty;
       if (id.isEmpty ||
           displayName.isEmpty ||
           profileType.isEmpty ||

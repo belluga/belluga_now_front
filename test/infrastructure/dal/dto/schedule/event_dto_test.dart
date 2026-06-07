@@ -246,7 +246,36 @@ void main() {
     expect(venue, isNotNull);
     expect(venue?.canOpenPublicDetail, isTrue);
     expect(venue?.publicDetailPath, '/parceiro/venue-navegavel');
-    expect(venue?.navigableSlug, 'venue-navegavel');
+    expect(venue?.slug, 'venue-navegavel');
+  });
+
+  test('keeps venue non-navigable when only slug is present without path', () {
+    final dto = EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439058',
+      'slug': 'evt-venue-slug-only',
+      'type': {
+        'id': 'type-1',
+        'name': 'Feira',
+        'slug': 'feira',
+        'description': '',
+      },
+      'title': 'Evento venue slug only',
+      'content': '',
+      'location': 'Guarapari',
+      'venue': {
+        'id': '507f1f77bcf86cd799439059',
+        'display_name': 'Venue sem path',
+        'slug': 'venue-sem-path',
+        'can_open_public_detail': true,
+      },
+      'date_time_start': '2026-03-03T10:00:00+00:00',
+    });
+
+    final venue = dto.toDomain().venue;
+
+    expect(venue, isNotNull);
+    expect(venue?.canOpenPublicDetail, isFalse);
+    expect(venue?.publicDetailPath, isNull);
   });
 
   test(

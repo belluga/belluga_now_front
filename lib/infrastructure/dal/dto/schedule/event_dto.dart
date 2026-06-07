@@ -680,10 +680,7 @@ class EventDTO {
     }
 
     final publicDetailPath = _resolvePublicDetailPath(profile);
-    final slug = _asNullableString(_extractProfileSlug(profile))?.trim() ?? '';
-
-    return (publicDetailPath != null && publicDetailPath.isNotEmpty) ||
-        slug.isNotEmpty;
+    return publicDetailPath != null && publicDetailPath.isNotEmpty;
   }
 
   static String? _resolvePublicDetailPath(Map<String, dynamic> profile) {
@@ -921,6 +918,7 @@ class EventDTO {
     if (heroUrl != null && heroUrl.isNotEmpty) {
       heroImageValue = InvitePartnerHeroImageValue()..parse(heroUrl);
     }
+    final publicDetailPath = dto['public_detail_path']?.toString().trim() ?? '';
 
     return PartnerResume(
       idValue: MongoIDValue()..parse(dto['id']?.toString() ?? ''),
@@ -928,9 +926,10 @@ class EventDTO {
         ..parse(dto['display_name']?.toString() ?? ''),
       slugValue: slugValue,
       type: InviteAccountProfileType.mercadoProducer,
-      canOpenPublicDetail: dto['can_open_public_detail'] == true,
+      canOpenPublicDetail:
+          dto['can_open_public_detail'] == true && publicDetailPath.isNotEmpty,
       publicDetailPathValue: AccountProfilePublicDetailPathValue(
-        dto['public_detail_path']?.toString() ?? '',
+        publicDetailPath,
       ),
       taglineValue: taglineValue,
       logoImageValue: logoImageValue,

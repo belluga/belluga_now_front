@@ -44,24 +44,6 @@ class PartnerResume {
     return value.isEmpty ? null : value;
   }
 
-  String? get navigableSlug {
-    final slugValue = slug?.trim();
-    if (slugValue != null && slugValue.isNotEmpty) {
-      return slugValue;
-    }
-    final path = publicDetailPath;
-    if (path == null || path.isEmpty) {
-      return null;
-    }
-    final segments = Uri.tryParse(path)?.pathSegments ??
-        path.split('/').where((segment) => segment.isNotEmpty).toList();
-    if (segments.isEmpty) {
-      return null;
-    }
-    final candidate = segments.last.trim();
-    return candidate.isEmpty ? null : candidate;
-  }
-
   String? get tagline {
     final value = taglineValue.value;
     return value.isEmpty ? null : value;

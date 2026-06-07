@@ -311,6 +311,40 @@ void main() {
     );
   });
 
+  test(
+      'fetchAccountProfileBySlug requires public detail path before enabling navigation',
+      () async {
+    final validId = _generateMongoId();
+    final adapter = _RecordingAdapter(
+      response: {
+        'data': {
+          'id': validId,
+          'display_name': 'Slug Detail Artist',
+          'slug': 'slug-detail-artist',
+          'profile_type': 'artist',
+          'can_open_public_detail': true,
+          'taxonomy_terms': const [],
+        },
+      },
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final backend = LaravelAccountProfilesBackend(
+      dio: dio,
+      locationOriginService: LocationOriginService(
+        appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+      ),
+    );
+
+    final profile = await backend.fetchAccountProfileBySlug(
+      'slug-detail-artist',
+    );
+
+    expect(profile, isNotNull);
+    expect(profile?.slug, 'slug-detail-artist');
+    expect(profile?.canOpenPublicDetail, isFalse);
+    expect(profile?.publicDetailPath, isNull);
+  });
+
   test('fetchAccountProfileBySlug parses nested account profile groups',
       () async {
     final parentId = _generateMongoId();
