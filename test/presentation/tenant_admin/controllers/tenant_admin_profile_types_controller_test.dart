@@ -694,7 +694,7 @@ void main() {
   );
 
   test(
-    'disables public discovery when queryability is turned off without affecting public navigation',
+    'keeps public discovery capability independent when queryability is turned off',
     () async {
       final repository = _FakeAccountProfilesRepository([]);
       final controller = TenantAdminProfileTypesController(
@@ -713,7 +713,7 @@ void main() {
       controller.updateCapabilities(isQueryable: false);
 
       expect(controller.currentCapabilities.isQueryable, isFalse);
-      expect(controller.currentCapabilities.isPubliclyDiscoverable, isFalse);
+      expect(controller.currentCapabilities.isPubliclyDiscoverable, isTrue);
       expect(controller.currentCapabilities.isPubliclyNavigable, isTrue);
     },
   );
