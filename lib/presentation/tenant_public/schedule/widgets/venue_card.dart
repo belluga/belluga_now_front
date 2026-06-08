@@ -13,9 +13,12 @@ class VenueCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final publicDetailPath = venue.publicDetailPath?.trim();
-    final canOpen = venue.canOpenPublicDetail &&
-        publicDetailPath != null &&
-        publicDetailPath.isNotEmpty;
+    final logoImageUri = venue.logoImageUri;
+    final ctaPath = venue.canOpenPublicDetail &&
+            publicDetailPath != null &&
+            publicDetailPath.isNotEmpty
+        ? publicDetailPath
+        : null;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -28,9 +31,9 @@ class VenueCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          if (venue.logoImageUri != null)
+          if (logoImageUri != null)
             BellugaNetworkImage(
-              venue.logoImageUri!.toString(),
+              logoImageUri.toString(),
               width: 48,
               height: 48,
               fit: BoxFit.cover,
@@ -74,10 +77,10 @@ class VenueCard extends StatelessWidget {
               ],
             ),
           ),
-          if (canOpen)
+          if (ctaPath != null)
             TextButton(
               onPressed: () {
-                context.router.pushPath(publicDetailPath!);
+                context.router.pushPath(ctaPath);
               },
               child: const Text('Ver perfil'),
             ),

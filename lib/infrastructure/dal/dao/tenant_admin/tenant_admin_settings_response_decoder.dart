@@ -48,10 +48,7 @@ class TenantAdminSettingsResponseDecoder {
       label: 'discovery_filters settings',
       emptyWhenDataIsNotMap: true,
     );
-    final discoveryFilters = _extractNamedMap(
-      payload,
-      namespace: 'discovery_filters',
-    );
+    final discoveryFilters = _extractDiscoveryFiltersPayload(payload);
     return TenantAdminDiscoveryFiltersSettingsValue(
       TenantAdminDynamicMapValue(
         Map<String, dynamic>.unmodifiable(
@@ -429,6 +426,27 @@ class TenantAdminSettingsResponseDecoder {
     }
     if (payload.containsKey(namespace)) {
       throw Exception('Unexpected $namespace payload shape.');
+    }
+    return const <String, dynamic>{};
+  }
+
+  Map<String, dynamic> _extractDiscoveryFiltersPayload(
+    Map<String, dynamic> payload,
+  ) {
+    final named = _extractNamedMap(
+      payload,
+      namespace: 'discovery_filters',
+    );
+    if (named.isNotEmpty || payload.containsKey('discovery_filters')) {
+      return named;
+    }
+
+    final hasSurfaceRoot = payload['surfaces'] is Map;
+    final hasDottedSurfaceKey = payload.keys.any(
+      (key) => key.trim().startsWith('surfaces.'),
+    );
+    if (hasSurfaceRoot || hasDottedSurfaceKey) {
+      return Map<String, dynamic>.from(payload);
     }
     return const <String, dynamic>{};
   }
@@ -1134,11 +1152,24 @@ class TenantAdminSettingsResponseDecoder {
       return value;
     }
 
-    if (parsed.host.trim().isNotEmpty) {
-      return parsed.toString();
-    }
+    final resolved = parsed.host.trim().isNotEmpty
+        ? parsed
+        : tenantOrigin.resolveUri(parsed);
+    return _rewriteLegacyMapFilterImageUri(
+      key: normalizedKey,
+      uri: resolved,
+    );
+  }
 
-    return tenantOrigin.resolveUri(parsed).toString();
+  String _rewriteLegacyMapFilterImageUri({
+    required String key,
+    required Uri uri,
+  }) {
+    final legacyPath = '/map-filters/$key/image';
+    if (uri.path != legacyPath) {
+      return uri.toString();
+    }
+    return uri.replace(path: '/api/v1/media/map-filters/$key').toString();
   }
 
   bool _parseBool(Object? value) {

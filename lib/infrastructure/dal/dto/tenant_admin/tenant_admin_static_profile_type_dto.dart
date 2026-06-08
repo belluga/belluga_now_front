@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
+import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/support/tenant_admin_poi_visual_json_normalizer.dart';
 
 class TenantAdminStaticProfileTypeDTO {
   const TenantAdminStaticProfileTypeDTO({
@@ -51,7 +52,7 @@ class TenantAdminStaticProfileTypeDTO {
       hasCover = _parseBool(capabilities['has_cover']);
       hasContent = _parseBool(capabilities['has_content']);
     }
-    final visualRaw = _resolveVisualRaw(
+    final visualRaw = tenantAdminResolvePoiVisualRaw(
       visualRaw: json['visual'] ?? json['poi_visual'],
       typeAssetUrl: json['type_asset_url'],
     );
@@ -77,34 +78,6 @@ class TenantAdminStaticProfileTypeDTO {
       return normalized == 'true' || normalized == '1' || normalized == 'yes';
     }
     return false;
-  }
-
-  static Object? _resolveVisualRaw({
-    required Object? visualRaw,
-    required Object? typeAssetUrl,
-  }) {
-    if (visualRaw is! Map) {
-      return visualRaw;
-    }
-
-    final visualMap = Map<String, dynamic>.from(visualRaw);
-    if (_readTrimmedString(visualMap['image_url']) != null) {
-      return visualMap;
-    }
-
-    final fallbackTypeAssetUrl = _readTrimmedString(typeAssetUrl);
-    if (fallbackTypeAssetUrl != null) {
-      visualMap['image_url'] = fallbackTypeAssetUrl;
-    }
-    return visualMap;
-  }
-
-  static String? _readTrimmedString(Object? raw) {
-    final value = raw?.toString().trim();
-    if (value == null || value.isEmpty) {
-      return null;
-    }
-    return value;
   }
 
   TenantAdminStaticProfileTypeDefinition toDomain() {

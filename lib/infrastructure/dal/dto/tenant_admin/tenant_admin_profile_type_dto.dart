@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
+import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/support/tenant_admin_poi_visual_json_normalizer.dart';
 
 class TenantAdminProfileTypeDTO {
   const TenantAdminProfileTypeDTO({
@@ -64,6 +65,10 @@ class TenantAdminProfileTypeDTO {
         : (labelsRaw is Map ? Map<String, dynamic>.from(labelsRaw) : const {});
     final singularLabel = labels['singular']?.toString().trim();
     final pluralLabel = labels['plural']?.toString().trim();
+    final visualRaw = tenantAdminResolvePoiVisualRaw(
+      visualRaw: json['visual'] ?? json['poi_visual'],
+      typeAssetUrl: json['type_asset_url'],
+    );
     return TenantAdminProfileTypeDTO(
       type: json['type']?.toString() ?? '',
       label: singularLabel != null && singularLabel.isNotEmpty
@@ -75,7 +80,7 @@ class TenantAdminProfileTypeDTO {
               ? singularLabel
               : json['label']?.toString() ?? '',
       allowedTaxonomies: allowed,
-      visual: tenantAdminPoiVisualFromRaw(json['visual']),
+      visual: tenantAdminPoiVisualFromRaw(visualRaw),
       isQueryable: capabilityMap['is_queryable'] == true,
       isPubliclyNavigable: capabilityMap['is_publicly_navigable'] == true,
       isPubliclyDiscoverable: capabilityMap['is_publicly_discoverable'] == true,

@@ -6,6 +6,7 @@ import 'package:belluga_now/domain/invites/invite_partner_type.dart';
 import 'package:belluga_now/domain/partner/partner_resume.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_name_value.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_tagline_value.dart';
+import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import '../../../support/mock_backend/mock_schedule_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
@@ -88,7 +89,7 @@ void main() {
       nameValue: InvitePartnerNameValue()..parse('Test Venue'),
       slugValue: SlugValue()..parse('test-venue'),
       type: InviteAccountProfileType.mercadoProducer,
-      canOpenPublicDetail: true,
+      canOpenPublicDetailValue: _boolValue(true),
       publicDetailPathValue: AccountProfilePublicDetailPathValue(
         '/parceiro/test-venue',
       ),
@@ -114,7 +115,7 @@ void main() {
       nameValue: InvitePartnerNameValue()..parse('Venue Navegavel'),
       slugValue: null,
       type: InviteAccountProfileType.mercadoProducer,
-      canOpenPublicDetail: true,
+      canOpenPublicDetailValue: _boolValue(true),
       publicDetailPathValue: AccountProfilePublicDetailPathValue(
         '/parceiro/venue-navegavel',
       ),
@@ -159,7 +160,7 @@ void main() {
       nameValue: InvitePartnerNameValue()..parse('Venue Fechado'),
       slugValue: SlugValue()..parse('venue-fechado'),
       type: InviteAccountProfileType.mercadoProducer,
-      canOpenPublicDetail: false,
+      canOpenPublicDetailValue: _boolValue(false),
       publicDetailPathValue: AccountProfilePublicDetailPathValue(''),
       taglineValue: InvitePartnerTaglineValue()..parse('Address'),
     );
@@ -184,7 +185,7 @@ void main() {
       nameValue: InvitePartnerNameValue()..parse('Venue Sem Path'),
       slugValue: SlugValue()..parse('venue-sem-path'),
       type: InviteAccountProfileType.mercadoProducer,
-      canOpenPublicDetail: true,
+      canOpenPublicDetailValue: _boolValue(true),
       publicDetailPathValue: AccountProfilePublicDetailPathValue(''),
       taglineValue: InvitePartnerTaglineValue()..parse('Address'),
     );
@@ -199,4 +200,9 @@ void main() {
 
     expect(find.text('Ver perfil'), findsNothing);
   });
+}
+
+DomainBooleanValue _boolValue(bool raw) {
+  return DomainBooleanValue(defaultValue: false, isRequired: false)
+    ..parse(raw.toString());
 }

@@ -30,7 +30,8 @@ void main() {
       expect(definition.visual?.iconColor, '#FFFFFF');
     });
 
-    test('ignores legacy poi_visual without canonical visual payload', () {
+    test('falls back to legacy poi_visual without canonical visual payload',
+        () {
       final dto = TenantAdminProfileTypeDTO.fromJson({
         'type': 'artist',
         'label': 'Artist',
@@ -41,7 +42,11 @@ void main() {
 
       final definition = dto.toDomain();
 
-      expect(definition.visual, isNull);
+      expect(definition.visual?.mode, TenantAdminPoiVisualMode.image);
+      expect(
+        definition.visual?.imageSource,
+        TenantAdminPoiVisualImageSource.avatar,
+      );
     });
 
     test('parses canonical visual payload for static profile types', () {

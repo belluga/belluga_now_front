@@ -926,8 +926,13 @@ class EventDTO {
         ..parse(dto['display_name']?.toString() ?? ''),
       slugValue: slugValue,
       type: InviteAccountProfileType.mercadoProducer,
-      canOpenPublicDetail:
-          _asBool(dto['can_open_public_detail']) && publicDetailPath.isNotEmpty,
+      canOpenPublicDetailValue:
+          DomainBooleanValue(defaultValue: false, isRequired: false)
+            ..parse(
+              (_asBool(dto['can_open_public_detail']) &&
+                      publicDetailPath.isNotEmpty)
+                  .toString(),
+            ),
       publicDetailPathValue: AccountProfilePublicDetailPathValue(
         publicDetailPath,
       ),
