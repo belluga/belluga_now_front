@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/invites/invite_partner_type.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_public_detail_path_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_hero_image_value.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_logo_image_value.dart';
@@ -14,10 +15,14 @@ class PartnerResume {
     required this.nameValue,
     this.slugValue,
     required this.type,
+    this.canOpenPublicDetail = false,
+    AccountProfilePublicDetailPathValue? publicDetailPathValue,
     InvitePartnerTaglineValue? taglineValue,
     InvitePartnerHeroImageValue? heroImageValue,
     InvitePartnerLogoImageValue? logoImageValue,
   })  : taglineValue = taglineValue ?? InvitePartnerTaglineValue(),
+        publicDetailPathValue =
+            publicDetailPathValue ?? AccountProfilePublicDetailPathValue(),
         heroImageValue = heroImageValue ?? InvitePartnerHeroImageValue(),
         logoImageValue = logoImageValue ?? InvitePartnerLogoImageValue();
 
@@ -25,6 +30,8 @@ class PartnerResume {
   final InvitePartnerNameValue nameValue;
   final SlugValue? slugValue;
   final InviteAccountProfileType type;
+  final bool canOpenPublicDetail;
+  final AccountProfilePublicDetailPathValue publicDetailPathValue;
   final InvitePartnerTaglineValue taglineValue;
   final InvitePartnerHeroImageValue heroImageValue;
   final InvitePartnerLogoImageValue logoImageValue;
@@ -32,6 +39,10 @@ class PartnerResume {
   String get id => idValue.value;
   String get displayName => nameValue.value;
   String? get slug => slugValue?.value;
+  String? get publicDetailPath {
+    final value = publicDetailPathValue.value.trim();
+    return value.isEmpty ? null : value;
+  }
 
   String? get tagline {
     final value = taglineValue.value;
@@ -42,5 +53,4 @@ class PartnerResume {
   Uri? get logoImageUri => logoImageValue.value;
   String? get heroImageUrl => heroImageUri?.toString();
   String? get logoImageUrl => logoImageUri?.toString();
-
 }

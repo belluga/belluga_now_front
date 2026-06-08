@@ -87,6 +87,7 @@ class _LinkedProfileCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final favoriteLabel = isFavorite ? 'Favoritado' : 'Favoritar';
     final tags = profile.taxonomyTerms
         .map((term) => term.labelValue.value.trim())
         .where((label) => label.isNotEmpty)
@@ -165,6 +166,7 @@ class _LinkedProfileCard extends StatelessWidget {
                   ),
                   child: IconButton(
                     key: Key('linkedProfileFavoriteButton_${profile.id}'),
+                    tooltip: favoriteLabel,
                     onPressed: onFavoriteTap,
                     icon: Icon(
                       isFavorite ? Icons.favorite : Icons.favorite_border,

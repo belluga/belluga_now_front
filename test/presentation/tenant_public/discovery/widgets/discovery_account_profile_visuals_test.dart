@@ -51,6 +51,7 @@ void main() {
     expect(find.byKey(const Key('discoveryPartnerIdentityAvatar')),
         findsOneWidget);
     expect(find.byKey(const Key('discoveryPartnerTypeAvatar')), findsOneWidget);
+    expect(find.byTooltip('Favoritar perfil Ananda Torres'), findsOneWidget);
     expect(find.text('Ananda Torres'), findsOneWidget);
     expect(find.text('brasilidades'), findsOneWidget);
     expect(find.text('samba'), findsOneWidget);

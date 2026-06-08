@@ -2,6 +2,7 @@ import 'package:belluga_now/domain/partners/value_objects/profile_type_flag_valu
 
 class ProfileTypeCapabilities {
   ProfileTypeCapabilities({
+    required this.isPubliclyDiscoverableValue,
     required this.isFavoritableValue,
     required this.isPoiEnabledValue,
     ProfileTypeFlagValue? isReferenceLocationEnabledValue,
@@ -17,6 +18,7 @@ class ProfileTypeCapabilities {
         hasNestedProfileGroupsValue =
             hasNestedProfileGroupsValue ?? ProfileTypeFlagValue(false);
 
+  final ProfileTypeFlagValue isPubliclyDiscoverableValue;
   final ProfileTypeFlagValue isFavoritableValue;
   final ProfileTypeFlagValue isPoiEnabledValue;
   final ProfileTypeFlagValue isReferenceLocationEnabledValue;
@@ -28,6 +30,7 @@ class ProfileTypeCapabilities {
   final ProfileTypeFlagValue hasEventsValue;
   final ProfileTypeFlagValue hasNestedProfileGroupsValue;
 
+  bool get isPubliclyDiscoverable => isPubliclyDiscoverableValue.value;
   bool get isFavoritable => isFavoritableValue.value;
   bool get isPoiEnabled => isPoiEnabledValue.value;
   bool get isReferenceLocationEnabled =>

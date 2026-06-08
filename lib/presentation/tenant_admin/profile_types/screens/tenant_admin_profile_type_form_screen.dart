@@ -310,18 +310,26 @@ class _TenantAdminProfileTypeFormScreenState
                                   title: const Text(
                                     'Descoberta publica habilitada',
                                   ),
-                                  subtitle: Text(
-                                    capabilities.isQueryable
-                                        ? 'Permite exibir perfis deste tipo nas superfícies públicas do tenant.'
-                                        : 'Requer capacidade de consulta habilitada.',
+                                  subtitle: const Text(
+                                    'Permite exibir perfis deste tipo nas superfícies públicas do tenant.',
                                   ),
                                   value: capabilities.isPubliclyDiscoverable,
-                                  onChanged: capabilities.isQueryable
-                                      ? (value) =>
-                                          _controller.updateCapabilities(
-                                            isPubliclyDiscoverable: value,
-                                          )
-                                      : null,
+                                  onChanged: (value) =>
+                                      _controller.updateCapabilities(
+                                    isPubliclyDiscoverable: value,
+                                  ),
+                                ),
+                                SwitchListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  title: const Text('Convidavel'),
+                                  subtitle: const Text(
+                                    'Permite usar perfis deste tipo nos fluxos de convite.',
+                                  ),
+                                  value: capabilities.isInviteable,
+                                  onChanged: (value) =>
+                                      _controller.updateCapabilities(
+                                    isInviteable: value,
+                                  ),
                                 ),
                                 SwitchListTile(
                                   contentPadding: EdgeInsets.zero,

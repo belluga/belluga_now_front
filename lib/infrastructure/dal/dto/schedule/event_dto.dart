@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/partner/value_objects/invite_partner_hero_ima
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_logo_image_value.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_name_value.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_tagline_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_public_detail_path_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_tag_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
@@ -33,6 +34,7 @@ import 'package:belluga_now/domain/value_objects/domain_optional_date_time_value
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
+import 'package:belluga_now/domain/venue_event/value_objects/venue_event_tag_value.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_artist_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_public_profile_payload_decoder.dart';
@@ -68,6 +70,7 @@ class EventDTO {
     this.sentInvites,
     this.friendsGoing,
     this.tags = const [],
+    this.taxonomyTerms = const [],
   });
 
   final String id;
@@ -93,6 +96,7 @@ class EventDTO {
   final List<Map<String, dynamic>>? sentInvites;
   final List<Map<String, dynamic>>? friendsGoing;
   final List<String> tags;
+  final List<Map<String, dynamic>> taxonomyTerms;
 
   factory EventDTO.fromJson(Map<String, dynamic> json) {
     final typePayload = _asMap(json['type']);
@@ -118,6 +122,10 @@ class EventDTO {
             json['artists'],
           );
     final selectedOccurrenceId = _asNullableString(json['occurrence_id']);
+
+    final taxonomyTerms = _resolveCanonicalTaxonomyTerms(
+      json['taxonomy_terms'],
+    );
 
     return EventDTO(
       id: _asString(json['id']) ??
@@ -171,7 +179,8 @@ class EventDTO {
       receivedInvites: _asMapList(json['received_invites']),
       sentInvites: _asMapList(json['sent_invites']),
       friendsGoing: _asMapList(json['friends_going']),
-      tags: _resolveCanonicalTaxonomyLabels(json['taxonomy_terms']),
+      tags: _resolveCanonicalTaxonomyLabels(taxonomyTerms),
+      taxonomyTerms: taxonomyTerms,
     );
   }
 
@@ -421,6 +430,16 @@ class EventDTO {
               occurrenceId == fallbackOccurrenceId.trim());
       final dateTimeEndValue = DomainOptionalDateTimeValue();
       dateTimeEndValue.parse(_asNullableString(row['date_time_end']));
+      final occurrenceLinkedAccountProfiles = _mergeLinkedAccountProfiles(
+        linkedAccountProfiles,
+        _resolveLinkedAccountProfiles(
+          linkedProfilesRaw: row['linked_account_profiles'] ??
+              row['own_linked_account_profiles'],
+        ),
+      );
+      final occurrenceTaxonomyTerms = _resolveCanonicalTaxonomyTerms(
+        row['taxonomy_terms'],
+      );
 
       resolved.add(
         EventOccurrenceOption(
@@ -439,13 +458,40 @@ class EventDTO {
           programmingItems: _resolveProgrammingItems(row['programming_items']),
           profileGroups: _resolveProfileGroups(
             row['profile_groups'],
-            linkedAccountProfiles: linkedAccountProfiles,
+            linkedAccountProfiles: occurrenceLinkedAccountProfiles,
           ),
+          tags: _resolveCanonicalTaxonomyLabels(
+            occurrenceTaxonomyTerms,
+          ).map(VenueEventTagValue.new).toList(growable: false),
         ),
       );
     }
 
     return List<EventOccurrenceOption>.unmodifiable(resolved);
+  }
+
+  static List<EventLinkedAccountProfile> _mergeLinkedAccountProfiles(
+    List<EventLinkedAccountProfile> primary,
+    List<EventLinkedAccountProfile> secondary,
+  ) {
+    if (secondary.isEmpty) {
+      return primary;
+    }
+
+    final knownIds = <String>{
+      for (final profile in primary)
+        if (profile.id.trim().isNotEmpty) profile.id.trim(),
+    };
+    final merged = <EventLinkedAccountProfile>[...primary];
+    for (final profile in secondary) {
+      final profileId = profile.id.trim();
+      if (profileId.isEmpty || knownIds.contains(profileId)) {
+        continue;
+      }
+      knownIds.add(profileId);
+      merged.add(profile);
+    }
+    return List<EventLinkedAccountProfile>.unmodifiable(merged);
   }
 
   static List<EventProgrammingItem> _resolveProgrammingItems(Object? raw) {
@@ -634,10 +680,7 @@ class EventDTO {
     }
 
     final publicDetailPath = _resolvePublicDetailPath(profile);
-    final slug = _asNullableString(_extractProfileSlug(profile))?.trim() ?? '';
-
-    return (publicDetailPath != null && publicDetailPath.isNotEmpty) ||
-        slug.isNotEmpty;
+    return publicDetailPath != null && publicDetailPath.isNotEmpty;
   }
 
   static String? _resolvePublicDetailPath(Map<String, dynamic> profile) {
@@ -875,6 +918,7 @@ class EventDTO {
     if (heroUrl != null && heroUrl.isNotEmpty) {
       heroImageValue = InvitePartnerHeroImageValue()..parse(heroUrl);
     }
+    final publicDetailPath = dto['public_detail_path']?.toString().trim() ?? '';
 
     return PartnerResume(
       idValue: MongoIDValue()..parse(dto['id']?.toString() ?? ''),
@@ -882,6 +926,11 @@ class EventDTO {
         ..parse(dto['display_name']?.toString() ?? ''),
       slugValue: slugValue,
       type: InviteAccountProfileType.mercadoProducer,
+      canOpenPublicDetail:
+          _asBool(dto['can_open_public_detail']) && publicDetailPath.isNotEmpty,
+      publicDetailPathValue: AccountProfilePublicDetailPathValue(
+        publicDetailPath,
+      ),
       taglineValue: taglineValue,
       logoImageValue: logoImageValue,
       heroImageValue: heroImageValue,
@@ -919,16 +968,28 @@ class EventDTO {
       'received_invites': receivedInvites,
       'sent_invites': sentInvites,
       'friends_going': friendsGoing,
-      'taxonomy_terms': tags
-          .map(
-            (label) => <String, String>{
-              'type': 'canonical_label',
-              'value': label,
-              'name': label,
-            },
-          )
+      'taxonomy_terms': taxonomyTerms
+          .map((term) => Map<String, dynamic>.from(term))
           .toList(growable: false),
     };
+  }
+
+  static List<Map<String, dynamic>> _resolveCanonicalTaxonomyTerms(
+      Object? raw) {
+    if (raw is! List) {
+      return const <Map<String, dynamic>>[];
+    }
+
+    final terms = <Map<String, dynamic>>[];
+    for (final entry in raw) {
+      final term = _asMap(entry);
+      if (term.isEmpty) {
+        continue;
+      }
+      terms.add(Map<String, dynamic>.unmodifiable(term));
+    }
+
+    return List<Map<String, dynamic>>.unmodifiable(terms);
   }
 
   static List<String> _resolveCanonicalTaxonomyLabels(Object? raw) {

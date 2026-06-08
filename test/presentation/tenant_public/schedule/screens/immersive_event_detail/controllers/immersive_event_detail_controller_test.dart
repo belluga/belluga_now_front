@@ -33,6 +33,7 @@ import 'package:belluga_now/domain/thumb/enums/thumb_types.dart';
 import 'package:belluga_now/domain/thumb/thumb_model.dart';
 import 'package:belluga_now/domain/value_objects/color_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
+import 'package:belluga_now/domain/venue_event/value_objects/venue_event_tag_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_optional_date_time_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_type_value.dart';
@@ -263,6 +264,50 @@ void main() {
     expect(
       controller.eventStreamValue.value?.profileGroups.map((group) => group.id),
       ['palco-sabado'],
+    );
+  });
+
+  test(
+      'event detail init replaces stale same-target occurrence tags with route-resolved event',
+      () {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    final staleEvent = _buildEvent(
+      tags: const ['Showcase'],
+      occurrences: [
+        _buildOccurrence(
+          id: '507f1f77bcf86cd799439012',
+          start: DateTime(2026, 3, 15, 20),
+          end: DateTime(2026, 3, 15, 22),
+          isSelected: true,
+          tags: const ['Showcase'],
+        ),
+      ],
+    );
+    final freshEvent = _buildEvent(
+      tags: const ['Instrumental'],
+      occurrences: [
+        _buildOccurrence(
+          id: '507f1f77bcf86cd799439012',
+          start: DateTime(2026, 3, 15, 20),
+          end: DateTime(2026, 3, 15, 22),
+          isSelected: true,
+          tags: const ['Instrumental'],
+        ),
+      ],
+    );
+    invitesRepository.setImmersiveSelectedEvent(staleEvent);
+    final controller = ImmersiveEventDetailController(
+      userEventsRepository: userEventsRepository,
+      invitesRepository: invitesRepository,
+      authRepository: _FakeAuthRepository(authorized: true),
+    );
+
+    controller.init(freshEvent);
+
+    expect(
+      controller.eventStreamValue.value?.tags.map((tag) => tag.value),
+      ['Instrumental'],
     );
   });
 
@@ -528,6 +573,42 @@ void main() {
     expect(
       selectedEvent?.profileGroups.single.profiles.single.displayName,
       'Artista Alpha',
+    );
+  });
+
+  test('select occurrence replaces visible taxonomy tags with occurrence tags',
+      () {
+    final controller = ImmersiveEventDetailController(
+      userEventsRepository: _FakeUserEventsRepository(),
+      invitesRepository: _FakeInvitesRepository(),
+      authRepository: _FakeAuthRepository(authorized: true),
+    );
+    final secondOccurrence = _buildOccurrence(
+      id: 'occurrence-second',
+      start: DateTime(2026, 3, 16, 9),
+      end: DateTime(2026, 3, 16, 14),
+      tags: const ['Instrumental'],
+    );
+    final event = _buildEvent(
+      tags: const ['Showcase'],
+      occurrences: [
+        _buildOccurrence(
+          id: 'occurrence-first',
+          start: DateTime(2026, 3, 15, 20),
+          end: DateTime(2026, 3, 15, 22),
+          isSelected: true,
+          tags: const ['Showcase'],
+        ),
+        secondOccurrence,
+      ],
+    );
+
+    controller.init(event);
+    controller.selectOccurrence(event, secondOccurrence);
+
+    expect(
+      controller.eventStreamValue.value?.tags.map((tag) => tag.value),
+      ['Instrumental'],
     );
   });
 
@@ -1025,6 +1106,7 @@ EventModel _buildEvent({
   List<EventProfileGroup> profileGroups = const [],
   List<EventLinkedAccountProfile> linkedAccountProfiles =
       const <EventLinkedAccountProfile>[],
+  List<String> tags = const <String>['show'],
 }) {
   final resolvedOccurrences = occurrences.isEmpty
       ? [
@@ -1066,7 +1148,7 @@ EventModel _buildEvent({
     profileGroups: profileGroups,
     occurrences: resolvedOccurrences,
     coordinate: null,
-    tags: const <String>['show'],
+    tags: tags,
     isConfirmedValue: EventIsConfirmedValue()..parse('false'),
     confirmedAt: null,
     receivedInvites: null,
@@ -1114,6 +1196,7 @@ EventOccurrenceOption _buildOccurrence({
   DateTime? end,
   bool isSelected = false,
   List<EventProfileGroup> profileGroups = const <EventProfileGroup>[],
+  List<String> tags = const <String>[],
 }) {
   final endValue = DomainOptionalDateTimeValue()..parse(end?.toIso8601String());
 
@@ -1127,6 +1210,7 @@ EventOccurrenceOption _buildOccurrence({
     hasLocationOverrideValue: EventOccurrenceFlagValue()..parse('false'),
     programmingCountValue: EventProgrammingCountValue()..parse('0'),
     profileGroups: profileGroups,
+    tags: tags.map(VenueEventTagValue.new).toList(growable: false),
   );
 }
 

@@ -23,9 +23,9 @@ import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 import 'package:belluga_now/domain/schedule/event_programming_item.dart';
 import 'package:belluga_now/domain/schedule/event_profile_group.dart';
-
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
+import 'package:belluga_now/domain/venue_event/value_objects/venue_event_tag_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_values.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -89,19 +89,22 @@ class ImmersiveEventDetailController implements Disposable {
   void init(EventModel event) {
     final resolvedEvent = _alignEventToSelectedOccurrence(event);
     final currentEvent = eventStreamValue.value;
-    final suppressWarmRouteDuplicate =
+    final hasSameProjection = _hasSameSelectedOccurrenceProjection(
+      currentEvent,
+      resolvedEvent,
+    );
+    final isPendingWarmRouteDuplicate =
         _isPendingWarmOccurrenceRoute(currentEvent, resolvedEvent);
-    if (!_hasSameSelectedOccurrenceProjection(currentEvent, resolvedEvent) &&
-        !suppressWarmRouteDuplicate) {
+    if (!hasSameProjection) {
       _invitesRepository.setImmersiveSelectedEvent(resolvedEvent);
     }
-    if (suppressWarmRouteDuplicate) {
+    if (isPendingWarmRouteDuplicate) {
       _pendingWarmOccurrenceRouteId = null;
     } else if (_pendingWarmOccurrenceRouteId != null &&
         _pendingWarmOccurrenceRouteId != resolvedEvent.selectedOccurrenceId) {
       _pendingWarmOccurrenceRouteId = null;
     }
-    _hydrateState(suppressWarmRouteDuplicate && currentEvent != null
+    _hydrateState(hasSameProjection && currentEvent != null
         ? currentEvent
         : resolvedEvent);
     _bindFavoriteAccountProfileState();
@@ -310,6 +313,9 @@ class ImmersiveEventDetailController implements Disposable {
     if (selectedOccurrence == null) {
       return event;
     }
+    final preservesCurrentSelectedProgramming =
+        (event.selectedOccurrenceId?.trim() ?? '') == occurrenceId &&
+            selectedOccurrence.programmingItems.isEmpty;
     final updatedOccurrences = event.occurrences
         .map(
           (occurrence) => EventOccurrenceOption(
@@ -323,6 +329,7 @@ class ImmersiveEventDetailController implements Disposable {
             programmingCountValue: occurrence.programmingCountValue,
             programmingItems: occurrence.programmingItems,
             profileGroups: occurrence.profileGroups,
+            tags: occurrence.tags,
           ),
         )
         .toList(growable: false);
@@ -341,9 +348,13 @@ class ImmersiveEventDetailController implements Disposable {
       linkedAccountProfiles: event.linkedAccountProfiles,
       profileGroups: event.profileGroups,
       occurrences: updatedOccurrences,
-      programmingItems: selectedOccurrence.programmingItems,
+      programmingItems: preservesCurrentSelectedProgramming
+          ? event.programmingItems
+          : selectedOccurrence.programmingItems,
       coordinate: event.coordinate,
-      tags: event.tags,
+      tags: selectedOccurrence.tags.isNotEmpty
+          ? selectedOccurrence.tags
+          : event.tags,
       isConfirmedValue: event.isConfirmedValue,
       confirmedAtValue: event.confirmedAtValue,
       receivedInvites: event.receivedInvites,
@@ -365,11 +376,25 @@ class ImmersiveEventDetailController implements Disposable {
   }
 
   EventModel _alignEventToSelectedOccurrence(EventModel event) {
-    if (event.programmingItems.isNotEmpty) {
-      return event;
-    }
     final occurrenceId = event.selectedOccurrenceId?.trim();
     if (occurrenceId == null || occurrenceId.isEmpty) {
+      return event;
+    }
+    final selectedOccurrence = event.selectedOccurrence;
+    if (selectedOccurrence == null) {
+      return event;
+    }
+    final expectedEnd = _dateTimeEndForSelectedOccurrence(selectedOccurrence);
+    final hasMatchingSchedule = _dateTimeSignature(event.dateTimeStart) ==
+            _dateTimeSignature(selectedOccurrence.dateTimeStartValue) &&
+        _dateTimeSignature(event.dateTimeEnd) ==
+            _dateTimeSignature(expectedEnd);
+    final hasMatchingProgramming =
+        _programmingSignature(event.programmingItems) ==
+            _programmingSignature(selectedOccurrence.programmingItems);
+    final hasMatchingTags =
+        _tagSignature(event.tags) == _tagSignature(selectedOccurrence.tags);
+    if (hasMatchingSchedule && hasMatchingProgramming && hasMatchingTags) {
       return event;
     }
     return _eventWithSelectedOccurrence(event, occurrenceId);
@@ -382,8 +407,15 @@ class ImmersiveEventDetailController implements Disposable {
     }
     return left.id.value == right.id.value &&
         left.selectedOccurrenceId == right.selectedOccurrenceId &&
+        _dateTimeSignature(left.dateTimeStart) ==
+            _dateTimeSignature(right.dateTimeStart) &&
+        _dateTimeSignature(left.dateTimeEnd) ==
+            _dateTimeSignature(right.dateTimeEnd) &&
         _profileGroupSignature(left.profileGroups) ==
             _profileGroupSignature(right.profileGroups) &&
+        _occurrenceSignature(left.occurrences) ==
+            _occurrenceSignature(right.occurrences) &&
+        _tagSignature(left.tags) == _tagSignature(right.tags) &&
         _programmingSignature(left.programmingItems) ==
             _programmingSignature(right.programmingItems);
   }
@@ -419,6 +451,31 @@ class ImmersiveEventDetailController implements Disposable {
     }).join('|');
   }
 
+  String _occurrenceSignature(List<EventOccurrenceOption> occurrences) {
+    return occurrences.map((occurrence) {
+      return [
+        occurrence.occurrenceId.trim(),
+        occurrence.occurrenceSlug.trim(),
+        occurrence.isSelected,
+        _dateTimeSignature(occurrence.dateTimeStartValue),
+        _dateTimeSignature(
+          occurrence.dateTimeEnd == null
+              ? null
+              : (DateTimeValue()
+                ..parse(occurrence.dateTimeEnd!.toIso8601String())),
+        ),
+        occurrence.programmingCount,
+        _profileGroupSignature(occurrence.profileGroups),
+        _tagSignature(occurrence.tags),
+        _programmingSignature(occurrence.programmingItems),
+      ].join(':');
+    }).join('|');
+  }
+
+  String _dateTimeSignature(DateTimeValue? value) {
+    return value?.value?.toIso8601String() ?? '';
+  }
+
   String _programmingSignature(List<EventProgrammingItem> items) {
     return items.map((item) {
       final profileIds = item.linkedAccountProfiles
@@ -433,6 +490,15 @@ class ImmersiveEventDetailController implements Disposable {
         item.locationProfile?.id.trim() ?? '',
       ].join(':');
     }).join('|');
+  }
+
+  String _tagSignature(Iterable<dynamic> tags) {
+    return tags
+        .map((tag) => tag is VenueEventTagValue
+            ? tag.value.trim()
+            : tag.toString().trim())
+        .where((tag) => tag.isNotEmpty)
+        .join('|');
   }
 
   void _applyConfirmationState(String occurrenceId) {

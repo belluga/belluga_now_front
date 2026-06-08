@@ -1,6 +1,5 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_profile_type_capability_values.dart';
 
 class TenantAdminProfileTypeDTO {
   const TenantAdminProfileTypeDTO({
@@ -12,6 +11,7 @@ class TenantAdminProfileTypeDTO {
     required this.isQueryable,
     required this.isPubliclyNavigable,
     required this.isPubliclyDiscoverable,
+    required this.isInviteable,
     required this.isFavoritable,
     required this.isPoiEnabled,
     required this.isReferenceLocationEnabled,
@@ -32,6 +32,7 @@ class TenantAdminProfileTypeDTO {
   final bool isQueryable;
   final bool isPubliclyNavigable;
   final bool isPubliclyDiscoverable;
+  final bool isInviteable;
   final bool isFavoritable;
   final bool isPoiEnabled;
   final bool isReferenceLocationEnabled;
@@ -55,14 +56,8 @@ class TenantAdminProfileTypeDTO {
     }
     final capabilities = json['capabilities'];
     final capabilityMap = capabilities is Map<String, dynamic>
-        ? TenantAdminProfileTypeCapabilityStateValue(capabilities)
-            .normalized()
-            .toJson()
-        : TenantAdminProfileTypeCapabilityStateValue().normalized().toJson();
-    final visualRaw = _resolveVisualRaw(
-      visualRaw: json['visual'] ?? json['poi_visual'],
-      typeAssetUrl: json['type_asset_url'],
-    );
+        ? Map<String, dynamic>.from(capabilities)
+        : const <String, dynamic>{};
     final labelsRaw = json['labels'];
     final labels = labelsRaw is Map<String, dynamic>
         ? labelsRaw
@@ -80,51 +75,24 @@ class TenantAdminProfileTypeDTO {
               ? singularLabel
               : json['label']?.toString() ?? '',
       allowedTaxonomies: allowed,
-      visual: tenantAdminPoiVisualFromRaw(visualRaw),
-      isQueryable: capabilityMap['is_queryable'] ?? true,
-      isPubliclyNavigable: capabilityMap['is_publicly_navigable'] ?? true,
-      isPubliclyDiscoverable: capabilityMap['is_publicly_discoverable'] ?? true,
-      isFavoritable: capabilityMap['is_favoritable'] ?? false,
-      isPoiEnabled: capabilityMap['is_poi_enabled'] ?? false,
+      visual: tenantAdminPoiVisualFromRaw(json['visual']),
+      isQueryable: capabilityMap['is_queryable'] == true,
+      isPubliclyNavigable: capabilityMap['is_publicly_navigable'] == true,
+      isPubliclyDiscoverable: capabilityMap['is_publicly_discoverable'] == true,
+      isInviteable: capabilityMap['is_inviteable'] == true,
+      isFavoritable: capabilityMap['is_favoritable'] == true,
+      isPoiEnabled: capabilityMap['is_poi_enabled'] == true,
       isReferenceLocationEnabled:
-          capabilityMap['is_reference_location_enabled'] ?? false,
-      hasBio: capabilityMap['has_bio'] ?? false,
-      hasContent: capabilityMap['has_content'] ?? false,
-      hasTaxonomies: capabilityMap['has_taxonomies'] ?? false,
-      hasAvatar: capabilityMap['has_avatar'] ?? false,
-      hasCover: capabilityMap['has_cover'] ?? false,
-      hasEvents: capabilityMap['has_events'] ?? false,
+          capabilityMap['is_reference_location_enabled'] == true,
+      hasBio: capabilityMap['has_bio'] == true,
+      hasContent: capabilityMap['has_content'] == true,
+      hasTaxonomies: capabilityMap['has_taxonomies'] == true,
+      hasAvatar: capabilityMap['has_avatar'] == true,
+      hasCover: capabilityMap['has_cover'] == true,
+      hasEvents: capabilityMap['has_events'] == true,
       hasNestedProfileGroups:
-          capabilityMap['has_nested_profile_groups'] ?? false,
+          capabilityMap['has_nested_profile_groups'] == true,
     );
-  }
-
-  static Object? _resolveVisualRaw({
-    required Object? visualRaw,
-    required Object? typeAssetUrl,
-  }) {
-    if (visualRaw is! Map) {
-      return visualRaw;
-    }
-
-    final visualMap = Map<String, dynamic>.from(visualRaw);
-    if (_readTrimmedString(visualMap['image_url']) != null) {
-      return visualMap;
-    }
-
-    final fallbackTypeAssetUrl = _readTrimmedString(typeAssetUrl);
-    if (fallbackTypeAssetUrl != null) {
-      visualMap['image_url'] = fallbackTypeAssetUrl;
-    }
-    return visualMap;
-  }
-
-  static String? _readTrimmedString(Object? raw) {
-    final value = raw?.toString().trim();
-    if (value == null || value.isEmpty) {
-      return null;
-    }
-    return value;
   }
 
   TenantAdminProfileTypeDefinition toDomain() {
@@ -138,6 +106,7 @@ class TenantAdminProfileTypeDTO {
         isQueryable: TenantAdminFlagValue(isQueryable),
         isPubliclyNavigable: TenantAdminFlagValue(isPubliclyNavigable),
         isPubliclyDiscoverable: TenantAdminFlagValue(isPubliclyDiscoverable),
+        isInviteable: TenantAdminFlagValue(isInviteable),
         isFavoritable: TenantAdminFlagValue(isFavoritable),
         isPoiEnabled: TenantAdminFlagValue(isPoiEnabled),
         isReferenceLocationEnabled: TenantAdminFlagValue(

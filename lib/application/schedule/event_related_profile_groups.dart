@@ -45,12 +45,12 @@ final class EventRelatedProfileGroups {
     EventRelatedProfileGroupLabelResolver? labelResolver,
   }) {
     final groups = <EventProfileGroup>[
+      ..._orderedGroups(eventProfileGroups),
       for (final occurrenceGroups in occurrenceProfileGroups)
         ..._orderedGroups(occurrenceGroups),
-      ..._orderedGroups(eventProfileGroups),
     ];
 
-    final summaries = _mergedSummariesByLabel(
+    final summaries = _mergedSummaries(
       profileGroups: groups,
       linkedAccountProfiles: linkedAccountProfiles,
       venueId: venueId,
@@ -158,17 +158,17 @@ final class EventRelatedProfileGroups {
       ..sort((left, right) => left.order.compareTo(right.order));
   }
 
-  static List<EventRelatedProfileGroupSummary> _mergedSummariesByLabel({
+  static List<EventRelatedProfileGroupSummary> _mergedSummaries({
     required List<EventProfileGroup> profileGroups,
     required List<EventLinkedAccountProfile> linkedAccountProfiles,
     String? venueId,
   }) {
-    final buckets = <String, _MutableProfileGroupSummary>{};
+    final buckets = <_MutableProfileGroupSummary>[];
 
     for (final group in profileGroups) {
       final rawLabel = group.label.trim();
       final label = rawLabel.isEmpty ? 'Grupo' : rawLabel;
-      final key = label.toLowerCase();
+      final normalizedLabel = label.toLowerCase();
       final profiles = _dedupeProfiles(
         _nonVenueProfiles(
           _profilesForGroup(group, linkedAccountProfiles),
@@ -179,14 +179,33 @@ final class EventRelatedProfileGroups {
         continue;
       }
 
-      final bucket = buckets.putIfAbsent(
-        key,
-        () => _MutableProfileGroupSummary(label),
+      final groupId = group.id.trim();
+      final bucket = buckets.firstWhere(
+        (candidate) => candidate.matches(
+          normalizedLabel: normalizedLabel,
+          groupId: groupId,
+        ),
+        orElse: () {
+          final created = _MutableProfileGroupSummary(
+            label: label,
+            normalizedLabel: normalizedLabel,
+            order: group.order,
+            groupId: groupId,
+          );
+          buckets.add(created);
+          return created;
+        },
       );
+      if (group.order < bucket.order) {
+        bucket.order = group.order;
+      }
       bucket.addAll(profiles);
     }
 
-    return buckets.values
+    final orderedBuckets = buckets.toList(growable: false)
+      ..sort((left, right) => left.order.compareTo(right.order));
+
+    return orderedBuckets
         .map(
           (bucket) => EventRelatedProfileGroupSummary(
             label: bucket.label,
@@ -265,14 +284,34 @@ final class EventRelatedProfileGroups {
 }
 
 final class _MutableProfileGroupSummary {
-  _MutableProfileGroupSummary(this.label);
+  _MutableProfileGroupSummary({
+    required this.label,
+    required this.normalizedLabel,
+    required this.order,
+    required this.groupId,
+  });
 
   final String label;
+  final String normalizedLabel;
+  final String groupId;
+  int order;
   final List<EventLinkedAccountProfile> _profiles = [];
   final Set<String> _seenProfileKeys = {};
 
   List<EventLinkedAccountProfile> get profiles =>
       List<EventLinkedAccountProfile>.unmodifiable(_profiles);
+
+  bool matches({
+    required String normalizedLabel,
+    required String groupId,
+  }) {
+    if (groupId.isNotEmpty &&
+        this.groupId.isNotEmpty &&
+        this.groupId == groupId) {
+      return true;
+    }
+    return this.normalizedLabel == normalizedLabel;
+  }
 
   void addAll(List<EventLinkedAccountProfile> profiles) {
     for (final profile in profiles) {

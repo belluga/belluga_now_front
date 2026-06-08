@@ -20,15 +20,21 @@ import 'package:belluga_now/domain/invites/value_objects/invite_tag_value.dart';
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_profile_group.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_inviter_candidate_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_public_profile_payload_decoder.dart';
 
 class InviteDto {
+  static final Uri _transparentPixelUri = Uri.parse(
+    'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==',
+  );
+
   InviteDto({
     required this.id,
     required this.eventId,
+    required this.eventSlug,
     required this.eventName,
     required this.eventDate,
     required this.eventImageUrl,
@@ -36,6 +42,7 @@ class InviteDto {
     required this.hostName,
     required this.message,
     required this.tags,
+    this.taxonomyTerms = const [],
     required this.attendancePolicy,
     required this.additionalInviters,
     required this.inviterCandidates,
@@ -51,6 +58,7 @@ class InviteDto {
 
   final String id;
   final String eventId;
+  final String eventSlug;
   final String occurrenceId;
   final String eventName;
   final String eventDate;
@@ -59,6 +67,7 @@ class InviteDto {
   final String hostName;
   final String message;
   final List<String> tags;
+  final List<Map<String, dynamic>> taxonomyTerms;
   final String attendancePolicy;
   final List<EventLinkedAccountProfile> linkedAccountProfiles;
   final List<EventProfileGroup> profileGroups;
@@ -123,9 +132,14 @@ class InviteDto {
         ? legacyInviteId
         : _groupKey(eventId, occurrenceId);
 
+    final taxonomyTerms = _resolveCanonicalTaxonomyTerms(
+      json['taxonomy_terms'],
+    );
+
     return InviteDto(
       id: id,
       eventId: eventId,
+      eventSlug: (json['event_slug'] ?? '').toString(),
       occurrenceId: occurrenceId,
       eventName: (json['event_name'] ?? '').toString(),
       eventDate: (json['event_date'] ?? '').toString(),
@@ -133,10 +147,8 @@ class InviteDto {
       location: (json['location'] ?? '').toString(),
       hostName: (json['host_name'] ?? '').toString(),
       message: (json['message'] ?? '').toString(),
-      tags: (json['tags'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList(growable: false) ??
-          const <String>[],
+      tags: _resolveCanonicalTaxonomyLabels(taxonomyTerms),
+      taxonomyTerms: taxonomyTerms,
       attendancePolicy:
           (json['attendance_policy'] ?? 'free_confirmation_only').toString(),
       linkedAccountProfiles: linkedAccountProfiles,
@@ -169,6 +181,7 @@ class InviteDto {
         'occurrence_id': occurrenceId,
       },
       'event_id': eventId,
+      'event_slug': eventSlug,
       'occurrence_id': occurrenceId,
       'event_name': eventName,
       'event_date': eventDate,
@@ -176,7 +189,9 @@ class InviteDto {
       'location': location,
       'host_name': hostName,
       'message': message,
-      'tags': tags,
+      'taxonomy_terms': taxonomyTerms
+          .map((term) => Map<String, dynamic>.from(term))
+          .toList(growable: false),
       'attendance_policy': attendancePolicy,
       'linked_account_profiles': linkedAccountProfiles
           .map(
@@ -326,18 +341,22 @@ class InviteDto {
     )..parse(attendancePolicy.trim().isEmpty
         ? 'free_confirmation_only'
         : attendancePolicy.trim());
-    final eventImageUri = Uri.parse(eventImageUrl);
+    final eventImageUri = _resolveEventImageUri(
+      eventImageUrl: eventImageUrl,
+      linkedAccountProfiles: linkedAccountProfiles,
+    );
 
     return InviteModel(
       idValue: InviteIdValue()..parse(id),
       eventIdValue: InviteEventIdValue()..parse(eventId),
+      eventSlugValue: _eventSlugValueOrNull(eventSlug),
       eventNameValue: TitleValue()..parse(eventName),
       eventDateValue: InviteEventDateValue(isRequired: true)
         ..parse(parsedEventDate.toIso8601String()),
       eventImageValue: ThumbUriValue(
         defaultValue: eventImageUri,
         isRequired: true,
-      )..parse(eventImageUrl),
+      )..parse(eventImageUri.toString()),
       locationValue: InviteLocationValue()..parse(location),
       hostNameValue: InviteHostNameValue()..parse(hostName),
       messageValue: InviteMessageValue()..parse(message),
@@ -365,6 +384,98 @@ class InviteDto {
 
   static String _groupKey(String eventId, String occurrenceId) {
     return '$eventId::$occurrenceId';
+  }
+
+  static List<String> _resolveCanonicalTaxonomyLabels(Object? raw) {
+    if (raw is! List) {
+      return const <String>[];
+    }
+
+    final labels = <String>{};
+    for (final entry in raw) {
+      if (entry is! Map) {
+        continue;
+      }
+      final label = (entry['name'] ?? entry['label'] ?? entry['value'] ?? '')
+          .toString()
+          .trim();
+      if (label.isEmpty) {
+        continue;
+      }
+      labels.add(label);
+    }
+
+    return List<String>.unmodifiable(labels);
+  }
+
+  static List<Map<String, dynamic>> _resolveCanonicalTaxonomyTerms(
+      Object? raw) {
+    if (raw is! List) {
+      return const <Map<String, dynamic>>[];
+    }
+
+    final terms = <Map<String, dynamic>>[];
+    for (final entry in raw) {
+      if (entry is Map<String, dynamic>) {
+        terms.add(Map<String, dynamic>.unmodifiable(entry));
+        continue;
+      }
+
+      if (entry is Map) {
+        terms.add(
+          Map<String, dynamic>.unmodifiable(
+            entry.map(
+              (key, value) => MapEntry(key.toString(), value),
+            ),
+          ),
+        );
+      }
+    }
+
+    return List<Map<String, dynamic>>.unmodifiable(terms);
+  }
+
+  static SlugValue? _eventSlugValueOrNull(String raw) {
+    final normalized = raw.trim();
+    if (normalized.isEmpty) {
+      return null;
+    }
+    return SlugValue()..parse(normalized);
+  }
+
+  static Uri _resolveEventImageUri({
+    required String eventImageUrl,
+    required List<EventLinkedAccountProfile> linkedAccountProfiles,
+  }) {
+    final direct = _tryAbsoluteUri(eventImageUrl);
+    if (direct != null) {
+      return direct;
+    }
+
+    for (final profile in linkedAccountProfiles) {
+      final cover = _tryAbsoluteUri(profile.coverUrl);
+      if (cover != null) {
+        return cover;
+      }
+      final avatar = _tryAbsoluteUri(profile.avatarUrl);
+      if (avatar != null) {
+        return avatar;
+      }
+    }
+
+    return _transparentPixelUri;
+  }
+
+  static Uri? _tryAbsoluteUri(String? raw) {
+    final normalized = raw?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+    final parsed = Uri.tryParse(normalized);
+    if (parsed == null || !parsed.isAbsolute) {
+      return null;
+    }
+    return parsed;
   }
 
   InviteInviterPrincipal? _parseInviterPrincipal({

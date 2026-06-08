@@ -295,6 +295,14 @@ class MapScreenController implements Disposable {
         profile,
       );
     }
+    if (_isAccountProfilePoi(poi)) {
+      return AccountProfileReferencePointResolver.matchesEntity(
+        fixedReference,
+        entityType: '',
+        entityId: poi.refId,
+        entitySlug: poi.refSlug,
+      );
+    }
     return AccountProfileReferencePointResolver.matchesEntity(
       fixedReference,
       entityType: poi.resolvedCategoryLabel ?? '',
@@ -1420,8 +1428,8 @@ class MapScreenController implements Disposable {
         : _parseTypeLabelValue(normalizedProfileType);
     final canonicalProfilePath = profile.canOpenPublicDetail
         ? (profile.publicDetailPath?.trim().isNotEmpty == true
-              ? profile.publicDetailPath!.trim()
-              : '/parceiro/${profile.slug}')
+            ? profile.publicDetailPath!.trim()
+            : '/parceiro/${profile.slug}')
         : null;
 
     return poi.copyWith(
@@ -1433,7 +1441,9 @@ class MapScreenController implements Disposable {
           coverUrl == null ? null : _parseImageUriValue(coverUrl),
       coordinate: mergedCoordinate,
       visual: mergedVisual,
-      refSlugValue: poi.refSlug == null && profile.canOpenPublicDetail
+      refSlugValue: poi.refSlug == null &&
+              profile.canOpenPublicDetail &&
+              profile.slug.trim().isNotEmpty
           ? _parseReferenceSlugValue(profile.slug)
           : null,
       refPathValue: canonicalProfilePath == null ||

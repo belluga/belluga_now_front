@@ -414,6 +414,9 @@ class AppDataDTO {
             typeAssetUrl: rawType['type_asset_url'],
           ),
           capabilities: ProfileTypeCapabilities(
+            isPubliclyDiscoverableValue: ProfileTypeFlagValue(
+              capabilitiesMap['is_publicly_discoverable'] == true,
+            ),
             isFavoritableValue: ProfileTypeFlagValue(
               capabilitiesMap['is_favoritable'] == true,
             ),

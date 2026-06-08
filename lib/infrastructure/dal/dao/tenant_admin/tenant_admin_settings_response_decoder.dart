@@ -430,10 +430,7 @@ class TenantAdminSettingsResponseDecoder {
     if (payload.containsKey(namespace)) {
       throw Exception('Unexpected $namespace payload shape.');
     }
-    return payload.containsKey('surfaces') ||
-            payload.keys.any((key) => key.startsWith('surfaces.'))
-        ? Map<String, dynamic>.from(payload)
-        : const <String, dynamic>{};
+    return const <String, dynamic>{};
   }
 
   Map<String, dynamic> _extractAppLinksPayload(Object? raw) {
@@ -1126,7 +1123,7 @@ class TenantAdminSettingsResponseDecoder {
     required Object? rawImageUri,
     required Uri tenantOrigin,
   }) {
-    final normalizedKey = key.trim().toLowerCase();
+    final normalizedKey = key.trim();
     final value = rawImageUri?.toString().trim();
     if (normalizedKey.isEmpty || value == null || value.isEmpty) {
       return null;
@@ -1135,18 +1132,6 @@ class TenantAdminSettingsResponseDecoder {
     final parsed = Uri.tryParse(value);
     if (parsed == null) {
       return value;
-    }
-
-    final path = parsed.path.trim();
-    final legacyPath = '/map-filters/$normalizedKey/image';
-    final canonicalPath = '/api/v1/media/map-filters/$normalizedKey';
-
-    if (path == legacyPath || path == canonicalPath) {
-      final canonicalUri = tenantOrigin.resolve(canonicalPath);
-      final query = parsed.hasQuery ? parsed.query : null;
-      return canonicalUri
-          .replace(query: query == null || query.isEmpty ? null : query)
-          .toString();
     }
 
     if (parsed.host.trim().isNotEmpty) {

@@ -69,6 +69,7 @@ class TenantAdminProfileTypesController implements Disposable {
     isQueryable: TenantAdminFlagValue(true),
     isPubliclyNavigable: TenantAdminFlagValue(true),
     isPubliclyDiscoverable: TenantAdminFlagValue(true),
+    isInviteable: TenantAdminFlagValue(false),
     isFavoritable: TenantAdminFlagValue(false),
     isPoiEnabled: TenantAdminFlagValue(false),
     hasBio: TenantAdminFlagValue(false),
@@ -213,6 +214,7 @@ class TenantAdminProfileTypesController implements Disposable {
         isPubliclyDiscoverable: TenantAdminFlagValue(
           capabilities.isPubliclyDiscoverable,
         ),
+        isInviteable: TenantAdminFlagValue(capabilities.isInviteable),
         isFavoritable: TenantAdminFlagValue(capabilities.isFavoritable),
         isPoiEnabled: TenantAdminFlagValue(capabilities.isPoiEnabled),
         isReferenceLocationEnabled: TenantAdminFlagValue(
@@ -418,6 +420,7 @@ class TenantAdminProfileTypesController implements Disposable {
     bool? isQueryable,
     bool? isPubliclyNavigable,
     bool? isPubliclyDiscoverable,
+    bool? isInviteable,
     bool? isFavoritable,
     bool? isPoiEnabled,
     bool? isReferenceLocationEnabled,
@@ -442,6 +445,10 @@ class TenantAdminProfileTypesController implements Disposable {
     if (isPubliclyDiscoverable != null) {
       next[TenantAdminProfileTypeCapabilityKey
           .isPubliclyDiscoverable.apiValue] = isPubliclyDiscoverable;
+    }
+    if (isInviteable != null) {
+      next[TenantAdminProfileTypeCapabilityKey.isInviteable.apiValue] =
+          isInviteable;
     }
     if (isFavoritable != null) {
       next[TenantAdminProfileTypeCapabilityKey.isFavoritable.apiValue] =
@@ -493,6 +500,9 @@ class TenantAdminProfileTypesController implements Disposable {
         ),
         isPubliclyDiscoverable: normalized.flagValue(
           TenantAdminProfileTypeCapabilityKey.isPubliclyDiscoverable,
+        ),
+        isInviteable: normalized.flagValue(
+          TenantAdminProfileTypeCapabilityKey.isInviteable,
         ),
         isFavoritable: normalized.flagValue(
           TenantAdminProfileTypeCapabilityKey.isFavoritable,

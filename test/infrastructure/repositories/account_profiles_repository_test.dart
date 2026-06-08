@@ -62,6 +62,40 @@ void main() {
     expect(page.profiles.first.type, 'artist');
   });
 
+  test(
+      'fetchAccountProfilesPage still calls backend and preserves public results when the local registry has not caught up to the selected type',
+      () async {
+    final backend = _StubAccountProfilesBackend(
+      accountProfiles: [
+        buildAccountProfileModelFromPrimitives(
+          id: _generateMongoId(),
+          name: 'Dynamic Public Type',
+          slug: 'dynamic-public-type',
+          type: 'dynamic-public-type',
+        ),
+      ],
+    );
+    final repository = AccountProfilesRepository(
+      backend: backend,
+      favoriteBackend: _StubFavoriteBackend(favorites: const []),
+      favoriteAccountProfileIds: const {},
+    );
+
+    final page = await repository.fetchAccountProfilesPage(
+      page: AccountProfilesRepositoryContractPrimInt.fromRaw(1),
+      pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
+      typeFilters: [
+        AccountProfilesRepositoryContractPrimString.fromRaw(
+          'dynamic-public-type',
+        ),
+      ],
+    );
+
+    expect(backend.fetchAccountProfilesPageCalls, 1);
+    expect(page.profiles, hasLength(1));
+    expect(page.profiles.first.type, 'dynamic-public-type');
+  });
+
   test('fetchAccountProfilesPage does not force profile_type list for "Todos"',
       () async {
     final backend = _StubAccountProfilesBackend(
@@ -565,6 +599,36 @@ void main() {
     expect(backend.fetchAccountProfilesPageCalls, 0);
   });
 
+  test(
+      'getAccountProfileBySlug does not reject a backend-authoritative public profile just because the local registry does not know the type yet',
+      () async {
+    final backend = _StubAccountProfilesBackend(
+      accountProfiles: [
+        buildAccountProfileModelFromPrimitives(
+          id: _generateMongoId(),
+          name: 'Dynamic Public Type',
+          slug: 'dynamic-public-type',
+          type: 'dynamic-public-type',
+        ),
+      ],
+    );
+    final repository = AccountProfilesRepository(
+      backend: backend,
+      favoriteBackend: _StubFavoriteBackend(favorites: const []),
+      favoriteAccountProfileIds: const {},
+    );
+
+    final profile = await repository.getAccountProfileBySlug(
+      AccountProfilesRepositoryContractPrimString.fromRaw(
+        'dynamic-public-type',
+      ),
+    );
+
+    expect(profile, isNotNull);
+    expect(profile?.type, 'dynamic-public-type');
+    expect(backend.fetchBySlugCalls, 1);
+  });
+
   test('paged account profiles stream accumulates loaded pages canonically',
       () async {
     final backend = _StubAccountProfilesBackend(
@@ -950,6 +1014,7 @@ AppData _buildAppData() {
         'label': 'Artist',
         'allowed_taxonomies': [],
         'capabilities': {
+          'is_publicly_discoverable': true,
           'is_favoritable': true,
           'is_poi_enabled': false,
         },
@@ -959,8 +1024,19 @@ AppData _buildAppData() {
         'label': 'Venue',
         'allowed_taxonomies': ['genre'],
         'capabilities': {
+          'is_publicly_discoverable': true,
           'is_favoritable': true,
           'is_poi_enabled': true,
+        },
+      },
+      {
+        'type': 'curator',
+        'label': 'Curator',
+        'allowed_taxonomies': [],
+        'capabilities': {
+          'is_publicly_discoverable': false,
+          'is_favoritable': false,
+          'is_poi_enabled': false,
         },
       },
     ],

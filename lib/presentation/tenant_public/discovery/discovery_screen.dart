@@ -203,10 +203,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                                             .canOpenPublicDetail) {
                                                           return;
                                                         }
-                                                        context.router.push(
-                                                          PartnerDetailRoute(
-                                                            slug: partner.slug,
-                                                          ),
+                                                        _openPartnerDetail(
+                                                          context,
+                                                          partner,
                                                         );
                                                       },
                                                       resolvedVisualForItem:
@@ -338,13 +337,10 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                                     }
                                                   },
                                                   onPartnerTap: (partner) =>
-                                                      partner
-                                                              .canOpenPublicDetail
-                                                          ? context.router.push(
-                                                              PartnerDetailRoute(
-                                                                slug:
-                                                                    partner.slug,
-                                                              ),
+                                                      partner.canOpenPublicDetail
+                                                          ? _openPartnerDetail(
+                                                              context,
+                                                              partner,
                                                             )
                                                           : null,
                                                   resolvedVisualForPartner:
@@ -433,6 +429,19 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     );
   }
 
+  Future<void> _openPartnerDetail(
+    BuildContext context,
+    AccountProfileModel partner,
+  ) async {
+    if (!partner.canOpenPublicDetail) {
+      return;
+    }
+    final publicDetailPath = partner.publicDetailPath?.trim();
+    if (publicDetailPath != null && publicDetailPath.isNotEmpty) {
+      await context.router.pushPath(publicDetailPath);
+    }
+  }
+
   String _partnerDetailRedirectPath(AccountProfileModel partner) {
     if (!partner.canOpenPublicDetail) {
       return buildRedirectPathFromRouteMatch(context.routeData.route);
@@ -441,11 +450,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     if (publicDetailPath != null && publicDetailPath.isNotEmpty) {
       return publicDetailPath;
     }
-    final slug = partner.slug.trim();
-    if (slug.isEmpty) {
-      return buildRedirectPathFromRouteMatch(context.routeData.route);
-    }
-    return '/parceiro/$slug';
+    return buildRedirectPathFromRouteMatch(context.routeData.route);
   }
 
   Widget _buildBrandAppBarTitle() {

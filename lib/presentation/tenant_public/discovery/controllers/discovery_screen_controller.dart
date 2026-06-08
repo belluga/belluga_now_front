@@ -756,7 +756,7 @@ class DiscoveryScreenController extends Object
     final allowed = registry
         .enabledAccountProfileTypes()
         .where(
-          registry.isFavoritableFor,
+          registry.isPubliclyDiscoverableFor,
         )
         .map((type) => type.value)
         .toList(growable: false);

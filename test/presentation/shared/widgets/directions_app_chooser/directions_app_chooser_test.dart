@@ -4,6 +4,7 @@ import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/d
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_sheet.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_launch_target.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_provider_brand_catalog.dart';
+import 'package:belluga_now/application/router/support/route_instance_scope.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -187,43 +188,24 @@ void main() {
   testWidgets('sheet renders provided dynamic options and close button', (
     tester,
   ) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Builder(
-          builder: (context) {
-            return Scaffold(
-              body: Center(
-                child: ElevatedButton(
-                  onPressed: () {
-                    DirectionsAppChooserSheet.show(
-                      context: context,
-                      title: 'Traçar rota',
-                      subtitle: 'Selecione seu aplicativo de preferência',
-                      loadOptions: () async => <DirectionsAppChoice>[
-                        DirectionsAppChoice(
-                          id: 'custom:boora',
-                          label: 'Boora Maps',
-                          subtitle: 'Abrir navegação externa',
-                          visualType: DirectionsAppVisualType.browser,
-                          onSelected: () async => true,
-                        ),
-                        DirectionsAppChoice(
-                          id: 'custom:city',
-                          label: 'City Route',
-                          subtitle: 'Abrir navegação externa',
-                          visualType: DirectionsAppVisualType.browser,
-                          onSelected: () async => true,
-                        ),
-                      ],
-                    );
-                  },
-                  child: const Text('open'),
-                ),
-              ),
-            );
-          },
+    await _pumpRouteScopedChooserHarness(
+      tester,
+      loadOptions: () async => <DirectionsAppChoice>[
+        DirectionsAppChoice(
+          id: 'custom:boora',
+          label: 'Boora Maps',
+          subtitle: 'Abrir navegação externa',
+          visualType: DirectionsAppVisualType.browser,
+          onSelected: () async => true,
         ),
-      ),
+        DirectionsAppChoice(
+          id: 'custom:city',
+          label: 'City Route',
+          subtitle: 'Abrir navegação externa',
+          visualType: DirectionsAppVisualType.browser,
+          onSelected: () async => true,
+        ),
+      ],
     );
 
     await tester.tap(find.text('open'));
@@ -242,57 +224,38 @@ void main() {
   testWidgets('sheet renders branded route options with brand assets', (
     tester,
   ) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Builder(
-          builder: (context) {
-            return Scaffold(
-              body: Center(
-                child: ElevatedButton(
-                  onPressed: () {
-                    DirectionsAppChooserSheet.show(
-                      context: context,
-                      title: 'Traçar rota',
-                      subtitle: 'Selecione seu aplicativo de preferência',
-                      loadOptions: () async => <DirectionsAppChoice>[
-                        DirectionsAppChoice(
-                          id: 'google:web',
-                          label: 'Google Maps',
-                          subtitle: 'Abrir navegação externa',
-                          visualType: DirectionsAppVisualType.googleMaps,
-                          onSelected: () async => true,
-                        ),
-                        DirectionsAppChoice(
-                          id: 'waze:web',
-                          label: 'Waze',
-                          subtitle: 'Abrir navegação externa',
-                          visualType: DirectionsAppVisualType.waze,
-                          onSelected: () async => true,
-                        ),
-                        DirectionsAppChoice(
-                          id: 'uber:web',
-                          label: 'Uber',
-                          subtitle: 'Abrir navegação externa',
-                          visualType: DirectionsAppVisualType.uber,
-                          onSelected: () async => true,
-                        ),
-                        DirectionsAppChoice(
-                          id: '99:web',
-                          label: '99',
-                          subtitle: 'Abrir navegação externa',
-                          visualType: DirectionsAppVisualType.ninetyNine,
-                          onSelected: () async => true,
-                        ),
-                      ],
-                    );
-                  },
-                  child: const Text('open'),
-                ),
-              ),
-            );
-          },
+    await _pumpRouteScopedChooserHarness(
+      tester,
+      loadOptions: () async => <DirectionsAppChoice>[
+        DirectionsAppChoice(
+          id: 'google:web',
+          label: 'Google Maps',
+          subtitle: 'Abrir navegação externa',
+          visualType: DirectionsAppVisualType.googleMaps,
+          onSelected: () async => true,
         ),
-      ),
+        DirectionsAppChoice(
+          id: 'waze:web',
+          label: 'Waze',
+          subtitle: 'Abrir navegação externa',
+          visualType: DirectionsAppVisualType.waze,
+          onSelected: () async => true,
+        ),
+        DirectionsAppChoice(
+          id: 'uber:web',
+          label: 'Uber',
+          subtitle: 'Abrir navegação externa',
+          visualType: DirectionsAppVisualType.uber,
+          onSelected: () async => true,
+        ),
+        DirectionsAppChoice(
+          id: '99:web',
+          label: '99',
+          subtitle: 'Abrir navegação externa',
+          visualType: DirectionsAppVisualType.ninetyNine,
+          onSelected: () async => true,
+        ),
+      ],
     );
 
     await tester.tap(find.text('open'));
@@ -326,4 +289,35 @@ void main() {
     expect(rasterAssets,
         contains(DirectionsProviderBrandCatalog.ninetyNine.assetPath));
   });
+}
+
+Future<void> _pumpRouteScopedChooserHarness(
+  WidgetTester tester, {
+  required Future<List<DirectionsAppChoice>> Function() loadOptions,
+}) {
+  return tester.pumpWidget(
+    MaterialApp(
+      home: RouteInstanceScope(
+        child: Builder(
+          builder: (context) {
+            return Scaffold(
+              body: Center(
+                child: ElevatedButton(
+                  onPressed: () {
+                    DirectionsAppChooserSheet.show(
+                      context: context,
+                      title: 'Traçar rota',
+                      subtitle: 'Selecione seu aplicativo de preferência',
+                      loadOptions: loadOptions,
+                    );
+                  },
+                  child: const Text('open'),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    ),
+  );
 }

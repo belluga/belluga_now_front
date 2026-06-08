@@ -257,6 +257,8 @@ class _CardImage extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final imageUrl = resolvedVisual.surfaceImageUrl;
     final isLiveNow = _isLiveNow(partner);
+    final favoriteLabel =
+        isFavorite ? 'Perfil favoritado' : 'Favoritar perfil ${partner.name}';
 
     return AspectRatio(
       aspectRatio: 0.92,
@@ -325,6 +327,7 @@ class _CardImage extends StatelessWidget {
                   ),
                   child: IconButton(
                     key: Key('discoveryFavoriteButton_${partner.id}'),
+                    tooltip: favoriteLabel,
                     onPressed: onFavoriteTap,
                     icon: Icon(
                       isFavorite ? Icons.favorite : Icons.favorite_border,

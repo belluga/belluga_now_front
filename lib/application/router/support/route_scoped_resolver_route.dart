@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/support/route_instance_scope.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 
@@ -125,6 +126,7 @@ class _RouteScopedResolverBuilder<T> extends StatefulWidget {
 class _RouteScopedResolverBuilderState<T>
     extends State<_RouteScopedResolverBuilder<T>> {
   late Future<T> _future;
+  RouteResolverParams? _lastResolvedParams;
 
   @override
   void initState() {
@@ -132,12 +134,25 @@ class _RouteScopedResolverBuilderState<T>
     _resolve();
   }
 
-  void _resolve() {
-    _future = _runResolver();
+  @override
+  void didUpdateWidget(covariant _RouteScopedResolverBuilder<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final nextParams = widget.routeParamsBuilder();
+    if (!mapEquals(_lastResolvedParams, nextParams)) {
+      setState(() => _resolveWithParams(nextParams));
+    }
   }
 
-  Future<T> _runResolver() async {
-    final params = widget.routeParamsBuilder();
+  void _resolve() {
+    _resolveWithParams(widget.routeParamsBuilder());
+  }
+
+  void _resolveWithParams(RouteResolverParams params) {
+    _lastResolvedParams = Map<String, Object?>.from(params);
+    _future = _runResolver(_lastResolvedParams!);
+  }
+
+  Future<T> _runResolver(RouteResolverParams params) async {
     await widget.onResolveStart?.call(params);
     try {
       final result = await widget.resolver(params);

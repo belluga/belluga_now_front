@@ -1,0 +1,4 @@
+{
+  "_comment": "Reusable dev-lane example. Copy to dev.json in a downstream project and replace LANDLORD_DOMAIN with the browser-facing landlord origin for that lane. Keep current project-owned domains out of the shared example default.",
+  "LANDLORD_DOMAIN": "https://landlord-dev.example.com"
+}

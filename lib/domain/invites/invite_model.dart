@@ -16,6 +16,7 @@ import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_profile_group.dart';
 import 'package:belluga_now/domain/schedule/event_schedule_display.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:value_object_pattern/domain/exceptions/value_exceptions.dart';
@@ -24,6 +25,7 @@ class InviteModel {
   InviteModel({
     required this.idValue,
     required this.eventIdValue,
+    this.eventSlugValue,
     required this.eventNameValue,
     required this.eventDateValue,
     required this.eventImageValue,
@@ -51,6 +53,7 @@ class InviteModel {
 
   final InviteIdValue idValue;
   final InviteEventIdValue eventIdValue;
+  final SlugValue? eventSlugValue;
   final TitleValue eventNameValue;
   final InviteEventDateValue eventDateValue;
   final ThumbUriValue eventImageValue;
@@ -71,6 +74,7 @@ class InviteModel {
 
   String get id => idValue.value;
   String get eventId => eventIdValue.value;
+  String get eventSlug => eventSlugValue?.value ?? '';
   String get groupKey => id;
   String get eventName => eventNameValue.value;
   DateTime get eventDateTime {
@@ -148,6 +152,7 @@ class InviteModel {
     return InviteModel(
       idValue: idValue,
       eventIdValue: eventIdValue,
+      eventSlugValue: eventSlugValue,
       eventNameValue: eventNameValue,
       eventDateValue: eventDateValue,
       eventImageValue: eventImageValue,

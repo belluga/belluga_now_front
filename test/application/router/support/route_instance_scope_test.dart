@@ -157,6 +157,61 @@ void main() {
 
     expect(identical(routeController, sheetController), isTrue);
   });
+
+  testWidgets('get and read throw when route scope is missing', (tester) async {
+    late BuildContext capturedContext;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) {
+            capturedContext = context;
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+
+    expect(
+      () => RouteInstanceScope.get<_ProbeController>(capturedContext),
+      throwsA(isA<FlutterError>()),
+    );
+    expect(
+      () => RouteInstanceScope.read<_ProbeController>(capturedContext),
+      throwsA(isA<FlutterError>()),
+    );
+  });
+
+  testWidgets('route-scoped overlays fail fast when route scope is missing',
+      (tester) async {
+    late BuildContext capturedContext;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) {
+            capturedContext = context;
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+
+    expect(
+      () => showRouteScopedDialog<void>(
+        context: capturedContext,
+        builder: (_) => const SizedBox.shrink(),
+      ),
+      throwsA(isA<FlutterError>()),
+    );
+    expect(
+      () => showRouteScopedModalBottomSheet<void>(
+        context: capturedContext,
+        builder: (_) => const SizedBox.shrink(),
+      ),
+      throwsA(isA<FlutterError>()),
+    );
+  });
 }
 
 class _ProbeController implements Disposable {

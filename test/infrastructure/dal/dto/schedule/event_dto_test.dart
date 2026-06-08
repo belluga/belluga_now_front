@@ -61,7 +61,7 @@ void main() {
     expect(
       dto.toJson()['taxonomy_terms'],
       [
-        {'type': 'canonical_label', 'value': 'Music', 'name': 'Music'},
+        {'type': 'genre', 'value': 'music', 'name': 'Music'},
       ],
     );
   });
@@ -215,6 +215,67 @@ void main() {
     expect(staticProfile.canOpenPublicDetail, isFalse);
     expect(staticProfile.publicDetailPath, isNull);
     expect(staticProfile.slug, isEmpty);
+  });
+
+  test('parses venue navigation contract from explicit public detail fields',
+      () {
+    final dto = EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439056',
+      'slug': 'evt-venue-navigation-contract',
+      'type': {
+        'id': 'type-1',
+        'name': 'Feira',
+        'slug': 'feira',
+        'description': '',
+      },
+      'title': 'Evento venue navegavel',
+      'content': '',
+      'location': 'Guarapari',
+      'venue': {
+        'id': '507f1f77bcf86cd799439057',
+        'display_name': 'Venue navegavel',
+        'slug': 'venue-navegavel',
+        'can_open_public_detail': true,
+        'public_detail_path': '/parceiro/venue-navegavel',
+      },
+      'date_time_start': '2026-03-03T10:00:00+00:00',
+    });
+
+    final venue = dto.toDomain().venue;
+
+    expect(venue, isNotNull);
+    expect(venue?.canOpenPublicDetail, isTrue);
+    expect(venue?.publicDetailPath, '/parceiro/venue-navegavel');
+    expect(venue?.slug, 'venue-navegavel');
+  });
+
+  test('keeps venue non-navigable when only slug is present without path', () {
+    final dto = EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439058',
+      'slug': 'evt-venue-slug-only',
+      'type': {
+        'id': 'type-1',
+        'name': 'Feira',
+        'slug': 'feira',
+        'description': '',
+      },
+      'title': 'Evento venue slug only',
+      'content': '',
+      'location': 'Guarapari',
+      'venue': {
+        'id': '507f1f77bcf86cd799439059',
+        'display_name': 'Venue sem path',
+        'slug': 'venue-sem-path',
+        'can_open_public_detail': true,
+      },
+      'date_time_start': '2026-03-03T10:00:00+00:00',
+    });
+
+    final venue = dto.toDomain().venue;
+
+    expect(venue, isNotNull);
+    expect(venue?.canOpenPublicDetail, isFalse);
+    expect(venue?.publicDetailPath, isNull);
   });
 
   test(
@@ -375,6 +436,69 @@ void main() {
     expect(domain.profileGroups.last.label, 'Vila Expositores');
     expect(
         domain.profileGroups.last.profiles.single.displayName, 'Expositor Sol');
+  });
+
+  test(
+      'hydrates occurrence profile groups from occurrence-owned linked profiles when root aggregate is incomplete',
+      () {
+    final dto = EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439191',
+      'occurrence_id': '507f1f77bcf86cd799439192',
+      'slug': 'festival-com-perfis-locais',
+      'type': {
+        'id': 'festival',
+        'name': 'Festival',
+        'slug': 'festival',
+        'description': '',
+      },
+      'title': 'Festival com Perfis Locais',
+      'content': 'Descricao',
+      'location': 'Praca Central',
+      'date_time_start': '2026-03-04T17:00:00+00:00',
+      'linked_account_profiles': [
+        {
+          'id': 'profile-band',
+          'display_name': 'Banda Azul',
+          'slug': 'banda-azul',
+          'profile_type': 'banda',
+        },
+      ],
+      'occurrences': [
+        {
+          'occurrence_id': '507f1f77bcf86cd799439192',
+          'date_time_start': '2026-03-04T17:00:00+00:00',
+          'is_selected': true,
+          'own_linked_account_profiles': [
+            {
+              'id': 'profile-exhibitor',
+              'display_name': 'Expositor Sol',
+              'slug': 'expositor-sol',
+              'profile_type': 'expositor',
+            },
+          ],
+          'profile_groups': [
+            {
+              'id': 'vila-expositores',
+              'label': 'Vila Expositores',
+              'order': 0,
+              'account_profile_ids': ['profile-exhibitor'],
+            },
+          ],
+        },
+      ],
+    });
+
+    final domain = dto.toDomain();
+
+    expect(domain.occurrences, hasLength(1));
+    expect(domain.occurrences.single.profileGroups, hasLength(1));
+    expect(domain.occurrences.single.profileGroups.single.label,
+        'Vila Expositores');
+    expect(
+      domain
+          .occurrences.single.profileGroups.single.profiles.single.displayName,
+      'Expositor Sol',
+    );
   });
 
   test('preserves sanitized rich html content for public event rendering', () {
@@ -830,5 +954,49 @@ void main() {
     expect(dto.location, 'Transmissao ao vivo');
     expect(domain.location.value, 'Transmissao ao vivo');
     expect(domain.hasProgrammingItems, isTrue);
+  });
+
+  test('parses effective occurrence taxonomy labels for selected occurrence',
+      () {
+    final dto = EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439085',
+      'occurrence_id': '507f1f77bcf86cd799439086',
+      'slug': 'festival-taxonomia-por-ocorrencia',
+      'type': {
+        'id': 'show',
+        'name': 'Show',
+        'slug': 'show',
+        'description': '',
+      },
+      'title': 'Festival taxonomia por ocorrencia',
+      'content': 'Descricao',
+      'location': 'Praca Central',
+      'date_time_start': '2026-03-04T17:00:00+00:00',
+      'taxonomy_terms': [
+        {
+          'type': 'event_style',
+          'value': 'showcase',
+          'label': 'Showcase',
+        },
+      ],
+      'occurrences': [
+        {
+          'occurrence_id': '507f1f77bcf86cd799439086',
+          'date_time_start': '2026-03-04T17:00:00+00:00',
+          'is_selected': true,
+          'taxonomy_terms': [
+            {
+              'type': 'event_style',
+              'value': 'instrumental',
+              'label': 'Instrumental',
+            },
+          ],
+        },
+      ],
+    });
+
+    final occurrence = dto.toDomain().occurrences.single;
+
+    expect(occurrence.tags.map((tag) => tag.value), ['Instrumental']);
   });
 }

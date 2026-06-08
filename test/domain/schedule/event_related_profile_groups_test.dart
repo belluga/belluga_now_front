@@ -156,16 +156,167 @@ void main() {
     expect(groups.first.profileNames, ['Du Jorge']);
     expect(groups.last.profileNames, ['Agro Sul']);
   });
+
+  test(
+      'aggregated groups keep event-level members first when labels overlap with occurrences',
+      () {
+    final eventBand = _profile(
+      id: 'band-event',
+      displayName: 'Banda da Capa',
+      profileType: 'band',
+    );
+    final occurrenceBand = _profile(
+      id: 'band-occurrence',
+      displayName: 'Banda Convidada',
+      profileType: 'band',
+    );
+
+    final groups = EventRelatedProfileGroups.fromAggregatedParts(
+      eventProfileGroups: [
+        _group(
+          label: 'Bandas',
+          profiles: [eventBand],
+        ),
+      ],
+      occurrenceProfileGroups: [
+        [
+          _group(
+            label: 'Bandas',
+            profiles: [occurrenceBand],
+          ),
+        ],
+      ],
+      linkedAccountProfiles: [eventBand, occurrenceBand],
+    );
+
+    expect(groups.map((group) => group.label), ['Bandas']);
+    expect(groups.single.profileNames, ['Banda da Capa', 'Banda Convidada']);
+  });
+
+  test(
+      'aggregated groups sort merged labels by the lowest effective order across event and occurrences',
+      () {
+    final band = _profile(
+      id: 'band-1',
+      displayName: 'Du Jorge',
+      profileType: 'band',
+    );
+    final exhibitor = _profile(
+      id: 'expo-1',
+      displayName: 'Agro Sul',
+      profileType: 'producer',
+    );
+
+    final groups = EventRelatedProfileGroups.fromAggregatedParts(
+      eventProfileGroups: [
+        _group(
+          label: 'Bandas',
+          order: 5,
+          profiles: [band],
+        ),
+      ],
+      occurrenceProfileGroups: [
+        [
+          _group(
+            label: 'Expositores',
+            order: 1,
+            profiles: [exhibitor],
+          ),
+        ],
+      ],
+      linkedAccountProfiles: [band, exhibitor],
+    );
+
+    expect(groups.map((group) => group.label), ['Expositores', 'Bandas']);
+  });
+
+  test('aggregated groups merge members when labels match even if ids differ',
+      () {
+    final firstBand = _profile(
+      id: 'band-1',
+      displayName: 'Du Jorge',
+      profileType: 'band',
+    );
+    final secondBand = _profile(
+      id: 'band-2',
+      displayName: 'Banda Norte',
+      profileType: 'band',
+    );
+
+    final groups = EventRelatedProfileGroups.fromAggregatedParts(
+      eventProfileGroups: [
+        _group(
+          id: 'bandas-evento',
+          label: 'Bandas',
+          profiles: [firstBand],
+        ),
+      ],
+      occurrenceProfileGroups: [
+        [
+          _group(
+            id: 'bandas-data',
+            label: 'Bandas',
+            profiles: [secondBand],
+          ),
+        ],
+      ],
+      linkedAccountProfiles: [firstBand, secondBand],
+    );
+
+    expect(groups, hasLength(1));
+    expect(groups.single.label, 'Bandas');
+    expect(groups.single.profileNames, ['Du Jorge', 'Banda Norte']);
+  });
+
+  test(
+      'aggregated groups merge members by canonical group id even if labels drift',
+      () {
+    final band = _profile(
+      id: 'band-1',
+      displayName: 'Du Jorge',
+      profileType: 'band',
+    );
+    final exhibitor = _profile(
+      id: 'expo-1',
+      displayName: 'Agro Sul',
+      profileType: 'producer',
+    );
+
+    final groups = EventRelatedProfileGroups.fromAggregatedParts(
+      eventProfileGroups: [
+        _group(
+          id: 'lineup',
+          label: 'Bandas',
+          profiles: [band],
+        ),
+      ],
+      occurrenceProfileGroups: [
+        [
+          _group(
+            id: 'lineup',
+            label: 'Atrações',
+            profiles: [exhibitor],
+          ),
+        ],
+      ],
+      linkedAccountProfiles: [band, exhibitor],
+    );
+
+    expect(groups, hasLength(1));
+    expect(groups.single.label, 'Bandas');
+    expect(groups.single.profileNames, ['Du Jorge', 'Agro Sul']);
+  });
 }
 
 EventProfileGroup _group({
+  String? id,
   required String label,
   int order = 0,
   List<EventLinkedAccountProfile> profiles = const [],
   List<String> accountProfileIds = const [],
 }) {
   return EventProfileGroup(
-    idValue: EventLinkedAccountProfileTextValue('group-$label'),
+    idValue: EventLinkedAccountProfileTextValue(id ?? 'group-$label'),
     labelValue: EventLinkedAccountProfileTextValue(label),
     orderValue: EventProfileGroupOrderValue(order),
     profiles: profiles,

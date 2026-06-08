@@ -1,3 +1,4 @@
 {
-  "LANDLORD_DOMAIN": "http://192.168.15.4.nip.io:8081"
+  "_comment": "Replace LANDLORD_DOMAIN with the exact browser-facing local origin for your machine. Current downstream projects may use project-owned wildcard or published hosts here, but those values must stay only in local.override.json.",
+  "LANDLORD_DOMAIN": "http://tenant-local.example.test:8081"
 }
