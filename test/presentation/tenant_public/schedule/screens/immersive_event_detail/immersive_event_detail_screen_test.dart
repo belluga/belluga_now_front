@@ -684,9 +684,10 @@ void main() {
       expect(sharedTexts.single, contains('Ver evento:'));
       expect(
         sharedTexts.single,
-        contains('https://tenant.test/agenda/evento/evento-de-teste'),
+        contains(
+          'https://tenant.test/agenda/evento/evento-de-teste?occurrence=occurrence-selected',
+        ),
       );
-      expect(sharedTexts.single, contains('occurrence=occurrence-selected'));
       expect(sharedTexts.single, isNot(contains('Convite para')));
       expect(sharedTexts.single, isNot(contains('te convidou')));
       expect(sharedTexts.single, isNot(contains('Responder ao convite:')));

@@ -5732,6 +5732,58 @@ void main() {
       expect(find.byIcon(BooraIcons.inviteSolid), findsOneWidget);
     });
 
+    testWidgets(
+      'event deck invite action keeps the hydrated selected occurrence',
+      (tester) async {
+        final router = _RecordingStackRouter()..canPopResult = false;
+        final localScheduleRepository = _FakeScheduleRepository();
+        final localPoiRepository = _buildPoiRepository(
+          mapRepository: mapRepository,
+          scheduleRepository: localScheduleRepository,
+        );
+        final localController = _buildMapController(
+          poiRepository: localPoiRepository,
+          userLocationRepository: userLocationRepository,
+          telemetryRepository: telemetry,
+          appData: _buildAppData(),
+        );
+        addTearDown(() async {
+          await localController.onDispose();
+        });
+        localScheduleRepository.eventsBySlug['show-na-praia'] =
+            _buildEventDetailModel(
+          slug: 'show-na-praia',
+          occurrenceId: 'occ-map-selected',
+        );
+        final poi = _buildPoi(
+          id: 'poi-event',
+          name: 'Show na Praia',
+          refType: 'event',
+          refId: 'event-1',
+          refSlug: 'show-na-praia',
+        );
+
+        await localPoiRepository.ensurePoiHydrated(poi);
+        localController.selectPoi(poi);
+
+        await _pumpPoiDetailDeck(
+          tester,
+          controller: localController,
+          router: router,
+        );
+
+        await tester.tap(find.byTooltip('Convidar'));
+        await tester.pumpAndSettle();
+
+        expect(router.pushedRoutes, hasLength(1));
+        final route = router.pushedRoutes.single;
+        expect(route, isA<InviteShareRoute>());
+        final inviteRoute = route as InviteShareRoute;
+        expect(inviteRoute.args?.invite?.eventSlug, 'show-na-praia');
+        expect(inviteRoute.args?.invite?.occurrenceId, 'occ-map-selected');
+      },
+    );
+
     testWidgets('close button aligns with the top of the selected card', (
       tester,
     ) async {
