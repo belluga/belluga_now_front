@@ -495,9 +495,9 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
       return;
     }
     if (_isPartnerPoi(poi)) {
-      final partnerSlug = _resolvePartnerSlug(poi);
-      if (partnerSlug.isNotEmpty) {
-        context.router.push(PartnerDetailRoute(slug: partnerSlug));
+      final partnerPath = _resolvePartnerPublicDetailPath(poi);
+      if (partnerPath != null) {
+        context.router.pushPath(partnerPath);
         return;
       }
       _controller.statusMessageStreamValue.addValue(
@@ -534,7 +534,7 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
 
   bool _showPrimaryActionForPoi(CityPoiModel poi) {
     if (_isPartnerPoi(poi)) {
-      return _resolvePartnerSlug(poi).isNotEmpty;
+      return _resolvePartnerPublicDetailPath(poi) != null;
     }
     return true;
   }
@@ -608,19 +608,16 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
     return poi.refId.trim();
   }
 
-  String _resolvePartnerSlug(CityPoiModel poi) {
+  String? _resolvePartnerPublicDetailPath(CityPoiModel poi) {
     final profile = _controller.hydratedAccountProfileForPoi(poi);
     if (profile == null || !profile.canOpenPublicDetail) {
-      return '';
+      return null;
     }
     final publicDetailPath = profile.publicDetailPath?.trim();
     if (publicDetailPath != null && publicDetailPath.isNotEmpty) {
-      final fromPublicPath = _extractSlugFromPath(publicDetailPath);
-      if (fromPublicPath.isNotEmpty) {
-        return fromPublicPath;
-      }
+      return publicDetailPath;
     }
-    return profile.slug.trim();
+    return null;
   }
 
   String _resolveStaticAssetRef(CityPoiModel poi) {
@@ -780,16 +777,7 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
   }
 
   String? _resolvePartnerSharePath(CityPoiModel poi) {
-    final profile = _controller.hydratedAccountProfileForPoi(poi);
-    if (profile == null || !profile.canOpenPublicDetail) {
-      return null;
-    }
-    final publicDetailPath = profile.publicDetailPath?.trim();
-    if (publicDetailPath != null && publicDetailPath.isNotEmpty) {
-      return publicDetailPath;
-    }
-    final slug = profile.slug.trim();
-    return slug.isEmpty ? null : '/parceiro/$slug';
+    return _resolvePartnerPublicDetailPath(poi);
   }
 
   bool _canSharePartnerPoi(CityPoiModel poi) =>

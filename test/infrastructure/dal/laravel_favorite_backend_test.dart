@@ -42,9 +42,13 @@ void main() {
     expect(favorites.first.targetType, 'account_profile');
     expect(favorites.first.coverUrl, 'https://cdn.test/profile-1-cover.png');
     expect(favorites.first.profileType, 'artist');
+    expect(favorites.first.canOpenPublicDetail, isTrue);
+    expect(favorites.first.publicDetailPath, '/parceiro/profile-1');
     expect(favorites.first.nextEventOccurrenceAt, isNotNull);
     expect(favorites.first.liveNowEventOccurrenceId, 'occ-live-1');
     expect(favorites[1].id, 'profile-2');
+    expect(favorites[1].canOpenPublicDetail, isFalse);
+    expect(favorites[1].publicDetailPath, isNull);
 
     expect(adapter.requests, hasLength(2));
     expect(adapter.requests.first.uri.path, '/api/v1/favorites');
@@ -233,6 +237,8 @@ class _FavoritesApiAdapter implements HttpClientAdapter {
                 'avatar_url': 'https://cdn.test/profile-1.png',
                 'cover_url': 'https://cdn.test/profile-1-cover.png',
                 'profile_type': 'artist',
+                'can_open_public_detail': true,
+                'public_detail_path': '/parceiro/profile-1',
               },
               'snapshot': {
                 'next_event_occurrence_id': 'occ-1',
@@ -244,6 +250,8 @@ class _FavoritesApiAdapter implements HttpClientAdapter {
               'navigation': {
                 'kind': 'account_profile',
                 'target_slug': 'profile-1',
+                'target_path': '/parceiro/profile-1',
+                'can_open_public_detail': true,
               },
             },
           ],
@@ -266,6 +274,8 @@ class _FavoritesApiAdapter implements HttpClientAdapter {
                 'avatar_url': null,
                 'cover_url': null,
                 'profile_type': 'restaurant',
+                'can_open_public_detail': false,
+                'public_detail_path': null,
               },
               'snapshot': {
                 'next_event_occurrence_id': null,
@@ -277,6 +287,8 @@ class _FavoritesApiAdapter implements HttpClientAdapter {
               'navigation': {
                 'kind': 'account_profile',
                 'target_slug': 'profile-2',
+                'target_path': null,
+                'can_open_public_detail': false,
               },
             },
           ],
@@ -369,8 +381,7 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
       AuthRepositoryContractParamString email) async {}
 
   @override
-  Future<void> updateUser(
-      UserCustomData data) async {}
+  Future<void> updateUser(UserCustomData data) async {}
 }
 
 AppData _buildAppData() {

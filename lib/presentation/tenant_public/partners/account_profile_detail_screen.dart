@@ -1052,13 +1052,17 @@ class _AccountProfileDetailScreenState
   ({String subject, String message})? _buildAccountProfilePublicSharePayload(
     AccountProfileModel accountProfile,
   ) {
-    final slug = accountProfile.slug.trim();
-    if (slug.isEmpty) {
+    if (!accountProfile.canOpenPublicDetail) {
+      return null;
+    }
+
+    final publicDetailPath = accountProfile.publicDetailPath?.trim();
+    if (publicDetailPath == null || publicDetailPath.isEmpty) {
       return null;
     }
 
     final publicUri = _controller.buildTenantPublicUriFromPath(
-      '/parceiro/$slug',
+      publicDetailPath,
     );
     if (publicUri == null) {
       return null;
@@ -1217,6 +1221,18 @@ class _AccountProfileDetailScreenState
     } catch (_) {
       // Tests and non-router surfaces can ignore this safely.
     }
+  }
+
+  String _eventDetailPath(PartnerEventView event) {
+    final queryParameters = <String, String>{};
+    final occurrenceId = event.occurrenceId.trim();
+    if (occurrenceId.isNotEmpty) {
+      queryParameters['occurrence'] = occurrenceId;
+    }
+    return Uri(
+      path: '/agenda/evento/${event.slug}',
+      queryParameters: queryParameters.isEmpty ? null : queryParameters,
+    ).toString();
   }
 
   List<PartnerEventView> _agendaEventsFromModuleData(
@@ -1758,7 +1774,7 @@ class _AccountProfileDetailScreenState
         color: Colors.transparent,
         child: InkWell(
           key: Key('accountProfileAgendaLiveCard_${event.uniqueId}'),
-          onTap: () => _safeRouterPushPath('/agenda/evento/${event.slug}'),
+          onTap: () => _safeRouterPushPath(_eventDetailPath(event)),
           child: Stack(
             children: [
               AspectRatio(
@@ -1930,7 +1946,7 @@ class _AccountProfileDetailScreenState
         venueDistanceLabel: _controller.distanceLabelFor(accountProfile, event),
         venueAddress: _agendaVenueAddress(event),
       ),
-      onTap: () => _safeRouterPushPath('/agenda/evento/${event.slug}'),
+      onTap: () => _safeRouterPushPath(_eventDetailPath(event)),
       isConfirmed: _controller.isOccurrenceConfirmed(event.occurrenceId),
       pendingInvitesCount: _controller.pendingInviteCount(event.occurrenceId),
       statusIconSize: 24,

@@ -5106,10 +5106,8 @@ void main() {
         await tester.tap(find.text('Ver detalhes'));
         await tester.pump();
 
-        expect(router.pushedRoutes, hasLength(1));
-        final route = router.pushedRoutes.single;
-        expect(route, isA<PartnerDetailRoute>());
-        expect((route as PartnerDetailRoute).args?.slug, 'casa-marracini');
+        expect(router.pushedRoutes, isEmpty);
+        expect(router.lastPushedPath, '/parceiro/casa-marracini');
       },
     );
 
@@ -6277,6 +6275,7 @@ class _RecordingStackRouter extends Fake implements StackRouter {
   bool canPopResult = false;
   int canPopCallCount = 0;
   int popCallCount = 0;
+  String? lastPushedPath;
   final List<List<PageRouteInfo<dynamic>>> replaceAllRoutes = [];
   final List<PageRouteInfo<dynamic>> pushedRoutes = [];
   final List<PageRouteInfo<dynamic>> replacedRoutes = [];
@@ -6319,6 +6318,16 @@ class _RecordingStackRouter extends Fake implements StackRouter {
     bool notify = true,
   }) async {
     pushedRoutes.add(route);
+    return null;
+  }
+
+  @override
+  Future<T?> pushPath<T extends Object?>(
+    String path, {
+    bool includePrefixMatches = false,
+    OnNavigationFailure? onFailure,
+  }) async {
+    lastPushedPath = path;
     return null;
   }
 

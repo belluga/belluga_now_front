@@ -29,6 +29,7 @@ import 'package:belluga_now/domain/static_assets/public_static_asset_model.dart'
 import 'package:belluga_now/presentation/tenant_public/partners/account_profile_detail_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_state.dart';
+import 'package:belluga_now/presentation/tenant_public/widgets/upcoming_event_card.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_screen_controller.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_store_platform.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_contract.dart';
@@ -464,7 +465,13 @@ void main() {
       _buildRoutedTestApp(
         router: _RecordingStackRouter(),
         child: AccountProfileDetailScreen(
-          accountProfile: _buildArtistProfile(),
+          accountProfile: buildAccountProfileModelFromPrimitives(
+            id: '507f1f77bcf86cd799439099',
+            name: 'Cafe de la Musique',
+            slug: 'cafe-de-la-musique',
+            type: 'artist',
+            publicDetailPath: '/parceiro/caminho-canonico',
+          ),
           shareLauncher: (params) async {
             sharedParams.add(params);
           },
@@ -487,14 +494,14 @@ void main() {
     expect(launchedUris.last.host, 'wa.me');
     expect(
       launchedUris.last.queryParameters['text'],
-      contains('https://tenant.test/parceiro/cafe-de-la-musique'),
+      contains('https://tenant.test/parceiro/caminho-canonico'),
     );
     expect(sharedParams, hasLength(1));
     expect(sharedParams.single.subject, 'Cafe de la Musique');
     expect(sharedParams.single.text, contains('Cafe de la Musique'));
     expect(
       sharedParams.single.text,
-      contains('https://tenant.test/parceiro/cafe-de-la-musique'),
+      contains('https://tenant.test/parceiro/caminho-canonico'),
     );
   });
 
@@ -908,7 +915,43 @@ void main() {
     );
     await tester.pump();
 
-    expect(router.lastPushedPath, '/agenda/evento/jazz-na-orla');
+    expect(
+      router.lastPushedPath,
+      '/agenda/evento/jazz-na-orla?occurrence=507f1f77bcf86cd799439121',
+    );
+  });
+
+  testWidgets('upcoming agenda card preserves the selected occurrence route',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+    final router = _RecordingStackRouter();
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: router,
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildArtistProfile(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final futureCard = tester
+        .widgetList<UpcomingEventCard>(
+          find.byType(UpcomingEventCard),
+        )
+        .last;
+    futureCard.onTap?.call();
+    await tester.pump();
+
+    expect(
+      router.lastPushedPath,
+      '/agenda/evento/sunset-premium?occurrence=507f1f77bcf86cd799439122',
+    );
   });
 
   testWidgets(
