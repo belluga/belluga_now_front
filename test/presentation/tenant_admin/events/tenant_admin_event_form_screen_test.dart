@@ -1881,7 +1881,7 @@ void main() {
   });
 
   testWidgets(
-      'root related profile groups are hidden after the event has multiple occurrences',
+      'root related profile groups remain visible after the event has multiple occurrences',
       (tester) async {
     final eventsRepository = _FakeEventsRepository();
     final taxonomiesRepository = _FakeTaxonomiesRepository();
@@ -1917,7 +1917,7 @@ void main() {
     await tester.pumpAndSettle();
     await _closeOccurrenceSheet(tester);
 
-    expect(find.text('Abas de perfis relacionados'), findsNothing);
+    expect(find.text('Abas de perfis relacionados'), findsOneWidget);
     expect(find.byKey(const Key('tenantAdminEventOccurrenceCard_0')),
         findsOneWidget);
     expect(find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),

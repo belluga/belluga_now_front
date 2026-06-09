@@ -146,13 +146,11 @@ class _TenantAdminEventFormScreenState
               _buildPublicationSection(formState: formState),
               const SizedBox(height: 16),
               _buildLocationSection(viewModel.venues, formState: formState),
-              if (formState.occurrences.length <= 1) ...[
-                const SizedBox(height: 16),
-                _buildRelatedAccountProfilesSection(
-                  viewModel.relatedAccountProfiles,
-                  formState: formState,
-                ),
-              ],
+              const SizedBox(height: 16),
+              _buildRelatedAccountProfilesSection(
+                viewModel.relatedAccountProfiles,
+                formState: formState,
+              ),
               if (formState.occurrences.length <= 1) ...[
                 const SizedBox(height: 16),
                 _buildPrimaryOccurrenceProgrammingSection(
