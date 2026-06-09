@@ -1951,10 +1951,13 @@ class _AccountProfileDetailScreenState
         venueAddress: _agendaVenueAddress(event),
       ),
       onTap: () => _safeRouterPush(
+        // Keep upcoming and live agenda cards aligned on occurrence trimming.
         ImmersiveEventDetailRoute(
           eventSlug: event.slug,
-          occurrenceId:
-              event.occurrenceId.trim().isEmpty ? null : event.occurrenceId,
+          occurrenceId: () {
+            final occurrenceId = event.occurrenceId.trim();
+            return occurrenceId.isEmpty ? null : occurrenceId;
+          }(),
         ),
       ),
       isConfirmed: _controller.isOccurrenceConfirmed(event.occurrenceId),

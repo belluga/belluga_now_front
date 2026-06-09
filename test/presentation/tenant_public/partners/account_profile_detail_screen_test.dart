@@ -940,7 +940,7 @@ void main() {
       _buildRoutedTestApp(
         router: router,
         child: AccountProfileDetailScreen(
-          accountProfile: _buildArtistProfile(),
+          accountProfile: _buildArtistProfileWithPaddedUpcomingOccurrence(),
         ),
       ),
     );
@@ -3012,6 +3012,50 @@ List<PartnerEventView> _buildArtistAgendaEvents() {
       imageUri: Uri.parse('https://example.com/sunset-premium.jpg'),
     ),
   ];
+}
+
+AccountProfileModel _buildArtistProfileWithPaddedUpcomingOccurrence() {
+  final now = DateTime.now().toUtc();
+  return buildAccountProfileModelFromPrimitives(
+    id: '507f1f77bcf86cd799439011',
+    name: 'Cafe de la Musique',
+    slug: 'cafe-de-la-musique',
+    type: 'artist',
+    tags: const ['Sunset Premium', 'Praia', 'Guarapari'],
+    agendaEvents: [
+      buildPartnerEventView(
+        eventId: '507f1f77bcf86cd799439021',
+        occurrenceId: '507f1f77bcf86cd799439121',
+        slug: 'jazz-na-orla',
+        title: 'Jazz na Orla',
+        eventTypeLabel: 'Show',
+        location: 'Deck Principal',
+        venueTitle: 'Cafe de la Musique',
+        venueId: '507f1f77bcf86cd799439011',
+        startDateTime: now.subtract(const Duration(minutes: 45)),
+        endDateTime: now.add(const Duration(hours: 1)),
+        artistNames: const ['Marco Aurélio'],
+        artistIds: const ['507f1f77bcf86cd799439099'],
+        imageUri: Uri.parse('https://example.com/jazz-na-orla.jpg'),
+      ),
+      buildPartnerEventView(
+        eventId: '507f1f77bcf86cd799439022',
+        occurrenceId: ' 507f1f77bcf86cd799439122 ',
+        slug: 'sunset-premium',
+        title: 'Sunset Premium',
+        eventTypeLabel: 'Show',
+        location: 'Terraço Panorâmico',
+        venueTitle: 'Cafe de la Musique',
+        venueId: '507f1f77bcf86cd799439011',
+        startDateTime: now.add(const Duration(days: 1)),
+        artistNames: const ['DJ Nightwave'],
+        artistIds: const ['507f1f77bcf86cd799439098'],
+        imageUri: Uri.parse('https://example.com/sunset-premium.jpg'),
+      ),
+    ],
+    isVerified: true,
+    acceptedInvites: 87,
+  );
 }
 
 List<PartnerEventView> _buildRestaurantAgendaEvents() {

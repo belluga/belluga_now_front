@@ -713,13 +713,11 @@ class _ImmersiveEventDetailScreenState
     if (eventSlug.isEmpty) {
       return _inviteAwarePromotionRedirectPath(invite: invite);
     }
-    final occurrenceId = invite.occurrenceId?.trim() ?? '';
-    return Uri(
-      path: '/agenda/evento/$eventSlug',
-      queryParameters: occurrenceId.isEmpty
-          ? null
-          : <String, String>{'occurrence': occurrenceId},
-    ).toString();
+    return buildTenantPublicEventPath(
+          eventSlug: eventSlug,
+          occurrenceId: invite.occurrenceId,
+        ) ??
+        _inviteAwarePromotionRedirectPath(invite: invite);
   }
 
   void _openEventMap(EventModel event) {

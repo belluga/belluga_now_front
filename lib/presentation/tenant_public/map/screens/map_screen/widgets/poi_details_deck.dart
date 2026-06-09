@@ -718,7 +718,13 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
 
   Future<void> _openEventInvite(CityPoiModel poi) async {
     final event = _controller.hydratedEventForPoi(poi);
-    final eventPath = _resolveEventSharePath(poi, event: event);
+    if (event == null) {
+      _controller.statusMessageStreamValue
+          .addValue('Detalhes do evento ainda não estão prontos para convite.');
+      return;
+    }
+
+    final eventPath = _resolveEventSharePath(event);
     if (eventPath == null || eventPath.isEmpty) {
       _controller.statusMessageStreamValue
           .addValue('Evento sem referência para convidar.');
@@ -731,12 +737,6 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
         redirectPath: eventPath,
         actionType: AuthWallActionType.sendInvite,
       );
-      return;
-    }
-
-    if (event == null) {
-      _controller.statusMessageStreamValue
-          .addValue('Detalhes do evento ainda não estão prontos para convite.');
       return;
     }
 
@@ -785,23 +785,11 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
   bool _canSharePartnerPoi(CityPoiModel poi) =>
       (_resolvePartnerSharePath(poi)?.trim().isNotEmpty ?? false);
 
-  String? _resolveEventSharePath(
-    CityPoiModel poi, {
-    EventModel? event,
-  }) {
-    final eventPath = buildTenantPublicEventPath(
-      eventSlug: event?.slug,
-      occurrenceId: event?.selectedOccurrenceId,
-    );
-    if (eventPath != null) {
-      return eventPath;
-    }
-    final refPath = poi.refPath?.trim();
-    if (refPath != null && refPath.isNotEmpty) {
-      return refPath;
-    }
-    return buildTenantPublicEventPath(eventSlug: _resolveEventSlug(poi));
-  }
+  String? _resolveEventSharePath(EventModel event) =>
+      buildTenantPublicEventPath(
+        eventSlug: event.slug,
+        occurrenceId: event.selectedOccurrenceId,
+      );
 
   String? _resolveStaticAssetSharePath(CityPoiModel poi) {
     final asset = _controller.hydratedStaticAssetForPoi(poi);
