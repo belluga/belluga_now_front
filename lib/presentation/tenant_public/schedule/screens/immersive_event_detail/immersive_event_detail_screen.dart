@@ -14,6 +14,7 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
 import 'package:belluga_now/application/router/support/route_instance_scope.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
+import 'package:belluga_now/application/router/support/tenant_public_event_path.dart';
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
@@ -468,17 +469,10 @@ class _ImmersiveEventDetailScreenState
   }
 
   String? _eventRedirectPath(EventModel event) {
-    final slug = event.slug.trim();
-    if (slug.isEmpty) {
-      return null;
-    }
-    final occurrenceId = event.selectedOccurrenceId?.trim();
-    return Uri(
-      path: '/agenda/evento/$slug',
-      queryParameters: occurrenceId == null || occurrenceId.isEmpty
-          ? null
-          : <String, String>{'occurrence': occurrenceId},
-    ).toString();
+    return buildTenantPublicEventPath(
+      eventSlug: event.slug,
+      occurrenceId: event.selectedOccurrenceId,
+    );
   }
 
   List<EventInviteShareParticipantGroup> _participantGroupsForEventShare(

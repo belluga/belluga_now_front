@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:belluga_now/application/router/guards/location_permission_gate_runtime.dart';
+import 'package:belluga_now/application/router/support/tenant_public_event_path.dart';
 import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/application/map_surface/belluga_map_handle.dart';
 import 'package:belluga_now/application/map_surface/belluga_map_handle_contract.dart';
@@ -1439,10 +1440,10 @@ class MapScreenController implements Disposable {
         ? null
         : _parseTypeLabelValue(normalizedProfileType);
     final canonicalProfilePath = profile.canOpenPublicDetail
-        ? (profile.publicDetailPath?.trim().isNotEmpty == true
-            ? profile.publicDetailPath!.trim()
-            : '/parceiro/${profile.slug}')
+        ? _normalizedPublicDetailPath(profile.publicDetailPath)
         : null;
+    final clearedReferencePathValue =
+        poi.refPath == null ? null : PoiReferencePathValue(isRequired: false);
 
     return poi.copyWith(
       descriptionValue: mergedDescription,
@@ -1458,10 +1459,11 @@ class MapScreenController implements Disposable {
               profile.slug.trim().isNotEmpty
           ? _parseReferenceSlugValue(profile.slug)
           : null,
-      refPathValue: canonicalProfilePath == null ||
-              poi.refPath?.trim() == canonicalProfilePath
-          ? null
-          : _parseReferencePathValue(canonicalProfilePath),
+      refPathValue: canonicalProfilePath == null
+          ? clearedReferencePathValue
+          : poi.refPath?.trim() == canonicalProfilePath
+              ? null
+              : _parseReferencePathValue(canonicalProfilePath),
     );
   }
 
@@ -1475,8 +1477,10 @@ class MapScreenController implements Disposable {
         : CityPoiVisual.image(
             imageUriValue: _parseImageUriValue(markerImageUrl),
           );
-    final canonicalEventPath =
-        event.slug.trim().isEmpty ? null : '/agenda/evento/${event.slug}';
+    final canonicalEventPath = buildTenantPublicEventPath(
+      eventSlug: event.slug,
+      occurrenceId: event.selectedOccurrenceId,
+    );
 
     return poi.copyWith(
       descriptionValue: descriptionExcerpt == null
@@ -1494,6 +1498,14 @@ class MapScreenController implements Disposable {
           ? null
           : _parseReferencePathValue(canonicalEventPath),
     );
+  }
+
+  String? _normalizedPublicDetailPath(String? rawPath) {
+    final normalized = rawPath?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+    return normalized;
   }
 
   CityPoiModel _mergeStaticAssetIntoPoi(

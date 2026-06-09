@@ -994,6 +994,7 @@ DistanceInMetersValue _buildDistanceValue(double raw) {
 EventModel _buildEventDetailModel({
   required String slug,
   String title = 'Evento Longo',
+  String? occurrenceId,
   String? thumbUrl,
   String? linkedAccountProfileAvatarUrl,
   String? linkedAccountProfileCoverUrl,
@@ -1012,6 +1013,7 @@ EventModel _buildEventDetailModel({
     'location': 'Carvoeiro',
     'date_time_start': '2026-04-07T18:00:00Z',
     'date_time_end': '2026-04-07T21:00:00Z',
+    'occurrence_id': occurrenceId,
     'thumb': thumbUrl == null
         ? null
         : {
@@ -2639,6 +2641,7 @@ void main() {
         localScheduleRepository.eventsBySlug['evento-longo'] =
             _buildEventDetailModel(
           slug: 'evento-longo',
+          occurrenceId: 'occ-2026-04-07',
           thumbUrl: 'https://tenant.test/media/event-cover.png',
           linkedAccountProfileAvatarUrl:
               'https://tenant.test/media/ananda-avatar.png',
@@ -2671,6 +2674,10 @@ void main() {
             (profile) => profile.displayName,
           ),
           ['Ananda Torres'],
+        );
+        expect(
+          localController.selectedPoiStreamValue.value?.refPath,
+          '/agenda/evento/evento-longo?occurrence=occ-2026-04-07',
         );
         expect(
           localController
@@ -5200,6 +5207,58 @@ void main() {
         expect(find.text('Ver detalhes'), findsNothing);
         expect(find.byTooltip('Compartilhar'), findsNothing);
         expect(router.pushedRoutes, isEmpty);
+      },
+    );
+
+    test(
+      'deck poi hydration clears stale public detail path when hydrated profile has no canonical public path',
+      () async {
+        final fakeMapHandle = _FakeMapHandle();
+        final localAccountProfilesRepository = _FakeAccountProfilesRepository();
+        final localController = _buildMapController(
+          poiRepository: _buildPoiRepository(
+            mapRepository: mapRepository,
+            accountProfilesRepository: localAccountProfilesRepository,
+          ),
+          userLocationRepository: userLocationRepository,
+          telemetryRepository: telemetry,
+          mapHandle: fakeMapHandle,
+          appData: _buildAppData(),
+        );
+        addTearDown(() async {
+          await localController.onDispose();
+          fakeMapHandle.dispose();
+        });
+
+        mapRepository.nextPois = <CityPoiModel>[
+          _buildPoi(
+            id: 'poi-partner',
+            name: 'Casa Marracini',
+            refType: 'account_profile',
+            refId: '507f1f77bcf86cd799439011',
+            refSlug: 'casa-marracini',
+            refPath: '/parceiro/casa-marracini',
+          ),
+        ];
+        await localController.loadPois(PoiQuery());
+        final poi = localController.filteredPoisStreamValue.value!.single;
+
+        localAccountProfilesRepository.profilesBySlug['casa-marracini'] =
+            buildAccountProfileModelFromPrimitives(
+          id: '507f1f77bcf86cd799439011',
+          name: 'Casa Marracini',
+          slug: 'casa-marracini',
+          type: 'artist',
+          canOpenPublicDetail: true,
+          publicDetailPath: '',
+        );
+
+        await localController.handleDeckPoiSelection(poi);
+
+        final selectedPoi = localController.selectedPoiStreamValue.value;
+        expect(selectedPoi, isNotNull);
+        expect(selectedPoi!.id, 'poi-partner');
+        expect(selectedPoi.refPath, isNull);
       },
     );
 

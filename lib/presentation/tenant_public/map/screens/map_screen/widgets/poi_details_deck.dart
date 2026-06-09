@@ -4,12 +4,14 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/application/invites/invite_from_event_factory.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/tenant_public_event_path.dart';
 import 'package:belluga_now/application/sharing/account_profile_public_share_payload.dart';
 import 'package:belluga_now/application/sharing/static_asset_public_share_payload.dart';
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
+import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/filtered_deck.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_card_reference_point_action.dart';
@@ -716,7 +718,7 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
 
   Future<void> _openEventInvite(CityPoiModel poi) async {
     final event = _controller.hydratedEventForPoi(poi);
-    final eventPath = _resolveEventSharePath(poi, eventSlug: event?.slug);
+    final eventPath = _resolveEventSharePath(poi, event: event);
     if (eventPath == null || eventPath.isEmpty) {
       _controller.statusMessageStreamValue
           .addValue('Evento sem referência para convidar.');
@@ -785,21 +787,20 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
 
   String? _resolveEventSharePath(
     CityPoiModel poi, {
-    String? eventSlug,
+    EventModel? event,
   }) {
-    final normalizedEventSlug = eventSlug?.trim();
-    if (normalizedEventSlug != null && normalizedEventSlug.isNotEmpty) {
-      return '/agenda/evento/$normalizedEventSlug';
-    }
-    final slug = _resolveEventSlug(poi);
-    if (slug.isNotEmpty) {
-      return '/agenda/evento/$slug';
+    final eventPath = buildTenantPublicEventPath(
+      eventSlug: event?.slug,
+      occurrenceId: event?.selectedOccurrenceId,
+    );
+    if (eventPath != null) {
+      return eventPath;
     }
     final refPath = poi.refPath?.trim();
     if (refPath != null && refPath.isNotEmpty) {
       return refPath;
     }
-    return null;
+    return buildTenantPublicEventPath(eventSlug: _resolveEventSlug(poi));
   }
 
   String? _resolveStaticAssetSharePath(CityPoiModel poi) {
