@@ -915,9 +915,15 @@ void main() {
     );
     await tester.pump();
 
+    expect(router.lastPushedPath, isNull);
+    expect(router.pushedRoutes, hasLength(1));
+    final route = router.pushedRoutes.single;
+    expect(route, isA<ImmersiveEventDetailRoute>());
+    final immersiveRoute = route as ImmersiveEventDetailRoute;
+    expect(immersiveRoute.rawPathParams, {'slug': 'jazz-na-orla'});
     expect(
-      router.lastPushedPath,
-      '/agenda/evento/jazz-na-orla?occurrence=507f1f77bcf86cd799439121',
+      immersiveRoute.rawQueryParams['occurrence'],
+      '507f1f77bcf86cd799439121',
     );
   });
 
@@ -948,9 +954,15 @@ void main() {
     futureCard.onTap?.call();
     await tester.pump();
 
+    expect(router.lastPushedPath, isNull);
+    expect(router.pushedRoutes, hasLength(1));
+    final route = router.pushedRoutes.single;
+    expect(route, isA<ImmersiveEventDetailRoute>());
+    final immersiveRoute = route as ImmersiveEventDetailRoute;
+    expect(immersiveRoute.rawPathParams, {'slug': 'sunset-premium'});
     expect(
-      router.lastPushedPath,
-      '/agenda/evento/sunset-premium?occurrence=507f1f77bcf86cd799439122',
+      immersiveRoute.rawQueryParams['occurrence'],
+      '507f1f77bcf86cd799439122',
     );
   });
 
@@ -2325,6 +2337,7 @@ class _RecordingStackRouter extends Fake implements StackRouter {
   int canPopCallCount = 0;
   int popCallCount = 0;
   final List<List<PageRouteInfo<dynamic>>> replaceAllRoutes = [];
+  final List<PageRouteInfo<dynamic>> pushedRoutes = [];
 
   @override
   RootStackRouter get root => _FakeRootStackRouter('/parceiro/ananda-torres');
@@ -2336,6 +2349,16 @@ class _RecordingStackRouter extends Fake implements StackRouter {
     OnNavigationFailure? onFailure,
   }) async {
     lastPushedPath = path;
+    return null;
+  }
+
+  @override
+  Future<T?> push<T extends Object?>(
+    PageRouteInfo route, {
+    OnNavigationFailure? onFailure,
+    bool notify = true,
+  }) async {
+    pushedRoutes.add(route);
     return null;
   }
 

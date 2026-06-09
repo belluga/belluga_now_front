@@ -5,6 +5,7 @@ import 'package:belluga_now/application/extensions/compute_on_color.dart';
 import 'package:belluga_now/application/sharing/account_profile_public_share_payload.dart';
 import 'package:belluga_now/application/rich_text/account_profile_rich_text_block.dart';
 import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
 import 'package:belluga_now/application/router/support/route_instance_scope.dart';
@@ -1223,16 +1224,12 @@ class _AccountProfileDetailScreenState
     }
   }
 
-  String _eventDetailPath(PartnerEventView event) {
-    final queryParameters = <String, String>{};
-    final occurrenceId = event.occurrenceId.trim();
-    if (occurrenceId.isNotEmpty) {
-      queryParameters['occurrence'] = occurrenceId;
+  void _safeRouterPush(PageRouteInfo<dynamic> route) {
+    try {
+      context.router.push(route);
+    } catch (_) {
+      // Tests and non-router surfaces can ignore this safely.
     }
-    return Uri(
-      path: '/agenda/evento/${event.slug}',
-      queryParameters: queryParameters.isEmpty ? null : queryParameters,
-    ).toString();
   }
 
   List<PartnerEventView> _agendaEventsFromModuleData(
@@ -1774,7 +1771,14 @@ class _AccountProfileDetailScreenState
         color: Colors.transparent,
         child: InkWell(
           key: Key('accountProfileAgendaLiveCard_${event.uniqueId}'),
-          onTap: () => _safeRouterPushPath(_eventDetailPath(event)),
+          onTap: () => _safeRouterPush(
+            ImmersiveEventDetailRoute(
+              eventSlug: event.slug,
+              occurrenceId: event.occurrenceId.trim().isEmpty
+                  ? null
+                  : event.occurrenceId.trim(),
+            ),
+          ),
           child: Stack(
             children: [
               AspectRatio(
@@ -1946,7 +1950,13 @@ class _AccountProfileDetailScreenState
         venueDistanceLabel: _controller.distanceLabelFor(accountProfile, event),
         venueAddress: _agendaVenueAddress(event),
       ),
-      onTap: () => _safeRouterPushPath(_eventDetailPath(event)),
+      onTap: () => _safeRouterPush(
+        ImmersiveEventDetailRoute(
+          eventSlug: event.slug,
+          occurrenceId:
+              event.occurrenceId.trim().isEmpty ? null : event.occurrenceId,
+        ),
+      ),
       isConfirmed: _controller.isOccurrenceConfirmed(event.occurrenceId),
       pendingInvitesCount: _controller.pendingInviteCount(event.occurrenceId),
       statusIconSize: 24,
