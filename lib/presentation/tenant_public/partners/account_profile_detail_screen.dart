@@ -1217,19 +1217,11 @@ class _AccountProfileDetailScreenState
   }
 
   void _safeRouterPushPath(String path) {
-    try {
-      context.router.pushPath(path);
-    } catch (_) {
-      // Tests and non-router surfaces can ignore this safely.
-    }
+    context.router.pushPath(path);
   }
 
   void _safeRouterPush(PageRouteInfo<dynamic> route) {
-    try {
-      context.router.push(route);
-    } catch (_) {
-      // Tests and non-router surfaces can ignore this safely.
-    }
+    context.router.push(route);
   }
 
   List<PartnerEventView> _agendaEventsFromModuleData(
