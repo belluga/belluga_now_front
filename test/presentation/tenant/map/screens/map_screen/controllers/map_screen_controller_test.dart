@@ -8,6 +8,7 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/guards/location_permission_gate_runtime.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
+import 'package:belluga_now/application/router/support/route_instance_scope.dart';
 import 'package:belluga_now/application/map_surface/belluga_map_handle_contract.dart';
 import 'package:belluga_now/application/map_surface/belluga_map_interaction.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
@@ -82,6 +83,9 @@ import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/co
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_tray_mode.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/map_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_details_deck.dart';
+import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_choice.dart';
+import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_contract.dart';
+import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_launch_target.dart';
 import 'package:belluga_now/presentation/shared/icons/map_marker_visual_resolver.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/material.dart';
@@ -490,14 +494,21 @@ class _FakeProximityPreferencesRepository
     extends ProximityPreferencesRepositoryContract {
   _FakeProximityPreferencesRepository({
     FixedLocationReference? fixedReference,
+    bool? useReferencePointForRoutes,
   }) {
+    lastPolicy = useReferencePointForRoutes;
     if (fixedReference != null) {
-      setCurrentPreference(_preferenceWith(fixedReference));
+      setCurrentPreference(
+        _preferenceWith(
+          fixedReference,
+        ),
+      );
     }
   }
 
   FixedLocationReference? lastFixedReference;
   int clearFixedReferenceCalls = 0;
+  bool? lastPolicy;
 
   @override
   Future<void> setFixedReference({
@@ -526,6 +537,22 @@ class _FakeProximityPreferencesRepository
       locationPreference: ProximityLocationPreference.fixedReference(
         fixedReference: fixedReference,
       ),
+      routeReferencePointPolicyValue:
+          RouteReferencePointPolicyValue(lastPolicy),
+    );
+  }
+
+  @override
+  Future<void> setRouteReferencePointPolicy(
+    RouteReferencePointPolicyValue policyValue,
+  ) async {
+    lastPolicy = policyValue.value;
+    final current = proximityPreference;
+    if (current == null) {
+      return;
+    }
+    setCurrentPreference(
+      current.copyWith(routeReferencePointPolicyValue: policyValue),
     );
   }
 }
@@ -5477,6 +5504,107 @@ void main() {
     );
 
     testWidgets(
+      'map deck route chooser reuses the canonical reference-point origin flow',
+      (tester) async {
+        final localAccountProfilesRepository = _FakeAccountProfilesRepository();
+        final localStaticAssetsRepository = _FakeStaticAssetsRepository();
+        localAccountProfilesRepository.profilesBySlug['casa-marracini'] =
+            buildAccountProfileModelFromPrimitives(
+          id: '507f1f77bcf86cd799439011',
+          name: 'Casa Marracini',
+          slug: 'casa-marracini',
+          type: 'artist',
+          locationLat: -20.7389,
+          locationLng: -40.8212,
+        );
+        final fixedReference = FixedLocationReference(
+          sourceKind: FixedLocationReferenceSourceKind.entityReference,
+          coordinate: _buildCoordinate('-20.6736', '-40.4976'),
+          labelValue: ProximityPreferenceOptionalTextValue.fromRaw(
+            'Hotel Base',
+          ),
+          entityNamespaceValue:
+              ProximityPreferenceOptionalTextValue.fromRaw('account_profile'),
+          entityTypeValue: ProximityPreferenceOptionalTextValue.fromRaw(
+            'hotel',
+          ),
+          entityIdValue: ProximityPreferenceOptionalTextValue.fromRaw(
+            'profile-1',
+          ),
+          entitySlugValue:
+              ProximityPreferenceOptionalTextValue.fromRaw('hotel-base'),
+        );
+        final localProximityRepository = _FakeProximityPreferencesRepository(
+          fixedReference: fixedReference,
+          useReferencePointForRoutes: null,
+        );
+        final localPoiRepository = _buildPoiRepository(
+          mapRepository: mapRepository,
+          accountProfilesRepository: localAccountProfilesRepository,
+          staticAssetsRepository: localStaticAssetsRepository,
+        );
+        final localController = _buildMapController(
+          poiRepository: localPoiRepository,
+          userLocationRepository: userLocationRepository,
+          telemetryRepository: telemetry,
+          appData: _buildAppData(artistReferenceLocationEnabled: true),
+          proximityPreferencesRepository: localProximityRepository,
+        );
+        final directionsChooser = _RecordingDirectionsAppChooser();
+        final poi = _buildPoi(
+          id: 'poi-partner',
+          name: 'Casa Marracini',
+          refType: 'account_profile',
+          refId: '507f1f77bcf86cd799439011',
+          refSlug: 'casa-marracini',
+          refPath: '/parceiro/casa-marracini',
+          category: CityPoiCategory.restaurant,
+        );
+
+        await localPoiRepository.ensurePoiHydrated(poi);
+        localController.selectPoi(poi);
+
+        await _pumpPoiDetailDeckWithAutoRouter(
+          tester,
+          controller: localController,
+          directionsAppChooser: directionsChooser,
+        );
+
+        await tester.tap(find.text('Traçar rota'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Qual PONTO DE PARTIDA quer usar?'), findsOneWidget);
+        expect(find.text('Hotel Base'), findsOneWidget);
+        expect(find.text('Ver perfil'), findsOneWidget);
+
+        await tester.tap(find.text('O ponto de referência selecionado'));
+        await tester.pump();
+        await tester.tap(find.text('Não perguntar de novo'));
+        await tester.pump();
+        await tester.tap(find.text('Continuar'));
+        await tester.pumpAndSettle();
+
+        expect(directionsChooser.lastPresentedTarget?.destinationName,
+            'Casa Marracini');
+        expect(
+          directionsChooser.lastPresentedTarget?.originDisplayName,
+          'Hotel Base',
+        );
+        expect(
+          directionsChooser.lastPresentedTarget?.originLatitude,
+          closeTo(-20.6736, 0.000001),
+        );
+        expect(
+          directionsChooser.lastPresentedTarget?.originLongitude,
+          closeTo(-40.4976, 0.000001),
+        );
+        expect(localProximityRepository.lastPolicy, isTrue);
+
+        await localController.onDispose();
+      },
+    );
+
+    testWidgets(
       'ver detalhes pushes static asset detail route for static poi',
       (tester) async {
         final router = _RecordingStackRouter()..canPopResult = false;
@@ -6091,6 +6219,7 @@ Future<void> _pumpMapScreen(
 Future<void> _pumpPoiDetailDeckWithAutoRouter(
   WidgetTester tester, {
   required MapScreenController controller,
+  DirectionsAppChooserContract? directionsAppChooser,
 }) async {
   final router = RootStackRouter.build(
     routes: [
@@ -6100,8 +6229,14 @@ Future<void> _pumpPoiDetailDeckWithAutoRouter(
         meta: canonicalRouteMeta(
           family: CanonicalRouteFamily.cityMap,
         ),
-        builder: (_, __) =>
-            Scaffold(body: PoiDetailDeck(controller: controller)),
+        builder: (_, __) => RouteInstanceScope(
+          child: Scaffold(
+            body: PoiDetailDeck(
+              controller: controller,
+              directionsAppChooser: directionsAppChooser,
+            ),
+          ),
+        ),
       ),
     ],
   )..ignorePopCompleters = true;
@@ -6126,7 +6261,9 @@ Future<void> _pumpPoiDetailDeck(
       home: StackRouterScope(
         controller: router,
         stateHash: 0,
-        child: Scaffold(body: PoiDetailDeck(controller: controller)),
+        child: RouteInstanceScope(
+          child: Scaffold(body: PoiDetailDeck(controller: controller)),
+        ),
       ),
     ),
   );
@@ -6193,6 +6330,32 @@ class _RecordingStackRouter extends Fake implements StackRouter {
   }) async {
     replacedRoutes.add(route);
     return null;
+  }
+}
+
+class _RecordingDirectionsAppChooser implements DirectionsAppChooserContract {
+  DirectionsLaunchTarget? lastPresentedTarget;
+
+  @override
+  Future<List<DirectionsAppChoice>> loadOptions({
+    required DirectionsLaunchTarget target,
+  }) async =>
+      const <DirectionsAppChoice>[];
+
+  @override
+  Future<bool> launchDirect({
+    required DirectionsDirectProvider provider,
+    required DirectionsLaunchTarget target,
+  }) async =>
+      true;
+
+  @override
+  Future<void> present(
+    BuildContext context, {
+    required DirectionsLaunchTarget target,
+    ValueChanged<String>? onStatusMessage,
+  }) async {
+    lastPresentedTarget = target;
   }
 }
 

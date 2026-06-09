@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belluga_now/application/schedule/event_selected_occurrence_projection.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
@@ -18,6 +19,7 @@ import 'package:belluga_now/domain/repositories/user_events_repository_contract.
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
+import 'package:belluga_now/domain/schedule/event_programming_item.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_profile_group.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
@@ -719,6 +721,113 @@ void main() {
       'Expositor Sol',
     );
   });
+
+  test(
+      'selected occurrence projection can retarget an unselected event payload without refetching',
+      () {
+    final event = _buildEvent(
+      tags: const ['Feira'],
+      occurrences: [
+        _buildOccurrence(
+          id: 'occurrence-first',
+          start: DateTime(2026, 3, 15, 18),
+          isSelected: true,
+          tags: const ['Feira'],
+        ),
+        _buildOccurrence(
+          id: 'occurrence-second',
+          start: DateTime(2026, 3, 16, 21),
+          end: DateTime(2026, 3, 17, 1),
+          tags: const ['Show'],
+          programmingItems: [
+            _buildProgrammingItem(
+              time: '21:00',
+              title: 'Headliner',
+            ),
+          ],
+        ),
+      ],
+      programmingItems: const [],
+    );
+
+    final projected = EventSelectedOccurrenceProjection.project(
+      event,
+      'occurrence-second',
+    );
+
+    expect(projected.selectedOccurrenceId, 'occurrence-second');
+    expect(projected.dateTimeStart.value, DateTime(2026, 3, 16, 21));
+    expect(projected.dateTimeEnd?.value, DateTime(2026, 3, 17, 1));
+    expect(projected.programmingItems.map((item) => item.title), ['Headliner']);
+    expect(projected.tags.map((tag) => tag.value), ['Show']);
+  });
+
+  test(
+      'selected occurrence projection aligns stale selected payload while keeping aggregate groups',
+      () {
+    final event = _buildEvent(
+      tags: const ['Feira'],
+      profileGroups: [
+        _buildProfileGroup(
+          id: 'bandas',
+          label: 'Bandas',
+          order: 0,
+          accountProfileIds: ['profile-band'],
+        ),
+        _buildProfileGroup(
+          id: 'expositores',
+          label: 'Expositores',
+          order: 1,
+          accountProfileIds: ['profile-exhibitor'],
+        ),
+      ],
+      occurrences: [
+        _buildOccurrence(
+          id: 'occurrence-first',
+          start: DateTime(2026, 3, 15, 18),
+          profileGroups: [
+            _buildProfileGroup(
+              id: 'bandas',
+              label: 'Bandas',
+              order: 0,
+              accountProfileIds: ['profile-band'],
+            ),
+          ],
+        ),
+        _buildOccurrence(
+          id: 'occurrence-second',
+          start: DateTime(2026, 3, 16, 21),
+          isSelected: true,
+          tags: const ['Show'],
+          programmingItems: [
+            _buildProgrammingItem(
+              time: '21:00',
+              title: 'Headliner',
+            ),
+          ],
+          profileGroups: [
+            _buildProfileGroup(
+              id: 'expositores',
+              label: 'Expositores',
+              order: 1,
+              accountProfileIds: ['profile-exhibitor'],
+            ),
+          ],
+        ),
+      ],
+      programmingItems: const [],
+    );
+
+    final aligned = EventSelectedOccurrenceProjection.align(event);
+
+    expect(aligned.selectedOccurrenceId, 'occurrence-second');
+    expect(aligned.programmingItems.map((item) => item.title), ['Headliner']);
+    expect(aligned.tags.map((tag) => tag.value), ['Show']);
+    expect(
+      aligned.profileGroups.map((group) => group.label),
+      ['Bandas', 'Expositores'],
+    );
+  });
 }
 
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {
@@ -1106,6 +1215,7 @@ EventModel _buildEvent({
   List<EventProfileGroup> profileGroups = const [],
   List<EventLinkedAccountProfile> linkedAccountProfiles =
       const <EventLinkedAccountProfile>[],
+  List<EventProgrammingItem> programmingItems = const <EventProgrammingItem>[],
   List<String> tags = const <String>['show'],
 }) {
   final resolvedOccurrences = occurrences.isEmpty
@@ -1147,6 +1257,7 @@ EventModel _buildEvent({
     linkedAccountProfiles: linkedAccountProfiles,
     profileGroups: profileGroups,
     occurrences: resolvedOccurrences,
+    programmingItems: programmingItems,
     coordinate: null,
     tags: tags,
     isConfirmedValue: EventIsConfirmedValue()..parse('false'),
@@ -1195,6 +1306,7 @@ EventOccurrenceOption _buildOccurrence({
   required DateTime start,
   DateTime? end,
   bool isSelected = false,
+  List<EventProgrammingItem> programmingItems = const <EventProgrammingItem>[],
   List<EventProfileGroup> profileGroups = const <EventProfileGroup>[],
   List<String> tags = const <String>[],
 }) {
@@ -1208,9 +1320,22 @@ EventOccurrenceOption _buildOccurrence({
     dateTimeEndValue: endValue,
     isSelectedValue: EventOccurrenceFlagValue()..parse(isSelected.toString()),
     hasLocationOverrideValue: EventOccurrenceFlagValue()..parse('false'),
-    programmingCountValue: EventProgrammingCountValue()..parse('0'),
+    programmingCountValue: EventProgrammingCountValue()
+      ..parse(programmingItems.length.toString()),
+    programmingItems: programmingItems,
     profileGroups: profileGroups,
     tags: tags.map(VenueEventTagValue.new).toList(growable: false),
+  );
+}
+
+EventProgrammingItem _buildProgrammingItem({
+  required String time,
+  String? title,
+}) {
+  return EventProgrammingItem(
+    timeValue: EventProgrammingTimeValue()..parse(time),
+    titleValue:
+        title == null ? null : EventLinkedAccountProfileTextValue(title),
   );
 }
 

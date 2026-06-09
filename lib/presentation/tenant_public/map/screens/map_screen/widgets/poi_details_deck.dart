@@ -22,6 +22,7 @@ import 'package:belluga_now/presentation/shared/widgets/account_profile_identity
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_contract.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_launch_target.dart';
+import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/route_start_point_resolution.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
@@ -546,9 +547,20 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
           .addValue('Localização indisponível para ${poi.name}.');
       return;
     }
+    final resolvedTarget = await RouteStartPointResolution.resolve(
+      context: context,
+      target: target,
+      proximityPreference: _controller.proximityPreference,
+      persistRouteReferencePointPolicy:
+          _controller.setRouteReferencePointPolicy,
+      onStatusMessage: _controller.statusMessageStreamValue.addValue,
+    );
+    if (!mounted || resolvedTarget == null) {
+      return;
+    }
     await _directionsAppChooser.present(
       context,
-      target: target,
+      target: resolvedTarget,
       onStatusMessage: _controller.statusMessageStreamValue.addValue,
     );
   }

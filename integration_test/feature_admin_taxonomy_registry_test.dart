@@ -415,6 +415,8 @@ class _FakeAccountsRepository
     TenantAdminAccountsRepositoryContractPrimString? content,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup> nestedProfileGroups =
+        const <TenantAdminNestedProfileGroup>[],
   }) async {
     lastOnboardingTerms = taxonomyTerms;
     final account = await createAccount(

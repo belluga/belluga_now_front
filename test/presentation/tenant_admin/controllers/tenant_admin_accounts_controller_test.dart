@@ -44,6 +44,8 @@ class _FakeAccountsRepository
   String? lastOnboardingContent;
   List<TenantAdminTaxonomyTerm> lastOnboardingTaxonomyTerms =
       <TenantAdminTaxonomyTerm>[];
+  List<TenantAdminNestedProfileGroup> lastOnboardingNestedGroups =
+      <TenantAdminNestedProfileGroup>[];
   TenantAdminMediaUpload? lastOnboardingAvatarUpload;
   TenantAdminMediaUpload? lastOnboardingCoverUpload;
   final List<TenantAdminOwnershipState?> loadAccountsOwnershipCalls =
@@ -255,6 +257,8 @@ class _FakeAccountsRepository
     TenantAdminAccountsRepositoryContractPrimString? content,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup> nestedProfileGroups =
+        const <TenantAdminNestedProfileGroup>[],
   }) async {
     final error = createAccountError;
     if (error != null) {
@@ -265,6 +269,9 @@ class _FakeAccountsRepository
     lastOnboardingContent = content?.value;
     lastOnboardingTaxonomyTerms =
         List<TenantAdminTaxonomyTerm>.from(taxonomyTerms.items);
+    lastOnboardingNestedGroups = List<TenantAdminNestedProfileGroup>.from(
+      nestedProfileGroups,
+    );
     lastOnboardingAvatarUpload = avatarUpload;
     lastOnboardingCoverUpload = coverUpload;
 
@@ -978,6 +985,59 @@ void main() {
       expect(
         accountsRepository.lastOnboardingTaxonomyTerms.first.value,
         'urbana',
+      );
+    });
+
+    test('createAccountOnboarding forwards nested profile groups', () async {
+      final accountsRepository = _FakeAccountsRepository([]);
+      final profilesRepository = _FakeAccountProfilesRepository([
+        tenantAdminProfileTypeDefinitionFromRaw(
+          type: 'venue',
+          label: 'Venue',
+          allowedTaxonomies: [],
+          capabilities: TenantAdminProfileTypeCapabilities(
+            isFavoritable: TenantAdminFlagValue(true),
+            isPoiEnabled: TenantAdminFlagValue(false),
+            hasBio: TenantAdminFlagValue(false),
+            hasContent: TenantAdminFlagValue(false),
+            hasTaxonomies: TenantAdminFlagValue(false),
+            hasAvatar: TenantAdminFlagValue(false),
+            hasCover: TenantAdminFlagValue(false),
+            hasEvents: TenantAdminFlagValue(false),
+            hasNestedProfileGroups: TenantAdminFlagValue(true),
+          ),
+        ),
+      ]);
+      final controller = _buildCreateController(
+        accountsRepository: accountsRepository,
+        profilesRepository: profilesRepository,
+      );
+
+      await controller.createAccountOnboarding(
+        name: 'Nova Conta',
+        ownershipState: TenantAdminOwnershipState.tenantOwned,
+        profileType: 'venue',
+        nestedProfileGroups: [
+          TenantAdminNestedProfileGroup(
+            idValue: TenantAdminNestedProfileGroupTextValue('integrantes'),
+            labelValue: TenantAdminNestedProfileGroupTextValue('Integrantes'),
+            orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+            accountProfileIdValues: [
+              TenantAdminNestedProfileGroupTextValue('profile-1'),
+            ],
+          ),
+        ],
+      );
+
+      expect(accountsRepository.lastOnboardingNestedGroups, hasLength(1));
+      expect(
+        accountsRepository.lastOnboardingNestedGroups.single.label,
+        'Integrantes',
+      );
+      expect(
+        accountsRepository.lastOnboardingNestedGroups.single
+            .accountProfileIdValues.single.value,
+        'profile-1',
       );
     });
 

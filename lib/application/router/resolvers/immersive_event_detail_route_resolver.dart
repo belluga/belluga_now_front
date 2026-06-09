@@ -16,6 +16,7 @@ class ImmersiveEventDetailRouteResolver
   @override
   Future<EventModel> resolve(RouteResolverParams params) async {
     final slug = params['slug'] as String?;
+    final occurrenceId = params['occurrence'] as String?;
     if (slug == null || slug.isEmpty) {
       throw ArgumentError.value(
         slug,
@@ -23,19 +24,17 @@ class ImmersiveEventDetailRouteResolver
         'Event slug must be provided',
       );
     }
-    final occurrence = params['occurrence'] as String?;
-    final normalizedOccurrence = occurrence?.trim();
     final event = await _scheduleRepository.getEventBySlug(
       ScheduleRepoString.fromRaw(
         slug,
         defaultValue: slug,
         isRequired: true,
       ),
-      occurrenceId: normalizedOccurrence == null || normalizedOccurrence.isEmpty
+      occurrenceId: occurrenceId == null || occurrenceId.trim().isEmpty
           ? null
           : ScheduleRepoString.fromRaw(
-              normalizedOccurrence,
-              defaultValue: normalizedOccurrence,
+              occurrenceId,
+              defaultValue: occurrenceId,
               isRequired: true,
             ),
     );

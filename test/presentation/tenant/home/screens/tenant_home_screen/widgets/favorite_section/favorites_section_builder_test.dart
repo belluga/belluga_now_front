@@ -29,15 +29,23 @@ import 'package:stream_value/core/stream_value.dart';
 class _FakeFavoriteRepository extends FavoriteRepositoryContract {
   _FakeFavoriteRepository({
     this.favoriteResumes = const <FavoriteResume>[],
+    this.failuresBeforeSuccess = 0,
   });
 
   final List<FavoriteResume> favoriteResumes;
+  int failuresBeforeSuccess;
 
   @override
   Future<List<Favorite>> fetchFavorites() async => <Favorite>[];
 
   @override
-  Future<List<FavoriteResume>> fetchFavoriteResumes() async => favoriteResumes;
+  Future<List<FavoriteResume>> fetchFavoriteResumes() async {
+    if (failuresBeforeSuccess > 0) {
+      failuresBeforeSuccess -= 1;
+      throw StateError('favorite resumes unavailable');
+    }
+    return favoriteResumes;
+  }
 }
 
 class _FakeAppData extends Fake implements AppData {
@@ -239,6 +247,38 @@ void main() {
     expect(router.pushCalls, 0);
     expect(router.lastPushedRoute, isNull);
     expect(router.lastPushedPath, '/parceiro/du-jorge');
+  });
+
+  testWidgets(
+      'favorites view leaves spinner after bounded initial retry exhaustion',
+      (tester) async {
+    final controller = FavoritesSectionController(
+      favoriteRepository: _FakeFavoriteRepository(failuresBeforeSuccess: 3),
+      appDataRepository: _FakeAppDataRepository(),
+    );
+    final router = _RecordingStackRouter();
+    final initFuture = controller.init();
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: Scaffold(
+            body: FavoritesSectionView(controller: controller),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 900));
+    await initFuture;
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 }
 

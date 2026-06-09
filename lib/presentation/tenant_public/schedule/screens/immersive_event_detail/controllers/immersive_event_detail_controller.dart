@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belluga_now/application/schedule/event_selected_occurrence_projection.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
@@ -26,7 +27,6 @@ import 'package:belluga_now/domain/schedule/event_profile_group.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
 import 'package:belluga_now/domain/venue_event/value_objects/venue_event_tag_value.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_values.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -87,7 +87,7 @@ class ImmersiveEventDetailController implements Disposable {
       StreamValue<Set<String>>(defaultValue: const <String>{});
 
   void init(EventModel event) {
-    final resolvedEvent = _alignEventToSelectedOccurrence(event);
+    final resolvedEvent = EventSelectedOccurrenceProjection.align(event);
     final currentEvent = eventStreamValue.value;
     final hasSameProjection = _hasSameSelectedOccurrenceProjection(
       currentEvent,
@@ -115,7 +115,10 @@ class ImmersiveEventDetailController implements Disposable {
     if (occurrenceId.isEmpty || occurrence.isSelected) {
       return;
     }
-    final selectedEvent = _eventWithSelectedOccurrence(event, occurrenceId);
+    final selectedEvent = EventSelectedOccurrenceProjection.project(
+      event,
+      occurrenceId,
+    );
     _pendingWarmOccurrenceRouteId = occurrenceId;
     _invitesRepository.setImmersiveSelectedEvent(selectedEvent);
     _hydrateState(selectedEvent);
@@ -297,107 +300,6 @@ class ImmersiveEventDetailController implements Disposable {
     } catch (_) {
       // Sent-status hydration is opportunistic; the invite screen retries.
     }
-  }
-
-  EventModel _eventWithSelectedOccurrence(
-    EventModel event,
-    String occurrenceId,
-  ) {
-    EventOccurrenceOption? selectedOccurrence;
-    for (final occurrence in event.occurrences) {
-      if (occurrence.occurrenceId == occurrenceId) {
-        selectedOccurrence = occurrence;
-        break;
-      }
-    }
-    if (selectedOccurrence == null) {
-      return event;
-    }
-    final preservesCurrentSelectedProgramming =
-        (event.selectedOccurrenceId?.trim() ?? '') == occurrenceId &&
-            selectedOccurrence.programmingItems.isEmpty;
-    final updatedOccurrences = event.occurrences
-        .map(
-          (occurrence) => EventOccurrenceOption(
-            occurrenceIdValue: occurrence.occurrenceIdValue,
-            occurrenceSlugValue: occurrence.occurrenceSlugValue,
-            dateTimeStartValue: occurrence.dateTimeStartValue,
-            dateTimeEndValue: occurrence.dateTimeEndValue,
-            isSelectedValue: EventOccurrenceFlagValue()
-              ..parse((occurrence.occurrenceId == occurrenceId).toString()),
-            hasLocationOverrideValue: occurrence.hasLocationOverrideValue,
-            programmingCountValue: occurrence.programmingCountValue,
-            programmingItems: occurrence.programmingItems,
-            profileGroups: occurrence.profileGroups,
-            tags: occurrence.tags,
-          ),
-        )
-        .toList(growable: false);
-
-    return EventModel(
-      id: event.id,
-      slugValue: event.slugValue,
-      type: event.type,
-      title: event.title,
-      content: event.content,
-      location: event.location,
-      venue: event.venue,
-      thumb: event.thumb,
-      dateTimeStart: selectedOccurrence.dateTimeStartValue,
-      dateTimeEnd: _dateTimeEndForSelectedOccurrence(selectedOccurrence),
-      linkedAccountProfiles: event.linkedAccountProfiles,
-      profileGroups: event.profileGroups,
-      occurrences: updatedOccurrences,
-      programmingItems: preservesCurrentSelectedProgramming
-          ? event.programmingItems
-          : selectedOccurrence.programmingItems,
-      coordinate: event.coordinate,
-      tags: selectedOccurrence.tags.isNotEmpty
-          ? selectedOccurrence.tags
-          : event.tags,
-      isConfirmedValue: event.isConfirmedValue,
-      confirmedAtValue: event.confirmedAtValue,
-      receivedInvites: event.receivedInvites,
-      sentInvites: event.sentInvites,
-      friendsGoing: event.friendsGoing,
-      totalConfirmedValue: event.totalConfirmedValue,
-    );
-  }
-
-  DateTimeValue? _dateTimeEndForSelectedOccurrence(
-    EventOccurrenceOption selectedOccurrence,
-  ) {
-    final end = selectedOccurrence.dateTimeEnd;
-    if (end == null) {
-      return null;
-    }
-
-    return DateTimeValue()..parse(end.toIso8601String());
-  }
-
-  EventModel _alignEventToSelectedOccurrence(EventModel event) {
-    final occurrenceId = event.selectedOccurrenceId?.trim();
-    if (occurrenceId == null || occurrenceId.isEmpty) {
-      return event;
-    }
-    final selectedOccurrence = event.selectedOccurrence;
-    if (selectedOccurrence == null) {
-      return event;
-    }
-    final expectedEnd = _dateTimeEndForSelectedOccurrence(selectedOccurrence);
-    final hasMatchingSchedule = _dateTimeSignature(event.dateTimeStart) ==
-            _dateTimeSignature(selectedOccurrence.dateTimeStartValue) &&
-        _dateTimeSignature(event.dateTimeEnd) ==
-            _dateTimeSignature(expectedEnd);
-    final hasMatchingProgramming =
-        _programmingSignature(event.programmingItems) ==
-            _programmingSignature(selectedOccurrence.programmingItems);
-    final hasMatchingTags =
-        _tagSignature(event.tags) == _tagSignature(selectedOccurrence.tags);
-    if (hasMatchingSchedule && hasMatchingProgramming && hasMatchingTags) {
-      return event;
-    }
-    return _eventWithSelectedOccurrence(event, occurrenceId);
   }
 
   bool _hasSameSelectedOccurrenceProjection(

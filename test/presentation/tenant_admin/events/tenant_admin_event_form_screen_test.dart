@@ -1881,6 +1881,50 @@ void main() {
   });
 
   testWidgets(
+      'root related profile groups are hidden after the event has multiple occurrences',
+      (tester) async {
+    final eventsRepository = _FakeEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    eventsRepository.eventTypes = [
+      TenantAdminEventType(
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439189'),
+        nameValue: tenantAdminRequiredText('Feira'),
+        slugValue: tenantAdminRequiredText('feira'),
+      ),
+    ];
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminEventFormScreen(),
+      ),
+    );
+
+    await _fillRequiredFields(tester, controller: controller);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Abas de perfis relacionados'), findsOneWidget);
+
+    await tester
+        .tap(find.byKey(const Key('tenantAdminEventAddOccurrenceButton')));
+    await tester.pumpAndSettle();
+    await _closeOccurrenceSheet(tester);
+
+    expect(find.text('Abas de perfis relacionados'), findsNothing);
+    expect(find.byKey(const Key('tenantAdminEventOccurrenceCard_0')),
+        findsOneWidget);
+    expect(find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),
+        findsOneWidget);
+  });
+
+  testWidgets(
       'multi-occurrence editor accumulates multiple programming items without occurrence save boundary',
       (tester) async {
     final eventsRepository = _FakeEventsRepository();
@@ -3579,8 +3623,7 @@ void main() {
           profileGroups: [
             TenantAdminNestedProfileGroup(
               idValue: TenantAdminNestedProfileGroupTextValue('outro-grupo'),
-              labelValue:
-                  TenantAdminNestedProfileGroupTextValue('Outro Grupo'),
+              labelValue: TenantAdminNestedProfileGroupTextValue('Outro Grupo'),
               orderValue: TenantAdminNestedProfileGroupOrderValue(0),
               accountProfileIdValues: [
                 TenantAdminNestedProfileGroupTextValue(bandaAzul.id),

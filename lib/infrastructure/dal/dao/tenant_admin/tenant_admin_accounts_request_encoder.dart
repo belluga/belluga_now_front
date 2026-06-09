@@ -1,7 +1,9 @@
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
+import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/support/tenant_admin_nested_profile_group_payload_encoder.dart';
 
 class TenantAdminAccountsRequestEncoder {
   const TenantAdminAccountsRequestEncoder();
@@ -36,6 +38,8 @@ class TenantAdminAccountsRequestEncoder {
         const TenantAdminTaxonomyTerms.empty(),
     String? bio,
     String? content,
+    List<TenantAdminNestedProfileGroup> nestedProfileGroups =
+        const <TenantAdminNestedProfileGroup>[],
   }) {
     return {
       'name': name,
@@ -49,9 +53,13 @@ class TenantAdminAccountsRequestEncoder {
       if (taxonomyTerms.isNotEmpty)
         'taxonomy_terms': taxonomyTerms
             .map((term) => {'type': term.type, 'value': term.value})
-            .toList(),
+            .toList(growable: false),
       if (bio != null) 'bio': bio,
       if (content != null) 'content': content,
+      if (nestedProfileGroups.isNotEmpty)
+        'nested_profile_groups': encodeTenantAdminNestedProfileGroups(
+          nestedProfileGroups,
+        ),
     };
   }
 

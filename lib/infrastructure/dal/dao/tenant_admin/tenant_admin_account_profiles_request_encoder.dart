@@ -3,6 +3,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_grou
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
+import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/support/tenant_admin_nested_profile_group_payload_encoder.dart';
 
 class TenantAdminAccountProfilesRequestEncoder {
   const TenantAdminAccountProfilesRequestEncoder();
@@ -56,7 +57,7 @@ class TenantAdminAccountProfilesRequestEncoder {
       if (avatarUrl != null) 'avatar_url': avatarUrl,
       if (coverUrl != null) 'cover_url': coverUrl,
       if (nestedProfileGroups.isNotEmpty)
-        'nested_profile_groups': _encodeNestedProfileGroups(
+        'nested_profile_groups': encodeTenantAdminNestedProfileGroups(
           nestedProfileGroups,
         ),
     };
@@ -98,28 +99,11 @@ class TenantAdminAccountProfilesRequestEncoder {
     if (removeAvatar == true) payload['remove_avatar'] = true;
     if (removeCover == true) payload['remove_cover'] = true;
     if (nestedProfileGroups != null) {
-      payload['nested_profile_groups'] = _encodeNestedProfileGroups(
+      payload['nested_profile_groups'] = encodeTenantAdminNestedProfileGroups(
         nestedProfileGroups,
       );
     }
     return payload;
-  }
-
-  List<Map<String, dynamic>> _encodeNestedProfileGroups(
-    List<TenantAdminNestedProfileGroup> groups,
-  ) {
-    return groups
-        .map(
-          (group) => {
-            'id': group.id,
-            'label': group.label,
-            'order': group.order,
-            'account_profile_ids': group.accountProfileIdValues
-                .map((entry) => entry.value)
-                .toList(),
-          },
-        )
-        .toList(growable: false);
   }
 
   Map<String, dynamic> encodeCreateProfileType({

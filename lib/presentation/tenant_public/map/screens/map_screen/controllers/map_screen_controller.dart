@@ -193,6 +193,8 @@ class MapScreenController implements Disposable {
   StreamValue<ProximityPreference?> get proximityPreferenceStreamValue =>
       _proximityPreferencesRepository?.proximityPreferenceStreamValue ??
       _emptyProximityPreferenceStreamValue;
+  ProximityPreference? get proximityPreference =>
+      _proximityPreferencesRepository?.proximityPreference;
 
   final StreamValue<Set<String>> activeCategoryKeysStreamValue =
       StreamValue<Set<String>>(defaultValue: const <String>{});
@@ -367,6 +369,16 @@ class MapScreenController implements Disposable {
       );
       return false;
     }
+  }
+
+  Future<void> setRouteReferencePointPolicy(bool? useReferencePoint) async {
+    final repository = _proximityPreferencesRepository;
+    if (repository == null) {
+      return;
+    }
+    await repository.setRouteReferencePointPolicy(
+      RouteReferencePointPolicyValue(useReferencePoint),
+    );
   }
 
   EventModel? hydratedEventForPoi(CityPoiModel poi) {

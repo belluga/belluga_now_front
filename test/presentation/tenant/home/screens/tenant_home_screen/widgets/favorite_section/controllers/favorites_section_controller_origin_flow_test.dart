@@ -51,6 +51,47 @@ void main() {
     controller.onDispose();
   });
 
+  test('favorites section retries transient initial-load failures', () async {
+    final favoriteRepository = _FakeFavoriteRepository(
+      favoriteResumes: [
+        _favoriteResume(title: 'Primeiro', slug: 'primeiro'),
+      ],
+      failuresBeforeSuccess: 1,
+    );
+    final controller = FavoritesSectionController(
+      favoriteRepository: favoriteRepository,
+      appDataRepository: _FakeAppDataRepository(),
+    );
+
+    await controller.init();
+
+    expect(favoriteRepository.fetchFavoriteResumesCallCount, 2);
+    expect(
+      controller.favoritesStreamValue.value?.map((item) => item.title).toList(),
+      ['Primeiro'],
+    );
+
+    controller.onDispose();
+  });
+
+  test('favorites section publishes empty state after bounded initial retries',
+      () async {
+    final favoriteRepository = _FakeFavoriteRepository(
+      failuresBeforeSuccess: 3,
+    );
+    final controller = FavoritesSectionController(
+      favoriteRepository: favoriteRepository,
+      appDataRepository: _FakeAppDataRepository(),
+    );
+
+    await controller.init();
+
+    expect(favoriteRepository.fetchFavoriteResumesCallCount, 3);
+    expect(controller.favoritesStreamValue.value, isEmpty);
+
+    controller.onDispose();
+  });
+
   test('favorites section keeps cache and refreshes ordering on re-entry',
       () async {
     final favoriteRepository = _FakeFavoriteRepository(
@@ -279,10 +320,12 @@ FavoriteResume _favoriteResume({
 class _FakeFavoriteRepository extends FavoriteRepositoryContract {
   _FakeFavoriteRepository({
     this.favoriteResumes = const <FavoriteResume>[],
+    this.failuresBeforeSuccess = 0,
   });
 
   List<FavoriteResume> favoriteResumes;
   int fetchFavoriteResumesCallCount = 0;
+  int failuresBeforeSuccess;
 
   @override
   Future<List<Favorite>> fetchFavorites() async => <Favorite>[];
@@ -290,6 +333,10 @@ class _FakeFavoriteRepository extends FavoriteRepositoryContract {
   @override
   Future<List<FavoriteResume>> fetchFavoriteResumes() async {
     fetchFavoriteResumesCallCount += 1;
+    if (failuresBeforeSuccess > 0) {
+      failuresBeforeSuccess -= 1;
+      throw StateError('favorite resumes unavailable');
+    }
     return favoriteResumes;
   }
 }

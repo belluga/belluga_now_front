@@ -33,151 +33,174 @@ class InviteContentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scrim = theme.colorScheme.scrim;
+    final colorScheme = theme.colorScheme;
+    final scrim = colorScheme.scrim;
     return Card(
       elevation: 6,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       clipBehavior: Clip.antiAlias,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          BellugaNetworkImage(
-            heroImage,
-            fit: BoxFit.cover,
-            errorWidget: Container(
-              color: theme.colorScheme.surfaceContainerHighest,
-            ),
-          ),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  scrim.withValues(alpha: 0.8),
-                  scrim.withValues(alpha: 0.5),
-                  scrim.withValues(alpha: 0.9),
-                ],
-                stops: const [0, 0.45, 1],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isCompact =
+              constraints.maxHeight < 430 || constraints.maxWidth < 280;
+          final contentPadding = isCompact ? 12.0 : 16.0;
+          final primaryGap = isCompact ? 8.0 : 12.0;
+          final secondaryGap = isCompact ? 6.0 : 8.0;
+          final panelColor = colorScheme.surface.withValues(alpha: 0.96);
+          final contentColor = colorScheme.onSurface;
+          final detailsPadding = EdgeInsets.symmetric(
+            vertical: isCompact ? 10 : 12,
+          );
+          final titleStyle = (isCompact
+                  ? theme.textTheme.titleLarge
+                  : theme.textTheme.headlineSmall)
+              ?.copyWith(
+            color: contentColor,
+            fontWeight: FontWeight.w800,
+          );
+          final imageHeight = (constraints.maxHeight * (isCompact ? 0.26 : 0.3))
+              .clamp(120.0, isCompact ? 156.0 : 180.0);
+
+          final details = Column(
+            mainAxisSize: isCompact ? MainAxisSize.min : MainAxisSize.max,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: titleStyle,
               ),
-            ),
-          ),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isCompact =
-                  constraints.maxHeight < 430 || constraints.maxWidth < 280;
-              final contentPadding = isCompact ? 12.0 : 16.0;
-              final primaryGap = isCompact ? 8.0 : 12.0;
-              final secondaryGap = isCompact ? 6.0 : 8.0;
-              final detailsPadding = EdgeInsets.symmetric(
-                vertical: isCompact ? 8 : 10,
-              );
-              final titleStyle = (isCompact
-                      ? theme.textTheme.titleLarge
-                      : theme.textTheme.headlineMedium)
-                  ?.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-              );
-              final content = Column(
-                mainAxisSize: isCompact ? MainAxisSize.min : MainAxisSize.max,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
+              SizedBox(height: primaryGap),
+              InviteInfoRow(
+                icon: Icons.event,
+                text: dateLabel,
+                maxLines: 2,
+                color: contentColor,
+              ),
+              SizedBox(height: secondaryGap),
+              InviteInfoRow(
+                icon: Icons.place,
+                text: location,
+                maxLines: 2,
+                color: contentColor,
+              ),
+              if (showHost) ...[
+                SizedBox(height: secondaryGap),
+                InviteInfoRow(
+                  icon: Icons.storefront_outlined,
+                  text: host,
+                  maxLines: 2,
+                  color: contentColor,
+                ),
+              ],
+              if (participantGroups.isNotEmpty) ...[
+                SizedBox(height: primaryGap),
+                Text(
+                  'Participantes',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: contentColor,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                SizedBox(height: secondaryGap),
+                ...participantGroups.take(isCompact ? 2 : 3).map(
+                      (group) => Padding(
+                        padding: EdgeInsets.only(bottom: secondaryGap),
+                        child: InviteInfoRow(
+                          icon: Icons.groups_2_outlined,
+                          text: _participantLine(group),
+                          maxLines: 2,
+                          color: contentColor,
+                        ),
+                      ),
+                    ),
+              ],
+              if (!isCompact) const Spacer(),
+              SizedBox(height: isCompact ? primaryGap : primaryGap + 2),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.tonal(
+                  onPressed: onViewDetails,
+                  style: FilledButton.styleFrom(
+                    padding: detailsPadding,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text(
+                    'Ver detalhes',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+            ],
+          );
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                height: imageHeight,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    BellugaNetworkImage(
+                      heroImage,
+                      fit: BoxFit.cover,
+                      errorWidget: Container(
+                        color: theme.colorScheme.surfaceContainerHighest,
+                      ),
+                    ),
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            scrim.withValues(alpha: 0.2),
+                            scrim.withValues(alpha: 0.06),
+                            panelColor,
+                          ],
+                          stops: const [0, 0.55, 1],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.all(contentPadding),
+                      child: Align(
+                        alignment: Alignment.topLeft,
                         child: InviterPill(
                           inviter: inviter,
                           extraInviters: extraInviters,
                         ),
                       ),
-                    ],
-                  ),
-                  SizedBox(height: primaryGap),
-                  Text(
-                    title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: titleStyle,
-                  ),
-                  SizedBox(height: primaryGap),
-                  InviteInfoRow(
-                    icon: Icons.event,
-                    text: dateLabel,
-                    maxLines: 1,
-                  ),
-                  SizedBox(height: secondaryGap),
-                  InviteInfoRow(
-                    icon: Icons.place,
-                    text: location,
-                    maxLines: 1,
-                  ),
-                  if (showHost) ...[
-                    SizedBox(height: secondaryGap),
-                    InviteInfoRow(
-                      icon: Icons.storefront_outlined,
-                      text: host,
-                      maxLines: 1,
                     ),
                   ],
-                  if (participantGroups.isNotEmpty) ...[
-                    SizedBox(height: secondaryGap),
-                    Text(
-                      'Participantes',
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.88),
-                        fontWeight: FontWeight.w700,
-                      ),
+                ),
+              ),
+              Expanded(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(color: panelColor),
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      contentPadding,
+                      isCompact ? 10 : 14,
+                      contentPadding,
+                      contentPadding,
                     ),
-                    SizedBox(height: secondaryGap),
-                    ...participantGroups.take(isCompact ? 2 : 3).map(
-                          (group) => Padding(
-                            padding: EdgeInsets.only(bottom: secondaryGap),
-                            child: InviteInfoRow(
-                              icon: Icons.groups_2_outlined,
-                              text: _participantLine(group),
-                              maxLines: 2,
-                            ),
-                          ),
-                        ),
-                  ],
-                  if (isCompact)
-                    SizedBox(height: primaryGap)
-                  else
-                    const Spacer(),
-                  SizedBox(height: isCompact ? 6 : 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: TextButton(
-                      onPressed: onViewDetails,
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        padding: detailsPadding,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      child: const Text(
-                        'Ver detalhes',
-                        style: TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                    ),
+                    child: isCompact
+                        ? SingleChildScrollView(
+                            physics: const ClampingScrollPhysics(),
+                            child: details,
+                          )
+                        : details,
                   ),
-                ],
-              );
-
-              return Padding(
-                padding: EdgeInsets.all(contentPadding),
-                child: isCompact
-                    ? SingleChildScrollView(
-                        physics: const ClampingScrollPhysics(),
-                        child: content,
-                      )
-                    : content,
-              );
-            },
-          ),
-        ],
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

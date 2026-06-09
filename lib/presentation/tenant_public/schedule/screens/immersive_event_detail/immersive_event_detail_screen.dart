@@ -18,7 +18,6 @@ import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
-import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
@@ -34,6 +33,7 @@ import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_contract.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_launch_target.dart';
+import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/route_start_point_resolution.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/controllers/immersive_event_detail_controller.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/dynamic_footer.dart';
@@ -857,7 +857,14 @@ class _ImmersiveEventDetailScreenState
   Future<void> _presentDirectionsChooserForTarget(
     DirectionsLaunchTarget target,
   ) async {
-    final resolvedTarget = await _resolveRouteStartPoint(target);
+    final resolvedTarget = await RouteStartPointResolution.resolve(
+      context: context,
+      target: target,
+      proximityPreference: _controller.proximityPreference,
+      persistRouteReferencePointPolicy:
+          _controller.setRouteReferencePointPolicy,
+      onStatusMessage: _showStatusMessage,
+    );
     if (!mounted || resolvedTarget == null) {
       return;
     }
@@ -872,7 +879,14 @@ class _ImmersiveEventDetailScreenState
     DirectionsDirectProvider provider,
     DirectionsLaunchTarget target,
   ) async {
-    final resolvedTarget = await _resolveRouteStartPoint(target);
+    final resolvedTarget = await RouteStartPointResolution.resolve(
+      context: context,
+      target: target,
+      proximityPreference: _controller.proximityPreference,
+      persistRouteReferencePointPolicy:
+          _controller.setRouteReferencePointPolicy,
+      onStatusMessage: _showStatusMessage,
+    );
     if (!mounted || resolvedTarget == null) {
       return;
     }
@@ -886,121 +900,6 @@ class _ImmersiveEventDetailScreenState
     _showStatusMessage(
       'Não foi possível abrir rotas para ${resolvedTarget.destinationName}.',
     );
-  }
-
-  Future<DirectionsLaunchTarget?> _resolveRouteStartPoint(
-    DirectionsLaunchTarget target,
-  ) async {
-    final preference = _controller.proximityPreference;
-    final reference = preference?.locationPreference.fixedReference;
-    if (reference == null ||
-        preference?.locationPreference.usesFixedReference != true) {
-      return target;
-    }
-
-    final policy = preference!.routeReferencePointPolicyValue;
-    if (policy.usesReferencePoint) {
-      return _targetWithReferenceOrigin(target, reference);
-    }
-    if (policy.usesLiveLocation) {
-      return target;
-    }
-
-    final decision = await _promptRouteStartPoint(reference);
-    if (!mounted || decision == null) {
-      return null;
-    }
-    if (decision.persistChoice) {
-      try {
-        await _controller.setRouteReferencePointPolicy(
-          decision.useReferencePoint,
-        );
-      } catch (_) {
-        if (mounted) {
-          _showStatusMessage(
-            'Não foi possível salvar sua preferência de ponto de partida.',
-          );
-        }
-      }
-      if (!mounted) {
-        return null;
-      }
-    }
-    return decision.useReferencePoint
-        ? _targetWithReferenceOrigin(target, reference)
-        : target;
-  }
-
-  Future<_RouteStartPointDecision?> _promptRouteStartPoint(
-    FixedLocationReference reference,
-  ) {
-    final referenceLabel = _referencePointLabel(reference);
-    final accountProfilePath = _referenceAccountProfilePath(reference);
-    return showRouteScopedDialog<_RouteStartPointDecision>(
-      context: context,
-      useRootNavigator: false,
-      builder: (dialogContext) {
-        return _RouteStartPointDialog(
-          referenceLabel: referenceLabel,
-          canOpenAccountProfile: accountProfilePath != null,
-          onOpenAccountProfile: accountProfilePath == null
-              ? null
-              : () {
-                  dialogContext.router.pop();
-                  if (!mounted) {
-                    return;
-                  }
-                  unawaited(context.router.pushPath(accountProfilePath));
-                },
-        );
-      },
-    );
-  }
-
-  DirectionsLaunchTarget _targetWithReferenceOrigin(
-    DirectionsLaunchTarget target,
-    FixedLocationReference reference,
-  ) {
-    final label = _referencePointLabel(reference);
-    return DirectionsLaunchTarget(
-      destinationName: target.destinationName,
-      latitude: target.latitude,
-      longitude: target.longitude,
-      address: target.address,
-      originName: label,
-      originLatitude: reference.coordinate.latitude,
-      originLongitude: reference.coordinate.longitude,
-      originAddress: label,
-    );
-  }
-
-  String _referencePointLabel(FixedLocationReference reference) {
-    final label = reference.label?.trim();
-    if (reference.sourceKind ==
-            FixedLocationReferenceSourceKind.entityReference &&
-        reference.entityNamespace == 'account_profile' &&
-        label != null &&
-        label.isNotEmpty) {
-      return label;
-    }
-    if (reference.sourceKind ==
-        FixedLocationReferenceSourceKind.manualCoordinate) {
-      return 'localização personalizada';
-    }
-    return label == null || label.isEmpty ? 'Ponto de referência' : label;
-  }
-
-  String? _referenceAccountProfilePath(FixedLocationReference reference) {
-    if (reference.sourceKind !=
-            FixedLocationReferenceSourceKind.entityReference ||
-        reference.entityNamespace != 'account_profile') {
-      return null;
-    }
-    final slug = reference.entitySlug?.trim();
-    if (slug == null || slug.isEmpty) {
-      return null;
-    }
-    return '/parceiro/$slug';
   }
 
   bool _canOpenEventMap(EventModel event) {
@@ -1097,121 +996,6 @@ class _ImmersiveEventDetailScreenState
     }
   }
 }
-
-class _RouteStartPointDecision {
-  const _RouteStartPointDecision({
-    required this.useReferencePoint,
-    required this.persistChoice,
-  });
-
-  final bool useReferencePoint;
-  final bool persistChoice;
-}
-
-class _RouteStartPointDialog extends StatefulWidget {
-  const _RouteStartPointDialog({
-    required this.referenceLabel,
-    required this.canOpenAccountProfile,
-    required this.onOpenAccountProfile,
-  });
-
-  final String referenceLabel;
-  final bool canOpenAccountProfile;
-  final VoidCallback? onOpenAccountProfile;
-
-  @override
-  State<_RouteStartPointDialog> createState() => _RouteStartPointDialogState();
-}
-
-class _RouteStartPointDialogState extends State<_RouteStartPointDialog> {
-  _RouteStartPointChoice _choice = _RouteStartPointChoice.liveLocation;
-  bool _persistChoice = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Qual PONTO DE PARTIDA quer usar?'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            RadioGroup<_RouteStartPointChoice>(
-              groupValue: _choice,
-              onChanged: _selectChoice,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const RadioListTile<_RouteStartPointChoice>(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text('Sua localização atual'),
-                    value: _RouteStartPointChoice.liveLocation,
-                  ),
-                  RadioListTile<_RouteStartPointChoice>(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('O ponto de referência selecionado'),
-                    subtitle: Text(widget.referenceLabel),
-                    value: _RouteStartPointChoice.referencePoint,
-                  ),
-                ],
-              ),
-            ),
-            if (widget.canOpenAccountProfile)
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: widget.onOpenAccountProfile,
-                  icon: const Icon(Icons.open_in_new),
-                  label: const Text('Ver perfil'),
-                ),
-              ),
-            CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
-              controlAffinity: ListTileControlAffinity.leading,
-              title: const Text('Não perguntar de novo'),
-              value: _persistChoice,
-              onChanged: (value) {
-                setState(() {
-                  _persistChoice = value ?? false;
-                });
-              },
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => unawaited(context.router.maybePop()),
-          child: const Text('Cancelar'),
-        ),
-        FilledButton(
-          onPressed: () {
-            unawaited(
-              context.router.maybePop(
-                _RouteStartPointDecision(
-                  useReferencePoint:
-                      _choice == _RouteStartPointChoice.referencePoint,
-                  persistChoice: _persistChoice,
-                ),
-              ),
-            );
-          },
-          child: const Text('Continuar'),
-        ),
-      ],
-    );
-  }
-
-  void _selectChoice(_RouteStartPointChoice? value) {
-    if (value == null) {
-      return;
-    }
-    setState(() {
-      _choice = value;
-    });
-  }
-}
-
-enum _RouteStartPointChoice { liveLocation, referencePoint }
 
 Widget _buildInviteFooter(
   BuildContext context,
