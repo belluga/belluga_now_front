@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:belluga_now/application/router/guards/location_permission_gate_runtime.dart';
+import 'package:belluga_now/application/router/guards/location_permission_gate_result.dart';
 import 'package:belluga_now/application/router/support/tenant_public_event_path.dart';
 import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/application/map_surface/belluga_map_handle.dart';
@@ -70,6 +70,8 @@ import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/co
 import 'package:stream_value/core/stream_value.dart';
 
 class MapScreenController implements Disposable {
+  static const _bootstrapLocationResolutionTimeout = Duration(seconds: 8);
+
   static const double minZoom = 14.5;
   static const double maxZoom = 17.0;
   static const double _selectedPoiViewportAnchor = 0.28;
@@ -246,6 +248,8 @@ class MapScreenController implements Disposable {
   bool _isReconcilingLocationOrigin = false;
   int _selectedPoiHydrationSequence = 0;
   CityCoordinate? _searchTrayOrigin;
+  bool _hasEstablishedInitialPoiQuery = false;
+  bool _awaitingBootstrapLiveOrigin = false;
 
   bool get isUserAuthenticated => _authRepository?.isUserLoggedIn ?? false;
 
@@ -409,12 +413,15 @@ class MapScreenController implements Disposable {
   Future<void> init({
     String? initialPoiQuery,
     String? initialPoiStackQuery,
+    LocationPermissionGateResult? initialLocationGateResult,
   }) async {
-    final enteredViaSoftLocationGate =
-        LocationPermissionGateRuntime.consumeSoftLocationFallbackEntry();
+    final enteredViaSoftLocationGate = initialLocationGateResult ==
+        LocationPermissionGateResult.continueWithoutLocation;
     _resetInitialPoiFocusState();
     _resetBootstrapUserOriginHandoffState();
     _forceTenantDefaultUnavailableEntry = enteredViaSoftLocationGate;
+    _hasEstablishedInitialPoiQuery = false;
+    _awaitingBootstrapLiveOrigin = false;
     _locationFeedbackNoticesArmed = false;
     _cancelSoftLocationNoticeTimer();
     softLocationNoticeStreamValue.addValue('');
@@ -425,6 +432,8 @@ class MapScreenController implements Disposable {
       return;
     }
     final hasInitialPoiQuery = _normalizePoiQuery(initialPoiQuery) != null;
+    final shouldAwaitFreshBootstrapOrigin = !enteredViaSoftLocationGate &&
+        _locationOriginService.resolveCached().liveUserCoordinate == null;
     _bindFilteredPoisClamp();
     _bindSelectedPoiPresence();
     _attachZoomListener();
@@ -436,25 +445,45 @@ class MapScreenController implements Disposable {
             emitNotFoundMessage: false,
           )
         : Future<void>.value();
+    final requiresResolvedOriginForFirstLoad =
+        !enteredViaSoftLocationGate && !hasInitialPoiQuery;
+    final bootstrapLocationRefreshFuture = _primeBootstrapOriginBeforeFirstLoad(
+      requiresResolvedOriginForFirstLoad: requiresResolvedOriginForFirstLoad,
+    );
+    var bootstrapOriginReady = !requiresResolvedOriginForFirstLoad;
 
-    await Future.wait([
-      loadFilters(force: true),
-      loadPois(PoiQuery()),
-      _userLocationRepository.refreshIfPermitted(
-        minInterval: UserLocationRepositoryContractDurationValue.fromRaw(
-          Duration.zero,
-          defaultValue: Duration.zero,
-        ),
-      ),
-      initialPoiHydrationFuture,
-    ]);
+    if (shouldAwaitFreshBootstrapOrigin) {
+      final bootstrapResults = await Future.wait<Object?>([
+        loadFilters(force: true),
+        bootstrapLocationRefreshFuture,
+        initialPoiHydrationFuture,
+      ]);
+      bootstrapOriginReady = bootstrapResults[1] as bool;
+      if (bootstrapOriginReady) {
+        await loadPois(PoiQuery());
+      } else {
+        _awaitingBootstrapLiveOrigin = true;
+        _setIdleState();
+        _setMapStatus(MapStatus.locating);
+        _setMapMessage(null);
+        statusMessageStreamValue.addValue('Obtendo sua localização...');
+      }
+    } else {
+      await Future.wait([
+        loadFilters(force: true),
+        loadPois(PoiQuery()),
+        bootstrapLocationRefreshFuture,
+        initialPoiHydrationFuture,
+      ]);
+    }
+    await _retryBootstrapLoadsIfNeeded();
 
     if (hasInitialPoiQuery) {
       await _applyInitialPoiQuery(
         initialPoiQuery: initialPoiQuery,
         initialPoiStackQuery: initialPoiStackQuery,
       );
-    } else if (!enteredViaSoftLocationGate) {
+    } else if (!enteredViaSoftLocationGate && bootstrapOriginReady) {
       _requestLocationPermissionIfNeeded();
     }
 
@@ -465,6 +494,51 @@ class MapScreenController implements Disposable {
       force: true,
     );
     _tryApplyPendingInitialPoiFocus();
+  }
+
+  Future<void> _retryBootstrapLoadsIfNeeded() async {
+    if (_filtersLoadFailed && filterOptionsStreamValue.value == null) {
+      await loadFilters(force: true);
+    }
+
+    final hasVisiblePois =
+        (filteredPoisStreamValue.value?.isNotEmpty ?? false) ||
+            selectedPoiStreamValue.value != null;
+    if (!hasVisiblePois && mapStatusStreamValue.value == MapStatus.error) {
+      await loadPois(PoiQuery(), announceLoadingMessage: false);
+    }
+  }
+
+  Future<bool> _primeBootstrapOriginBeforeFirstLoad({
+    required bool requiresResolvedOriginForFirstLoad,
+  }) async {
+    final didWarmUp = await _userLocationRepository.refreshIfPermitted(
+      minInterval: UserLocationRepositoryContractDurationValue.fromRaw(
+        Duration.zero,
+        defaultValue: Duration.zero,
+      ),
+    );
+
+    if (!requiresResolvedOriginForFirstLoad ||
+        hasResolvedUserLocation ||
+        didWarmUp) {
+      return true;
+    }
+
+    try {
+      await _userLocationRepository.resolveUserLocation(
+        timeout: UserLocationRepositoryContractDurationValue.fromRaw(
+          _bootstrapLocationResolutionTimeout,
+          defaultValue: _bootstrapLocationResolutionTimeout,
+        ),
+      );
+    } catch (error) {
+      debugPrint(
+        'MapScreenController._primeBootstrapOriginBeforeFirstLoad: $error',
+      );
+    }
+
+    return hasResolvedUserLocation;
   }
 
   void _requestLocationPermissionIfNeeded() {
@@ -550,7 +624,16 @@ class MapScreenController implements Disposable {
       return;
     }
     try {
-      await _poiRepository.fetchFilters();
+      final baseQuery =
+          _hasEstablishedInitialPoiQuery ? _currentQuery : PoiQuery();
+      final resolvedQuery = await _resolveRuntimeQuery(baseQuery);
+      if (resolvedQuery.origin == null) {
+        _filtersLoadFailed = true;
+        debugPrint(
+            'Skipped POI filters load because no canonical origin was resolved.');
+        return;
+      }
+      await _poiRepository.fetchFilters(resolvedQuery);
       _filtersLoadFailed = false;
     } catch (error) {
       _filtersLoadFailed = true;
@@ -636,7 +719,12 @@ class MapScreenController implements Disposable {
     required bool emitNotice,
     required bool reloadPoisIfOriginChanged,
   }) async {
-    await _userLocationRepository.resolveUserLocation();
+    await _userLocationRepository.resolveUserLocation(
+      timeout: UserLocationRepositoryContractDurationValue.fromRaw(
+        _bootstrapLocationResolutionTimeout,
+        defaultValue: _bootstrapLocationResolutionTimeout,
+      ),
+    );
     _refreshLocationFeedback(emitNotice: emitNotice);
     if (!reloadPoisIfOriginChanged) {
       return;
@@ -848,6 +936,25 @@ class MapScreenController implements Disposable {
     }
 
     final nextResolution = _locationOriginService.resolveCached();
+    if (_awaitingBootstrapLiveOrigin) {
+      final liveUserCoordinate = nextResolution.liveUserCoordinate;
+      if (liveUserCoordinate == null) {
+        return;
+      }
+
+      _isReconcilingLocationOrigin = true;
+      _awaitingBootstrapLiveOrigin = false;
+      try {
+        await loadPois(PoiQuery(), loadingMessage: 'Carregando pontos...');
+      } finally {
+        _isReconcilingLocationOrigin = false;
+      }
+      return;
+    }
+    if (!_hasEstablishedInitialPoiQuery) {
+      return;
+    }
+
     final nextSettings = nextResolution.settings;
     final nextOrigin = _resolveCurrentEffectiveOrigin();
     _queueBootstrapUserOriginHandoffIfEligible(nextResolution);
@@ -957,6 +1064,8 @@ class MapScreenController implements Disposable {
     final requestSequence = ++_poiRequestSequence;
     final resolvedQuery = await _resolveRuntimeQuery(query);
     _currentQuery = resolvedQuery;
+    _hasEstablishedInitialPoiQuery = true;
+    _awaitingBootstrapLiveOrigin = false;
     searchTermStreamValue.addValue(resolvedQuery.searchTermValue?.value);
     final nextSearchText = resolvedQuery.searchTermValue?.value ?? '';
     if (searchTextController.text != nextSearchText) {

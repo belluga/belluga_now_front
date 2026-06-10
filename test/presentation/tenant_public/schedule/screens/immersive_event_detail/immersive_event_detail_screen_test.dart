@@ -2853,9 +2853,9 @@ void main() {
       await tester.pump();
 
       expect(router.lastReplacedPath, isNull);
-      expect(router.lastNavigatedRoute, isNull);
-      expect(router.lastReplacedRoute, isA<ImmersiveEventDetailRoute>());
-      final route = router.lastReplacedRoute! as ImmersiveEventDetailRoute;
+      expect(router.lastReplacedRoute, isNull);
+      expect(router.lastNavigatedRoute, isA<ImmersiveEventDetailRoute>());
+      final route = router.lastNavigatedRoute! as ImmersiveEventDetailRoute;
       expect(route.rawPathParams['slug'], 'evento-de-teste');
       expect(route.rawQueryParams['occurrence'], 'occ-1');
       expect(route.rawQueryParams['tab'], 'programming');
@@ -3945,9 +3945,9 @@ void main() {
     await tester.tap(find.byKey(const Key('eventDateCard_occ-1')));
     await tester.pump();
 
-    expect(router.lastNavigatedRoute, isNull);
-    expect(router.lastReplacedRoute, isA<ImmersiveEventDetailRoute>());
-    final route = router.lastReplacedRoute! as ImmersiveEventDetailRoute;
+    expect(router.lastReplacedRoute, isNull);
+    expect(router.lastNavigatedRoute, isA<ImmersiveEventDetailRoute>());
+    final route = router.lastNavigatedRoute! as ImmersiveEventDetailRoute;
     expect(route.rawPathParams['slug'], 'evento-de-teste');
     expect(route.rawQueryParams['occurrence'], 'occ-1');
     expect(route.rawQueryParams['tab'], 'programming');

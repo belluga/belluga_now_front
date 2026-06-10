@@ -29,9 +29,12 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
     );
   }
 
-  Map<String, String> _buildStreamHeaders({bool includeJsonAccept = false}) {
-    return TenantPublicAuthHeaders.buildSync(
+  Future<Map<String, String>> _buildStreamHeaders({
+    bool includeJsonAccept = false,
+  }) {
+    return TenantPublicAuthHeaders.build(
       includeJsonAccept: includeJsonAccept,
+      bootstrapIfEmpty: true,
     );
   }
 
@@ -229,13 +232,17 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
       '${queryParts.isEmpty ? '' : '?${queryParts.join('&')}'}',
     );
 
-    return _sseClient
-        .connect(
-          uri,
-          lastEventId: lastEventId,
-          headers: _buildStreamHeaders(),
-        )
-        .map((message) => _parseDelta(message.data, message.id));
+    return Stream<Map<String, String>>.fromFuture(
+      _buildStreamHeaders(),
+    ).asyncExpand(
+      (headers) => _sseClient
+          .connect(
+            uri,
+            lastEventId: lastEventId,
+            headers: headers,
+          )
+          .map((message) => _parseDelta(message.data, message.id)),
+    );
   }
 
   List<String> _normalizeStringList(List<String>? values) {

@@ -755,7 +755,7 @@ class _ImmersiveEventDetailScreenState
     }
     _controller.selectOccurrence(event, occurrence);
     unawaited(
-      context.router.replace(
+      context.router.navigate(
         ImmersiveEventDetailRoute(
           eventSlug: event.slug,
           occurrenceId: occurrenceId,

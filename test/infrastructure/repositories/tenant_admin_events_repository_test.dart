@@ -1255,6 +1255,9 @@ class _StubAccountAuthRepo implements AuthRepositoryContract<UserContract> {
   Future<void> init() async {}
 
   @override
+  Future<void> ensureTenantPublicIdentityReady() async {}
+
+  @override
   Future<void> autoLogin() async {}
 
   @override

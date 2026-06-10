@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/support/route_instance_scope.dart';
 import 'package:belluga_now/application/router/support/route_scoped_resolver_route.dart';
@@ -26,7 +28,7 @@ void main() {
         home: Builder(
           builder: (context) => _FakeResolverRoute(
             slug: slug,
-            resolver: resolver,
+            resolveWith: resolver.resolve,
           ).wrappedRoute(context),
         ),
       );
@@ -48,16 +50,53 @@ void main() {
     expect(find.text('qa-discovery'), findsOneWidget);
     expect(resolver.calls, ['du-jorge', 'qa-discovery']);
   });
+
+  testWidgets(
+      'route scoped resolver keeps the last resolved screen visible while param refresh is pending',
+      (tester) async {
+    final resolver = _CompleterResolver();
+
+    Widget buildRoute(String slug) {
+      return MaterialApp(
+        home: Builder(
+          builder: (context) => _FakeResolverRoute(
+            slug: slug,
+            resolveWith: resolver.resolve,
+          ).wrappedRoute(context),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(buildRoute('du-jorge'));
+    final firstCompleter = resolver.pending.removeAt(0);
+    firstCompleter.complete('du-jorge');
+    await tester.pumpAndSettle();
+
+    expect(find.text('du-jorge'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+
+    await tester.pumpWidget(buildRoute('qa-discovery'));
+    await tester.pump();
+
+    expect(find.text('du-jorge'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+
+    final secondCompleter = resolver.pending.removeAt(0);
+    secondCompleter.complete('qa-discovery');
+    await tester.pumpAndSettle();
+
+    expect(find.text('qa-discovery'), findsOneWidget);
+  });
 }
 
 class _FakeResolverRoute extends RouteScopedResolverRoute<String, _TestModule> {
   const _FakeResolverRoute({
     required this.slug,
-    required this.resolver,
+    required this.resolveWith,
   });
 
   final String slug;
-  final _RecordingResolver resolver;
+  final Future<String> Function(RouteResolverParams params) resolveWith;
 
   @override
   RouteResolverParams get resolverParams => {'slug': slug};
@@ -67,7 +106,7 @@ class _FakeResolverRoute extends RouteScopedResolverRoute<String, _TestModule> {
     BuildContext context,
     RouteResolverParams params,
   ) async {
-    return resolver.resolve(params);
+    return resolveWith(params);
   }
 
   @override
@@ -83,6 +122,19 @@ class _RecordingResolver {
     final slug = (params['slug'] as String?) ?? '';
     calls.add(slug);
     return slug;
+  }
+}
+
+class _CompleterResolver {
+  final List<String> calls = <String>[];
+  final List<Completer<String>> pending = <Completer<String>>[];
+
+  Future<String> resolve(RouteResolverParams params) {
+    final slug = (params['slug'] as String?) ?? '';
+    calls.add(slug);
+    final completer = Completer<String>();
+    pending.add(completer);
+    return completer.future;
   }
 }
 

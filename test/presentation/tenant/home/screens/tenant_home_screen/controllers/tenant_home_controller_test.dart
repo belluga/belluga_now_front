@@ -12,6 +12,7 @@ import 'package:belluga_now/domain/repositories/user_events_repository_contract.
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_bool_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
@@ -377,7 +378,11 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   Future<bool> refreshIfPermitted({Object? minInterval}) async => false;
 
   @override
-  Future<String?> resolveUserLocation() async => null;
+  Future<String?> resolveUserLocation({
+    Object? timeout,
+    UserLocationRepositoryContractBoolValue? requestPermissionIfNeededValue,
+  }) async =>
+      null;
 
   @override
   Future<bool> startTracking(

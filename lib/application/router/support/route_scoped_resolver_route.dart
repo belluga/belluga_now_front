@@ -127,6 +127,7 @@ class _RouteScopedResolverBuilderState<T>
     extends State<_RouteScopedResolverBuilder<T>> {
   late Future<T> _future;
   RouteResolverParams? _lastResolvedParams;
+  T? _lastResolvedData;
 
   @override
   void initState() {
@@ -156,6 +157,7 @@ class _RouteScopedResolverBuilderState<T>
     await widget.onResolveStart?.call(params);
     try {
       final result = await widget.resolver(params);
+      _lastResolvedData = result;
       await widget.onResolveSuccess?.call(result);
       return result;
     } catch (error) {
@@ -169,7 +171,11 @@ class _RouteScopedResolverBuilderState<T>
     return FutureBuilder<T>(
       future: _future,
       builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
+        final resolvedData = snapshot.data ?? _lastResolvedData;
+        final hasResolvedData = resolvedData != null;
+
+        if (snapshot.connectionState != ConnectionState.done &&
+            !hasResolvedData) {
           return widget.loadingBuilder(context);
         }
 
@@ -181,7 +187,7 @@ class _RouteScopedResolverBuilderState<T>
           );
         }
 
-        final data = snapshot.data;
+        final data = resolvedData;
         if (data == null) {
           return widget.errorBuilder(
             context,

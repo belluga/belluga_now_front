@@ -22,6 +22,7 @@ import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/discovery_filters_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_bool_value.dart';
 import 'package:belluga_now/domain/repositories/value_objects/schedule_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_duration_value.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_text_value.dart';
@@ -55,7 +56,8 @@ void main() {
     await GetIt.I.reset();
   });
 
-  test('available discovery types include only publicly discoverable profile types',
+  test(
+      'available discovery types include only publicly discoverable profile types',
       () async {
     final repository = _FakeAccountProfilesRepository(
       pages: {
@@ -2859,7 +2861,10 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   }
 
   @override
-  Future<String?> resolveUserLocation() async {
+  Future<String?> resolveUserLocation({
+    Object? timeout,
+    UserLocationRepositoryContractBoolValue? requestPermissionIfNeededValue,
+  }) async {
     return null;
   }
 

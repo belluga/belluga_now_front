@@ -27,6 +27,7 @@ import 'package:belluga_now/domain/repositories/tenant_repository_contract.dart'
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_bool_value.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
@@ -171,7 +172,8 @@ void main() {
         name: 'Stack Regression',
         email: 'stack-regression@belluga.test',
       );
-      app.appRouter.replaceAll([ImmersiveEventDetailRoute(eventSlug: eventSlug)]);
+      app.appRouter
+          .replaceAll([ImmersiveEventDetailRoute(eventSlug: eventSlug)]);
       await _pumpFor(tester, const Duration(seconds: 2));
 
       await _dismissLocationGateIfNeeded(tester);
@@ -890,7 +892,11 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
       false;
 
   @override
-  Future<String?> resolveUserLocation() async => null;
+  Future<String?> resolveUserLocation({
+    Object? timeout,
+    UserLocationRepositoryContractBoolValue? requestPermissionIfNeededValue,
+  }) async =>
+      null;
 
   @override
   Future<bool> startTracking({

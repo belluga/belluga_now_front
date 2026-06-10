@@ -1,5 +1,9 @@
 import 'dart:convert';
 
+import 'package:belluga_now/domain/map/queries/poi_query.dart';
+import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
@@ -36,7 +40,7 @@ void main() {
       ),
     );
 
-    final filters = await repository.fetchFilters();
+    final filters = await repository.fetchFilters(_buildQuery());
 
     expect(filters.categories, hasLength(1));
     expect(
@@ -57,6 +61,15 @@ void main() {
     expect(filters.categories.single.filterVisual?.iconColorHex, '#FFFFFF');
     expect(filters.categories.single.markerOverrideVisual, isNull);
   });
+}
+
+PoiQuery _buildQuery() {
+  return PoiQuery(
+    origin: CityCoordinate(
+      latitudeValue: LatitudeValue()..parse('-20.3155'),
+      longitudeValue: LongitudeValue()..parse('-40.3128'),
+    ),
+  );
 }
 
 class _MapFiltersAdapter implements HttpClientAdapter {

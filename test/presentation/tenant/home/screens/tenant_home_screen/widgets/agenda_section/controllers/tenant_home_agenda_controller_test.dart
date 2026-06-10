@@ -35,6 +35,7 @@ import 'package:belluga_now/domain/repositories/value_objects/schedule_repositor
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_bool_value.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_duration_value.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_text_value.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
@@ -6283,7 +6284,10 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
       false;
 
   @override
-  Future<String?> resolveUserLocation() async {
+  Future<String?> resolveUserLocation({
+    Object? timeout,
+    UserLocationRepositoryContractBoolValue? requestPermissionIfNeededValue,
+  }) async {
     resolveUserLocationCallCount += 1;
     final resolvedCoordinate = resolvedCoordinateAfterPermission;
     if (resolvedCoordinate != null) {

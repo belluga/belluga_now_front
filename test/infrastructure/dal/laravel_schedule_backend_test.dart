@@ -32,14 +32,15 @@ void main() {
 
   test(
       'watchEventsStream serializes taxonomy as array fields and forwards auth',
-      () {
+      () async {
     final sseClient = _RecordingSseClient();
     final backend = LaravelScheduleBackend(
       dio: Dio()..httpClientAdapter = _NoopAdapter(),
       sseClient: sseClient,
     );
 
-    backend.watchEventsStream(
+    await backend
+        .watchEventsStream(
       showPastOnly: true,
       confirmedOnly: true,
       categories: const ['music'],
@@ -48,7 +49,8 @@ void main() {
       ],
       occurrenceIds: const ['507f1f77bcf86cd799439091'],
       lastEventId: 'cursor-1',
-    );
+    )
+        .drain<void>();
 
     final uri = sseClient.lastUri;
     expect(uri, isNotNull);
@@ -66,20 +68,74 @@ void main() {
     expect(sseClient.lastHeaders?['Authorization'], 'Bearer test-token');
   });
 
-  test('watchEventsStream forwards search and omits geo params when searching',
-      () {
+  test(
+      'watchEventsStream revalidates persisted token before tenant-public event stream requests',
+      () async {
+    final authRepository = GetIt.I.get<AuthRepositoryContract<UserContract>>()
+        as _FakeAuthRepository;
+    authRepository.setUserToken(authRepoString('stale-token'));
+    authRepository.tokenAfterInit = 'refreshed-token';
+    authRepository.refreshTokenOnInit = true;
+
     final sseClient = _RecordingSseClient();
     final backend = LaravelScheduleBackend(
       dio: Dio()..httpClientAdapter = _NoopAdapter(),
       sseClient: sseClient,
     );
 
-    backend.watchEventsStream(
+    await backend.watchEventsStream().drain<void>();
+
+    expect(authRepository.ensureTenantPublicIdentityReadyCallCount, 1);
+    expect(authRepository.initCallCount, 0);
+    expect(sseClient.lastHeaders?['Authorization'], 'Bearer refreshed-token');
+  });
+
+  test('fetchEventsPage fails closed when auth repository is missing', () async {
+    await GetIt.I.reset();
+    GetIt.I.registerSingleton<AppData>(_buildAppData());
+
+    final adapter = _NoopAdapter(
+      responseData: const {
+        'data': {
+          'items': [],
+          'has_more': false,
+        },
+      },
+    );
+    final backend = LaravelScheduleBackend(
+      dio: Dio()..httpClientAdapter = adapter,
+      sseClient: _RecordingSseClient(),
+    );
+
+    await expectLater(
+      () => backend.fetchEventsPage(page: 1, showPastOnly: false),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          contains('require a registered AuthRepositoryContract'),
+        ),
+      ),
+    );
+    expect(adapter.lastOptions, isNull);
+  });
+
+  test('watchEventsStream forwards search and omits geo params when searching',
+      () async {
+    final sseClient = _RecordingSseClient();
+    final backend = LaravelScheduleBackend(
+      dio: Dio()..httpClientAdapter = _NoopAdapter(),
+      sseClient: sseClient,
+    );
+
+    await backend
+        .watchEventsStream(
       searchQuery: 'Sola',
       originLat: -20.0,
       originLng: -40.0,
       maxDistanceMeters: 5000,
-    );
+    )
+        .drain<void>();
 
     final uri = sseClient.lastUri;
     expect(uri, isNotNull);
@@ -237,11 +293,45 @@ void main() {
       showPastOnly: false,
     );
 
-    expect(authRepository.initCallCount, 1);
+    expect(authRepository.ensureTenantPublicIdentityReadyCallCount, 1);
+    expect(authRepository.initCallCount, 0);
     expect(
       adapter.lastOptions?.queryParameters.containsKey('page_size'),
       isFalse,
     );
+    final headers = adapter.lastOptions?.headers ?? const <String, dynamic>{};
+    expect(headers['Authorization'], 'Bearer refreshed-token');
+  });
+
+  test(
+      'fetchEventsPage revalidates persisted token before tenant-public agenda requests',
+      () async {
+    final authRepository = GetIt.I.get<AuthRepositoryContract<UserContract>>()
+        as _FakeAuthRepository;
+    authRepository.setUserToken(authRepoString('stale-token'));
+    authRepository.tokenAfterInit = 'refreshed-token';
+    authRepository.refreshTokenOnInit = true;
+
+    final adapter = _NoopAdapter(
+      responseData: const {
+        'data': {
+          'items': [],
+          'has_more': false,
+        },
+      },
+    );
+    final backend = LaravelScheduleBackend(
+      dio: Dio()..httpClientAdapter = adapter,
+      sseClient: _RecordingSseClient(),
+    );
+
+    await backend.fetchEventsPage(
+      page: 1,
+      showPastOnly: false,
+    );
+
+    expect(authRepository.ensureTenantPublicIdentityReadyCallCount, 1);
+    expect(authRepository.initCallCount, 0);
     final headers = adapter.lastOptions?.headers ?? const <String, dynamic>{};
     expect(headers['Authorization'], 'Bearer refreshed-token');
   });
@@ -323,6 +413,9 @@ class _NoopAdapter implements HttpClientAdapter {
 class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   String _token = 'test-token';
   int initCallCount = 0;
+  int ensureTenantPublicIdentityReadyCallCount = 0;
+  bool refreshTokenOnInit = false;
+  String tokenAfterInit = 'refreshed-token';
 
   @override
   BackendContract get backend => throw UnimplementedError();
@@ -350,8 +443,16 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   @override
   Future<void> init() async {
     initCallCount += 1;
-    if (_token.trim().isEmpty) {
-      _token = 'refreshed-token';
+    if (refreshTokenOnInit || _token.trim().isEmpty) {
+      _token = tokenAfterInit;
+    }
+  }
+
+  @override
+  Future<void> ensureTenantPublicIdentityReady() async {
+    ensureTenantPublicIdentityReadyCallCount += 1;
+    if (refreshTokenOnInit || _token.trim().isEmpty) {
+      _token = tokenAfterInit;
     }
   }
 

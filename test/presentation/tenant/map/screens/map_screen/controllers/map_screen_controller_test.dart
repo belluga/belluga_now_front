@@ -5,7 +5,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/application/router/guards/location_permission_gate_runtime.dart';
+import 'package:belluga_now/application/router/guards/location_permission_gate_result.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/application/router/support/route_instance_scope.dart';
@@ -72,6 +72,7 @@ import 'package:belluga_now/domain/static_assets/value_objects/public_static_ass
 import 'package:belluga_now/infrastructure/services/telemetry/telemetry_properties_codec.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_bool_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
@@ -257,7 +258,10 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   }
 
   @override
-  Future<String?> resolveUserLocation() async {
+  Future<String?> resolveUserLocation({
+    Object? timeout,
+    UserLocationRepositoryContractBoolValue? requestPermissionIfNeededValue,
+  }) async {
     resolveUserLocationCallCount += 1;
     locationResolutionPhaseStreamValue.addValue(
       LocationResolutionPhase.resolving,
@@ -304,6 +308,7 @@ class _FakeCityMapRepository implements CityMapRepositoryContract {
   final StreamController<PoiUpdateEvent?> _poiEventsController =
       StreamController<PoiUpdateEvent?>.broadcast();
   PoiQuery? lastQuery;
+  PoiQuery? lastFilterQuery;
   PoiQuery? lastStackQuery;
   String? lastStackKey;
   String? lastLookupRefType;
@@ -315,6 +320,8 @@ class _FakeCityMapRepository implements CityMapRepositoryContract {
   bool throwOnFetchStackItems = false;
   bool throwOnLookupPoi = false;
   bool throwOnFetchFilters = false;
+  int failFetchPointsCount = 0;
+  int failFetchFiltersCount = 0;
   int fetchPointsCallCount = 0;
   int fetchFiltersCallCount = 0;
   final List<Completer<List<CityPoiModel>>> queuedFetchCompleters =
@@ -328,6 +335,10 @@ class _FakeCityMapRepository implements CityMapRepositoryContract {
     if (queuedFetchCompleters.isNotEmpty) {
       final completer = queuedFetchCompleters.removeAt(0);
       return completer.future;
+    }
+    if (failFetchPointsCount > 0) {
+      failFetchPointsCount -= 1;
+      throw Exception('forced transient fetch failure');
     }
     if (throwOnFetchPoints) {
       throw Exception('forced fetch failure');
@@ -362,8 +373,13 @@ class _FakeCityMapRepository implements CityMapRepositoryContract {
   }
 
   @override
-  Future<PoiFilterOptions> fetchFilters() async {
+  Future<PoiFilterOptions> fetchFilters(PoiQuery query) async {
     fetchFiltersCallCount += 1;
+    lastFilterQuery = query;
+    if (failFetchFiltersCount > 0) {
+      failFetchFiltersCount -= 1;
+      throw Exception('forced transient filters failure');
+    }
     if (throwOnFetchFilters) {
       throw Exception('forced filters failure');
     }
@@ -1264,7 +1280,6 @@ void main() {
     late MapScreenController controller;
 
     setUp(() {
-      LocationPermissionGateRuntime.resetForTesting();
       telemetry = _FakeTelemetryRepository();
       mapRepository = _FakeCityMapRepository();
       userLocationRepository = _FakeUserLocationRepository();
@@ -1286,7 +1301,6 @@ void main() {
     });
 
     tearDown(() {
-      LocationPermissionGateRuntime.resetForTesting();
       mapRepository.dispose();
       userLocationRepository.dispose();
       controller.onDispose();
@@ -3038,6 +3052,193 @@ void main() {
     );
 
     test(
+      'plain map bootstrap does not issue the first poi request until a real coordinate resolution is attempted',
+      () async {
+        final refreshCompleter = Completer<bool>();
+        final resolveCompleter = Completer<String?>();
+        final firstFetch = Completer<List<CityPoiModel>>();
+        final resolvedCoordinate = _buildCoordinate('-20.1234', '-40.2345');
+
+        userLocationRepository.refreshIfPermittedCompleter = refreshCompleter;
+        userLocationRepository.resolveUserLocationCompleter = resolveCompleter;
+        mapRepository.queuedFetchCompleters.add(firstFetch);
+
+        final initFuture = controller.init();
+        await _flushMicrotasks();
+        await _flushMicrotasks();
+
+        expect(mapRepository.fetchPointsCallCount, 0);
+        expect(userLocationRepository.refreshIfPermittedCallCount, 1);
+        expect(userLocationRepository.resolveUserLocationCallCount, 0);
+
+        refreshCompleter.complete(false);
+        await _flushMicrotasks();
+        await _flushMicrotasks();
+
+        expect(
+          userLocationRepository.resolveUserLocationCallCount,
+          1,
+          reason:
+              'plain map bootstrap must escalate to an authoritative location resolve before issuing the first poi request when warm-up yields no coordinate',
+        );
+        expect(
+          mapRepository.fetchPointsCallCount,
+          0,
+          reason:
+              'the first poi request must wait for the coordinate resolution attempt instead of racing ahead with fallback origin',
+        );
+
+        userLocationRepository.userLocationStreamValue.addValue(
+          resolvedCoordinate,
+        );
+        userLocationRepository.lastKnownLocationStreamValue.addValue(
+          resolvedCoordinate,
+        );
+        userLocationRepository.lastKnownCapturedAtStreamValue.addValue(
+          DateTime.now(),
+        );
+        userLocationRepository.locationResolutionPhaseStreamValue.addValue(
+          LocationResolutionPhase.resolved,
+        );
+        resolveCompleter.complete(null);
+        firstFetch.complete(<CityPoiModel>[
+          _buildPoi(id: 'poi-bootstrap', coordinate: resolvedCoordinate),
+        ]);
+
+        await initFuture;
+        await _flushMicrotasks();
+        await _flushMicrotasks();
+
+        expect(mapRepository.fetchPointsCallCount, 1);
+        expect(_queryOrigin(mapRepository.lastQuery), isNotNull);
+        expect(
+          mapRepository.lastQuery!.origin!.latitude,
+          resolvedCoordinate.latitude,
+        );
+        expect(
+          mapRepository.lastQuery!.origin!.longitude,
+          resolvedCoordinate.longitude,
+        );
+        expect(
+          controller.filteredPoisStreamValue.value
+              ?.map((poi) => poi.id)
+              .toList(),
+          equals(<String>['poi-bootstrap']),
+        );
+      },
+    );
+
+    test(
+      'plain map bootstrap issues the first poi request when the live coordinate arrives after the initial resolve attempt completes',
+      () async {
+        final refreshCompleter = Completer<bool>();
+        final resolveCompleter = Completer<String?>();
+        final firstFetch = Completer<List<CityPoiModel>>();
+        final resolvedCoordinate = _buildCoordinate('-20.1234', '-40.2345');
+
+        userLocationRepository.refreshIfPermittedCompleter = refreshCompleter;
+        userLocationRepository.resolveUserLocationCompleter = resolveCompleter;
+        mapRepository.queuedFetchCompleters.add(firstFetch);
+
+        final initFuture = controller.init();
+        await _flushMicrotasks();
+        await _flushMicrotasks();
+
+        refreshCompleter.complete(false);
+        await _flushMicrotasks();
+        await _flushMicrotasks();
+
+        expect(userLocationRepository.resolveUserLocationCallCount, 1);
+        expect(mapRepository.fetchPointsCallCount, 0);
+
+        resolveCompleter.complete(null);
+        await initFuture;
+        await _flushMicrotasks();
+        await _flushMicrotasks();
+
+        expect(
+          mapRepository.fetchPointsCallCount,
+          0,
+          reason:
+              'controller must not dead-end or issue fallback requests when the resolve attempt ends before a live coordinate is published',
+        );
+
+        userLocationRepository.userLocationStreamValue.addValue(
+          resolvedCoordinate,
+        );
+        userLocationRepository.lastKnownLocationStreamValue.addValue(
+          resolvedCoordinate,
+        );
+        userLocationRepository.lastKnownCapturedAtStreamValue.addValue(
+          DateTime.now(),
+        );
+        userLocationRepository.locationResolutionPhaseStreamValue.addValue(
+          LocationResolutionPhase.resolved,
+        );
+        firstFetch.complete(<CityPoiModel>[
+          _buildPoi(
+              id: 'poi-bootstrap-delayed', coordinate: resolvedCoordinate),
+        ]);
+
+        await _flushMicrotasks();
+        await _flushMicrotasks();
+
+        expect(mapRepository.fetchPointsCallCount, 1);
+        expect(_queryOrigin(mapRepository.lastQuery), isNotNull);
+        expect(
+          mapRepository.lastQuery!.origin!.latitude,
+          resolvedCoordinate.latitude,
+        );
+        expect(
+          mapRepository.lastQuery!.origin!.longitude,
+          resolvedCoordinate.longitude,
+        );
+      },
+    );
+
+    test(
+      'retries one transient bootstrap failure for filters and pois before surfacing terminal map error',
+      () async {
+        userLocationRepository.userLocationStreamValue.addValue(
+          _buildCoordinate('-20.0', '-40.0'),
+        );
+        userLocationRepository.locationResolutionPhaseStreamValue.addValue(
+          LocationResolutionPhase.resolved,
+        );
+        mapRepository
+          ..failFetchFiltersCount = 1
+          ..failFetchPointsCount = 1
+          ..nextFilterOptions = PoiFilterOptions(
+            categories: <PoiFilterCategory>[
+              _buildCategory(key: 'events', label: 'Eventos'),
+            ],
+          )
+          ..nextPois = <CityPoiModel>[_buildPoi(id: 'poi-bootstrap')];
+
+        await controller.init();
+        await _flushMicrotasks();
+
+        expect(mapRepository.fetchFiltersCallCount, 2);
+        expect(mapRepository.fetchPointsCallCount, 2);
+        expect(_queryOrigin(mapRepository.lastFilterQuery), isNotNull);
+        expect(controller.mapStatusStreamValue.value, MapStatus.ready);
+        expect(controller.errorMessage.value, isNull);
+        expect(
+          controller.filterOptionsStreamValue.value?.categories
+              .map((category) => category.key)
+              .toList(),
+          equals(<String>['events']),
+        );
+        expect(
+          controller.filteredPoisStreamValue.value
+              ?.map((poi) => poi.id)
+              .toList(),
+          equals(<String>['poi-bootstrap']),
+        );
+      },
+    );
+
+    test(
       'fails closed when tenant default origin is missing during bootstrap',
       () async {
         final localController = _buildMapController(
@@ -3092,7 +3293,7 @@ void main() {
     );
 
     test(
-      'reconciles to live location after refresh resolves and reloads points from the resolved origin',
+      'waits for refresh before the first bootstrap request when no live origin is cached',
       () async {
         final refreshCompleter = Completer<bool>();
         userLocationRepository.refreshIfPermittedCompleter = refreshCompleter;
@@ -3101,14 +3302,7 @@ void main() {
         await _flushMicrotasks();
         await _flushMicrotasks();
 
-        expect(
-          mapRepository.lastQuery?.origin?.latitude,
-          mapRepository.defaultCenter().latitude,
-        );
-        expect(
-          mapRepository.lastQuery?.origin?.longitude,
-          mapRepository.defaultCenter().longitude,
-        );
+        expect(mapRepository.lastQuery, isNull);
         expect(controller.softLocationNoticeStreamValue.value, '');
 
         final resolvedCoordinate = _buildCoordinate('-20.1234', '-40.2345');
@@ -3126,6 +3320,10 @@ void main() {
         );
         refreshCompleter.complete(true);
 
+        await _flushMicrotasks();
+        await _flushMicrotasks();
+
+        expect(mapRepository.fetchPointsCallCount, 1);
         await initFuture;
         await _flushMicrotasks();
         await _flushMicrotasks();
@@ -3226,10 +3424,7 @@ void main() {
         final refreshCompleter = Completer<bool>();
         userLocationRepository.refreshIfPermittedCompleter = refreshCompleter;
         final firstFetch = Completer<List<CityPoiModel>>();
-        final reconcileFetch = Completer<List<CityPoiModel>>();
-        mapRepository.queuedFetchCompleters.addAll(
-          <Completer<List<CityPoiModel>>>[firstFetch, reconcileFetch],
-        );
+        mapRepository.queuedFetchCompleters.add(firstFetch);
         final statusMessages = <String?>[];
         final loadingStates = <bool>[];
         final mapStatuses = <MapStatus>[];
@@ -3271,15 +3466,15 @@ void main() {
         await _flushMicrotasks();
         await _flushMicrotasks();
 
-        expect(mapRepository.fetchPointsCallCount, 2);
+        expect(mapRepository.fetchPointsCallCount, 1);
         expect(
           statusMessages.where((message) => message == 'Atualizando pontos...'),
-          hasLength(1),
+          isEmpty,
         );
-        expect(loadingStates.where((value) => value), hasLength(2));
+        expect(loadingStates.where((value) => value), hasLength(1));
         expect(
           mapStatuses.where((status) => status == MapStatus.fetching),
-          hasLength(2),
+          hasLength(1),
         );
 
         final burstCoordinates = <CityCoordinate>[
@@ -3312,32 +3507,29 @@ void main() {
 
         expect(
           mapRepository.fetchPointsCallCount,
-          2,
+          1,
           reason:
               'rapid nearby live updates in the same semantic state must not trigger extra poi reloads',
         );
         expect(
           statusMessages.where((message) => message == 'Atualizando pontos...'),
-          hasLength(1),
+          isEmpty,
           reason:
               'controller must not re-emit the updating banner during burst churn',
         );
         expect(
           loadingStates.where((value) => value),
-          hasLength(2),
+          hasLength(1),
           reason:
               'controller must not re-enter loading for semantically equivalent live updates',
         );
         expect(
           mapStatuses.where((status) => status == MapStatus.fetching),
-          hasLength(2),
+          hasLength(1),
           reason:
               'controller must not re-enter fetching for semantically equivalent live updates',
         );
 
-        reconcileFetch.complete(const <CityPoiModel>[]);
-        await _flushMicrotasks();
-        await _flushMicrotasks();
         firstFetch.complete(const <CityPoiModel>[]);
         await initFuture;
         await _flushMicrotasks();
@@ -3345,18 +3537,18 @@ void main() {
 
         expect(
           mapRepository.fetchPointsCallCount,
-          2,
+          1,
           reason:
               'same live-location semantic state must not trigger map reload loop',
         );
         expect(
           statusMessages.where((message) => message == 'Atualizando pontos...'),
-          hasLength(1),
+          isEmpty,
         );
-        expect(loadingStates.where((value) => value), hasLength(2));
+        expect(loadingStates.where((value) => value), hasLength(1));
         expect(
           mapStatuses.where((status) => status == MapStatus.fetching),
-          hasLength(2),
+          hasLength(1),
         );
         expect(controller.mapStatusStreamValue.value, MapStatus.ready);
         expect(controller.statusMessageStreamValue.value, isNull);
@@ -3364,15 +3556,12 @@ void main() {
     );
 
     test(
-      'permission-resolution overlap reloads points only once when live origin resolves during the request',
+      'permission-resolution overlap issues a single bootstrap poi load when live origin resolves before the permission future completes',
       () async {
         final resolveCompleter = Completer<String?>();
         userLocationRepository.resolveUserLocationCompleter = resolveCompleter;
-        final firstFetch = Completer<List<CityPoiModel>>();
-        final reconcileFetch = Completer<List<CityPoiModel>>();
-        mapRepository.queuedFetchCompleters.addAll(
-          <Completer<List<CityPoiModel>>>[firstFetch, reconcileFetch],
-        );
+        final bootstrapFetch = Completer<List<CityPoiModel>>();
+        mapRepository.queuedFetchCompleters.add(bootstrapFetch);
         final statusMessages = <String?>[];
         final loadingStates = <bool>[];
         final mapStatuses = <MapStatus>[];
@@ -3393,13 +3582,8 @@ void main() {
         await _flushMicrotasks();
         await _flushMicrotasks();
 
-        firstFetch.complete(const <CityPoiModel>[]);
-        await initFuture;
-        await _flushMicrotasks();
-        await _flushMicrotasks();
-
         expect(userLocationRepository.resolveUserLocationCallCount, 1);
-        expect(mapRepository.fetchPointsCallCount, 1);
+        expect(mapRepository.fetchPointsCallCount, 0);
 
         final resolvedCoordinate = _buildCoordinate('-20.1234', '-40.2345');
         userLocationRepository.userLocationStreamValue.addValue(
@@ -3417,34 +3601,33 @@ void main() {
         await _flushMicrotasks();
         await _flushMicrotasks();
 
-        expect(mapRepository.fetchPointsCallCount, 2);
-        expect(
-          statusMessages.where((message) => message == 'Atualizando pontos...'),
-          hasLength(1),
-        );
+        expect(mapRepository.fetchPointsCallCount, 0);
 
         resolveCompleter.complete(null);
         await _flushMicrotasks();
         await _flushMicrotasks();
 
-        reconcileFetch.complete(const <CityPoiModel>[]);
+        expect(mapRepository.fetchPointsCallCount, 1);
+
+        bootstrapFetch.complete(const <CityPoiModel>[]);
+        await initFuture;
         await _flushMicrotasks();
         await _flushMicrotasks();
 
         expect(
           mapRepository.fetchPointsCallCount,
-          2,
+          1,
           reason:
-              'phase-listener reconciliation and resolveUserLocation completion must not double-reload the same origin transition',
+              'phase-listener reconciliation and permission completion must not double-load the same bootstrap origin transition',
         );
         expect(
           statusMessages.where((message) => message == 'Atualizando pontos...'),
-          hasLength(1),
+          isEmpty,
         );
-        expect(loadingStates.where((value) => value), hasLength(2));
+        expect(loadingStates.where((value) => value), hasLength(1));
         expect(
           mapStatuses.where((status) => status == MapStatus.fetching),
-          hasLength(2),
+          hasLength(1),
         );
       },
     );
@@ -3452,9 +3635,10 @@ void main() {
     test(
       'soft-gate map entry skips interactive resolution and exposes fixed-location notice',
       () async {
-        LocationPermissionGateRuntime.armSoftLocationFallbackEntry();
-
-        await controller.init();
+        await controller.init(
+          initialLocationGateResult:
+              LocationPermissionGateResult.continueWithoutLocation,
+        );
         await _flushMicrotasks();
 
         expect(userLocationRepository.refreshIfPermittedCallCount, 1);
@@ -3872,7 +4056,6 @@ void main() {
 
     setUp(() async {
       await GetIt.I.reset(dispose: false);
-      LocationPermissionGateRuntime.resetForTesting();
       telemetry = _FakeTelemetryRepository();
       mapRepository = _FakeCityMapRepository();
       userLocationRepository = _FakeUserLocationRepository();
@@ -3891,7 +4074,6 @@ void main() {
       mapRepository.dispose();
       userLocationRepository.dispose();
       await GetIt.I.reset(dispose: false);
-      LocationPermissionGateRuntime.resetForTesting();
     });
 
     testWidgets(
@@ -4378,12 +4560,17 @@ void main() {
         final selectedPoi = _buildPoi(
           id: 'poi-near',
           name: 'Mais perto',
+          description: 'Card base com conteúdo mais curto.',
           distanceMeters: 120,
         );
         final tallerAdjacentPoi = _buildPoi(
           id: 'poi-far',
-          name: 'Mais longe',
+          name:
+              'Mais longe com título expandido para ocupar duas linhas no card',
+          description:
+              'Descrição maior para manter o card adjacente mais alto e validar a altura máxima do deck filtrado.',
           distanceMeters: 900,
+          coverImageUri: 'https://tenant.test/media/poi-far-cover.png',
         );
 
         controller.filteredPoisStreamValue.addValue(<CityPoiModel>[
@@ -4392,8 +4579,6 @@ void main() {
         ]);
         controller.mapTrayModeStreamValue.addValue(MapTrayMode.filterResults);
         controller.selectPoi(selectedPoi);
-        controller.updatePoiDeckHeight('poi-near', 320);
-        controller.updatePoiDeckHeight('poi-far', 440);
 
         await _pumpMapScreen(
           tester,
@@ -4405,14 +4590,20 @@ void main() {
 
         final viewportHeight =
             tester.view.physicalSize.height / tester.view.devicePixelRatio;
-        final expectedDeckHeight = 440.0.clamp(
-          280.0,
-          (viewportHeight * 0.68).clamp(380.0, 520.0).toDouble(),
-        );
         final deckFinder = find.byKey(
           const ValueKey<String>('poi-deck-container'),
         );
         expect(deckFinder, findsOneWidget);
+        final selectedMeasuredHeight = controller.getPoiDeckHeight('poi-near');
+        final adjacentMeasuredHeight = controller.getPoiDeckHeight('poi-far');
+        expect(selectedMeasuredHeight, isNotNull);
+        expect(adjacentMeasuredHeight, isNotNull);
+        expect(adjacentMeasuredHeight, greaterThan(selectedMeasuredHeight!));
+
+        final expectedDeckHeight = adjacentMeasuredHeight!.clamp(
+          280.0,
+          (viewportHeight * 0.68).clamp(380.0, 520.0).toDouble(),
+        );
         expect(tester.getSize(deckFinder).height, expectedDeckHeight);
       },
     );
@@ -5628,7 +5819,8 @@ void main() {
         );
 
         await tester.tap(find.text('Traçar rota'));
-        await tester.pumpAndSettle();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 260));
 
         expect(find.text('Qual PONTO DE PARTIDA quer usar?'), findsOneWidget);
         expect(find.text('Hotel Base'), findsOneWidget);
@@ -5639,7 +5831,8 @@ void main() {
         await tester.tap(find.text('Não perguntar de novo'));
         await tester.pump();
         await tester.tap(find.text('Continuar'));
-        await tester.pumpAndSettle();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 260));
 
         expect(directionsChooser.lastPresentedTarget?.destinationName,
             'Casa Marracini');
@@ -6286,6 +6479,7 @@ Future<void> _pumpMapScreen(
   required _RecordingStackRouter router,
   required PageRouteInfo<dynamic> fallbackRoute,
   String? initialPoiQuery,
+  DirectionsAppChooserContract? directionsAppChooser,
 }) async {
   final isPoiDetail = initialPoiQuery != null;
   final routeData = RouteData(
@@ -6316,7 +6510,10 @@ Future<void> _pumpMapScreen(
         stateHash: 0,
         child: RouteDataScope(
           routeData: routeData,
-          child: MapScreen(initialPoiQuery: initialPoiQuery),
+          child: MapScreen(
+            initialPoiQuery: initialPoiQuery,
+            directionsAppChooser: directionsAppChooser,
+          ),
         ),
       ),
     ),

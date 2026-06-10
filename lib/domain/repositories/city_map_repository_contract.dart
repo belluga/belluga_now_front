@@ -22,7 +22,7 @@ abstract class CityMapRepositoryContract {
     required PoiReferenceIdValue refId,
   });
 
-  Future<PoiFilterOptions> fetchFilters();
+  Future<PoiFilterOptions> fetchFilters(PoiQuery query);
 
   Future<List<MapRegionDefinition>> fetchRegions();
 

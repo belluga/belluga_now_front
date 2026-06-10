@@ -84,9 +84,9 @@ class PoiRepository implements PoiRepositoryContract {
     return snapshot;
   }
 
-  Future<void> initializePoiStreams() async {
+  Future<void> initializePoiStreams(PoiQuery query) async {
     if (filterOptionsStreamValue.value == null) {
-      await fetchFilters();
+      await fetchFilters(query);
     }
   }
 
@@ -130,8 +130,8 @@ class PoiRepository implements PoiRepositoryContract {
   }
 
   @override
-  Future<PoiFilterOptions> fetchFilters() async {
-    final filters = await _dataSource.fetchFilters();
+  Future<PoiFilterOptions> fetchFilters(PoiQuery query) async {
+    final filters = await _dataSource.fetchFilters(query);
     filterOptionsStreamValue.addValue(filters);
     return filters;
   }

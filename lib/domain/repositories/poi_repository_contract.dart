@@ -42,7 +42,7 @@ abstract class PoiRepositoryContract {
     stackItemsStreamValue.addValue(items);
   }
 
-  Future<PoiFilterOptions> fetchFilters();
+  Future<PoiFilterOptions> fetchFilters(PoiQuery query);
   Future<void> ensurePoiHydrated(CityPoiModel poi);
 
   void selectPoi(CityPoiModel? poi);

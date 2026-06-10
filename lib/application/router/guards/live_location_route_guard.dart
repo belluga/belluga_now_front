@@ -3,14 +3,18 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/guards/location_permission_gate_result.dart';
 import 'package:belluga_now/application/router/support/boundary_route_dismissal.dart';
 import 'package:belluga_now/application/router/support/location_permission_blocker.dart';
+import 'package:belluga_now/application/router/support/location_permission_granted_document_reentry.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
 
 class LiveLocationRouteGuard extends AutoRouteGuard {
   LiveLocationRouteGuard({
     LocationPermissionBlockerLoader? blockerLoader,
-  }) : _blockerLoader = blockerLoader ?? loadCurrentLocationPermissionBlocker;
+    LocationPermissionGrantedDocumentReentry? documentReentry,
+  })  : _blockerLoader = blockerLoader ?? loadCurrentLocationPermissionBlocker,
+        _documentReentry = documentReentry;
 
   final LocationPermissionBlockerLoader _blockerLoader;
+  final LocationPermissionGrantedDocumentReentry? _documentReentry;
 
   @override
   Future<void> onNavigation(
@@ -37,6 +41,14 @@ class LiveLocationRouteGuard extends AutoRouteGuard {
           didResolveGate = true;
 
           if (result == LocationPermissionGateResult.granted) {
+            final handledByDocumentReentry = (_documentReentry ??
+                performLocationPermissionGrantedDocumentReentry)(
+              pendingRedirectPath,
+            );
+            if (handledByDocumentReentry) {
+              resolver.next(false);
+              return;
+            }
             resolver.next(true);
             return;
           }
