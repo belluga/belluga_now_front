@@ -205,6 +205,8 @@ class TenantHomeAgendaController extends Object
   bool _locationPermissionRequested = false;
   DiscoveryFilterCatalog _baselineDiscoveryFilterCatalog =
       const DiscoveryFilterCatalog(surface: _homeEventsFilterSurface);
+  DiscoveryFilterCatalog _runtimePrimaryDiscoveryFilterCatalog =
+      const DiscoveryFilterCatalog(surface: _homeEventsFilterSurface);
 
   Uri get defaultEventImageUri {
     final configured = _appDataRepository.appData.mainLogoDarkUrl.value;
@@ -381,6 +383,8 @@ class TenantHomeAgendaController extends Object
       restoredSelection: restoredSelection,
     ).then((_) {
       _baselineDiscoveryFilterCatalog = discoveryFilterCatalogStreamValue.value;
+      _runtimePrimaryDiscoveryFilterCatalog =
+          discoveryFilterCatalogStreamValue.value;
       _reconcileRuntimeDiscoveryFilterCatalog();
     });
     if (mustAwaitCatalogBeforeResults) {
@@ -420,14 +424,16 @@ class TenantHomeAgendaController extends Object
       return;
     }
 
-    final cachedResolution = _locationOriginService.effectiveOriginStreamValue.value;
+    final cachedResolution =
+        _locationOriginService.effectiveOriginStreamValue.value;
     if (cachedResolution?.effectiveCoordinate != null) {
       _applyResolvedEffectiveOrigin(cachedResolution!);
       return;
     }
 
     try {
-      final resolution = await _locationOriginService.effectiveOriginStreamValue.stream
+      final resolution = await _locationOriginService
+          .effectiveOriginStreamValue.stream
           .firstWhere((value) => value?.effectiveCoordinate != null)
           .timeout(_initialCanonicalOriginSettleTimeout);
       if (resolution != null) {
@@ -968,20 +974,33 @@ class TenantHomeAgendaController extends Object
       return false;
     }
 
-    final runtimeCatalog = facets.applyToCatalog(_baselineDiscoveryFilterCatalog);
+    final selection = discoveryFilterSelectionStreamValue.value;
+    final preservePrimaryFilters = selection.primaryKeys.isNotEmpty;
+    final baselineCatalog =
+        preservePrimaryFilters && !_runtimePrimaryDiscoveryFilterCatalog.isEmpty
+            ? _runtimePrimaryDiscoveryFilterCatalog
+            : _baselineDiscoveryFilterCatalog;
+    final runtimeCatalog = facets.applyToCatalog(
+      baselineCatalog,
+      preservePrimaryFilters: preservePrimaryFilters,
+    );
+    if (!preservePrimaryFilters && !runtimeCatalog.isEmpty) {
+      _runtimePrimaryDiscoveryFilterCatalog = runtimeCatalog;
+    }
     if (!_sameDiscoveryFilterCatalog(
       discoveryFilterCatalogStreamValue.value,
       runtimeCatalog,
     )) {
-      _ifAlive(() => discoveryFilterCatalogStreamValue.addValue(runtimeCatalog));
+      _ifAlive(
+          () => discoveryFilterCatalogStreamValue.addValue(runtimeCatalog));
     }
 
     final repairedSelection = repairPublicDiscoveryFilterSelection(
-      discoveryFilterSelectionStreamValue.value,
+      selection,
       catalogOverride: runtimeCatalog,
     );
     if (samePublicDiscoveryFilterSelection(
-      discoveryFilterSelectionStreamValue.value,
+      selection,
       repairedSelection,
     )) {
       return false;

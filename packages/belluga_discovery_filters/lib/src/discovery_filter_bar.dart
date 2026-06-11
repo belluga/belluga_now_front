@@ -280,7 +280,8 @@ class _PrimaryFilterChip extends StatelessWidget {
                             color: palette.foregroundColor,
                           ),
                       const SizedBox(width: 8),
-                      Flexible(
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 220),
                         child: Text(
                           item.label,
                           overflow: TextOverflow.ellipsis,

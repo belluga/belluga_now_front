@@ -202,19 +202,14 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
     if (_controller.isPoiReferencePoint(poi)) {
       return;
     }
-    final confirmed = await _showReferencePointConfirmationDialog(poi);
-    if (!confirmed) {
-      return;
-    }
-    await _controller.setPoiAsReferencePoint(poi);
+    await _showReferencePointConfirmationDialog(poi);
   }
 
   Future<void> _handleClearReferencePointTap() async {
-    final confirmed = await _showClearReferencePointConfirmationDialog();
-    if (!mounted || !confirmed) {
+    if (!mounted) {
       return;
     }
-    await _controller.clearReferencePoint();
+    await _showClearReferencePointConfirmationDialog();
   }
 
   Future<bool> _showReferencePointConfirmationDialog(CityPoiModel poi) async {
@@ -226,58 +221,14 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
       context: context,
       useRootNavigator: false,
       builder: (dialogContext) {
-        return AlertDialog(
+        return _AsyncReferencePointDialog(
           key: const Key('poiReferencePointDialog'),
-          contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text.rich(
-                const TextSpan(
-                  text: 'Todas as ',
-                  children: [
-                    TextSpan(
-                      text: 'distâncias',
-                      style: TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                    TextSpan(text: ' serão '),
-                    TextSpan(
-                      text: 'calculadas',
-                      style: TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                    TextSpan(text: ' a partir desse local:'),
-                  ],
-                ),
-                key: const Key('poiReferencePointDialogCopy'),
-                style: Theme.of(dialogContext).textTheme.bodyLarge,
-              ),
-              const SizedBox(height: 16),
-              _buildReferencePointPreviewCard(
-                dialogContext,
-                poi: poi,
-                profile: profile,
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  key: const Key('poiReferencePointConfirmButton'),
-                  onPressed: () => dialogContext.router.maybePop(true),
-                  icon: const Icon(Icons.location_on_outlined),
-                  label: const Text('Usar como Ponto de Referência'),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Center(
-                child: TextButton(
-                  key: const Key('poiReferencePointCancelButton'),
-                  onPressed: () => dialogContext.router.maybePop(false),
-                  child: const Text('Cancelar'),
-                ),
-              ),
-            ],
+          previewCard: _buildReferencePointPreviewCard(
+            dialogContext,
+            poi: poi,
+            profile: profile,
           ),
+          onConfirm: () => _controller.setPoiAsReferencePoint(poi),
         );
       },
     );
@@ -289,43 +240,9 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
       context: context,
       useRootNavigator: false,
       builder: (dialogContext) {
-        return AlertDialog(
+        return _AsyncClearReferencePointDialog(
           key: const Key('poiClearReferencePointDialog'),
-          contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Cancelar ponto de referência?',
-                style: Theme.of(dialogContext).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'As distâncias voltarão a usar sua localização atual.',
-                style: Theme.of(dialogContext).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  key: const Key('poiClearReferencePointConfirmButton'),
-                  onPressed: () => dialogContext.router.maybePop(true),
-                  icon: const Icon(Icons.location_off_outlined),
-                  label: const Text('Cancelar ponto de referência'),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Center(
-                child: TextButton(
-                  onPressed: () => dialogContext.router.maybePop(false),
-                  child: const Text('Manter'),
-                ),
-              ),
-            ],
-          ),
+          onConfirm: _controller.clearReferencePoint,
         );
       },
     );
@@ -852,5 +769,208 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
   double _clampHeight(BuildContext context, double raw) {
     final maxHeight = _safeFallbackHeight(context);
     return raw.clamp(_minCardHeight, maxHeight);
+  }
+}
+
+class _AsyncReferencePointDialog extends StatefulWidget {
+  const _AsyncReferencePointDialog({
+    super.key,
+    required this.previewCard,
+    required this.onConfirm,
+  });
+
+  final Widget previewCard;
+  final Future<bool> Function() onConfirm;
+
+  @override
+  State<_AsyncReferencePointDialog> createState() =>
+      _AsyncReferencePointDialogState();
+}
+
+class _AsyncReferencePointDialogState
+    extends State<_AsyncReferencePointDialog> {
+  bool _isSubmitting = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text.rich(
+            const TextSpan(
+              text: 'Todas as ',
+              children: [
+                TextSpan(
+                  text: 'distâncias',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+                TextSpan(text: ' serão '),
+                TextSpan(
+                  text: 'calculadas',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+                TextSpan(text: ' a partir desse local:'),
+              ],
+            ),
+            key: const Key('poiReferencePointDialogCopy'),
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+          const SizedBox(height: 16),
+          widget.previewCard,
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              key: const Key('poiReferencePointConfirmButton'),
+              onPressed: _isSubmitting ? null : _handleConfirm,
+              icon: _isSubmitting
+                  ? _DialogProgressIcon(
+                      color: Theme.of(context).colorScheme.onPrimary,
+                    )
+                  : const Icon(Icons.location_on_outlined),
+              label: Text(
+                _isSubmitting
+                    ? 'Salvando referência...'
+                    : 'Usar como Ponto de Referência',
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Center(
+            child: TextButton(
+              key: const Key('poiReferencePointCancelButton'),
+              onPressed:
+                  _isSubmitting ? null : () => context.router.maybePop(false),
+              child: const Text('Cancelar'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleConfirm() async {
+    setState(() {
+      _isSubmitting = true;
+    });
+    final saved = await widget.onConfirm();
+    if (!mounted) {
+      return;
+    }
+    if (saved) {
+      await context.router.maybePop(true);
+      return;
+    }
+    setState(() {
+      _isSubmitting = false;
+    });
+  }
+}
+
+class _AsyncClearReferencePointDialog extends StatefulWidget {
+  const _AsyncClearReferencePointDialog({
+    super.key,
+    required this.onConfirm,
+  });
+
+  final Future<bool> Function() onConfirm;
+
+  @override
+  State<_AsyncClearReferencePointDialog> createState() =>
+      _AsyncClearReferencePointDialogState();
+}
+
+class _AsyncClearReferencePointDialogState
+    extends State<_AsyncClearReferencePointDialog> {
+  bool _isSubmitting = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Cancelar ponto de referência?',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'As distâncias voltarão a usar sua localização atual.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              key: const Key('poiClearReferencePointConfirmButton'),
+              onPressed: _isSubmitting ? null : _handleConfirm,
+              icon: _isSubmitting
+                  ? _DialogProgressIcon(
+                      color: Theme.of(context).colorScheme.onPrimary,
+                    )
+                  : const Icon(Icons.location_off_outlined),
+              label: Text(
+                _isSubmitting
+                    ? 'Removendo referência...'
+                    : 'Cancelar ponto de referência',
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Center(
+            child: TextButton(
+              onPressed:
+                  _isSubmitting ? null : () => context.router.maybePop(false),
+              child: const Text('Manter'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleConfirm() async {
+    setState(() {
+      _isSubmitting = true;
+    });
+    final cleared = await widget.onConfirm();
+    if (!mounted) {
+      return;
+    }
+    if (cleared) {
+      await context.router.maybePop(true);
+      return;
+    }
+    setState(() {
+      _isSubmitting = false;
+    });
+  }
+}
+
+class _DialogProgressIcon extends StatelessWidget {
+  const _DialogProgressIcon({
+    required this.color,
+  });
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 18,
+      height: 18,
+      child: CircularProgressIndicator(
+        strokeWidth: 2.2,
+        valueColor: AlwaysStoppedAnimation<Color>(color),
+      ),
+    );
   }
 }

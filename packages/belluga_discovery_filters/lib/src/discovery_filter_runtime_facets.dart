@@ -41,21 +41,28 @@ class DiscoveryFilterRuntimeFacets {
 
   bool get isEmpty => filterKeys.isEmpty && taxonomyOptionsByKey.isEmpty;
 
-  DiscoveryFilterCatalog applyToCatalog(DiscoveryFilterCatalog baseline) {
+  DiscoveryFilterCatalog applyToCatalog(
+    DiscoveryFilterCatalog baseline, {
+    bool preservePrimaryFilters = false,
+  }) {
     final normalizedKeys = filterKeys
         .map((value) => value.trim())
         .where((value) => value.isNotEmpty)
         .toSet();
 
-    final filters = baseline.filters
-        .where((item) => normalizedKeys.contains(item.key))
-        .toList(growable: false);
+    final filters = preservePrimaryFilters
+        ? baseline.filters.toList(growable: false)
+        : baseline.filters
+            .where((item) => normalizedKeys.contains(item.key))
+            .toList(growable: false);
 
     final typeOptionsByEntity = <String, List<DiscoveryFilterTypeOption>>{};
     for (final entry in baseline.typeOptionsByEntity.entries) {
-      final filtered = entry.value
-          .where((option) => normalizedKeys.contains(option.value))
-          .toList(growable: false);
+      final filtered = preservePrimaryFilters
+          ? entry.value.toList(growable: false)
+          : entry.value
+              .where((option) => normalizedKeys.contains(option.value))
+              .toList(growable: false);
       if (filtered.isNotEmpty) {
         typeOptionsByEntity[entry.key] = filtered;
       }

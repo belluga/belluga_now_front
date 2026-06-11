@@ -432,6 +432,54 @@ void main() {
     expect(selectedRect.right, lessThanOrEqualTo(viewportRect.right + 0.1));
   });
 
+  testWidgets('row primary layout keeps chips wider than icon-only pills',
+      (tester) async {
+    const rowCatalog = DiscoveryFilterCatalog(
+      surface: 'home.events',
+      filters: <DiscoveryFilterCatalogItem>[
+        DiscoveryFilterCatalogItem(
+          key: 'show',
+          label: 'Filtro de Show',
+          target: 'event_occurrence',
+          entities: <String>{'event'},
+        ),
+        DiscoveryFilterCatalogItem(
+          key: 'fair',
+          label: 'Filtro de Feira',
+          target: 'event_occurrence',
+          entities: <String>{'event'},
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      _NarrowHarness(
+        width: 360,
+        child: DiscoveryFilterBar(
+          catalog: rowCatalog,
+          selection: const DiscoveryFilterSelection(),
+          policy: const DiscoveryFilterPolicy(
+            primarySelectionMode: DiscoveryFilterSelectionMode.single,
+            primaryLayoutMode: DiscoveryFilterLayoutMode.row,
+          ),
+          onSelectionChanged: (_) {},
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    final firstRect = tester.getRect(
+      find.byKey(const ValueKey<String>('discoveryFilterPrimary_show')),
+    );
+    final secondRect = tester.getRect(
+      find.byKey(const ValueKey<String>('discoveryFilterPrimary_fair')),
+    );
+
+    expect(firstRect.width, greaterThan(96));
+    expect(secondRect.width, greaterThan(96));
+  });
+
   testWidgets('row taxonomy layout reveals the selected term inside viewport',
       (tester) async {
     await tester.pumpWidget(
@@ -475,9 +523,8 @@ void main() {
       'lib/src/discovery_filter_bar.dart',
       'packages/belluga_discovery_filters/lib/src/discovery_filter_bar.dart',
     ];
-    final sourceFile = candidates
-        .map(File.new)
-        .firstWhere((file) => file.existsSync());
+    final sourceFile =
+        candidates.map(File.new).firstWhere((file) => file.existsSync());
     final source = sourceFile.readAsStringSync();
 
     expect(source, isNot(contains('final chips = filters')));

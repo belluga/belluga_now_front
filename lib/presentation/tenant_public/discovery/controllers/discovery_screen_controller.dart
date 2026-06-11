@@ -92,6 +92,8 @@ class DiscoveryScreenController extends Object
   String? _lastOriginSignature;
   DiscoveryFilterCatalog _baselineDiscoveryFilterCatalog =
       const DiscoveryFilterCatalog(surface: _discoveryAccountProfilesSurface);
+  DiscoveryFilterCatalog _runtimePrimaryDiscoveryFilterCatalog =
+      const DiscoveryFilterCatalog(surface: _discoveryAccountProfilesSurface);
 
   final ScrollController scrollController = ScrollController();
   final searchQueryStreamValue = StreamValue<String>(defaultValue: '');
@@ -205,6 +207,8 @@ class DiscoveryScreenController extends Object
       restoredSelection: restoredSelection,
     ).then((_) {
       _baselineDiscoveryFilterCatalog = discoveryFilterCatalogStreamValue.value;
+      _runtimePrimaryDiscoveryFilterCatalog =
+          discoveryFilterCatalogStreamValue.value;
       _reconcileRuntimeDiscoveryFilterCatalog();
     });
     if (mustAwaitCatalogBeforeResults) {
@@ -715,7 +719,19 @@ class DiscoveryScreenController extends Object
       return false;
     }
 
-    final runtimeCatalog = facets.applyToCatalog(_baselineDiscoveryFilterCatalog);
+    final selection = discoveryFilterSelectionStreamValue.value;
+    final preservePrimaryFilters = selection.primaryKeys.isNotEmpty;
+    final baselineCatalog =
+        preservePrimaryFilters && !_runtimePrimaryDiscoveryFilterCatalog.isEmpty
+            ? _runtimePrimaryDiscoveryFilterCatalog
+            : _baselineDiscoveryFilterCatalog;
+    final runtimeCatalog = facets.applyToCatalog(
+      baselineCatalog,
+      preservePrimaryFilters: preservePrimaryFilters,
+    );
+    if (!preservePrimaryFilters && !runtimeCatalog.isEmpty) {
+      _runtimePrimaryDiscoveryFilterCatalog = runtimeCatalog;
+    }
     if (!_sameDiscoveryFilterCatalog(
       discoveryFilterCatalogStreamValue.value,
       runtimeCatalog,
@@ -724,11 +740,11 @@ class DiscoveryScreenController extends Object
     }
 
     final repairedSelection = repairPublicDiscoveryFilterSelection(
-      discoveryFilterSelectionStreamValue.value,
+      selection,
       catalogOverride: runtimeCatalog,
     );
     if (samePublicDiscoveryFilterSelection(
-      discoveryFilterSelectionStreamValue.value,
+      selection,
       repairedSelection,
     )) {
       return false;

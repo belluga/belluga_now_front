@@ -148,6 +148,11 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<void> init() async {}
 
   @override
+  Future<void> ensureTenantPublicIdentityReady() async {
+    await init();
+  }
+
+  @override
   Future<void> autoLogin() async {}
 
   @override

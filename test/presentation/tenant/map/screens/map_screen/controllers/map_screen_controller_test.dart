@@ -511,6 +511,8 @@ class _FakeProximityPreferencesRepository
   _FakeProximityPreferencesRepository({
     FixedLocationReference? fixedReference,
     bool? useReferencePointForRoutes,
+    this.setFixedReferenceCompleter,
+    this.clearFixedReferenceCompleter,
   }) {
     lastPolicy = useReferencePointForRoutes;
     if (fixedReference != null) {
@@ -525,12 +527,18 @@ class _FakeProximityPreferencesRepository
   FixedLocationReference? lastFixedReference;
   int clearFixedReferenceCalls = 0;
   bool? lastPolicy;
+  Completer<void>? setFixedReferenceCompleter;
+  Completer<void>? clearFixedReferenceCompleter;
 
   @override
   Future<void> setFixedReference({
     required FixedLocationReference fixedReference,
   }) async {
     lastFixedReference = fixedReference;
+    final completer = setFixedReferenceCompleter;
+    if (completer != null && !completer.isCompleted) {
+      await completer.future;
+    }
     setCurrentPreference(_preferenceWith(fixedReference));
   }
 
@@ -538,6 +546,10 @@ class _FakeProximityPreferencesRepository
   Future<void> clearFixedReference() async {
     clearFixedReferenceCalls += 1;
     lastFixedReference = null;
+    final completer = clearFixedReferenceCompleter;
+    if (completer != null && !completer.isCompleted) {
+      await completer.future;
+    }
     setCurrentPreference(
       ProximityPreference(
         maxDistanceMetersValue: DistanceInMetersValue.fromRaw(25000),
@@ -5746,6 +5758,79 @@ void main() {
           find.byKey(const Key('poiCardSetReferencePointButton')),
           findsOneWidget,
         );
+
+        await localController.onDispose();
+      },
+    );
+
+    testWidgets(
+      'map reference point modal stays open until the preference write finishes',
+      (tester) async {
+        final pendingWrite = Completer<void>();
+        final localAccountProfilesRepository = _FakeAccountProfilesRepository();
+        final localStaticAssetsRepository = _FakeStaticAssetsRepository();
+        localAccountProfilesRepository.profilesBySlug['casa-marracini'] =
+            buildAccountProfileModelFromPrimitives(
+          id: '507f1f77bcf86cd799439011',
+          name: 'Casa Marracini',
+          slug: 'casa-marracini',
+          type: 'artist',
+          locationLat: -20.7389,
+          locationLng: -40.8212,
+        );
+        final localProximityRepository = _FakeProximityPreferencesRepository(
+          setFixedReferenceCompleter: pendingWrite,
+        );
+        final localPoiRepository = _buildPoiRepository(
+          mapRepository: mapRepository,
+          accountProfilesRepository: localAccountProfilesRepository,
+          staticAssetsRepository: localStaticAssetsRepository,
+        );
+        final localController = _buildMapController(
+          poiRepository: localPoiRepository,
+          userLocationRepository: userLocationRepository,
+          telemetryRepository: telemetry,
+          appData: _buildAppData(artistReferenceLocationEnabled: true),
+          proximityPreferencesRepository: localProximityRepository,
+        );
+        final poi = _buildPoi(
+          id: 'poi-partner',
+          name: 'Casa Marracini',
+          refType: 'account_profile',
+          refId: '507f1f77bcf86cd799439011',
+          refSlug: 'casa-marracini',
+          refPath: '/parceiro/casa-marracini',
+          category: CityPoiCategory.restaurant,
+        );
+
+        await localPoiRepository.ensurePoiHydrated(poi);
+        localController.selectPoi(poi);
+
+        await _pumpPoiDetailDeckWithAutoRouter(
+          tester,
+          controller: localController,
+        );
+
+        await tester.tap(
+          find.byKey(const Key('poiCardSetReferencePointButton')),
+        );
+        await tester.pumpAndSettle();
+
+        await tester
+            .tap(find.byKey(const Key('poiReferencePointConfirmButton')));
+        await tester.pump();
+
+        expect(
+            find.byKey(const Key('poiReferencePointDialog')), findsOneWidget);
+        expect(find.text('Salvando referência...'), findsOneWidget);
+        expect(find.text('Usar como Ponto de Referência'), findsNothing);
+        expect(find.text('Ponto de referência'), findsNothing);
+
+        pendingWrite.complete();
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('poiReferencePointDialog')), findsNothing);
+        expect(find.text('Ponto de referência'), findsOneWidget);
 
         await localController.onDispose();
       },
