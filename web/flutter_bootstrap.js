@@ -37,7 +37,7 @@ __progressUpdate(10);
 _flutter.loader.load({
   serviceWorkerSettings: {
     serviceWorkerVersion:
-      __bellugaBuildSha.length > 0 ? __bellugaBuildSha : 'bootstrap-cleanup-v1',
+      __bellugaBuildSha.length > 0 ? __bellugaBuildSha : undefined,
   },
   onEntrypointLoaded: async function(engineInitializer) {
     __progressLabel('Inicializando engine...');
