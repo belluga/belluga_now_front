@@ -512,7 +512,6 @@ class _FakeProximityPreferencesRepository
     FixedLocationReference? fixedReference,
     bool? useReferencePointForRoutes,
     this.setFixedReferenceCompleter,
-    this.clearFixedReferenceCompleter,
   }) {
     lastPolicy = useReferencePointForRoutes;
     if (fixedReference != null) {

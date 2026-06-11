@@ -789,85 +789,87 @@ class _AsyncReferencePointDialog extends StatefulWidget {
 
 class _AsyncReferencePointDialogState
     extends State<_AsyncReferencePointDialog> {
-  bool _isSubmitting = false;
+  late final _AsyncDialogSubmissionNotifier _submissionNotifier =
+      _AsyncDialogSubmissionNotifier(
+        onSuccess: () => unawaited(context.router.maybePop(true)),
+      );
+
+  @override
+  void dispose() {
+    _submissionNotifier.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text.rich(
-            const TextSpan(
-              text: 'Todas as ',
-              children: [
-                TextSpan(
-                  text: 'distâncias',
-                  style: TextStyle(fontWeight: FontWeight.w800),
+    return ListenableBuilder(
+      listenable: _submissionNotifier,
+      builder: (context, _) {
+        final isSubmitting = _submissionNotifier.isSubmitting;
+        return AlertDialog(
+          contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text.rich(
+                const TextSpan(
+                  text: 'Todas as ',
+                  children: [
+                    TextSpan(
+                      text: 'distâncias',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    TextSpan(text: ' serão '),
+                    TextSpan(
+                      text: 'calculadas',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    TextSpan(text: ' a partir desse local:'),
+                  ],
                 ),
-                TextSpan(text: ' serão '),
-                TextSpan(
-                  text: 'calculadas',
-                  style: TextStyle(fontWeight: FontWeight.w800),
-                ),
-                TextSpan(text: ' a partir desse local:'),
-              ],
-            ),
-            key: const Key('poiReferencePointDialogCopy'),
-            style: Theme.of(context).textTheme.bodyLarge,
-          ),
-          const SizedBox(height: 16),
-          widget.previewCard,
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              key: const Key('poiReferencePointConfirmButton'),
-              onPressed: _isSubmitting ? null : _handleConfirm,
-              icon: _isSubmitting
-                  ? _DialogProgressIcon(
-                      color: Theme.of(context).colorScheme.onPrimary,
-                    )
-                  : const Icon(Icons.location_on_outlined),
-              label: Text(
-                _isSubmitting
-                    ? 'Salvando referência...'
-                    : 'Usar como Ponto de Referência',
+                key: const Key('poiReferencePointDialogCopy'),
+                style: Theme.of(context).textTheme.bodyLarge,
               ),
-            ),
+              const SizedBox(height: 16),
+              widget.previewCard,
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  key: const Key('poiReferencePointConfirmButton'),
+                  onPressed: isSubmitting ? null : _handleConfirm,
+                  icon: isSubmitting
+                      ? _DialogProgressIcon(
+                          color: Theme.of(context).colorScheme.onPrimary,
+                        )
+                      : const Icon(Icons.location_on_outlined),
+                  label: Text(
+                    isSubmitting
+                        ? 'Salvando referência...'
+                        : 'Usar como Ponto de Referência',
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: TextButton(
+                  key: const Key('poiReferencePointCancelButton'),
+                  onPressed: isSubmitting
+                      ? null
+                      : () => context.router.maybePop(false),
+                  child: const Text('Cancelar'),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Center(
-            child: TextButton(
-              key: const Key('poiReferencePointCancelButton'),
-              onPressed:
-                  _isSubmitting ? null : () => context.router.maybePop(false),
-              child: const Text('Cancelar'),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Future<void> _handleConfirm() async {
-    setState(() {
-      _isSubmitting = true;
-    });
-    final saved = await widget.onConfirm();
-    if (!mounted) {
-      return;
-    }
-    if (saved) {
-      await context.router.maybePop(true);
-      return;
-    }
-    setState(() {
-      _isSubmitting = false;
-    });
-  }
+  Future<void> _handleConfirm() =>
+      _submissionNotifier.submit(widget.onConfirm);
 }
 
 class _AsyncClearReferencePointDialog extends StatefulWidget {
@@ -885,73 +887,120 @@ class _AsyncClearReferencePointDialog extends StatefulWidget {
 
 class _AsyncClearReferencePointDialogState
     extends State<_AsyncClearReferencePointDialog> {
-  bool _isSubmitting = false;
+  late final _AsyncDialogSubmissionNotifier _submissionNotifier =
+      _AsyncDialogSubmissionNotifier(
+        onSuccess: () => unawaited(context.router.maybePop(true)),
+      );
+
+  @override
+  void dispose() {
+    _submissionNotifier.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Cancelar ponto de referência?',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'As distâncias voltarão a usar sua localização atual.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              key: const Key('poiClearReferencePointConfirmButton'),
-              onPressed: _isSubmitting ? null : _handleConfirm,
-              icon: _isSubmitting
-                  ? _DialogProgressIcon(
-                      color: Theme.of(context).colorScheme.onPrimary,
-                    )
-                  : const Icon(Icons.location_off_outlined),
-              label: Text(
-                _isSubmitting
-                    ? 'Removendo referência...'
-                    : 'Cancelar ponto de referência',
+    return ListenableBuilder(
+      listenable: _submissionNotifier,
+      builder: (context, _) {
+        final isSubmitting = _submissionNotifier.isSubmitting;
+        return AlertDialog(
+          contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Cancelar ponto de referência?',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
               ),
-            ),
+              const SizedBox(height: 8),
+              Text(
+                'As distâncias voltarão a usar sua localização atual.',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  key: const Key('poiClearReferencePointConfirmButton'),
+                  onPressed: isSubmitting ? null : _handleConfirm,
+                  icon: isSubmitting
+                      ? _DialogProgressIcon(
+                          color: Theme.of(context).colorScheme.onPrimary,
+                        )
+                      : const Icon(Icons.location_off_outlined),
+                  label: Text(
+                    isSubmitting
+                        ? 'Removendo referência...'
+                        : 'Cancelar ponto de referência',
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: TextButton(
+                  onPressed: isSubmitting
+                      ? null
+                      : () => context.router.maybePop(false),
+                  child: const Text('Manter'),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Center(
-            child: TextButton(
-              onPressed:
-                  _isSubmitting ? null : () => context.router.maybePop(false),
-              child: const Text('Manter'),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Future<void> _handleConfirm() async {
-    setState(() {
-      _isSubmitting = true;
-    });
-    final cleared = await widget.onConfirm();
-    if (!mounted) {
+  Future<void> _handleConfirm() =>
+      _submissionNotifier.submit(widget.onConfirm);
+}
+
+final class _AsyncDialogSubmissionNotifier extends ChangeNotifier {
+  _AsyncDialogSubmissionNotifier({
+    required VoidCallback onSuccess,
+  }) : _onSuccess = onSuccess;
+
+  final VoidCallback _onSuccess;
+  bool _isDisposed = false;
+  bool _isSubmitting = false;
+
+  bool get isSubmitting => _isSubmitting;
+
+  Future<void> submit(Future<bool> Function() action) async {
+    if (_isSubmitting) {
       return;
     }
-    if (cleared) {
-      await context.router.maybePop(true);
+
+    _isSubmitting = true;
+    _notifyListenersSafely();
+
+    final didSucceed = await action();
+    if (_isDisposed) {
       return;
     }
-    setState(() {
-      _isSubmitting = false;
-    });
+
+    _isSubmitting = false;
+    _notifyListenersSafely();
+    if (didSucceed) {
+      _onSuccess();
+    }
+  }
+
+  void _notifyListenersSafely() {
+    if (_isDisposed) {
+      return;
+    }
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
   }
 }
 
