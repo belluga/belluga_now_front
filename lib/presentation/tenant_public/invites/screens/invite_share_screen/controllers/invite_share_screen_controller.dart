@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:belluga_now/application/invites/invite_contact_import_hashes.dart';
+import 'package:belluga_now/application/sharing/invite_share_uri_builder.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
@@ -748,13 +749,12 @@ class InviteShareScreenController with Disposable {
   }
 
   Uri? buildShareUri(InviteShareCodeResult? shareCode) {
-    if (shareCode == null || shareCode.code.trim().isEmpty) {
-      return null;
-    }
-    final origin = _appData.mainDomainValue.value.origin;
-    final base = origin.toString().replaceFirst(RegExp(r'/$'), '');
-    return Uri.parse(
-      '$base/invite?code=${Uri.encodeQueryComponent(shareCode.code)}',
+    final invite = _currentInvite;
+    return buildInviteShareUri(
+      origin: _appData.mainDomainValue.value.origin,
+      shareCode: shareCode?.code,
+      eventSlug: invite?.eventSlug,
+      occurrenceId: invite?.occurrenceId,
     );
   }
 

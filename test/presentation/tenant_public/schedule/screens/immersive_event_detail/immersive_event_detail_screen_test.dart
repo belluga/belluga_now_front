@@ -604,7 +604,9 @@ void main() {
       expect(sharedTexts.single, contains('Responder ao convite:'));
       expect(
         sharedTexts.single,
-        contains('https://tenant.test/invite?code=CODE123'),
+        contains(
+          'https://tenant.test/invite?code=CODE123&fallback=%2Fagenda%2Fevento%2Fevento-de-teste%3Foccurrence%3Doccurrence-selected',
+        ),
       );
       expect(
         sharedTexts.single,
@@ -762,7 +764,12 @@ void main() {
       final text = launchedUris.single.queryParameters['text']!;
       expect(text, startsWith('Convite para Evento de Teste.'));
       expect(text, contains('Responder ao convite:'));
-      expect(text, contains('https://tenant.test/invite?code=CODE123'));
+      expect(
+        text,
+        contains(
+          'https://tenant.test/invite?code=CODE123&fallback=%2Fagenda%2Fevento%2Fevento-de-teste%3Foccurrence%3Doccurrence-selected',
+        ),
+      );
       expect(text, isNot(contains('/agenda/evento/')));
       expect(text, isNot(contains('Detalhes:')));
       expect(text, isNot(contains('Como chegar:')));

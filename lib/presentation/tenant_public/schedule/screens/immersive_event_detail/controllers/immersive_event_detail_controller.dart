@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belluga_now/application/sharing/invite_share_uri_builder.dart';
 import 'package:belluga_now/application/schedule/event_selected_occurrence_projection.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
@@ -599,18 +600,12 @@ class ImmersiveEventDetailController implements Disposable {
   }
 
   Uri? buildShareUri(InviteShareCodeResult? shareCode) {
-    if (shareCode == null || shareCode.code.trim().isEmpty) {
-      return null;
-    }
-
-    final origin = _appDataRepository?.appData.mainDomainValue.value.origin;
-    if (origin == null) {
-      return null;
-    }
-
-    final base = origin.toString().replaceFirst(RegExp(r'/$'), '');
-    return Uri.parse(
-      '$base/invite?code=${Uri.encodeQueryComponent(shareCode.code)}',
+    final event = eventStreamValue.value;
+    return buildInviteShareUri(
+      origin: _appDataRepository?.appData.mainDomainValue.value.origin,
+      shareCode: shareCode?.code,
+      eventSlug: event?.slug,
+      occurrenceId: event?.selectedOccurrenceId,
     );
   }
 

@@ -12,7 +12,6 @@ import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/widgets/invite_hero_card.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/widgets/invite_candidate_picker.dart';
-import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_screen_controller.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/widgets/app_promotion_modal.dart';
 import 'package:belluga_now/presentation/shared/widgets/route_back_scope.dart';
 import 'package:flutter/foundation.dart';
@@ -90,10 +89,7 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
     }
 
     if (invites.isEmpty) {
-      if (widget.isWebRuntime && !_controller.isAuthorized) {
-        return _buildWebPromotionFallback();
-      }
-      return const SizedBox.shrink();
+      return const Center(child: CircularProgressIndicator());
     }
 
     return StreamValueBuilder<Set<String>>(
@@ -118,10 +114,6 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
 
   void _handlePendingInvites(List<InviteModel> invites) {
     if (!widget.isInitialized) {
-      return;
-    }
-    if (widget.isWebRuntime && !_controller.isAuthorized && invites.isEmpty) {
-      _exitHandled = false;
       return;
     }
     if (invites.isNotEmpty) {
@@ -240,24 +232,6 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
         pendingPath == null || pendingPath.isEmpty ? '/invite' : pendingPath;
     final encodedRedirect = Uri.encodeQueryComponent(normalizedPath);
     context.router.pushPath('/auth/login?redirect=$encodedRedirect');
-  }
-
-  Widget _buildWebPromotionFallback() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 420),
-          child: AppPromotionModal(
-            controller: GetIt.I.get<AppPromotionScreenController>(),
-            redirectPath: _promotionRedirectPath(),
-            title: 'Aceite convites pelo app',
-            supportingText:
-                'Use o app para confirmar presença, enviar convites e acompanhar seus eventos.',
-          ),
-        ),
-      ),
-    );
   }
 
   Future<void> _showWebInviteDecisionPromotion({

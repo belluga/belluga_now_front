@@ -1046,7 +1046,9 @@ void main() {
       expect(launchedUris.single.path, '/5527988887777');
       expect(
         launchedUris.single.queryParameters['text'],
-        contains('https://tenant.test/invite?code=SHARE-CODE'),
+        contains(
+          'https://tenant.test/invite?code=SHARE-CODE&fallback=%2Fagenda%2Fevento%2Fevento-teste%3Foccurrence%3Doccurrence-1',
+        ),
       );
       expect(launchedModes.single, LaunchMode.externalApplication);
       expect(sharedParams, isEmpty);
@@ -1106,7 +1108,9 @@ void main() {
     expect(sharedParams, hasLength(1));
     expect(
       sharedParams.single.text,
-      contains('https://tenant.test/invite?code=SHARE-CODE'),
+      contains(
+        'https://tenant.test/invite?code=SHARE-CODE&fallback=%2Fagenda%2Fevento%2Fevento-teste%3Foccurrence%3Doccurrence-1',
+      ),
     );
     expect(
       sharedParams.single.text,
@@ -1120,7 +1124,9 @@ void main() {
     expect(sharedParams.single.text, contains('Responder ao convite:'));
     expect(
       sharedParams.single.text,
-      contains('https://tenant.test/invite?code=SHARE-CODE'),
+      contains(
+        'https://tenant.test/invite?code=SHARE-CODE&fallback=%2Fagenda%2Fevento%2Fevento-teste%3Foccurrence%3Doccurrence-1',
+      ),
     );
     expect(sharedParams.single.text, isNot(contains('Detalhes:')));
     expect(sharedParams.single.text, isNot(contains('Como chegar:')));
@@ -1182,7 +1188,9 @@ void main() {
       expect(sharedParams, hasLength(1));
       expect(
         sharedParams.single.text,
-        contains('https://tenant.test/invite?code=SHARE-CODE'),
+        contains(
+          'https://tenant.test/invite?code=SHARE-CODE&fallback=%2Fagenda%2Fevento%2Fevento-teste%3Foccurrence%3Doccurrence-1',
+        ),
       );
     },
   );
@@ -1506,6 +1514,7 @@ InviteModel _buildInvite() {
   return buildInviteModelFromPrimitives(
     id: 'invite-1',
     eventId: 'event-1',
+    eventSlug: 'evento-teste',
     eventName: 'Evento Teste',
     occurrenceId: 'occurrence-1',
     eventDateTime: DateTime(2026, 3, 13, 20),
@@ -1532,6 +1541,7 @@ InviteModel _buildInviteWithShareContext() {
   return buildInviteModelFromPrimitives(
     id: 'invite-1',
     eventId: 'event-1',
+    eventSlug: 'evento-teste',
     eventName: 'Evento Teste',
     occurrenceId: 'occurrence-1',
     eventDateTime: DateTime(2026, 3, 13, 20),

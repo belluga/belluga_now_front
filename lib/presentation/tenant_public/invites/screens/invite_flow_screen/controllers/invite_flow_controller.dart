@@ -257,7 +257,7 @@ class InviteFlowScreenController with Disposable {
   Future<String?> resolveFallbackNavigationPath(String? rawFallbackPath) async {
     final fallbackPath = rawFallbackPath?.trim();
     if (fallbackPath == null || fallbackPath.isEmpty) {
-      return null;
+      return '/';
     }
 
     final eventFallback = _parseEventFallbackPath(fallbackPath);
