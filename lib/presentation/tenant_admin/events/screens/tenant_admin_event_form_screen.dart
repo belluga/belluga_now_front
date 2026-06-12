@@ -734,23 +734,39 @@ class _TenantAdminEventFormScreenState
                 );
 
                 Future<void> pickVenue() async {
-                  final selected =
-                      await showTenantAdminAccountProfileLocationPickerSheet(
-                    context: context,
-                    venues: venues,
-                    selectedLocationProfileId: formState.selectedVenueId,
-                    title: 'Local do evento',
-                    subtitle:
-                        'Selecione o perfil anfitrião físico deste evento.',
-                    keyPrefix: 'tenantAdminEventLocation',
-                    closeModalSheet: _closeModalSheet,
-                    includeEmptyOption: false,
-                  );
-                  if (selected == null) {
+                  await _controller.ensureVenueCandidatesReady();
+                  if (!context.mounted) {
                     return;
                   }
-                  _controller.updateEventVenueSelection(selected);
-                  state.didChange(selected);
+                  final currentVenues =
+                      _controller.venueCandidatesStreamValue.value;
+                  if (currentVenues.isEmpty) {
+                    return;
+                  }
+
+                  Future<void> openVenuePicker(
+                    List<TenantAdminAccountProfile> venues,
+                  ) async {
+                    final selected =
+                        await showTenantAdminAccountProfileLocationPickerSheet(
+                    context: context,
+                      venues: venues,
+                      selectedLocationProfileId: formState.selectedVenueId,
+                      title: 'Local do evento',
+                      subtitle:
+                          'Selecione o perfil anfitrião físico deste evento.',
+                      keyPrefix: 'tenantAdminEventLocation',
+                      closeModalSheet: _closeModalSheet,
+                      includeEmptyOption: false,
+                    );
+                    if (selected == null) {
+                      return;
+                    }
+                    _controller.updateEventVenueSelection(selected);
+                    state.didChange(selected);
+                  }
+
+                  await openVenuePicker(currentVenues);
                 }
 
                 return Column(

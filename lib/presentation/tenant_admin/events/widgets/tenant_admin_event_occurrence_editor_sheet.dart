@@ -551,12 +551,20 @@ class _TenantAdminEventProgrammingItemEditorSheetState
     );
   }
 
+  List<TenantAdminAccountProfile> get _currentVenues {
+    final liveVenues = widget.controller.venueCandidatesStreamValue.value;
+    if (liveVenues.isNotEmpty) {
+      return liveVenues;
+    }
+    return widget.venues;
+  }
+
   String get _selectedLocationLabel {
     final selectedId = _draft.selectedLocationProfileId;
     if (selectedId == null || selectedId.isEmpty) {
       return 'Sem local específico';
     }
-    for (final venue in widget.venues) {
+    for (final venue in _currentVenues) {
       if (venue.id == selectedId) {
         return venue.displayName;
       }
@@ -674,9 +682,27 @@ class _TenantAdminEventProgrammingItemEditorSheetState
   }
 
   Future<void> _pickProgrammingLocation() async {
+    await widget.controller.ensureVenueCandidatesReady();
+    if (!mounted) {
+      return;
+    }
+    final venues = _currentVenues;
+    if (venues.isEmpty) {
+      setState(() {
+        _errorMessage = widget
+                    .controller.accountProfileCandidatesErrorStreamValue.value
+                    ?.trim()
+                    .isNotEmpty ==
+                true
+            ? widget.controller.accountProfileCandidatesErrorStreamValue.value
+            : 'Nenhum local disponível para seleção no momento.';
+      });
+      return;
+    }
+
     final selected = await showTenantAdminAccountProfileLocationPickerSheet(
       context: context,
-      venues: widget.venues,
+      venues: venues,
       selectedLocationProfileId: _draft.selectedLocationProfileId,
       title: 'Local da programação',
       subtitle: 'Selecione um local específico para este item de programação.',

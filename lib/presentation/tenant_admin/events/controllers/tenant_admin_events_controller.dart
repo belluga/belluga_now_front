@@ -279,6 +279,7 @@ class TenantAdminEventsController implements Disposable {
   VoidCallback? _eventTypeNameSyncListener;
   Timer? _accountProfilePickerDebounce;
   String? _accountProfilePickerAccountSlug;
+  String? _formAccountProfileCandidatesAccountSlug;
   int _accountProfilePickerCurrentPage = 0;
   int _accountProfilePickerRequestToken = 0;
   int _eventFormLocalIdSerial = 0;
@@ -1847,6 +1848,7 @@ class TenantAdminEventsController implements Disposable {
     String? accountSlug,
   }) async {
     final normalizedAccountSlug = _normalizeOptionalText(accountSlug);
+    _formAccountProfileCandidatesAccountSlug = normalizedAccountSlug;
     final cleanBaselineBeforeLoad = _eventFormInitialFingerprint;
     final tasks = <Future<void>>[
       _loadEventTypeCatalog(),
@@ -1865,6 +1867,18 @@ class TenantAdminEventsController implements Disposable {
         markEventFormClean();
       }
     }
+  }
+
+  Future<void> ensureVenueCandidatesReady() async {
+    await _waitForAccountProfileCandidatesLoad();
+    if (_isDisposed || venueCandidatesStreamValue.value.isNotEmpty) {
+      return;
+    }
+
+    await _loadAccountProfileCandidates(
+      accountSlug: _formAccountProfileCandidatesAccountSlug,
+    );
+    await _waitForAccountProfileCandidatesLoad();
   }
 
   Future<void> _loadEventTypeCatalog() async {
@@ -2206,6 +2220,12 @@ class TenantAdminEventsController implements Disposable {
     );
   }
 
+  Future<void> _waitForAccountProfileCandidatesLoad() async {
+    while (accountProfileCandidatesLoadingStreamValue.value) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+  }
+
   void _scheduleAccountProfilePickerReload({
     required bool immediate,
   }) {
@@ -2501,6 +2521,7 @@ class TenantAdminEventsController implements Disposable {
     _submitInFlight = false;
     _accountProfilePickerDebounce?.cancel();
     _accountProfilePickerAccountSlug = null;
+    _formAccountProfileCandidatesAccountSlug = null;
     _accountProfilePickerCurrentPage = 0;
     _accountProfilePickerRequestToken = 0;
     _accountProfilePickerType = null;
