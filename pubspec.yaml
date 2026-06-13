@@ -89,13 +89,14 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+    - assets/brands/directions/
     - assets/images/
     - assets/images/store_badges/
     - assets/mock/
   fonts:
     - family: BooraIcons
       fonts:
-        - asset: assets/fonts/BooraIcons-8880a991.ttf
+        - asset: assets/fonts/BooraIcons-ccb87576.ttf
     - family: Boora
       fonts:
-        - asset: assets/fonts/BooraIcons-8880a991.ttf
+        - asset: assets/fonts/BooraIcons-ccb87576.ttf

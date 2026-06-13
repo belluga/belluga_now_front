@@ -159,6 +159,86 @@ void main() {
     expect(find.text('Do tenant'), findsOneWidget);
   });
 
+  testWidgets(
+      'hides nested group editor and omits nested payload when capability is disabled',
+      (tester) async {
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+    profilesRepository.profileTypesToReturn = [
+      _profileType(hasNestedProfileGroups: false),
+    ];
+    profilesRepository.profileToReturn = _profile(
+      id: 'route-profile',
+      nestedProfileGroups: [_nestedGroup()],
+    );
+
+    await _pumpScreen(
+      tester,
+      TenantAdminAccountProfileEditScreen(
+        accountSlug: 'route-account',
+        accountProfileId: 'route-profile',
+      ),
+    );
+
+    expect(find.text('Abas de contas vinculadas'), findsNothing);
+    expect(
+      find.byKey(const Key('tenantAdminEditAddNestedGroupButton')),
+      findsNothing,
+    );
+
+    final scrollable = find.byType(Scrollable).first;
+    await tester.scrollUntilVisible(
+      find.text('Salvar alteracoes'),
+      200,
+      scrollable: scrollable,
+    );
+    await tester.tap(find.text('Salvar alteracoes'));
+    await tester.pumpAndSettle();
+
+    expect(profilesRepository.lastNestedProfileGroups, isNull);
+  });
+
+  testWidgets('renders nested group selector when capability is enabled',
+      (tester) async {
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+    profilesRepository.profileTypesToReturn = [
+      _profileType(hasNestedProfileGroups: true),
+    ];
+    profilesRepository.profileToReturn = _profile(
+      id: 'route-profile',
+      nestedProfileGroups: [_nestedGroup()],
+    );
+    profilesRepository.profilesToReturn = [
+      _profile(
+        id: 'profile-partner',
+        displayName: 'Conta Parceira',
+        profileType: 'poi',
+      ),
+    ];
+
+    await _pumpScreen(
+      tester,
+      TenantAdminAccountProfileEditScreen(
+        accountSlug: 'route-account',
+        accountProfileId: 'route-profile',
+      ),
+    );
+
+    final scrollable = find.byType(Scrollable).first;
+    await tester.scrollUntilVisible(
+      find.text('Abas de contas vinculadas'),
+      200,
+      scrollable: scrollable,
+    );
+
+    expect(find.text('Abas de contas vinculadas'), findsOneWidget);
+    expect(find.text('Conta Parceira'), findsOneWidget);
+    expect(find.text('1 Account(s) selecionada(s)'), findsOneWidget);
+  });
+
   testWidgets('sends explicit remove avatar flag when clearing persisted media',
       (tester) async {
     final profilesRepository =
@@ -269,6 +349,8 @@ class _FakeAccountsRepository extends TenantAdminAccountsRepositoryContract {
     TenantAdminAccountsRepositoryContractPrimString? content,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup> nestedProfileGroups =
+        const <TenantAdminNestedProfileGroup>[],
   }) {
     throw UnimplementedError();
   }
@@ -310,12 +392,19 @@ class _FakeAccountProfilesRepository
   TenantAdminAccountProfile profileToReturn = _profile(id: 'default-profile');
   bool? lastRemoveAvatar;
   bool? lastRemoveCover;
+  List<TenantAdminProfileTypeDefinition> profileTypesToReturn = [
+    _profileType(hasNestedProfileGroups: false),
+  ];
+  List<TenantAdminAccountProfile> profilesToReturn = [];
+  List<TenantAdminNestedProfileGroup>? lastNestedProfileGroups;
 
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
     TenantAdminAccountProfilesRepoString? accountId,
+    TenantAdminAccountProfilesRepoBool? queryableOnly,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async {
-    return [];
+    return profilesToReturn;
   }
 
   @override
@@ -328,28 +417,15 @@ class _FakeAccountProfilesRepository
       id: accountProfileId.value,
       avatarUrl: profileToReturn.avatarUrl,
       coverUrl: profileToReturn.coverUrl,
+      displayName: profileToReturn.displayName,
+      profileType: profileToReturn.profileType,
+      nestedProfileGroups: profileToReturn.nestedProfileGroups,
     );
   }
 
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async {
-    return [
-      tenantAdminProfileTypeDefinitionFromRaw(
-        type: 'poi',
-        label: 'POI',
-        allowedTaxonomies: [],
-        capabilities: TenantAdminProfileTypeCapabilities(
-          isFavoritable: TenantAdminFlagValue(false),
-          isPoiEnabled: TenantAdminFlagValue(false),
-          hasBio: TenantAdminFlagValue(false),
-          hasContent: TenantAdminFlagValue(false),
-          hasTaxonomies: TenantAdminFlagValue(false),
-          hasAvatar: TenantAdminFlagValue(true),
-          hasCover: TenantAdminFlagValue(true),
-          hasEvents: TenantAdminFlagValue(false),
-        ),
-      ),
-    ];
+    return profileTypesToReturn;
   }
 
   @override
@@ -375,6 +451,8 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup> nestedProfileGroups =
+        const <TenantAdminNestedProfileGroup>[],
   }) {
     throw UnimplementedError();
   }
@@ -395,9 +473,11 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoBool? removeCover,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
   }) async {
     lastRemoveAvatar = removeAvatar?.value;
     lastRemoveCover = removeCover?.value;
+    lastNestedProfileGroups = nestedProfileGroups;
     profileToReturn = tenantAdminAccountProfileFromRaw(
       id: accountProfileId.value,
       accountId: profileToReturn.accountId,
@@ -414,6 +494,8 @@ class _FakeAccountProfilesRepository
       content: content?.value ?? profileToReturn.content,
       location: location ?? profileToReturn.location,
       taxonomyTerms: taxonomyTerms ?? profileToReturn.taxonomyTerms,
+      nestedProfileGroups:
+          nestedProfileGroups ?? profileToReturn.nestedProfileGroups,
       ownershipState: profileToReturn.ownershipState,
     );
     return profileToReturn;
@@ -546,18 +628,55 @@ class _FakeExternalImageProxy implements TenantAdminExternalImageProxyContract {
 
 TenantAdminAccountProfile _profile({
   required String id,
+  String? displayName,
+  String profileType = 'poi',
   String? avatarUrl,
   String? coverUrl,
+  List<TenantAdminNestedProfileGroup> nestedProfileGroups =
+      const <TenantAdminNestedProfileGroup>[],
 }) {
   return tenantAdminAccountProfileFromRaw(
     id: id,
     accountId: 'acc-1',
-    profileType: 'poi',
-    displayName: id,
+    profileType: profileType,
+    displayName: displayName ?? id,
     slug: 'slug-$id',
     avatarUrl: avatarUrl,
     coverUrl: coverUrl,
+    nestedProfileGroups: nestedProfileGroups,
     ownershipState: TenantAdminOwnershipState.tenantOwned,
+  );
+}
+
+TenantAdminProfileTypeDefinition _profileType({
+  required bool hasNestedProfileGroups,
+}) {
+  return tenantAdminProfileTypeDefinitionFromRaw(
+    type: 'poi',
+    label: 'POI',
+    allowedTaxonomies: [],
+    capabilities: TenantAdminProfileTypeCapabilities(
+      isFavoritable: TenantAdminFlagValue(false),
+      isPoiEnabled: TenantAdminFlagValue(false),
+      hasBio: TenantAdminFlagValue(false),
+      hasContent: TenantAdminFlagValue(false),
+      hasTaxonomies: TenantAdminFlagValue(false),
+      hasAvatar: TenantAdminFlagValue(true),
+      hasCover: TenantAdminFlagValue(true),
+      hasEvents: TenantAdminFlagValue(false),
+      hasNestedProfileGroups: TenantAdminFlagValue(hasNestedProfileGroups),
+    ),
+  );
+}
+
+TenantAdminNestedProfileGroup _nestedGroup() {
+  return TenantAdminNestedProfileGroup(
+    idValue: TenantAdminNestedProfileGroupTextValue('partners'),
+    labelValue: TenantAdminNestedProfileGroupTextValue('Parceiros'),
+    orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+    accountProfileIdValues: [
+      TenantAdminNestedProfileGroupTextValue('profile-partner'),
+    ],
   );
 }
 

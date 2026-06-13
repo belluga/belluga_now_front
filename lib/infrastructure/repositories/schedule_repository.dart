@@ -1,3 +1,4 @@
+import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
@@ -241,7 +242,6 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     ScheduleRepoBool? liveNowOnly,
     ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
-    List<ScheduleRepoString>? tags,
     ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
     List<ScheduleRepoString>? occurrenceIds,
@@ -256,9 +256,6 @@ class ScheduleRepository extends ScheduleRepositoryContract {
       liveNowOnly: liveNowOnly?.value ?? false,
       searchQuery: searchQuery?.value,
       categories: categories?.map((entry) => entry.value).toList(
-            growable: false,
-          ),
-      tags: tags?.map((entry) => entry.value).toList(
             growable: false,
           ),
       taxonomy: taxonomy?.map(_encodeTaxonomyEntry).toList(
@@ -276,6 +273,7 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     return _SchedulePageSlice(
       events: pageDto.toDomainEvents(),
       hasMore: pageDto.hasMore,
+      discoveryFilterFacets: pageDto.discoveryFilterFacets,
     );
   }
 
@@ -314,6 +312,9 @@ class ScheduleRepository extends ScheduleRepositoryContract {
       maxDistanceMeters: maxDistanceMeters?.value,
       categoriesKey: _categoriesKey(categories),
       taxonomyKey: _taxonomyKey(taxonomy),
+    );
+    homeAgendaDiscoveryFilterFacetsStreamValue.addValue(
+      firstSlice.discoveryFilterFacets,
     );
     _publishHomeAgendaState(state);
     return state.events;
@@ -371,6 +372,9 @@ class ScheduleRepository extends ScheduleRepositoryContract {
       maxDistanceMeters: maxDistanceMeters?.value,
       categoriesKey: _categoriesKey(categories),
       taxonomyKey: _taxonomyKey(taxonomy),
+    );
+    homeAgendaDiscoveryFilterFacetsStreamValue.addValue(
+      nextSlice.discoveryFilterFacets,
     );
     _publishHomeAgendaState(state);
     return state.events;
@@ -524,7 +528,6 @@ class ScheduleRepository extends ScheduleRepositoryContract {
   Stream<EventDeltaModel> watchEventsStream({
     ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
-    List<ScheduleRepoString>? tags,
     ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
     List<ScheduleRepoString>? occurrenceIds,
@@ -538,9 +541,6 @@ class ScheduleRepository extends ScheduleRepositoryContract {
         .watchEventsStream(
           searchQuery: searchQuery?.value,
           categories: categories?.map((entry) => entry.value).toList(
-                growable: false,
-              ),
-          tags: tags?.map((entry) => entry.value).toList(
                 growable: false,
               ),
           taxonomy: taxonomy?.map(_encodeTaxonomyEntry).toList(
@@ -564,7 +564,6 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     required ScheduleRepositoryContractDeltaHandler onDelta,
     ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
-    List<ScheduleRepoString>? tags,
     ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
     List<ScheduleRepoString>? occurrenceIds,
@@ -577,7 +576,6 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     return watchEventsStream(
       searchQuery: searchQuery,
       categories: categories,
-      tags: tags,
       taxonomy: taxonomy,
       confirmedOnly: confirmedOnly,
       occurrenceIds: occurrenceIds,
@@ -596,10 +594,12 @@ class _SchedulePageSlice {
   const _SchedulePageSlice({
     required this.events,
     required this.hasMore,
+    this.discoveryFilterFacets,
   });
 
   final List<EventModel> events;
   final bool hasMore;
+  final DiscoveryFilterRuntimeFacets? discoveryFilterFacets;
 }
 
 class _HomeAgendaState {

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/contacts/contact_model.dart';
@@ -23,15 +24,21 @@ import 'package:belluga_now/domain/invites/value_objects/inviteable_reason_value
 import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/inviteables_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
+import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
+import 'package:belluga_now/domain/schedule/event_profile_group.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_profile_group_order_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/sent_invite_summary_count_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_display_name_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
+import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_external_contact_share_target.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_share_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/invite_share_screen.dart';
@@ -979,6 +986,7 @@ void main() {
     expect(find.text('1 contato'), findsOneWidget);
     expect(find.text('Mae'), findsOneWidget);
     expect(find.text('WhatsApp'), findsOneWidget);
+    expect(find.byIcon(BooraIcons.whatsapp), findsNWidgets(2));
     expect(find.text('Convidar'), findsNothing);
   });
 
@@ -1038,7 +1046,9 @@ void main() {
       expect(launchedUris.single.path, '/5527988887777');
       expect(
         launchedUris.single.queryParameters['text'],
-        contains('https://tenant.test/invite?code=SHARE-CODE'),
+        contains(
+          'https://tenant.test/invite?code=SHARE-CODE&fallback=%2Fagenda%2Fevento%2Fevento-teste%3Foccurrence%3Doccurrence-1',
+        ),
       );
       expect(launchedModes.single, LaunchMode.externalApplication);
       expect(sharedParams, isEmpty);
@@ -1076,7 +1086,7 @@ void main() {
         supportedLocales: _testSupportedLocales,
         localizationsDelegates: _testLocalizationDelegates,
         home: InviteShareScreen(
-          invite: _buildInvite(),
+          invite: _buildInviteWithShareContext(),
           externalUrlLauncher: (uri, {required mode}) async {
             launchedUris.add(uri);
             return false;
@@ -1098,9 +1108,31 @@ void main() {
     expect(sharedParams, hasLength(1));
     expect(
       sharedParams.single.text,
-      contains('https://tenant.test/invite?code=SHARE-CODE'),
+      contains(
+        'https://tenant.test/invite?code=SHARE-CODE&fallback=%2Fagenda%2Fevento%2Fevento-teste%3Foccurrence%3Doccurrence-1',
+      ),
     );
-    expect(sharedParams.single.subject, 'Convite Belluga Now');
+    expect(
+      sharedParams.single.text,
+      startsWith('Amigo te convidou para Evento Teste.'),
+    );
+    expect(
+      sharedParams.single.text,
+      contains('Sex, 13 mar · 20h\nGuarapari'),
+    );
+    expect(sharedParams.single.text, contains('Bandas: Du Jorge, QA Tag'));
+    expect(sharedParams.single.text, contains('Responder ao convite:'));
+    expect(
+      sharedParams.single.text,
+      contains(
+        'https://tenant.test/invite?code=SHARE-CODE&fallback=%2Fagenda%2Fevento%2Fevento-teste%3Foccurrence%3Doccurrence-1',
+      ),
+    );
+    expect(sharedParams.single.text, isNot(contains('Detalhes:')));
+    expect(sharedParams.single.text, isNot(contains('Como chegar:')));
+    expect(sharedParams.single.text, isNot(contains('/mapa')));
+    expect(sharedParams.single.text, isNot(contains('2026-03-13')));
+    expect(sharedParams.single.subject, 'Convite para Evento Teste');
   });
 
   testWidgets(
@@ -1156,7 +1188,9 @@ void main() {
       expect(sharedParams, hasLength(1));
       expect(
         sharedParams.single.text,
-        contains('https://tenant.test/invite?code=SHARE-CODE'),
+        contains(
+          'https://tenant.test/invite?code=SHARE-CODE&fallback=%2Fagenda%2Fevento%2Fevento-teste%3Foccurrence%3Doccurrence-1',
+        ),
       );
     },
   );
@@ -1480,6 +1514,7 @@ InviteModel _buildInvite() {
   return buildInviteModelFromPrimitives(
     id: 'invite-1',
     eventId: 'event-1',
+    eventSlug: 'evento-teste',
     eventName: 'Evento Teste',
     occurrenceId: 'occurrence-1',
     eventDateTime: DateTime(2026, 3, 13, 20),
@@ -1489,6 +1524,56 @@ InviteModel _buildInvite() {
     message: 'Bora?',
     tags: const ['music'],
     inviterName: 'Amigo',
+  );
+}
+
+InviteModel _buildInviteWithShareContext() {
+  final duJorge = _buildLinkedAccountProfile(
+    id: 'profile-du-jorge',
+    displayName: 'Du Jorge',
+    profileType: 'band',
+  );
+  final qaTag = _buildLinkedAccountProfile(
+    id: 'profile-qa-tag',
+    displayName: 'QA Tag',
+    profileType: 'artist',
+  );
+  return buildInviteModelFromPrimitives(
+    id: 'invite-1',
+    eventId: 'event-1',
+    eventSlug: 'evento-teste',
+    eventName: 'Evento Teste',
+    occurrenceId: 'occurrence-1',
+    eventDateTime: DateTime(2026, 3, 13, 20),
+    eventImageUrl: 'https://example.com/event.jpg',
+    location: 'Guarapari',
+    hostName: 'Host',
+    message: 'Bora?',
+    tags: const ['music'],
+    inviterName: 'Amigo',
+    linkedAccountProfiles: [duJorge, qaTag],
+    profileGroups: [
+      EventProfileGroup(
+        idValue: EventLinkedAccountProfileTextValue('group-bandas'),
+        labelValue: EventLinkedAccountProfileTextValue('Bandas'),
+        orderValue: EventProfileGroupOrderValue()..parse('0'),
+        profiles: [duJorge, qaTag],
+      ),
+    ],
+    venueAccountProfileId: 'venue-1',
+  );
+}
+
+EventLinkedAccountProfile _buildLinkedAccountProfile({
+  required String id,
+  required String displayName,
+  required String profileType,
+}) {
+  return EventLinkedAccountProfile(
+    idValue: EventLinkedAccountProfileTextValue(id),
+    displayNameValue: EventLinkedAccountProfileTextValue(displayName),
+    profileTypeValue: AccountProfileTypeValue(profileType),
+    slugValue: SlugValue()..parse(id),
   );
 }
 

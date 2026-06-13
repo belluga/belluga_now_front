@@ -43,7 +43,7 @@ void main() {
         timeStart: DateTime(2026, 4, 7, 18, 30),
       );
 
-      expect(PoiContentResolver.eventTimingBadgeLabel(poi), '18:30');
+      expect(PoiContentResolver.eventTimingBadgeLabel(poi), '18h30');
     });
 
     test('event relative timing badge uses Hoje for same-day events', () {
@@ -57,7 +57,7 @@ void main() {
           poi,
           referenceTime: DateTime(2026, 4, 9, 9, 0),
         ),
-        'Hoje 18:30',
+        'Hoje 18h30',
       );
     });
 
@@ -72,7 +72,7 @@ void main() {
           poi,
           referenceTime: DateTime(2026, 4, 9, 9, 0),
         ),
-        'Amanhã 22:00',
+        'Amanhã 22h',
       );
     });
 
@@ -87,7 +87,7 @@ void main() {
           poi,
           referenceTime: DateTime(2026, 4, 9, 9, 0),
         ),
-        '12/04 20:15',
+        'Dom, 12 abr · 20h15',
       );
     });
 
@@ -100,7 +100,7 @@ void main() {
 
       expect(
         PoiContentResolver.eventScheduleLabel(poi),
-        '07/04 • 18:30 às 20:00',
+        'Ter, 7 abr · 18h30 às 20h',
       );
     });
 

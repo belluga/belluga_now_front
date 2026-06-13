@@ -46,17 +46,23 @@ class DiscoveryNearbyRow extends StatelessWidget {
               final item = items[index];
               final resolvedVisual = resolvedVisualForItem(item);
               final distanceLabel = _distanceLabel(item.distanceMeters);
+              final canOpenPublicDetail = item.canOpenPublicDetail;
+              final semanticLabel = canOpenPublicDetail
+                  ? 'Abrir perfil ${item.name}'
+                  : 'Perfil ${item.name}';
+              final onItemTap =
+                  canOpenPublicDetail ? () => onTap(item) : null;
               return SizedBox(
                 width: 108,
                 child: Semantics(
                   container: true,
-                  button: true,
-                  label: 'Abrir perfil ${item.name}',
-                  onTap: () => onTap(item),
+                  button: canOpenPublicDetail,
+                  label: semanticLabel,
+                  onTap: onItemTap,
                   child: InkWell(
                     borderRadius: BorderRadius.circular(12),
                     excludeFromSemantics: true,
-                    onTap: () => onTap(item),
+                    onTap: onItemTap,
                     child: Column(
                       children: [
                         Stack(

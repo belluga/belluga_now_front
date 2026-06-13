@@ -1,6 +1,7 @@
 export 'push_option_selector_payload.dart';
 
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_bool_value.dart';
 import 'package:belluga_now/infrastructure/services/push/push_option_selector_payload.dart';
 import 'package:get_it/get_it.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -14,9 +15,8 @@ class PushActionDispatcher {
     Future<List<dynamic>?> Function(PushOptionSelectorPayload payload)?
         onOpenSelector,
     void Function(String message)? onShowToast,
-  })  : _userLocationRepository =
-            userLocationRepository ??
-                GetIt.I.get<UserLocationRepositoryContract>(),
+  })  : _userLocationRepository = userLocationRepository ??
+            GetIt.I.get<UserLocationRepositoryContract>(),
         _optionsBuilder = optionsBuilder,
         _onStepSubmit = onStepSubmit,
         _onOpenSelector = onOpenSelector,
@@ -24,7 +24,8 @@ class PushActionDispatcher {
 
   final UserLocationRepositoryContract _userLocationRepository;
   final Future<List<OptionItem>> Function(OptionSource source)? _optionsBuilder;
-  final Future<void> Function(AnswerPayload answer, StepData step)? _onStepSubmit;
+  final Future<void> Function(AnswerPayload answer, StepData step)?
+      _onStepSubmit;
   final Future<List<dynamic>?> Function(PushOptionSelectorPayload payload)?
       _onOpenSelector;
   final void Function(String message)? _onShowToast;
@@ -41,7 +42,13 @@ class PushActionDispatcher {
     switch (action) {
       case 'request_location_permission':
       case 'request_location':
-        await _userLocationRepository.resolveUserLocation();
+        await _userLocationRepository.resolveUserLocation(
+          requestPermissionIfNeededValue:
+              UserLocationRepositoryContractBoolValue.fromRaw(
+            true,
+            defaultValue: true,
+          ),
+        );
         await _handleLocationPermissionFeedback(step);
         return;
       case 'request_contacts_permission':
@@ -160,7 +167,9 @@ class PushActionDispatcher {
     if (selected.isEmpty) {
       return const [];
     }
-    if (maxSelected != null && maxSelected > 0 && selected.length > maxSelected) {
+    if (maxSelected != null &&
+        maxSelected > 0 &&
+        selected.length > maxSelected) {
       return selected.take(maxSelected).toList();
     }
     return selected;

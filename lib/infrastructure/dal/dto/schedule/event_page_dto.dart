@@ -1,3 +1,4 @@
+import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:flutter/foundation.dart';
@@ -6,16 +7,21 @@ class EventPageDTO {
   EventPageDTO({
     required this.events,
     required this.hasMore,
+    this.discoveryFilterFacets,
   });
 
   final List<EventDTO> events;
   final bool hasMore;
+  final DiscoveryFilterRuntimeFacets? discoveryFilterFacets;
 
   factory EventPageDTO.fromJson(Map<String, dynamic> json) {
     final items = _parseItems(json['items']);
     return EventPageDTO(
       events: items,
       hasMore: _asBool(json['has_more']),
+      discoveryFilterFacets: _parseDiscoveryFilterFacets(
+        json['discovery_filter_facets'],
+      ),
     );
   }
 
@@ -84,6 +90,20 @@ class EventPageDTO {
       default:
         return false;
     }
+  }
+
+  static DiscoveryFilterRuntimeFacets? _parseDiscoveryFilterFacets(
+    Object? raw,
+  ) {
+    if (raw is! Map) {
+      return null;
+    }
+
+    return DiscoveryFilterRuntimeFacets.fromJson(
+      raw.map(
+        (key, value) => MapEntry<String, Object?>(key.toString(), value),
+      ),
+    );
   }
 
   static String _describeItem(Map<String, dynamic> item) {

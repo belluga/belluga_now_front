@@ -16,7 +16,7 @@ class InviteEventHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final slugValue = SlugValue()..parse(invite.eventId);
+    final slugValue = SlugValue()..parse(invite.eventSlug);
     final idValue = MongoIDValue(defaultValue: _coerceMongoId(invite.eventId))
       ..parse(_coerceMongoId(invite.eventId));
     final tagValues = invite.tags
@@ -37,7 +37,7 @@ class InviteEventHero extends StatelessWidget {
           ..parse(invite.locationValue.value.isNotEmpty
               ? invite.locationValue.value
               : 'Local a definir'),
-        linkedAccountProfiles: const [],
+        linkedAccountProfiles: invite.linkedAccountProfiles,
         tagValues: tagValues,
       )),
     );

@@ -39,6 +39,8 @@ CityPoiModel _buildPoi({
   final stackCountValue = PoiStackCountValue()..parse(stackCount.toString());
   final refTypeValue = PoiReferenceTypeValue()..parse(refType);
   final refIdValue = PoiReferenceIdValue()..parse('ref-1');
+  final isDynamicValue = PoiBooleanValue()
+    ..parse(refType == 'event' ? 'true' : 'false');
   final isHappeningNowValue = PoiBooleanValue()
     ..parse(isHappeningNow.toString());
   final timeStartValue = timeStart == null
@@ -57,6 +59,7 @@ CityPoiModel _buildPoi({
     category: category,
     coordinate: coordinate,
     priorityValue: priorityValue,
+    isDynamicValue: isDynamicValue,
     refTypeValue: refTypeValue,
     refIdValue: refIdValue,
     stackCountValue: stackCountValue,
@@ -149,8 +152,7 @@ void main() {
       ),
     );
 
-    final iconWidget =
-        tester.widget<Icon>(find.byIcon(BooraIcons.restaurant));
+    final iconWidget = tester.widget<Icon>(find.byIcon(BooraIcons.restaurant));
     expect(iconWidget.color, Colors.white);
 
     final markerContainer =
@@ -274,7 +276,7 @@ void main() {
       ),
     );
 
-    expect(find.text('18:00'), findsOneWidget);
+    expect(find.text('18h'), findsOneWidget);
   });
 
   testWidgets('keeps event time badge on one line when marker is narrow',
@@ -302,7 +304,7 @@ void main() {
       ),
     );
 
-    final timeText = find.text('19:30');
+    final timeText = find.text('19h30');
     expect(timeText, findsOneWidget);
 
     final timeTextSize = tester.getSize(timeText);
@@ -470,7 +472,7 @@ void main() {
       );
 
       expect(find.text('AGORA'), findsOneWidget);
-      expect(find.text('18:00'), findsNothing);
+      expect(find.text('18h'), findsNothing);
     },
   );
 

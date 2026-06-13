@@ -284,7 +284,7 @@ class TenantAdminDiscoveryFiltersController implements Disposable {
           surface.supportsMarkerOverride && nextItem.overrideMarker),
       markerOverride: markerOverride,
       clearMarkerOverrideValue: TenantAdminFlagValue(
-          !surface.supportsMarkerOverride || !nextItem.overrideMarker),
+          !surface.supportsMarkerOverride || markerOverride == null),
     );
     _replaceFilters(surface, current);
     _emitRemoteError('');

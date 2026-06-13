@@ -1,20 +1,126 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/application/router/support/back_surface_kind.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/application/router/support/route_back_policy.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_header_delegate.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_hero_action.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 void main() {
+  test('ImmersiveHeroAction resolves active icon and foreground color', () {
+    const inactiveAction = ImmersiveHeroAction(
+      key: Key('inactive'),
+      label: 'Favoritar',
+      icon: Icons.favorite_border,
+      activeIcon: Icons.favorite,
+      foregroundColor: Colors.black,
+      activeForegroundColor: Colors.red,
+      onPressed: null,
+    );
+    const activeAction = ImmersiveHeroAction(
+      key: Key('active'),
+      label: 'Favoritado',
+      icon: Icons.favorite_border,
+      activeIcon: Icons.favorite,
+      isActive: true,
+      foregroundColor: Colors.black,
+      activeForegroundColor: Colors.red,
+      onPressed: null,
+    );
+
+    expect(inactiveAction.resolvedIcon, Icons.favorite_border);
+    expect(inactiveAction.resolvedForegroundColor, Colors.black);
+    expect(activeAction.resolvedIcon, Icons.favorite);
+    expect(activeAction.resolvedForegroundColor, Colors.red);
+  });
+
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() {
     VisibilityDetectorController.instance.updateInterval = Duration.zero;
   });
+
+  testWidgets(
+    'hero viewport fraction controls the shared sliver app bar height',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await _pumpImmersiveScreen(
+        tester,
+        ImmersiveDetailScreen(
+          title: 'Profile',
+          heroViewportHeightFactor: 0.8,
+          backPolicy: _FakeBackPolicy(),
+          heroContent: Container(color: Colors.black),
+          tabs: [
+            ImmersiveTabItem(
+              title: 'Sobre',
+              content: const SizedBox(height: 200, child: Text('Section')),
+            ),
+          ],
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      final appBar = tester.widget<SliverAppBar>(find.byType(SliverAppBar));
+      expect(appBar.expandedHeight, 640);
+    },
+  );
+
+  testWidgets(
+    'tab header is flat before it overlaps content and elevated when pinned',
+    (tester) async {
+      Widget buildHeader({required bool overlapsContent}) {
+        return MaterialApp(
+          home: Builder(
+            builder: (context) {
+              return ImmersiveHeaderDelegate(
+                tabs: const ['Sobre', 'Como Chegar'],
+                currentTabIndex: 0,
+                onTabTapped: (_) {},
+              ).build(context, 0, overlapsContent);
+            },
+          ),
+        );
+      }
+
+      await tester.pumpWidget(buildHeader(overlapsContent: false));
+
+      expect(tester.widget<Material>(find.byType(Material)).elevation, 0);
+
+      await tester.pumpWidget(buildHeader(overlapsContent: true));
+
+      expect(tester.widget<Material>(find.byType(Material)).elevation, 4);
+    },
+  );
+
+  test(
+    'tab header rebuilds when labels change without changing tab count',
+    () {
+      final oldDelegate = ImmersiveHeaderDelegate(
+        tabs: const ['Sobre', 'Programação', 'Palco Sexta', 'Como Chegar'],
+        currentTabIndex: 1,
+        onTabTapped: (_) {},
+      );
+      final newDelegate = ImmersiveHeaderDelegate(
+        tabs: const ['Sobre', 'Programação', 'Palco Sábado', 'Como Chegar'],
+        currentTabIndex: 1,
+        onTabTapped: (_) {},
+      );
+
+      expect(newDelegate.shouldRebuild(oldDelegate), isTrue);
+    },
+  );
 
   testWidgets(
     'tab tap keeps the target section start visible with taller collapsed app bar',
@@ -309,6 +415,300 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(backPolicy.callCount, 1);
+    },
+  );
+
+  testWidgets(
+    'expanded hero renders the declared actions as an overlay rail',
+    (tester) async {
+      var primaryCalls = 0;
+      var shareCalls = 0;
+      var whatsappCalls = 0;
+
+      await _pumpImmersiveScreen(
+        tester,
+        ImmersiveDetailScreen(
+          title: 'Profile',
+          backPolicy: _FakeBackPolicy(),
+          heroContent: Container(color: Colors.black),
+          heroActions: [
+            ImmersiveHeroAction(
+              key: const Key('testPrimaryHeroAction'),
+              label: 'Favoritar',
+              icon: Icons.favorite_border,
+              isPrimary: true,
+              onPressed: () => primaryCalls += 1,
+            ),
+            ImmersiveHeroAction(
+              key: const Key('testShareHeroAction'),
+              label: 'Compartilhar',
+              icon: Icons.share,
+              onPressed: () => shareCalls += 1,
+            ),
+            ImmersiveHeroAction(
+              key: const Key('testWhatsappHeroAction'),
+              label: 'WhatsApp',
+              icon: BooraIcons.whatsapp,
+              onPressed: () => whatsappCalls += 1,
+            ),
+          ],
+          tabs: [
+            ImmersiveTabItem(
+              title: 'Sobre',
+              content: const SizedBox(height: 800, child: Text('Section')),
+            ),
+          ],
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('testPrimaryHeroAction')), findsOneWidget);
+      expect(find.byKey(const Key('testShareHeroAction')), findsOneWidget);
+      expect(find.byKey(const Key('testWhatsappHeroAction')), findsOneWidget);
+      expect(find.byKey(const Key('immersiveHeroMoreAction')), findsNothing);
+
+      final backTop = tester.getTopLeft(find.byIcon(Icons.arrow_back)).dy;
+      final primaryTop =
+          tester.getTopLeft(find.byKey(const Key('testPrimaryHeroAction'))).dy;
+      expect(primaryTop, greaterThanOrEqualTo(0));
+      expect(primaryTop, lessThanOrEqualTo(backTop + 12));
+
+      await tester.tap(find.byKey(const Key('testWhatsappHeroAction')));
+      await tester.pumpAndSettle();
+
+      expect(primaryCalls, 0);
+      expect(shareCalls, 0);
+      expect(whatsappCalls, 1);
+    },
+  );
+
+  testWidgets(
+    'collapsed hero keeps primary action visible and moves secondary actions to more',
+    (tester) async {
+      var primaryCalls = 0;
+      var shareCalls = 0;
+
+      await _pumpImmersiveScreen(
+        tester,
+        ImmersiveDetailScreen(
+          title: 'Profile',
+          backPolicy: _FakeBackPolicy(),
+          heroContent: Container(color: Colors.black),
+          heroActions: [
+            ImmersiveHeroAction(
+              key: const Key('testCollapsedPrimaryAction'),
+              label: 'Convidar',
+              icon: Icons.mail_outline,
+              isPrimary: true,
+              onPressed: () => primaryCalls += 1,
+            ),
+            ImmersiveHeroAction(
+              key: const Key('testCollapsedShareAction'),
+              label: 'Compartilhar',
+              icon: Icons.share,
+              onPressed: () => shareCalls += 1,
+            ),
+          ],
+          tabs: [
+            ImmersiveTabItem(
+              title: 'Sobre',
+              content: const SizedBox(height: 1200, child: Text('Section')),
+            ),
+          ],
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      await tester.drag(
+        find.byKey(const Key('immersiveSwipeSurface')),
+        const Offset(0, -500),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+          find.byKey(const Key('testCollapsedPrimaryAction')), findsOneWidget);
+      expect(find.byKey(const Key('immersiveHeroMoreAction')), findsOneWidget);
+      expect(find.byKey(const Key('testCollapsedShareAction')), findsNothing);
+
+      await tester.tap(find.byKey(const Key('testCollapsedPrimaryAction')));
+      await tester.pumpAndSettle();
+      expect(primaryCalls, 1);
+
+      await tester.tap(find.byKey(const Key('immersiveHeroMoreAction')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Compartilhar').last);
+      await tester.pumpAndSettle();
+
+      expect(shareCalls, 1);
+    },
+  );
+
+  testWidgets(
+    'partially collapsed hero keeps expanded chrome until content is clear',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await _pumpImmersiveScreen(
+        tester,
+        ImmersiveDetailScreen(
+          title: 'Long Profile Title',
+          collapsedToolbarHeight: 72,
+          centerCollapsedTitle: false,
+          backPolicy: _FakeBackPolicy(),
+          heroContent: Stack(
+            children: [
+              Container(color: Colors.black),
+              const Positioned(
+                left: 16,
+                bottom: 24,
+                child: Text('Expanded hero title'),
+              ),
+            ],
+          ),
+          heroActions: [
+            ImmersiveHeroAction(
+              key: const Key('testPartialPrimaryAction'),
+              label: 'Favoritar',
+              icon: Icons.favorite_border,
+              isPrimary: true,
+              onPressed: () {},
+            ),
+            ImmersiveHeroAction(
+              key: const Key('testPartialShareAction'),
+              label: 'Compartilhar',
+              icon: Icons.share,
+              onPressed: () {},
+            ),
+          ],
+          tabs: [
+            ImmersiveTabItem(
+              title: 'Sobre',
+              content: const SizedBox(height: 1400, child: Text('Section')),
+            ),
+          ],
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      await tester.drag(
+        find.byKey(const Key('immersiveSwipeSurface')),
+        const Offset(0, -120),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('immersiveCollapsedToolbarScrim')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const Key('immersiveCollapsedTitle')),
+        findsNothing,
+      );
+      expect(find.byKey(const Key('testPartialPrimaryAction')), findsOneWidget);
+      expect(find.byKey(const Key('testPartialShareAction')), findsOneWidget);
+      expect(find.byKey(const Key('immersiveHeroMoreAction')), findsNothing);
+
+      await tester.drag(
+        find.byKey(const Key('immersiveSwipeSurface')),
+        const Offset(0, -700),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('immersiveCollapsedTitle')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('testPartialPrimaryAction')), findsOneWidget);
+      expect(find.byKey(const Key('testPartialShareAction')), findsNothing);
+      expect(find.byKey(const Key('immersiveHeroMoreAction')), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'collapsed hero uses the first action when no primary is declared',
+    (tester) async {
+      await _pumpImmersiveScreen(
+        tester,
+        ImmersiveDetailScreen(
+          title: 'Profile',
+          backPolicy: _FakeBackPolicy(),
+          heroContent: Container(color: Colors.black),
+          heroActions: [
+            ImmersiveHeroAction(
+              key: const Key('testFirstFallbackAction'),
+              label: 'Primeira',
+              icon: Icons.looks_one,
+              onPressed: () {},
+            ),
+            ImmersiveHeroAction(
+              key: const Key('testSecondFallbackAction'),
+              label: 'Segunda',
+              icon: Icons.looks_two,
+              onPressed: () {},
+            ),
+          ],
+          tabs: [
+            ImmersiveTabItem(
+              title: 'Sobre',
+              content: const SizedBox(height: 1200, child: Text('Section')),
+            ),
+          ],
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      await tester.drag(
+        find.byKey(const Key('immersiveSwipeSurface')),
+        const Offset(0, -500),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('testFirstFallbackAction')), findsOneWidget);
+      expect(find.byKey(const Key('testSecondFallbackAction')), findsNothing);
+      expect(find.byKey(const Key('immersiveHeroMoreAction')), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'hero action loading state renders a spinner with the legacy share key',
+    (tester) async {
+      await _pumpImmersiveScreen(
+        tester,
+        ImmersiveDetailScreen(
+          title: 'Profile',
+          backPolicy: _FakeBackPolicy(),
+          heroContent: Container(color: Colors.black),
+          heroActions: const [
+            ImmersiveHeroAction(
+              key: Key('immersiveShareAction'),
+              label: 'Compartilhar',
+              icon: Icons.share,
+              isPrimary: true,
+              isLoading: true,
+              onPressed: null,
+            ),
+          ],
+          tabs: [
+            ImmersiveTabItem(
+              title: 'Sobre',
+              content: SizedBox(height: 800, child: Text('Section')),
+            ),
+          ],
+        ),
+      );
+
+      await tester.pump();
+
+      expect(find.byKey(const Key('immersiveShareAction')), findsOneWidget);
+      expect(
+        find.byKey(const Key('immersiveShareActionLoading')),
+        findsOneWidget,
+      );
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
     },
   );
 

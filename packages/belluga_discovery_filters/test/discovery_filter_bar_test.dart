@@ -35,7 +35,7 @@ void main() {
     expect(
         find.byKey(const ValueKey<String>('discoveryFilterPrimary_profiles')),
         findsOneWidget);
-    expect(find.text('Perfis'), findsNothing);
+    expect(find.text('Perfis'), findsOneWidget);
 
     await tester.tap(
       find.byKey(const ValueKey<String>('discoveryFilterPrimaryClear_events')),
@@ -224,7 +224,8 @@ void main() {
     );
   });
 
-  testWidgets('selected primary shows loading affordance while inactive options stay actionable',
+  testWidgets(
+      'selected primary shows loading affordance while inactive options stay actionable',
       (tester) async {
     DiscoveryFilterSelection? changedSelection;
 
@@ -287,6 +288,8 @@ void main() {
       ),
       findsOneWidget,
     );
+    expect(find.text('Eventos'), findsOneWidget);
+    expect(find.text('Perfis'), findsOneWidget);
 
     await tester.tap(
       find.byKey(
@@ -429,6 +432,54 @@ void main() {
     expect(selectedRect.right, lessThanOrEqualTo(viewportRect.right + 0.1));
   });
 
+  testWidgets('row primary layout keeps chips wider than icon-only pills',
+      (tester) async {
+    const rowCatalog = DiscoveryFilterCatalog(
+      surface: 'home.events',
+      filters: <DiscoveryFilterCatalogItem>[
+        DiscoveryFilterCatalogItem(
+          key: 'show',
+          label: 'Filtro de Show',
+          target: 'event_occurrence',
+          entities: <String>{'event'},
+        ),
+        DiscoveryFilterCatalogItem(
+          key: 'fair',
+          label: 'Filtro de Feira',
+          target: 'event_occurrence',
+          entities: <String>{'event'},
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      _NarrowHarness(
+        width: 360,
+        child: DiscoveryFilterBar(
+          catalog: rowCatalog,
+          selection: const DiscoveryFilterSelection(),
+          policy: const DiscoveryFilterPolicy(
+            primarySelectionMode: DiscoveryFilterSelectionMode.single,
+            primaryLayoutMode: DiscoveryFilterLayoutMode.row,
+          ),
+          onSelectionChanged: (_) {},
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    final firstRect = tester.getRect(
+      find.byKey(const ValueKey<String>('discoveryFilterPrimary_show')),
+    );
+    final secondRect = tester.getRect(
+      find.byKey(const ValueKey<String>('discoveryFilterPrimary_fair')),
+    );
+
+    expect(firstRect.width, greaterThan(96));
+    expect(secondRect.width, greaterThan(96));
+  });
+
   testWidgets('row taxonomy layout reveals the selected term inside viewport',
       (tester) async {
     await tester.pumpWidget(
@@ -468,9 +519,13 @@ void main() {
   });
 
   test('horizontal primary row does not prebuild unused chip widgets', () {
-    final source = File(
+    const candidates = <String>[
+      'lib/src/discovery_filter_bar.dart',
       'packages/belluga_discovery_filters/lib/src/discovery_filter_bar.dart',
-    ).readAsStringSync();
+    ];
+    final sourceFile =
+        candidates.map(File.new).firstWhere((file) => file.existsSync());
+    final source = sourceFile.readAsStringSync();
 
     expect(source, isNot(contains('final chips = filters')));
     expect(source, contains('discoveryFilterPrimaryList'));

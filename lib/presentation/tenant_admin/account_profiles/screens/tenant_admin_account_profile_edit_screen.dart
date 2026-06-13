@@ -19,6 +19,7 @@ import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admi
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_upload_field.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_nested_profile_groups_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_xfile_preview.dart';
 import 'package:flutter/foundation.dart';
@@ -128,6 +129,11 @@ class _TenantAdminAccountProfileEditScreenState
   bool _hasCover(String? selectedType) {
     final definition = _selectedProfileTypeDefinition(selectedType);
     return definition?.capabilities.hasCover ?? false;
+  }
+
+  bool _hasNestedProfileGroups(String? selectedType) {
+    final definition = _selectedProfileTypeDefinition(selectedType);
+    return definition?.capabilities.hasNestedProfileGroups ?? false;
   }
 
   List<String> _allowedTaxonomies(String? selectedType) {
@@ -464,7 +470,7 @@ class _TenantAdminAccountProfileEditScreenState
     final coverUpload = _hasCover(state.selectedProfileType)
         ? await _controller.buildImageUpload(
             state.coverFile,
-            slot: TenantAdminImageSlot.cover,
+            slot: TenantAdminImageSlot.accountProfileHeroCover,
           )
         : null;
     _controller.submitAutoSaveImages(
@@ -569,6 +575,10 @@ class _TenantAdminAccountProfileEditScreenState
                                         _hasTaxonomies(
                                           state.selectedProfileType,
                                         );
+                                final hasNestedProfileGroups =
+                                    _hasNestedProfileGroups(
+                                  state.selectedProfileType,
+                                );
 
                                 if (loadError?.isNotEmpty ?? false) {
                                   return TenantAdminFormScaffold(
@@ -648,6 +658,41 @@ class _TenantAdminAccountProfileEditScreenState
                                           if (requiresLocation) ...[
                                             const SizedBox(height: 16),
                                             _buildLocationSection(context),
+                                          ],
+                                          if (hasNestedProfileGroups) ...[
+                                            const SizedBox(height: 16),
+                                            TenantAdminNestedProfileGroupsEditor(
+                                              keyPrefix: 'tenantAdminEdit',
+                                              groups: state.nestedProfileGroups,
+                                              candidatesStreamValue: _controller
+                                                  .nestedProfileCandidatesStreamValue,
+                                              profileTypes: _controller
+                                                  .profileTypesStreamValue
+                                                  .value,
+                                              addButtonKey: const Key(
+                                                'tenantAdminEditAddNestedGroupButton',
+                                              ),
+                                              onAddGroup: _controller
+                                                  .addEditNestedProfileGroup,
+                                              onRenameGroup: _controller
+                                                  .renameEditNestedProfileGroup,
+                                              onMoveGroup: _controller
+                                                  .moveEditNestedProfileGroup,
+                                              onRemoveGroup: _controller
+                                                  .removeEditNestedProfileGroup,
+                                              onSelectionChanged: (
+                                                groupId,
+                                                profileId,
+                                                selected,
+                                              ) {
+                                                _controller
+                                                    .toggleEditNestedProfileGroupMember(
+                                                  groupId: groupId,
+                                                  profileId: profileId,
+                                                  selected: selected,
+                                                );
+                                              },
+                                            ),
                                           ],
                                           const SizedBox(height: 24),
                                           TenantAdminPrimaryFormAction(
@@ -757,6 +802,13 @@ class _TenantAdminAccountProfileEditScreenState
                                                       coverUpload: coverUpload,
                                                       avatarUrl: null,
                                                       coverUrl: null,
+                                                      nestedProfileGroups:
+                                                          _hasNestedProfileGroups(
+                                                        selectedType,
+                                                      )
+                                                              ? state
+                                                                  .nestedProfileGroups
+                                                              : null,
                                                     );
                                                   },
                                           ),
@@ -1283,9 +1335,9 @@ class _TenantAdminAccountProfileEditScreenState
                   const ValueKey('accountProfileEditCoverRemoveButton'),
               onRemove: () => _clearImage(isAvatar: false),
               initialWebUrl: coverUrl,
-              slot: TenantAdminImageSlot.cover,
+              slot: TenantAdminImageSlot.accountProfileHeroCover,
               pickFromDevice: () => _controller.pickImageFromDevice(
-                slot: TenantAdminImageSlot.cover,
+                slot: TenantAdminImageSlot.accountProfileHeroCover,
               ),
               fetchImageFromUrlForCrop: _controller.fetchImageFromUrlForCrop,
               readBytesForCrop: _controller.readImageBytesForCrop,

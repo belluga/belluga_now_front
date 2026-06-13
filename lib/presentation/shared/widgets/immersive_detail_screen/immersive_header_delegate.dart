@@ -1,4 +1,5 @@
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/immersive_tab_bar.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class ImmersiveHeaderDelegate extends SliverPersistentHeaderDelegate {
@@ -21,10 +22,11 @@ class ImmersiveHeaderDelegate extends SliverPersistentHeaderDelegate {
       BuildContext context, double shrinkOffset, bool overlapsContent) {
     final theme = Theme.of(context);
     final effectiveColorScheme = colorScheme ?? theme.colorScheme;
+    final elevation = overlapsContent ? 4.0 : 0.0;
 
     return Material(
-      elevation: 4,
-      shadowColor: Colors.black.withValues(alpha: 0.2),
+      elevation: elevation,
+      shadowColor: elevation > 0 ? Colors.black.withValues(alpha: 0.2) : null,
       color: effectiveColorScheme.surface,
       child: Padding(
         padding: EdgeInsets.only(top: topPadding),
@@ -53,6 +55,7 @@ class ImmersiveHeaderDelegate extends SliverPersistentHeaderDelegate {
   bool shouldRebuild(covariant ImmersiveHeaderDelegate oldDelegate) {
     return oldDelegate.currentTabIndex != currentTabIndex ||
         oldDelegate.tabs.length != tabs.length ||
+        !listEquals(oldDelegate.tabs, tabs) ||
         oldDelegate.colorScheme != colorScheme ||
         oldDelegate.topPadding != topPadding;
   }

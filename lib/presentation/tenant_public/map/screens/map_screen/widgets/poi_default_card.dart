@@ -7,8 +7,10 @@ class PoiDefaultCard extends PoiBaseCard {
     required super.poi,
     required super.colorScheme,
     required super.onPrimaryAction,
+    super.showPrimaryAction,
     required super.secondaryAction,
     required super.onRoute,
+    super.referencePointAction,
     super.onClose,
     super.heroMaxHeight,
   });

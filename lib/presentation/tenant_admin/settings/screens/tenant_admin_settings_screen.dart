@@ -39,6 +39,10 @@ class _TenantAdminSettingsScreenState extends State<TenantAdminSettingsScreen> {
     context.router.push(const TenantAdminSettingsDomainsRoute());
   }
 
+  void _openDiscoveryFilters() {
+    context.router.push(const TenantAdminDiscoveryFiltersRoute());
+  }
+
   void _openTechnicalIntegrations([
     TenantAdminSettingsIntegrationSection initialSection =
         TenantAdminSettingsIntegrationSection.firebase,
@@ -241,6 +245,24 @@ class _TenantAdminSettingsScreenState extends State<TenantAdminSettingsScreen> {
               _buildHint(
                 context,
                 'Toque para gerenciar domínios web ativos',
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        TenantAdminHubCardShell(
+          key: TenantAdminSettingsKeys.hubCardDiscoveryFilters,
+          onTap: _openDiscoveryFilters,
+          title: 'Filtros',
+          child: Row(
+            children: [
+              const Icon(Icons.filter_alt_outlined),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Mapa público e superfícies configuráveis',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
               ),
             ],
           ),

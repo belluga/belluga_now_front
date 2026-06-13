@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/testing/tenant_admin_app_links_settings_builder.dart';
 
 import 'package:auto_route/auto_route.dart';
@@ -54,6 +55,7 @@ import 'package:belluga_now/presentation/tenant_admin/discovery_filters/models/t
 import 'package:belluga_now/presentation/tenant_admin/discovery_filters/models/tenant_admin_discovery_filter_query.dart';
 import 'package:belluga_now/presentation/tenant_admin/discovery_filters/models/tenant_admin_discovery_filter_surface_definition.dart';
 import 'package:belluga_now/presentation/tenant_admin/discovery_filters/models/tenant_admin_discovery_filters_settings.dart';
+import 'package:belluga_now/presentation/tenant_admin/discovery_filters/screens/tenant_admin_discovery_filters_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/discovery_filters/screens/tenant_admin_discovery_filter_surface_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/discovery_filters/tenant_admin_discovery_filters_keys.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
@@ -169,6 +171,20 @@ TenantAdminTaxonomyTermDefinition _taxonomyTermDefinition({
   );
 }
 
+TenantAdminEventType _eventTypeDefinition({
+  required String name,
+  required String slug,
+  List<String> allowedTaxonomies = const <String>[],
+}) {
+  return TenantAdminEventType.withAllowedTaxonomies(
+    nameValue: _requiredText(name),
+    slugValue: _requiredText(slug),
+    allowedTaxonomiesValue: TenantAdminTrimmedStringListValue(
+      allowedTaxonomies,
+    ),
+  );
+}
+
 TenantAdminDomainEntry _domainEntry({
   required String id,
   required String path,
@@ -247,6 +263,10 @@ void main() {
       findsOneWidget,
     );
     expect(
+      find.byKey(TenantAdminSettingsKeys.hubCardDiscoveryFilters),
+      findsOneWidget,
+    );
+    expect(
       find.byKey(TenantAdminSettingsKeys.hubActionPreferences),
       findsNothing,
     );
@@ -259,12 +279,20 @@ void main() {
       findsNothing,
     );
     expect(
+      find.byKey(TenantAdminSettingsKeys.hubActionDiscoveryFilters),
+      findsNothing,
+    );
+    expect(
       find.text('Toque para editar preferências locais e origem do mapa'),
       findsOneWidget,
     );
     expect(find.text('Toque para editar identidade visual'), findsOneWidget);
     expect(
       find.text('Toque para gerenciar domínios web ativos'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Mapa público e superfícies configuráveis'),
       findsOneWidget,
     );
 
@@ -326,6 +354,62 @@ void main() {
       findsNothing,
     );
     expect(find.text('Configurar'), findsNothing);
+  });
+
+  testWidgets('settings hub opens the canonical map filters editor',
+      (tester) async {
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+      TenantAdminImageIngestionService(
+        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+      ),
+    );
+    GetIt.I.registerSingleton<TenantAdminSettingsController>(
+      TenantAdminSettingsController(),
+    );
+    GetIt.I.registerSingleton<TenantAdminDiscoveryFiltersController>(
+      TenantAdminDiscoveryFiltersController(
+        settingsRepository: settingsRepository,
+        ruleCatalogRepository: _EmptyDiscoveryFilterRuleCatalogRepository(),
+      ),
+    );
+
+    await _pumpSettingsHubWithDiscoveryFiltersRoutes(tester);
+
+    final filtersCard = find.byKey(
+      TenantAdminSettingsKeys.hubCardDiscoveryFilters,
+    );
+    await tester.scrollUntilVisible(
+      filtersCard,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(filtersCard);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(TenantAdminDiscoveryFiltersKeys.listScreen),
+      findsOneWidget,
+    );
+
+    final mapSurfaceCard = find.byKey(
+      TenantAdminDiscoveryFiltersKeys.surfaceCard('public_map.primary'),
+    );
+    await tester.tap(mapSurfaceCard);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(
+        TenantAdminDiscoveryFiltersKeys.surfaceScreen('public_map.primary'),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('renders environment snapshot details', (tester) async {
@@ -918,6 +1002,8 @@ void main() {
       find.byKey(TenantAdminSettingsKeys.localPreferencesBackButton),
       findsOneWidget,
     );
+    expect(find.text('Ponto de referência de localização'), findsOneWidget);
+    expect(find.textContaining('Origem padrão'), findsNothing);
 
     await tester.tap(find.text('Escuro'));
     await tester.pumpAndSettle();
@@ -991,7 +1077,7 @@ void main() {
     expect(repository.initCallCount, 1);
   });
 
-  testWidgets('local preferences owns map filter configuration only',
+  testWidgets('local preferences does not expose legacy map filter editor',
       (tester) async {
     final repository = _FakeAppDataRepository(_buildAppData());
     final settingsRepository = _FakeTenantAdminSettingsRepository();
@@ -1012,16 +1098,17 @@ void main() {
       const Scaffold(body: TenantAdminSettingsLocalPreferencesScreen()),
     );
 
-    expect(find.text('Filtros do mapa'), findsOneWidget);
+    expect(find.text('Filtros do mapa'), findsNothing);
     expect(
       find.byKey(TenantAdminSettingsKeys.localPreferencesMapFiltersCard),
-      findsOneWidget,
+      findsNothing,
     );
     expect(
       find.byKey(TenantAdminSettingsKeys.localPreferencesAddMapFilterButton),
-      findsOneWidget,
+      findsNothing,
     );
-    expect(find.text('Filtros públicos'), findsNothing);
+    expect(find.widgetWithText(FilledButton, 'Salvar filtros do mapa'),
+        findsNothing);
   });
 
   test(
@@ -1416,7 +1503,7 @@ void main() {
     expect(find.text('Visual do filtro'), findsNothing);
   });
 
-  testWidgets('Visual sheet owns canonical marker icon-image flow',
+  testWidgets('Visual sheet saves filter visual while marker override is off',
       (tester) async {
     final settingsRepository = _FakeTenantAdminSettingsRepository();
     GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
@@ -1460,10 +1547,6 @@ void main() {
 
     expect(find.text('Visual do filtro'), findsOneWidget);
     expect(find.text('Sobrescrever marcador'), findsOneWidget);
-    expect(find.byType(TenantAdminMapMarkerIconPickerField), findsNothing);
-
-    await tester.tap(find.byType(Checkbox).first);
-    await tester.pumpAndSettle();
     expect(find.byType(TenantAdminMapMarkerIconPickerField), findsOneWidget);
     expect(find.text('Cor do marcador'), findsOneWidget);
     expect(find.text('Cor do ícone'), findsOneWidget);
@@ -1505,7 +1588,7 @@ void main() {
     final filters = surface['filters'] as List;
     expect(filters, hasLength(1));
     final filter = filters.single as Map;
-    expect(filter['override_marker'], isTrue);
+    expect(filter['override_marker'], isFalse);
     final markerOverride = filter['marker_override'] as Map;
     expect(markerOverride['mode'], 'image');
     expect(
@@ -1859,8 +1942,7 @@ void main() {
     );
 
     final projectIdRow = find.byKey(
-      TenantAdminSettingsKeys
-          .technicalIntegrationsPushCredentialsProjectIdEdit,
+      TenantAdminSettingsKeys.technicalIntegrationsPushCredentialsProjectIdEdit,
       skipOffstage: false,
     );
     final clientEmailRow = find.byKey(
@@ -1938,7 +2020,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(settingsRepository.updatedPushCredentials, isNotNull);
-    expect(settingsRepository.updatedPushCredentials!.projectId, 'project-updated');
+    expect(settingsRepository.updatedPushCredentials!.projectId,
+        'project-updated');
     expect(
       settingsRepository.updatedPushCredentials!.clientEmail,
       'push-updated@tenant-a.test',
@@ -3325,6 +3408,65 @@ void main() {
   });
 }
 
+Future<void> _pumpSettingsHubWithDiscoveryFiltersRoutes(
+  WidgetTester tester,
+) async {
+  final router = RootStackRouter.build(
+    routes: [
+      NamedRouteDef(
+        name: TenantAdminSettingsRoute.name,
+        path: '/',
+        meta: canonicalRouteMeta(
+          family: CanonicalRouteFamily.tenantAdminSettingsRoot,
+        ),
+        builder: (_, __) => const Scaffold(
+          body: TenantAdminSettingsScreen(),
+        ),
+      ),
+      NamedRouteDef(
+        name: TenantAdminDiscoveryFiltersRoute.name,
+        path: '/filters',
+        meta: canonicalRouteMeta(
+          family: CanonicalRouteFamily.tenantAdminFiltersRoot,
+        ),
+        builder: (_, __) => const Scaffold(
+          body: TenantAdminDiscoveryFiltersScreen(),
+        ),
+      ),
+      NamedRouteDef(
+        name: TenantAdminDiscoveryFilterSurfaceRoute.name,
+        path: '/filters/surface',
+        meta: canonicalRouteMeta(
+          family: CanonicalRouteFamily.tenantAdminFiltersInternal,
+          chromeMode: RouteChromeMode.scopedSectionAppBar,
+        ),
+        builder: (_, data) {
+          final args = data.argsAs<TenantAdminDiscoveryFilterSurfaceRouteArgs>(
+            orElse: () => TenantAdminDiscoveryFilterSurfaceRouteArgs(
+              surfaceKey: data.queryParams.optString('surface'),
+            ),
+          );
+          final surface = TenantAdminDiscoveryFilterSurfaceDefinition.byKey(
+                args.surfaceKey ?? '',
+              ) ??
+              TenantAdminDiscoveryFilterSurfaceDefinition.map;
+          return Scaffold(
+            body: TenantAdminDiscoveryFilterSurfaceScreen(surface: surface),
+          );
+        },
+      ),
+    ],
+  )..ignorePopCompleters = true;
+
+  await tester.pumpWidget(
+    MaterialApp.router(
+      routeInformationParser: router.defaultRouteParser(),
+      routerDelegate: router.delegate(),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
 Future<void> _pumpWithAutoRoute(
   WidgetTester tester,
   Widget child,
@@ -3402,9 +3544,16 @@ bool _isScaffoldWithBody<T extends Widget>(Widget child) {
 
 class _FakeDiscoveryFilterAccountProfilesRepository
     extends TenantAdminAccountProfilesRepositoryContract {
+  _FakeDiscoveryFilterAccountProfilesRepository({
+    List<TenantAdminProfileTypeDefinition> profileTypes =
+        const <TenantAdminProfileTypeDefinition>[],
+  }) : _profileTypes = profileTypes;
+
+  final List<TenantAdminProfileTypeDefinition> _profileTypes;
+
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async {
-    return const <TenantAdminProfileTypeDefinition>[];
+    return _profileTypes;
   }
 
   @override
@@ -3413,10 +3562,17 @@ class _FakeDiscoveryFilterAccountProfilesRepository
 
 class _FakeDiscoveryFilterStaticAssetsRepository
     extends TenantAdminStaticAssetsRepositoryContract {
+  _FakeDiscoveryFilterStaticAssetsRepository({
+    List<TenantAdminStaticProfileTypeDefinition> staticTypes =
+        const <TenantAdminStaticProfileTypeDefinition>[],
+  }) : _staticTypes = staticTypes;
+
+  final List<TenantAdminStaticProfileTypeDefinition> _staticTypes;
+
   @override
   Future<List<TenantAdminStaticProfileTypeDefinition>>
       fetchStaticProfileTypes() async {
-    return const <TenantAdminStaticProfileTypeDefinition>[];
+    return _staticTypes;
   }
 
   @override
@@ -3427,22 +3583,26 @@ class _FakeDiscoveryFilterEventsRepository
     extends TenantAdminEventsRepositoryContract {
   _FakeDiscoveryFilterEventsRepository({
     this.allowedTaxonomies = const <String>[],
-  });
+    List<TenantAdminEventType>? eventTypes,
+  }) : _eventTypes = eventTypes;
 
   final List<String> allowedTaxonomies;
+  final List<TenantAdminEventType>? _eventTypes;
 
   @override
   Future<List<TenantAdminEventType>> fetchEventTypes() async {
+    final eventTypes = _eventTypes;
+    if (eventTypes != null) {
+      return eventTypes;
+    }
     if (allowedTaxonomies.isEmpty) {
       return const <TenantAdminEventType>[];
     }
     return [
-      TenantAdminEventType.withAllowedTaxonomies(
-        nameValue: tenantAdminRequiredText('Event'),
-        slugValue: tenantAdminRequiredText('event'),
-        allowedTaxonomiesValue: tenantAdminTrimmedStringList(
-          allowedTaxonomies,
-        ),
+      _eventTypeDefinition(
+        name: 'Event',
+        slug: 'event',
+        allowedTaxonomies: allowedTaxonomies,
       ),
     ];
   }

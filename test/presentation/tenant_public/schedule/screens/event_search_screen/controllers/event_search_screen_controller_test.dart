@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
 import 'package:belluga_now/testing/invite_model_factory.dart';
@@ -30,6 +31,7 @@ import 'package:belluga_now/domain/repositories/value_objects/schedule_repositor
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_bool_value.dart';
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
@@ -1006,6 +1008,9 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   @override
   final StreamValue<List<EventModel>?> discoveryLiveNowEventsStreamValue =
       StreamValue<List<EventModel>?>(defaultValue: null);
+  @override
+  final homeAgendaDiscoveryFilterFacetsStreamValue =
+      StreamValue<DiscoveryFilterRuntimeFacets?>(defaultValue: null);
 
   int getEventsPageCallCount = 0;
   int loadMoreEventSearchCallCount = 0;
@@ -1207,7 +1212,6 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   Stream<EventDeltaModel> watchEventsStream({
     ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
-    List<ScheduleRepoString>? tags,
     ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
     List<ScheduleRepoString>? occurrenceIds,
@@ -1232,7 +1236,6 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     required ScheduleRepositoryContractDeltaHandler onDelta,
     ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
-    List<ScheduleRepoString>? tags,
     ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
     List<ScheduleRepoString>? occurrenceIds,
@@ -1245,7 +1248,6 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     return watchEventsStream(
       searchQuery: searchQuery,
       categories: categories,
-      tags: tags,
       taxonomy: taxonomy,
       confirmedOnly: confirmedOnly,
       occurrenceIds: occurrenceIds,
@@ -1486,7 +1488,11 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
       false;
 
   @override
-  Future<String?> resolveUserLocation() async => null;
+  Future<String?> resolveUserLocation({
+    Object? timeout,
+    UserLocationRepositoryContractBoolValue? requestPermissionIfNeededValue,
+  }) async =>
+      null;
 
   @override
   Future<bool> startTracking({

@@ -9,6 +9,8 @@ import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_bool_value.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_duration_value.dart';
 import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -27,7 +29,8 @@ class LocationOriginService implements LocationOriginServiceContract {
   UserLocationRepositoryContract? _userLocationRepository;
   final StreamValue<LocationOriginResolution?> _effectiveOriginStreamValue =
       StreamValue<LocationOriginResolution?>(defaultValue: null);
-  StreamSubscription<LocationOriginSettings?>? _locationOriginSettingsSubscription;
+  StreamSubscription<LocationOriginSettings?>?
+      _locationOriginSettingsSubscription;
   StreamSubscription<CityCoordinate?>? _userLocationSubscription;
   StreamSubscription<CityCoordinate?>? _lastKnownLocationSubscription;
   StreamSubscription<DateTime?>? _lastKnownCapturedAtSubscription;
@@ -98,9 +101,11 @@ class LocationOriginService implements LocationOriginServiceContract {
       return false;
     }
 
-    return _sameCoordinate(left.effectiveCoordinate, right.effectiveCoordinate) &&
+    return _sameCoordinate(
+            left.effectiveCoordinate, right.effectiveCoordinate) &&
         _sameCoordinate(left.liveUserCoordinate, right.liveUserCoordinate) &&
-        _sameCoordinate(left.tenantDefaultCoordinate, right.tenantDefaultCoordinate) &&
+        _sameCoordinate(
+            left.tenantDefaultCoordinate, right.tenantDefaultCoordinate) &&
         _sameCoordinate(left.userFixedCoordinate, right.userFixedCoordinate) &&
         left.distanceFromTenantDefaultOriginMeters ==
             right.distanceFromTenantDefaultOriginMeters;
@@ -153,7 +158,8 @@ class LocationOriginService implements LocationOriginServiceContract {
   }
 
   LocationOriginResolution _resolveForcedTenantDefaultUnavailable() {
-    final tenantDefaultCoordinate = _appDataRepository.appData.tenantDefaultOrigin;
+    final tenantDefaultCoordinate =
+        _appDataRepository.appData.tenantDefaultOrigin;
     if (tenantDefaultCoordinate == null) {
       return const LocationOriginResolution(
         settings: null,
@@ -182,7 +188,8 @@ class LocationOriginService implements LocationOriginServiceContract {
     required CityCoordinate? userCoordinate,
   }) {
     final persistedSettings = _appDataRepository.locationOriginSettings;
-    final tenantDefaultCoordinate = _appDataRepository.appData.tenantDefaultOrigin;
+    final tenantDefaultCoordinate =
+        _appDataRepository.appData.tenantDefaultOrigin;
 
     if (persistedSettings?.usesUserFixedLocation == true &&
         persistedSettings?.fixedLocationReference != null) {
@@ -310,12 +317,19 @@ class LocationOriginService implements LocationOriginServiceContract {
 
     if (requestPermissionIfNeeded) {
       try {
-        final future = repository.resolveUserLocation();
-        if (permissionTimeout != null) {
-          await future.timeout(permissionTimeout, onTimeout: () => null);
-        } else {
-          await future;
-        }
+        await repository.resolveUserLocation(
+          requestPermissionIfNeededValue:
+              UserLocationRepositoryContractBoolValue.fromRaw(
+            true,
+            defaultValue: true,
+          ),
+          timeout: permissionTimeout == null
+              ? null
+              : UserLocationRepositoryContractDurationValue.fromRaw(
+                  permissionTimeout,
+                  defaultValue: permissionTimeout,
+                ),
+        );
       } on Object {
         // Best-effort permission resolution.
       }

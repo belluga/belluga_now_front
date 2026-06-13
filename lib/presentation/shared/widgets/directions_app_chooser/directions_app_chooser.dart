@@ -54,6 +54,29 @@ class DirectionsAppChooser implements DirectionsAppChooserContract {
   }
 
   @override
+  Future<bool> launchDirect({
+    required DirectionsDirectProvider provider,
+    required DirectionsLaunchTarget target,
+  }) async {
+    if (!target.hasLaunchableDestination) {
+      return false;
+    }
+
+    final useWebUrisOnly = _isWebProvider();
+    final uris = switch (provider) {
+      DirectionsDirectProvider.waze => _wazeUris(target),
+      DirectionsDirectProvider.uber => _uberUris(
+          target,
+          useWebUrisOnly: useWebUrisOnly,
+        ),
+    };
+    if (uris.isEmpty) {
+      return false;
+    }
+    return _launchFirstSupportedUri(uris);
+  }
+
+  @override
   Future<void> present(
     BuildContext context, {
     required DirectionsLaunchTarget target,
@@ -139,23 +162,18 @@ class DirectionsAppChooser implements DirectionsAppChooserContract {
           label: 'Apple Maps',
           subtitle: 'Abrir navegação externa',
           visualType: DirectionsAppVisualType.appleMaps,
-          onSelected: () => _launchFirstSupportedUri(
-            _appleMapsUris(target),
-          ),
+          onSelected: () => _launchFirstSupportedUri(_appleMapsUris(target)),
         ),
       DirectionsAppChoice(
         id: 'web:waze',
         label: 'Waze',
         subtitle: 'Abrir navegação externa',
         visualType: DirectionsAppVisualType.waze,
-        onSelected: () => _launchFirstSupportedUri(
-          _wazeUris(target),
-        ),
+        onSelected: () => _launchFirstSupportedUri(_wazeUris(target)),
       ),
     ];
 
     choices.addAll(await _buildRideShareChoices(target, useWebUrisOnly: true));
-    choices.add(_buildBrowserChoice(target));
     return choices;
   }
 
@@ -166,7 +184,10 @@ class DirectionsAppChooser implements DirectionsAppChooserContract {
     final choices = <DirectionsAppChoice>[];
 
     final uberUris = _uberUris(target, useWebUrisOnly: useWebUrisOnly);
-    if (await _hasAnyLaunchHandler(uberUris, skipCapabilityCheck: useWebUrisOnly)) {
+    if (await _hasAnyLaunchHandler(
+      uberUris,
+      skipCapabilityCheck: useWebUrisOnly,
+    )) {
       choices.add(
         DirectionsAppChoice(
           id: 'ride:uber',
@@ -178,8 +199,10 @@ class DirectionsAppChooser implements DirectionsAppChooserContract {
       );
     }
 
-    final ninetyNineUris =
-        _ninetyNineUris(target, useWebUrisOnly: useWebUrisOnly);
+    final ninetyNineUris = _ninetyNineUris(
+      target,
+      useWebUrisOnly: useWebUrisOnly,
+    );
     if (await _hasAnyLaunchHandler(
       ninetyNineUris,
       skipCapabilityCheck: useWebUrisOnly,
@@ -204,9 +227,8 @@ class DirectionsAppChooser implements DirectionsAppChooserContract {
       label: 'Abrir no navegador',
       subtitle: 'Abrir navegação externa',
       visualType: DirectionsAppVisualType.browser,
-      onSelected: () => _launchFirstSupportedUri(
-        <Uri>[_buildBrowserDirectionsUri(target)],
-      ),
+      onSelected: () =>
+          _launchFirstSupportedUri(<Uri>[_buildBrowserDirectionsUri(target)]),
     );
   }
 
@@ -217,8 +239,10 @@ class DirectionsAppChooser implements DirectionsAppChooserContract {
 
   Uri _buildBrowserDirectionsUri(DirectionsLaunchTarget target) {
     final destination = _destinationQuery(target);
+    final origin = _encodedOriginQueryParam(target, parameterName: 'origin');
     return Uri.parse(
       'https://www.google.com/maps/dir/?api=1'
+      '${origin ?? ''}'
       '&destination=${Uri.encodeComponent(destination)}',
     );
   }
@@ -230,44 +254,75 @@ class DirectionsAppChooser implements DirectionsAppChooserContract {
     return target.trimmedAddress;
   }
 
+  String? _originQuery(DirectionsLaunchTarget target) {
+    if (target.hasOriginCoordinates) {
+      return '${target.originLatitude},${target.originLongitude}';
+    }
+    if (target.hasOriginAddress) {
+      return target.trimmedOriginAddress;
+    }
+    return null;
+  }
+
+  String? _encodedOriginQueryParam(
+    DirectionsLaunchTarget target, {
+    required String parameterName,
+  }) {
+    final origin = _originQuery(target);
+    if (origin == null || origin.trim().isEmpty) {
+      return null;
+    }
+    return '&$parameterName=${Uri.encodeComponent(origin)}';
+  }
+
   List<Uri> _googleMapsUris(
     DirectionsLaunchTarget target, {
     required bool useWebUrisOnly,
   }) {
     if (useWebUrisOnly) {
+      final origin = _encodedOriginQueryParam(target, parameterName: 'origin');
       return <Uri>[
         Uri.parse(
           'https://www.google.com/maps/dir/?api=1'
+          '${origin ?? ''}'
           '&destination=${Uri.encodeComponent(_destinationQuery(target))}',
         ),
       ];
     }
+    final appOrigin = _encodedOriginQueryParam(target, parameterName: 'saddr');
+    final webOrigin = _encodedOriginQueryParam(target, parameterName: 'origin');
     return <Uri>[
       Uri.parse(
-        'comgooglemaps://?daddr=${Uri.encodeComponent(_destinationQuery(target))}'
+        'comgooglemaps://?${appOrigin == null ? '' : '${appOrigin.substring(1)}&'}'
+        'daddr=${Uri.encodeComponent(_destinationQuery(target))}'
         '&directionsmode=driving',
       ),
       Uri.parse(
         'https://www.google.com/maps/dir/?api=1'
+        '${webOrigin ?? ''}'
         '&destination=${Uri.encodeComponent(_destinationQuery(target))}',
       ),
     ];
   }
 
   List<Uri> _appleMapsUris(DirectionsLaunchTarget target) {
+    final origin = _encodedOriginQueryParam(target, parameterName: 'saddr');
     return <Uri>[
       Uri.parse(
         'https://maps.apple.com/?daddr=${Uri.encodeComponent(_destinationQuery(target))}'
+        '${origin ?? ''}'
         '&dirflg=d',
       ),
     ];
   }
 
   List<Uri> _wazeUris(DirectionsLaunchTarget target) {
+    final origin = _encodedOriginQueryParam(target, parameterName: 'from');
     if (target.hasCoordinates) {
       return <Uri>[
         Uri.parse(
           'https://waze.com/ul?ll=${target.latitude},${target.longitude}'
+          '${origin ?? ''}'
           '&navigate=yes',
         ),
       ];
@@ -276,6 +331,7 @@ class DirectionsAppChooser implements DirectionsAppChooserContract {
     return <Uri>[
       Uri.parse(
         'https://waze.com/ul?q=${Uri.encodeComponent(target.trimmedAddress)}'
+        '${origin ?? ''}'
         '&navigate=yes',
       ),
     ];
@@ -292,10 +348,12 @@ class DirectionsAppChooser implements DirectionsAppChooserContract {
     final latitude = target.latitude!;
     final longitude = target.longitude!;
     final encodedTitle = Uri.encodeComponent(target.destinationName);
+    final pickup = _uberPickupQuery(target);
     if (useWebUrisOnly) {
       return <Uri>[
         Uri.parse(
           'https://m.uber.com/ul/?action=setPickup'
+          '$pickup'
           '&dropoff[latitude]=$latitude'
           '&dropoff[longitude]=$longitude'
           '&dropoff[nickname]=$encodedTitle',
@@ -305,12 +363,14 @@ class DirectionsAppChooser implements DirectionsAppChooserContract {
     return <Uri>[
       Uri.parse(
         'uber://?action=setPickup'
+        '$pickup'
         '&dropoff[latitude]=$latitude'
         '&dropoff[longitude]=$longitude'
         '&dropoff[nickname]=$encodedTitle',
       ),
       Uri.parse(
         'https://m.uber.com/ul/?action=setPickup'
+        '$pickup'
         '&dropoff[latitude]=$latitude'
         '&dropoff[longitude]=$longitude'
         '&dropoff[nickname]=$encodedTitle',
@@ -329,10 +389,12 @@ class DirectionsAppChooser implements DirectionsAppChooserContract {
     final latitude = target.latitude!;
     final longitude = target.longitude!;
     final encodedTitle = Uri.encodeComponent(target.destinationName);
+    final pickup = _ninetyNinePickupQuery(target);
     if (useWebUrisOnly) {
       return <Uri>[
         Uri.parse(
           'https://app.99app.com/open?deep_link_value=ride'
+          '$pickup'
           '&dropoff_latitude=$latitude'
           '&dropoff_longitude=$longitude'
           '&dropoff_title=$encodedTitle',
@@ -341,17 +403,41 @@ class DirectionsAppChooser implements DirectionsAppChooserContract {
     }
     return <Uri>[
       Uri.parse(
-        'ninetynine://ride?dropoff_latitude=$latitude'
+        'ninetynine://ride?$pickup'
+        '${pickup.isEmpty ? '' : '&'}dropoff_latitude=$latitude'
         '&dropoff_longitude=$longitude'
         '&dropoff_title=$encodedTitle',
       ),
       Uri.parse(
         'https://app.99app.com/open?deep_link_value=ride'
+        '$pickup'
         '&dropoff_latitude=$latitude'
         '&dropoff_longitude=$longitude'
         '&dropoff_title=$encodedTitle',
       ),
     ];
+  }
+
+  String _uberPickupQuery(DirectionsLaunchTarget target) {
+    if (!target.hasOriginCoordinates) {
+      return '';
+    }
+
+    final pickupTitle = Uri.encodeComponent(target.originDisplayName);
+    return '&pickup[latitude]=${target.originLatitude}'
+        '&pickup[longitude]=${target.originLongitude}'
+        '&pickup[nickname]=$pickupTitle';
+  }
+
+  String _ninetyNinePickupQuery(DirectionsLaunchTarget target) {
+    if (!target.hasOriginCoordinates) {
+      return '';
+    }
+
+    final pickupTitle = Uri.encodeComponent(target.originDisplayName);
+    return '&pickup_latitude=${target.originLatitude}'
+        '&pickup_longitude=${target.originLongitude}'
+        '&pickup_title=$pickupTitle';
   }
 
   Future<bool> _launchFirstSupportedUri(List<Uri> uris) async {

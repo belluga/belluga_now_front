@@ -8,6 +8,7 @@ import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.d
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_accounts_repository.dart';
 import 'package:dio/dio.dart';
@@ -400,7 +401,8 @@ void main() {
       location: tenantAdminLocationFromRaw(latitude: -20.31, longitude: -40.29),
       taxonomyTerms: (() {
         final terms = TenantAdminTaxonomyTerms();
-        terms.add(tenantAdminTaxonomyTermFromRaw(type: 'genre', value: 'urbana'));
+        terms.add(
+            tenantAdminTaxonomyTermFromRaw(type: 'genre', value: 'urbana'));
         return terms;
       })(),
       bio: _repoText('<p>Bio</p>'),
@@ -410,6 +412,45 @@ void main() {
     expect(result.accountProfile.accountId, result.account.id);
     expect(result.accountProfile.profileType, 'venue');
     expect(adapter.requests.last.path, contains('/v1/account_onboardings'));
+  });
+
+  test('createAccountOnboarding forwards nested profile groups', () async {
+    final adapter = _AccountsRoutingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminAccountsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await repository.createAccountOnboarding(
+      name: _repoText('Conta onboarding'),
+      ownershipState: TenantAdminOwnershipState.unmanaged,
+      profileType: _repoText('venue'),
+      nestedProfileGroups: [
+        TenantAdminNestedProfileGroup(
+          idValue: TenantAdminNestedProfileGroupTextValue('integrantes'),
+          labelValue: TenantAdminNestedProfileGroupTextValue('Integrantes'),
+          orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+          accountProfileIdValues: [
+            TenantAdminNestedProfileGroupTextValue('profile-1'),
+            TenantAdminNestedProfileGroupTextValue('profile-2'),
+          ],
+        ),
+      ],
+    );
+
+    final request = adapter.requests.last;
+    expect(request.path, contains('/v1/account_onboardings'));
+    final payload = request.data as Map<String, dynamic>;
+    expect(payload['nested_profile_groups'], [
+      {
+        'id': 'integrantes',
+        'label': 'Integrantes',
+        'order': 0,
+        'account_profile_ids': ['profile-1', 'profile-2'],
+      },
+    ]);
   });
 
   test(

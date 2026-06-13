@@ -414,6 +414,9 @@ class AppDataDTO {
             typeAssetUrl: rawType['type_asset_url'],
           ),
           capabilities: ProfileTypeCapabilities(
+            isPubliclyDiscoverableValue: ProfileTypeFlagValue(
+              capabilitiesMap['is_publicly_discoverable'] == true,
+            ),
             isFavoritableValue: ProfileTypeFlagValue(
               capabilitiesMap['is_favoritable'] == true,
             ),
@@ -438,6 +441,9 @@ class AppDataDTO {
             ),
             hasEventsValue: ProfileTypeFlagValue(
               capabilitiesMap['has_events'] == true,
+            ),
+            hasNestedProfileGroupsValue: ProfileTypeFlagValue(
+              capabilitiesMap['has_nested_profile_groups'] == true,
             ),
           ),
         ),
@@ -775,10 +781,36 @@ class AppDataDTO {
     Map<String, dynamic>? rawSettings,
   ) {
     final settings = rawSettings ?? const <String, dynamic>{};
-    final mapUi = settings['map_ui'] is Map
-        ? Map<String, dynamic>.from(settings['map_ui'] as Map)
-        : const <String, dynamic>{};
-    final rawFilters = mapUi['filters'];
+    final canonicalKeys = _resolveDiscoveryMapFilterCatalogKeys(
+      settings['discovery_filters'],
+    );
+    return canonicalKeys;
+  }
+
+  static List<String> _resolveDiscoveryMapFilterCatalogKeys(
+    Object? rawDiscoveryFilters,
+  ) {
+    if (rawDiscoveryFilters is! Map) {
+      return const <String>[];
+    }
+
+    final discoveryFilters = Map<String, dynamic>.from(rawDiscoveryFilters);
+    final rawSurfaces = discoveryFilters['surfaces'];
+    if (rawSurfaces is! Map) {
+      return const <String>[];
+    }
+
+    final surfaces = Map<String, dynamic>.from(rawSurfaces);
+    final rawPublicMap = surfaces['public_map.primary'];
+    if (rawPublicMap is! Map) {
+      return const <String>[];
+    }
+
+    final publicMap = Map<String, dynamic>.from(rawPublicMap);
+    return _resolveFilterCatalogKeys(publicMap['filters']);
+  }
+
+  static List<String> _resolveFilterCatalogKeys(Object? rawFilters) {
     if (rawFilters is! List) {
       return const <String>[];
     }

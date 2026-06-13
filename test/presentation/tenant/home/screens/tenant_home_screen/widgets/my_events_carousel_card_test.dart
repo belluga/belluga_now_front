@@ -49,7 +49,8 @@ void main() {
       ),
     );
 
-    expect(find.textContaining('07:00 às 10:00'), findsOneWidget);
+    expect(find.textContaining('Qua, 1 abr · 7h às 10h'), findsOneWidget);
+    expect(find.textContaining('07:00 às 10:00'), findsNothing);
     expect(find.textContaining('07:00 -'), findsNothing);
   });
 
@@ -85,7 +86,8 @@ void main() {
 
     expect(find.textContaining('07:00 às 10:00'), findsNothing);
     expect(find.textContaining('07:00 -'), findsNothing);
-    expect(find.textContaining('07:00'), findsOneWidget);
+    expect(find.textContaining('Qua, 1 abr · 7h'), findsOneWidget);
+    expect(find.textContaining('07:00'), findsNothing);
   });
 }
 

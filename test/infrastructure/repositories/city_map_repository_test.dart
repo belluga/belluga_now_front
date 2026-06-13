@@ -1,5 +1,9 @@
 import 'dart:convert';
 
+import 'package:belluga_now/domain/map/queries/poi_query.dart';
+import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
@@ -36,7 +40,7 @@ void main() {
       ),
     );
 
-    final filters = await repository.fetchFilters();
+    final filters = await repository.fetchFilters(_buildQuery());
 
     expect(filters.categories, hasLength(1));
     expect(
@@ -48,8 +52,24 @@ void main() {
       isNot(contains('taxonomy:genre:brasilidades')),
     );
     expect(filters.categories.single.key, 'events');
+    expect(filters.categories.single.label, 'Agenda Configurada');
     expect(filters.categories.single.serverQuery?.sourceValue?.value, 'event');
+    expect(filters.categories.single.overrideMarker, isFalse);
+    expect(filters.categories.single.filterVisual?.isIcon, isTrue);
+    expect(filters.categories.single.filterVisual?.icon, 'music');
+    expect(filters.categories.single.filterVisual?.colorHex, '#C6141F');
+    expect(filters.categories.single.filterVisual?.iconColorHex, '#FFFFFF');
+    expect(filters.categories.single.markerOverrideVisual, isNull);
   });
+}
+
+PoiQuery _buildQuery() {
+  return PoiQuery(
+    origin: CityCoordinate(
+      latitudeValue: LatitudeValue()..parse('-20.3155'),
+      longitudeValue: LongitudeValue()..parse('-40.3128'),
+    ),
+  );
 }
 
 class _MapFiltersAdapter implements HttpClientAdapter {
@@ -70,9 +90,15 @@ class _MapFiltersAdapter implements HttpClientAdapter {
         'categories': [
           {
             'key': 'events',
-            'label': 'Events',
+            'label': 'Agenda Configurada',
             'count': 1,
             'override_marker': false,
+            'marker_override': {
+              'mode': 'icon',
+              'icon': 'music',
+              'color': '#C6141F',
+              'icon_color': '#FFFFFF',
+            },
             'query': {'source': 'event'},
           },
         ],
@@ -120,6 +146,11 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> init() async {}
+
+  @override
+  Future<void> ensureTenantPublicIdentityReady() async {
+    await init();
+  }
 
   @override
   Future<void> autoLogin() async {}

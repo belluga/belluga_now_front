@@ -40,6 +40,8 @@ class PoiFilterCategory {
   int get count => countValue.value;
   bool get overrideMarker => overrideMarkerValue.value;
 
+  CityPoiVisual? get filterVisual => markerOverride?.toPoiVisual();
+
   CityPoiVisual? get markerOverrideVisual {
     if (!overrideMarker) {
       return null;

@@ -1,8 +1,7 @@
-import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/map_marker_icon_resolver.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 
 class PoiContentResolver {
   const PoiContentResolver._();
@@ -19,82 +18,27 @@ class PoiContentResolver {
   }
 
   static bool isEventPoi(CityPoiModel poi) {
-    return poi.refType.trim().toLowerCase() == 'event';
+    return poi.isEventReference;
   }
 
   static String? eventTimingBadgeLabel(CityPoiModel poi) {
-    if (!isEventPoi(poi)) {
-      return null;
-    }
-    if (poi.isHappeningNow) {
-      return 'AGORA';
-    }
-    final start = poi.timeStart;
-    if (start == null) {
-      return null;
-    }
-    final localStart = TimezoneConverter.utcToLocal(start);
-    return DateFormat('HH:mm').format(localStart);
+    return poi.eventTimingBadgeLabel;
   }
 
   static String? eventRelativeTimingBadgeLabel(
     CityPoiModel poi, {
     DateTime? referenceTime,
   }) {
-    if (!isEventPoi(poi)) {
-      return null;
-    }
-    if (poi.isHappeningNow) {
-      return 'AGORA';
-    }
-    final start = poi.timeStart;
-    if (start == null) {
-      return null;
-    }
-
-    final localStart = TimezoneConverter.utcToLocal(start);
-    final localReference = _resolveLocalReferenceTime(referenceTime);
-    final startDay =
-        DateTime(localStart.year, localStart.month, localStart.day);
-    final referenceDay = DateTime(
-      localReference.year,
-      localReference.month,
-      localReference.day,
+    final referenceTimeValue = referenceTime == null
+        ? null
+        : (DateTimeValue()..parse(referenceTime.toIso8601String()));
+    return poi.eventRelativeTimingBadgeLabel(
+      referenceTimeValue: referenceTimeValue,
     );
-    final timeLabel = DateFormat('HH:mm').format(localStart);
-    final dayOffset = startDay.difference(referenceDay).inDays;
-
-    if (dayOffset == 0) {
-      return 'Hoje $timeLabel';
-    }
-    if (dayOffset == 1) {
-      return 'Amanhã $timeLabel';
-    }
-    return '${DateFormat('dd/MM').format(localStart)} $timeLabel';
   }
 
   static String? eventScheduleLabel(CityPoiModel poi) {
-    if (!isEventPoi(poi)) {
-      return null;
-    }
-    final start = poi.timeStart;
-    if (start == null) {
-      return null;
-    }
-    final localStart = TimezoneConverter.utcToLocal(start);
-    final localEnd =
-        poi.timeEnd == null ? null : TimezoneConverter.utcToLocal(poi.timeEnd!);
-    final startDate = DateFormat('dd/MM').format(localStart);
-    final startTime = DateFormat('HH:mm').format(localStart);
-    if (localEnd == null) {
-      return '$startDate • $startTime';
-    }
-    final endDate = DateFormat('dd/MM').format(localEnd);
-    final endTime = DateFormat('HH:mm').format(localEnd);
-    if (startDate == endDate) {
-      return '$startDate • $startTime às $endTime';
-    }
-    return '$startDate $startTime às $endDate $endTime';
+    return poi.eventScheduleLabel;
   }
 
   static String typeLabel(CityPoiModel poi) {
@@ -253,14 +197,6 @@ class PoiContentResolver {
     final hour = updatedAt.hour.toString().padLeft(2, '0');
     final minute = updatedAt.minute.toString().padLeft(2, '0');
     return 'Atualizado em $day/$month • $hour:$minute';
-  }
-
-  static DateTime _resolveLocalReferenceTime(DateTime? rawReferenceTime) {
-    final referenceTime = rawReferenceTime ?? DateTime.now();
-    if (referenceTime.isUtc) {
-      return TimezoneConverter.utcToLocal(referenceTime);
-    }
-    return referenceTime;
   }
 
   static String _humanizeToken(String raw) {

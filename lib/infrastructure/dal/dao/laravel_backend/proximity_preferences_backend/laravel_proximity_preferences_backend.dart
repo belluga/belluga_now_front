@@ -16,7 +16,9 @@ class LaravelProximityPreferencesBackend
 
   @override
   Future<ProximityPreferenceDTO?> fetch() async {
-    final token = TenantPublicAuthHeaders.currentToken();
+    final token = await TenantPublicAuthHeaders.resolveToken(
+      bootstrapIfEmpty: true,
+    );
     if (token.isEmpty) {
       return null;
     }
@@ -59,7 +61,9 @@ class LaravelProximityPreferencesBackend
   Future<ProximityPreferenceDTO> upsert(
     ProximityPreferenceDTO preference,
   ) async {
-    final token = TenantPublicAuthHeaders.currentToken();
+    final token = await TenantPublicAuthHeaders.resolveToken(
+      bootstrapIfEmpty: true,
+    );
     if (token.isEmpty) {
       throw Exception(
         'Cannot persist proximity preferences without an identity token.',

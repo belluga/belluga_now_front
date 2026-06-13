@@ -8,7 +8,9 @@ class TenantAdminSettingsRequestEncoder {
   Map<String, dynamic> encodeMapUiSettingsPatch(
     TenantAdminMapUiSettings settings,
   ) {
-    return encodeSettingsPatchPayload(settings.rawMapUi);
+    final rawMapUi = Map<String, dynamic>.from(settings.rawMapUi);
+    rawMapUi.remove('filters');
+    return encodeSettingsPatchPayload(rawMapUi);
   }
 
   Map<String, dynamic> encodeDiscoveryFiltersSettingsPatch(

@@ -222,7 +222,6 @@ class _TenantAdminFilterCatalogRowVisual {
     required String? imageUri,
   }) {
     if (supportsMarkerOverride &&
-        overrideMarker &&
         markerOverride?.isValid == true) {
       if (markerOverride!.mode == TenantAdminMapFilterMarkerOverrideMode.icon) {
         return _TenantAdminFilterCatalogRowVisual.icon(

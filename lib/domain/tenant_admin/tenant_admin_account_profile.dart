@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
@@ -19,13 +20,17 @@ class TenantAdminAccountProfile {
     TenantAdminOptionalTextValue? contentValue,
     this.location,
     TenantAdminTaxonomyTerms? taxonomyTerms,
+    List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
     this.ownershipState,
   })  : slugValue = slugValue ?? TenantAdminOptionalTextValue(),
         avatarUrlValue = avatarUrlValue ?? TenantAdminOptionalUrlValue(),
         coverUrlValue = coverUrlValue ?? TenantAdminOptionalUrlValue(),
         bioValue = bioValue ?? TenantAdminOptionalTextValue(),
         contentValue = contentValue ?? TenantAdminOptionalTextValue(),
-        taxonomyTerms = taxonomyTerms ?? const TenantAdminTaxonomyTerms.empty();
+        taxonomyTerms = taxonomyTerms ?? const TenantAdminTaxonomyTerms.empty(),
+        nestedProfileGroups = List<TenantAdminNestedProfileGroup>.unmodifiable(
+          nestedProfileGroups ?? const <TenantAdminNestedProfileGroup>[],
+        );
 
   final TenantAdminRequiredTextValue idValue;
   final TenantAdminRequiredTextValue accountIdValue;
@@ -38,6 +43,7 @@ class TenantAdminAccountProfile {
   final TenantAdminOptionalTextValue contentValue;
   final TenantAdminLocation? location;
   final TenantAdminTaxonomyTerms taxonomyTerms;
+  final List<TenantAdminNestedProfileGroup> nestedProfileGroups;
   final TenantAdminOwnershipState? ownershipState;
 
   String get id => idValue.value;

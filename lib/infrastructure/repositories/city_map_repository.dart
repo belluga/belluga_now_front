@@ -108,8 +108,8 @@ class CityMapRepository extends CityMapRepositoryContract {
   }
 
   @override
-  Future<PoiFilterOptions> fetchFilters() async {
-    final filters = await _laravelHttpService.getFilters(PoiQuery());
+  Future<PoiFilterOptions> fetchFilters(PoiQuery query) async {
+    final filters = await _laravelHttpService.getFilters(query);
     final tags = filters.tags
         .map((tag) => tag.key.trim())
         .where((tag) => tag.isNotEmpty)

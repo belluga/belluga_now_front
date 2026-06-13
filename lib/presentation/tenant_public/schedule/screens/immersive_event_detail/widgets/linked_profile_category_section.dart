@@ -1,5 +1,3 @@
-import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/presentation/shared/visuals/account_profile_visual_resolver.dart';
 import 'package:belluga_now/presentation/shared/visuals/resolved_account_profile_visual.dart';
@@ -14,6 +12,7 @@ class LinkedProfileCategorySection extends StatelessWidget {
     required this.profileTypeRegistry,
     required this.favoriteAccountProfileIds,
     required this.isFavoritable,
+    required this.onProfileTap,
     required this.onFavoriteTap,
     super.key,
   });
@@ -23,6 +22,7 @@ class LinkedProfileCategorySection extends StatelessWidget {
   final ProfileTypeRegistry? profileTypeRegistry;
   final Set<String> favoriteAccountProfileIds;
   final bool Function(EventLinkedAccountProfile profile) isFavoritable;
+  final ValueChanged<EventLinkedAccountProfile> onProfileTap;
   final ValueChanged<EventLinkedAccountProfile> onFavoriteTap;
 
   @override
@@ -53,6 +53,9 @@ class LinkedProfileCategorySection extends StatelessWidget {
                 ),
                 isFavorite: favoriteAccountProfileIds.contains(profile.id),
                 isFavoritable: isFavoritable(profile),
+                onTap: profile.canOpenPublicDetail
+                    ? () => onProfileTap(profile)
+                    : null,
                 onFavoriteTap: () => onFavoriteTap(profile),
               ),
             ),
@@ -69,6 +72,7 @@ class _LinkedProfileCard extends StatelessWidget {
     required this.resolvedVisual,
     required this.isFavorite,
     required this.isFavoritable,
+    required this.onTap,
     required this.onFavoriteTap,
   });
 
@@ -76,12 +80,14 @@ class _LinkedProfileCard extends StatelessWidget {
   final ResolvedAccountProfileVisual resolvedVisual;
   final bool isFavorite;
   final bool isFavoritable;
+  final VoidCallback? onTap;
   final VoidCallback onFavoriteTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final favoriteLabel = isFavorite ? 'Favoritado' : 'Favoritar';
     final tags = profile.taxonomyTerms
         .map((term) => term.labelValue.value.trim())
         .where((label) => label.isNotEmpty)
@@ -101,9 +107,7 @@ class _LinkedProfileCard extends StatelessWidget {
             InkWell(
               key: Key('linkedProfileCardTapTarget_${profile.id}'),
               borderRadius: BorderRadius.circular(24),
-              onTap: () => context.router.push(
-                PartnerDetailRoute(slug: profile.slug),
-              ),
+              onTap: onTap,
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: AccountProfileIdentityBlock(
@@ -162,6 +166,7 @@ class _LinkedProfileCard extends StatelessWidget {
                   ),
                   child: IconButton(
                     key: Key('linkedProfileFavoriteButton_${profile.id}'),
+                    tooltip: favoriteLabel,
                     onPressed: onFavoriteTap,
                     icon: Icon(
                       isFavorite ? Icons.favorite : Icons.favorite_border,

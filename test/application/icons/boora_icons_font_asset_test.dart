@@ -38,6 +38,7 @@ void main() {
       containsAll(<String>{
         'kiosk',
         'ice-cream',
+        'whatsapp',
         'appointment',
         'invitation',
         'invitation_outlined',
@@ -184,7 +185,8 @@ class _GeneratedBooraDart {
       r"static const String _fontFamily = '([^']+)';",
     ).firstMatch(source);
     final iconMatches = RegExp(
-      r'static const IconData \w+ = IconData\(0x([0-9a-f]+), fontFamily: _fontFamily\);',
+      r'static const IconData \w+\s*=\s*'
+      r'IconData\(0x([0-9a-f]+),\s*fontFamily:\s*_fontFamily\);',
     ).allMatches(source);
 
     if (familyMatch == null) {

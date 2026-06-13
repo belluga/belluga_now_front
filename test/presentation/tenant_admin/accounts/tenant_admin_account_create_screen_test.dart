@@ -43,6 +43,7 @@ class _FakeAccountsRepository
   Object? createAccountError;
   TenantAdminMediaUpload? lastOnboardingAvatarUpload;
   TenantAdminMediaUpload? lastOnboardingCoverUpload;
+  List<TenantAdminNestedProfileGroup> lastOnboardingNestedGroups = const [];
   int createOnboardingCallCount = 0;
 
   @override
@@ -121,10 +122,15 @@ class _FakeAccountsRepository
     TenantAdminAccountsRepositoryContractPrimString? content,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup> nestedProfileGroups =
+        const <TenantAdminNestedProfileGroup>[],
   }) async {
     createOnboardingCallCount += 1;
     lastOnboardingAvatarUpload = avatarUpload;
     lastOnboardingCoverUpload = coverUpload;
+    lastOnboardingNestedGroups = List<TenantAdminNestedProfileGroup>.from(
+      nestedProfileGroups,
+    );
     final error = createAccountError;
     if (error != null) {
       throw error;
@@ -248,6 +254,7 @@ class _FakeAccountProfilesRepository
             ];
 
   List<TenantAdminProfileTypeDefinition> _profileTypes;
+  List<TenantAdminAccountProfile> profilesToReturn = const [];
   String? lastCreateBio;
   List<TenantAdminTaxonomyTerm> lastCreateTaxonomyTerms = const [];
   Object? createProfileError;
@@ -303,6 +310,8 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup> nestedProfileGroups =
+        const <TenantAdminNestedProfileGroup>[],
   }) async {
     final error = createProfileError;
     if (error != null) {
@@ -343,8 +352,10 @@ class _FakeAccountProfilesRepository
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
     TenantAdminAccountProfilesRepoString? accountId,
+    TenantAdminAccountProfilesRepoBool? queryableOnly,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async {
-    return [];
+    return profilesToReturn;
   }
 
   @override
@@ -425,6 +436,7 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoBool? removeCover,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
   }) async {
     return tenantAdminAccountProfileFromRaw(
       id: accountProfileId.value,
@@ -1093,6 +1105,164 @@ void main() {
 
     expect(find.byType(TenantAdminAccountCreateScreen), findsNothing);
     expect(find.text('Detail: acc-1'), findsOneWidget);
+  });
+
+  testWidgets('shows nested group editor in canonical onboarding flow',
+      (tester) async {
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+    profilesRepository._profileTypes = [
+      tenantAdminProfileTypeDefinitionFromRaw(
+        type: 'venue',
+        label: 'Venue',
+        allowedTaxonomies: [],
+        capabilities: TenantAdminProfileTypeCapabilities(
+          isFavoritable: TenantAdminFlagValue(true),
+          isPoiEnabled: TenantAdminFlagValue(false),
+          hasBio: TenantAdminFlagValue(false),
+          hasContent: TenantAdminFlagValue(false),
+          hasTaxonomies: TenantAdminFlagValue(false),
+          hasAvatar: TenantAdminFlagValue(false),
+          hasCover: TenantAdminFlagValue(false),
+          hasEvents: TenantAdminFlagValue(false),
+          hasNestedProfileGroups: TenantAdminFlagValue(true),
+        ),
+      ),
+    ];
+    profilesRepository.profilesToReturn = [
+      tenantAdminAccountProfileFromRaw(
+        id: 'profile-1',
+        accountId: 'acc-existing',
+        profileType: 'venue',
+        displayName: 'Conta Parceira',
+      ),
+      tenantAdminAccountProfileFromRaw(
+        id: 'profile-2',
+        accountId: 'acc-existing-2',
+        profileType: 'venue',
+        displayName: 'Conta Convidada',
+      ),
+    ];
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminAccountCreateScreen(),
+      ),
+    );
+
+    await _selectProfileType(tester, 'Venue');
+
+    final scrollable = find.byType(Scrollable).first;
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('tenantAdminAccountCreateAddNestedGroupButton')),
+      300,
+      scrollable: scrollable,
+    );
+
+    expect(find.text('Abas de contas vinculadas'), findsOneWidget);
+    await tester.tap(
+      find.byKey(const Key('tenantAdminAccountCreateAddNestedGroupButton')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Selecionar Accounts'), findsOneWidget);
+    await tester.tap(find.text('Selecionar Accounts'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Conta Parceira'), findsOneWidget);
+    expect(find.text('Conta Convidada'), findsOneWidget);
+  });
+
+  testWidgets('submits nested groups through account onboarding',
+      (tester) async {
+    final accountsRepository =
+        GetIt.I.get<TenantAdminAccountsRepositoryContract>()
+            as _FakeAccountsRepository;
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+    profilesRepository._profileTypes = [
+      tenantAdminProfileTypeDefinitionFromRaw(
+        type: 'venue',
+        label: 'Venue',
+        allowedTaxonomies: [],
+        capabilities: TenantAdminProfileTypeCapabilities(
+          isFavoritable: TenantAdminFlagValue(true),
+          isPoiEnabled: TenantAdminFlagValue(false),
+          hasBio: TenantAdminFlagValue(false),
+          hasContent: TenantAdminFlagValue(false),
+          hasTaxonomies: TenantAdminFlagValue(false),
+          hasAvatar: TenantAdminFlagValue(false),
+          hasCover: TenantAdminFlagValue(false),
+          hasEvents: TenantAdminFlagValue(false),
+          hasNestedProfileGroups: TenantAdminFlagValue(true),
+        ),
+      ),
+    ];
+    profilesRepository.profilesToReturn = [
+      tenantAdminAccountProfileFromRaw(
+        id: 'profile-1',
+        accountId: 'acc-existing',
+        profileType: 'venue',
+        displayName: 'Conta Parceira',
+      ),
+    ];
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminAccountCreateScreen(),
+      ),
+    );
+
+    await _selectProfileType(tester, 'Venue');
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Nome'),
+      'Conta criada',
+    );
+
+    final scrollable = find.byType(Scrollable).first;
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('tenantAdminAccountCreateAddNestedGroupButton')),
+      300,
+      scrollable: scrollable,
+    );
+    await tester.tap(
+      find.byKey(const Key('tenantAdminAccountCreateAddNestedGroupButton')),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+        find.widgetWithText(TextFormField, 'Nome da aba'), 'Integrantes');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Selecionar Accounts'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Conta Parceira'));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('tenant_admin_account_create_save')),
+      300,
+      scrollable: scrollable,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('tenant_admin_account_create_save')),
+      warnIfMissed: false,
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(accountsRepository.lastOnboardingNestedGroups, hasLength(1));
+    expect(accountsRepository.lastOnboardingNestedGroups.single.label,
+        'Integrantes');
+    expect(
+      accountsRepository
+          .lastOnboardingNestedGroups.single.accountProfileIdValues
+          .map((entry) => entry.value)
+          .toList(growable: false),
+      ['profile-1'],
+    );
   });
 }
 

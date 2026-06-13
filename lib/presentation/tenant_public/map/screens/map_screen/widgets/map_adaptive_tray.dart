@@ -528,7 +528,7 @@ class _FilterChipPalette {
       return fallback;
     }
 
-    final overrideVisual = category.markerOverrideVisual;
+    final overrideVisual = category.filterVisual;
     if (overrideVisual == null || !overrideVisual.isIcon) {
       return fallback;
     }

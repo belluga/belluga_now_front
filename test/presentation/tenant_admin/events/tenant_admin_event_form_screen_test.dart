@@ -9,6 +9,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profi
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
@@ -1194,6 +1195,72 @@ void main() {
   });
 
   testWidgets(
+      'disables adding occurrence programming profile until an occurrence group exists',
+      (tester) async {
+    final eventsRepository = _FakeEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    eventsRepository.eventTypes = [
+      TenantAdminEventType(
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439123'),
+        nameValue: tenantAdminRequiredText('Feira'),
+        slugValue: tenantAdminRequiredText('feira'),
+      ),
+    ];
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminEventFormScreen(),
+      ),
+    );
+
+    await _fillRequiredFields(tester, controller: controller);
+    await tester.pumpAndSettle();
+    await tester
+        .tap(find.byKey(const Key('tenantAdminEventAddOccurrenceButton')));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
+      250,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(
+        const Key(
+          'tenantAdminProgrammingAddOccurrenceProfileGroupRequiredText',
+        ),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(
+        const Key('tenantAdminProgrammingAddOccurrenceProfileGroupDropdown'),
+      ),
+      findsNothing,
+    );
+    final addOccurrenceProfileButton = tester.widget<OutlinedButton>(
+      find.byKey(
+        const Key('tenantAdminProgrammingAddOccurrenceProfileButton'),
+      ),
+    );
+    expect(addOccurrenceProfileButton.onPressed, isNull);
+  });
+
+  testWidgets(
       'authors occurrence scoped programming from occurrence participants without promoting event-level related profiles',
       (tester) async {
     final eventsRepository = _FakeEventsRepository();
@@ -1225,6 +1292,13 @@ void main() {
     await tester
         .tap(find.byKey(const Key('tenantAdminEventAddOccurrenceButton')));
     await tester.pumpAndSettle();
+
+    final occurrenceGroupId = await _addOccurrenceProfileGroup(
+      tester,
+      controller,
+      occurrenceIndex: 1,
+      label: 'Bandas',
+    );
 
     expect(
       find.byKey(const Key('tenantAdminOccurrenceLocationOverrideSwitch')),
@@ -1259,9 +1333,25 @@ void main() {
       ),
     );
     expect(linkOccurrenceProfileButton.onPressed, isNull);
-    await tester.tap(
+    expect(
       find.byKey(
         const Key('tenantAdminProgrammingAddOccurrenceProfileButton'),
+      ),
+      findsNothing,
+    );
+    final addOccurrenceProfileButton = tester.widget<OutlinedButton>(
+      find.byKey(
+        Key(
+          'tenantAdminProgrammingAddOccurrenceProfileButton_$occurrenceGroupId',
+        ),
+      ),
+    );
+    expect(addOccurrenceProfileButton.onPressed, isNotNull);
+    await tester.tap(
+      find.byKey(
+        Key(
+          'tenantAdminProgrammingAddOccurrenceProfileButton_$occurrenceGroupId',
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -1299,6 +1389,12 @@ void main() {
         controller.eventFormStateStreamValue.value.occurrences[1];
     expect(
       occurrence.relatedAccountProfileIds.map((value) => value.value),
+      contains('artist-1'),
+    );
+    expect(occurrence.profileGroups.single.id, occurrenceGroupId);
+    expect(
+      occurrence.profileGroups.single.accountProfileIdValues
+          .map((entry) => entry.value),
       contains('artist-1'),
     );
     expect(occurrence.programmingItems.single.time, '13:00');
@@ -1373,12 +1469,18 @@ void main() {
         .tap(find.byKey(const Key('tenantAdminEventAddOccurrenceButton')));
     await tester.pumpAndSettle();
 
-    await tester.tap(
-      find.byKey(const Key('tenantAdminOccurrenceAddProfileButton')),
+    final occurrenceGroupId = await _addOccurrenceProfileGroup(
+      tester,
+      controller,
+      occurrenceIndex: 1,
+      label: 'Participantes',
     );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Artist A').last);
-    await tester.pumpAndSettle();
+    await _selectProfileInGroup(
+      tester,
+      keyPrefix: 'OccurrenceProfile',
+      groupId: occurrenceGroupId,
+      profileId: 'artist-1',
+    );
 
     await tester.scrollUntilVisible(
       find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
@@ -1414,14 +1516,23 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.tap(find.byTooltip('Remover perfil da ocorrência'));
-    await tester.pumpAndSettle();
+    await _selectProfileInGroup(
+      tester,
+      keyPrefix: 'OccurrenceProfile',
+      groupId: occurrenceGroupId,
+      profileId: 'artist-1',
+    );
 
     expect(
-      find.byKey(const Key('tenantAdminOccurrenceProfile_artist-1')),
+      controller.eventFormStateStreamValue.value.occurrences[1]
+          .relatedAccountProfileIds,
+      isEmpty,
+    );
+    expect(
+      find.text('1 perfil(is) selecionado(s)'),
       findsNothing,
     );
-    expect(find.text('0 perfil(is) vinculado(s)'), findsOneWidget);
+    expect(find.text('Selecionar perfis'), findsOneWidget);
 
     await _closeOccurrenceSheet(tester);
 
@@ -1767,6 +1878,50 @@ void main() {
           .toList(growable: false),
       ['Abertura principal'],
     );
+  });
+
+  testWidgets(
+      'root related profile groups remain visible after the event has multiple occurrences',
+      (tester) async {
+    final eventsRepository = _FakeEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    eventsRepository.eventTypes = [
+      TenantAdminEventType(
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439189'),
+        nameValue: tenantAdminRequiredText('Feira'),
+        slugValue: tenantAdminRequiredText('feira'),
+      ),
+    ];
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminEventFormScreen(),
+      ),
+    );
+
+    await _fillRequiredFields(tester, controller: controller);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Abas de perfis relacionados'), findsOneWidget);
+
+    await tester
+        .tap(find.byKey(const Key('tenantAdminEventAddOccurrenceButton')));
+    await tester.pumpAndSettle();
+    await _closeOccurrenceSheet(tester);
+
+    expect(find.text('Abas de perfis relacionados'), findsOneWidget);
+    expect(find.byKey(const Key('tenantAdminEventOccurrenceCard_0')),
+        findsOneWidget);
+    expect(find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),
+        findsOneWidget);
   });
 
   testWidgets(
@@ -2545,6 +2700,7 @@ void main() {
     await tester.tap(find.byKey(const Key('tenantAdminEventOccurrenceCard_2')));
     await tester.pumpAndSettle();
 
+    await _ensureOccurrenceProgrammingGroup(tester);
     await tester.scrollUntilVisible(
       find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
       250,
@@ -2560,8 +2716,12 @@ void main() {
       '10:00',
     );
     await tester.tap(
-      find.byKey(
-        const Key('tenantAdminProgrammingAddOccurrenceProfileButton'),
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is OutlinedButton &&
+            widget.key
+                .toString()
+                .contains('tenantAdminProgrammingAddOccurrenceProfileButton_'),
       ),
     );
     await tester.pumpAndSettle();
@@ -2940,7 +3100,7 @@ void main() {
   });
 
   testWidgets(
-      'related account profile picker disables already selected profiles on subsequent open',
+      'related account profile group selector keeps checkbox state canonical',
       (tester) async {
     final eventsRepository = _FakeEventsRepository();
     final taxonomiesRepository = _FakeTaxonomiesRepository();
@@ -2967,25 +3127,39 @@ void main() {
       ),
     );
 
-    await tester.scrollUntilVisible(
-      find.widgetWithText(OutlinedButton, 'Adicionar perfil'),
-      280,
-      scrollable: find.byType(Scrollable).first,
+    final groupId = await _addEventProfileGroup(
+      tester,
+      controller,
+      label: 'Participantes',
     );
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Adicionar perfil'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(ListTile, 'Artist A').first);
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Adicionar perfil'));
-    await tester.pumpAndSettle();
-
-    final disabledTile = tester.widget<ListTile>(
-      find.widgetWithText(ListTile, 'Artist A').last,
+    await _selectProfileInGroup(
+      tester,
+      keyPrefix: 'EventProfile',
+      groupId: groupId,
+      profileId: 'artist-1',
     );
-    expect(disabledTile.enabled, isFalse);
+
+    expect(
+      controller
+          .eventFormStateStreamValue.value.selectedRelatedAccountProfileIds,
+      ['artist-1'],
+    );
+
+    final candidateKey =
+        Key('EventProfileNestedAccountCandidate_${groupId}_artist-1');
+    final selectedTile = tester.widget<CheckboxListTile>(
+      find.byKey(candidateKey),
+    );
+    expect(selectedTile.value, isTrue);
+
+    await tester.tap(find.byKey(candidateKey));
+    await tester.pumpAndSettle();
+
+    expect(
+      controller
+          .eventFormStateStreamValue.value.selectedRelatedAccountProfileIds,
+      isEmpty,
+    );
   });
 
   testWidgets(
@@ -3028,30 +3202,19 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.scrollUntilVisible(
-      find.text(
-          'Use a busca para localizar perfis relacionados além da primeira página carregada.'),
-      280,
-      scrollable: find.byType(Scrollable).first,
+    final groupId = await _addEventProfileGroup(
+      tester,
+      controller,
+      label: 'Participantes',
     );
-    await tester.pumpAndSettle();
-
-    expect(
-      find.text(
-        'Use a busca para localizar perfis relacionados além da primeira página carregada.',
-      ),
-      findsOneWidget,
-    );
-    final addArtistButton = tester.widget<OutlinedButton>(
-      find.widgetWithText(OutlinedButton, 'Adicionar perfil'),
-    );
-    expect(addArtistButton.onPressed, isNotNull);
+    expect(groupId, isNotEmpty);
+    expect(find.text('Nenhum perfil disponivel.'), findsOneWidget);
   });
 
   testWidgets(
-      'related account profile picker performs backend search after typing',
+      'related account profile group selector filters loaded candidates after typing',
       (tester) async {
-    final eventsRepository = _SearchableCandidatesEventsRepository();
+    final eventsRepository = _MultipleRelatedCandidatesEventsRepository();
     final taxonomiesRepository = _FakeTaxonomiesRepository();
     final controller = TenantAdminEventsController(
       eventsRepository: eventsRepository,
@@ -3075,34 +3238,35 @@ void main() {
       ),
     );
 
-    await tester.scrollUntilVisible(
-      find.widgetWithText(OutlinedButton, 'Adicionar perfil'),
-      280,
-      scrollable: find.byType(Scrollable).first,
+    final groupId = await _addEventProfileGroup(
+      tester,
+      controller,
+      label: 'Participantes',
     );
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Adicionar perfil'));
-    await tester.pumpAndSettle();
+    await _openProfileGroupSelector(
+      tester,
+      keyPrefix: 'EventProfile',
+      groupId: groupId,
+    );
 
     expect(find.text('Artist A'), findsOneWidget);
+    expect(find.text('Artist B'), findsOneWidget);
 
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Buscar perfil relacionado'),
-      'Zulu',
+    await _searchProfileGroupSelector(
+      tester,
+      keyPrefix: 'EventProfile',
+      groupId: groupId,
+      query: 'B',
     );
-    await tester.pump(const Duration(milliseconds: 350));
-    await tester.pumpAndSettle();
 
-    expect(find.text('Zulu Artist'), findsOneWidget);
+    expect(find.text('Artist B'), findsOneWidget);
     expect(find.text('Artist A'), findsNothing);
-    expect(eventsRepository.recordedSearchTerms, contains('Zulu'));
   });
 
   testWidgets(
-      'adding a searched related account profile keeps its summary visible on the form',
+      'adding a filtered related account profile keeps its summary visible on the form',
       (tester) async {
-    final eventsRepository = _SearchableCandidatesEventsRepository();
+    final eventsRepository = _MultipleRelatedCandidatesEventsRepository();
     final taxonomiesRepository = _FakeTaxonomiesRepository();
     final controller = TenantAdminEventsController(
       eventsRepository: eventsRepository,
@@ -3126,27 +3290,28 @@ void main() {
       ),
     );
 
-    await tester.scrollUntilVisible(
-      find.widgetWithText(OutlinedButton, 'Adicionar perfil'),
-      280,
-      scrollable: find.byType(Scrollable).first,
+    final groupId = await _addEventProfileGroup(
+      tester,
+      controller,
+      label: 'Participantes',
+    );
+    await _openProfileGroupSelector(
+      tester,
+      keyPrefix: 'EventProfile',
+      groupId: groupId,
+    );
+    await _searchProfileGroupSelector(
+      tester,
+      keyPrefix: 'EventProfile',
+      groupId: groupId,
+      query: 'B',
+    );
+    await tester.tap(
+      find.byKey(Key('EventProfileNestedAccountCandidate_${groupId}_artist-2')),
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Adicionar perfil'));
-    await tester.pumpAndSettle();
-
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Buscar perfil relacionado'),
-      'Zulu',
-    );
-    await tester.pump(const Duration(milliseconds: 350));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.widgetWithText(ListTile, 'Zulu Artist'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Zulu Artist'), findsOneWidget);
+    expect(find.widgetWithText(InputChip, 'Artist B'), findsOneWidget);
     expect(find.text('Perfil não disponível na lista atual'), findsNothing);
   });
 
@@ -3177,32 +3342,35 @@ void main() {
       ),
     );
 
-    await tester.scrollUntilVisible(
-      find.widgetWithText(OutlinedButton, 'Adicionar perfil'),
-      280,
-      scrollable: find.byType(Scrollable).first,
+    final groupId = await _addEventProfileGroup(
+      tester,
+      controller,
+      label: 'Participantes',
     );
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Adicionar perfil'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Legacy Artist Page 2 021'), findsNothing);
-
-    await tester.dragUntilVisible(
-      find.text('Legacy Artist Page 2 021'),
+    await _openProfileGroupSelector(
+      tester,
+      keyPrefix: 'EventProfile',
+      groupId: groupId,
+    );
+    await _searchProfileGroupSelector(
+      tester,
+      keyPrefix: 'EventProfile',
+      groupId: groupId,
+      query: '021',
+    );
+    await tester.tap(
       find.byKey(
-        const ValueKey<String>(
-            'tenant-admin-related-account-profile-picker-list'),
+        Key(
+          'EventProfileNestedAccountCandidate_${groupId}_artist-page-2-021',
+        ),
       ),
-      const Offset(0, -280),
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(ListTile, 'Legacy Artist Page 2 021'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Legacy Artist Page 2 021'), findsOneWidget);
+    expect(
+      find.widgetWithText(InputChip, 'Legacy Artist Page 2 021'),
+      findsOneWidget,
+    );
     expect(find.text('Perfil não disponível na lista atual'), findsNothing);
   });
 
@@ -3258,6 +3426,16 @@ void main() {
           partyTypeValue: tenantAdminRequiredText('artist'),
           partyRefIdValue: tenantAdminRequiredText('artist-zulu'),
           canEditValue: tenantAdminFlag(false),
+        ),
+      ],
+      profileGroups: [
+        TenantAdminNestedProfileGroup(
+          idValue: TenantAdminNestedProfileGroupTextValue('artists'),
+          labelValue: TenantAdminNestedProfileGroupTextValue('Artistas'),
+          orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+          accountProfileIdValues: [
+            TenantAdminNestedProfileGroupTextValue('artist-zulu'),
+          ],
         ),
       ],
     );
@@ -3335,6 +3513,16 @@ void main() {
           canEditValue: tenantAdminFlag(false),
         ),
       ],
+      profileGroups: [
+        TenantAdminNestedProfileGroup(
+          idValue: TenantAdminNestedProfileGroupTextValue('artists'),
+          labelValue: TenantAdminNestedProfileGroupTextValue('Artistas'),
+          orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+          accountProfileIdValues: [
+            TenantAdminNestedProfileGroupTextValue('artist-zulu'),
+          ],
+        ),
+      ],
     );
 
     GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
@@ -3350,6 +3538,143 @@ void main() {
 
     expect(find.text('Zulu Artist'), findsOneWidget);
     expect(find.text('Perfil não disponível na lista atual'), findsNothing);
+  });
+
+  testWidgets(
+      'editing occurrence groups keeps occurrence-owned selected summaries visible',
+      (tester) async {
+    final eventsRepository = _EmptyCandidatesEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    eventsRepository.eventTypes = [
+      TenantAdminEventType(
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439103'),
+        nameValue: tenantAdminRequiredText('Show'),
+        slugValue: tenantAdminRequiredText('show'),
+      ),
+    ];
+
+    final bandaAzul = tenantAdminAccountProfileFromRaw(
+      id: 'occ-banda-azul',
+      accountId: 'acc-occ-banda-azul',
+      profileType: 'artist',
+      displayName: 'Manual v0208 Banda Azul',
+      slug: 'manual-v0208-banda-azul',
+    );
+    final bandaVerde = tenantAdminAccountProfileFromRaw(
+      id: 'occ-banda-verde',
+      accountId: 'acc-occ-banda-verde',
+      profileType: 'artist',
+      displayName: 'Manual v0208 Banda Verde',
+      slug: 'manual-v0208-banda-verde',
+    );
+    final expositorSol = tenantAdminAccountProfileFromRaw(
+      id: 'occ-expositor-sol',
+      accountId: 'acc-occ-expositor-sol',
+      profileType: 'exhibitor',
+      displayName: 'Manual v0208 Expositor Sol',
+      slug: 'manual-v0208-expositor-sol',
+    );
+    final expositorMar = tenantAdminAccountProfileFromRaw(
+      id: 'occ-expositor-mar',
+      accountId: 'acc-occ-expositor-mar',
+      profileType: 'exhibitor',
+      displayName: 'Manual v0208 Expositor Mar',
+      slug: 'manual-v0208-expositor-mar',
+    );
+
+    final existingEvent = TenantAdminEvent(
+      eventIdValue: tenantAdminRequiredText('evt-edit-occurrence-groups'),
+      slugValue: tenantAdminRequiredText('event-edit-occurrence-groups'),
+      titleValue: tenantAdminRequiredText('Evento em edição'),
+      contentValue: tenantAdminOptionalText('Conteúdo'),
+      type: TenantAdminEventType(
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439103'),
+        nameValue: tenantAdminRequiredText('Show'),
+        slugValue: tenantAdminRequiredText('show'),
+      ),
+      occurrences: <TenantAdminEventOccurrence>[
+        TenantAdminEventOccurrence(
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 6, 7, 3),
+          ),
+        ),
+        TenantAdminEventOccurrence(
+          occurrenceIdValue: tenantAdminOptionalText('occurrence-2'),
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 6, 8, 3),
+          ),
+          relatedAccountProfileIdValues: [
+            TenantAdminAccountProfileIdValue(bandaAzul.id),
+            TenantAdminAccountProfileIdValue(bandaVerde.id),
+            TenantAdminAccountProfileIdValue(expositorSol.id),
+            TenantAdminAccountProfileIdValue(expositorMar.id),
+          ],
+          relatedAccountProfiles: [
+            bandaAzul,
+            bandaVerde,
+            expositorSol,
+            expositorMar,
+          ],
+          profileGroups: [
+            TenantAdminNestedProfileGroup(
+              idValue: TenantAdminNestedProfileGroupTextValue('outro-grupo'),
+              labelValue: TenantAdminNestedProfileGroupTextValue('Outro Grupo'),
+              orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+              accountProfileIdValues: [
+                TenantAdminNestedProfileGroupTextValue(bandaAzul.id),
+                TenantAdminNestedProfileGroupTextValue(bandaVerde.id),
+                TenantAdminNestedProfileGroupTextValue(expositorSol.id),
+                TenantAdminNestedProfileGroupTextValue(expositorMar.id),
+              ],
+            ),
+          ],
+        ),
+      ],
+      publication: TenantAdminEventPublication(
+        statusValue: tenantAdminRequiredText('draft'),
+      ),
+    );
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      Scaffold(
+        body: TenantAdminEventFormScreen(existingEvent: existingEvent),
+      ),
+    );
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('tenantAdminEventOccurrenceCard_1')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('4 perfil(is) selecionado(s)'), findsOneWidget);
+    expect(
+      find.widgetWithText(InputChip, 'Manual v0208 Banda Azul'),
+      findsOneWidget,
+    );
+    expect(
+      find.widgetWithText(InputChip, 'Manual v0208 Banda Verde'),
+      findsOneWidget,
+    );
+    expect(
+      find.widgetWithText(InputChip, 'Manual v0208 Expositor Sol'),
+      findsOneWidget,
+    );
+    expect(
+      find.widgetWithText(InputChip, 'Manual v0208 Expositor Mar'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('uses rich text editor for event description content',
@@ -3540,6 +3865,107 @@ Future<void> _tapProgrammingSaveButton(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+Future<String> _addEventProfileGroup(
+  WidgetTester tester,
+  TenantAdminEventsController controller, {
+  String? label,
+}) async {
+  await tester.scrollUntilVisible(
+    find.byKey(const Key('TenantAdminEventProfileGroupAdd')),
+    250,
+    scrollable: find.byType(Scrollable).first,
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(const Key('TenantAdminEventProfileGroupAdd')));
+  await tester.pumpAndSettle();
+
+  final group = controller.eventFormStateStreamValue.value.profileGroups.last;
+  if (label != null) {
+    await tester.enterText(
+      find.byKey(Key('EventProfileNestedGroupLabel_${group.id}')),
+      label,
+    );
+    await tester.pumpAndSettle();
+  }
+  return group.id;
+}
+
+Future<String> _addOccurrenceProfileGroup(
+  WidgetTester tester,
+  TenantAdminEventsController controller, {
+  required int occurrenceIndex,
+  String? label,
+}) async {
+  await tester.scrollUntilVisible(
+    find.byKey(const Key('TenantAdminOccurrenceProfileGroupAdd')),
+    250,
+    scrollable: find.byType(Scrollable).last,
+  );
+  await tester.pumpAndSettle();
+  await tester
+      .tap(find.byKey(const Key('TenantAdminOccurrenceProfileGroupAdd')));
+  await tester.pumpAndSettle();
+
+  final group = controller.eventFormStateStreamValue.value
+      .occurrences[occurrenceIndex].profileGroups.last;
+  if (label != null) {
+    await tester.enterText(
+      find.byKey(Key('OccurrenceProfileNestedGroupLabel_${group.id}')),
+      label,
+    );
+    await tester.pumpAndSettle();
+  }
+  return group.id;
+}
+
+Future<void> _openProfileGroupSelector(
+  WidgetTester tester, {
+  required String keyPrefix,
+  required String groupId,
+}) async {
+  await tester.ensureVisible(
+    find.byKey(Key('${keyPrefix}NestedAccountSelector_$groupId')),
+  );
+  await tester.pumpAndSettle();
+  await tester
+      .tap(find.byKey(Key('${keyPrefix}NestedAccountSelector_$groupId')));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _selectProfileInGroup(
+  WidgetTester tester, {
+  required String keyPrefix,
+  required String groupId,
+  required String profileId,
+}) async {
+  final candidate = find
+      .byKey(Key('${keyPrefix}NestedAccountCandidate_${groupId}_$profileId'));
+  if (candidate.evaluate().isEmpty) {
+    await _openProfileGroupSelector(
+      tester,
+      keyPrefix: keyPrefix,
+      groupId: groupId,
+    );
+  }
+  await tester.tap(
+    candidate,
+  );
+  await tester.pumpAndSettle();
+}
+
+Future<void> _searchProfileGroupSelector(
+  WidgetTester tester, {
+  required String keyPrefix,
+  required String groupId,
+  required String query,
+}) async {
+  await tester.enterText(
+    find.byKey(Key('${keyPrefix}NestedAccountSearch_$groupId')),
+    query,
+  );
+  await tester.pumpAndSettle();
+}
+
 Future<void> _addOccurrenceProgrammingTitleOnly(
   WidgetTester tester, {
   required String time,
@@ -3566,11 +3992,43 @@ Future<void> _addOccurrenceProgrammingTitleOnly(
   await _tapProgrammingSaveButton(tester);
 }
 
+Future<void> _ensureOccurrenceProgrammingGroup(
+  WidgetTester tester, {
+  String label = 'Grupo de programação',
+}) async {
+  if (find.text(label).evaluate().isNotEmpty) {
+    return;
+  }
+
+  await tester.scrollUntilVisible(
+    find.byKey(const Key('TenantAdminOccurrenceProfileGroupAdd')),
+    250,
+    scrollable: find.byType(Scrollable).last,
+  );
+  await tester.pumpAndSettle();
+  await tester
+      .tap(find.byKey(const Key('TenantAdminOccurrenceProfileGroupAdd')));
+  await tester.pumpAndSettle();
+
+  final labelField = find
+      .byWidgetPredicate(
+        (widget) =>
+            widget is TextFormField &&
+            widget.key
+                .toString()
+                .contains('OccurrenceProfileNestedGroupLabel_'),
+      )
+      .last;
+  await tester.enterText(labelField, label);
+  await tester.pumpAndSettle();
+}
+
 Future<void> _addOccurrenceProgrammingWithNewProfile(
   WidgetTester tester, {
   required String time,
   required String profileName,
 }) async {
+  await _ensureOccurrenceProgrammingGroup(tester);
   await tester.scrollUntilVisible(
     find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
     250,
@@ -3586,8 +4044,12 @@ Future<void> _addOccurrenceProgrammingWithNewProfile(
     time,
   );
   await tester.tap(
-    find.byKey(
-      const Key('tenantAdminProgrammingAddOccurrenceProfileButton'),
+    find.byWidgetPredicate(
+      (widget) =>
+          widget is OutlinedButton &&
+          widget.key
+              .toString()
+              .contains('tenantAdminProgrammingAddOccurrenceProfileButton_'),
     ),
   );
   await tester.pumpAndSettle();
@@ -4058,59 +4520,6 @@ class _EmptyCandidatesEventsRepository extends _FakeEventsRepository {
   }) async {
     return tenantAdminPagedResultFromRaw(
       items: const <TenantAdminAccountProfile>[],
-      hasMore: false,
-    );
-  }
-}
-
-class _SearchableCandidatesEventsRepository extends _FakeEventsRepository {
-  final List<String> recordedSearchTerms = <String>[];
-
-  @override
-  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-      fetchEventAccountProfileCandidatesPage({
-    required TenantAdminEventAccountProfileCandidateType candidateType,
-    required TenantAdminEventsRepoInt page,
-    required TenantAdminEventsRepoInt pageSize,
-    TenantAdminEventsRepoString? search,
-    TenantAdminEventsRepoString? accountSlug,
-  }) async {
-    if (candidateType ==
-        TenantAdminEventAccountProfileCandidateType.physicalHost) {
-      return super.fetchEventAccountProfileCandidatesPage(
-        candidateType: candidateType,
-        page: page,
-        pageSize: pageSize,
-        search: search,
-        accountSlug: accountSlug,
-      );
-    }
-
-    final normalizedSearch = search?.value.trim() ?? '';
-    if (normalizedSearch.isNotEmpty) {
-      recordedSearchTerms.add(normalizedSearch);
-    }
-
-    final items = normalizedSearch.toLowerCase() == 'zulu'
-        ? <TenantAdminAccountProfile>[
-            tenantAdminAccountProfileFromRaw(
-              id: 'artist-zulu',
-              accountId: 'acc-zulu',
-              profileType: 'artist',
-              displayName: 'Zulu Artist',
-            ),
-          ]
-        : <TenantAdminAccountProfile>[
-            tenantAdminAccountProfileFromRaw(
-              id: 'artist-1',
-              accountId: 'acc-artist',
-              profileType: 'artist',
-              displayName: 'Artist A',
-            ),
-          ];
-
-    return tenantAdminPagedResultFromRaw(
-      items: items,
       hasMore: false,
     );
   }

@@ -12,11 +12,13 @@ import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_settings_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
@@ -54,6 +56,7 @@ class TenantAdminSettingsController implements Disposable {
     TenantAdminAccountProfilesRepositoryContract? accountProfilesRepository,
     TenantAdminStaticAssetsRepositoryContract? staticAssetsRepository,
     TenantAdminTaxonomiesRepositoryContract? taxonomiesRepository,
+    TenantAdminEventsRepositoryContract? eventsRepository,
     TenantAdminTenantScopeContract? tenantScope,
     TenantAdminLocationSelectionContract? locationSelectionService,
     TenantAdminImageIngestionService? imageIngestionService,
@@ -74,6 +77,10 @@ class TenantAdminSettingsController implements Disposable {
         _taxonomiesRepository = taxonomiesRepository ??
             (GetIt.I.isRegistered<TenantAdminTaxonomiesRepositoryContract>()
                 ? GetIt.I.get<TenantAdminTaxonomiesRepositoryContract>()
+                : null),
+        _eventsRepository = eventsRepository ??
+            (GetIt.I.isRegistered<TenantAdminEventsRepositoryContract>()
+                ? GetIt.I.get<TenantAdminEventsRepositoryContract>()
                 : null),
         _tenantScope = tenantScope ??
             (GetIt.I.isRegistered<TenantAdminTenantScopeContract>()
@@ -98,6 +105,7 @@ class TenantAdminSettingsController implements Disposable {
       _accountProfilesRepository;
   final TenantAdminStaticAssetsRepositoryContract? _staticAssetsRepository;
   final TenantAdminTaxonomiesRepositoryContract? _taxonomiesRepository;
+  final TenantAdminEventsRepositoryContract? _eventsRepository;
   final TenantAdminTenantScopeContract? _tenantScope;
   final TenantAdminLocationSelectionContract _locationSelectionService;
   final TenantAdminImageIngestionService _imageIngestionService;
@@ -702,6 +710,7 @@ class TenantAdminSettingsController implements Disposable {
           const <TenantAdminProfileTypeDefinition>[];
       final staticTypes = staticRepo.staticProfileTypesStreamValue.value ??
           const <TenantAdminStaticProfileTypeDefinition>[];
+      final eventTypes = await _loadEventTypes();
       final taxonomies = taxonomyRepo.taxonomiesStreamValue.value ??
           const <TenantAdminTaxonomyDefinition>[];
 
@@ -710,6 +719,7 @@ class TenantAdminSettingsController implements Disposable {
       final catalog = _buildMapFilterRuleCatalog(
         accountTypes: accountTypes,
         staticTypes: staticTypes,
+        eventTypes: eventTypes,
         taxonomies: taxonomies,
         termsByTaxonomySlug: termsByTaxonomySlug,
       );
@@ -738,14 +748,14 @@ class TenantAdminSettingsController implements Disposable {
     final latitudeRaw = mapDefaultOriginLatitudeController.text.trim();
     if (latitudeRaw.isEmpty) {
       remoteErrorStreamValue.addValue(
-        'Latitude da origem padrão é obrigatória.',
+        'Latitude do ponto de referência padrão é obrigatória.',
       );
       return;
     }
     final latitude = tenantAdminParseLatitude(latitudeRaw);
     if (latitude == null) {
       remoteErrorStreamValue.addValue(
-        'Latitude da origem padrão inválida.',
+        'Latitude do ponto de referência padrão inválida.',
       );
       return;
     }
@@ -753,14 +763,14 @@ class TenantAdminSettingsController implements Disposable {
     final longitudeRaw = mapDefaultOriginLongitudeController.text.trim();
     if (longitudeRaw.isEmpty) {
       remoteErrorStreamValue.addValue(
-        'Longitude da origem padrão é obrigatória.',
+        'Longitude do ponto de referência padrão é obrigatória.',
       );
       return;
     }
     final longitude = tenantAdminParseLongitude(longitudeRaw);
     if (longitude == null) {
       remoteErrorStreamValue.addValue(
-        'Longitude da origem padrão inválida.',
+        'Longitude do ponto de referência padrão inválida.',
       );
       return;
     }
@@ -780,7 +790,7 @@ class TenantAdminSettingsController implements Disposable {
       );
       _applyMapUiSettings(updated);
       await _refreshAppDataSnapshot();
-      _reportSuccess('Origem padrão atualizada com sucesso.');
+      _reportSuccess('Ponto de referência atualizado com sucesso.');
     } catch (error) {
       remoteErrorStreamValue.addValue(error.toString());
     } finally {
@@ -949,7 +959,6 @@ class TenantAdminSettingsController implements Disposable {
 
     final overrideMarker = nextItem.overrideMarker;
     final markerOverride = _sanitizeMapFilterMarkerOverride(
-      overrideMarker: overrideMarker,
       markerOverride: nextItem.markerOverride,
       imageUri: imageUri,
     );
@@ -971,7 +980,7 @@ class TenantAdminSettingsController implements Disposable {
       clearImageUriValue: TenantAdminFlagValue(imageUri == null),
       overrideMarkerValue: TenantAdminFlagValue(overrideMarker),
       markerOverride: markerOverride,
-      clearMarkerOverrideValue: TenantAdminFlagValue(!overrideMarker),
+      clearMarkerOverrideValue: TenantAdminFlagValue(markerOverride == null),
     );
     _replaceMapFilters(current);
     remoteErrorStreamValue.addValue(null);
@@ -2305,9 +2314,18 @@ class TenantAdminSettingsController implements Disposable {
     };
   }
 
+  Future<List<TenantAdminEventType>> _loadEventTypes() async {
+    final eventsRepo = _eventsRepository;
+    if (eventsRepo == null) {
+      return const <TenantAdminEventType>[];
+    }
+    return eventsRepo.fetchEventTypes();
+  }
+
   TenantAdminMapFilterRuleCatalog _buildMapFilterRuleCatalog({
     required List<TenantAdminProfileTypeDefinition> accountTypes,
     required List<TenantAdminStaticProfileTypeDefinition> staticTypes,
+    required List<TenantAdminEventType> eventTypes,
     required List<TenantAdminTaxonomyDefinition> taxonomies,
     required Map<String, List<TenantAdminTaxonomyTermDefinition>>
         termsByTaxonomySlug,
@@ -2315,6 +2333,7 @@ class TenantAdminSettingsController implements Disposable {
     return const TenantAdminDiscoveryFilterRuleCatalogBuilder().build(
       accountTypes: accountTypes,
       staticTypes: staticTypes,
+      eventTypes: eventTypes,
       taxonomies: taxonomies,
       termsBySlug: TenantAdminTaxonomyTermsBySlug.fromMap(
         termsByTaxonomySlug,
@@ -2392,14 +2411,9 @@ class TenantAdminSettingsController implements Disposable {
   }
 
   TenantAdminMapFilterMarkerOverride? _sanitizeMapFilterMarkerOverride({
-    required bool overrideMarker,
     required TenantAdminMapFilterMarkerOverride? markerOverride,
     required String? imageUri,
   }) {
-    if (!overrideMarker) {
-      return null;
-    }
-
     if (markerOverride == null) {
       return null;
     }

@@ -3,15 +3,19 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/extensions/compute_on_color.dart';
 import 'package:belluga_now/application/sharing/account_profile_public_share_payload.dart';
-import 'package:belluga_now/application/extensions/event_data_formating.dart';
 import 'package:belluga_now/application/rich_text/account_profile_rich_text_block.dart';
 import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
+import 'package:belluga_now/application/router/support/route_instance_scope.dart';
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
-import 'package:belluga_now/presentation/shared/promotion/support/web_installed_app_handoff.dart';
+import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
+import 'package:belluga_now/presentation/shared/favorites/account_profile_favorite_auth_gate.dart';
+import 'package:belluga_now/presentation/shared/sharing/public_share_launcher.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
 import 'package:belluga_now/presentation/shared/visuals/resolved_profile_type_visual.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
@@ -19,9 +23,13 @@ import 'package:belluga_now/presentation/shared/widgets/account_profile_identity
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_contract.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_launch_target.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_common_tabs.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_hero_action.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_directions_section.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
+import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/invite_status_icon.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/upcoming_event_card.dart';
@@ -29,8 +37,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart' hide Marker;
 import 'package:flutter_map/flutter_map.dart';
-import 'package:get_it/get_it.dart';
-import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -40,10 +46,16 @@ class AccountProfileDetailScreen extends StatefulWidget {
     super.key,
     required this.accountProfile,
     this.directionsAppChooser,
+    this.shareLauncher,
+    this.externalUrlLauncher,
+    this.isWebRuntime = kIsWeb,
   });
 
   final AccountProfileModel accountProfile;
   final DirectionsAppChooserContract? directionsAppChooser;
+  final SystemShareLauncher? shareLauncher;
+  final ExternalUrlLauncher? externalUrlLauncher;
+  final bool isWebRuntime;
 
   @override
   State<AccountProfileDetailScreen> createState() =>
@@ -52,15 +64,38 @@ class AccountProfileDetailScreen extends StatefulWidget {
 
 class _AccountProfileDetailScreenState
     extends State<AccountProfileDetailScreen> {
-  final AccountProfileDetailController _controller =
-      GetIt.I.get<AccountProfileDetailController>();
+  late final AccountProfileDetailController _controller;
+  bool _pendingIntentChecked = false;
   late final DirectionsAppChooserContract _directionsAppChooser =
       widget.directionsAppChooser ?? DirectionsAppChooser();
 
   @override
   void initState() {
     super.initState();
-    _controller.loadResolvedAccountProfile(widget.accountProfile);
+    _controller =
+        RouteInstanceScope.read<AccountProfileDetailController>(context);
+    unawaited(_controller.loadResolvedAccountProfile(widget.accountProfile));
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_pendingIntentChecked) {
+      return;
+    }
+    _pendingIntentChecked = true;
+    _checkPendingIntent();
+  }
+
+  @override
+  void didUpdateWidget(AccountProfileDetailScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.accountProfile.id != widget.accountProfile.id ||
+        oldWidget.accountProfile.slug != widget.accountProfile.slug) {
+      unawaited(
+        _controller.loadResolvedAccountProfile(widget.accountProfile),
+      );
+    }
   }
 
   @override
@@ -83,15 +118,18 @@ class _AccountProfileDetailScreenState
               if (errorMessage.trim().isNotEmpty) {
                 return _buildErrorState(errorMessage);
               }
-              return StreamValueBuilder<AccountProfileModel?>(
-                streamValue: _controller.accountProfileStreamValue,
-                onNullWidget: _buildEmptyState(),
-                builder: (context, accountProfile) {
+              return StreamValueBuilder(
+                streamValue: _controller.detailStateStreamValue,
+                builder: (context, detailState) {
+                  final accountProfile = detailState.accountProfile;
+                  if (accountProfile == null) {
+                    return _buildEmptyState();
+                  }
                   return StreamValueBuilder<PartnerProfileConfig?>(
                     streamValue: _controller.profileConfigStreamValue,
                     onNullWidget: _buildLoadingState(),
                     builder: (context, config) {
-                      final resolvedAccountProfile = accountProfile!;
+                      final resolvedAccountProfile = accountProfile;
                       final resolvedConfig = config!;
                       return StreamValueBuilder<Map<ProfileModuleId, Object?>>(
                         streamValue: _controller.moduleDataStreamValue,
@@ -103,57 +141,56 @@ class _AccountProfileDetailScreenState
                                 streamValue:
                                     _controller.agendaStatusRevisionStreamValue,
                                 builder: (context, _) {
-                                  final isFav = favorites
-                                      .contains(resolvedAccountProfile.id);
-                                  final isFavoritable = _controller
-                                      .isFavoritable(resolvedAccountProfile);
-                                  final configTabs = _buildTabsFromConfig(
-                                    resolvedAccountProfile,
-                                    resolvedConfig,
-                                    moduleData,
-                                    isFav: isFav,
-                                    isFavoritable: isFavoritable,
-                                  );
-                                  final effectiveTabs = configTabs.isEmpty
-                                      ? <ImmersiveTabItem>[
-                                          _buildFallbackTab(
-                                            resolvedAccountProfile,
-                                            isFav: isFav,
-                                            isFavoritable: isFavoritable,
-                                          ),
-                                        ]
-                                      : configTabs;
-                                  return ImmersiveDetailScreen(
-                                    heroContent: _buildHero(
-                                      resolvedAccountProfile,
-                                    ),
-                                    title: resolvedAccountProfile.name,
-                                    collapsedTitle: _buildCollapsedTitle(
-                                      resolvedAccountProfile,
-                                    ),
-                                    collapsedToolbarHeight: 72,
-                                    centerCollapsedTitle: false,
-                                    appBarActionsBuilder:
-                                        (context, innerBoxIsScrolled) =>
-                                            _buildAppBarActions(
-                                      context,
-                                      innerBoxIsScrolled,
-                                      resolvedAccountProfile,
-                                      isFav: isFav,
-                                      isFavoritable: isFavoritable,
-                                    ),
-                                    backPolicy:
-                                        buildCanonicalCurrentRouteBackPolicy(
-                                      context,
-                                    ),
-                                    onSharePressed: () => unawaited(
-                                      _shareAccountProfile(
+                                  return StreamValueBuilder<
+                                      ProximityPreference?>(
+                                    streamValue: _controller
+                                        .proximityPreferenceStreamValue,
+                                    builder: (context, __) {
+                                      final isFav = favorites
+                                          .contains(resolvedAccountProfile.id);
+                                      final isFavoritable =
+                                          _controller.isFavoritable(
+                                              resolvedAccountProfile);
+                                      final configTabs = _buildTabsFromConfig(
                                         resolvedAccountProfile,
-                                      ),
-                                    ),
-                                    shareIcon: BooraIcons.share,
-                                    tabs: effectiveTabs,
-                                    betweenHeroAndTabs: null,
+                                        resolvedConfig,
+                                        moduleData,
+                                        isFav: isFav,
+                                        isFavoritable: isFavoritable,
+                                      );
+                                      final effectiveTabs = configTabs.isEmpty
+                                          ? <ImmersiveTabItem>[
+                                              _buildFallbackTab(
+                                                resolvedAccountProfile,
+                                                isFav: isFav,
+                                                isFavoritable: isFavoritable,
+                                              ),
+                                            ]
+                                          : configTabs;
+                                      return ImmersiveDetailScreen(
+                                        heroContent: _buildHero(
+                                          resolvedAccountProfile,
+                                        ),
+                                        heroViewportHeightFactor: 0.5,
+                                        title: resolvedAccountProfile.name,
+                                        collapsedTitle: _buildCollapsedTitle(
+                                          resolvedAccountProfile,
+                                        ),
+                                        collapsedToolbarHeight: 72,
+                                        centerCollapsedTitle: false,
+                                        heroActions: _buildHeroActions(
+                                          resolvedAccountProfile,
+                                          isFav: isFav,
+                                          isFavoritable: isFavoritable,
+                                        ),
+                                        backPolicy:
+                                            buildCanonicalCurrentRouteBackPolicy(
+                                          context,
+                                        ),
+                                        tabs: effectiveTabs,
+                                        betweenHeroAndTabs: null,
+                                      );
+                                    },
                                   );
                                 },
                               );
@@ -179,207 +216,143 @@ class _AccountProfileDetailScreenState
       colorScheme: colorScheme,
       visual: resolvedVisual.typeVisual,
     );
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        resolvedVisual.surfaceImageUrl != null
-            ? BellugaNetworkImage(
-                resolvedVisual.surfaceImageUrl!,
-                fit: BoxFit.cover,
-                errorWidget: fallbackHero,
-              )
-            : fallbackHero,
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: <Color>[
-                  Colors.transparent,
-                  colorScheme.surface.withValues(alpha: 0.16),
-                  colorScheme.surface.withValues(alpha: 0.9),
-                ],
-                stops: const <double>[0, 0.62, 1],
-              ),
-            ),
-          ),
-        ),
-        Positioned(
-          left: 16,
-          right: 16,
-          bottom: 24,
-          child: AccountProfileIdentityBlock(
-            name: accountProfile.name,
-            avatarUrl: resolvedVisual.identityAvatarUrl,
-            typeVisual: resolvedVisual.typeVisual,
-            identityAvatarKey: const Key('accountProfileHeroIdentityAvatar'),
-            typeAvatarKey: const Key('accountProfileHeroTypeAvatar'),
-            avatarSize: 56,
-            avatarSpacing: 14,
-            typeAvatarSize: 28,
-            typeAvatarIconSize: 16,
-            titleSpacing: 10,
-            supportingSpacing: 12,
-            titleStyle: Theme.of(context).textTheme.displaySmall?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                  height: 0.95,
-                ),
-            titleTrailing: [
-              if (accountProfile.isVerified)
-                _buildVerifiedBadge(onDarkBackground: true),
-            ],
-            supporting: _buildHeroSupporting(accountProfile),
-          ),
-        ),
-      ],
-    );
-  }
 
-  Widget _buildCollapsedTitle(AccountProfileModel accountProfile) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final taxonomyLabels = _taxonomyLabels(accountProfile);
-    final chipBackground = colorScheme.secondaryContainer;
-    final chipForeground = chipBackground.computeIconColor(
-      context,
-      candidates: [
-        colorScheme.onSecondaryContainer,
-        colorScheme.onSurface,
-        Colors.black,
-        Colors.white,
-      ],
-    );
-    if (taxonomyLabels.isEmpty) {
-      return Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          key: const Key('immersiveCollapsedTitle'),
-          accountProfile.name,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: colorScheme.onSurface,
-                fontWeight: FontWeight.w800,
-              ),
-        ),
-      );
-    }
-
-    return Semantics(
-      key: const Key('accountProfileCollapsedTaxonomySummary'),
-      container: true,
-      label: '${accountProfile.name}. ${taxonomyLabels.join(', ')}',
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return ColoredBox(
+      color: colorScheme.surface,
+      child: Stack(
+        fit: StackFit.expand,
         children: [
-          Text(
-            key: const Key('immersiveCollapsedTitle'),
-            accountProfile.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: colorScheme.onSurface,
-                  fontWeight: FontWeight.w800,
+          resolvedVisual.surfaceImageUrl != null
+              ? BellugaNetworkImage(
+                  resolvedVisual.surfaceImageUrl!,
+                  fit: BoxFit.cover,
+                  alignment: Alignment.topCenter,
+                  errorWidget: fallbackHero,
+                )
+              : fallbackHero,
+          Positioned.fill(
+            child: DecoratedBox(
+              key: const Key('accountProfileHeroFadeGradient'),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: <Color>[
+                    Colors.transparent,
+                    colorScheme.surface.withValues(alpha: 0.06),
+                    colorScheme.surface.withValues(alpha: 0.22),
+                    colorScheme.surface.withValues(alpha: 0.48),
+                    colorScheme.surface.withValues(alpha: 0.72),
+                    colorScheme.surface.withValues(alpha: 0.9),
+                    colorScheme.surface,
+                  ],
+                  stops: const <double>[
+                    0,
+                    0.16,
+                    0.32,
+                    0.48,
+                    0.64,
+                    0.8,
+                    1,
+                  ],
                 ),
-          ),
-          const SizedBox(height: 4),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                for (var index = 0; index < taxonomyLabels.length; index++) ...[
-                  if (index > 0) const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: chipBackground,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      taxonomyLabels[index],
-                      maxLines: 1,
-                      overflow: TextOverflow.visible,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: chipForeground,
-                            fontWeight: FontWeight.w800,
-                          ),
-                    ),
-                  ),
-                ],
-              ],
+              ),
             ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _buildHeroSurfaceSummary(accountProfile),
           ),
         ],
       ),
     );
   }
 
-  List<String> _taxonomyLabels(AccountProfileModel accountProfile) {
-    final seen = <String>{};
-    final labels = <String>[];
-    for (final tag in accountProfile.tags) {
-      final label = tag.value.trim();
-      if (label.isEmpty) {
-        continue;
-      }
-      final normalized = label.toLowerCase();
-      if (seen.add(normalized)) {
-        labels.add(label);
-      }
-    }
-    return labels;
+  Widget _buildHeroSurfaceSummary(AccountProfileModel accountProfile) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final resolvedVisual = _controller.resolvedVisualFor(accountProfile);
+
+    return KeyedSubtree(
+      key: const Key('accountProfileHeroSurfaceSummary'),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+        child: AccountProfileIdentityBlock(
+          name: accountProfile.name,
+          avatarUrl: resolvedVisual.identityAvatarUrl,
+          typeVisual: resolvedVisual.typeVisual,
+          identityAvatarKey: const Key('accountProfileHeroIdentityAvatar'),
+          typeAvatarKey: const Key('accountProfileHeroTypeAvatar'),
+          avatarSize: 56,
+          avatarSpacing: 14,
+          typeAvatarSize: 28,
+          typeAvatarIconSize: 16,
+          titleSpacing: 10,
+          supportingSpacing: 12,
+          titleStyle: Theme.of(context).textTheme.displaySmall?.copyWith(
+                color: colorScheme.onSurface,
+                fontWeight: FontWeight.w900,
+                height: 0.95,
+              ),
+          titleTrailing: [
+            if (accountProfile.isVerified)
+              _buildVerifiedBadge(onDarkBackground: false),
+          ],
+          supporting: _buildHeroSupporting(accountProfile),
+        ),
+      ),
+    );
   }
 
-  List<Widget> _buildAppBarActions(
-    BuildContext context,
-    bool innerBoxIsScrolled,
+  Widget _buildCollapsedTitle(AccountProfileModel accountProfile) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        key: const Key('immersiveCollapsedTitle'),
+        accountProfile.name,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.w800,
+            ),
+      ),
+    );
+  }
+
+  List<ImmersiveHeroAction> _buildHeroActions(
     AccountProfileModel accountProfile, {
     required bool isFav,
     required bool isFavoritable,
   }) {
-    if (!isFavoritable) {
-      return const <Widget>[];
-    }
-
-    final colorScheme = Theme.of(context).colorScheme;
-    final backgroundColor = innerBoxIsScrolled
-        ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.96)
-        : Colors.black.withValues(alpha: 0.28);
-    final foregroundColor = _contentColorForBackground(backgroundColor);
-    final iconColor = isFav
-        ? (ThemeData.estimateBrightnessForColor(backgroundColor) ==
-                Brightness.dark
-            ? Colors.red.shade200
-            : Colors.red.shade700)
-        : foregroundColor;
-
-    return <Widget>[
-      Padding(
-        padding: const EdgeInsets.only(right: 8),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: backgroundColor,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: innerBoxIsScrolled
-                  ? colorScheme.outlineVariant.withValues(alpha: 0.42)
-                  : Colors.white.withValues(alpha: 0.12),
-            ),
-          ),
-          child: IconButton(
-            key: const Key('accountProfileFavoriteAction'),
-            icon: Icon(
-              isFav ? Icons.favorite : Icons.favorite_border,
-              color: iconColor,
-            ),
-            tooltip: isFav ? 'Favoritado' : 'Favoritar',
-            onPressed: () => _handleFavoriteTap(accountProfile.id),
-          ),
+    return <ImmersiveHeroAction>[
+      if (isFavoritable)
+        ImmersiveHeroAction(
+          key: const Key('accountProfileFavoriteAction'),
+          label: isFav ? 'Perfil favoritado' : 'Favoritar perfil',
+          icon: Icons.favorite_border,
+          activeIcon: Icons.favorite,
+          isPrimary: true,
+          isActive: isFav,
+          activeForegroundColor: Colors.red.shade400,
+          onPressed: () => _handleFavoriteTap(accountProfile.id),
+        ),
+      ImmersiveHeroAction(
+        key: const Key('accountProfileShareAction'),
+        label: 'Compartilhar',
+        icon: BooraIcons.share,
+        isPrimary: !isFavoritable,
+        onPressed: () => unawaited(_shareAccountProfile(accountProfile)),
+      ),
+      ImmersiveHeroAction(
+        key: const Key('accountProfileWhatsappAction'),
+        label: 'WhatsApp',
+        icon: BooraIcons.whatsapp,
+        foregroundColor: const Color(0xFF25D366),
+        onPressed: () => unawaited(
+          _shareAccountProfileOnWhatsApp(accountProfile),
         ),
       ),
     ];
@@ -411,8 +384,9 @@ class _AccountProfileDetailScreenState
     required ResolvedProfileTypeVisual? visual,
   }) {
     return Container(
+      key: const Key('accountProfileHeroDefaultFallback'),
       color: visual?.backgroundColor ?? colorScheme.surfaceContainerHighest,
-      alignment: Alignment.center,
+      alignment: const Alignment(0, -0.62),
       child: Icon(
         visual?.iconData ?? Icons.account_circle,
         size: 64,
@@ -422,55 +396,81 @@ class _AccountProfileDetailScreenState
   }
 
   Widget? _buildHeroSupporting(AccountProfileModel accountProfile) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final chipBackground = colorScheme.surfaceContainerHighest;
+    final chipForeground = chipBackground.computeIconColor(
+      context,
+      candidates: [
+        colorScheme.onSurface,
+        colorScheme.onSurfaceVariant,
+        Colors.black,
+      ],
+    );
     final children = <Widget>[
       if (accountProfile.distanceMeters != null)
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
+            Icon(
               Icons.place_outlined,
               size: 16,
-              color: Colors.white70,
+              color: colorScheme.onSurfaceVariant,
             ),
             const SizedBox(width: 6),
             Text(
               _distanceLabelFromMeters(accountProfile.distanceMeters!),
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.white70,
+                    color: colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.w600,
                   ),
             ),
           ],
         ),
       if (accountProfile.tags.isNotEmpty)
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: accountProfile.tags
-              .map(
-                (tag) => Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.14),
-                    ),
-                  ),
-                  child: Text(
-                    tag.value,
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final maxChipWidth = constraints.maxWidth.isFinite
+                ? constraints.maxWidth
+                : MediaQuery.sizeOf(context).width - 32;
+            return Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: accountProfile.tags
+                  .map(
+                    (tag) => ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: maxChipWidth),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 7,
                         ),
-                  ),
-                ),
-              )
-              .toList(),
+                        decoration: BoxDecoration(
+                          color: chipBackground,
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: colorScheme.outlineVariant
+                                .withValues(alpha: 0.5),
+                          ),
+                        ),
+                        child: Text(
+                          tag.value,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style:
+                              Theme.of(context).textTheme.labelMedium?.copyWith(
+                                    color: chipForeground,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            );
+          },
         ),
+      if (_controller.canUseAsReferencePoint(accountProfile))
+        _buildHeroReferencePointAction(accountProfile),
     ];
 
     if (children.isEmpty) {
@@ -484,6 +484,350 @@ class _AccountProfileDetailScreenState
           if (index > 0) const SizedBox(height: 12),
           children[index],
         ],
+      ],
+    );
+  }
+
+  Widget _buildHeroReferencePointAction(AccountProfileModel accountProfile) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isCurrent = _controller.isCurrentReferencePoint(accountProfile);
+    final backgroundColor =
+        isCurrent ? colorScheme.secondaryContainer : colorScheme.primary;
+    final foregroundColor = backgroundColor.computeIconColor(
+      context,
+      candidates: [
+        isCurrent ? colorScheme.onSecondaryContainer : colorScheme.onPrimary,
+        colorScheme.onSurface,
+        Colors.white,
+        Colors.black,
+      ],
+    );
+
+    final currentButton = SizedBox(
+      width: double.infinity,
+      child: FilledButton.icon(
+        key: const Key('accountProfileHeroReferencePointButton'),
+        onPressed: isCurrent
+            ? () {}
+            : () => unawaited(
+                  _handleReferencePointTap(accountProfile),
+                ),
+        icon: Icon(
+          isCurrent ? Icons.check_circle_rounded : Icons.location_on_outlined,
+        ),
+        label: Text(
+          isCurrent ? 'Ponto de referência' : 'Usar como ponto de referência',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+        ),
+        style: FilledButton.styleFrom(
+          backgroundColor: backgroundColor,
+          foregroundColor: foregroundColor,
+          minimumSize: const Size.fromHeight(44),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      ),
+    );
+    if (!isCurrent) {
+      return currentButton;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        currentButton,
+        const SizedBox(height: 8),
+        TextButton.icon(
+          key: const Key('accountProfileHeroClearReferencePointButton'),
+          onPressed: () => unawaited(_handleClearReferencePointTap()),
+          icon: const Icon(Icons.location_off_outlined),
+          label: const Text('Cancelar ponto de referência'),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _handleReferencePointTap(
+    AccountProfileModel accountProfile,
+  ) async {
+    final confirmed =
+        await _showReferencePointConfirmationDialog(accountProfile);
+    if (!mounted || !confirmed) {
+      return;
+    }
+    try {
+      final saved = await _controller.setAsReferencePoint(accountProfile);
+      if (!mounted) {
+        return;
+      }
+      _showStatusMessage(
+        saved
+            ? 'Ponto de referência atualizado.'
+            : 'Não foi possível salvar o ponto de referência.',
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      _showStatusMessage('Não foi possível salvar o ponto de referência.');
+    }
+  }
+
+  Future<void> _handleClearReferencePointTap() async {
+    final confirmed = await _showClearReferencePointDialog();
+    if (!mounted || !confirmed) {
+      return;
+    }
+    try {
+      final cleared = await _controller.clearReferencePoint();
+      if (!mounted) {
+        return;
+      }
+      _showStatusMessage(
+        cleared
+            ? 'Ponto de referência removido.'
+            : 'Não foi possível remover o ponto de referência.',
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      _showStatusMessage('Não foi possível remover o ponto de referência.');
+    }
+  }
+
+  Future<bool> _showReferencePointConfirmationDialog(
+    AccountProfileModel accountProfile,
+  ) async {
+    final result = await showRouteScopedDialog<bool>(
+      context: context,
+      useRootNavigator: false,
+      builder: (dialogContext) {
+        return AlertDialog(
+          key: const Key('accountProfileReferencePointDialog'),
+          contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text.rich(
+                TextSpan(
+                  text: 'Todas as ',
+                  children: [
+                    const TextSpan(
+                      text: 'distâncias',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    const TextSpan(text: ' serão '),
+                    const TextSpan(
+                      text: 'calculadas',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    const TextSpan(text: ' a partir desse local:'),
+                  ],
+                ),
+                key: const Key('accountProfileReferencePointDialogCopy'),
+                style: Theme.of(dialogContext).textTheme.bodyLarge,
+              ),
+              const SizedBox(height: 16),
+              _buildReferencePointPreviewCard(
+                dialogContext,
+                accountProfile,
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  key: const Key('accountProfileReferencePointConfirmButton'),
+                  onPressed: () => dialogContext.router.maybePop(true),
+                  icon: const Icon(Icons.location_on_outlined),
+                  label: const Text('Usar como Ponto de Referência'),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: TextButton(
+                  key: const Key('accountProfileReferencePointCancelButton'),
+                  onPressed: () => dialogContext.router.maybePop(false),
+                  child: const Text('Cancelar'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    return result ?? false;
+  }
+
+  Future<bool> _showClearReferencePointDialog() async {
+    final result = await showRouteScopedDialog<bool>(
+      context: context,
+      useRootNavigator: false,
+      builder: (dialogContext) {
+        return AlertDialog(
+          key: const Key('accountProfileClearReferencePointDialog'),
+          contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Cancelar ponto de referência?',
+                style: Theme.of(dialogContext).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'As distâncias voltarão a usar sua localização atual.',
+                style: Theme.of(dialogContext).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  key: const Key(
+                      'accountProfileClearReferencePointConfirmButton'),
+                  onPressed: () => dialogContext.router.maybePop(true),
+                  icon: const Icon(Icons.location_off_outlined),
+                  label: const Text('Cancelar ponto de referência'),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: TextButton(
+                  key: const Key('accountProfileClearReferencePointKeepButton'),
+                  onPressed: () => dialogContext.router.maybePop(false),
+                  child: const Text('Manter'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    return result ?? false;
+  }
+
+  Widget _buildReferencePointPreviewCard(
+    BuildContext context,
+    AccountProfileModel accountProfile,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final resolvedVisual = _controller.resolvedVisualFor(accountProfile);
+    final typeLabel = _controller.typeLabelFor(accountProfile).trim();
+    final address = accountProfile.locationAddress;
+    final distanceLabel = accountProfile.distanceMeters == null
+        ? null
+        : _distanceLabelFromMeters(accountProfile.distanceMeters!);
+
+    return Container(
+      key: const Key('accountProfileReferencePointPreviewCard'),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: AccountProfileIdentityBlock(
+        name: accountProfile.name,
+        avatarUrl: resolvedVisual.identityAvatarUrl,
+        typeVisual: resolvedVisual.typeVisual,
+        avatarSize: 44,
+        avatarSpacing: 10,
+        typeAvatarSize: 22,
+        typeAvatarIconSize: 14,
+        titleMaxLines: 1,
+        titleStyle: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.w800,
+            ),
+        supportingSpacing: 8,
+        supporting: _buildReferencePointPreviewSupporting(
+          context,
+          typeLabel: typeLabel,
+          address: address,
+          distanceLabel: distanceLabel,
+        ),
+      ),
+    );
+  }
+
+  Widget? _buildReferencePointPreviewSupporting(
+    BuildContext context, {
+    required String typeLabel,
+    required String? address,
+    required String? distanceLabel,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final rows = <Widget>[
+      if (typeLabel.isNotEmpty)
+        Text(
+          typeLabel,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+              ),
+        ),
+      if (address != null)
+        _buildReferencePointPreviewMetaRow(
+          context,
+          icon: Icons.place_outlined,
+          label: address,
+        )
+      else if (distanceLabel != null)
+        _buildReferencePointPreviewMetaRow(
+          context,
+          icon: Icons.place_outlined,
+          label: distanceLabel,
+        ),
+    ];
+
+    if (rows.isEmpty) {
+      return null;
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var index = 0; index < rows.length; index++) ...[
+          if (index > 0) const SizedBox(height: 4),
+          rows[index],
+        ],
+      ],
+    );
+  }
+
+  Widget _buildReferencePointPreviewMetaRow(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          icon,
+          size: 15,
+          color: colorScheme.onSurfaceVariant,
+        ),
+        const SizedBox(width: 5),
+        Expanded(
+          child: Text(
+            label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+          ),
+        ),
       ],
     );
   }
@@ -507,16 +851,13 @@ class _AccountProfileDetailScreenState
           ),
         )
         .map(
-          (tab) => ImmersiveTabItem(
-            title: tab.title,
-            content: _buildModules(tab.modules, moduleData),
-            footer: _buildTabFooter(
-              accountProfile,
-              tab,
-              location: locationView,
-              isFav: isFav,
-              isFavoritable: isFavoritable,
-            ),
+          (tab) => _buildConfiguredTab(
+            accountProfile,
+            tab,
+            moduleData,
+            location: locationView,
+            isFav: isFav,
+            isFavoritable: isFavoritable,
           ),
         )
         .toList();
@@ -525,8 +866,60 @@ class _AccountProfileDetailScreenState
       (left, right) =>
           _tabOrderRank(left.title).compareTo(_tabOrderRank(right.title)),
     );
+    tabs.addAll(_buildNestedProfileGroupTabs(accountProfile));
 
     return tabs;
+  }
+
+  ImmersiveTabItem _buildConfiguredTab(
+    AccountProfileModel accountProfile,
+    ProfileTabConfig tab,
+    Map<ProfileModuleId, Object?> moduleData, {
+    required PartnerLocationView? location,
+    required bool isFav,
+    required bool isFavoritable,
+  }) {
+    final content = _buildModules(tab.modules, moduleData);
+    final footer = _buildTabFooter(
+      accountProfile,
+      tab,
+      location: location,
+      isFav: isFav,
+      isFavoritable: isFavoritable,
+    );
+    final normalizedTitle = tab.title.trim().toLowerCase();
+
+    if (normalizedTitle == ImmersiveCommonTabs.aboutTitle.toLowerCase()) {
+      return ImmersiveCommonTabs.about(content: content, footer: footer);
+    }
+    if (normalizedTitle.contains('chegar')) {
+      return ImmersiveCommonTabs.directions(content: content, footer: footer);
+    }
+
+    return ImmersiveCommonTabs.custom(
+      title: tab.title,
+      content: content,
+      footer: footer,
+    );
+  }
+
+  List<ImmersiveTabItem> _buildNestedProfileGroupTabs(
+    AccountProfileModel accountProfile,
+  ) {
+    final groups = accountProfile.nestedProfileGroups
+        .where((group) => group.isVisible)
+        .toList(growable: false)
+      ..sort((left, right) => left.order.compareTo(right.order));
+
+    return groups
+        .map(
+          (group) => ImmersiveTabItem(
+            title: group.label,
+            content: _nestedProfileGroup(group),
+            footer: null,
+          ),
+        )
+        .toList(growable: false);
   }
 
   int _tabOrderRank(String title) {
@@ -578,14 +971,8 @@ class _AccountProfileDetailScreenState
     );
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _checkPendingIntent();
-  }
-
   void _checkPendingIntent() {
-    if (kIsWeb) {
+    if (widget.isWebRuntime) {
       return;
     }
     final redirectPath = _safeRedirectPath();
@@ -600,67 +987,94 @@ class _AccountProfileDetailScreenState
 
   void _handleFavoriteTap(String accountProfileId) {
     final redirectPath = _safeRedirectPath();
-    if (kIsWeb) {
-      launchWebInstalledAppHandoffOrPromotion(
-        context: context,
-        redirectPath: redirectPath,
-        actionType: AuthWallActionType.favorite,
-        payload: {'partnerId': accountProfileId},
-      );
-      return;
-    }
-
     final result = _controller.toggleFavorite(accountProfileId);
     if (result != AccountProfileFavoriteToggleOutcome.requiresAuthentication) {
       return;
     }
-    AuthWallTelemetry.trackTriggered(
-      actionType: AuthWallActionType.favorite,
-      redirectPath: redirectPath,
-      payload: {'partnerId': accountProfileId},
+    unawaited(
+      AccountProfileFavoriteAuthGate.handleRequiredAuthentication(
+        context: context,
+        accountProfileId: accountProfileId,
+        redirectPath: redirectPath,
+        isWebRuntime: widget.isWebRuntime,
+      ),
     );
-    final encodedRedirect = Uri.encodeQueryComponent(redirectPath);
-    _safeRouterReplacePath('/auth/login?redirect=$encodedRedirect');
   }
 
   Future<void> _shareAccountProfile(AccountProfileModel accountProfile) async {
-    final slug = accountProfile.slug.trim();
-    if (slug.isEmpty) {
+    final payload = _buildAccountProfilePublicSharePayload(accountProfile);
+    if (payload == null) {
       _showStatusMessage(
         'Não foi possível compartilhar ${accountProfile.name}.',
       );
       return;
     }
-
-    final publicUri = _controller.buildTenantPublicUriFromPath(
-      '/parceiro/$slug',
-    );
-    if (publicUri == null) {
-      _showStatusMessage(
-        'Não foi possível compartilhar ${accountProfile.name}.',
-      );
-      return;
-    }
-
-    final payload = AccountProfilePublicSharePayloadBuilder.build(
-      publicUri: publicUri,
-      fallbackName: accountProfile.name,
-      profile: accountProfile,
-      actorDisplayName: _controller.authenticatedUserDisplayName,
-    );
 
     try {
-      await SharePlus.instance.share(
+      await PublicShareLauncher.launchSystemShare(
         ShareParams(
           text: payload.message,
           subject: payload.subject,
         ),
+        launcher: widget.shareLauncher,
       );
     } catch (_) {
       _showStatusMessage(
         'Não foi possível compartilhar ${accountProfile.name}.',
       );
     }
+  }
+
+  Future<void> _shareAccountProfileOnWhatsApp(
+    AccountProfileModel accountProfile,
+  ) async {
+    final payload = _buildAccountProfilePublicSharePayload(accountProfile);
+    if (payload == null) {
+      _showStatusMessage(
+        'Não foi possível compartilhar ${accountProfile.name}.',
+      );
+      return;
+    }
+
+    try {
+      await PublicShareLauncher.launchWhatsAppOrSystemShare(
+        text: payload.message,
+        subject: payload.subject,
+        fallbackShareLauncher: widget.shareLauncher,
+        externalUrlLauncher: widget.externalUrlLauncher,
+      );
+    } catch (_) {
+      _showStatusMessage(
+        'Não foi possível compartilhar ${accountProfile.name}.',
+      );
+    }
+  }
+
+  ({String subject, String message})? _buildAccountProfilePublicSharePayload(
+    AccountProfileModel accountProfile,
+  ) {
+    if (!accountProfile.canOpenPublicDetail) {
+      return null;
+    }
+
+    final publicDetailPath = accountProfile.publicDetailPath?.trim();
+    if (publicDetailPath == null || publicDetailPath.isEmpty) {
+      return null;
+    }
+
+    final publicUri = _controller.buildTenantPublicUriFromPath(
+      publicDetailPath,
+    );
+    if (publicUri == null) {
+      return null;
+    }
+
+    return AccountProfilePublicSharePayloadBuilder.build(
+      publicUri: publicUri,
+      fallbackName: accountProfile.name,
+      profile: accountProfile,
+      actorDisplayName: _controller.authenticatedUserDisplayName,
+    );
   }
 
   Widget _buildLoadingState() {
@@ -803,19 +1217,11 @@ class _AccountProfileDetailScreenState
   }
 
   void _safeRouterPushPath(String path) {
-    try {
-      context.router.pushPath(path);
-    } catch (_) {
-      // Tests and non-router surfaces can ignore this safely.
-    }
+    context.router.pushPath(path);
   }
 
-  void _safeRouterReplacePath(String path) {
-    try {
-      context.router.replacePath(path);
-    } catch (_) {
-      // Tests and non-router surfaces can ignore this safely.
-    }
+  void _safeRouterPush(PageRouteInfo<dynamic> route) {
+    context.router.push(route);
   }
 
   List<PartnerEventView> _agendaEventsFromModuleData(
@@ -866,10 +1272,6 @@ class _AccountProfileDetailScreenState
       return _favoriteFooter(accountProfile);
     }
 
-    if (lowerTitle.contains('chegar') && _canOpenMaps(location)) {
-      return _routeFooter(location!);
-    }
-
     return null;
   }
 
@@ -891,18 +1293,6 @@ class _AccountProfileDetailScreenState
         onPressed: () => _handleFavoriteTap(accountProfile.id),
         icon: const Icon(Icons.favorite_border),
         label: const Text('Favoritar'),
-        style: _primaryFooterButtonStyle(),
-      ),
-    );
-  }
-
-  Widget _routeFooter(PartnerLocationView location) {
-    return _buildFooterShell(
-      child: FilledButton.icon(
-        key: const Key('accountProfileRouteFooterButton'),
-        onPressed: () => _presentDirectionsChooser(location),
-        icon: const Icon(Icons.navigation_outlined),
-        label: const Text('Traçar rota'),
         style: _primaryFooterButtonStyle(),
       ),
     );
@@ -956,7 +1346,7 @@ class _AccountProfileDetailScreenState
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            _eventDateLabel(e),
+                            e.agendaScheduleLabel,
                             style: const TextStyle(fontSize: 11),
                           ),
                         ],
@@ -1084,151 +1474,30 @@ class _AccountProfileDetailScreenState
   }
 
   Widget _locationInfo(PartnerLocationView? location) {
-    final colorScheme = Theme.of(context).colorScheme;
     final distanceLabel = widget.accountProfile.distanceMeters == null
         ? null
         : _distanceLabelFromMeters(widget.accountProfile.distanceMeters!);
     final resolvedAddress = location?.address.trim();
     final hasAddress = resolvedAddress != null && resolvedAddress.isNotEmpty;
     final canOpenProfileMap = _canOpenProfileMap(location);
-    final distanceBadgeBackground = Colors.white.withValues(alpha: 0.96);
-    final distanceBadgeForeground =
-        _contentColorForBackground(distanceBadgeBackground);
-    final addressCardBackground = colorScheme.surface.withValues(alpha: 0.95);
-    final addressCardForeground =
-        _contentColorForBackground(addressCardBackground);
+    final directionsTarget = _directionsTargetFromLocation(location);
 
-    return Padding(
+    return ImmersiveDirectionsSection(
       padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Como Chegar',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
-          ),
-          const SizedBox(height: 12),
-          GestureDetector(
-            key: const Key('accountProfileLocationTile'),
-            onTap: canOpenProfileMap ? _openProfileMap : null,
-            child: Container(
-              height: 260,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(28),
-                color: colorScheme.surfaceContainerHighest,
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  _buildLocationMapCanvas(location),
-                  if (distanceLabel != null)
-                    Positioned(
-                      top: 16,
-                      right: 16,
-                      child: Container(
-                        key: const Key('accountProfileLocationDistanceBadge'),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: distanceBadgeBackground,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          distanceLabel,
-                          style:
-                              Theme.of(context).textTheme.labelLarge?.copyWith(
-                                    color: distanceBadgeForeground,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                        ),
-                      ),
-                    ),
-                  Positioned(
-                    left: 18,
-                    right: 18,
-                    bottom: 18,
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: addressCardBackground,
-                        borderRadius: BorderRadius.circular(22),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
-                            blurRadius: 18,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 42,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: colorScheme.primaryContainer,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.near_me_outlined,
-                              color: _contentColorForBackground(
-                                colorScheme.primaryContainer,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Ver no mapa',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .labelLarge
-                                      ?.copyWith(
-                                        color: addressCardForeground,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                ),
-                                if (hasAddress) ...[
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    resolvedAddress,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium
-                                        ?.copyWith(
-                                          color: addressCardForeground,
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                          if (canOpenProfileMap)
-                            Icon(
-                              Icons.map_outlined,
-                              color: addressCardForeground,
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+      mapCanvas: _buildLocationMapCanvas(location),
+      destinationSubtitle: hasAddress ? resolvedAddress : null,
+      distanceLabel: distanceLabel,
+      canOpenMap: canOpenProfileMap,
+      onOpenMap: canOpenProfileMap ? _openProfileMap : null,
+      directionsTarget: directionsTarget,
+      onOpenDirectDirections: _openDirectDirections,
+      onOpenOtherDirections: _presentDirectionsTarget,
+      mapTileKey: const Key('accountProfileLocationTile'),
+      distanceBadgeKey: const Key('accountProfileLocationDistanceBadge'),
+      primaryWazeButtonKey: const Key('accountProfileMainWazeButton'),
+      primaryUberButtonKey: const Key('accountProfileMainUberButton'),
+      primaryOtherButtonKey:
+          const Key('accountProfileMainOtherDirectionsButton'),
     );
   }
 
@@ -1349,12 +1618,21 @@ class _AccountProfileDetailScreenState
     _safeRouterPushPath(path);
   }
 
-  void _presentDirectionsChooser(PartnerLocationView? location) {
-    final target = _directionsTargetFromLocation(location);
-    if (target == null) {
-      return;
+  Future<void> _openDirectDirections(
+    DirectionsDirectProvider provider,
+    DirectionsLaunchTarget target,
+  ) async {
+    final launched = await _directionsAppChooser.launchDirect(
+      provider: provider,
+      target: target,
+    );
+    if (!launched) {
+      _showStatusMessage('Não foi possível abrir o aplicativo de rota.');
     }
-    _directionsAppChooser.present(
+  }
+
+  Future<void> _presentDirectionsTarget(DirectionsLaunchTarget target) async {
+    await _directionsAppChooser.present(
       context,
       target: target,
       onStatusMessage: _showStatusMessage,
@@ -1485,7 +1763,14 @@ class _AccountProfileDetailScreenState
         color: Colors.transparent,
         child: InkWell(
           key: Key('accountProfileAgendaLiveCard_${event.uniqueId}'),
-          onTap: () => _safeRouterPushPath('/agenda/evento/${event.slug}'),
+          onTap: () => _safeRouterPush(
+            ImmersiveEventDetailRoute(
+              eventSlug: event.slug,
+              occurrenceId: event.occurrenceId.trim().isEmpty
+                  ? null
+                  : event.occurrenceId.trim(),
+            ),
+          ),
           child: Stack(
             children: [
               AspectRatio(
@@ -1603,7 +1888,7 @@ class _AccountProfileDetailScreenState
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            _eventExpandedTimeRangeLabel(event),
+                            event.expandedScheduleLabel,
                             style: Theme.of(context)
                                 .textTheme
                                 .titleSmall
@@ -1643,7 +1928,7 @@ class _AccountProfileDetailScreenState
       data: UpcomingEventCardData(
         imageUri: event.imageUri,
         headline: _agendaPrimaryLabel(accountProfile, event),
-        metaLabel: _eventDateLabel(event),
+        metaLabel: event.agendaScheduleLabel,
         counterparts: _agendaCounterparts(accountProfile, event)
             .map(
               (counterpart) => (
@@ -1657,7 +1942,16 @@ class _AccountProfileDetailScreenState
         venueDistanceLabel: _controller.distanceLabelFor(accountProfile, event),
         venueAddress: _agendaVenueAddress(event),
       ),
-      onTap: () => _safeRouterPushPath('/agenda/evento/${event.slug}'),
+      onTap: () => _safeRouterPush(
+        // Keep upcoming and live agenda cards aligned on occurrence trimming.
+        ImmersiveEventDetailRoute(
+          eventSlug: event.slug,
+          occurrenceId: () {
+            final occurrenceId = event.occurrenceId.trim();
+            return occurrenceId.isEmpty ? null : occurrenceId;
+          }(),
+        ),
+      ),
       isConfirmed: _controller.isOccurrenceConfirmed(event.occurrenceId),
       pendingInvitesCount: _controller.pendingInviteCount(event.occurrenceId),
       statusIconSize: 24,
@@ -1951,37 +2245,6 @@ class _AccountProfileDetailScreenState
       size: 16,
       color: iconColor,
     );
-  }
-
-  String _eventDateLabel(PartnerEventView event) {
-    final start = event.startDateTime;
-    final weekday = DateFormat.E().format(start);
-    final day = start.day.toString().padLeft(2, '0');
-    final end = event.endDateTime;
-    if (end == null) {
-      return '$weekday, $day • ${start.timeLabel}'.toUpperCase();
-    }
-    final sameDay = start.year == end.year &&
-        start.month == end.month &&
-        start.day == end.day;
-    if (sameDay) {
-      return '${weekday.toUpperCase()}, $day • ${start.timeLabel} às ${end.timeLabel}';
-    }
-    final endWeekday = DateFormat.E().format(end).toUpperCase();
-    final endDay = end.day.toString().padLeft(2, '0');
-    return '${weekday.toUpperCase()}, $day • ${start.timeLabel} às '
-        '$endWeekday, $endDay • ${end.timeLabel}';
-  }
-
-  String _eventExpandedTimeRangeLabel(PartnerEventView event) {
-    final start = event.startDateTime;
-    final end = event.endDateTime ?? start.add(const Duration(hours: 3));
-    final startWeekday = DateFormat.E().format(start).toUpperCase();
-    final startDay = start.day.toString().padLeft(2, '0');
-    final endWeekday = DateFormat.E().format(end).toUpperCase();
-    final endDay = end.day.toString().padLeft(2, '0');
-    return '$startWeekday, $startDay • ${start.timeLabel} às '
-        '$endWeekday, $endDay • ${end.timeLabel}';
   }
 
   Color? _agendaStatusTint({
@@ -2283,6 +2546,150 @@ class _AccountProfileDetailScreenState
             ),
         ],
       ),
+    );
+  }
+
+  Widget _nestedProfileGroup(AccountProfileNestedGroup group) {
+    return Padding(
+      key: Key('accountProfileNestedGroup_${group.id}'),
+      padding: const EdgeInsets.all(16),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final columns = width >= 720 ? 3 : (width >= 460 ? 2 : 1);
+          return GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: columns,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              mainAxisExtent: columns == 1 ? 124 : 136,
+            ),
+            itemCount: group.profiles.length,
+            itemBuilder: (context, index) {
+              final member = group.profiles[index];
+              return _nestedProfileMemberCard(group, member);
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _nestedProfileMemberCard(
+    AccountProfileNestedGroup group,
+    AccountProfileNestedGroupMember member,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final memberProfile = _profileFromNestedMember(member);
+    final resolvedVisual = _controller.resolvedVisualFor(memberProfile);
+    final memberPath = _nestedProfileMemberPath(member);
+    final labels = member.tags
+        .map((tag) => tag.value.trim())
+        .where((label) => label.isNotEmpty)
+        .take(2)
+        .toList(growable: false);
+    return Material(
+      key: Key('accountProfileNestedCard_${group.id}_${member.id}'),
+      color: colorScheme.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap:
+            memberPath == null ? null : () => _safeRouterPushPath(memberPath),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: AccountProfileIdentityBlock(
+                  name: member.name,
+                  avatarUrl: resolvedVisual.identityAvatarUrl,
+                  typeVisual: resolvedVisual.typeVisual,
+                  avatarSize: 48,
+                  avatarSpacing: 10,
+                  typeAvatarSize: 24,
+                  typeAvatarIconSize: 14,
+                  titleSpacing: 6,
+                  titleStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.w900,
+                      ),
+                  supporting: labels.isEmpty
+                      ? null
+                      : Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: labels
+                              .map(
+                                (label) => Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.secondaryContainer,
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: Text(
+                                    label,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          color: _contentColorForBackground(
+                                            colorScheme.secondaryContainer,
+                                          ),
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                  ),
+                                ),
+                              )
+                              .toList(growable: false),
+                        ),
+                ),
+              ),
+              if (memberPath != null) ...[
+                const SizedBox(width: 10),
+                Icon(
+                  Icons.chevron_right,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String? _nestedProfileMemberPath(AccountProfileNestedGroupMember member) {
+    if (!member.canOpenPublicDetail) {
+      return null;
+    }
+
+    final publicDetailPath = member.publicDetailPath?.trim();
+    if (publicDetailPath != null && publicDetailPath.isNotEmpty) {
+      return publicDetailPath;
+    }
+    return null;
+  }
+
+  AccountProfileModel _profileFromNestedMember(
+    AccountProfileNestedGroupMember member,
+  ) {
+    return AccountProfileModel(
+      idValue: member.idValue,
+      nameValue: member.nameValue,
+      slugValue: member.slugValue ?? (SlugValue()..parse(member.id)),
+      profileTypeValue: member.profileTypeValue,
+      avatarValue: member.avatarValue,
+      coverValue: member.coverValue,
+      tagValues: member.tags,
     );
   }
 

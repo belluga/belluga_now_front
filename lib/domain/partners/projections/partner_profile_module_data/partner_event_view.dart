@@ -58,6 +58,17 @@ class PartnerEventView {
     return TimezoneConverter.utcToLocal(date);
   }
 
+  EventScheduleDisplay get scheduleDisplay => EventScheduleDisplay(
+        startValue: startDateTimeValue,
+        endValue: endDateTimeValue,
+      );
+
+  String get detailScheduleLabel => scheduleDisplay.detailLabel;
+  String get agendaScheduleLabel => scheduleDisplay.agendaLabel;
+  String get flyerScheduleLabel => scheduleDisplay.flyerLabel;
+  String get expandedScheduleLabel =>
+      scheduleDisplay.withDefaultFallbackEnd().detailLabel;
+
   String get location => locationValue.value;
   String? get venueId {
     final value = venueIdValue?.value.trim();

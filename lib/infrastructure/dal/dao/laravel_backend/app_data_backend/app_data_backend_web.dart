@@ -1,9 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
+import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/app_data_backend/app_data_backend_http_fetcher.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/app_data_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/app_data_backend/web_bootstrap_fallback_resolver.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/app_data_backend/web_bootstrap_handshake.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:web/web.dart' as web;
 
 @JS('JSON.stringify')
@@ -16,16 +20,24 @@ external JSAny? get brandingPayload;
 external JSString? get brandingBootstrapError;
 
 class AppDataBackend implements AppDataBackendContract {
+  AppDataBackend({Dio? dio}) : _dio = dio;
+
+  final Dio? _dio;
+
   @override
   Future<AppDataDTO> fetch() {
     final initialRawPayload = brandingPayload;
-
-    return WebBootstrapHandshake<AppDataDTO>(
+    final bootstrapResolver = WebBootstrapHandshake<AppDataDTO>(
       initialValue: _tryDecodeAppData(initialRawPayload),
       initialErrorMessage: _readBootstrapError(),
       hasInitialRawPayload: initialRawPayload != null,
       timeout: const Duration(seconds: 15),
       waitForEventValue: _waitForBrandingReadyPayload,
+    );
+
+    return WebBootstrapFallbackResolver<AppDataDTO>(
+      bootstrapResolver: bootstrapResolver.resolve,
+      fallbackResolver: _fetchDirectEnvironment,
     ).resolve();
   }
 
@@ -71,6 +83,20 @@ class AppDataBackend implements AppDataBackendContract {
     );
 
     return completer.future;
+  }
+
+  Future<AppDataDTO> _fetchDirectEnvironment() async {
+    final bootstrapError = _readBootstrapError();
+    if (bootstrapError != null && bootstrapError.isNotEmpty) {
+      debugPrint(
+        'AppDataBackend(web): bootstrap prefetch failed '
+        '("$bootstrapError"); retrying via direct /api/v1/environment fetch.',
+      );
+    }
+    return fetchAppDataEnvironment(
+      bootstrapBaseUrl: web.window.location.origin,
+      dio: _dio,
+    );
   }
 
   AppDataDTO? _tryDecodeAppData(JSAny? source) {

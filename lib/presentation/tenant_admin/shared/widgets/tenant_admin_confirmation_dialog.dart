@@ -11,6 +11,7 @@ Future<bool> showTenantAdminConfirmationDialog({
 }) async {
   final confirmed = await showDialog<bool>(
     context: context,
+    useRootNavigator: false,
     builder: (dialogContext) {
       final scheme = Theme.of(dialogContext).colorScheme;
       final destructiveStyle = FilledButton.styleFrom(
@@ -40,10 +41,5 @@ Future<bool> showTenantAdminConfirmationDialog({
 }
 
 void _closeDialog(BuildContext context, bool value) {
-  final routerScope = StackRouterScope.of(context);
-  if (routerScope != null) {
-    routerScope.controller.maybePop(value);
-    return;
-  }
-  ModalRoute.of(context)?.navigator?.maybePop(value);
+  context.router.maybePop(value);
 }

@@ -29,9 +29,12 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
     );
   }
 
-  Map<String, String> _buildStreamHeaders({bool includeJsonAccept = false}) {
-    return TenantPublicAuthHeaders.buildSync(
+  Future<Map<String, String>> _buildStreamHeaders({
+    bool includeJsonAccept = false,
+  }) {
+    return TenantPublicAuthHeaders.build(
       includeJsonAccept: includeJsonAccept,
+      bootstrapIfEmpty: true,
     );
   }
 
@@ -83,7 +86,6 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
     bool liveNowOnly = false,
     String? searchQuery,
     List<String>? categories,
-    List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
     List<String>? occurrenceIds,
@@ -112,9 +114,6 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
     }
     if (categories != null && categories.isNotEmpty) {
       params['categories'] = categories;
-    }
-    if (tags != null && tags.isNotEmpty) {
-      params['tags'] = tags;
     }
     if (taxonomy != null && taxonomy.isNotEmpty) {
       for (var index = 0; index < taxonomy.length; index += 1) {
@@ -175,7 +174,6 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
   Stream<EventDeltaDTO> watchEventsStream({
     String? searchQuery,
     List<String>? categories,
-    List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
     List<String>? occurrenceIds,
@@ -206,11 +204,6 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
         addParam('categories[]', category.toString());
       }
     }
-    if (tags != null && tags.isNotEmpty) {
-      for (final tag in tags) {
-        addParam('tags[]', tag.toString());
-      }
-    }
     if (taxonomy != null && taxonomy.isNotEmpty) {
       for (var index = 0; index < taxonomy.length; index++) {
         final term = taxonomy[index];
@@ -239,13 +232,17 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
       '${queryParts.isEmpty ? '' : '?${queryParts.join('&')}'}',
     );
 
-    return _sseClient
-        .connect(
-          uri,
-          lastEventId: lastEventId,
-          headers: _buildStreamHeaders(),
-        )
-        .map((message) => _parseDelta(message.data, message.id));
+    return Stream<Map<String, String>>.fromFuture(
+      _buildStreamHeaders(),
+    ).asyncExpand(
+      (headers) => _sseClient
+          .connect(
+            uri,
+            lastEventId: lastEventId,
+            headers: headers,
+          )
+          .map((message) => _parseDelta(message.data, message.id)),
+    );
   }
 
   List<String> _normalizeStringList(List<String>? values) {

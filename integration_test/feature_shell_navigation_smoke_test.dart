@@ -4,7 +4,6 @@ import 'package:belluga_now/testing/invite_accept_result_builder.dart';
 
 import 'package:belluga_now/application/application.dart';
 import 'package:belluga_now/application/application_contract.dart';
-import 'package:belluga_now/application/router/guards/location_permission_gate_runtime.dart';
 import 'package:belluga_now/application/router/support/tenant_public_map_entry_flow.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
@@ -19,6 +18,7 @@ import 'package:belluga_now/domain/repositories/schedule_repository_contract.dar
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_bool_value.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:geolocator/geolocator.dart';
@@ -49,7 +49,6 @@ void main() {
 
   setUp(() async {
     await GetIt.I.reset();
-    LocationPermissionGateRuntime.resetForTesting();
     resetTenantPublicMapEntryFlowForTesting();
     GeolocatorPlatform.instance = _TestGeolocatorPlatform(
       permission: LocationPermission.whileInUse,
@@ -58,7 +57,6 @@ void main() {
 
   tearDown(() async {
     await GetIt.I.reset();
-    LocationPermissionGateRuntime.resetForTesting();
     resetTenantPublicMapEntryFlowForTesting();
   });
 
@@ -593,7 +591,11 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
       false;
 
   @override
-  Future<String?> resolveUserLocation() async => null;
+  Future<String?> resolveUserLocation({
+    Object? timeout,
+    UserLocationRepositoryContractBoolValue? requestPermissionIfNeededValue,
+  }) async =>
+      null;
 
   @override
   Future<bool> startTracking({

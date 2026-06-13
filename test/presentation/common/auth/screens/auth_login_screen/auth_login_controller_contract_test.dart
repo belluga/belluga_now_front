@@ -59,6 +59,9 @@ class _FailingAuthRepository implements AuthRepositoryContract<UserContract> {
   Future<void> init() async {}
 
   @override
+  Future<void> ensureTenantPublicIdentityReady() async {}
+
+  @override
   Future<void> autoLogin() async {}
 
   @override
@@ -914,6 +917,9 @@ class _PhoneOtpAuthRepository implements AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> init() async {}
+
+  @override
+  Future<void> ensureTenantPublicIdentityReady() async {}
 
   @override
   Future<void> autoLogin() async {}

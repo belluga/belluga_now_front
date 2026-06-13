@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belluga_now/application/schedule/event_selected_occurrence_projection.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
@@ -8,16 +9,24 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
+import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
+import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
+import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
+import 'package:belluga_now/domain/schedule/event_programming_item.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/schedule/event_profile_group.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_profile_group_order_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_values.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
@@ -26,6 +35,7 @@ import 'package:belluga_now/domain/thumb/enums/thumb_types.dart';
 import 'package:belluga_now/domain/thumb/thumb_model.dart';
 import 'package:belluga_now/domain/value_objects/color_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
+import 'package:belluga_now/domain/venue_event/value_objects/venue_event_tag_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_optional_date_time_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_type_value.dart';
@@ -82,6 +92,23 @@ void main() {
     expect(userEventsRepository.confirmCalls, 1);
     expect(invitesRepository.acceptInviteCalls, 0);
     expect(controller.isConfirmedStreamValue.value, isTrue);
+  });
+
+  test('anonymous linked profile favorite requires authentication', () {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    final accountProfilesRepository = _FakeAccountProfilesRepository();
+    final controller = ImmersiveEventDetailController(
+      userEventsRepository: userEventsRepository,
+      invitesRepository: invitesRepository,
+      authRepository: _FakeAuthRepository(authorized: false),
+      accountProfilesRepository: accountProfilesRepository,
+    );
+
+    final result = controller.toggleLinkedProfileFavorite('artist-1');
+
+    expect(result, LinkedProfileFavoriteToggleOutcome.requiresAuthentication);
+    expect(accountProfilesRepository.toggleFavoriteCalls, 0);
   });
 
   test('confirm attendance drops duplicate requests while pending', () async {
@@ -186,6 +213,104 @@ void main() {
         event.selectedOccurrenceId);
     expect(controller.isConfirmedStreamValue.value, isTrue);
     expect(userEventsRepository.refreshConfirmedOccurrenceIdsCalls, 1);
+  });
+
+  test(
+      'event detail init replaces stale same-target profile groups with route-resolved event',
+      () {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    final staleEvent = _buildEvent(
+      profileGroups: [
+        _buildProfileGroup(
+          id: 'palco-sexta',
+          label: 'Palco Sexta',
+          order: 0,
+          profiles: [
+            _buildLinkedProfile(
+              id: 'profile-band',
+              displayName: 'Banda Sexta',
+              profileType: 'banda',
+              slug: 'banda-sexta',
+            ),
+          ],
+        ),
+      ],
+    );
+    final freshEvent = _buildEvent(
+      profileGroups: [
+        _buildProfileGroup(
+          id: 'palco-sabado',
+          label: 'Palco Sabado',
+          order: 0,
+          profiles: [
+            _buildLinkedProfile(
+              id: 'profile-band-sabado',
+              displayName: 'Banda Sabado',
+              profileType: 'banda',
+              slug: 'banda-sabado',
+            ),
+          ],
+        ),
+      ],
+    );
+    invitesRepository.setImmersiveSelectedEvent(staleEvent);
+    final controller = ImmersiveEventDetailController(
+      userEventsRepository: userEventsRepository,
+      invitesRepository: invitesRepository,
+      authRepository: _FakeAuthRepository(authorized: true),
+    );
+
+    controller.init(freshEvent);
+
+    expect(
+      controller.eventStreamValue.value?.profileGroups.map((group) => group.id),
+      ['palco-sabado'],
+    );
+  });
+
+  test(
+      'event detail init replaces stale same-target occurrence tags with route-resolved event',
+      () {
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository();
+    final staleEvent = _buildEvent(
+      tags: const ['Showcase'],
+      occurrences: [
+        _buildOccurrence(
+          id: '507f1f77bcf86cd799439012',
+          start: DateTime(2026, 3, 15, 20),
+          end: DateTime(2026, 3, 15, 22),
+          isSelected: true,
+          tags: const ['Showcase'],
+        ),
+      ],
+    );
+    final freshEvent = _buildEvent(
+      tags: const ['Instrumental'],
+      occurrences: [
+        _buildOccurrence(
+          id: '507f1f77bcf86cd799439012',
+          start: DateTime(2026, 3, 15, 20),
+          end: DateTime(2026, 3, 15, 22),
+          isSelected: true,
+          tags: const ['Instrumental'],
+        ),
+      ],
+    );
+    invitesRepository.setImmersiveSelectedEvent(staleEvent);
+    final controller = ImmersiveEventDetailController(
+      userEventsRepository: userEventsRepository,
+      invitesRepository: invitesRepository,
+      authRepository: _FakeAuthRepository(authorized: true),
+    );
+
+    controller.init(freshEvent);
+
+    expect(
+      controller.eventStreamValue.value?.tags.map((tag) => tag.value),
+      ['Instrumental'],
+    );
   });
 
   test(
@@ -408,7 +533,23 @@ void main() {
       start: secondStart,
       end: secondEnd,
     );
+    final profileGroups = [
+      _buildProfileGroup(
+        id: 'bandas-customizadas',
+        label: 'Bandas Customizadas',
+        order: 0,
+        profiles: [
+          _buildLinkedProfile(
+            id: 'profile-alpha',
+            displayName: 'Artista Alpha',
+            profileType: 'tipo-alpha',
+            slug: 'artista-alpha',
+          ),
+        ],
+      ),
+    ];
     final event = _buildEvent(
+      profileGroups: profileGroups,
       occurrences: [
         _buildOccurrence(
           id: 'occurrence-first',
@@ -427,6 +568,265 @@ void main() {
     expect(selectedEvent?.dateTimeStart.value, secondStart);
     expect(selectedEvent?.dateTimeEnd?.value, secondEnd);
     expect(selectedEvent?.selectedOccurrenceId, 'occurrence-second');
+    expect(
+      selectedEvent?.profileGroups.map((group) => group.label),
+      ['Bandas Customizadas'],
+    );
+    expect(
+      selectedEvent?.profileGroups.single.profiles.single.displayName,
+      'Artista Alpha',
+    );
+  });
+
+  test('select occurrence replaces visible taxonomy tags with occurrence tags',
+      () {
+    final controller = ImmersiveEventDetailController(
+      userEventsRepository: _FakeUserEventsRepository(),
+      invitesRepository: _FakeInvitesRepository(),
+      authRepository: _FakeAuthRepository(authorized: true),
+    );
+    final secondOccurrence = _buildOccurrence(
+      id: 'occurrence-second',
+      start: DateTime(2026, 3, 16, 9),
+      end: DateTime(2026, 3, 16, 14),
+      tags: const ['Instrumental'],
+    );
+    final event = _buildEvent(
+      tags: const ['Showcase'],
+      occurrences: [
+        _buildOccurrence(
+          id: 'occurrence-first',
+          start: DateTime(2026, 3, 15, 20),
+          end: DateTime(2026, 3, 15, 22),
+          isSelected: true,
+          tags: const ['Showcase'],
+        ),
+        secondOccurrence,
+      ],
+    );
+
+    controller.init(event);
+    controller.selectOccurrence(event, secondOccurrence);
+
+    expect(
+      controller.eventStreamValue.value?.tags.map((tag) => tag.value),
+      ['Instrumental'],
+    );
+  });
+
+  test(
+      'select occurrence preserves aggregate profile groups while selecting programming occurrence',
+      () {
+    final controller = ImmersiveEventDetailController(
+      userEventsRepository: _FakeUserEventsRepository(),
+      invitesRepository: _FakeInvitesRepository(),
+      authRepository: _FakeAuthRepository(authorized: true),
+    );
+    final bandProfile = _buildLinkedProfile(
+      id: 'profile-band',
+      displayName: 'Banda Azul',
+      profileType: 'banda',
+      slug: 'banda-azul',
+    );
+    final exhibitorProfile = _buildLinkedProfile(
+      id: 'profile-exhibitor',
+      displayName: 'Expositor Sol',
+      profileType: 'expositor',
+      slug: 'expositor-sol',
+    );
+    final secondOccurrence = _buildOccurrence(
+      id: 'occurrence-second',
+      start: DateTime(2026, 3, 16, 16),
+      profileGroups: [
+        _buildProfileGroup(
+          id: 'vila-expositores',
+          label: 'Vila Expositores',
+          order: 0,
+          accountProfileIds: ['profile-exhibitor'],
+        ),
+      ],
+    );
+    final event = _buildEvent(
+      linkedAccountProfiles: [bandProfile, exhibitorProfile],
+      profileGroups: [
+        _buildProfileGroup(
+          id: 'palco-bandas',
+          label: 'Palco Bandas',
+          order: 0,
+          accountProfileIds: ['profile-band'],
+        ),
+        _buildProfileGroup(
+          id: 'vila-expositores',
+          label: 'Vila Expositores',
+          order: 1,
+          accountProfileIds: ['profile-exhibitor'],
+        ),
+      ],
+      occurrences: [
+        _buildOccurrence(
+          id: 'occurrence-first',
+          start: DateTime(2026, 3, 15, 18),
+          isSelected: true,
+          profileGroups: [
+            _buildProfileGroup(
+              id: 'palco-bandas',
+              label: 'Palco Bandas',
+              order: 0,
+              accountProfileIds: ['profile-band'],
+            ),
+          ],
+        ),
+        secondOccurrence,
+      ],
+    );
+
+    controller.init(event);
+    controller.selectOccurrence(event, secondOccurrence);
+
+    final selectedEvent = controller.eventStreamValue.value;
+    expect(selectedEvent?.selectedOccurrenceId, 'occurrence-second');
+    expect(
+      selectedEvent?.profileGroups.map((group) => group.label),
+      ['Palco Bandas', 'Vila Expositores'],
+    );
+    expect(
+      selectedEvent?.profileGroups
+          .singleWhere((group) => group.label == 'Vila Expositores')
+          .accountProfileIdValues
+          .map((id) => id.value),
+      ['profile-exhibitor'],
+    );
+    expect(
+      selectedEvent?.profileGroups
+          .singleWhere((group) => group.label == 'Palco Bandas')
+          .accountProfileIdValues
+          .map((id) => id.value),
+      ['profile-band'],
+    );
+    expect(
+      selectedEvent?.occurrences
+          .singleWhere(
+            (occurrence) => occurrence.occurrenceId == 'occurrence-second',
+          )
+          .profileGroups
+          .single
+          .accountProfileIdValues
+          .map((id) => id.value),
+      ['profile-exhibitor'],
+    );
+    expect(
+      selectedEvent?.linkedAccountProfiles
+          .singleWhere((profile) => profile.id == 'profile-exhibitor')
+          .displayName,
+      'Expositor Sol',
+    );
+  });
+
+  test(
+      'selected occurrence projection can retarget an unselected event payload without refetching',
+      () {
+    final event = _buildEvent(
+      tags: const ['Feira'],
+      occurrences: [
+        _buildOccurrence(
+          id: 'occurrence-first',
+          start: DateTime(2026, 3, 15, 18),
+          isSelected: true,
+          tags: const ['Feira'],
+        ),
+        _buildOccurrence(
+          id: 'occurrence-second',
+          start: DateTime(2026, 3, 16, 21),
+          end: DateTime(2026, 3, 17, 1),
+          tags: const ['Show'],
+          programmingItems: [
+            _buildProgrammingItem(
+              time: '21:00',
+              title: 'Headliner',
+            ),
+          ],
+        ),
+      ],
+      programmingItems: const [],
+    );
+
+    final projected = EventSelectedOccurrenceProjection.project(
+      event,
+      'occurrence-second',
+    );
+
+    expect(projected.selectedOccurrenceId, 'occurrence-second');
+    expect(projected.dateTimeStart.value, DateTime(2026, 3, 16, 21));
+    expect(projected.dateTimeEnd?.value, DateTime(2026, 3, 17, 1));
+    expect(projected.programmingItems.map((item) => item.title), ['Headliner']);
+    expect(projected.tags.map((tag) => tag.value), ['Show']);
+  });
+
+  test(
+      'selected occurrence projection aligns stale selected payload while keeping aggregate groups',
+      () {
+    final event = _buildEvent(
+      tags: const ['Feira'],
+      profileGroups: [
+        _buildProfileGroup(
+          id: 'bandas',
+          label: 'Bandas',
+          order: 0,
+          accountProfileIds: ['profile-band'],
+        ),
+        _buildProfileGroup(
+          id: 'expositores',
+          label: 'Expositores',
+          order: 1,
+          accountProfileIds: ['profile-exhibitor'],
+        ),
+      ],
+      occurrences: [
+        _buildOccurrence(
+          id: 'occurrence-first',
+          start: DateTime(2026, 3, 15, 18),
+          profileGroups: [
+            _buildProfileGroup(
+              id: 'bandas',
+              label: 'Bandas',
+              order: 0,
+              accountProfileIds: ['profile-band'],
+            ),
+          ],
+        ),
+        _buildOccurrence(
+          id: 'occurrence-second',
+          start: DateTime(2026, 3, 16, 21),
+          isSelected: true,
+          tags: const ['Show'],
+          programmingItems: [
+            _buildProgrammingItem(
+              time: '21:00',
+              title: 'Headliner',
+            ),
+          ],
+          profileGroups: [
+            _buildProfileGroup(
+              id: 'expositores',
+              label: 'Expositores',
+              order: 1,
+              accountProfileIds: ['profile-exhibitor'],
+            ),
+          ],
+        ),
+      ],
+      programmingItems: const [],
+    );
+
+    final aligned = EventSelectedOccurrenceProjection.align(event);
+
+    expect(aligned.selectedOccurrenceId, 'occurrence-second');
+    expect(aligned.programmingItems.map((item) => item.title), ['Headliner']);
+    expect(aligned.tags.map((tag) => tag.value), ['Show']);
+    expect(
+      aligned.profileGroups.map((group) => group.label),
+      ['Bandas', 'Expositores'],
+    );
   });
 }
 
@@ -753,8 +1153,70 @@ class _FakeAuthRepository extends AuthRepositoryContract {
   String get userToken => authorized ? 'token' : '';
 }
 
+class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
+  int toggleFavoriteCalls = 0;
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<PagedAccountProfilesResult> fetchAccountProfilesPage({
+    required AccountProfilesRepositoryContractPrimInt page,
+    required AccountProfilesRepositoryContractPrimInt pageSize,
+    AccountProfilesRepositoryContractPrimString? query,
+    AccountProfilesRepositoryContractPrimString? typeFilter,
+    List<AccountProfilesRepositoryContractPrimString>? typeFilters,
+    List<dynamic>? taxonomyFilters,
+  }) async {
+    return pagedAccountProfilesResultFromRaw(
+      profiles: const <AccountProfileModel>[],
+      hasMore: false,
+    );
+  }
+
+  @override
+  Future<AccountProfileModel?> getAccountProfileBySlug(
+    AccountProfilesRepositoryContractPrimString slug,
+  ) async =>
+      null;
+
+  @override
+  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+    AccountProfilesRepositoryContractPrimInt? pageSize,
+    List<AccountProfilesRepositoryContractPrimString>? typeFilters,
+    List<dynamic>? taxonomyFilters,
+  }) async =>
+      const <AccountProfileModel>[];
+
+  @override
+  Future<void> toggleFavorite(
+    AccountProfilesRepositoryContractPrimString accountProfileId,
+  ) async {
+    toggleFavoriteCalls += 1;
+  }
+
+  @override
+  AccountProfilesRepositoryContractPrimBool isFavorite(
+    AccountProfilesRepositoryContractPrimString accountProfileId,
+  ) {
+    return AccountProfilesRepositoryContractPrimBool.fromRaw(
+      false,
+      defaultValue: false,
+    );
+  }
+
+  @override
+  List<AccountProfileModel> getFavoriteAccountProfiles() =>
+      const <AccountProfileModel>[];
+}
+
 EventModel _buildEvent({
   List<EventOccurrenceOption> occurrences = const [],
+  List<EventProfileGroup> profileGroups = const [],
+  List<EventLinkedAccountProfile> linkedAccountProfiles =
+      const <EventLinkedAccountProfile>[],
+  List<EventProgrammingItem> programmingItems = const <EventProgrammingItem>[],
+  List<String> tags = const <String>['show'],
 }) {
   final resolvedOccurrences = occurrences.isEmpty
       ? [
@@ -792,9 +1254,12 @@ EventModel _buildEvent({
       ..parse(DateTime(2026, 3, 15, 20).toIso8601String()),
     dateTimeEnd: null,
     artists: const [],
+    linkedAccountProfiles: linkedAccountProfiles,
+    profileGroups: profileGroups,
     occurrences: resolvedOccurrences,
+    programmingItems: programmingItems,
     coordinate: null,
-    tags: const <String>['show'],
+    tags: tags,
     isConfirmedValue: EventIsConfirmedValue()..parse('false'),
     confirmedAt: null,
     receivedInvites: null,
@@ -804,11 +1269,46 @@ EventModel _buildEvent({
   );
 }
 
+EventProfileGroup _buildProfileGroup({
+  required String id,
+  required String label,
+  required int order,
+  List<EventLinkedAccountProfile> profiles =
+      const <EventLinkedAccountProfile>[],
+  List<String> accountProfileIds = const <String>[],
+}) {
+  return EventProfileGroup(
+    idValue: EventLinkedAccountProfileTextValue(id),
+    labelValue: EventLinkedAccountProfileTextValue(label),
+    orderValue: EventProfileGroupOrderValue(order),
+    profiles: profiles,
+    accountProfileIdValues:
+        accountProfileIds.map(EventLinkedAccountProfileTextValue.new).toList(),
+  );
+}
+
+EventLinkedAccountProfile _buildLinkedProfile({
+  required String id,
+  required String displayName,
+  required String profileType,
+  required String slug,
+}) {
+  return EventLinkedAccountProfile(
+    idValue: EventLinkedAccountProfileTextValue(id),
+    displayNameValue: EventLinkedAccountProfileTextValue(displayName),
+    profileTypeValue: AccountProfileTypeValue(profileType),
+    slugValue: SlugValue()..parse(slug),
+  );
+}
+
 EventOccurrenceOption _buildOccurrence({
   required String id,
   required DateTime start,
   DateTime? end,
   bool isSelected = false,
+  List<EventProgrammingItem> programmingItems = const <EventProgrammingItem>[],
+  List<EventProfileGroup> profileGroups = const <EventProfileGroup>[],
+  List<String> tags = const <String>[],
 }) {
   final endValue = DomainOptionalDateTimeValue()..parse(end?.toIso8601String());
 
@@ -820,7 +1320,22 @@ EventOccurrenceOption _buildOccurrence({
     dateTimeEndValue: endValue,
     isSelectedValue: EventOccurrenceFlagValue()..parse(isSelected.toString()),
     hasLocationOverrideValue: EventOccurrenceFlagValue()..parse('false'),
-    programmingCountValue: EventProgrammingCountValue()..parse('0'),
+    programmingCountValue: EventProgrammingCountValue()
+      ..parse(programmingItems.length.toString()),
+    programmingItems: programmingItems,
+    profileGroups: profileGroups,
+    tags: tags.map(VenueEventTagValue.new).toList(growable: false),
+  );
+}
+
+EventProgrammingItem _buildProgrammingItem({
+  required String time,
+  String? title,
+}) {
+  return EventProgrammingItem(
+    timeValue: EventProgrammingTimeValue()..parse(time),
+    titleValue:
+        title == null ? null : EventLinkedAccountProfileTextValue(title),
   );
 }
 

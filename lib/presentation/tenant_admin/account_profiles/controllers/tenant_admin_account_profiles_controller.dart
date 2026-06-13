@@ -19,6 +19,7 @@ import 'package:belluga_now/domain/services/tenant_admin_location_selection_cont
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profile_create_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profile_edit_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_nested_profile_group_operations.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:image_picker/image_picker.dart';
@@ -51,6 +52,9 @@ class TenantAdminAccountProfilesController implements Disposable {
   final TenantAdminImageIngestionService _imageIngestionService;
 
   final StreamValue<List<TenantAdminAccountProfile>> profilesStreamValue =
+      StreamValue<List<TenantAdminAccountProfile>>(defaultValue: const []);
+  final StreamValue<List<TenantAdminAccountProfile>>
+      nestedProfileCandidatesStreamValue =
       StreamValue<List<TenantAdminAccountProfile>>(defaultValue: const []);
   final StreamValue<List<TenantAdminProfileTypeDefinition>>
       profileTypesStreamValue =
@@ -243,6 +247,33 @@ class TenantAdminAccountProfilesController implements Disposable {
       if (!_isDisposed) {
         isLoadingStreamValue.addValue(false);
       }
+    }
+  }
+
+  Future<void> loadNestedProfileCandidates({String? excludeProfileId}) async {
+    try {
+      final normalizedExclude = excludeProfileId?.trim();
+      final filteredProfiles = await _profilesRepository.fetchAccountProfiles(
+        queryableOnly: tenantAdminAccountProfilesRepoBool(
+          true,
+          defaultValue: true,
+        ),
+        excludeAccountProfileId:
+            normalizedExclude == null || normalizedExclude.isEmpty
+                ? null
+                : tenantAdminAccountProfilesRepoString(
+                    normalizedExclude,
+                    defaultValue: '',
+                    isRequired: true,
+                  ),
+      );
+      if (_isDisposed) return;
+      nestedProfileCandidatesStreamValue.addValue(
+        filteredProfiles.toList(growable: false),
+      );
+    } catch (_) {
+      if (_isDisposed) return;
+      nestedProfileCandidatesStreamValue.addValue(const []);
     }
   }
 
@@ -475,9 +506,11 @@ class TenantAdminAccountProfilesController implements Disposable {
         editStateStreamValue.value
             .copyWith(
               selectedProfileType: profile.profileType,
+              nestedProfileGroups: profile.nestedProfileGroups,
             )
             .syncRemoteState(profile),
       );
+      unawaited(loadNestedProfileCandidates(excludeProfileId: profile.id));
       _removeAvatarOnSubmit = false;
       _removeCoverOnSubmit = false;
     } catch (error) {
@@ -621,6 +654,8 @@ class TenantAdminAccountProfilesController implements Disposable {
     required TenantAdminMediaUpload? coverUpload,
     String? avatarUrl,
     String? coverUrl,
+    List<TenantAdminNestedProfileGroup> nestedProfileGroups =
+        const <TenantAdminNestedProfileGroup>[],
   }) async {
     createSubmittingStreamValue.addValue(true);
     try {
@@ -636,6 +671,7 @@ class TenantAdminAccountProfilesController implements Disposable {
         coverUpload: coverUpload,
         avatarUrl: avatarUrl,
         coverUrl: coverUrl,
+        nestedProfileGroups: nestedProfileGroups,
       );
       if (_isDisposed) return;
       createErrorMessageStreamValue.addValue(null);
@@ -717,6 +753,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     String? coverUrl,
     bool? removeAvatar,
     bool? removeCover,
+    List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
   }) async {
     editSubmittingStreamValue.addValue(true);
     try {
@@ -735,6 +772,7 @@ class TenantAdminAccountProfilesController implements Disposable {
         coverUrl: coverUrl,
         removeAvatar: removeAvatar ?? _removeAvatarOnSubmit,
         removeCover: removeCover ?? _removeCoverOnSubmit,
+        nestedProfileGroups: nestedProfileGroups,
       );
       if (_isDisposed) return;
       updateEditProfile(updated);
@@ -933,6 +971,142 @@ class TenantAdminAccountProfilesController implements Disposable {
     );
   }
 
+  void addCreateNestedProfileGroup() {
+    final groups = createStateStreamValue.value.nestedProfileGroups;
+    if (groups.length >= 12) {
+      reportCreateErrorMessage('Limite de grupos atingido.');
+      return;
+    }
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(
+        nestedProfileGroups: TenantAdminNestedProfileGroupOperations.append(
+          groups,
+        ),
+      ),
+    );
+  }
+
+  void addEditNestedProfileGroup() {
+    final groups = editStateStreamValue.value.nestedProfileGroups;
+    if (groups.length >= 12) {
+      reportEditErrorMessage('Limite de grupos atingido.');
+      return;
+    }
+    _updateEditState(
+      editStateStreamValue.value.copyWith(
+        nestedProfileGroups: TenantAdminNestedProfileGroupOperations.append(
+          groups,
+        ),
+      ),
+    );
+  }
+
+  void renameCreateNestedProfileGroup(String groupId, String label) {
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(
+        nestedProfileGroups: TenantAdminNestedProfileGroupOperations.rename(
+          createStateStreamValue.value.nestedProfileGroups,
+          groupId: groupId,
+          label: label,
+        ),
+      ),
+    );
+  }
+
+  void renameEditNestedProfileGroup(String groupId, String label) {
+    _updateEditState(
+      editStateStreamValue.value.copyWith(
+        nestedProfileGroups: TenantAdminNestedProfileGroupOperations.rename(
+          editStateStreamValue.value.nestedProfileGroups,
+          groupId: groupId,
+          label: label,
+        ),
+      ),
+    );
+  }
+
+  void removeCreateNestedProfileGroup(String groupId) {
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(
+        nestedProfileGroups: TenantAdminNestedProfileGroupOperations.remove(
+          createStateStreamValue.value.nestedProfileGroups,
+          groupId: groupId,
+        ),
+      ),
+    );
+  }
+
+  void removeEditNestedProfileGroup(String groupId) {
+    _updateEditState(
+      editStateStreamValue.value.copyWith(
+        nestedProfileGroups: TenantAdminNestedProfileGroupOperations.remove(
+          editStateStreamValue.value.nestedProfileGroups,
+          groupId: groupId,
+        ),
+      ),
+    );
+  }
+
+  void moveCreateNestedProfileGroup(String groupId, int delta) {
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(
+        nestedProfileGroups: TenantAdminNestedProfileGroupOperations.move(
+          createStateStreamValue.value.nestedProfileGroups,
+          groupId: groupId,
+          delta: delta,
+        ),
+      ),
+    );
+  }
+
+  void moveEditNestedProfileGroup(String groupId, int delta) {
+    _updateEditState(
+      editStateStreamValue.value.copyWith(
+        nestedProfileGroups: TenantAdminNestedProfileGroupOperations.move(
+          editStateStreamValue.value.nestedProfileGroups,
+          groupId: groupId,
+          delta: delta,
+        ),
+      ),
+    );
+  }
+
+  void toggleCreateNestedProfileGroupMember({
+    required String groupId,
+    required String profileId,
+    required bool selected,
+  }) {
+    final next = TenantAdminNestedProfileGroupOperations.toggleMember(
+      createStateStreamValue.value.nestedProfileGroups,
+      groupId: groupId,
+      profileId: profileId,
+      selected: selected,
+      onLimit: () =>
+          reportCreateErrorMessage('Limite de perfis no grupo atingido.'),
+    );
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(nestedProfileGroups: next),
+    );
+  }
+
+  void toggleEditNestedProfileGroupMember({
+    required String groupId,
+    required String profileId,
+    required bool selected,
+  }) {
+    final next = TenantAdminNestedProfileGroupOperations.toggleMember(
+      editStateStreamValue.value.nestedProfileGroups,
+      groupId: groupId,
+      profileId: profileId,
+      selected: selected,
+      onLimit: () =>
+          reportEditErrorMessage('Limite de perfis no grupo atingido.'),
+    );
+    _updateEditState(
+      editStateStreamValue.value.copyWith(nestedProfileGroups: next),
+    );
+  }
+
   void resetFormControllers() {
     slugController.clear();
     displayNameController.clear();
@@ -1081,6 +1255,8 @@ class TenantAdminAccountProfilesController implements Disposable {
     String? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup> nestedProfileGroups =
+        const <TenantAdminNestedProfileGroup>[],
   }) async {
     final filtered = _filterCapabilities(
       profileType: profileType,
@@ -1125,6 +1301,7 @@ class TenantAdminAccountProfilesController implements Disposable {
           : tenantAdminAccountProfilesRepoString(filtered.coverUrl),
       avatarUpload: filtered.avatarUpload,
       coverUpload: filtered.coverUpload,
+      nestedProfileGroups: nestedProfileGroups,
     );
     if (!_isDisposed) {
       accountProfileStreamValue.addValue(profile);
@@ -1148,6 +1325,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     bool? removeCover,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
   }) async {
     final filtered = profileType == null
         ? _CapabilityFilter(
@@ -1208,6 +1386,7 @@ class TenantAdminAccountProfilesController implements Disposable {
           : tenantAdminAccountProfilesRepoBool(removeCover),
       avatarUpload: filtered.avatarUpload,
       coverUpload: filtered.coverUpload,
+      nestedProfileGroups: nestedProfileGroups,
     );
     await loadProfiles(profile.accountId);
     return profile;
@@ -1284,6 +1463,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     latitudeController.dispose();
     longitudeController.dispose();
     profilesStreamValue.dispose();
+    nestedProfileCandidatesStreamValue.dispose();
     profileTypesStreamValue.dispose();
     taxonomiesStreamValue.dispose();
     taxonomyTermsStreamValue.dispose();

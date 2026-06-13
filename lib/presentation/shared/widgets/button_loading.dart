@@ -16,6 +16,10 @@ class ButtonLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final resolvedForegroundColor =
+        style?.foregroundColor?.resolve(<WidgetState>{}) ??
+            Theme.of(context).colorScheme.onPrimary;
+
     return ElevatedButton(
       onPressed: onPressed,
       style: style,
@@ -29,7 +33,7 @@ class ButtonLoading extends StatelessWidget {
               height: 14,
               child: Center(
                 child: CircularProgressIndicator(
-                  color: Theme.of(context).colorScheme.secondary,
+                  color: resolvedForegroundColor,
                   strokeWidth: 4,
                 ),
               ),
@@ -42,7 +46,7 @@ class ButtonLoading extends StatelessWidget {
                 label,
                 maxLines: 1,
                 style: TextTheme.of(context).titleMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onPrimary,
+                      color: resolvedForegroundColor,
                     ),
               ),
             ),

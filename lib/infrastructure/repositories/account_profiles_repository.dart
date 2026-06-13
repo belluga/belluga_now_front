@@ -2,6 +2,7 @@ import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
@@ -22,6 +23,7 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
     BackendContract? backendContract,
     Set<String>? favoriteAccountProfileIds,
     FavoriteRepositoryContract? favoriteRepository,
+    AppDataRepositoryContract? appDataRepository,
     TelemetryRepositoryContract? telemetryRepository,
   })  : _backend = backend ??
             (backendContract ?? GetIt.I.get<BackendContract>()).accountProfiles,
@@ -33,6 +35,7 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
             Set<String>.from(favoriteAccountProfileIds ?? const <String>{}),
         _favoriteRepository =
             favoriteRepository ?? _resolveFavoriteRepositoryOrNull(),
+        _appDataRepository = appDataRepository,
         _telemetryRepository =
             telemetryRepository ?? GetIt.I.get<TelemetryRepositoryContract>();
 
@@ -40,6 +43,7 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
   final FavoriteBackendContract _favoriteBackend;
   final Set<String> _favoriteAccountProfileIds;
   final FavoriteRepositoryContract? _favoriteRepository;
+  AppDataRepositoryContract? _appDataRepository;
   final TelemetryRepositoryContract _telemetryRepository;
 
   @override
@@ -68,28 +72,10 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
     List<AccountProfilesRepositoryContractPrimString>? typeFilters,
     List<AccountProfilesRepositoryTaxonomyFilter>? taxonomyFilters,
   }) async {
-    final favoritableTypes = _favoritableEnabledTypes();
-    if (favoritableTypes.isEmpty) {
-      return pagedAccountProfilesResultFromRaw(
-        profiles: <AccountProfileModel>[],
-        hasMore: false,
-      );
-    }
-
     final normalizedTypeFilters = _normalizeTypeFilters(
       singleTypeFilter: typeFilter,
       typeFilters: typeFilters,
     );
-    if (normalizedTypeFilters.isNotEmpty &&
-        !normalizedTypeFilters.every(
-          (filter) => favoritableTypes.any((type) => type.value == filter),
-        )) {
-      return pagedAccountProfilesResultFromRaw(
-        profiles: <AccountProfileModel>[],
-        hasMore: false,
-      );
-    }
-
     final result = await _backend.fetchAccountProfilesPage(
       page: page.value,
       pageSize: pageSize.value,
@@ -105,6 +91,7 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
     return pagedAccountProfilesResultFromRaw(
       profiles: filtered,
       hasMore: result.hasMore,
+      discoveryFilterFacets: result.discoveryFilterFacets,
     );
   }
 
@@ -133,7 +120,13 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
   ) async {
     final profile = await _backend.fetchAccountProfileBySlug(slug.value);
     if (profile == null) return null;
-    return _isAccountProfileTypeEnabled(profile) ? profile : null;
+    final registry = _resolveRegistry();
+    if (registry == null || registry.isEmpty) {
+      return profile;
+    }
+    return registry.contains(ProfileTypeKeyValue(profile.profileType))
+        ? (_isAccountProfileTypeEnabled(profile) ? profile : null)
+        : profile;
   }
 
   @override
@@ -225,14 +218,26 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
       List<AccountProfileModel> profiles) {
     final registry = _resolveRegistry();
     if (registry == null || registry.isEmpty) {
-      debugPrint(
-          'Profile type registry missing; hiding account profile lists.');
-      return const [];
+      return profiles;
     }
     return profiles
-        .where(_isAccountProfileTypeEnabled)
-        .where(_isAccountProfileTypeFavoritable)
+        .where(_shouldKeepProfileForPublicSurface)
         .toList(growable: false);
+  }
+
+  bool _shouldKeepProfileForPublicSurface(
+    AccountProfileModel profile,
+  ) {
+    final registry = _resolveRegistry();
+    if (registry == null || registry.isEmpty) {
+      return true;
+    }
+    final typeValue = ProfileTypeKeyValue(profile.profileType);
+    if (!registry.contains(typeValue)) {
+      return true;
+    }
+    return _isAccountProfileTypeEnabled(profile) &&
+        _isAccountProfileTypePubliclyDiscoverable(profile);
   }
 
   bool _isAccountProfileTypeEnabled(AccountProfileModel profile) {
@@ -241,22 +246,11 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
         false;
   }
 
-  bool _isAccountProfileTypeFavoritable(AccountProfileModel profile) {
+  bool _isAccountProfileTypePubliclyDiscoverable(AccountProfileModel profile) {
     final registry = _resolveRegistry();
-    return registry
-            ?.isFavoritableFor(ProfileTypeKeyValue(profile.profileType)) ??
+    return registry?.isPubliclyDiscoverableFor(
+            ProfileTypeKeyValue(profile.profileType)) ??
         false;
-  }
-
-  List<ProfileTypeKeyValue> _favoritableEnabledTypes() {
-    final registry = _resolveRegistry();
-    if (registry == null || registry.isEmpty) {
-      return const <ProfileTypeKeyValue>[];
-    }
-    return registry
-        .enabledAccountProfileTypes()
-        .where(registry.isFavoritableFor)
-        .toList(growable: false);
   }
 
   List<String> _normalizeTypeFilters({
@@ -289,10 +283,25 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
   }
 
   ProfileTypeRegistry? _resolveRegistry() {
+    final repository = _resolvedAppDataRepository;
+    if (repository != null) {
+      return repository.appData.profileTypeRegistry;
+    }
     if (!GetIt.I.isRegistered<AppData>()) {
       return null;
     }
     return GetIt.I.get<AppData>().profileTypeRegistry;
+  }
+
+  AppDataRepositoryContract? get _resolvedAppDataRepository {
+    if (_appDataRepository != null) {
+      return _appDataRepository;
+    }
+    if (!GetIt.I.isRegistered<AppDataRepositoryContract>()) {
+      return null;
+    }
+    _appDataRepository = GetIt.I.get<AppDataRepositoryContract>();
+    return _appDataRepository;
   }
 
   Future<Set<String>> _loadRemoteFavoriteIds() async {

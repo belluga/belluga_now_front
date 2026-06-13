@@ -2,16 +2,18 @@ import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/application/router/guards/location_permission_gate_runtime.dart';
 import 'package:belluga_now/application/router/guards/location_permission_gate_result.dart';
 import 'package:belluga_now/application/router/support/location_permission_blocker.dart';
+import 'package:belluga_now/application/router/support/location_permission_granted_document_reentry.dart';
 import 'package:flutter/foundation.dart';
 
 Future<void>? _tenantPublicMapEntryFlowInFlight;
+const String _tenantPublicMapEntryPath = '/mapa';
 
 Future<void> openTenantPublicMapEntryFlow(
   StackRouter router, {
   LocationPermissionBlockerLoader? blockerLoader,
+  LocationPermissionGrantedDocumentReentry? documentReentry,
 }) {
   final inFlight = _tenantPublicMapEntryFlowInFlight;
   if (inFlight != null) {
@@ -21,6 +23,7 @@ Future<void> openTenantPublicMapEntryFlow(
   final future = _openTenantPublicMapEntryFlow(
     router.root,
     blockerLoader: blockerLoader,
+    documentReentry: documentReentry,
   );
   _tenantPublicMapEntryFlowInFlight = future.whenComplete(() {
     _tenantPublicMapEntryFlowInFlight = null;
@@ -36,6 +39,7 @@ void resetTenantPublicMapEntryFlowForTesting() {
 Future<void> _openTenantPublicMapEntryFlow(
   StackRouter router, {
   LocationPermissionBlockerLoader? blockerLoader,
+  LocationPermissionGrantedDocumentReentry? documentReentry,
 }) async {
   final blocker =
       await (blockerLoader ?? loadCurrentLocationPermissionBlocker)();
@@ -69,12 +73,32 @@ Future<void> _openTenantPublicMapEntryFlow(
 
         switch (result) {
           case LocationPermissionGateResult.granted:
-            unawaited(router.replace(CityMapRoute()));
+            final handledByDocumentReentry = (documentReentry ??
+                performLocationPermissionGrantedDocumentReentry)(
+              _tenantPublicMapEntryPath,
+            );
+            if (handledByDocumentReentry) {
+              completeResolution();
+              return;
+            }
+            unawaited(
+              router.replace(
+                CityMapRoute(
+                  locationGateResult: LocationPermissionGateResult.granted,
+                ),
+              ),
+            );
             completeResolution();
             return;
           case LocationPermissionGateResult.continueWithoutLocation:
-            LocationPermissionGateRuntime.armSoftLocationFallbackEntry();
-            unawaited(router.replace(CityMapRoute()));
+            unawaited(
+              router.replace(
+                CityMapRoute(
+                  locationGateResult:
+                      LocationPermissionGateResult.continueWithoutLocation,
+                ),
+              ),
+            );
             completeResolution();
             return;
           case LocationPermissionGateResult.cancelled:

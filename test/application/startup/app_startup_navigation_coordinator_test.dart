@@ -79,6 +79,39 @@ void main() {
   );
 
   testWidgets(
+    'startup coordinator preserves event app links during cold start',
+    (tester) async {
+      final coordinator = AppStartupNavigationCoordinator(
+        planLoader: () async => AppStartupNavigationPlan.routes(
+          const <PageRouteInfo<dynamic>>[
+            TenantHomeRoute(),
+            InviteFlowRoute(),
+          ],
+        ),
+      );
+      await coordinator.initialize();
+      final router = _buildRouter();
+      final delegate = router.delegate(
+        deepLinkBuilder: coordinator.resolvePlatformDeepLink,
+      );
+
+      await delegate.setInitialRoutePath(
+        await _parseRoute(
+          router,
+          'https://guarappari.com.br/agenda/evento/show-rock?occurrence=occ-1',
+        ),
+      );
+
+      expect(
+        router.currentHierarchy().map((segment) => segment.name).toList(),
+        <String>[ImmersiveEventDetailRoute.name],
+      );
+      expect(router.currentPath, '/agenda/evento/show-rock');
+      expect(router.currentUrl, '/agenda/evento/show-rock?occurrence=occ-1');
+    },
+  );
+
+  testWidgets(
     'startup coordinator applies deferred path override only on root entry',
     (tester) async {
       final router = _buildRouter();
@@ -207,6 +240,10 @@ RootStackRouter _buildRouter() {
       AutoRoute(
         path: '/parceiro/:slug',
         page: PartnerDetailRoute.page,
+      ),
+      AutoRoute(
+        path: '/agenda/evento/:slug',
+        page: ImmersiveEventDetailRoute.page,
       ),
     ],
   );

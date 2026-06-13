@@ -24,6 +24,12 @@ enum MapMarkerIconToken {
     iconData: BooraIcons.clapperboard,
     group: MapMarkerIconGroup.culture,
   ),
+  whatsapp(
+    storageKey: 'whatsapp',
+    label: 'WhatsApp',
+    iconData: BooraIcons.whatsapp,
+    group: MapMarkerIconGroup.services,
+  ),
   running(
     storageKey: 'running',
     label: 'Corrida',

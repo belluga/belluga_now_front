@@ -11,6 +11,7 @@ import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_bool_value.dart';
 import 'package:belluga_now/domain/repositories/value_objects/account_profiles_repository_taxonomy_filter.dart';
 import 'package:belluga_now/domain/repositories/value_objects/auth_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_duration_value.dart';
@@ -51,6 +52,8 @@ void main() {
             'display_name': 'Artist One',
             'slug': 'artist-one',
             'profile_type': 'artist',
+            'can_open_public_detail': true,
+            'public_detail_path': '/parceiro/artist-one',
             'taxonomy_terms': [
               {'type': 'genre', 'value': 'indie'},
             ],
@@ -79,6 +82,8 @@ void main() {
     expect(profiles, hasLength(1));
     expect(profiles.first.name, 'Artist One');
     expect(profiles.first.slug, 'artist-one');
+    expect(profiles.first.canOpenPublicDetail, isTrue);
+    expect(profiles.first.publicDetailPath, '/parceiro/artist-one');
   });
 
   test(
@@ -206,6 +211,66 @@ void main() {
     expect(profiles.first.distanceMeters, closeTo(1425.75, 0.001));
   });
 
+  test('fetchAccountProfiles parses runtime discovery facets', () async {
+    final validId = _generateMongoId();
+    final adapter = _RecordingAdapter(
+      response: {
+        'data': [
+          {
+            'id': validId,
+            'display_name': 'Artist One',
+            'slug': 'artist-one',
+            'profile_type': 'artist',
+            'taxonomy_terms': const [],
+          },
+        ],
+        'has_more': true,
+        'discovery_filter_facets': {
+          'surface': 'discovery.account_profiles',
+          'filter_keys': ['venue', 'artist_public'],
+          'taxonomy_options': {
+            'cuisine': {
+              'key': 'cuisine',
+              'label': 'Cozinha',
+              'terms': [
+                {'value': 'italian', 'label': 'Italian'},
+                {'value': 'japanese', 'label': 'Japanese'},
+              ],
+            },
+          },
+        },
+      },
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final backend = LaravelAccountProfilesBackend(
+      dio: dio,
+      locationOriginService: LocationOriginService(
+        appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+      ),
+    );
+
+    final page = await backend.fetchAccountProfilesPage(
+      page: 1,
+      pageSize: 30,
+    );
+
+    expect(page.discoveryFilterFacets, isNotNull);
+    expect(
+      page.discoveryFilterFacets?.surface,
+      'discovery.account_profiles',
+    );
+    expect(
+      page.discoveryFilterFacets?.filterKeys,
+      <String>{'venue', 'artist_public'},
+    );
+    expect(
+      page.discoveryFilterFacets?.taxonomyOptionsByKey['cuisine']?.terms
+          .map((term) => term.value)
+          .toList(),
+      <String>['italian', 'japanese'],
+    );
+  });
+
   test('fetchAccountProfileBySlug hits direct slug endpoint and parses profile',
       () async {
     final validId = _generateMongoId();
@@ -216,6 +281,8 @@ void main() {
           'display_name': 'Slug Detail Artist',
           'slug': 'slug-detail-artist',
           'profile_type': 'artist',
+          'can_open_public_detail': true,
+          'public_detail_path': '/parceiro/slug-detail-artist',
           'taxonomy_terms': const [],
         },
       },
@@ -238,6 +305,164 @@ void main() {
     expect(profile, isNotNull);
     expect(profile?.name, 'Slug Detail Artist');
     expect(profile?.slug, 'slug-detail-artist');
+    expect(profile?.canOpenPublicDetail, isTrue);
+    expect(
+      profile?.publicDetailPath,
+      '/parceiro/slug-detail-artist',
+    );
+  });
+
+  test(
+      'fetchAccountProfileBySlug requires public detail path before enabling navigation',
+      () async {
+    final validId = _generateMongoId();
+    final adapter = _RecordingAdapter(
+      response: {
+        'data': {
+          'id': validId,
+          'display_name': 'Slug Detail Artist',
+          'slug': 'slug-detail-artist',
+          'profile_type': 'artist',
+          'can_open_public_detail': true,
+          'taxonomy_terms': const [],
+        },
+      },
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final backend = LaravelAccountProfilesBackend(
+      dio: dio,
+      locationOriginService: LocationOriginService(
+        appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+      ),
+    );
+
+    final profile = await backend.fetchAccountProfileBySlug(
+      'slug-detail-artist',
+    );
+
+    expect(profile, isNotNull);
+    expect(profile?.slug, 'slug-detail-artist');
+    expect(profile?.canOpenPublicDetail, isFalse);
+    expect(profile?.publicDetailPath, isNull);
+  });
+
+  test('fetchAccountProfileBySlug parses nested account profile groups',
+      () async {
+    final parentId = _generateMongoId();
+    final partnerAId = _generateMongoId();
+    final partnerBId = _generateMongoId();
+    final adapter = _RecordingAdapter(
+      response: {
+        'data': {
+          'id': parentId,
+          'display_name': 'Parent Profile',
+          'slug': 'parent-profile',
+          'profile_type': 'venue',
+          'taxonomy_terms': const [],
+          'nested_profile_groups': [
+            {
+              'id': 'parceiros',
+              'label': 'Parceiros',
+              'order': 1,
+              'profiles': [
+                {
+                  'id': partnerBId,
+                  'display_name': 'Parceiro B',
+                  'slug': 'parceiro-b',
+                  'profile_type': 'artist',
+                  'can_open_public_detail': true,
+                  'public_detail_path': '/parceiro/parceiro-b',
+                  'avatar_url': 'https://tenant.test/b.png',
+                  'taxonomy_terms': [
+                    {'name': 'Música', 'value': 'musica'},
+                  ],
+                },
+                {
+                  'id': partnerAId,
+                  'display_name': 'Parceiro A',
+                  'slug': 'parceiro-a',
+                  'profile_type': 'artist',
+                  'can_open_public_detail': false,
+                },
+              ],
+            },
+          ],
+        },
+      },
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final backend = LaravelAccountProfilesBackend(
+      dio: dio,
+      locationOriginService: LocationOriginService(
+        appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+      ),
+    );
+
+    final profile = await backend.fetchAccountProfileBySlug('parent-profile');
+
+    expect(profile, isNotNull);
+    expect(profile!.nestedProfileGroups, hasLength(1));
+    final group = profile.nestedProfileGroups.single;
+    expect(group.id, 'parceiros');
+    expect(group.label, 'Parceiros');
+    expect(group.profiles.map((entry) => entry.slug).toList(), [
+      'parceiro-b',
+      'parceiro-a',
+    ]);
+    expect(group.profiles.first.canOpenPublicDetail, isTrue);
+    expect(group.profiles.first.publicDetailPath, '/parceiro/parceiro-b');
+    expect(group.profiles.last.canOpenPublicDetail, isFalse);
+    expect(group.profiles.first.avatarUrl, 'https://tenant.test/b.png');
+    expect(group.profiles.first.tags.single.value, 'Música');
+  });
+
+  test(
+      'fetchAccountProfileBySlug keeps nested members without slug when not navigable',
+      () async {
+    final parentId = _generateMongoId();
+    final partnerId = _generateMongoId();
+    final adapter = _RecordingAdapter(
+      response: {
+        'data': {
+          'id': parentId,
+          'display_name': 'Parent Profile',
+          'slug': 'parent-profile',
+          'profile_type': 'venue',
+          'taxonomy_terms': const [],
+          'nested_profile_groups': [
+            {
+              'id': 'parceiros',
+              'label': 'Parceiros',
+              'order': 1,
+              'profiles': [
+                {
+                  'id': partnerId,
+                  'display_name': 'Parceiro Sem Link',
+                  'profile_type': 'guest_public',
+                  'can_open_public_detail': false,
+                  'public_detail_path': null,
+                },
+              ],
+            },
+          ],
+        },
+      },
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final backend = LaravelAccountProfilesBackend(
+      dio: dio,
+      locationOriginService: LocationOriginService(
+        appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+      ),
+    );
+
+    final profile = await backend.fetchAccountProfileBySlug('parent-profile');
+
+    expect(profile, isNotNull);
+    final member = profile!.nestedProfileGroups.single.profiles.single;
+    expect(member.slug, isEmpty);
+    expect(member.canOpenPublicDetail, isFalse);
+    expect(member.publicDetailPath, isNull);
   });
 
   test('fetchAccountProfileBySlug returns null on not found', () async {
@@ -736,6 +961,11 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   }
 
   @override
+  Future<void> ensureTenantPublicIdentityReady() async {
+    await init();
+  }
+
+  @override
   Future<void> autoLogin() async {}
 
   @override
@@ -858,7 +1088,11 @@ class _FakeUserLocationRepository extends UserLocationRepositoryContract {
       true;
 
   @override
-  Future<String?> resolveUserLocation() async => null;
+  Future<String?> resolveUserLocation({
+    Object? timeout,
+    UserLocationRepositoryContractBoolValue? requestPermissionIfNeededValue,
+  }) async =>
+      null;
 
   @override
   Future<bool> startTracking({

@@ -1,3 +1,4 @@
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:image_picker/image_picker.dart';
 
 class TenantAdminAccountProfileCreateDraft {
@@ -11,6 +12,7 @@ class TenantAdminAccountProfileCreateDraft {
     required this.coverWebUrl,
     required this.avatarBusy,
     required this.coverBusy,
+    this.nestedProfileGroups = const <TenantAdminNestedProfileGroup>[],
   });
 
   factory TenantAdminAccountProfileCreateDraft.initial() =>
@@ -22,6 +24,7 @@ class TenantAdminAccountProfileCreateDraft {
         coverWebUrl: null,
         avatarBusy: false,
         coverBusy: false,
+        nestedProfileGroups: <TenantAdminNestedProfileGroup>[],
       );
 
   final String? selectedProfileType;
@@ -31,6 +34,7 @@ class TenantAdminAccountProfileCreateDraft {
   final String? coverWebUrl;
   final bool avatarBusy;
   final bool coverBusy;
+  final List<TenantAdminNestedProfileGroup> nestedProfileGroups;
 
   TenantAdminAccountProfileCreateDraft copyWith({
     Object? selectedProfileType = _unset,
@@ -40,6 +44,7 @@ class TenantAdminAccountProfileCreateDraft {
     Object? coverWebUrl = _unset,
     bool? avatarBusy,
     bool? coverBusy,
+    List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
   }) {
     final nextSelectedProfileType = selectedProfileType == _unset
         ? this.selectedProfileType
@@ -61,6 +66,7 @@ class TenantAdminAccountProfileCreateDraft {
       coverWebUrl: nextCoverWebUrl,
       avatarBusy: avatarBusy ?? this.avatarBusy,
       coverBusy: coverBusy ?? this.coverBusy,
+      nestedProfileGroups: nestedProfileGroups ?? this.nestedProfileGroups,
     );
   }
 }

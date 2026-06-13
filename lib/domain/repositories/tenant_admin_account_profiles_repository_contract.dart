@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/repositories/value_objects/tenant_admin_accou
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
@@ -12,6 +13,7 @@ import 'package:stream_value/core/stream_value.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 
 export 'package:belluga_now/domain/repositories/value_objects/tenant_admin_account_profiles_repository_contract_values.dart';
+export 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 export 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_taxonomy_terms_value.dart';
 
 typedef TenantAdminAccountProfilesRepoString
@@ -32,6 +34,8 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
 
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
     TenantAdminAccountProfilesRepoString? accountId,
+    TenantAdminAccountProfilesRepoBool? queryableOnly,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   });
   Future<TenantAdminAccountProfile> fetchAccountProfile(
       TenantAdminAccountProfilesRepoString accountProfileId);
@@ -48,6 +52,8 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup> nestedProfileGroups =
+        const <TenantAdminNestedProfileGroup>[],
   });
   Future<TenantAdminAccountProfile> updateAccountProfile({
     required TenantAdminAccountProfilesRepoString accountProfileId,
@@ -64,6 +70,7 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     TenantAdminAccountProfilesRepoBool? removeCover,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
   });
   Future<void> deleteAccountProfile(
       TenantAdminAccountProfilesRepoString accountProfileId);
