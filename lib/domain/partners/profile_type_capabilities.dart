@@ -2,6 +2,7 @@ import 'package:belluga_now/domain/partners/value_objects/profile_type_flag_valu
 
 class ProfileTypeCapabilities {
   ProfileTypeCapabilities({
+    required this.isPubliclyDiscoverableValue,
     required this.isFavoritableValue,
     required this.isPoiEnabledValue,
     ProfileTypeFlagValue? isReferenceLocationEnabledValue,
@@ -11,9 +12,13 @@ class ProfileTypeCapabilities {
     required this.hasAvatarValue,
     required this.hasCoverValue,
     required this.hasEventsValue,
-  }) : isReferenceLocationEnabledValue =
-            isReferenceLocationEnabledValue ?? ProfileTypeFlagValue(false);
+    ProfileTypeFlagValue? hasNestedProfileGroupsValue,
+  })  : isReferenceLocationEnabledValue =
+            isReferenceLocationEnabledValue ?? ProfileTypeFlagValue(false),
+        hasNestedProfileGroupsValue =
+            hasNestedProfileGroupsValue ?? ProfileTypeFlagValue(false);
 
+  final ProfileTypeFlagValue isPubliclyDiscoverableValue;
   final ProfileTypeFlagValue isFavoritableValue;
   final ProfileTypeFlagValue isPoiEnabledValue;
   final ProfileTypeFlagValue isReferenceLocationEnabledValue;
@@ -23,7 +28,9 @@ class ProfileTypeCapabilities {
   final ProfileTypeFlagValue hasAvatarValue;
   final ProfileTypeFlagValue hasCoverValue;
   final ProfileTypeFlagValue hasEventsValue;
+  final ProfileTypeFlagValue hasNestedProfileGroupsValue;
 
+  bool get isPubliclyDiscoverable => isPubliclyDiscoverableValue.value;
   bool get isFavoritable => isFavoritableValue.value;
   bool get isPoiEnabled => isPoiEnabledValue.value;
   bool get isReferenceLocationEnabled =>
@@ -34,4 +41,5 @@ class ProfileTypeCapabilities {
   bool get hasAvatar => hasAvatarValue.value;
   bool get hasCover => hasCoverValue.value;
   bool get hasEvents => hasEventsValue.value;
+  bool get hasNestedProfileGroups => hasNestedProfileGroupsValue.value;
 }

@@ -2,9 +2,11 @@ import 'package:belluga_now/domain/favorite/favorite.dart';
 import 'package:belluga_now/domain/favorite/favorite_badge.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_event_occurrence_id_value.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_primary_flag_value.dart';
+import 'package:belluga_now/domain/favorite/value_objects/favorite_public_detail_path_value.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_target_type_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
+import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_optional_date_time_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
@@ -30,6 +32,8 @@ class FavoriteResume {
     this.targetTypeValue,
     this.profileTypeValue,
     this.coverImageUriValue,
+    DomainBooleanValue? canOpenPublicDetailValue,
+    this.publicDetailPathValue,
     DomainOptionalDateTimeValue? nextEventOccurrenceAtValue,
     DomainOptionalDateTimeValue? lastEventOccurrenceAtValue,
     this.liveNowEventOccurrenceIdValue,
@@ -46,6 +50,9 @@ class FavoriteResume {
             nextEventOccurrenceAtValue ?? DomainOptionalDateTimeValue(),
         lastEventOccurrenceAtValue =
             lastEventOccurrenceAtValue ?? DomainOptionalDateTimeValue(),
+        canOpenPublicDetailValue = canOpenPublicDetailValue ??
+            (DomainBooleanValue(defaultValue: false, isRequired: false)
+              ..parse('false')),
         liveNowEventOccurrenceAtValue =
             liveNowEventOccurrenceAtValue ?? DomainOptionalDateTimeValue(),
         isPrimaryValue =
@@ -62,6 +69,8 @@ class FavoriteResume {
   final FavoriteTargetTypeValue? targetTypeValue;
   final AccountProfileTypeValue? profileTypeValue;
   final ThumbUriValue? coverImageUriValue;
+  final DomainBooleanValue canOpenPublicDetailValue;
+  final FavoritePublicDetailPathValue? publicDetailPathValue;
   final DomainOptionalDateTimeValue nextEventOccurrenceAtValue;
   final DomainOptionalDateTimeValue lastEventOccurrenceAtValue;
   final FavoriteEventOccurrenceIdValue? liveNowEventOccurrenceIdValue;
@@ -77,6 +86,15 @@ class FavoriteResume {
   String? get coverImageUrl => coverImageUri?.toString();
   String? get targetType => targetTypeValue?.value;
   String? get profileType => profileTypeValue?.value;
+  bool get canOpenPublicDetail => canOpenPublicDetailValue.value;
+  String? get publicDetailPath {
+    final value = publicDetailPathValue?.value.trim();
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+    return value;
+  }
+
   DateTime? get nextEventOccurrenceAt => nextEventOccurrenceAtValue.value;
   DateTime? get lastEventOccurrenceAt => lastEventOccurrenceAtValue.value;
   String? get liveNowEventOccurrenceId => liveNowEventOccurrenceIdValue?.value;

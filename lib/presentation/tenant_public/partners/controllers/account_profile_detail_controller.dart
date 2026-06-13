@@ -1,8 +1,10 @@
 import 'dart:async';
 
+import 'package:belluga_now/application/proximity_preferences/account_profile_reference_point_resolver.dart';
 import 'package:belluga_now/application/rich_text/account_profile_rich_text_block.dart';
 import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/profile_type_capabilities.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
@@ -14,8 +16,10 @@ import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
+import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_state.dart';
 import 'package:belluga_now/presentation/shared/visuals/account_profile_visual_resolver.dart';
 import 'package:belluga_now/presentation/shared/visuals/resolved_account_profile_visual.dart';
 import 'package:get_it/get_it.dart';
@@ -33,6 +37,7 @@ class AccountProfileDetailController implements Disposable {
     AuthRepositoryContract? authRepository,
     UserEventsRepositoryContract? userEventsRepository,
     InvitesRepositoryContract? invitesRepository,
+    ProximityPreferencesRepositoryContract? proximityPreferencesRepository,
   })  : _accountProfilesRepository = accountProfilesRepository ??
             GetIt.I.get<AccountProfilesRepositoryContract>(),
         _profileConfigBuilder = profileConfigBuilder ??
@@ -50,6 +55,10 @@ class AccountProfileDetailController implements Disposable {
         _invitesRepository = invitesRepository ??
             (GetIt.I.isRegistered<InvitesRepositoryContract>()
                 ? GetIt.I.get<InvitesRepositoryContract>()
+                : null),
+        _proximityPreferencesRepository = proximityPreferencesRepository ??
+            (GetIt.I.isRegistered<ProximityPreferencesRepositoryContract>()
+                ? GetIt.I.get<ProximityPreferencesRepositoryContract>()
                 : null) {
     _favoriteIdsSubscription = _accountProfilesRepository
         .favoriteAccountProfileIdsStreamValue.stream
@@ -80,14 +89,18 @@ class AccountProfileDetailController implements Disposable {
   final AuthRepositoryContract? _authRepository;
   final UserEventsRepositoryContract? _userEventsRepository;
   final InvitesRepositoryContract? _invitesRepository;
+  final ProximityPreferencesRepositoryContract? _proximityPreferencesRepository;
   StreamSubscription<Set<AccountProfilesRepositoryContractPrimString>>?
       _favoriteIdsSubscription;
   StreamSubscription<Set<UserEventsRepositoryContractPrimString>>?
       _confirmedEventIdsSubscription;
   StreamSubscription<dynamic>? _pendingInvitesSubscription;
 
-  StreamValue<AccountProfileModel?> get accountProfileStreamValue =>
-      _accountProfilesRepository.selectedAccountProfileStreamValue;
+  final _detailStateStreamValue = StreamValue<AccountProfileDetailState>(
+    defaultValue: AccountProfileDetailState.empty,
+  );
+  StreamValue<AccountProfileDetailState> get detailStateStreamValue =>
+      _detailStateStreamValue;
   final isLoadingStreamValue = StreamValue<bool>(defaultValue: false);
   final favoriteIdsStreamValue =
       StreamValue<Set<String>>(defaultValue: const {});
@@ -98,36 +111,21 @@ class AccountProfileDetailController implements Disposable {
       StreamValue<PartnerProfileConfig?>(defaultValue: null);
   final moduleDataStreamValue =
       StreamValue<Map<ProfileModuleId, Object?>>(defaultValue: const {});
+  final StreamValue<ProximityPreference?> _emptyProximityPreferenceStreamValue =
+      StreamValue<ProximityPreference?>(defaultValue: null);
 
-  Future<void> loadAccountProfile(String slug) async {
-    isLoadingStreamValue.addValue(true);
-    errorMessageStreamValue.addValue('');
-    try {
-      await _accountProfilesRepository.loadAccountProfileBySlug(
-        AccountProfilesRepositoryContractPrimString.fromRaw(slug),
-      );
-      final accountProfile =
-          _accountProfilesRepository.selectedAccountProfileStreamValue.value;
-      if (accountProfile == null) {
-        _accountProfilesRepository.clearSelectedAccountProfile();
-        profileConfigStreamValue.addValue(null);
-        moduleDataStreamValue.addValue(const {});
-        return;
-      }
-      await loadResolvedAccountProfile(accountProfile);
-    } catch (error) {
-      errorMessageStreamValue.addValue(
-        'Falha ao preparar o perfil',
-      );
-    } finally {
-      isLoadingStreamValue.addValue(false);
-    }
-  }
+  StreamValue<ProximityPreference?> get proximityPreferenceStreamValue =>
+      _proximityPreferencesRepository?.proximityPreferenceStreamValue ??
+      _emptyProximityPreferenceStreamValue;
+
+  bool get isAuthorized => _authRepository?.isAuthorized ?? false;
 
   Future<void> loadResolvedAccountProfile(
       AccountProfileModel accountProfile) async {
     errorMessageStreamValue.addValue('');
-    _accountProfilesRepository.setSelectedAccountProfile(accountProfile);
+    _detailStateStreamValue.addValue(
+      AccountProfileDetailState(accountProfile: accountProfile),
+    );
     final capabilities = _resolveRegistry()
         ?.capabilitiesFor(ProfileTypeKeyValue(accountProfile.type));
     profileConfigStreamValue.addValue(
@@ -150,6 +148,9 @@ class AccountProfileDetailController implements Disposable {
   }
 
   AccountProfileFavoriteToggleOutcome toggleFavorite(String accountProfileId) {
+    if (!isAuthorized) {
+      return AccountProfileFavoriteToggleOutcome.requiresAuthentication;
+    }
     _accountProfilesRepository.toggleFavorite(
       AccountProfilesRepositoryContractPrimString.fromRaw(accountProfileId),
     );
@@ -170,6 +171,46 @@ class AccountProfileDetailController implements Disposable {
     return registry.isFavoritableFor(ProfileTypeKeyValue(accountProfile.type));
   }
 
+  bool canUseAsReferencePoint(AccountProfileModel accountProfile) {
+    return AccountProfileReferencePointResolver.canUseAccountProfile(
+      accountProfile,
+      capabilities: _capabilitiesFor(accountProfile),
+    );
+  }
+
+  bool isCurrentReferencePoint(AccountProfileModel accountProfile) {
+    return AccountProfileReferencePointResolver.matchesAccountProfile(
+      _proximityPreferencesRepository
+          ?.proximityPreference?.locationPreference.fixedReference,
+      accountProfile,
+    );
+  }
+
+  Future<bool> setAsReferencePoint(AccountProfileModel accountProfile) async {
+    final repository = _proximityPreferencesRepository;
+    if (repository == null || !canUseAsReferencePoint(accountProfile)) {
+      return false;
+    }
+    final fixedReference =
+        AccountProfileReferencePointResolver.buildFromAccountProfile(
+      accountProfile,
+    );
+    if (fixedReference == null) {
+      return false;
+    }
+    await repository.setFixedReference(fixedReference: fixedReference);
+    return true;
+  }
+
+  Future<bool> clearReferencePoint() async {
+    final repository = _proximityPreferencesRepository;
+    if (repository == null) {
+      return false;
+    }
+    await repository.clearFixedReference();
+    return true;
+  }
+
   ResolvedAccountProfileVisual resolvedVisualFor(
     AccountProfileModel accountProfile,
   ) {
@@ -188,6 +229,13 @@ class AccountProfileDetailController implements Disposable {
       return null;
     }
     return GetIt.I.get<AppData>().profileTypeRegistry;
+  }
+
+  ProfileTypeCapabilities? _capabilitiesFor(
+    AccountProfileModel accountProfile,
+  ) {
+    return _resolveRegistry()
+        ?.capabilitiesFor(ProfileTypeKeyValue(accountProfile.type));
   }
 
   String? get authenticatedUserDisplayName {
@@ -345,12 +393,13 @@ class AccountProfileDetailController implements Disposable {
     _favoriteIdsSubscription?.cancel();
     _confirmedEventIdsSubscription?.cancel();
     _pendingInvitesSubscription?.cancel();
-    _accountProfilesRepository.clearSelectedAccountProfile();
+    _detailStateStreamValue.dispose();
     errorMessageStreamValue.dispose();
     favoriteIdsStreamValue.dispose();
     agendaStatusRevisionStreamValue.dispose();
     isLoadingStreamValue.dispose();
     profileConfigStreamValue.dispose();
     moduleDataStreamValue.dispose();
+    _emptyProximityPreferenceStreamValue.dispose();
   }
 }

@@ -42,9 +42,13 @@ void main() {
       ),
     );
 
-    expect(find.textContaining('01 • 07:00 às'), findsOneWidget);
-    expect(find.textContaining('30 • 07:00'), findsOneWidget);
-    expect(find.textContaining('07:00 -'), findsNothing);
+    expect(
+      find.textContaining(
+        'Qua, 1 abr · 7h até Qui, 30 abr · 7h',
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('07:00'), findsNothing);
   });
 
   testWidgets('agenda card omits inferred end time when absent',
@@ -69,8 +73,8 @@ void main() {
       ),
     );
 
-    expect(find.textContaining('07:00 -'), findsNothing);
-    expect(find.textContaining('07:00'), findsOneWidget);
+    expect(find.textContaining('7h'), findsOneWidget);
+    expect(find.textContaining('07:00'), findsNothing);
   });
 
   testWidgets(
@@ -97,8 +101,8 @@ void main() {
       ),
     );
 
-    expect(find.textContaining('07:00 às 10:00'), findsOneWidget);
-    expect(find.textContaining('07:00 -'), findsNothing);
+    expect(find.textContaining('7h às 10h'), findsOneWidget);
+    expect(find.textContaining('07:00'), findsNothing);
     expect(find.textContaining('01 • 07:00 às 01 • 10:00'), findsNothing);
   });
 
@@ -114,7 +118,7 @@ void main() {
             data: UpcomingEventCardData(
               imageUri: Uri.parse('https://tenant.test/media/event.png'),
               headline: 'Encontro na Praia',
-              metaLabel: 'QUA, 01 • 07:00 às 10:00',
+              metaLabel: 'Qua, 1 abr · 7h às 10h',
               counterparts: const [
                 (
                   label: 'Ananda Torres',
@@ -159,7 +163,7 @@ void main() {
                   imageUri: Uri.parse('https://tenant.test/media/event.png'),
                   headline:
                       'Titulo grande para validar a linha do icone de status',
-                  metaLabel: 'QUA, 01 • 07:00 às 10:00',
+                  metaLabel: 'Qua, 1 abr · 7h às 10h',
                   counterparts: const [
                     (
                       label: 'Ananda Torres com nome bem grande',

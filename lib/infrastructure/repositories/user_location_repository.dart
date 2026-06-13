@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_bool_value.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_duration_value.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_text_value.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -12,13 +13,16 @@ import 'package:geolocator/geolocator.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class UserLocationRepository implements UserLocationRepositoryContract {
-  UserLocationRepository() {
+  UserLocationRepository({
+    bool? isWebOverride,
+  }) : _isWeb = isWebOverride ?? kIsWeb {
     _loadFuture = _loadLastKnownSnapshot();
     unawaited(_loadFuture);
   }
 
   static const _trackingMinUpdateInterval = Duration(seconds: 2);
   static const _trackingPersistMinInterval = Duration(seconds: 60);
+  static const _defaultWebLocationResolutionTimeout = Duration(seconds: 8);
 
   static const _keyLat = 'last_location_lat';
   static const _keyLng = 'last_location_lng';
@@ -28,6 +32,7 @@ class UserLocationRepository implements UserLocationRepositoryContract {
 
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
   late final Future<void> _loadFuture;
+  final bool _isWeb;
 
   StreamSubscription<Position>? _trackingSubscription;
   DateTime? _lastTrackingUpdateAt;
@@ -122,11 +127,9 @@ class UserLocationRepository implements UserLocationRepositoryContract {
         DateTime.now().difference(position.timestamp) >
             const Duration(minutes: 5)) {
       try {
-        position = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.medium,
-            timeLimit: Duration(seconds: 5),
-          ),
+        position = await _getCurrentPositionWithDeterministicTimeout(
+          accuracy: LocationAccuracy.medium,
+          timeout: const Duration(seconds: 5),
         );
       } catch (e) {
         debugPrint('UserLocationRepository.refreshIfPermitted: $e');
@@ -177,7 +180,10 @@ class UserLocationRepository implements UserLocationRepositoryContract {
   }
 
   @override
-  Future<String?> resolveUserLocation() async {
+  Future<String?> resolveUserLocation({
+    UserLocationRepositoryContractDurationValue? timeout,
+    UserLocationRepositoryContractBoolValue? requestPermissionIfNeededValue,
+  }) async {
     await ensureLoaded();
     locationResolutionPhaseStreamValue
         .addValue(LocationResolutionPhase.resolving);
@@ -190,10 +196,16 @@ class UserLocationRepository implements UserLocationRepositoryContract {
       return null;
     }
 
-    return await _getCurrentUserLocation();
+    return await _getCurrentUserLocation(
+      timeout: timeout?.value,
+      requestPermissionIfNeeded: requestPermissionIfNeededValue?.value ?? true,
+    );
   }
 
-  Future<String?> _getCurrentUserLocation() async {
+  Future<String?> _getCurrentUserLocation({
+    Duration? timeout,
+    required bool requestPermissionIfNeeded,
+  }) async {
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
 
     if (!serviceEnabled) {
@@ -204,7 +216,15 @@ class UserLocationRepository implements UserLocationRepositoryContract {
     }
 
     var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
+    if (_isWeb) {
+      return _resolveWebCurrentUserLocation(
+        permission: permission,
+        timeout: timeout,
+        requestPermissionIfNeeded: requestPermissionIfNeeded,
+      );
+    }
+
+    if (permission == LocationPermission.denied && requestPermissionIfNeeded) {
       permission = await Geolocator.requestPermission();
     }
 
@@ -213,23 +233,136 @@ class UserLocationRepository implements UserLocationRepositoryContract {
       locationResolutionPhaseStreamValue
           .addValue(LocationResolutionPhase.permissionDenied);
       return Future.value(
-          'Permita o acesso a localizacao para localizar pontos proximos. Exibindo pontos padrao da cidade.');
+        'Permita o acesso a localizacao para localizar pontos proximos.',
+      );
     }
 
-    final position = await Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(
+    String? errorMessage;
+    try {
+      final position = await _getCurrentPositionWithDeterministicTimeout(
         accuracy: LocationAccuracy.best,
+        timeout: timeout,
+      );
+
+      await _applyLiveFix(
+        position,
+        shouldPersist: true,
+      );
+      locationResolutionPhaseStreamValue
+          .addValue(LocationResolutionPhase.resolved);
+
+      return null;
+    } on TimeoutException {
+      locationResolutionPhaseStreamValue
+          .addValue(LocationResolutionPhase.unavailable);
+      errorMessage =
+          'Nao foi possivel obter sua localizacao agora. Tente novamente.';
+    } on PermissionDeniedException {
+      locationResolutionPhaseStreamValue
+          .addValue(LocationResolutionPhase.permissionDenied);
+      errorMessage =
+          'Permita o acesso a localizacao para localizar pontos proximos.';
+    }
+
+    return Future.value(errorMessage);
+  }
+
+  Future<String?> _resolveWebCurrentUserLocation({
+    required LocationPermission permission,
+    required Duration? timeout,
+    required bool requestPermissionIfNeeded,
+  }) async {
+    final canRetryAfterPromptTimeout =
+        permission == LocationPermission.denied && requestPermissionIfNeeded;
+    LocationPermission? retryPermissionAfterPromptTimeout;
+    var shouldEmitUnavailable = false;
+    if (permission == LocationPermission.deniedForever ||
+        (permission == LocationPermission.denied &&
+            !requestPermissionIfNeeded)) {
+      locationResolutionPhaseStreamValue
+          .addValue(LocationResolutionPhase.permissionDenied);
+      return Future.value(
+        'Permita o acesso a localizacao para localizar pontos proximos.',
+      );
+    }
+
+    String? errorMessage;
+    try {
+      final position = await _getCurrentPositionWithDeterministicTimeout(
+        accuracy: LocationAccuracy.best,
+        timeout: timeout,
+      );
+
+      await _applyLiveFix(
+        position,
+        shouldPersist: true,
+      );
+      locationResolutionPhaseStreamValue
+          .addValue(LocationResolutionPhase.resolved);
+
+      return null;
+    } on TimeoutException {
+      if (canRetryAfterPromptTimeout) {
+        final permissionAfterTimeout = await Geolocator.checkPermission();
+        if (permissionAfterTimeout == LocationPermission.always ||
+            permissionAfterTimeout == LocationPermission.whileInUse) {
+          retryPermissionAfterPromptTimeout = permissionAfterTimeout;
+        }
+      }
+      shouldEmitUnavailable = retryPermissionAfterPromptTimeout == null;
+      errorMessage =
+          'Nao foi possivel obter sua localizacao agora. Tente novamente.';
+    } on PermissionDeniedException {
+      locationResolutionPhaseStreamValue
+          .addValue(LocationResolutionPhase.permissionDenied);
+      errorMessage =
+          'Permita o acesso a localizacao para localizar pontos proximos.';
+    } on Object catch (error) {
+      debugPrint(
+          'UserLocationRepository.resolveWebCurrentUserLocation: $error');
+      locationResolutionPhaseStreamValue
+          .addValue(LocationResolutionPhase.unavailable);
+      errorMessage =
+          'Nao foi possivel obter sua localizacao agora. Tente novamente.';
+    }
+
+    final retryPermission = retryPermissionAfterPromptTimeout;
+    if (retryPermission != null) {
+      return _resolveWebCurrentUserLocation(
+        permission: retryPermission,
+        timeout: timeout,
+        requestPermissionIfNeeded: false,
+      );
+    }
+    if (shouldEmitUnavailable) {
+      locationResolutionPhaseStreamValue
+          .addValue(LocationResolutionPhase.unavailable);
+    }
+
+    return Future.value(errorMessage);
+  }
+
+  Future<Position> _getCurrentPositionWithDeterministicTimeout({
+    required LocationAccuracy accuracy,
+    required Duration? timeout,
+  }) async {
+    final effectiveTimeout =
+        timeout ?? (_isWeb ? _defaultWebLocationResolutionTimeout : null);
+    Future<Position> future = Geolocator.getCurrentPosition(
+      locationSettings: LocationSettings(
+        accuracy: accuracy,
+        timeLimit: effectiveTimeout,
       ),
     );
 
-    await _applyLiveFix(
-      position,
-      shouldPersist: true,
-    );
-    locationResolutionPhaseStreamValue
-        .addValue(LocationResolutionPhase.resolved);
+    // `geolocator_web` currently forwards browser timeout using microseconds
+    // instead of milliseconds. Enforce our boundary timeout locally so the
+    // app contract stays deterministic even when the dependency drifts.
+    if (effectiveTimeout != null) {
+      future = future.timeout(effectiveTimeout);
+    }
 
-    return null;
+    return future;
   }
 
   @override

@@ -51,6 +51,47 @@ void main() {
     controller.onDispose();
   });
 
+  test('favorites section retries transient initial-load failures', () async {
+    final favoriteRepository = _FakeFavoriteRepository(
+      favoriteResumes: [
+        _favoriteResume(title: 'Primeiro', slug: 'primeiro'),
+      ],
+      failuresBeforeSuccess: 1,
+    );
+    final controller = FavoritesSectionController(
+      favoriteRepository: favoriteRepository,
+      appDataRepository: _FakeAppDataRepository(),
+    );
+
+    await controller.init();
+
+    expect(favoriteRepository.fetchFavoriteResumesCallCount, 2);
+    expect(
+      controller.favoritesStreamValue.value?.map((item) => item.title).toList(),
+      ['Primeiro'],
+    );
+
+    controller.onDispose();
+  });
+
+  test('favorites section publishes empty state after bounded initial retries',
+      () async {
+    final favoriteRepository = _FakeFavoriteRepository(
+      failuresBeforeSuccess: 3,
+    );
+    final controller = FavoritesSectionController(
+      favoriteRepository: favoriteRepository,
+      appDataRepository: _FakeAppDataRepository(),
+    );
+
+    await controller.init();
+
+    expect(favoriteRepository.fetchFavoriteResumesCallCount, 3);
+    expect(controller.favoritesStreamValue.value, isEmpty);
+
+    controller.onDispose();
+  });
+
   test('favorites section keeps cache and refreshes ordering on re-entry',
       () async {
     final favoriteRepository = _FakeFavoriteRepository(
@@ -93,7 +134,7 @@ void main() {
   });
 
   test(
-      'favorites section resolves profile navigation by slug, search otherwise',
+      'favorites section resolves profile navigation when contract allows, search otherwise',
       () async {
     final controller = FavoritesSectionController(
       favoriteRepository: _FakeFavoriteRepository(),
@@ -101,13 +142,35 @@ void main() {
     );
 
     final profileTarget = await controller.resolveNavigationTarget(
-      _favoriteResume(title: 'Com Slug', slug: 'com-slug'),
+      _favoriteResume(
+        title: 'Com Slug',
+        slug: 'com-slug',
+        targetType: 'account_profile',
+        canOpenPublicDetail: true,
+        publicDetailPath: '/parceiro/com-slug',
+      ),
     );
 
-    expect(profileTarget, isA<FavoriteNavigationPartner>());
+    expect(profileTarget, isA<FavoriteNavigationPath>());
     expect(
-      (profileTarget as FavoriteNavigationPartner).slug,
-      'com-slug',
+      (profileTarget as FavoriteNavigationPath).path,
+      '/parceiro/com-slug',
+    );
+
+    final pathTarget = await controller.resolveNavigationTarget(
+      _favoriteResume(
+        title: 'Path Only',
+        slug: null,
+        targetType: 'account_profile',
+        canOpenPublicDetail: true,
+        publicDetailPath: '/parceiro/path-only',
+      ),
+    );
+
+    expect(pathTarget, isA<FavoriteNavigationPath>());
+    expect(
+      (pathTarget as FavoriteNavigationPath).path,
+      '/parceiro/path-only',
     );
 
     final searchTarget = await controller.resolveNavigationTarget(
@@ -123,7 +186,30 @@ void main() {
     controller.onDispose();
   });
 
-  test('favorites section resolves compact preview using cover then type visual',
+  test(
+      'favorites section blocks unavailable account profile targets before slug fallback',
+      () async {
+    final controller = FavoritesSectionController(
+      favoriteRepository: _FakeFavoriteRepository(),
+      appDataRepository: _FakeAppDataRepository(),
+    );
+
+    final unavailableTarget = await controller.resolveNavigationTarget(
+      _favoriteResume(
+        title: 'Sem rota',
+        slug: 'sem-rota',
+        targetType: 'account_profile',
+        canOpenPublicDetail: false,
+      ),
+    );
+
+    expect(unavailableTarget, isA<FavoriteNavigationUnavailable>());
+
+    controller.onDispose();
+  });
+
+  test(
+      'favorites section resolves compact preview using cover then type visual',
       () async {
     final controller = FavoritesSectionController(
       favoriteRepository: _FakeFavoriteRepository(),
@@ -141,7 +227,8 @@ void main() {
     );
 
     expect(coverResolved, isNotNull);
-    expect(coverResolved!.compactImageUrl, 'https://cdn.test/profile-cover.png');
+    expect(
+        coverResolved!.compactImageUrl, 'https://cdn.test/profile-cover.png');
 
     final typeVisualResolved = controller.resolvedVisualFor(
       _favoriteResume(
@@ -204,6 +291,8 @@ FavoriteResume _favoriteResume({
   String? targetType,
   String? profileType,
   String? coverUrl,
+  bool canOpenPublicDetail = false,
+  String? publicDetailPath,
   DateTime? nextEventOccurrenceAt,
   String? liveNowEventOccurrenceId,
 }) {
@@ -221,6 +310,8 @@ FavoriteResume _favoriteResume({
     targetType: targetType,
     profileType: profileType,
     coverImageUriValue: coverImageUriValue,
+    canOpenPublicDetail: canOpenPublicDetail,
+    publicDetailPath: publicDetailPath,
     nextEventOccurrenceAt: nextEventOccurrenceAt,
     liveNowEventOccurrenceId: liveNowEventOccurrenceId,
   );
@@ -229,10 +320,12 @@ FavoriteResume _favoriteResume({
 class _FakeFavoriteRepository extends FavoriteRepositoryContract {
   _FakeFavoriteRepository({
     this.favoriteResumes = const <FavoriteResume>[],
+    this.failuresBeforeSuccess = 0,
   });
 
   List<FavoriteResume> favoriteResumes;
   int fetchFavoriteResumesCallCount = 0;
+  int failuresBeforeSuccess;
 
   @override
   Future<List<Favorite>> fetchFavorites() async => <Favorite>[];
@@ -240,6 +333,10 @@ class _FakeFavoriteRepository extends FavoriteRepositoryContract {
   @override
   Future<List<FavoriteResume>> fetchFavoriteResumes() async {
     fetchFavoriteResumesCallCount += 1;
+    if (failuresBeforeSuccess > 0) {
+      failuresBeforeSuccess -= 1;
+      throw StateError('favorite resumes unavailable');
+    }
     return favoriteResumes;
   }
 }
@@ -263,6 +360,7 @@ class _FakeAppData extends Fake implements AppData {
           typeValue: ProfileTypeKeyValue('artist'),
           labelValue: ProfileTypeLabelValue()..parse('Artist'),
           capabilities: ProfileTypeCapabilities(
+            isPubliclyDiscoverableValue: _flag(true),
             isFavoritableValue: _flag(true),
             isPoiEnabledValue: _flag(false),
             hasBioValue: _flag(true),

@@ -1,8 +1,11 @@
 import 'package:belluga_now/domain/partners/engagement_data.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_public_detail_path_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
+import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
@@ -27,6 +30,9 @@ class AccountProfileModel {
   final AccountProfileLocationAddressValue? locationAddressValue;
   final LatitudeValue? locationLatitudeValue;
   final LongitudeValue? locationLongitudeValue;
+  final List<AccountProfileNestedGroup> nestedProfileGroupValues;
+  final DomainBooleanValue canOpenPublicDetailValue;
+  final AccountProfilePublicDetailPathValue? publicDetailPathValue;
 
   AccountProfileModel({
     required this.idValue,
@@ -46,12 +52,22 @@ class AccountProfileModel {
     this.locationAddressValue,
     this.locationLatitudeValue,
     this.locationLongitudeValue,
+    List<AccountProfileNestedGroup>? nestedProfileGroupValues,
+    DomainBooleanValue? canOpenPublicDetailValue,
+    this.publicDetailPathValue,
   })  : tagValues = List<AccountProfileTagValue>.unmodifiable(
           tagValues ?? const <AccountProfileTagValue>[],
         ),
         agendaEventViews = List<PartnerEventView>.unmodifiable(
           agendaEventViews ?? const <PartnerEventView>[],
         ),
+        nestedProfileGroupValues = List<AccountProfileNestedGroup>.unmodifiable(
+          nestedProfileGroupValues ?? const <AccountProfileNestedGroup>[],
+        ),
+        canOpenPublicDetailValue =
+            canOpenPublicDetailValue ??
+            (DomainBooleanValue(defaultValue: false, isRequired: false)
+              ..parse('false')),
         isVerifiedValue = isVerifiedValue ?? AccountProfileIsVerifiedValue(),
         acceptedInvitesValue =
             acceptedInvitesValue ?? AccountProfileAcceptedInvitesValue(),
@@ -86,6 +102,16 @@ class AccountProfileModel {
 
   double? get locationLat => locationLatitudeValue?.value;
   double? get locationLng => locationLongitudeValue?.value;
+  List<AccountProfileNestedGroup> get nestedProfileGroups =>
+      List<AccountProfileNestedGroup>.unmodifiable(nestedProfileGroupValues);
+  bool get canOpenPublicDetail => canOpenPublicDetailValue.value;
+  String? get publicDetailPath {
+    final raw = publicDetailPathValue?.value.trim();
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+    return raw;
+  }
 
   AccountProfileModel copyWith({
     MongoIDValue? idValue,
@@ -105,6 +131,9 @@ class AccountProfileModel {
     AccountProfileLocationAddressValue? locationAddressValue,
     LatitudeValue? locationLatitudeValue,
     LongitudeValue? locationLongitudeValue,
+    List<AccountProfileNestedGroup>? nestedProfileGroupValues,
+    DomainBooleanValue? canOpenPublicDetailValue,
+    AccountProfilePublicDetailPathValue? publicDetailPathValue,
   }) {
     return AccountProfileModel(
       idValue: idValue ?? this.idValue,
@@ -126,6 +155,11 @@ class AccountProfileModel {
           locationLatitudeValue ?? this.locationLatitudeValue,
       locationLongitudeValue:
           locationLongitudeValue ?? this.locationLongitudeValue,
+      nestedProfileGroupValues:
+          nestedProfileGroupValues ?? this.nestedProfileGroupValues,
+      canOpenPublicDetailValue:
+          canOpenPublicDetailValue ?? this.canOpenPublicDetailValue,
+      publicDetailPathValue: publicDetailPathValue ?? this.publicDetailPathValue,
     );
   }
 }

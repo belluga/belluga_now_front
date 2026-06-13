@@ -10,6 +10,9 @@ import 'package:belluga_now/domain/invites/value_objects/invite_message_value.da
 import 'package:belluga_now/domain/invites/value_objects/invite_occurrence_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_tag_value.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/schedule/event_profile_group.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
@@ -20,6 +23,7 @@ final class InviteFromEventFactory {
   static InviteModel build({
     required EventModel event,
     required Uri fallbackImageUri,
+    List<EventProfileGroup>? profileGroups,
   }) {
     final eventName = event.title.value;
     final selectedOccurrence = event.selectedOccurrence;
@@ -55,6 +59,7 @@ final class InviteFromEventFactory {
     return InviteModel(
       idValue: InviteIdValue()..parse(inviteId),
       eventIdValue: InviteEventIdValue()..parse(eventId),
+      eventSlugValue: SlugValue()..parse(event.slug),
       eventNameValue: TitleValue()..parse(eventName),
       eventDateValue: InviteEventDateValue(isRequired: true)
         ..parse(eventDate.toIso8601String()),
@@ -72,7 +77,20 @@ final class InviteFromEventFactory {
       )..parse('free_confirmation_only'),
       occurrenceIdValue: InviteOccurrenceIdValue()
         ..parse(event.selectedOccurrenceId),
+      linkedAccountProfiles: event.linkedAccountProfiles,
+      profileGroups: profileGroups ?? event.profileGroups,
+      venueAccountProfileIdValue: _venueAccountProfileIdValue(event),
     );
+  }
+
+  static EventLinkedAccountProfileTextValue? _venueAccountProfileIdValue(
+    EventModel event,
+  ) {
+    final venueId = event.venue?.id.trim();
+    if (venueId == null || venueId.isEmpty) {
+      return null;
+    }
+    return EventLinkedAccountProfileTextValue(venueId);
   }
 
   static String stripHtml(String raw) {

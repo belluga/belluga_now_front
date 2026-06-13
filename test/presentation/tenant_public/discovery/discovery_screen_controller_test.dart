@@ -18,21 +18,26 @@ import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/discovery_filters_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_bool_value.dart';
 import 'package:belluga_now/domain/repositories/value_objects/schedule_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_duration_value.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_text_value.dart';
 import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
 import 'package:flutter/material.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/controllers/discovery_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/discovery_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_filter_chips.dart';
+import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_screen_controller.dart';
+import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_store_platform.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:mockito/mockito.dart';
@@ -51,7 +56,8 @@ void main() {
     await GetIt.I.reset();
   });
 
-  test('available discovery types include only favoritable profile types',
+  test(
+      'available discovery types include only publicly discoverable profile types',
       () async {
     final repository = _FakeAccountProfilesRepository(
       pages: {
@@ -77,7 +83,7 @@ void main() {
     controller.onDispose();
   });
 
-  test('toggle favorite is allowed for anonymous users', () async {
+  test('toggle favorite requires authentication for anonymous users', () async {
     final artist = _profile(id: _mongoId('c'), type: 'artist', name: 'Artist');
     final repository = _FakeAccountProfilesRepository(
       pages: {
@@ -89,13 +95,14 @@ void main() {
     );
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(authorized: false),
     );
 
     await controller.init();
     final outcome = controller.toggleFavorite(artist.id);
 
-    expect(outcome, FavoriteToggleOutcome.toggled);
-    expect(repository.toggleCalls, [artist.id]);
+    expect(outcome, FavoriteToggleOutcome.requiresAuthentication);
+    expect(repository.toggleCalls, isEmpty);
     controller.onDispose();
   });
 
@@ -127,6 +134,41 @@ void main() {
     await controller.loadNextPage();
     expect(controller.filteredPartnersStreamValue.value, hasLength(2));
     expect(controller.hasMoreStreamValue.value, isFalse);
+    controller.onDispose();
+  });
+
+  test(
+      'discovery stops automatic pagination when a subsequent page request fails',
+      () async {
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: pagedAccountProfilesResultFromRaw(
+          profiles: [
+            _profile(
+                id: _mongoId('page-fail-1'), type: 'artist', name: 'First'),
+          ],
+          hasMore: true,
+        ),
+      },
+      failingPages: const <int>{2},
+    );
+    final controller = _buildDiscoveryController(
+      accountProfilesRepository: repository,
+    );
+
+    await controller.init();
+    expect(controller.filteredPartnersStreamValue.value, hasLength(1));
+    expect(controller.hasMoreStreamValue.value, isTrue);
+
+    await controller.loadNextPage();
+
+    expect(controller.isPageLoadingStreamValue.value, isFalse);
+    expect(controller.hasMoreStreamValue.value, isFalse);
+    expect(repository.pageRequests.map((request) => request.page), [1, 2]);
+
+    await controller.loadNextPage();
+
+    expect(repository.pageRequests.map((request) => request.page), [1, 2]);
     controller.onDispose();
   });
 
@@ -658,6 +700,120 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
   });
 
+  testWidgets(
+      'DiscoveryScreen web anonymous favorite promotes app instead of phone login',
+      (tester) async {
+    final artist = _profile(
+      id: _mongoId('fav-web'),
+      type: 'artist',
+      name: 'Artista Favoritavel',
+    );
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: pagedAccountProfilesResultFromRaw(
+          profiles: [artist],
+          hasMore: false,
+        ),
+      },
+    );
+    final authRepository = _FakeAuthRepository(authorized: false);
+    final controller = _buildDiscoveryController(
+      accountProfilesRepository: repository,
+      authRepository: authRepository,
+    );
+    GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/descobrir'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: const DiscoveryScreen(isWebRuntime: true),
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 120));
+
+    await tester.tap(find.byKey(Key('discoveryFavoriteButton_${artist.id}')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Entrar para favoritar'), findsNothing);
+    expect(find.byKey(const Key('app_promotion_modal')), findsOneWidget);
+    expect(
+      find.byKey(const Key('app_promotion_store_badge_android')),
+      findsOneWidget,
+    );
+    expect(repository.toggleCalls, isEmpty);
+    expect(router.lastPushedPath, isNull);
+    expect(router.lastReplacedPath, isNull);
+
+    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+  });
+
+  testWidgets(
+      'DiscoveryScreen partner taps prefer canonical public detail path over slug route',
+      (tester) async {
+    final profile = buildAccountProfileModelFromPrimitives(
+      id: _mongoId('path-pref'),
+      name: 'Perfil Path',
+      slug: 'perfil-path',
+      type: 'artist',
+      publicDetailPath: '/perfil-customizado/perfil-path',
+    );
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: pagedAccountProfilesResultFromRaw(
+          profiles: [profile],
+          hasMore: false,
+        ),
+      },
+    );
+    final controller = _buildDiscoveryController(
+      accountProfilesRepository: repository,
+    );
+    GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/descobrir'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: const DiscoveryScreen(),
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 120));
+
+    await tester.tap(find.text('Perfil Path').first);
+    await tester.pumpAndSettle();
+
+    expect(router.lastPushedPath, '/perfil-customizado/perfil-path');
+  });
+
   testWidgets('DiscoveryFilterChips uses the shared bordered chip styling',
       (tester) async {
     await tester.pumpWidget(
@@ -747,6 +903,79 @@ void main() {
   });
 
   testWidgets(
+      'DiscoveryScreen stops repeated bottom-scroll pagination after next page failure',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: pagedAccountProfilesResultFromRaw(
+          profiles: List<AccountProfileModel>.generate(
+            40,
+            (index) => _profile(
+              id: _mongoId('ui-page-fail-$index'),
+              type: 'artist',
+              name: 'Perfil Scroll $index',
+            ),
+          ),
+          hasMore: true,
+        ),
+      },
+      failingPages: const <int>{2},
+    );
+    final controller = _buildDiscoveryController(
+      accountProfilesRepository: repository,
+    );
+    GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/descobrir'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: const DiscoveryScreen(),
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 120));
+
+    expect(repository.pageRequests.map((request) => request.page), [1]);
+
+    expect(controller.scrollController.hasClients, isTrue);
+    expect(
+        controller.scrollController.position.maxScrollExtent, greaterThan(0));
+    controller.scrollController.jumpTo(
+      controller.scrollController.position.maxScrollExtent,
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 120));
+
+    expect(repository.pageRequests.map((request) => request.page), [1, 2]);
+    expect(controller.hasMoreStreamValue.value, isFalse);
+    expect(controller.isPageLoadingStreamValue.value, isFalse);
+
+    controller.scrollController.jumpTo(
+      controller.scrollController.position.maxScrollExtent,
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 120));
+
+    expect(repository.pageRequests.map((request) => request.page), [1, 2]);
+
+    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+  });
+
+  testWidgets(
       'DiscoveryScreen toggles canonical filters and hides expanded panel on scroll while keeping active badge',
       (tester) async {
     final profiles = List<AccountProfileModel>.generate(
@@ -819,6 +1048,7 @@ void main() {
       find.byKey(_primaryFilterKey(primaryFilter)),
       findsOneWidget,
     );
+    expect(find.text(primaryFilter.label), findsOneWidget);
     expect(find.text(taxonomyGroup.label), findsNothing);
 
     await tester.tap(
@@ -1388,6 +1618,68 @@ void main() {
     controller.onDispose();
   });
 
+  test(
+      'discovery runtime facets use backend universe instead of current page items',
+      () async {
+    final catalog = _accountProfileDiscoveryFilterCatalogWithMultipleTypes();
+    final firstFilter = catalog.filters.first;
+    final secondFilter = catalog.filters.last;
+    final runtimeFacets = DiscoveryFilterRuntimeFacets.fromJson(
+      <String, Object?>{
+        'surface': 'discovery.account_profiles',
+        'filter_keys': <String>[firstFilter.key, secondFilter.key],
+        'taxonomy_options': <String, Object?>{
+          _fixtureTaxonomyKey(1): <String, Object?>{
+            'key': _fixtureTaxonomyKey(1),
+            'label': 'Runtime Taxonomy',
+            'terms': <Object?>[
+              <String, Object?>{
+                'value': _fixtureTaxonomyTermValue(1),
+                'label': _fixtureTaxonomyTermLabel(1),
+              },
+            ],
+          },
+        },
+      },
+    );
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: pagedAccountProfilesResultFromRaw(
+          profiles: [
+            _profile(
+              id: _mongoId('rt1'),
+              type: 'venue',
+              name: 'Only Current Page Venue',
+            ),
+          ],
+          hasMore: false,
+          discoveryFilterFacets: runtimeFacets,
+        ),
+      },
+    );
+    final controller = _buildDiscoveryController(
+      accountProfilesRepository: repository,
+      discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+        catalog: catalog,
+      ),
+    );
+
+    await controller.init();
+
+    expect(
+      controller.filteredPartnersStreamValue.value
+          .map((profile) => profile.type),
+      <String>['venue'],
+    );
+    expect(
+      controller.discoveryFilterCatalogStreamValue.value.filters
+          .map((filter) => filter.key)
+          .toList(),
+      <String>[firstFilter.key, secondFilter.key],
+    );
+    controller.onDispose();
+  });
+
   test('discovery hides expanded filter panel on scroll without clearing state',
       () async {
     final repository = _FakeAccountProfilesRepository(
@@ -1531,6 +1823,7 @@ void main() {
     );
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(authorized: true),
     );
 
     await controller.init();
@@ -1672,12 +1965,21 @@ DiscoveryScreenController _buildDiscoveryController({
   required AccountProfilesRepositoryContract accountProfilesRepository,
   DiscoveryFiltersRepositoryContract? discoveryFiltersRepository,
   ScheduleRepositoryContract? scheduleRepository,
+  AuthRepositoryContract? authRepository,
 }) {
   if (!GetIt.I.isRegistered<AppDataRepositoryContract>()) {
     GetIt.I.registerSingleton<AppDataRepositoryContract>(
       _FakeAppDataRepository(
         appData: _buildAppData(),
         maxRadiusMeters: _buildAppData().mapRadiusDefaultMeters,
+      ),
+    );
+  }
+  if (!GetIt.I.isRegistered<AppPromotionScreenController>()) {
+    GetIt.I.registerSingleton<AppPromotionScreenController>(
+      AppPromotionScreenController(
+        appDataRepository: GetIt.I.get<AppDataRepositoryContract>(),
+        preferredStorePlatformResolver: () => AppPromotionStorePlatform.android,
       ),
     );
   }
@@ -1697,6 +1999,7 @@ DiscoveryScreenController _buildDiscoveryController({
     discoveryFiltersRepository: discoveryFiltersRepository,
     scheduleRepository: scheduleRepository,
     locationOriginService: GetIt.I.get<LocationOriginServiceContract>(),
+    authRepository: authRepository,
   );
 }
 
@@ -1719,6 +2022,8 @@ class _FakeDiscoveryFiltersRepository
 }
 
 class _RecordingStackRouter extends Mock implements StackRouter {
+  String? lastPushedPath;
+  String? lastReplacedPath;
   bool canPopResult = false;
   int canPopCallCount = 0;
   int popCallCount = 0;
@@ -1751,6 +2056,36 @@ class _RecordingStackRouter extends Mock implements StackRouter {
   }) async {
     replaceAllRoutes.add(List<PageRouteInfo<dynamic>>.from(routes));
   }
+
+  @override
+  Future<T?> pushPath<T extends Object?>(
+    String path, {
+    bool includePrefixMatches = false,
+    OnNavigationFailure? onFailure,
+  }) async {
+    lastPushedPath = path;
+    return null;
+  }
+
+  @override
+  Future<T?> replacePath<T extends Object?>(
+    String path, {
+    bool includePrefixMatches = false,
+    OnNavigationFailure? onFailure,
+  }) async {
+    lastReplacedPath = path;
+    return null;
+  }
+}
+
+class _FakeAuthRepository extends Fake
+    implements AuthRepositoryContract<UserContract> {
+  _FakeAuthRepository({required this.authorized});
+
+  final bool authorized;
+
+  @override
+  bool get isAuthorized => authorized;
 }
 
 class _FakeRootStackRouter extends Fake implements RootStackRouter {
@@ -1805,10 +2140,12 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   _FakeAccountProfilesRepository({
     required this.pages,
     this.nearbyProfiles = const <AccountProfileModel>[],
+    this.failingPages = const <int>{},
   });
 
   final Map<int, PagedAccountProfilesResult> pages;
   final List<AccountProfileModel> nearbyProfiles;
+  final Set<int> failingPages;
   final List<String> toggleCalls = <String>[];
   final List<_PageRequest> pageRequests = <_PageRequest>[];
   final Map<String, AccountProfileModel> _bySlug =
@@ -1855,6 +2192,9 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
         taxonomyFilters: normalizedTaxonomyFilters,
       ),
     );
+    if (failingPages.contains(pageValue)) {
+      throw Exception('forced discovery page $pageValue failure');
+    }
     var result = pages[pageValue] ??
         pagedAccountProfilesResultFromRaw(
           profiles: const <AccountProfileModel>[],
@@ -1888,6 +2228,7 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
     result = pagedAccountProfilesResultFromRaw(
       profiles: profiles,
       hasMore: result.hasMore,
+      discoveryFilterFacets: result.discoveryFilterFacets,
     );
 
     return result;
@@ -2282,7 +2623,6 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
   Stream<EventDeltaModel> watchEventsStream({
     ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
-    List<ScheduleRepoString>? tags,
     ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
     List<ScheduleRepoString>? occurrenceIds,
@@ -2300,7 +2640,6 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
     required ScheduleRepositoryContractDeltaHandler onDelta,
     ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
-    List<ScheduleRepoString>? tags,
     ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
     List<ScheduleRepoString>? occurrenceIds,
@@ -2313,7 +2652,6 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
     return watchEventsStream(
       searchQuery: searchQuery,
       categories: categories,
-      tags: tags,
       taxonomy: taxonomy,
       confirmedOnly: confirmedOnly,
       originLat: originLat,
@@ -2523,7 +2861,10 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   }
 
   @override
-  Future<String?> resolveUserLocation() async {
+  Future<String?> resolveUserLocation({
+    Object? timeout,
+    UserLocationRepositoryContractBoolValue? requestPermissionIfNeededValue,
+  }) async {
     return null;
   }
 
@@ -2549,6 +2890,7 @@ AppData _buildAppData() {
         'label': 'Artist',
         'allowed_taxonomies': const [],
         'capabilities': {
+          'is_publicly_discoverable': true,
           'is_favoritable': true,
           'is_poi_enabled': false,
         },
@@ -2558,6 +2900,7 @@ AppData _buildAppData() {
         'label': 'Curator',
         'allowed_taxonomies': const [],
         'capabilities': {
+          'is_publicly_discoverable': false,
           'is_favoritable': false,
           'is_poi_enabled': false,
         },

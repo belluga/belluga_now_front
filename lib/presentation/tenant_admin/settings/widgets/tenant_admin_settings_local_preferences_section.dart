@@ -1,5 +1,3 @@
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
-import 'package:belluga_now/presentation/tenant_admin/discovery_filters/widgets/tenant_admin_filter_catalog_row.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/tenant_admin_settings_keys.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
@@ -11,26 +9,10 @@ class TenantAdminSettingsLocalPreferencesSection extends StatelessWidget {
     super.key,
     required this.controller,
     required this.onOpenDefaultOriginPicker,
-    this.onAddMapFilter,
-    this.onEditMapFilterKey,
-    this.onEditMapFilterLabel,
-    this.onEditMapFilterRule,
-    this.onEditMapFilterVisual,
-    this.onRemoveMapFilter,
-    this.onMoveMapFilterUp,
-    this.onMoveMapFilterDown,
   });
 
   final TenantAdminSettingsController controller;
   final Future<void> Function() onOpenDefaultOriginPicker;
-  final VoidCallback? onAddMapFilter;
-  final Future<void> Function(int index)? onEditMapFilterKey;
-  final Future<void> Function(int index)? onEditMapFilterLabel;
-  final Future<void> Function(int index)? onEditMapFilterRule;
-  final Future<void> Function(int index)? onEditMapFilterVisual;
-  final void Function(int index)? onRemoveMapFilter;
-  final void Function(int index)? onMoveMapFilterUp;
-  final void Function(int index)? onMoveMapFilterDown;
 
   @override
   Widget build(BuildContext context) {
@@ -109,18 +91,6 @@ class TenantAdminSettingsLocalPreferencesSection extends StatelessWidget {
           controller: controller,
           onOpenDefaultOriginPicker: onOpenDefaultOriginPicker,
         ),
-        const SizedBox(height: 16),
-        _MapFiltersEditor(
-          controller: controller,
-          onAddMapFilter: onAddMapFilter,
-          onEditMapFilterKey: onEditMapFilterKey,
-          onEditMapFilterLabel: onEditMapFilterLabel,
-          onEditMapFilterRule: onEditMapFilterRule,
-          onEditMapFilterVisual: onEditMapFilterVisual,
-          onRemoveMapFilter: onRemoveMapFilter,
-          onMoveMapFilterUp: onMoveMapFilterUp,
-          onMoveMapFilterDown: onMoveMapFilterDown,
-        ),
       ],
     );
   }
@@ -146,7 +116,7 @@ class _DefaultOriginEditor extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Origem padrão de localização',
+              'Ponto de referência de localização',
               style: theme.textTheme.titleMedium,
             ),
             const SizedBox(height: 6),
@@ -224,194 +194,5 @@ class _DefaultOriginEditor extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-class _MapFiltersEditor extends StatelessWidget {
-  const _MapFiltersEditor({
-    required this.controller,
-    required this.onAddMapFilter,
-    required this.onEditMapFilterKey,
-    required this.onEditMapFilterLabel,
-    required this.onEditMapFilterRule,
-    required this.onEditMapFilterVisual,
-    required this.onRemoveMapFilter,
-    required this.onMoveMapFilterUp,
-    required this.onMoveMapFilterDown,
-  });
-
-  final TenantAdminSettingsController controller;
-  final VoidCallback? onAddMapFilter;
-  final Future<void> Function(int index)? onEditMapFilterKey;
-  final Future<void> Function(int index)? onEditMapFilterLabel;
-  final Future<void> Function(int index)? onEditMapFilterRule;
-  final Future<void> Function(int index)? onEditMapFilterVisual;
-  final void Function(int index)? onRemoveMapFilter;
-  final void Function(int index)? onMoveMapFilterUp;
-  final void Function(int index)? onMoveMapFilterDown;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return StreamValueBuilder<TenantAdminMapUiSettings>(
-      streamValue: controller.mapUiSettingsStreamValue,
-      builder: (context, settings) {
-        final filters = settings.filters;
-        return Card(
-          key: TenantAdminSettingsKeys.localPreferencesMapFiltersCard,
-          margin: EdgeInsets.zero,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Filtros do mapa',
-                        style: theme.textTheme.titleMedium,
-                      ),
-                    ),
-                    FilledButton.icon(
-                      key: TenantAdminSettingsKeys
-                          .localPreferencesAddMapFilterButton,
-                      onPressed: onAddMapFilter,
-                      icon: const Icon(Icons.add),
-                      label: const Text('Adicionar'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'A ordem da lista define a ordem de exibição dos filtros.',
-                  style: theme.textTheme.bodySmall,
-                ),
-                const SizedBox(height: 12),
-                if (filters.isEmpty)
-                  Text(
-                    'Nenhum filtro configurado.',
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                ...List.generate(
-                  filters.length,
-                  (index) => Padding(
-                    padding: EdgeInsets.only(
-                      bottom: index == filters.length - 1 ? 0 : 12,
-                    ),
-                    child: _MapFilterRow(
-                      index: index,
-                      item: filters.elementAt(index),
-                      hasPrevious: index > 0,
-                      hasNext: index < filters.length - 1,
-                      onEditMapFilterKey: onEditMapFilterKey,
-                      onEditMapFilterLabel: onEditMapFilterLabel,
-                      onEditMapFilterRule: onEditMapFilterRule,
-                      onEditMapFilterVisual: onEditMapFilterVisual,
-                      onRemoveMapFilter: onRemoveMapFilter,
-                      onMoveMapFilterUp: onMoveMapFilterUp,
-                      onMoveMapFilterDown: onMoveMapFilterDown,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                StreamValueBuilder<bool>(
-                  streamValue: controller.mapUiSubmittingStreamValue,
-                  builder: (context, isSubmitting) {
-                    return Align(
-                      alignment: Alignment.centerRight,
-                      child: FilledButton.icon(
-                        onPressed:
-                            isSubmitting ? null : controller.saveMapFilters,
-                        icon: isSubmitting
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.save_outlined),
-                        label: const Text('Salvar filtros do mapa'),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _MapFilterRow extends StatelessWidget {
-  const _MapFilterRow({
-    required this.index,
-    required this.item,
-    required this.hasPrevious,
-    required this.hasNext,
-    required this.onEditMapFilterKey,
-    required this.onEditMapFilterLabel,
-    required this.onEditMapFilterRule,
-    required this.onEditMapFilterVisual,
-    required this.onRemoveMapFilter,
-    required this.onMoveMapFilterUp,
-    required this.onMoveMapFilterDown,
-  });
-
-  final int index;
-  final TenantAdminMapFilterCatalogItem item;
-  final bool hasPrevious;
-  final bool hasNext;
-  final Future<void> Function(int index)? onEditMapFilterKey;
-  final Future<void> Function(int index)? onEditMapFilterLabel;
-  final Future<void> Function(int index)? onEditMapFilterRule;
-  final Future<void> Function(int index)? onEditMapFilterVisual;
-  final void Function(int index)? onRemoveMapFilter;
-  final void Function(int index)? onMoveMapFilterUp;
-  final void Function(int index)? onMoveMapFilterDown;
-
-  @override
-  Widget build(BuildContext context) {
-    return KeyedSubtree(
-      key: TenantAdminSettingsKeys.localPreferencesMapFilterRow(index),
-      child: TenantAdminFilterCatalogRow(
-        visualPreviewKey:
-            TenantAdminSettingsKeys.localPreferencesMapFilterVisualPreview(
-          index,
-        ),
-        ruleButtonKey: null,
-        visualButtonKey: null,
-        label: item.label,
-        secondaryLabel: item.key,
-        ruleSummary: _ruleSummary(item),
-        supportsMarkerOverride: true,
-        overrideMarker: item.overrideMarker,
-        markerOverride: item.markerOverride,
-        imageUri: item.imageUri,
-        visualButtonLabel: 'Visual/Marcador',
-        hasPrevious: hasPrevious,
-        hasNext: hasNext,
-        onEditKey: () => onEditMapFilterKey?.call(index),
-        onEditLabel: () => onEditMapFilterLabel?.call(index),
-        onEditRule: () => onEditMapFilterRule?.call(index),
-        onEditVisual: () => onEditMapFilterVisual?.call(index),
-        onRemove: () => onRemoveMapFilter?.call(index),
-        onMoveUp: () => onMoveMapFilterUp?.call(index),
-        onMoveDown: () => onMoveMapFilterDown?.call(index),
-      ),
-    );
-  }
-
-  String _ruleSummary(TenantAdminMapFilterCatalogItem item) {
-    final query = item.query;
-    final source = query.source?.label ?? 'Origem não definida';
-    final typesCount = query.types.length;
-    final taxonomyCount = query.taxonomy.length;
-    final markerOverride = item.overrideMarker && item.markerOverride != null
-        ? item.markerOverride!.mode.label
-        : 'desativado';
-    return '$source · tipos: $typesCount · taxonomias: $taxonomyCount · marcador: $markerOverride';
   }
 }

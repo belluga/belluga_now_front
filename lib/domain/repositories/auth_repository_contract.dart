@@ -35,6 +35,12 @@ abstract class AuthRepositoryContract<T extends UserContract> {
 
   Future<void> init();
 
+  Future<void> ensureTenantPublicIdentityReady() {
+    throw UnimplementedError(
+      'Subclasses must implement ensureTenantPublicIdentityReady().',
+    );
+  }
+
   Future<void> autoLogin();
 
   Future<void> loginWithEmailPassword(

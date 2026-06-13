@@ -7,11 +7,13 @@ import 'package:belluga_now/domain/partner/value_objects/invite_partner_hero_ima
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_logo_image_value.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_name_value.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_tagline_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_public_detail_path_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_tag_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
+import 'package:belluga_now/domain/schedule/event_profile_group.dart';
 import 'package:belluga_now/domain/schedule/event_programming_item.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
@@ -25,14 +27,17 @@ import 'package:belluga_now/domain/schedule/value_objects/event_type_id_value.da
 import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_display_name_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
+import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/value_objects/color_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_optional_date_time_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
+import 'package:belluga_now/domain/venue_event/value_objects/venue_event_tag_value.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_artist_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/schedule/event_public_profile_payload_decoder.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_type_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/thumb_dto.dart';
 import 'package:flutter/material.dart';
@@ -56,6 +61,7 @@ class EventDTO {
     this.dateTimeEnd,
     this.artists = const [],
     this.linkedAccountProfiles = const [],
+    this.profileGroups = const [],
     this.occurrences = const [],
     this.programmingItems = const [],
     this.isConfirmed = false,
@@ -64,6 +70,7 @@ class EventDTO {
     this.sentInvites,
     this.friendsGoing,
     this.tags = const [],
+    this.taxonomyTerms = const [],
   });
 
   final String id;
@@ -80,6 +87,7 @@ class EventDTO {
   final String? dateTimeEnd;
   final List<EventArtistDTO> artists;
   final List<EventLinkedAccountProfile> linkedAccountProfiles;
+  final List<EventProfileGroup> profileGroups;
   final List<EventOccurrenceOption> occurrences;
   final List<EventProgrammingItem> programmingItems;
   final bool isConfirmed;
@@ -88,6 +96,7 @@ class EventDTO {
   final List<Map<String, dynamic>>? sentInvites;
   final List<Map<String, dynamic>>? friendsGoing;
   final List<String> tags;
+  final List<Map<String, dynamic>> taxonomyTerms;
 
   factory EventDTO.fromJson(Map<String, dynamic> json) {
     final typePayload = _asMap(json['type']);
@@ -113,6 +122,10 @@ class EventDTO {
             json['artists'],
           );
     final selectedOccurrenceId = _asNullableString(json['occurrence_id']);
+
+    final taxonomyTerms = _resolveCanonicalTaxonomyTerms(
+      json['taxonomy_terms'],
+    );
 
     return EventDTO(
       id: _asString(json['id']) ??
@@ -145,8 +158,13 @@ class EventDTO {
           _asNullableString(json['ends_at']) ??
           _asNullableString(json['end_time']),
       linkedAccountProfiles: legacyLinkedProfiles,
+      profileGroups: _resolveProfileGroups(
+        json['profile_groups'],
+        linkedAccountProfiles: legacyLinkedProfiles,
+      ),
       occurrences: _resolveOccurrences(
         occurrencesRaw: json['occurrences'],
+        linkedAccountProfiles: legacyLinkedProfiles,
         fallbackOccurrenceId: selectedOccurrenceId,
         fallbackDateTimeStart: _asNullableString(json['date_time_start']) ??
             _asNullableString(json['starts_at']) ??
@@ -161,9 +179,8 @@ class EventDTO {
       receivedInvites: _asMapList(json['received_invites']),
       sentInvites: _asMapList(json['sent_invites']),
       friendsGoing: _asMapList(json['friends_going']),
-      tags:
-          (json['tags'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
-              const [],
+      tags: _resolveCanonicalTaxonomyLabels(taxonomyTerms),
+      taxonomyTerms: taxonomyTerms,
     );
   }
 
@@ -213,6 +230,7 @@ class EventDTO {
           dateTimeEnd != null ? (DateTimeValue()..parse(dateTimeEnd!)) : null,
       venue: venueDomain,
       linkedAccountProfiles: linkedAccountProfiles,
+      profileGroups: profileGroups,
       occurrences: occurrences,
       programmingItems: programmingItems,
       coordinate: coordinate,
@@ -285,10 +303,7 @@ class EventDTO {
           displayNameValue: EventLinkedAccountProfileTextValue(displayName),
           profileTypeValue: AccountProfileTypeValue(
               _asString(artist['profile_type']) ?? 'artist'),
-          slugValue: _requiredLinkedAccountProfileSlugValue(
-            profile: artist,
-            id: id,
-          ),
+          slugValue: _optionalLinkedAccountProfileSlugValue(profile: artist),
           avatarUrlValue: _thumbUriValueOrNull(
             _asNullableString(artist['avatar_url']),
           ),
@@ -297,6 +312,12 @@ class EventDTO {
           ),
           partyTypeValue: _textValueOrNull(
             _asNullableString(artist['party_type']),
+          ),
+          canOpenPublicDetailValue: _booleanValue(
+            _resolveCanOpenPublicDetail(artist),
+          ),
+          publicDetailPathValue: _textValueOrNull(
+            _resolvePublicDetailPath(artist),
           ),
           taxonomyTerms: taxonomyTerms,
         ),
@@ -350,88 +371,23 @@ class EventDTO {
 
   static List<EventLinkedAccountProfile> _resolveLinkedAccountProfiles({
     required Object? linkedProfilesRaw,
-  }) {
-    final orderedIds = <String>[];
-    final mergedProfiles = <String, Map<String, dynamic>>{};
+  }) =>
+      EventPublicProfilePayloadDecoder.resolveLinkedAccountProfiles(
+        linkedProfilesRaw: linkedProfilesRaw,
+      );
 
-    void addProfile(Map<String, dynamic> profile) {
-      final id = _asString(profile['id'])?.trim() ?? '';
-      if (id.isEmpty) {
-        return;
-      }
-
-      final displayName = _asString(profile['display_name'])?.trim() ??
-          _asString(profile['name'])?.trim() ??
-          '';
-      if (displayName.isEmpty) {
-        return;
-      }
-
-      final existing = mergedProfiles[id];
-      if (existing == null) {
-        orderedIds.add(id);
-        mergedProfiles[id] = Map<String, dynamic>.from(profile);
-        return;
-      }
-
-      existing['display_name'] = _preferNonEmptyString(
-        existing['display_name'],
-        profile['display_name'] ?? profile['name'],
+  static List<EventProfileGroup> _resolveProfileGroups(
+    Object? raw, {
+    List<EventLinkedAccountProfile> linkedAccountProfiles = const [],
+  }) =>
+      EventPublicProfilePayloadDecoder.resolveProfileGroups(
+        raw,
+        linkedAccountProfiles: linkedAccountProfiles,
       );
-      existing['name'] = _preferNonEmptyString(
-        existing['name'],
-        profile['name'],
-      );
-      existing['profile_type'] = _preferNonEmptyString(
-        existing['profile_type'],
-        profile['profile_type'],
-      );
-      existing['party_type'] = _preferNonEmptyString(
-        existing['party_type'],
-        profile['party_type'],
-      );
-      existing['slug'] = _preferNonEmptyString(
-        existing['slug'],
-        _extractProfileSlug(profile),
-      );
-      existing['avatar_url'] = _preferNonEmptyString(
-        existing['avatar_url'],
-        profile['avatar_url'] ?? profile['logo_url'],
-      );
-      existing['logo_url'] = _preferNonEmptyString(
-        existing['logo_url'],
-        profile['logo_url'],
-      );
-      existing['cover_url'] = _preferNonEmptyString(
-        existing['cover_url'],
-        profile['cover_url'] ?? profile['hero_image_url'],
-      );
-      existing['hero_image_url'] = _preferNonEmptyString(
-        existing['hero_image_url'],
-        profile['hero_image_url'],
-      );
-      existing['taxonomy_terms'] = _mergeTaxonomyTerms(
-        existing['taxonomy_terms'],
-        profile['taxonomy_terms'],
-      );
-    }
-
-    if (linkedProfilesRaw is List) {
-      for (final entry in linkedProfilesRaw) {
-        addProfile(_asMap(entry));
-      }
-    }
-
-    final resolved = orderedIds
-        .map((id) => _toLinkedAccountProfile(mergedProfiles[id]!))
-        .whereType<EventLinkedAccountProfile>()
-        .toList(growable: false);
-
-    return List<EventLinkedAccountProfile>.unmodifiable(resolved);
-  }
 
   static List<EventOccurrenceOption> _resolveOccurrences({
     required Object? occurrencesRaw,
+    required List<EventLinkedAccountProfile> linkedAccountProfiles,
     required String? fallbackOccurrenceId,
     required String? fallbackDateTimeStart,
     required String? fallbackDateTimeEnd,
@@ -474,6 +430,16 @@ class EventDTO {
               occurrenceId == fallbackOccurrenceId.trim());
       final dateTimeEndValue = DomainOptionalDateTimeValue();
       dateTimeEndValue.parse(_asNullableString(row['date_time_end']));
+      final occurrenceLinkedAccountProfiles = _mergeLinkedAccountProfiles(
+        linkedAccountProfiles,
+        _resolveLinkedAccountProfiles(
+          linkedProfilesRaw: row['linked_account_profiles'] ??
+              row['own_linked_account_profiles'],
+        ),
+      );
+      final occurrenceTaxonomyTerms = _resolveCanonicalTaxonomyTerms(
+        row['taxonomy_terms'],
+      );
 
       resolved.add(
         EventOccurrenceOption(
@@ -490,11 +456,42 @@ class EventDTO {
           programmingCountValue: EventProgrammingCountValue()
             ..parse(_asInt(row['programming_count']).toString()),
           programmingItems: _resolveProgrammingItems(row['programming_items']),
+          profileGroups: _resolveProfileGroups(
+            row['profile_groups'],
+            linkedAccountProfiles: occurrenceLinkedAccountProfiles,
+          ),
+          tags: _resolveCanonicalTaxonomyLabels(
+            occurrenceTaxonomyTerms,
+          ).map(VenueEventTagValue.new).toList(growable: false),
         ),
       );
     }
 
     return List<EventOccurrenceOption>.unmodifiable(resolved);
+  }
+
+  static List<EventLinkedAccountProfile> _mergeLinkedAccountProfiles(
+    List<EventLinkedAccountProfile> primary,
+    List<EventLinkedAccountProfile> secondary,
+  ) {
+    if (secondary.isEmpty) {
+      return primary;
+    }
+
+    final knownIds = <String>{
+      for (final profile in primary)
+        if (profile.id.trim().isNotEmpty) profile.id.trim(),
+    };
+    final merged = <EventLinkedAccountProfile>[...primary];
+    for (final profile in secondary) {
+      final profileId = profile.id.trim();
+      if (profileId.isEmpty || knownIds.contains(profileId)) {
+        continue;
+      }
+      knownIds.add(profileId);
+      merged.add(profile);
+    }
+    return List<EventLinkedAccountProfile>.unmodifiable(merged);
   }
 
   static List<EventProgrammingItem> _resolveProgrammingItems(Object? raw) {
@@ -584,13 +581,13 @@ class EventDTO {
         _asString(profile['profile_type'])?.trim().isNotEmpty == true
             ? _asString(profile['profile_type'])!.trim()
             : (_asString(profile['party_type'])?.trim() ?? '');
+    final locationCoordinates = _resolveProfileCoordinates(profile);
 
     return EventLinkedAccountProfile(
       idValue: EventLinkedAccountProfileTextValue(id),
       displayNameValue: EventLinkedAccountProfileTextValue(displayName),
       profileTypeValue: AccountProfileTypeValue(profileType),
-      slugValue:
-          _requiredLinkedAccountProfileSlugValue(profile: profile, id: id),
+      slugValue: _optionalLinkedAccountProfileSlugValue(profile: profile),
       avatarUrlValue: _thumbUriValueOrNull(
         _asNullableString(profile['avatar_url'] ?? profile['logo_url']),
       ),
@@ -599,17 +596,23 @@ class EventDTO {
       ),
       partyTypeValue:
           _textValueOrNull(_asNullableString(profile['party_type'])),
+      locationAddressValue: _textValueOrNull(
+        _resolveProfileLocationAddress(profile),
+      ),
+      locationLatitudeValue: _latitudeValueOrNull(
+        locationCoordinates.latitude,
+      ),
+      locationLongitudeValue: _longitudeValueOrNull(
+        locationCoordinates.longitude,
+      ),
+      canOpenPublicDetailValue: _booleanValue(
+        _resolveCanOpenPublicDetail(profile),
+      ),
+      publicDetailPathValue: _textValueOrNull(
+        _resolvePublicDetailPath(profile),
+      ),
       taxonomyTerms: taxonomyTerms,
     );
-  }
-
-  static dynamic _preferNonEmptyString(dynamic current, dynamic candidate) {
-    final currentValue = _asString(current)?.trim() ?? '';
-    if (currentValue.isNotEmpty) {
-      return current;
-    }
-    final candidateValue = _asString(candidate)?.trim() ?? '';
-    return candidateValue.isNotEmpty ? candidate : current;
   }
 
   static dynamic _extractProfileSlug(Map<String, dynamic> profile) {
@@ -618,17 +621,74 @@ class EventDTO {
         profile['profile_slug'];
   }
 
-  static SlugValue _requiredLinkedAccountProfileSlugValue({
+  static ({double? latitude, double? longitude}) _resolveProfileCoordinates(
+    Map<String, dynamic> profile,
+  ) {
+    final directLatitude = _asDouble(profile['latitude'] ?? profile['lat']);
+    final directLongitude = _asDouble(profile['longitude'] ?? profile['lng']);
+    if (directLatitude != null && directLongitude != null) {
+      return (latitude: directLatitude, longitude: directLongitude);
+    }
+
+    final location = _asMap(profile['location']);
+    final locationLatitude = _asDouble(location['latitude'] ?? location['lat']);
+    final locationLongitude =
+        _asDouble(location['longitude'] ?? location['lng']);
+    if (locationLatitude != null && locationLongitude != null) {
+      return (latitude: locationLatitude, longitude: locationLongitude);
+    }
+
+    for (final geoSource in [location, _asMap(location['geo'])]) {
+      final coordinates = geoSource['coordinates'];
+      if (coordinates is List && coordinates.length >= 2) {
+        final lng = _asDouble(coordinates[0]);
+        final lat = _asDouble(coordinates[1]);
+        if (lat != null && lng != null) {
+          return (latitude: lat, longitude: lng);
+        }
+      }
+    }
+
+    return (latitude: directLatitude, longitude: directLongitude);
+  }
+
+  static String? _resolveProfileLocationAddress(Map<String, dynamic> profile) {
+    final location = _asMap(profile['location']);
+    return _asNullableString(
+      profile['location_address'] ??
+          profile['address'] ??
+          location['address'] ??
+          location['address_line'] ??
+          location['display_name'] ??
+          location['label'],
+    );
+  }
+
+  static SlugValue? _optionalLinkedAccountProfileSlugValue({
     required Map<String, dynamic> profile,
-    required String id,
   }) {
     final slug = _asNullableString(_extractProfileSlug(profile))?.trim() ?? '';
     if (slug.isEmpty) {
-      throw FormatException(
-        'linked_account_profiles[$id].slug is required for route-driven navigation',
-      );
+      return null;
     }
     return SlugValue()..parse(slug);
+  }
+
+  static bool _resolveCanOpenPublicDetail(Map<String, dynamic> profile) {
+    if (!_asBool(profile['can_open_public_detail'])) {
+      return false;
+    }
+
+    final publicDetailPath = _resolvePublicDetailPath(profile);
+    return publicDetailPath != null && publicDetailPath.isNotEmpty;
+  }
+
+  static String? _resolvePublicDetailPath(Map<String, dynamic> profile) {
+    final path = _asNullableString(profile['public_detail_path'])?.trim();
+    if (path == null || path.isEmpty) {
+      return null;
+    }
+    return path;
   }
 
   static EventLinkedAccountProfileTextValue? _textValueOrNull(String? raw) {
@@ -637,6 +697,25 @@ class EventDTO {
       return null;
     }
     return EventLinkedAccountProfileTextValue(normalized);
+  }
+
+  static DomainBooleanValue _booleanValue(bool raw) {
+    return DomainBooleanValue(defaultValue: false, isRequired: false)
+      ..parse(raw.toString());
+  }
+
+  static LatitudeValue? _latitudeValueOrNull(double? value) {
+    if (value == null) {
+      return null;
+    }
+    return LatitudeValue()..parse(value.toString());
+  }
+
+  static LongitudeValue? _longitudeValueOrNull(double? value) {
+    if (value == null) {
+      return null;
+    }
+    return LongitudeValue()..parse(value.toString());
   }
 
   static ThumbUriValue? _thumbUriValueOrNull(String? rawUrl) {
@@ -650,46 +729,6 @@ class EventDTO {
     }
     return ThumbUriValue(defaultValue: parsed, isRequired: true)
       ..parse(normalized);
-  }
-
-  static List<Map<String, dynamic>> _mergeTaxonomyTerms(
-    dynamic currentRaw,
-    dynamic candidateRaw,
-  ) {
-    final merged = <String, Map<String, dynamic>>{};
-
-    void ingest(dynamic raw) {
-      if (raw is! List) {
-        return;
-      }
-      for (final entry in raw) {
-        final term = _asMap(entry);
-        final type = _asString(term['type'])?.trim() ?? '';
-        final value = _asString(term['value'])?.trim() ?? '';
-        if (type.isEmpty || value.isEmpty) {
-          continue;
-        }
-        final key = '$type::$value';
-        final existing = merged[key];
-        if (existing == null) {
-          merged[key] = Map<String, dynamic>.from(term);
-          continue;
-        }
-        existing['name'] =
-            _preferNonEmptyString(existing['name'], term['name']);
-        existing['label'] =
-            _preferNonEmptyString(existing['label'], term['label']);
-        existing['taxonomy_name'] = _preferNonEmptyString(
-          existing['taxonomy_name'],
-          term['taxonomy_name'],
-        );
-      }
-    }
-
-    ingest(currentRaw);
-    ingest(candidateRaw);
-
-    return merged.values.toList(growable: false);
   }
 
   static int _asInt(dynamic value) {
@@ -879,6 +918,7 @@ class EventDTO {
     if (heroUrl != null && heroUrl.isNotEmpty) {
       heroImageValue = InvitePartnerHeroImageValue()..parse(heroUrl);
     }
+    final publicDetailPath = dto['public_detail_path']?.toString().trim() ?? '';
 
     return PartnerResume(
       idValue: MongoIDValue()..parse(dto['id']?.toString() ?? ''),
@@ -886,6 +926,16 @@ class EventDTO {
         ..parse(dto['display_name']?.toString() ?? ''),
       slugValue: slugValue,
       type: InviteAccountProfileType.mercadoProducer,
+      canOpenPublicDetailValue:
+          DomainBooleanValue(defaultValue: false, isRequired: false)
+            ..parse(
+              (_asBool(dto['can_open_public_detail']) &&
+                      publicDetailPath.isNotEmpty)
+                  .toString(),
+            ),
+      publicDetailPathValue: AccountProfilePublicDetailPathValue(
+        publicDetailPath,
+      ),
       taglineValue: taglineValue,
       logoImageValue: logoImageValue,
       heroImageValue: heroImageValue,
@@ -923,7 +973,48 @@ class EventDTO {
       'received_invites': receivedInvites,
       'sent_invites': sentInvites,
       'friends_going': friendsGoing,
-      'tags': tags,
+      'taxonomy_terms': taxonomyTerms
+          .map((term) => Map<String, dynamic>.from(term))
+          .toList(growable: false),
     };
+  }
+
+  static List<Map<String, dynamic>> _resolveCanonicalTaxonomyTerms(
+      Object? raw) {
+    if (raw is! List) {
+      return const <Map<String, dynamic>>[];
+    }
+
+    final terms = <Map<String, dynamic>>[];
+    for (final entry in raw) {
+      final term = _asMap(entry);
+      if (term.isEmpty) {
+        continue;
+      }
+      terms.add(Map<String, dynamic>.unmodifiable(term));
+    }
+
+    return List<Map<String, dynamic>>.unmodifiable(terms);
+  }
+
+  static List<String> _resolveCanonicalTaxonomyLabels(Object? raw) {
+    if (raw is! List) {
+      return const <String>[];
+    }
+
+    final labels = <String>{};
+    for (final entry in raw) {
+      final term = _asMap(entry);
+      final label = _asString(term['name'])?.trim() ??
+          _asString(term['label'])?.trim() ??
+          _asString(term['value'])?.trim() ??
+          '';
+      if (label.isEmpty) {
+        continue;
+      }
+      labels.add(label);
+    }
+
+    return List<String>.unmodifiable(labels);
   }
 }

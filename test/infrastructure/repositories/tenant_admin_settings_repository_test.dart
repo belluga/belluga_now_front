@@ -12,6 +12,7 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_boole
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_discovery_filters_settings_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
@@ -605,6 +606,10 @@ void main() {
       settings.filters.first.imageUri,
       'https://tenant-a.test/api/v1/media/map-filters/events?v=1710000000',
     );
+    expect(settings.filters.first.overrideMarker, isFalse);
+    expect(settings.filters.first.markerOverride?.mode,
+        TenantAdminMapFilterMarkerOverrideMode.icon);
+    expect(settings.filters.first.markerOverride?.icon, 'music');
     expect(
       settings.filters.first.query.source,
       TenantAdminMapFilterSource.event,
@@ -795,7 +800,8 @@ void main() {
     expect(adapter.requests.single.uri.path, '/admin/api/v1/domains/domain-1');
   });
 
-  test('updateMapUiSettings patches map_ui namespace payload', () async {
+  test('updateMapUiSettings patches map_ui namespace without legacy filters',
+      () async {
     final adapter = _RoutingAdapter();
     final scope = _MutableTenantScope('https://tenant-a.test');
     final dio = Dio()..httpClientAdapter = adapter;
@@ -821,6 +827,13 @@ void main() {
             'label': 'Eventos',
             'image_uri':
                 'https://tenant-a.test/map-filters/events/image?v=1710000000',
+            'override_marker': false,
+            'marker_override': {
+              'mode': 'icon',
+              'icon': 'music',
+              'color': '#C6141F',
+              'icon_color': '#FFFFFF',
+            },
             'query': {
               'source': 'event',
               'types': ['show'],
@@ -841,6 +854,12 @@ void main() {
           imageUriValue: TenantAdminOptionalUrlValue()
             ..parse(
                 'https://tenant-a.test/map-filters/events/image?v=1710000000'),
+          overrideMarkerValue: TenantAdminFlagValue(false),
+          markerOverride: TenantAdminMapFilterMarkerOverride.icon(
+            iconValue: _requiredTextValue('music'),
+            colorValue: _hexColorValue('#C6141F'),
+            iconColorValue: _hexColorValue('#FFFFFF'),
+          ),
           query: TenantAdminMapFilterQuery(
             source: TenantAdminMapFilterSource.event,
             typeValues: [_tokenValue('show')],
@@ -859,38 +878,16 @@ void main() {
     expect(payload['default_origin.lat'], -20.611111);
     expect(payload['default_origin.lng'], -40.422222);
     expect(payload['default_origin.label'], 'Praia do Morro');
-    expect(payload['filters'], isA<List<dynamic>>());
-    final filtersPayload = payload['filters'] as List<dynamic>;
-    expect(filtersPayload, hasLength(1));
-    final firstFilterPayload =
-        Map<String, dynamic>.from(filtersPayload.first as Map);
-    final queryPayload = Map<String, dynamic>.from(
-      firstFilterPayload['query'] as Map,
+    expect(payload.containsKey('filters'), isFalse);
+    expect(
+      payload.keys.where((key) => key.startsWith('filters.')),
+      isEmpty,
     );
-    expect(queryPayload['source'], 'event');
-    expect(queryPayload['types'], equals(['show']));
-    expect(queryPayload['taxonomy'], equals(['music_genre:rock']));
     expect(updated.defaultOrigin, isNotNull);
     expect(updated.defaultOrigin!.lat, closeTo(-20.611111, 0.000001));
     expect(updated.defaultOrigin!.lng, closeTo(-40.422222, 0.000001));
     expect(updated.defaultOrigin!.label, 'Praia do Morro');
-    expect(updated.filters, hasLength(1));
-    expect(updated.filters.first.key, 'events');
-    expect(updated.filters.first.label, 'Eventos');
-    expect(
-      updated.filters.first.imageUri,
-      'https://tenant-a.test/api/v1/media/map-filters/events?v=1710000000',
-    );
-    expect(
-        updated.filters.first.query.source, TenantAdminMapFilterSource.event);
-    expect(
-      updated.filters.first.query.types.map((entry) => entry.value).toList(),
-      equals(['show']),
-    );
-    expect(
-      updated.filters.first.query.taxonomy.map((entry) => entry.value).toList(),
-      equals(['music_genre:rock']),
-    );
+    expect(updated.filters, isEmpty);
   });
 
   test('updateAppLinksSettings patches app_links namespace payload', () async {
@@ -2219,6 +2216,13 @@ class _RoutingAdapter implements HttpClientAdapter {
                       'label': 'Eventos',
                       'image_uri':
                           'https://tenant-a.test/map-filters/events/image?v=1710000000',
+                      'override_marker': false,
+                      'marker_override': {
+                        'mode': 'icon',
+                        'icon': 'music',
+                        'color': '#C6141F',
+                        'icon_color': '#FFFFFF',
+                      },
                       'query': {
                         'source': 'event',
                         'types': ['show'],

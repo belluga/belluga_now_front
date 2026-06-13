@@ -1,10 +1,32 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
+import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/support/tenant_admin_nested_profile_group_payload_encoder.dart';
 
 class TenantAdminAccountProfilesRequestEncoder {
   const TenantAdminAccountProfilesRequestEncoder();
+
+  Map<String, dynamic> encodeFetchAccountProfilesQuery({
+    String? accountId,
+    bool queryableOnly = false,
+    String? excludeAccountProfileId,
+  }) {
+    final payload = <String, dynamic>{};
+    if (accountId != null && accountId.trim().isNotEmpty) {
+      payload['account_id'] = accountId.trim();
+    }
+    if (queryableOnly) {
+      payload['queryable_only'] = true;
+    }
+    if (excludeAccountProfileId != null &&
+        excludeAccountProfileId.trim().isNotEmpty) {
+      payload['exclude_account_profile_id'] = excludeAccountProfileId.trim();
+    }
+
+    return payload;
+  }
 
   Map<String, dynamic> encodeCreateAccountProfile({
     required String accountId,
@@ -17,6 +39,8 @@ class TenantAdminAccountProfilesRequestEncoder {
     String? content,
     String? avatarUrl,
     String? coverUrl,
+    List<TenantAdminNestedProfileGroup> nestedProfileGroups =
+        const <TenantAdminNestedProfileGroup>[],
   }) {
     return {
       'account_id': accountId,
@@ -32,6 +56,10 @@ class TenantAdminAccountProfilesRequestEncoder {
       if (content != null) 'content': content,
       if (avatarUrl != null) 'avatar_url': avatarUrl,
       if (coverUrl != null) 'cover_url': coverUrl,
+      if (nestedProfileGroups.isNotEmpty)
+        'nested_profile_groups': encodeTenantAdminNestedProfileGroups(
+          nestedProfileGroups,
+        ),
     };
   }
 
@@ -47,6 +75,7 @@ class TenantAdminAccountProfilesRequestEncoder {
     String? coverUrl,
     bool? removeAvatar,
     bool? removeCover,
+    List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
   }) {
     final payload = <String, dynamic>{};
     if (profileType != null) payload['profile_type'] = profileType;
@@ -69,6 +98,11 @@ class TenantAdminAccountProfilesRequestEncoder {
     if (coverUrl != null) payload['cover_url'] = coverUrl;
     if (removeAvatar == true) payload['remove_avatar'] = true;
     if (removeCover == true) payload['remove_cover'] = true;
+    if (nestedProfileGroups != null) {
+      payload['nested_profile_groups'] = encodeTenantAdminNestedProfileGroups(
+        nestedProfileGroups,
+      );
+    }
     return payload;
   }
 
@@ -142,17 +176,6 @@ class TenantAdminAccountProfilesRequestEncoder {
   Map<String, dynamic> _encodeCapabilities(
     TenantAdminProfileTypeCapabilities capabilities,
   ) {
-    return {
-      'is_publicly_discoverable': capabilities.isPubliclyDiscoverable,
-      'is_favoritable': capabilities.isFavoritable,
-      'is_poi_enabled': capabilities.isPoiEnabled,
-      'is_reference_location_enabled': capabilities.isReferenceLocationEnabled,
-      'has_bio': capabilities.hasBio,
-      'has_content': capabilities.hasContent,
-      'has_taxonomies': capabilities.hasTaxonomies,
-      'has_avatar': capabilities.hasAvatar,
-      'has_cover': capabilities.hasCover,
-      'has_events': capabilities.hasEvents,
-    };
+    return Map<String, dynamic>.from(capabilities.toCapabilityMap().toJson());
   }
 }

@@ -34,12 +34,13 @@ class DiscoveryPartnerGrid extends StatelessWidget {
       delegate: SliverChildBuilderDelegate(
         (context, index) {
           final partner = partners[index];
+          final canOpenPublicDetail = partner.canOpenPublicDetail;
           return DiscoveryPartnerCard(
             partner: partner,
             isFavorite: favorites.contains(partner.id),
             isFavoritable: isFavoritable(partner),
             onFavoriteTap: () => onFavoriteTap(partner.id),
-            onTap: () => onPartnerTap(partner),
+            onTap: canOpenPublicDetail ? () => onPartnerTap(partner) : null,
             resolvedVisual: resolvedVisualForPartner(partner),
           );
         },

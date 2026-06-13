@@ -16,15 +16,19 @@ abstract class ProximityPreferencesRepositoryContract {
 
   Future<void> syncAfterIdentityReady() async {}
 
-  Future<void> updateMaxDistanceMeters(
-    DistanceInMetersValue meters,
-  ) async {}
+  Future<void> updateMaxDistanceMeters(DistanceInMetersValue meters) async {}
 
   Future<void> setLiveDeviceLocation() async {}
 
   Future<void> setFixedReference({
     required FixedLocationReference fixedReference,
   }) async {}
+
+  Future<void> clearFixedReference() async {}
+
+  Future<void> setRouteReferencePointPolicy(
+    RouteReferencePointPolicyValue policyValue,
+  ) async {}
 
   void setCurrentPreference(ProximityPreference? preference) {
     _proximityPreferenceStreamValue.addValue(preference);

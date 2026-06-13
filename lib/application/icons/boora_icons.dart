@@ -7,12 +7,17 @@ class BooraIcons {
   static const String? _fontPackage = null;
 
   static const IconData clapperboard = IconData(
-    0xf000,
+    0xf03c,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData whatsapp = IconData(
+    0xf03d,
     fontFamily: fontFamily,
     fontPackage: _fontPackage,
   );
   static const IconData running = IconData(
-    0xf001,
+    0xf03e,
     fontFamily: fontFamily,
     fontPackage: _fontPackage,
   );
@@ -307,10 +312,11 @@ class BooraIcons {
     fontPackage: _fontPackage,
   );
 
-  static const int fontIconCount = 60;
+  static const int fontIconCount = 61;
 
   static const List<IconData> fontIcons = <IconData>[
     clapperboard,
+    whatsapp,
     running,
     jubs,
     group,
@@ -389,7 +395,6 @@ class BooraIcons {
 
   static const IconData share = Icons.share;
   static const IconData instagram = Icons.camera_alt_outlined;
-  static const IconData whatsapp = Icons.chat_bubble_outline;
   static const IconData uber = Icons.local_taxi_outlined;
   static const IconData waze = Icons.navigation_outlined;
 }

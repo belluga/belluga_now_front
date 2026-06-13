@@ -19,6 +19,7 @@ import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admi
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_upload_field.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_nested_profile_groups_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_xfile_preview.dart';
 import 'package:flutter/material.dart';
@@ -51,6 +52,7 @@ class _TenantAdminAccountCreateScreenState
     _controller.resetCreateForm();
     _controller.loadProfileTypes();
     _controller.loadTaxonomies();
+    _controller.loadNestedProfileCandidates();
     _bindCreateSideEffects();
   }
 
@@ -78,6 +80,11 @@ class _TenantAdminAccountCreateScreenState
   bool _requiresLocation(String? selectedType) {
     final definition = _profileTypeDefinition(selectedType);
     return definition?.capabilities.isPoiEnabled ?? false;
+  }
+
+  bool _hasNestedProfileGroups(String? selectedType) {
+    final definition = _profileTypeDefinition(selectedType);
+    return definition?.capabilities.hasNestedProfileGroups ?? false;
   }
 
   Future<void> _openMapPicker() async {
@@ -193,6 +200,8 @@ class _TenantAdminAccountCreateScreenState
         final hasTaxonomies = definition?.capabilities.hasTaxonomies ?? false;
         final showAvatar = definition?.capabilities.hasAvatar ?? false;
         final showCover = definition?.capabilities.hasCover ?? false;
+        final hasNestedProfileGroups =
+            _hasNestedProfileGroups(state.selectedProfileType);
         final showMediaSection = showAvatar || showCover;
         return TenantAdminFormScaffold(
           closePolicy: buildTenantAdminCurrentRouteBackPolicy(context),
@@ -241,6 +250,10 @@ class _TenantAdminAccountCreateScreenState
                   if (requiresLocation) ...[
                     const SizedBox(height: 16),
                     _buildLocationSection(context),
+                  ],
+                  if (hasNestedProfileGroups) ...[
+                    const SizedBox(height: 16),
+                    _buildNestedGroupSection(state),
                   ],
                   const SizedBox(height: 24),
                   StreamValueBuilder<bool>(
@@ -620,9 +633,9 @@ class _TenantAdminAccountCreateScreenState
                         state.coverWebUrl!.isNotEmpty),
                 onRemove: () => _clearImage(isAvatar: false),
                 initialWebUrl: state.coverWebUrl,
-                slot: TenantAdminImageSlot.cover,
+                slot: TenantAdminImageSlot.accountProfileHeroCover,
                 pickFromDevice: () => _controller.pickImageFromDevice(
-                  slot: TenantAdminImageSlot.cover,
+                  slot: TenantAdminImageSlot.accountProfileHeroCover,
                 ),
                 fetchImageFromUrlForCrop: _controller.fetchImageFromUrlForCrop,
                 readBytesForCrop: _controller.readImageBytesForCrop,
@@ -716,6 +729,27 @@ class _TenantAdminAccountCreateScreenState
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildNestedGroupSection(TenantAdminAccountCreateDraft state) {
+    return TenantAdminNestedProfileGroupsEditor(
+      keyPrefix: 'tenantAdminAccountCreate',
+      groups: state.nestedProfileGroups,
+      candidatesStreamValue: _controller.nestedProfileCandidatesStreamValue,
+      profileTypes: _controller.profileTypesStreamValue.value,
+      addButtonKey: const Key('tenantAdminAccountCreateAddNestedGroupButton'),
+      onAddGroup: _controller.addCreateNestedProfileGroup,
+      onRenameGroup: _controller.renameCreateNestedProfileGroup,
+      onMoveGroup: _controller.moveCreateNestedProfileGroup,
+      onRemoveGroup: _controller.removeCreateNestedProfileGroup,
+      onSelectionChanged: (groupId, profileId, selected) {
+        _controller.toggleCreateNestedProfileGroupMember(
+          groupId: groupId,
+          profileId: profileId,
+          selected: selected,
+        );
+      },
     );
   }
 

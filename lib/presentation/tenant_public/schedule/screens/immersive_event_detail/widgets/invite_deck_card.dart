@@ -87,7 +87,7 @@ class InviteDeckCard extends StatelessWidget {
                               ),
                             ),
                           Text(
-                            _occurrenceDateLabel(invite.eventDateTime),
+                            invite.eventDateDetailLabel,
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: Colors.white.withValues(alpha: 0.8),
                             ),
@@ -139,14 +139,4 @@ class InviteDeckCard extends StatelessWidget {
       ),
     );
   }
-
-  String _occurrenceDateLabel(DateTime dateTime) {
-    final day = _twoDigits(dateTime.day);
-    final month = _twoDigits(dateTime.month);
-    final hour = _twoDigits(dateTime.hour);
-    final minute = _twoDigits(dateTime.minute);
-    return '$day/$month às $hour:$minute';
-  }
-
-  String _twoDigits(int value) => value.toString().padLeft(2, '0');
 }

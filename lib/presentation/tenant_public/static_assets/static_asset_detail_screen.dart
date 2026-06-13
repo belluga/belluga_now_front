@@ -3,19 +3,23 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/sharing/static_asset_public_share_payload.dart';
 import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
+import 'package:belluga_now/application/router/support/route_instance_scope.dart';
 import 'package:belluga_now/domain/static_assets/public_static_asset_model.dart';
+import 'package:belluga_now/presentation/shared/sharing/public_share_launcher.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_contract.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_launch_target.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_common_tabs.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_hero_action.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_directions_section.dart';
 import 'package:belluga_now/presentation/tenant_public/static_assets/controllers/static_asset_detail_controller.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart' hide Marker;
 import 'package:flutter_map/flutter_map.dart';
-import 'package:get_it/get_it.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -23,13 +27,15 @@ class StaticAssetDetailScreen extends StatefulWidget {
   const StaticAssetDetailScreen({
     super.key,
     required this.asset,
-    this.controller,
     this.directionsAppChooser,
+    this.shareLauncher,
+    this.externalUrlLauncher,
   });
 
   final PublicStaticAssetModel asset;
-  final StaticAssetDetailController? controller;
   final DirectionsAppChooserContract? directionsAppChooser;
+  final SystemShareLauncher? shareLauncher;
+  final ExternalUrlLauncher? externalUrlLauncher;
 
   @override
   State<StaticAssetDetailScreen> createState() =>
@@ -37,10 +43,15 @@ class StaticAssetDetailScreen extends StatefulWidget {
 }
 
 class _StaticAssetDetailScreenState extends State<StaticAssetDetailScreen> {
-  late final StaticAssetDetailController _controller =
-      widget.controller ?? GetIt.I.get<StaticAssetDetailController>();
+  late final StaticAssetDetailController _controller;
   late final DirectionsAppChooserContract _directionsAppChooser =
       widget.directionsAppChooser ?? DirectionsAppChooser();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = RouteInstanceScope.read<StaticAssetDetailController>(context);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,11 +63,29 @@ class _StaticAssetDetailScreenState extends State<StaticAssetDetailScreen> {
         collapsedToolbarHeight: 72,
         centerCollapsedTitle: false,
         backPolicy: buildCanonicalCurrentRouteBackPolicy(context),
-        onSharePressed: () => unawaited(_shareStaticAsset()),
-        shareIcon: BooraIcons.share,
+        heroActions: _buildHeroActions(),
         tabs: tabs,
       ),
     );
+  }
+
+  List<ImmersiveHeroAction> _buildHeroActions() {
+    return <ImmersiveHeroAction>[
+      ImmersiveHeroAction(
+        key: const Key('staticAssetShareAction'),
+        label: 'Compartilhar',
+        icon: BooraIcons.share,
+        isPrimary: true,
+        onPressed: () => unawaited(_shareStaticAsset()),
+      ),
+      ImmersiveHeroAction(
+        key: const Key('staticAssetWhatsappAction'),
+        label: 'WhatsApp',
+        icon: BooraIcons.whatsapp,
+        foregroundColor: const Color(0xFF25D366),
+        onPressed: () => unawaited(_shareStaticAssetOnWhatsApp()),
+      ),
+    ];
   }
 
   List<ImmersiveTabItem> _buildTabs() {
@@ -64,24 +93,21 @@ class _StaticAssetDetailScreenState extends State<StaticAssetDetailScreen> {
     final aboutContent = widget.asset.resolvedDescription;
     if (aboutContent != null && aboutContent.trim().isNotEmpty) {
       tabs.add(
-        ImmersiveTabItem(
-          title: 'Sobre',
+        ImmersiveCommonTabs.about(
           content: _aboutSection(aboutContent),
         ),
       );
     }
     if (widget.asset.hasLocation) {
       tabs.add(
-        ImmersiveTabItem(
-          title: 'Como Chegar',
+        ImmersiveCommonTabs.directions(
           content: _locationSection(),
         ),
       );
     }
     if (tabs.isEmpty) {
       tabs.add(
-        ImmersiveTabItem(
-          title: 'Sobre',
+        ImmersiveCommonTabs.about(
           content: _fallbackAboutSection(),
         ),
       );
@@ -226,96 +252,17 @@ class _StaticAssetDetailScreenState extends State<StaticAssetDetailScreen> {
   }
 
   Widget _locationSection() {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Padding(
+    return ImmersiveDirectionsSection(
       padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Como Chegar',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
-          ),
-          const SizedBox(height: 12),
-          GestureDetector(
-            onTap: _openAssetMap,
-            child: Container(
-              height: 260,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(28),
-                color: colorScheme.surfaceContainerHighest,
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  _buildLocationMapCanvas(),
-                  Positioned(
-                    left: 18,
-                    right: 18,
-                    bottom: 18,
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: colorScheme.surface.withValues(alpha: 0.95),
-                        borderRadius: BorderRadius.circular(22),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
-                            blurRadius: 18,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 42,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: colorScheme.primaryContainer,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.near_me_outlined,
-                              color: colorScheme.onPrimaryContainer,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Ver no mapa',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(
-                                    color: colorScheme.onSurface,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                            ),
-                          ),
-                          Icon(
-                            Icons.map_outlined,
-                            color: colorScheme.onSurface,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: _presentDirectionsChooser,
-            icon: const Icon(Icons.navigation),
-            label: const Text('Traçar rota'),
-          ),
-        ],
-      ),
+      mapCanvas: _buildLocationMapCanvas(),
+      canOpenMap: true,
+      onOpenMap: _openAssetMap,
+      directionsTarget: _directionsTarget(),
+      onOpenDirectDirections: _openDirectDirections,
+      onOpenOtherDirections: _presentDirectionsTarget,
+      primaryWazeButtonKey: const Key('staticAssetMainWazeButton'),
+      primaryUberButtonKey: const Key('staticAssetMainUberButton'),
+      primaryOtherButtonKey: const Key('staticAssetMainOtherDirectionsButton'),
     );
   }
 
@@ -410,24 +357,44 @@ class _StaticAssetDetailScreenState extends State<StaticAssetDetailScreen> {
   }
 
   Future<void> _shareStaticAsset() async {
-    final publicUri = _controller.buildTenantPublicUriForAsset(widget.asset);
-    final payload = StaticAssetPublicSharePayloadBuilder.build(
-      publicUri: publicUri,
-      fallbackName: widget.asset.displayName,
-      asset: widget.asset,
-      actorDisplayName: _controller.authenticatedUserDisplayName,
-    );
+    final payload = _buildStaticAssetPublicSharePayload();
     try {
-      await SharePlus.instance.share(
+      await PublicShareLauncher.launchSystemShare(
         ShareParams(
           text: payload.message,
           subject: payload.subject,
         ),
+        launcher: widget.shareLauncher,
       );
     } catch (_) {
       _showStatusMessage(
           'Não foi possível compartilhar ${widget.asset.displayName}.');
     }
+  }
+
+  Future<void> _shareStaticAssetOnWhatsApp() async {
+    final payload = _buildStaticAssetPublicSharePayload();
+    try {
+      await PublicShareLauncher.launchWhatsAppOrSystemShare(
+        text: payload.message,
+        subject: payload.subject,
+        fallbackShareLauncher: widget.shareLauncher,
+        externalUrlLauncher: widget.externalUrlLauncher,
+      );
+    } catch (_) {
+      _showStatusMessage(
+          'Não foi possível compartilhar ${widget.asset.displayName}.');
+    }
+  }
+
+  ({String subject, String message}) _buildStaticAssetPublicSharePayload() {
+    final publicUri = _controller.buildTenantPublicUriForAsset(widget.asset);
+    return StaticAssetPublicSharePayloadBuilder.build(
+      publicUri: publicUri,
+      fallbackName: widget.asset.displayName,
+      asset: widget.asset,
+      actorDisplayName: _controller.authenticatedUserDisplayName,
+    );
   }
 
   void _openAssetMap() {
@@ -440,12 +407,21 @@ class _StaticAssetDetailScreenState extends State<StaticAssetDetailScreen> {
     _safeRouterPushPath(path);
   }
 
-  void _presentDirectionsChooser() {
-    final target = _directionsTarget();
-    if (target == null) {
-      return;
+  Future<void> _openDirectDirections(
+    DirectionsDirectProvider provider,
+    DirectionsLaunchTarget target,
+  ) async {
+    final launched = await _directionsAppChooser.launchDirect(
+      provider: provider,
+      target: target,
+    );
+    if (!launched) {
+      _showStatusMessage('Não foi possível abrir o aplicativo de rota.');
     }
-    _directionsAppChooser.present(
+  }
+
+  Future<void> _presentDirectionsTarget(DirectionsLaunchTarget target) async {
+    await _directionsAppChooser.present(
       context,
       target: target,
       onStatusMessage: _showStatusMessage,

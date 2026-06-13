@@ -8,11 +8,13 @@ class ProximityPreferenceDTO {
   ProximityPreferenceDTO({
     required this.maxDistanceMeters,
     required this.mode,
+    this.useReferencePointForRoutes,
     this.fixedReference,
   });
 
   final int maxDistanceMeters;
   final String mode;
+  final bool? useReferencePointForRoutes;
   final Map<String, dynamic>? fixedReference;
 
   factory ProximityPreferenceDTO.fromJson(Map<String, dynamic> json) {
@@ -23,6 +25,9 @@ class ProximityPreferenceDTO {
     return ProximityPreferenceDTO(
       maxDistanceMeters: (json['max_distance_meters'] as num?)?.round() ?? 0,
       mode: locationPreference['mode'] as String? ?? 'live_device_location',
+      useReferencePointForRoutes: _nullableBool(
+        json['use_reference_point_for_routes'],
+      ),
       fixedReference:
           locationPreference['fixed_reference'] is Map<String, dynamic>
               ? Map<String, dynamic>.from(
@@ -42,6 +47,7 @@ class ProximityPreferenceDTO {
           'live_device_location',
         ProximityLocationPreferenceMode.fixedReference => 'fixed_reference',
       },
+      useReferencePointForRoutes: preference.useReferencePointForRoutes,
       fixedReference: fixedReference == null
           ? null
           : <String, dynamic>{
@@ -59,6 +65,14 @@ class ProximityPreferenceDTO {
               'entity_namespace': fixedReference.entityNamespace,
               'entity_type': fixedReference.entityType,
               'entity_id': fixedReference.entityId,
+              'entity_slug': fixedReference.entitySlug,
+              'reference_status': _referenceStatusToWire(
+                fixedReference.referenceStatus,
+              ),
+              'reference_status_reason': _referenceStatusReasonToWire(
+                fixedReference.referenceStatusReason,
+              ),
+              'blocked_capability_key': fixedReference.blockedCapabilityKey,
             },
     );
   }
@@ -68,6 +82,9 @@ class ProximityPreferenceDTO {
       maxDistanceMetersValue: DistanceInMetersValue.fromRaw(
         maxDistanceMeters,
         defaultValue: maxDistanceMeters.toDouble(),
+      ),
+      routeReferencePointPolicyValue: RouteReferencePointPolicyValue(
+        useReferencePointForRoutes,
       ),
       locationPreference: mode == 'fixed_reference' && fixedReference != null
           ? ProximityLocationPreference.fixedReference(
@@ -99,8 +116,18 @@ class ProximityPreferenceDTO {
                 entityTypeValue: _optionalTextValue(
                   fixedReference?['entity_type'],
                 ),
-                entityIdValue: _optionalTextValue(
-                  fixedReference?['entity_id'],
+                entityIdValue: _optionalTextValue(fixedReference?['entity_id']),
+                entitySlugValue: _optionalTextValue(
+                  fixedReference?['entity_slug'],
+                ),
+                referenceStatus: _referenceStatusFromWire(
+                  fixedReference?['reference_status'],
+                ),
+                referenceStatusReason: _referenceStatusReasonFromWire(
+                  fixedReference?['reference_status_reason'],
+                ),
+                blockedCapabilityKeyValue: _optionalTextValue(
+                  fixedReference?['blocked_capability_key'],
                 ),
               ),
             )
@@ -111,6 +138,7 @@ class ProximityPreferenceDTO {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       'max_distance_meters': maxDistanceMeters,
+      'use_reference_point_for_routes': useReferencePointForRoutes,
       'location_preference': <String, dynamic>{
         'mode': mode,
         'fixed_reference': fixedReference,
@@ -123,5 +151,50 @@ class ProximityPreferenceDTO {
   ) {
     final normalized = ProximityPreferenceOptionalTextValue.fromRaw(value);
     return normalized.nullableValue == null ? null : normalized;
+  }
+
+  static bool? _nullableBool(Object? value) {
+    if (value is bool) {
+      return value;
+    }
+    return null;
+  }
+
+  static FixedLocationReferenceStatus _referenceStatusFromWire(Object? value) {
+    return switch ((value as String?)?.trim()) {
+      'disabled' => FixedLocationReferenceStatus.disabled,
+      _ => FixedLocationReferenceStatus.active,
+    };
+  }
+
+  static FixedLocationReferenceStatusReason _referenceStatusReasonFromWire(
+    Object? value,
+  ) {
+    return switch ((value as String?)?.trim()) {
+      'manual_coordinate' =>
+        FixedLocationReferenceStatusReason.manualCoordinate,
+      'source_capability_disabled' =>
+        FixedLocationReferenceStatusReason.sourceCapabilityDisabled,
+      _ => FixedLocationReferenceStatusReason.eligible,
+    };
+  }
+
+  static String _referenceStatusToWire(FixedLocationReferenceStatus status) {
+    return switch (status) {
+      FixedLocationReferenceStatus.active => 'active',
+      FixedLocationReferenceStatus.disabled => 'disabled',
+    };
+  }
+
+  static String _referenceStatusReasonToWire(
+    FixedLocationReferenceStatusReason reason,
+  ) {
+    return switch (reason) {
+      FixedLocationReferenceStatusReason.eligible => 'eligible',
+      FixedLocationReferenceStatusReason.manualCoordinate =>
+        'manual_coordinate',
+      FixedLocationReferenceStatusReason.sourceCapabilityDisabled =>
+        'source_capability_disabled',
+    };
   }
 }

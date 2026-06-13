@@ -1,6 +1,5 @@
 import 'dart:ui';
 
-import 'package:belluga_now/application/extensions/event_data_formating.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/event_info_row.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/invite_status_icon.dart';
@@ -12,7 +11,6 @@ class EventLiveNowCard extends StatelessWidget {
     super.key,
     required this.event,
     this.onTap,
-    this.assumedDuration = const Duration(hours: 3),
     this.isConfirmed = false,
     this.pendingInvitesCount = 0,
     this.distanceLabel,
@@ -20,7 +18,6 @@ class EventLiveNowCard extends StatelessWidget {
 
   final VenueEventResume event;
   final VoidCallback? onTap;
-  final Duration assumedDuration;
   final bool isConfirmed;
   final int pendingInvitesCount;
   final String? distanceLabel;
@@ -30,9 +27,9 @@ class EventLiveNowCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final brightness = Theme.of(context).brightness;
-    final start = event.startDateTime;
-    final end = event.endDateTime ?? start.add(assumedDuration);
-    final timeRange = '${start.timeLabel} às ${end.timeLabel}';
+    final timeRange = event.endDateTime == null
+        ? event.scheduleDisplay.withDefaultFallbackEnd().agendaLabel
+        : event.agendaScheduleLabel;
     final onOverlay = Colors.white;
 
     return LayoutBuilder(

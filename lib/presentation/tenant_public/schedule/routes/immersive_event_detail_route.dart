@@ -1,5 +1,7 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/schedule/event_selected_occurrence_projection.dart';
 import 'package:belluga_now/application/router/modular_app/modules/schedule_module.dart';
+import 'package:belluga_now/application/router/support/route_scoped_resolver_route.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
@@ -10,7 +12,7 @@ import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.da
 
 @RoutePage(name: 'ImmersiveEventDetailRoute')
 class ImmersiveEventDetailRoutePage
-    extends ResolverRoute<EventModel, ScheduleModule> {
+    extends RouteScopedResolverRoute<EventModel, ScheduleModule> {
   const ImmersiveEventDetailRoutePage({
     super.key,
     @PathParam('slug') required this.eventSlug,
@@ -31,23 +33,27 @@ class ImmersiveEventDetailRoutePage
 
   @override
   Widget buildScreen(BuildContext context, EventModel model) {
+    final selectedModel =
+        occurrenceId != null && occurrenceId!.trim().isNotEmpty
+            ? EventSelectedOccurrenceProjection.project(model, occurrenceId!)
+            : EventSelectedOccurrenceProjection.align(model);
     final fallbackImageValue = ThumbUriValue(
       defaultValue: Uri.parse('asset://event-placeholder'),
       isRequired: true,
     )..parse('asset://event-placeholder');
     final preferredImageUri = VenueEventResume.resolvePreferredImageUri(
-      model,
+      selectedModel,
       settingsDefaultImageValue: fallbackImageValue,
     );
     if (preferredImageUri.scheme == 'asset') {
       return ImmersiveEventDetailScreen(
-        event: model,
+        event: selectedModel,
       );
     }
     return ImagePaletteTheme(
       imageProvider: NetworkImage(preferredImageUri.toString()),
       builder: (context, scheme) => ImmersiveEventDetailScreen(
-        event: model,
+        event: selectedModel,
         colorScheme: scheme,
       ),
     );

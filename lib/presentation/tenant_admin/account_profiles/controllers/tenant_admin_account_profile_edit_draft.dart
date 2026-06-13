@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:image_picker/image_picker.dart';
 
 class TenantAdminAccountProfileEditDraft {
@@ -18,6 +19,7 @@ class TenantAdminAccountProfileEditDraft {
     required this.coverPreloadUrl,
     required this.avatarBusy,
     required this.coverBusy,
+    this.nestedProfileGroups = const <TenantAdminNestedProfileGroup>[],
   });
 
   factory TenantAdminAccountProfileEditDraft.initial() =>
@@ -35,6 +37,7 @@ class TenantAdminAccountProfileEditDraft {
         coverPreloadUrl: null,
         avatarBusy: false,
         coverBusy: false,
+        nestedProfileGroups: <TenantAdminNestedProfileGroup>[],
       );
 
   final String? selectedProfileType;
@@ -50,6 +53,7 @@ class TenantAdminAccountProfileEditDraft {
   final String? coverPreloadUrl;
   final bool avatarBusy;
   final bool coverBusy;
+  final List<TenantAdminNestedProfileGroup> nestedProfileGroups;
 
   TenantAdminAccountProfileEditDraft copyWith({
     Object? selectedProfileType = _unset,
@@ -65,6 +69,7 @@ class TenantAdminAccountProfileEditDraft {
     Object? coverPreloadUrl = _unset,
     bool? avatarBusy,
     bool? coverBusy,
+    List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
   }) {
     final nextSelectedProfileType = selectedProfileType == _unset
         ? this.selectedProfileType
@@ -100,6 +105,7 @@ class TenantAdminAccountProfileEditDraft {
       coverPreloadUrl: nextCoverPreloadUrl,
       avatarBusy: avatarBusy ?? this.avatarBusy,
       coverBusy: coverBusy ?? this.coverBusy,
+      nestedProfileGroups: nestedProfileGroups ?? this.nestedProfileGroups,
     );
   }
 
@@ -117,6 +123,7 @@ class TenantAdminAccountProfileEditDraft {
       coverRemoteError: false,
       avatarPreloadUrl: null,
       coverPreloadUrl: null,
+      nestedProfileGroups: updated.nestedProfileGroups,
     );
   }
 }

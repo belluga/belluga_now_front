@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
+import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/support/tenant_admin_poi_visual_json_normalizer.dart';
 
 class TenantAdminProfileTypeDTO {
   const TenantAdminProfileTypeDTO({
@@ -8,7 +9,10 @@ class TenantAdminProfileTypeDTO {
     required this.pluralLabel,
     required this.allowedTaxonomies,
     this.visual,
+    required this.isQueryable,
+    required this.isPubliclyNavigable,
     required this.isPubliclyDiscoverable,
+    required this.isInviteable,
     required this.isFavoritable,
     required this.isPoiEnabled,
     required this.isReferenceLocationEnabled,
@@ -18,6 +22,7 @@ class TenantAdminProfileTypeDTO {
     required this.hasAvatar,
     required this.hasCover,
     required this.hasEvents,
+    required this.hasNestedProfileGroups,
   });
 
   final String type;
@@ -25,7 +30,10 @@ class TenantAdminProfileTypeDTO {
   final String pluralLabel;
   final List<String> allowedTaxonomies;
   final TenantAdminPoiVisual? visual;
+  final bool isQueryable;
+  final bool isPubliclyNavigable;
   final bool isPubliclyDiscoverable;
+  final bool isInviteable;
   final bool isFavoritable;
   final bool isPoiEnabled;
   final bool isReferenceLocationEnabled;
@@ -35,6 +43,7 @@ class TenantAdminProfileTypeDTO {
   final bool hasAvatar;
   final bool hasCover;
   final bool hasEvents;
+  final bool hasNestedProfileGroups;
 
   factory TenantAdminProfileTypeDTO.fromJson(Map<String, dynamic> json) {
     final allowed = <String>[];
@@ -47,44 +56,19 @@ class TenantAdminProfileTypeDTO {
       }
     }
     final capabilities = json['capabilities'];
-    bool isPubliclyDiscoverable = false;
-    bool isFavoritable = false;
-    bool isPoiEnabled = false;
-    bool isReferenceLocationEnabled = false;
-    bool hasBio = false;
-    bool hasContent = false;
-    bool hasTaxonomies = false;
-    bool hasAvatar = false;
-    bool hasCover = false;
-    bool hasEvents = false;
-    if (capabilities is Map<String, dynamic>) {
-      final parsedFavoritable = _parseBool(capabilities['is_favoritable']);
-      isPubliclyDiscoverable =
-          capabilities.containsKey('is_publicly_discoverable')
-          ? _parseBool(capabilities['is_publicly_discoverable'])
-          : parsedFavoritable;
-      isFavoritable = isPubliclyDiscoverable && parsedFavoritable;
-      isPoiEnabled = _parseBool(capabilities['is_poi_enabled']);
-      isReferenceLocationEnabled =
-          isPoiEnabled &&
-          _parseBool(capabilities['is_reference_location_enabled']);
-      hasBio = _parseBool(capabilities['has_bio']);
-      hasContent = _parseBool(capabilities['has_content']);
-      hasTaxonomies = _parseBool(capabilities['has_taxonomies']);
-      hasAvatar = _parseBool(capabilities['has_avatar']);
-      hasCover = _parseBool(capabilities['has_cover']);
-      hasEvents = _parseBool(capabilities['has_events']);
-    }
-    final visualRaw = _resolveVisualRaw(
-      visualRaw: json['visual'] ?? json['poi_visual'],
-      typeAssetUrl: json['type_asset_url'],
-    );
+    final capabilityMap = capabilities is Map<String, dynamic>
+        ? Map<String, dynamic>.from(capabilities)
+        : const <String, dynamic>{};
     final labelsRaw = json['labels'];
     final labels = labelsRaw is Map<String, dynamic>
         ? labelsRaw
         : (labelsRaw is Map ? Map<String, dynamic>.from(labelsRaw) : const {});
     final singularLabel = labels['singular']?.toString().trim();
     final pluralLabel = labels['plural']?.toString().trim();
+    final visualRaw = tenantAdminResolvePoiVisualRaw(
+      visualRaw: json['visual'] ?? json['poi_visual'],
+      typeAssetUrl: json['type_asset_url'],
+    );
     return TenantAdminProfileTypeDTO(
       type: json['type']?.toString() ?? '',
       label: singularLabel != null && singularLabel.isNotEmpty
@@ -93,59 +77,27 @@ class TenantAdminProfileTypeDTO {
       pluralLabel: pluralLabel != null && pluralLabel.isNotEmpty
           ? pluralLabel
           : singularLabel != null && singularLabel.isNotEmpty
-          ? singularLabel
-          : json['label']?.toString() ?? '',
+              ? singularLabel
+              : json['label']?.toString() ?? '',
       allowedTaxonomies: allowed,
       visual: tenantAdminPoiVisualFromRaw(visualRaw),
-      isPubliclyDiscoverable: isPubliclyDiscoverable,
-      isFavoritable: isFavoritable,
-      isPoiEnabled: isPoiEnabled,
-      isReferenceLocationEnabled: isReferenceLocationEnabled,
-      hasBio: hasBio,
-      hasContent: hasContent,
-      hasTaxonomies: hasTaxonomies,
-      hasAvatar: hasAvatar,
-      hasCover: hasCover,
-      hasEvents: hasEvents,
+      isQueryable: capabilityMap['is_queryable'] == true,
+      isPubliclyNavigable: capabilityMap['is_publicly_navigable'] == true,
+      isPubliclyDiscoverable: capabilityMap['is_publicly_discoverable'] == true,
+      isInviteable: capabilityMap['is_inviteable'] == true,
+      isFavoritable: capabilityMap['is_favoritable'] == true,
+      isPoiEnabled: capabilityMap['is_poi_enabled'] == true,
+      isReferenceLocationEnabled:
+          capabilityMap['is_reference_location_enabled'] == true,
+      hasBio: capabilityMap['has_bio'] == true,
+      hasContent: capabilityMap['has_content'] == true,
+      hasTaxonomies: capabilityMap['has_taxonomies'] == true,
+      hasAvatar: capabilityMap['has_avatar'] == true,
+      hasCover: capabilityMap['has_cover'] == true,
+      hasEvents: capabilityMap['has_events'] == true,
+      hasNestedProfileGroups:
+          capabilityMap['has_nested_profile_groups'] == true,
     );
-  }
-
-  static bool _parseBool(dynamic value) {
-    if (value == true) return true;
-    if (value is num) return value != 0;
-    if (value is String) {
-      final normalized = value.trim().toLowerCase();
-      return normalized == 'true' || normalized == '1' || normalized == 'yes';
-    }
-    return false;
-  }
-
-  static Object? _resolveVisualRaw({
-    required Object? visualRaw,
-    required Object? typeAssetUrl,
-  }) {
-    if (visualRaw is! Map) {
-      return visualRaw;
-    }
-
-    final visualMap = Map<String, dynamic>.from(visualRaw);
-    if (_readTrimmedString(visualMap['image_url']) != null) {
-      return visualMap;
-    }
-
-    final fallbackTypeAssetUrl = _readTrimmedString(typeAssetUrl);
-    if (fallbackTypeAssetUrl != null) {
-      visualMap['image_url'] = fallbackTypeAssetUrl;
-    }
-    return visualMap;
-  }
-
-  static String? _readTrimmedString(Object? raw) {
-    final value = raw?.toString().trim();
-    if (value == null || value.isEmpty) {
-      return null;
-    }
-    return value;
   }
 
   TenantAdminProfileTypeDefinition toDomain() {
@@ -156,7 +108,10 @@ class TenantAdminProfileTypeDTO {
       allowedTaxonomies: allowedTaxonomies,
       visual: visual,
       capabilities: TenantAdminProfileTypeCapabilities(
+        isQueryable: TenantAdminFlagValue(isQueryable),
+        isPubliclyNavigable: TenantAdminFlagValue(isPubliclyNavigable),
         isPubliclyDiscoverable: TenantAdminFlagValue(isPubliclyDiscoverable),
+        isInviteable: TenantAdminFlagValue(isInviteable),
         isFavoritable: TenantAdminFlagValue(isFavoritable),
         isPoiEnabled: TenantAdminFlagValue(isPoiEnabled),
         isReferenceLocationEnabled: TenantAdminFlagValue(
@@ -168,6 +123,7 @@ class TenantAdminProfileTypeDTO {
         hasAvatar: TenantAdminFlagValue(hasAvatar),
         hasCover: TenantAdminFlagValue(hasCover),
         hasEvents: TenantAdminFlagValue(hasEvents),
+        hasNestedProfileGroups: TenantAdminFlagValue(hasNestedProfileGroups),
       ),
     );
   }

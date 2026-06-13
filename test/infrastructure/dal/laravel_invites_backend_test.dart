@@ -51,7 +51,8 @@ void main() {
 
     await backend.fetchInvites(page: 1, pageSize: 20);
 
-    expect(authRepository.initCallCount, 1);
+    expect(authRepository.ensureTenantPublicIdentityReadyCallCount, 1);
+    expect(authRepository.initCallCount, 0);
     expect(
       adapter.lastRequest?.headers['Authorization'],
       'Bearer refreshed-token',
@@ -59,20 +60,101 @@ void main() {
     expect(adapter.lastRequest?.uri.path, '/api/v1/invites');
   });
 
-  test('watchInvitesStream forwards auth and last event id', () {
+  test(
+      'fetchSettings revalidates persisted token before tenant-public invite requests',
+      () async {
+    final authRepository = GetIt.I.get<AuthRepositoryContract<UserContract>>()
+        as _FakeAuthRepository;
+    authRepository.setUserToken(authRepoString('stale-token'));
+    authRepository.tokenAfterInit = 'refreshed-token';
+    authRepository.refreshTokenOnInit = true;
+
+    final adapter = _RecordingAdapter(
+      response: const {
+        'data': {
+          'invite_settings': {},
+        },
+      },
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final backend = LaravelInvitesBackend(dio: dio);
+
+    await backend.fetchSettings();
+
+    expect(authRepository.ensureTenantPublicIdentityReadyCallCount, 1);
+    expect(authRepository.initCallCount, 0);
+    expect(
+      adapter.lastRequest?.headers['Authorization'],
+      'Bearer refreshed-token',
+    );
+    expect(adapter.lastRequest?.uri.path, '/api/v1/invites/settings');
+  });
+
+  test('fetchSettings fails closed when auth repository is missing', () async {
+    await GetIt.I.reset();
+    GetIt.I.registerSingleton<AppData>(_buildAppData());
+
+    final adapter = _RecordingAdapter(
+      response: const {
+        'data': {
+          'invite_settings': {},
+        },
+      },
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final backend = LaravelInvitesBackend(dio: dio);
+
+    await expectLater(
+      () => backend.fetchSettings(),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          contains('require a registered AuthRepositoryContract'),
+        ),
+      ),
+    );
+    expect(adapter.lastRequest, isNull);
+  });
+
+  test('watchInvitesStream forwards auth and last event id', () async {
     final sseClient = _RecordingSseClient();
     final backend = LaravelInvitesBackend(
       dio: Dio()..httpClientAdapter = _RecordingAdapter(response: const {}),
       sseClient: sseClient,
     );
 
-    backend.watchInvitesStream(lastEventId: 'cursor-1');
+    await backend.watchInvitesStream(lastEventId: 'cursor-1').drain<void>();
 
     expect(sseClient.lastUri?.path, '/api/v1/invites/stream');
     expect(sseClient.lastUri?.queryParameters['access_token'], 'test-token');
     expect(sseClient.lastUri?.queryParameters['last_event_id'], 'cursor-1');
     expect(sseClient.lastEventId, 'cursor-1');
     expect(sseClient.lastHeaders?['Authorization'], 'Bearer test-token');
+  });
+
+  test(
+      'watchInvitesStream revalidates persisted token before tenant-public invite streams',
+      () async {
+    final authRepository = GetIt.I.get<AuthRepositoryContract<UserContract>>()
+        as _FakeAuthRepository;
+    authRepository.setUserToken(authRepoString('stale-token'));
+    authRepository.tokenAfterInit = 'refreshed-token';
+    authRepository.refreshTokenOnInit = true;
+
+    final sseClient = _RecordingSseClient();
+    final backend = LaravelInvitesBackend(
+      dio: Dio()..httpClientAdapter = _RecordingAdapter(response: const {}),
+      sseClient: sseClient,
+    );
+
+    await backend.watchInvitesStream(lastEventId: 'cursor-1').drain<void>();
+
+    expect(authRepository.ensureTenantPublicIdentityReadyCallCount, 1);
+    expect(authRepository.initCallCount, 0);
+    expect(sseClient.lastUri?.queryParameters['access_token'],
+        'refreshed-token');
+    expect(sseClient.lastHeaders?['Authorization'], 'Bearer refreshed-token');
   });
 
   test('fetchSentInviteStatuses targets occurrence-scoped endpoint', () async {
@@ -214,6 +296,8 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   String _token = 'test-token';
   String? tokenAfterInit;
   int initCallCount = 0;
+  int ensureTenantPublicIdentityReadyCallCount = 0;
+  bool refreshTokenOnInit = false;
 
   @override
   BackendContract get backend => throw UnimplementedError();
@@ -241,7 +325,17 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   @override
   Future<void> init() async {
     initCallCount += 1;
-    if (_token.trim().isEmpty &&
+    if ((refreshTokenOnInit || _token.trim().isEmpty) &&
+        tokenAfterInit != null &&
+        tokenAfterInit!.trim().isNotEmpty) {
+      _token = tokenAfterInit!;
+    }
+  }
+
+  @override
+  Future<void> ensureTenantPublicIdentityReady() async {
+    ensureTenantPublicIdentityReadyCallCount += 1;
+    if ((refreshTokenOnInit || _token.trim().isEmpty) &&
         tokenAfterInit != null &&
         tokenAfterInit!.trim().isNotEmpty) {
       _token = tokenAfterInit!;

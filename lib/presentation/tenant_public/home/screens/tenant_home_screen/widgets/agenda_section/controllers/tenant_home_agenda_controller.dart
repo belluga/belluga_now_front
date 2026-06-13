@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/domain/app_data/location_origin_settings.dart';
@@ -202,6 +203,10 @@ class TenantHomeAgendaController extends Object
   LocationOriginSettings? _effectiveOriginSettings;
   double? _pendingPersistedRadiusEchoMeters;
   bool _locationPermissionRequested = false;
+  DiscoveryFilterCatalog _baselineDiscoveryFilterCatalog =
+      const DiscoveryFilterCatalog(surface: _homeEventsFilterSurface);
+  DiscoveryFilterCatalog _runtimePrimaryDiscoveryFilterCatalog =
+      const DiscoveryFilterCatalog(surface: _homeEventsFilterSurface);
 
   Uri get defaultEventImageUri {
     final configured = _appDataRepository.appData.mainLogoDarkUrl.value;
@@ -376,7 +381,12 @@ class TenantHomeAgendaController extends Object
         discoveryFilterSelectionStreamValue.value.isNotEmpty;
     final catalogFuture = loadPublicDiscoveryFilterCatalog(
       restoredSelection: restoredSelection,
-    );
+    ).then((_) {
+      _baselineDiscoveryFilterCatalog = discoveryFilterCatalogStreamValue.value;
+      _runtimePrimaryDiscoveryFilterCatalog =
+          discoveryFilterCatalogStreamValue.value;
+      _reconcileRuntimeDiscoveryFilterCatalog();
+    });
     if (mustAwaitCatalogBeforeResults) {
       await catalogFuture;
     } else {
@@ -414,14 +424,16 @@ class TenantHomeAgendaController extends Object
       return;
     }
 
-    final cachedResolution = _locationOriginService.effectiveOriginStreamValue.value;
+    final cachedResolution =
+        _locationOriginService.effectiveOriginStreamValue.value;
     if (cachedResolution?.effectiveCoordinate != null) {
       _applyResolvedEffectiveOrigin(cachedResolution!);
       return;
     }
 
     try {
-      final resolution = await _locationOriginService.effectiveOriginStreamValue.stream
+      final resolution = await _locationOriginService
+          .effectiveOriginStreamValue.stream
           .firstWhere((value) => value?.effectiveCoordinate != null)
           .timeout(_initialCanonicalOriginSettleTimeout);
       if (resolution != null) {
@@ -666,6 +678,11 @@ class TenantHomeAgendaController extends Object
           categories: categories,
           taxonomy: taxonomy,
         );
+      }
+
+      final selectionAdjusted = _reconcileRuntimeDiscoveryFilterCatalog();
+      if (selectionAdjusted) {
+        return;
       }
 
       if (!append &&
@@ -948,6 +965,60 @@ class TenantHomeAgendaController extends Object
       );
     }
     return taxonomy.isEmpty ? null : taxonomy;
+  }
+
+  bool _reconcileRuntimeDiscoveryFilterCatalog() {
+    final facets =
+        _scheduleRepository.homeAgendaDiscoveryFilterFacetsStreamValue.value;
+    if (facets == null || _baselineDiscoveryFilterCatalog.isEmpty) {
+      return false;
+    }
+
+    final selection = discoveryFilterSelectionStreamValue.value;
+    final preservePrimaryFilters = selection.primaryKeys.isNotEmpty;
+    final baselineCatalog =
+        preservePrimaryFilters && !_runtimePrimaryDiscoveryFilterCatalog.isEmpty
+            ? _runtimePrimaryDiscoveryFilterCatalog
+            : _baselineDiscoveryFilterCatalog;
+    final runtimeCatalog = facets.applyToCatalog(
+      baselineCatalog,
+      preservePrimaryFilters: preservePrimaryFilters,
+    );
+    if (!preservePrimaryFilters && !runtimeCatalog.isEmpty) {
+      _runtimePrimaryDiscoveryFilterCatalog = runtimeCatalog;
+    }
+    if (!_sameDiscoveryFilterCatalog(
+      discoveryFilterCatalogStreamValue.value,
+      runtimeCatalog,
+    )) {
+      _ifAlive(
+          () => discoveryFilterCatalogStreamValue.addValue(runtimeCatalog));
+    }
+
+    final repairedSelection = repairPublicDiscoveryFilterSelection(
+      selection,
+      catalogOverride: runtimeCatalog,
+    );
+    if (samePublicDiscoveryFilterSelection(
+      selection,
+      repairedSelection,
+    )) {
+      return false;
+    }
+
+    _ifAlive(
+      () => discoveryFilterSelectionStreamValue.addValue(repairedSelection),
+    );
+    unawaited(persistPublicDiscoveryFilterSelection(repairedSelection));
+    _queueRefreshRequest(preserveCurrentResults: true);
+    return true;
+  }
+
+  bool _sameDiscoveryFilterCatalog(
+    DiscoveryFilterCatalog left,
+    DiscoveryFilterCatalog right,
+  ) {
+    return jsonEncode(left.toJson()) == jsonEncode(right.toJson());
   }
 
   void _listenForStatusChanges() {

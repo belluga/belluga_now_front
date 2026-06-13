@@ -371,6 +371,19 @@ InviteModel _buildInvite(String id) {
 }
 
 void main() {
+  test('resolveFallbackNavigationPath defaults to home when raw fallback is absent',
+      () async {
+    final controller = InviteFlowScreenController(
+      repository: _FakeInvitesRepository(initialInvites: const []),
+      userEventsRepository: _FakeUserEventsRepository(),
+      telemetryRepository: _FakeTelemetryRepository(),
+    );
+
+    final path = await controller.resolveFallbackNavigationPath(null);
+
+    expect(path, '/');
+  });
+
   test('invite_opened fires when the top invite changes', () async {
     final telemetry = _FakeTelemetryRepository();
     final invites = [_buildInvite('1'), _buildInvite('2')];

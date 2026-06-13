@@ -10,6 +10,8 @@ class TenantAdminEventOccurrence {
         const <TenantAdminAccountProfileIdValue>[],
     List<TenantAdminAccountProfile> relatedAccountProfiles =
         const <TenantAdminAccountProfile>[],
+    List<TenantAdminNestedProfileGroup> profileGroups =
+        const <TenantAdminNestedProfileGroup>[],
     List<TenantAdminEventProgrammingItem> programmingItems =
         const <TenantAdminEventProgrammingItem>[],
     TenantAdminTaxonomyTerms? taxonomyTerms,
@@ -25,6 +27,9 @@ class TenantAdminEventOccurrence {
         relatedAccountProfiles = List<TenantAdminAccountProfile>.unmodifiable(
           relatedAccountProfiles,
         ),
+        profileGroups = List<TenantAdminNestedProfileGroup>.unmodifiable(
+          profileGroups,
+        ),
         programmingItems = List<TenantAdminEventProgrammingItem>.unmodifiable(
           programmingItems,
         ),
@@ -36,6 +41,7 @@ class TenantAdminEventOccurrence {
   final TenantAdminOptionalTextValue occurrenceSlugValue;
   final List<TenantAdminAccountProfileIdValue> relatedAccountProfileIdValues;
   final List<TenantAdminAccountProfile> relatedAccountProfiles;
+  final List<TenantAdminNestedProfileGroup> profileGroups;
   final List<TenantAdminEventProgrammingItem> programmingItems;
   final TenantAdminTaxonomyTerms taxonomyTerms;
 

@@ -1,10 +1,17 @@
+import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
+import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
@@ -18,10 +25,12 @@ import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
 import 'package:belluga_now/testing/account_profile_model_factory.dart';
+import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:belluga_now/testing/invite_model_factory.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 void main() {
@@ -154,7 +163,7 @@ void main() {
     expect(controller.distanceLabelFor(profile, event), '752 m');
   });
 
-  test('toggleFavorite is allowed for anonymous users', () {
+  test('toggleFavorite requires authentication for anonymous users', () {
     final accountProfileRepository = _FakeAccountProfilesRepository();
     final controller = AccountProfileDetailController(
       accountProfilesRepository: accountProfileRepository,
@@ -163,12 +172,168 @@ void main() {
 
     final result = controller.toggleFavorite('507f1f77bcf86cd799439011');
 
-    expect(result, AccountProfileFavoriteToggleOutcome.toggled);
+    expect(result, AccountProfileFavoriteToggleOutcome.requiresAuthentication);
     expect(
       accountProfileRepository.toggleFavoriteCalls,
-      ['507f1f77bcf86cd799439011'],
+      isEmpty,
     );
   });
+
+  test(
+      'setAsReferencePoint persists account profile provenance and coordinate snapshot',
+      () async {
+    await _registerReferenceAppData(referenceLocationEnabled: true);
+    final proximityRepository = _FakeProximityPreferencesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: _FakeAccountProfilesRepository(),
+      proximityPreferencesRepository: proximityRepository,
+    );
+    final profile = _buildReferenceProfile();
+
+    final saved = await controller.setAsReferencePoint(profile);
+
+    expect(saved, isTrue);
+    final fixedReference = proximityRepository.lastFixedReference;
+    expect(fixedReference, isNotNull);
+    expect(
+      fixedReference!.sourceKind,
+      FixedLocationReferenceSourceKind.entityReference,
+    );
+    expect(fixedReference.label, 'Casa Marracini');
+    expect(fixedReference.entityNamespace, 'account_profile');
+    expect(fixedReference.entityType, 'restaurant');
+    expect(fixedReference.entityId, '507f1f77bcf86cd799439012');
+    expect(fixedReference.entitySlug, 'casa-marracini');
+    expect(fixedReference.coordinate.latitude, closeTo(-20.7389, 0.000001));
+    expect(fixedReference.coordinate.longitude, closeTo(-40.8212, 0.000001));
+  });
+
+  test('reference point eligibility requires capability and coordinates',
+      () async {
+    await _registerReferenceAppData(referenceLocationEnabled: true);
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: _FakeAccountProfilesRepository(),
+      proximityPreferencesRepository: _FakeProximityPreferencesRepository(),
+    );
+
+    expect(controller.canUseAsReferencePoint(_buildReferenceProfile()), isTrue);
+    expect(
+      controller.canUseAsReferencePoint(
+        _buildReferenceProfile(locationLat: null, locationLng: null),
+      ),
+      isFalse,
+    );
+
+    await _registerReferenceAppData(referenceLocationEnabled: false);
+    expect(
+        controller.canUseAsReferencePoint(_buildReferenceProfile()), isFalse);
+  });
+
+  test('isCurrentReferencePoint matches active account profile provenance',
+      () async {
+    await _registerReferenceAppData(referenceLocationEnabled: true);
+    final profile = _buildReferenceProfile();
+    final proximityRepository = _FakeProximityPreferencesRepository(
+      fixedReference: _fixedReferenceFor(profile),
+    );
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: _FakeAccountProfilesRepository(),
+      proximityPreferencesRepository: proximityRepository,
+    );
+
+    expect(controller.isCurrentReferencePoint(profile), isTrue);
+    expect(
+      controller.isCurrentReferencePoint(
+        _buildReferenceProfile(
+          id: '507f1f77bcf86cd799439099',
+          slug: 'outra-casa',
+        ),
+      ),
+      isFalse,
+    );
+  });
+}
+
+Future<void> _registerReferenceAppData({
+  required bool referenceLocationEnabled,
+}) async {
+  await GetIt.I.reset(dispose: false);
+  GetIt.I.registerSingleton<AppData>(
+    buildAppDataFromInitialization(
+      remoteData: {
+        'name': 'Tenant Test',
+        'type': 'tenant',
+        'main_domain': 'https://tenant.test',
+        'profile_types': [
+          {
+            'type': 'restaurant',
+            'label': 'Restaurante',
+            'allowed_taxonomies': [],
+            'capabilities': {
+              'is_favoritable': true,
+              'is_poi_enabled': true,
+              'is_reference_location_enabled': referenceLocationEnabled,
+              'has_events': false,
+              'has_bio': false,
+            },
+          },
+        ],
+        'domains': ['https://tenant.test'],
+        'app_domains': const [],
+        'theme_data_settings': {
+          'brightness_default': 'light',
+          'primary_seed_color': '#FFFFFF',
+          'secondary_seed_color': '#7E22CE',
+        },
+        'main_color': '#7E22CE',
+        'tenant_id': 'tenant-1',
+        'telemetry': const {'trackers': []},
+        'telemetry_context': const {'location_freshness_minutes': 5},
+        'firebase': null,
+        'push': null,
+      },
+      localInfo: const {
+        'platformType': 'mobile',
+        'hostname': 'tenant.test',
+        'href': 'https://tenant.test',
+        'port': null,
+        'device': 'test-device',
+      },
+    ),
+  );
+}
+
+AccountProfileModel _buildReferenceProfile({
+  String id = '507f1f77bcf86cd799439012',
+  String slug = 'casa-marracini',
+  double? locationLat = -20.7389,
+  double? locationLng = -40.8212,
+}) {
+  return buildAccountProfileModelFromPrimitives(
+    id: id,
+    name: 'Casa Marracini',
+    slug: slug,
+    type: 'restaurant',
+    locationLat: locationLat,
+    locationLng: locationLng,
+  );
+}
+
+FixedLocationReference _fixedReferenceFor(AccountProfileModel profile) {
+  return FixedLocationReference(
+    sourceKind: FixedLocationReferenceSourceKind.entityReference,
+    coordinate: CityCoordinate(
+      latitudeValue: LatitudeValue()..parse(profile.locationLat.toString()),
+      longitudeValue: LongitudeValue()..parse(profile.locationLng.toString()),
+    ),
+    labelValue: ProximityPreferenceOptionalTextValue.fromRaw(profile.name),
+    entityNamespaceValue:
+        ProximityPreferenceOptionalTextValue.fromRaw('account_profile'),
+    entityTypeValue:
+        ProximityPreferenceOptionalTextValue.fromRaw(profile.profileType),
+    entityIdValue: ProximityPreferenceOptionalTextValue.fromRaw(profile.id),
+    entitySlugValue: ProximityPreferenceOptionalTextValue.fromRaw(profile.slug),
+  );
 }
 
 class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
@@ -246,6 +411,36 @@ class _FakeAuthRepository extends Fake
 
   @override
   bool get isAuthorized => authorized;
+}
+
+class _FakeProximityPreferencesRepository
+    extends ProximityPreferencesRepositoryContract {
+  _FakeProximityPreferencesRepository({
+    FixedLocationReference? fixedReference,
+  }) {
+    if (fixedReference != null) {
+      setCurrentPreference(_preferenceWith(fixedReference));
+    }
+  }
+
+  FixedLocationReference? lastFixedReference;
+
+  @override
+  Future<void> setFixedReference({
+    required FixedLocationReference fixedReference,
+  }) async {
+    lastFixedReference = fixedReference;
+    setCurrentPreference(_preferenceWith(fixedReference));
+  }
+
+  ProximityPreference _preferenceWith(FixedLocationReference fixedReference) {
+    return ProximityPreference(
+      maxDistanceMetersValue: DistanceInMetersValue.fromRaw(25000),
+      locationPreference: ProximityLocationPreference.fixedReference(
+        fixedReference: fixedReference,
+      ),
+    );
+  }
 }
 
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {

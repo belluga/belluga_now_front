@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/guards/location_permission_gate_result.dart';
-import 'package:belluga_now/application/router/guards/location_permission_gate_runtime.dart';
 import 'package:belluga_now/application/router/guards/location_permission_state.dart';
 import 'package:belluga_now/application/router/support/tenant_public_map_entry_flow.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,12 +11,10 @@ import 'package:mockito/mockito.dart';
 void main() {
   setUp(() {
     resetTenantPublicMapEntryFlowForTesting();
-    LocationPermissionGateRuntime.resetForTesting();
   });
 
   tearDown(() {
     resetTenantPublicMapEntryFlowForTesting();
-    LocationPermissionGateRuntime.resetForTesting();
   });
 
   test('opens map directly when no permission blocker exists', () async {
@@ -74,9 +71,39 @@ void main() {
       CityMapRoute.name,
     ]);
     expect(router.maybePopCalls, 0);
+    expect(
+      (router.replaceCalls.single as CityMapRoute).args?.locationGateResult,
+      LocationPermissionGateResult.granted,
+    );
   });
 
-  test('resolved warm flow clears the in-flight mutex for the next entry', () async {
+  test('web granted warm permission flow performs full-document reentry',
+      () async {
+    final router = _RecordingStackRouter(
+      permissionResult: LocationPermissionGateResult.granted,
+    );
+    final reentryPaths = <String>[];
+
+    await openTenantPublicMapEntryFlow(
+      router,
+      blockerLoader: () async => LocationPermissionState.denied,
+      documentReentry: (redirectPath) {
+        reentryPaths.add(redirectPath);
+        return true;
+      },
+    );
+    await Future<void>.microtask(() {});
+
+    expect(router.pushCalls.map((route) => route.routeName).toList(), [
+      LocationPermissionRoute.name,
+    ]);
+    expect(reentryPaths, ['/mapa']);
+    expect(router.replaceCalls, isEmpty);
+    expect(router.maybePopCalls, 0);
+  });
+
+  test('resolved warm flow clears the in-flight mutex for the next entry',
+      () async {
     final router = _RecordingStackRouter(
       permissionResult: LocationPermissionGateResult.granted,
     );
@@ -124,8 +151,8 @@ void main() {
     ]);
     expect(router.maybePopCalls, 0);
     expect(
-      LocationPermissionGateRuntime.consumeSoftLocationFallbackEntry(),
-      isTrue,
+      (router.replaceCalls.single as CityMapRoute).args?.locationGateResult,
+      LocationPermissionGateResult.continueWithoutLocation,
     );
   });
 
@@ -252,8 +279,8 @@ class _RecordingStackRouter extends Mock implements RootStackRouter {
   final bool keepPermissionFuturePendingAfterResult;
   final List<PageRouteInfo<dynamic>> pushCalls = <PageRouteInfo<dynamic>>[];
   final List<PageRouteInfo<dynamic>> replaceCalls = <PageRouteInfo<dynamic>>[];
-  final List<Completer<LocationPermissionGateResult?>> _pendingPermissionPushes =
-      <Completer<LocationPermissionGateResult?>>[];
+  final List<Completer<LocationPermissionGateResult?>>
+      _pendingPermissionPushes = <Completer<LocationPermissionGateResult?>>[];
   int maybePopCalls = 0;
 
   @override

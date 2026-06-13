@@ -4,6 +4,7 @@ export 'location_resolution_phase.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/repositories/location_resolution_phase.dart';
 import 'package:belluga_now/domain/repositories/location_tracking_mode.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_bool_value.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_duration_value.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_text_value.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -42,9 +43,14 @@ abstract class UserLocationRepositoryContract {
     UserLocationRepositoryContractDurationValue? minInterval,
   });
 
-  /// Resolves location, requesting permission if needed (interactive).
+  /// Resolves a live location fix, optionally requesting permission.
+  /// Callers that already own the permission boundary should pass
+  /// `requestPermissionIfNeededValue: false` plus an explicit timeout.
   /// Returns a user-facing error/warning message when location cannot be resolved.
-  Future<UserLocationRepositoryContractPrimString?> resolveUserLocation();
+  Future<UserLocationRepositoryContractPrimString?> resolveUserLocation({
+    UserLocationRepositoryContractDurationValue? timeout,
+    UserLocationRepositoryContractBoolValue? requestPermissionIfNeededValue,
+  });
 
   /// Starts a continuous location stream while the caller is active (e.g., map screen).
   /// Must be paired with [stopTracking] to avoid unnecessary battery usage.

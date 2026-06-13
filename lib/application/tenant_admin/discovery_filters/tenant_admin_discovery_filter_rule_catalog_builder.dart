@@ -30,7 +30,10 @@ class TenantAdminDiscoveryFilterRuleCatalogBuilder {
     List<TenantAdminEventType> eventTypes = const <TenantAdminEventType>[],
   }) {
     final accountTypeOptions = accountTypes
-        .where((item) => item.type.trim().isNotEmpty)
+        .where(
+          (item) =>
+              item.type.trim().isNotEmpty && item.capabilities.isPoiEnabled,
+        )
         .map(
           (item) => TenantAdminMapFilterTypeOption(
             slugValue: _tokenValue(item.type.trim().toLowerCase()),

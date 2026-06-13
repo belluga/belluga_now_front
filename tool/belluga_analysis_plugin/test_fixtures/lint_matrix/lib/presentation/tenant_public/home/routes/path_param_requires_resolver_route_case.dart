@@ -30,6 +30,11 @@ abstract class ResolverRoute<TModel, TModule extends ModuleContract>
   const ResolverRoute({super.key});
 }
 
+abstract class RouteScopedResolverRoute<TModel, TModule extends ModuleContract>
+    extends ResolverRoute<TModel, TModule> {
+  const RouteScopedResolverRoute({super.key});
+}
+
 class _FixtureModule extends ModuleContract {}
 
 class _FixtureModel {}
@@ -37,18 +42,22 @@ class _FixtureModel {}
 // expect_lint: route_path_param_requires_resolver_route
 @RoutePage(name: 'LegacyRoute')
 class _LegacyRoutePage extends StatelessWidget {
-  const _LegacyRoutePage({
-    @PathParam('slug') required this.slug,
-  });
+  const _LegacyRoutePage({@PathParam('slug') required this.slug});
 
   final String slug;
 }
 
 @RoutePage(name: 'HydratedRoute')
 class _HydratedRoutePage extends ResolverRoute<_FixtureModel, _FixtureModule> {
-  const _HydratedRoutePage({
-    @PathParam('slug') required this.slug,
-  });
+  const _HydratedRoutePage({@PathParam('slug') required this.slug});
+
+  final String slug;
+}
+
+@RoutePage(name: 'RouteScopedHydratedRoute')
+class _RouteScopedHydratedRoutePage
+    extends RouteScopedResolverRoute<_FixtureModel, _FixtureModule> {
+  const _RouteScopedHydratedRoutePage({@PathParam('slug') required this.slug});
 
   final String slug;
 }

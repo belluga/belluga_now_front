@@ -67,7 +67,7 @@ class TenantAdminDiscoveryFilterCatalogItem {
       'primary_selection_mode': primarySelectionMode,
       if (imageUri != null) 'image_uri': imageUri,
       'override_marker': overrideMarker,
-      if (overrideMarker && markerOverride?.isValid == true)
+      if (markerOverride?.isValid == true)
         'marker_override': markerOverride!.toJson().value,
       'query': query.toJson().value,
     });

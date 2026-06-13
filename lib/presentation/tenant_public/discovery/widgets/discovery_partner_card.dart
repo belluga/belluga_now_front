@@ -21,18 +21,22 @@ class DiscoveryPartnerCard extends StatelessWidget {
   final bool isFavorite;
   final bool isFavoritable;
   final VoidCallback onFavoriteTap;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final ResolvedAccountProfileVisual resolvedVisual;
   final bool showDetails;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final canOpenPublicDetail = onTap != null;
+    final semanticLabel = canOpenPublicDetail
+        ? 'Abrir perfil ${partner.name}'
+        : 'Perfil ${partner.name}';
 
     return Semantics(
       container: true,
-      button: true,
-      label: 'Abrir perfil ${partner.name}',
+      button: canOpenPublicDetail,
+      label: semanticLabel,
       onTap: onTap,
       child: InkWell(
         borderRadius: BorderRadius.circular(26),
@@ -253,6 +257,8 @@ class _CardImage extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final imageUrl = resolvedVisual.surfaceImageUrl;
     final isLiveNow = _isLiveNow(partner);
+    final favoriteLabel =
+        isFavorite ? 'Perfil favoritado' : 'Favoritar perfil ${partner.name}';
 
     return AspectRatio(
       aspectRatio: 0.92,
@@ -314,16 +320,25 @@ class _CardImage extends StatelessWidget {
               Positioned(
                 top: 8,
                 right: 8,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.black.withValues(alpha: 0.36),
-                  ),
-                  child: IconButton(
-                    onPressed: onFavoriteTap,
-                    icon: Icon(
-                      isFavorite ? Icons.favorite : Icons.favorite_border,
-                      color: isFavorite ? colorScheme.error : Colors.white,
+                child: Semantics(
+                  container: true,
+                  button: true,
+                  label: favoriteLabel,
+                  onTap: onFavoriteTap,
+                  excludeSemantics: true,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.black.withValues(alpha: 0.36),
+                    ),
+                    child: IconButton(
+                      key: Key('discoveryFavoriteButton_${partner.id}'),
+                      tooltip: favoriteLabel,
+                      onPressed: onFavoriteTap,
+                      icon: Icon(
+                        isFavorite ? Icons.favorite : Icons.favorite_border,
+                        color: isFavorite ? colorScheme.error : Colors.white,
+                      ),
                     ),
                   ),
                 ),

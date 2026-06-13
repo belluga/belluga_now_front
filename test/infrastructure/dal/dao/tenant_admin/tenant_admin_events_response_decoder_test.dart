@@ -108,6 +108,71 @@ void main() {
     expect(event.venueDisplayName, 'Casa Solar');
   });
 
+  test('filters venue from admin related account profile payloads', () {
+    final event = decoder.decodeEventItem({
+      'data': {
+        'event_id': 'evt-venue-filter',
+        'slug': 'evento-venue-filter',
+        'title': 'Evento',
+        'content': 'Conteudo',
+        'type': {
+          'id': 'type-1',
+          'name': 'Show',
+          'slug': 'show',
+          'description': '',
+        },
+        'date_time_start': '2026-04-05T20:00:00+00:00',
+        'publication': {'status': 'draft'},
+        'linked_account_profiles': [
+          {
+            'id': 'venue-1',
+            'account_id': 'venue-1',
+            'display_name': 'Venue One',
+            'profile_type': 'venue',
+          },
+          {
+            'id': 'artist-1',
+            'account_id': 'artist-1',
+            'display_name': 'Artist One',
+            'profile_type': 'artist',
+          },
+        ],
+        'occurrences': [
+          {
+            'date_time_start': '2026-04-05T20:00:00+00:00',
+            'linked_account_profiles': [
+              {
+                'id': 'venue-1',
+                'account_id': 'venue-1',
+                'display_name': 'Venue One',
+                'profile_type': 'venue',
+              },
+              {
+                'id': 'artist-1',
+                'account_id': 'artist-1',
+                'display_name': 'Artist One',
+                'profile_type': 'artist',
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(
+      event.relatedAccountProfiles
+          .map((entry) => entry.profileType)
+          .toList(growable: false),
+      ['artist'],
+    );
+    expect(
+      event.occurrences.single.relatedAccountProfiles
+          .map((entry) => entry.profileType)
+          .toList(growable: false),
+      ['artist'],
+    );
+  });
+
   test('preserves taxonomy display snapshots on event and related profiles',
       () {
     final event = decoder.decodeEventItem({
@@ -454,7 +519,136 @@ void main() {
     expect(
       event.occurrences.single.relatedAccountProfiles
           .map((profile) => profile.id),
-      ['venue-1', 'artist-1'],
+      ['artist-1'],
+    );
+  });
+
+  test(
+      'prefers visible profile_groups members over stale event_parties counts in admin event readback',
+      () {
+    final event = decoder.decodeEventItem({
+      'data': {
+        'event_id': 'evt-stale-group-readback',
+        'slug': 'evento-stale-group-readback',
+        'title': 'Evento stale group readback',
+        'content': 'Conteudo',
+        'type': {
+          'id': 'type-1',
+          'name': 'Show',
+          'slug': 'show',
+        },
+        'date_time_start': '2026-04-05T20:00:00+00:00',
+        'publication': {'status': 'draft'},
+        'event_parties': [
+          {
+            'party_type': 'artist',
+            'party_ref_id': 'artist-1',
+            'permissions': {'can_edit': true},
+          },
+          {
+            'party_type': 'delegate',
+            'party_ref_id': 'delegate-1',
+            'permissions': {'can_edit': false},
+          },
+          {
+            'party_type': 'hidden_guest',
+            'party_ref_id': 'hidden-1',
+            'permissions': {'can_edit': false},
+          },
+        ],
+        'linked_account_profiles': [
+          {
+            'id': 'artist-1',
+            'account_id': 'artist-1',
+            'display_name': 'Artist One',
+            'profile_type': 'artist',
+          },
+          {
+            'id': 'delegate-1',
+            'account_id': 'delegate-1',
+            'display_name': 'Delegate One',
+            'profile_type': 'delegate',
+          },
+        ],
+        'profile_groups': [
+          {
+            'id': 'outro-grupo',
+            'label': 'Outro Grupo',
+            'order': 0,
+            'account_profile_ids': ['artist-1', 'delegate-1', 'hidden-1'],
+          },
+        ],
+        'occurrences': [
+          {
+            'occurrence_id': 'occ-1',
+            'date_time_start': '2026-04-05T20:00:00+00:00',
+            'own_event_parties': [
+              {
+                'party_type': 'artist',
+                'party_ref_id': 'artist-1',
+                'permissions': {'can_edit': true},
+              },
+              {
+                'party_type': 'delegate',
+                'party_ref_id': 'delegate-1',
+                'permissions': {'can_edit': false},
+              },
+              {
+                'party_type': 'hidden_guest',
+                'party_ref_id': 'hidden-1',
+                'permissions': {'can_edit': false},
+              },
+            ],
+            'own_linked_account_profiles': [
+              {
+                'id': 'artist-1',
+                'account_id': 'artist-1',
+                'display_name': 'Artist One',
+                'profile_type': 'artist',
+              },
+              {
+                'id': 'delegate-1',
+                'account_id': 'delegate-1',
+                'display_name': 'Delegate One',
+                'profile_type': 'delegate',
+              },
+            ],
+            'profile_groups': [
+              {
+                'id': 'outro-grupo',
+                'label': 'Outro Grupo',
+                'order': 0,
+                'account_profile_ids': ['artist-1', 'delegate-1', 'hidden-1'],
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(
+      event.profileGroups.single.accountProfileIdValues
+          .map((value) => value.value)
+          .toList(growable: false),
+      ['artist-1', 'delegate-1'],
+    );
+    expect(
+      event.relatedAccountProfileIds.map((value) => value.value).toList(
+            growable: false,
+          ),
+      ['artist-1', 'delegate-1'],
+    );
+    expect(
+      event.occurrences.single.profileGroups.single.accountProfileIdValues
+          .map((value) => value.value)
+          .toList(growable: false),
+      ['artist-1', 'delegate-1'],
+    );
+    expect(
+      event.occurrences.single.relatedAccountProfileIds
+          .map((value) => value.value)
+          .toList(growable: false),
+      ['artist-1', 'delegate-1'],
     );
   });
 }

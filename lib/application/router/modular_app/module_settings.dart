@@ -412,11 +412,12 @@ class ModuleSettings extends ModuleSettingsContract {
     );
     await _registerTenantRepository();
     final adminModeRepository = GetIt.I.get<AdminModeRepositoryContract>();
-    // Hydrate admin mode before public auth bootstrap so tenant-admin landlord
-    // sessions do not trigger tenant-public identity/proximity flows.
+    // Hydrate admin mode first, then landlord auth, before public auth
+    // bootstrap so tenant-admin landlord sessions do not trigger
+    // tenant-public identity/proximity flows during first-frame startup.
     await adminModeRepository.init();
-    await _registerAuthRepository();
     await _registerLandlordAuthRepository();
+    await _registerAuthRepository();
   }
 
   Future<void> _registerAppDataRepository() async {

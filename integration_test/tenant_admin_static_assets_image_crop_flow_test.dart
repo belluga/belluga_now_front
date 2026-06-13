@@ -28,6 +28,7 @@ import 'support/tenant_admin_image_crop_harness.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  const expectedCoverAspectRatio = 560 / 512;
 
   tearDownAll(() async {
     await GetIt.I.reset();
@@ -65,7 +66,7 @@ void main() {
       await confirmCropAndDismiss(tester);
     });
 
-    testWidgets('create: cover opens crop sheet (16:9)', (tester) async {
+    testWidgets('create: cover opens crop sheet (560:512)', (tester) async {
       final tmp = writeTempPng(name: 'picked.png', width: 1200, height: 1800);
       final originalPicker = ImagePickerPlatform.instance;
       ImagePickerPlatform.instance = FakeImagePickerPlatform(tmp.path);
@@ -92,7 +93,7 @@ void main() {
         expectedTitle: 'Recortar capa',
       );
       final crop = tester.widget<Crop>(find.byType(Crop));
-      expect(crop.aspectRatio, closeTo(16 / 9, 0.0001));
+      expect(crop.aspectRatio, closeTo(expectedCoverAspectRatio, 0.0001));
       await confirmCropAndDismiss(tester);
     });
 
@@ -123,7 +124,7 @@ void main() {
       await confirmCropAndDismiss(tester);
     });
 
-    testWidgets('edit: cover opens crop sheet (16:9)', (tester) async {
+    testWidgets('edit: cover opens crop sheet (560:512)', (tester) async {
       final tmp = writeTempPng(name: 'picked.png', width: 1200, height: 1800);
       final originalPicker = ImagePickerPlatform.instance;
       ImagePickerPlatform.instance = FakeImagePickerPlatform(tmp.path);
@@ -146,7 +147,7 @@ void main() {
         expectedTitle: 'Recortar capa',
       );
       final crop = tester.widget<Crop>(find.byType(Crop));
-      expect(crop.aspectRatio, closeTo(16 / 9, 0.0001));
+      expect(crop.aspectRatio, closeTo(expectedCoverAspectRatio, 0.0001));
       await confirmCropAndDismiss(tester);
     });
   });
@@ -177,7 +178,7 @@ void main() {
       await confirmCropAndDismiss(tester);
     });
 
-    testWidgets('create: cover opens crop sheet (16:9)', (tester) async {
+    testWidgets('create: cover opens crop sheet (560:512)', (tester) async {
       await _registerCreateFakes();
       await pumpWithAutoRoute(
         tester,
@@ -198,7 +199,7 @@ void main() {
         url: 'https://example.com/cover.png',
         expectedCropTitle: 'Recortar capa',
       );
-      expectCropAspectRatio(tester, 16 / 9);
+      expectCropAspectRatio(tester, expectedCoverAspectRatio);
       await confirmCropAndDismiss(tester);
     });
 
@@ -223,7 +224,7 @@ void main() {
       await confirmCropAndDismiss(tester);
     });
 
-    testWidgets('edit: cover opens crop sheet (16:9)', (tester) async {
+    testWidgets('edit: cover opens crop sheet (560:512)', (tester) async {
       await _registerEditFakes();
       await pumpWithAutoRoute(
         tester,
@@ -240,7 +241,7 @@ void main() {
         url: 'https://example.com/cover.png',
         expectedCropTitle: 'Recortar capa',
       );
-      expectCropAspectRatio(tester, 16 / 9);
+      expectCropAspectRatio(tester, expectedCoverAspectRatio);
       await confirmCropAndDismiss(tester);
     });
   });
@@ -550,7 +551,9 @@ class _FakeStaticAssetsRepository
       slug: slug?.value ?? existing?.slug ?? 'praia',
       isActive: true,
       location: location ?? existing?.location,
-      taxonomyTerms: taxonomyTerms ?? existing?.taxonomyTerms ?? const TenantAdminTaxonomyTerms.empty(),
+      taxonomyTerms: taxonomyTerms ??
+          existing?.taxonomyTerms ??
+          const TenantAdminTaxonomyTerms.empty(),
       bio: bio?.value ?? existing?.bio,
       content: content?.value ?? existing?.content,
       avatarUrl: resolvedAvatarUrl,

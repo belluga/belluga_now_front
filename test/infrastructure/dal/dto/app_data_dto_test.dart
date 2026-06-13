@@ -175,6 +175,56 @@ void main() {
     });
   });
 
+  group('AppDataDTO map filter catalog keys', () {
+    test('prefers canonical public map discovery filter ordering', () {
+      final appData = AppDataDTO.fromJson(
+        _basePayload(
+          profileTypes: const [],
+          settings: const {
+            'map_ui': {
+              'filters': [
+                {'key': 'legacy-first'},
+              ],
+            },
+            'discovery_filters': {
+              'surfaces': {
+                'public_map.primary': {
+                  'filters': [
+                    {'key': 'override-first'},
+                    {'key': 'button-only'},
+                    {'key': 'override-first'},
+                  ],
+                },
+              },
+            },
+          },
+        ),
+      ).toDomain(localInfo: _localInfo());
+
+      expect(
+        appData.mapFilterCatalogKeys.toList(),
+        <String>['override-first', 'button-only'],
+      );
+    });
+
+    test('does not use legacy map_ui filters after public map cutoff', () {
+      final appData = AppDataDTO.fromJson(
+        _basePayload(
+          profileTypes: const [],
+          settings: const {
+            'map_ui': {
+              'filters': [
+                {'key': 'legacy-first'},
+              ],
+            },
+          },
+        ),
+      ).toDomain(localInfo: _localInfo());
+
+      expect(appData.mapFilterCatalogKeys.toList(), isEmpty);
+    });
+  });
+
   group('AppDataDTO OTP delivery flags', () {
     test('enables SMS fallback from public tenant auth flag only', () {
       final appData = AppDataDTO.fromJson(

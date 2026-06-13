@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
@@ -6,12 +8,12 @@ import 'package:belluga_now/application/router/support/route_redirect_path.dart'
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/presentation/shared/favorites/account_profile_favorite_auth_gate.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/controllers/discovery_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_filter_header_delegate.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_live_now_section.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_nearby_row.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_partner_grid.dart';
-import 'package:belluga_now/presentation/shared/promotion/support/web_installed_app_handoff.dart';
 import 'package:belluga_now/presentation/shared/widgets/discovery_filter_visual_icon.dart';
 import 'package:belluga_now/presentation/shared/widgets/route_back_scope.dart';
 import 'package:belluga_now/presentation/shared/widgets/main_logo.dart';
@@ -21,7 +23,12 @@ import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class DiscoveryScreen extends StatefulWidget {
-  const DiscoveryScreen({super.key});
+  const DiscoveryScreen({
+    super.key,
+    this.isWebRuntime = kIsWeb,
+  });
+
+  final bool isWebRuntime;
 
   @override
   State<DiscoveryScreen> createState() => _DiscoveryScreenState();
@@ -191,11 +198,16 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                                   builder: (context, nearby) {
                                                     return DiscoveryNearbyRow(
                                                       items: nearby,
-                                                      onTap: (partner) =>
-                                                          context.router.push(
-                                                        PartnerDetailRoute(
-                                                            slug: partner.slug),
-                                                      ),
+                                                      onTap: (partner) {
+                                                        if (!partner
+                                                            .canOpenPublicDetail) {
+                                                          return;
+                                                        }
+                                                        _openPartnerDetail(
+                                                          context,
+                                                          partner,
+                                                        );
+                                                      },
                                                       resolvedVisualForItem:
                                                           _controller
                                                               .resolvedVisualForAccountProfile,
@@ -325,10 +337,12 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                                     }
                                                   },
                                                   onPartnerTap: (partner) =>
-                                                      context.router.push(
-                                                    PartnerDetailRoute(
-                                                        slug: partner.slug),
-                                                  ),
+                                                      partner.canOpenPublicDetail
+                                                          ? _openPartnerDetail(
+                                                              context,
+                                                              partner,
+                                                            )
+                                                          : null,
                                                   resolvedVisualForPartner:
                                                       _controller
                                                           .resolvedVisualForAccountProfile,
@@ -385,7 +399,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
   }
 
   void _checkPendingIntent() {
-    if (kIsWeb) {
+    if (widget.isWebRuntime) {
       return;
     }
     final redirectPath =
@@ -394,10 +408,6 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     if (action != null && action.actionType == AuthWallActionType.favorite) {
       final partnerId = action.payload?['partnerId'] as String?;
       if (partnerId != null) {
-        // Find the partner in the list. Wait, _controller.toggleFavorite just takes ID!
-        // We can just call it with the partnerId. But the method takes AccountProfileModel.
-        // Oh, wait, the controller method takes ID! But _handleFavoriteTap takes AccountProfileModel.
-        // Let's call controller directly.
         _controller.toggleFavorite(partnerId);
       }
     }
@@ -405,35 +415,42 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
 
   void _handleFavoriteTap(AccountProfileModel partner) {
     final redirectPath = _partnerDetailRedirectPath(partner);
-    if (kIsWeb) {
-      launchWebInstalledAppHandoffOrPromotion(
-        context: context,
-        redirectPath: redirectPath,
-        actionType: AuthWallActionType.favorite,
-        payload: {'partnerId': partner.id},
-      );
-      return;
-    }
-
     final outcome = _controller.toggleFavorite(partner.id);
     if (outcome != FavoriteToggleOutcome.requiresAuthentication) {
       return;
     }
-    AuthWallTelemetry.trackTriggered(
-      actionType: AuthWallActionType.favorite,
-      redirectPath: redirectPath,
-      payload: {'partnerId': partner.id},
+    unawaited(
+      AccountProfileFavoriteAuthGate.handleRequiredAuthentication(
+        context: context,
+        accountProfileId: partner.id,
+        redirectPath: redirectPath,
+        isWebRuntime: widget.isWebRuntime,
+      ),
     );
-    final encodedRedirect = Uri.encodeQueryComponent(redirectPath);
-    context.router.replacePath('/auth/login?redirect=$encodedRedirect');
+  }
+
+  Future<void> _openPartnerDetail(
+    BuildContext context,
+    AccountProfileModel partner,
+  ) async {
+    if (!partner.canOpenPublicDetail) {
+      return;
+    }
+    final publicDetailPath = partner.publicDetailPath?.trim();
+    if (publicDetailPath != null && publicDetailPath.isNotEmpty) {
+      await context.router.pushPath(publicDetailPath);
+    }
   }
 
   String _partnerDetailRedirectPath(AccountProfileModel partner) {
-    final slug = partner.slug.trim();
-    if (slug.isEmpty) {
+    if (!partner.canOpenPublicDetail) {
       return buildRedirectPathFromRouteMatch(context.routeData.route);
     }
-    return '/parceiro/$slug';
+    final publicDetailPath = partner.publicDetailPath?.trim();
+    if (publicDetailPath != null && publicDetailPath.isNotEmpty) {
+      return publicDetailPath;
+    }
+    return buildRedirectPathFromRouteMatch(context.routeData.route);
   }
 
   Widget _buildBrandAppBarTitle() {

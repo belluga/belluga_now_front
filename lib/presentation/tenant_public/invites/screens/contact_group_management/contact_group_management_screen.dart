@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belluga_now/domain/invites/invite_contact_group.dart';
 import 'package:belluga_now/domain/invites/inviteable_recipient.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/contact_group_management/controllers/contact_group_management_controller.dart';
@@ -5,6 +7,7 @@ import 'package:belluga_now/presentation/tenant_public/invites/screens/contact_g
 import 'package:belluga_now/presentation/tenant_public/invites/screens/contact_group_management/widgets/create_group_panel.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/contact_group_management/widgets/recipient_chips.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/contact_group_management/widgets/rename_group_dialog.dart';
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -121,6 +124,7 @@ class _ContactGroupManagementScreenState
   ) async {
     final nextName = await showDialog<String>(
       context: context,
+      useRootNavigator: false,
       builder: (context) => RenameGroupDialog(initialName: group.name),
     );
     final normalized = nextName?.trim();
@@ -193,6 +197,6 @@ class _ContactGroupManagementScreenState
   }
 
   void _popCurrentRoute<T>(BuildContext context, T value) {
-    ModalRoute.of(context)?.navigator?.maybePop(value);
+    unawaited(context.router.maybePop(value));
   }
 }

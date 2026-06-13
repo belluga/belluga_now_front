@@ -2,6 +2,7 @@ import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_tax
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 
 class TenantAdminAccountProfileDTO {
@@ -18,6 +19,7 @@ class TenantAdminAccountProfileDTO {
     this.locationLat,
     this.locationLng,
     this.taxonomyTerms = const [],
+    this.nestedProfileGroups = const [],
     this.ownershipState,
   });
 
@@ -33,6 +35,7 @@ class TenantAdminAccountProfileDTO {
   final double? locationLat;
   final double? locationLng;
   final List<TenantAdminTaxonomyTermDTO> taxonomyTerms;
+  final List<TenantAdminNestedProfileGroup> nestedProfileGroups;
   final String? ownershipState;
 
   factory TenantAdminAccountProfileDTO.fromJson(Map<String, dynamic> json) {
@@ -52,6 +55,25 @@ class TenantAdminAccountProfileDTO {
         }
       }
     }
+    final nestedGroups = <TenantAdminNestedProfileGroup>[];
+    final nestedRaw = json['nested_profile_groups'];
+    if (nestedRaw is List) {
+      for (final entry in nestedRaw) {
+        if (entry is! Map) continue;
+        final groupJson = Map<String, dynamic>.from(entry);
+        final rawIds =
+            groupJson['account_profile_ids'] ?? groupJson['profile_ids'];
+        nestedGroups.add(
+          _nestedProfileGroupFromRaw(
+            id: groupJson['id'] ?? groupJson['key'],
+            label: groupJson['label'],
+            order: groupJson['order'],
+            accountProfileIds:
+                rawIds is Iterable ? rawIds.cast<Object?>() : const <Object?>[],
+          ),
+        );
+      }
+    }
     return TenantAdminAccountProfileDTO(
       id: json['id']?.toString() ?? '',
       accountId: json['account_id']?.toString() ?? '',
@@ -65,6 +87,7 @@ class TenantAdminAccountProfileDTO {
       locationLat: lat,
       locationLng: lng,
       taxonomyTerms: terms,
+      nestedProfileGroups: nestedGroups,
       ownershipState: json['ownership_state']?.toString(),
     );
   }
@@ -98,9 +121,35 @@ class TenantAdminAccountProfileDTO {
       content: content,
       location: location,
       taxonomyTerms: taxonomy,
+      nestedProfileGroups: nestedProfileGroups,
       ownershipState: ownershipState == null
           ? null
           : tenantAdminOwnershipStateFromRaw(ownershipState),
     );
   }
+}
+
+TenantAdminNestedProfileGroup _nestedProfileGroupFromRaw({
+  required Object? id,
+  required Object? label,
+  Object? order,
+  Iterable<Object?> accountProfileIds = const <Object?>[],
+}) {
+  return TenantAdminNestedProfileGroup(
+    idValue: TenantAdminNestedProfileGroupTextValue(
+      id?.toString().trim() ?? '',
+    ),
+    labelValue: TenantAdminNestedProfileGroupTextValue(
+      label?.toString().trim() ?? '',
+    ),
+    orderValue: TenantAdminNestedProfileGroupOrderValue(
+      order is num ? order.toInt() : int.tryParse(order?.toString() ?? '') ?? 0,
+    ),
+    accountProfileIdValues: accountProfileIds
+        .map((entry) => TenantAdminNestedProfileGroupTextValue(
+              entry?.toString().trim() ?? '',
+            ))
+        .where((entry) => entry.value.isNotEmpty)
+        .toList(growable: false),
+  );
 }

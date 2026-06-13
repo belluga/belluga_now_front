@@ -1,6 +1,8 @@
 import 'dart:async';
 
+import 'package:belluga_now/application/router/guards/location_permission_gate_result.dart';
 import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
+import 'package:belluga_now/application/router/support/route_instance_scope.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/map_adaptive_tray.dart';
@@ -11,6 +13,7 @@ import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/wi
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_details_deck.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/status_banner.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/belluga_bottom_navigation_bar.dart';
+import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_contract.dart';
 import 'package:belluga_now/presentation/shared/widgets/route_back_scope.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -21,10 +24,14 @@ class MapScreen extends StatefulWidget {
     super.key,
     this.initialPoiQuery,
     this.initialPoiStackQuery,
+    this.initialLocationGateResult,
+    this.directionsAppChooser,
   });
 
   final String? initialPoiQuery;
   final String? initialPoiStackQuery;
+  final LocationPermissionGateResult? initialLocationGateResult;
+  final DirectionsAppChooserContract? directionsAppChooser;
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -62,7 +69,9 @@ class _MapScreenState extends State<MapScreen> {
 
     return Theme(
       data: theme,
-      child: _buildScaffold(),
+      child: RouteInstanceScope(
+        child: _buildScaffold(),
+      ),
     );
   }
 
@@ -332,7 +341,10 @@ class _MapScreenState extends State<MapScreen> {
                       duration: const Duration(milliseconds: 200),
                       curve: Curves.easeOutCubic,
                       opacity: 1,
-                      child: PoiDetailDeck(controller: _controller),
+                      child: PoiDetailDeck(
+                        controller: _controller,
+                        directionsAppChooser: widget.directionsAppChooser,
+                      ),
                     ),
                   ),
                 ),
@@ -348,6 +360,7 @@ class _MapScreenState extends State<MapScreen> {
     await _controller.init(
       initialPoiQuery: widget.initialPoiQuery,
       initialPoiStackQuery: widget.initialPoiStackQuery,
+      initialLocationGateResult: widget.initialLocationGateResult,
     );
   }
 }

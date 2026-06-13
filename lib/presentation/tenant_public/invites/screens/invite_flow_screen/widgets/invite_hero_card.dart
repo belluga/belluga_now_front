@@ -1,14 +1,13 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
-import 'package:belluga_now/application/time/timezone_converter.dart';
+import 'package:belluga_now/application/schedule/event_related_profile_groups.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/shared/widgets/swipeable_card/swipeable_card.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/widgets/invite_content_card.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/widgets/invite_decision_footer.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 /// Fullscreen invite hero with a swipeable card and page-bottom decision footer.
 class InviteHeroCard extends StatelessWidget {
@@ -37,12 +36,18 @@ class InviteHeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final heroImage = invite.eventImageUrl;
-    final localEventDate = TimezoneConverter.utcToLocal(invite.eventDateTime);
-    final dateLabel =
-        DateFormat('EEE, d MMM - HH:mm', 'pt_BR').format(localEventDate);
+    final dateLabel = invite.eventDateDetailLabel;
     final host = invite.hostName.isNotEmpty ? invite.hostName : 'Belluga Now';
     final location =
         invite.location.isNotEmpty ? invite.location : 'Local a definir';
+    final participantGroups = EventRelatedProfileGroups.fromParts(
+      profileGroups: invite.profileGroups,
+      linkedAccountProfiles: invite.linkedAccountProfiles,
+      venueId: invite.venueAccountProfileId,
+    );
+    final showHost = participantGroups.isEmpty &&
+        host.trim().isNotEmpty &&
+        host.trim().toLowerCase() != location.trim().toLowerCase();
     final inviter = invite.inviterName ?? 'Um amigo';
     final extraInviters = invite.additionalInviters.length;
     final scrim = Theme.of(context).colorScheme.scrim;
@@ -135,8 +140,10 @@ class InviteHeroCard extends StatelessWidget {
                                       dateLabel: dateLabel,
                                       location: location,
                                       host: host,
+                                      showHost: showHost,
                                       inviter: inviter,
                                       extraInviters: extraInviters,
+                                      participantGroups: participantGroups,
                                       onViewDetails: onViewDetails,
                                     ),
                                   ),

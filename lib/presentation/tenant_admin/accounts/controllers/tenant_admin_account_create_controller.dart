@@ -9,6 +9,7 @@ import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_onboarding_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
@@ -20,6 +21,7 @@ import 'package:belluga_now/presentation/tenant_admin/accounts/models/tenant_adm
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_account_create_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_nested_profile_group_operations.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:image_picker/image_picker.dart';
@@ -58,6 +60,9 @@ class TenantAdminAccountCreateController implements Disposable {
   );
   final StreamValue<bool> isProfileTypesLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
+  final StreamValue<List<TenantAdminAccountProfile>>
+      nestedProfileCandidatesStreamValue =
+      StreamValue<List<TenantAdminAccountProfile>>(defaultValue: const []);
   final StreamValue<String?> errorStreamValue = StreamValue<String?>();
   final StreamValue<bool> createSubmittingStreamValue =
       StreamValue<bool>(defaultValue: false);
@@ -162,9 +167,36 @@ class TenantAdminAccountCreateController implements Disposable {
     }
   }
 
+  Future<void> loadNestedProfileCandidates() async {
+    try {
+      final profiles = await _profilesRepository.fetchAccountProfiles(
+        queryableOnly: tenantAdminAccountProfilesRepoBool(
+          true,
+          defaultValue: true,
+        ),
+      );
+      if (_isDisposed) {
+        return;
+      }
+      nestedProfileCandidatesStreamValue.addValue(profiles);
+    } catch (_) {
+      if (_isDisposed) {
+        return;
+      }
+      nestedProfileCandidatesStreamValue.addValue(const []);
+    }
+  }
+
   void updateCreateSelectedProfileType(String? profileType) {
+    final capabilities =
+        profileType == null ? null : _capabilitiesForProfileType(profileType);
     _updateCreateState(
-      createStateStreamValue.value.copyWith(selectedProfileType: profileType),
+      createStateStreamValue.value.copyWith(
+        selectedProfileType: profileType,
+        nestedProfileGroups: capabilities?.hasNestedProfileGroups == true
+            ? createStateStreamValue.value.nestedProfileGroups
+            : const <TenantAdminNestedProfileGroup>[],
+      ),
     );
     clearCreateFieldValidation(
       TenantAdminAccountCreateValidationTargets.profileType,
@@ -283,6 +315,75 @@ class TenantAdminAccountCreateController implements Disposable {
     _updateCreateState(TenantAdminAccountCreateDraft.initial());
   }
 
+  void addCreateNestedProfileGroup() {
+    final groups = createStateStreamValue.value.nestedProfileGroups;
+    if (groups.length >= 12) {
+      createErrorMessageStreamValue.addValue('Limite de grupos atingido.');
+      return;
+    }
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(
+        nestedProfileGroups: TenantAdminNestedProfileGroupOperations.append(
+          groups,
+        ),
+      ),
+    );
+  }
+
+  void renameCreateNestedProfileGroup(String groupId, String label) {
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(
+        nestedProfileGroups: TenantAdminNestedProfileGroupOperations.rename(
+          createStateStreamValue.value.nestedProfileGroups,
+          groupId: groupId,
+          label: label,
+        ),
+      ),
+    );
+  }
+
+  void moveCreateNestedProfileGroup(String groupId, int delta) {
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(
+        nestedProfileGroups: TenantAdminNestedProfileGroupOperations.move(
+          createStateStreamValue.value.nestedProfileGroups,
+          groupId: groupId,
+          delta: delta,
+        ),
+      ),
+    );
+  }
+
+  void removeCreateNestedProfileGroup(String groupId) {
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(
+        nestedProfileGroups: TenantAdminNestedProfileGroupOperations.remove(
+          createStateStreamValue.value.nestedProfileGroups,
+          groupId: groupId,
+        ),
+      ),
+    );
+  }
+
+  void toggleCreateNestedProfileGroupMember({
+    required String groupId,
+    required String profileId,
+    required bool selected,
+  }) {
+    final next = TenantAdminNestedProfileGroupOperations.toggleMember(
+      createStateStreamValue.value.nestedProfileGroups,
+      groupId: groupId,
+      profileId: profileId,
+      selected: selected,
+      onLimit: () => createErrorMessageStreamValue.addValue(
+        'Limite de perfis no grupo atingido.',
+      ),
+    );
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(nestedProfileGroups: next),
+    );
+  }
+
   Future<XFile?> pickImageFromDevice({
     required TenantAdminImageSlot slot,
   }) {
@@ -328,6 +429,8 @@ class TenantAdminAccountCreateController implements Disposable {
         const TenantAdminTaxonomyTerms.empty(),
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup> nestedProfileGroups =
+        const <TenantAdminNestedProfileGroup>[],
   }) async {
     return _accountsRepository.createAccountOnboarding(
       name: TenantAdminAccountsRepositoryContractPrimString.fromRaw(
@@ -357,6 +460,7 @@ class TenantAdminAccountCreateController implements Disposable {
             ),
       avatarUpload: avatarUpload,
       coverUpload: coverUpload,
+      nestedProfileGroups: nestedProfileGroups,
     );
   }
 
@@ -381,7 +485,7 @@ class TenantAdminAccountCreateController implements Disposable {
     );
     final coverUpload = await buildImageUpload(
       createStateStreamValue.value.coverFile,
-      slot: TenantAdminImageSlot.cover,
+      slot: TenantAdminImageSlot.accountProfileHeroCover,
     );
     return createAccountOnboarding(
       name: nameController.text.trim(),
@@ -393,6 +497,9 @@ class TenantAdminAccountCreateController implements Disposable {
       taxonomyTerms: filteredTaxonomyTerms,
       avatarUpload: avatarUpload,
       coverUpload: coverUpload,
+      nestedProfileGroups: capabilities?.hasNestedProfileGroups == true
+          ? createStateStreamValue.value.nestedProfileGroups
+          : const <TenantAdminNestedProfileGroup>[],
     );
   }
 
@@ -532,6 +639,7 @@ class TenantAdminAccountCreateController implements Disposable {
     longitudeController.dispose();
     profileTypesStreamValue.dispose();
     isProfileTypesLoadingStreamValue.dispose();
+    nestedProfileCandidatesStreamValue.dispose();
     errorStreamValue.dispose();
     createStateStreamValue.dispose();
     taxonomiesStreamValue.dispose();

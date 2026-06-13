@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
@@ -8,6 +9,7 @@ import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/discovery_filters_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/account_profiles_repository_contract_values.dart';
@@ -35,6 +37,7 @@ class DiscoveryScreenController extends Object
     AppDataRepositoryContract? appDataRepository,
     ScheduleRepositoryContract? scheduleRepository,
     LocationOriginServiceContract? locationOriginService,
+    AuthRepositoryContract? authRepository,
   })  : _accountProfilesRepository = accountProfilesRepository ??
             GetIt.I.get<AccountProfilesRepositoryContract>(),
         _discoveryFiltersRepository = discoveryFiltersRepository ??
@@ -47,13 +50,18 @@ class DiscoveryScreenController extends Object
                 : null),
         _scheduleRepository = scheduleRepository,
         _locationOriginService = locationOriginService ??
-            GetIt.I.get<LocationOriginServiceContract>();
+            GetIt.I.get<LocationOriginServiceContract>(),
+        _authRepository = authRepository ??
+            (GetIt.I.isRegistered<AuthRepositoryContract>()
+                ? GetIt.I.get<AuthRepositoryContract>()
+                : null);
 
   final AccountProfilesRepositoryContract _accountProfilesRepository;
   final DiscoveryFiltersRepositoryContract? _discoveryFiltersRepository;
   final AppDataRepositoryContract? _appDataRepository;
   ScheduleRepositoryContract? _scheduleRepository;
   final LocationOriginServiceContract _locationOriginService;
+  final AuthRepositoryContract? _authRepository;
 
   static const Duration _searchDebounceDuration = Duration(milliseconds: 350);
   static const String _discoveryAccountProfilesSurface =
@@ -82,6 +90,10 @@ class DiscoveryScreenController extends Object
   bool _isProgrammaticSearchTextChange = false;
   bool _isRevealingDiscoveryFilterPanel = false;
   String? _lastOriginSignature;
+  DiscoveryFilterCatalog _baselineDiscoveryFilterCatalog =
+      const DiscoveryFilterCatalog(surface: _discoveryAccountProfilesSurface);
+  DiscoveryFilterCatalog _runtimePrimaryDiscoveryFilterCatalog =
+      const DiscoveryFilterCatalog(surface: _discoveryAccountProfilesSurface);
 
   final ScrollController scrollController = ScrollController();
   final searchQueryStreamValue = StreamValue<String>(defaultValue: '');
@@ -193,7 +205,12 @@ class DiscoveryScreenController extends Object
         discoveryFilterSelectionStreamValue.value.isNotEmpty;
     final catalogFuture = loadPublicDiscoveryFilterCatalog(
       restoredSelection: restoredSelection,
-    );
+    ).then((_) {
+      _baselineDiscoveryFilterCatalog = discoveryFilterCatalogStreamValue.value;
+      _runtimePrimaryDiscoveryFilterCatalog =
+          discoveryFilterCatalogStreamValue.value;
+      _reconcileRuntimeDiscoveryFilterCatalog();
+    });
     if (mustAwaitCatalogBeforeResults) {
       await catalogFuture;
     } else {
@@ -387,6 +404,9 @@ class DiscoveryScreenController extends Object
       hasMoreStreamValue.addValue(pageResult.hasMore);
 
       _updateAvailableTypes();
+      if (_reconcileRuntimeDiscoveryFilterCatalog()) {
+        return;
+      }
       if (_shouldSyncNearby(
         query: query,
         selectedType: selectedType,
@@ -527,6 +547,9 @@ class DiscoveryScreenController extends Object
   }
 
   FavoriteToggleOutcome toggleFavorite(String accountProfileId) {
+    if (!isAuthorized) {
+      return FavoriteToggleOutcome.requiresAuthentication;
+    }
     final current = Set<String>.from(favoriteIdsStreamValue.value);
     if (current.contains(accountProfileId)) {
       current.remove(accountProfileId);
@@ -548,6 +571,8 @@ class DiscoveryScreenController extends Object
   }
 
   StreamValue<Set<String>> get favoriteIdsStream => favoriteIdsStreamValue;
+
+  bool get isAuthorized => _authRepository?.isAuthorized ?? false;
 
   Future<void> _loadFavoriteIds() async {
     final ids = Set<String>.from(
@@ -687,6 +712,57 @@ class DiscoveryScreenController extends Object
         .toList(growable: false);
   }
 
+  bool _reconcileRuntimeDiscoveryFilterCatalog() {
+    final facets =
+        _accountProfilesRepository.publicDiscoveryFilterFacetsStreamValue.value;
+    if (facets == null || _baselineDiscoveryFilterCatalog.isEmpty) {
+      return false;
+    }
+
+    final selection = discoveryFilterSelectionStreamValue.value;
+    final preservePrimaryFilters = selection.primaryKeys.isNotEmpty;
+    final baselineCatalog =
+        preservePrimaryFilters && !_runtimePrimaryDiscoveryFilterCatalog.isEmpty
+            ? _runtimePrimaryDiscoveryFilterCatalog
+            : _baselineDiscoveryFilterCatalog;
+    final runtimeCatalog = facets.applyToCatalog(
+      baselineCatalog,
+      preservePrimaryFilters: preservePrimaryFilters,
+    );
+    if (!preservePrimaryFilters && !runtimeCatalog.isEmpty) {
+      _runtimePrimaryDiscoveryFilterCatalog = runtimeCatalog;
+    }
+    if (!_sameDiscoveryFilterCatalog(
+      discoveryFilterCatalogStreamValue.value,
+      runtimeCatalog,
+    )) {
+      discoveryFilterCatalogStreamValue.addValue(runtimeCatalog);
+    }
+
+    final repairedSelection = repairPublicDiscoveryFilterSelection(
+      selection,
+      catalogOverride: runtimeCatalog,
+    );
+    if (samePublicDiscoveryFilterSelection(
+      selection,
+      repairedSelection,
+    )) {
+      return false;
+    }
+
+    discoveryFilterSelectionStreamValue.addValue(repairedSelection);
+    unawaited(persistPublicDiscoveryFilterSelection(repairedSelection));
+    _scheduleReload(immediate: true);
+    return true;
+  }
+
+  bool _sameDiscoveryFilterCatalog(
+    DiscoveryFilterCatalog left,
+    DiscoveryFilterCatalog right,
+  ) {
+    return jsonEncode(left.toJson()) == jsonEncode(right.toJson());
+  }
+
   void _updateAvailableTypes() {
     final registry = _resolveRegistry();
     if (registry == null || registry.isEmpty) {
@@ -696,7 +772,7 @@ class DiscoveryScreenController extends Object
     final allowed = registry
         .enabledAccountProfileTypes()
         .where(
-          registry.isFavoritableFor,
+          registry.isPubliclyDiscoverableFor,
         )
         .map((type) => type.value)
         .toList(growable: false);

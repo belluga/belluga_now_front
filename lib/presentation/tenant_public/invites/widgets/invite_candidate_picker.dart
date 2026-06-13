@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/support/route_instance_scope.dart';
 import 'package:belluga_now/domain/invites/invite_inviter_type.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:flutter/material.dart';
@@ -13,7 +14,7 @@ Future<String?> showInviteCandidatePicker(
     return primaryInviteId;
   }
 
-  return showModalBottomSheet<String>(
+  return showRouteScopedModalBottomSheet<String>(
     context: context,
     showDragHandle: true,
     builder: (context) {
