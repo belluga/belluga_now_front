@@ -299,6 +299,52 @@ void main() {
     }
   });
 
+  testWidgets('DiscoveryPartnerCard exposes a named semantic favorite button',
+      (tester) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      final registry = _buildAppData().profileTypeRegistry;
+      final partner = buildAccountProfileModelFromPrimitives(
+        id: '507f1f77bcf86cd79943902f',
+        name: 'Ananda Torres',
+        slug: 'ananda-torres',
+        type: 'artist',
+      );
+      var favoriteTapCount = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 240,
+              child: DiscoveryPartnerCard(
+                partner: partner,
+                isFavorite: false,
+                isFavoritable: true,
+                onFavoriteTap: () => favoriteTapCount += 1,
+                onTap: () {},
+                resolvedVisual: AccountProfileVisualResolver.resolve(
+                  accountProfile: partner,
+                  registry: registry,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final favoriteAction =
+          find.bySemanticsLabel(RegExp('Favoritar perfil Ananda Torres'));
+      expect(favoriteAction, findsOneWidget);
+
+      await tester.tap(favoriteAction);
+      await tester.pump();
+      expect(favoriteTapCount, 1);
+    } finally {
+      semantics.dispose();
+    }
+  });
+
   testWidgets(
       'DiscoveryPartnerCard uses type visuals as fallback avatar when no avatar exists even if cover exists',
       (tester) async {

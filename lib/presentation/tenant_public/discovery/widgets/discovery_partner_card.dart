@@ -320,18 +320,25 @@ class _CardImage extends StatelessWidget {
               Positioned(
                 top: 8,
                 right: 8,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.black.withValues(alpha: 0.36),
-                  ),
-                  child: IconButton(
-                    key: Key('discoveryFavoriteButton_${partner.id}'),
-                    tooltip: favoriteLabel,
-                    onPressed: onFavoriteTap,
-                    icon: Icon(
-                      isFavorite ? Icons.favorite : Icons.favorite_border,
-                      color: isFavorite ? colorScheme.error : Colors.white,
+                child: Semantics(
+                  container: true,
+                  button: true,
+                  label: favoriteLabel,
+                  onTap: onFavoriteTap,
+                  excludeSemantics: true,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.black.withValues(alpha: 0.36),
+                    ),
+                    child: IconButton(
+                      key: Key('discoveryFavoriteButton_${partner.id}'),
+                      tooltip: favoriteLabel,
+                      onPressed: onFavoriteTap,
+                      icon: Icon(
+                        isFavorite ? Icons.favorite : Icons.favorite_border,
+                        color: isFavorite ? colorScheme.error : Colors.white,
+                      ),
                     ),
                   ),
                 ),

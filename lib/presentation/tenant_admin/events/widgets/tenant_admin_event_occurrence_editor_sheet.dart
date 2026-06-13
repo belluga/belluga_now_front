@@ -164,6 +164,14 @@ class _TenantAdminEventOccurrenceEditorSheetState
     extends State<_TenantAdminEventOccurrenceEditorSheet> {
   String? _errorMessage;
 
+  List<TenantAdminAccountProfile> get _currentVenues {
+    final liveVenues = widget.controller.venueCandidatesStreamValue.value;
+    if (liveVenues.isNotEmpty) {
+      return liveVenues;
+    }
+    return widget.venues;
+  }
+
   Future<void> _pickStart() async {
     final picked = await widget.pickDateTime(
       initialDateTime: widget.occurrence.dateTimeStart,
@@ -464,7 +472,7 @@ class _TenantAdminEventOccurrenceEditorSheetState
                 _ProgrammingItemListTile(
                   key: Key('tenantAdminOccurrenceProgrammingItem_$itemIndex'),
                   item: widget.programmingItems[itemIndex].value,
-                  venues: widget.venues,
+                  venues: _currentVenues,
                   onTap: () => _editProgrammingItem(
                     itemKey: widget.programmingItems[itemIndex].key,
                     item: widget.programmingItems[itemIndex].value,
