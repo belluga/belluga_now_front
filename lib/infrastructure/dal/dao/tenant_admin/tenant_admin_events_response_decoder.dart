@@ -3,6 +3,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dar
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
@@ -120,18 +121,26 @@ class TenantAdminEventsResponseDecoder {
         .toList(growable: false);
 
     final eventPartiesRaw = _asList(row['event_parties']);
-    final relatedAccountProfileIds = eventPartiesRaw
-        .map(_asMap)
-        .where((party) => (_asString(party['party_type']) ?? '') != 'venue')
-        .map((party) => party['party_ref_id'])
-        .map(_asString)
-        .where((value) => value != null && value.isNotEmpty)
-        .cast<String>()
-        .map(TenantAdminAccountProfileIdValue.new)
-        .toList(growable: false);
     final relatedAccountProfiles = _decodeRelatedAccountProfiles(
       row['linked_account_profiles'],
     );
+    final profileGroups = _decodeProfileGroups(
+      row['profile_groups'],
+      allowedProfileIds: {
+        for (final profile in relatedAccountProfiles) profile.id,
+      },
+    );
+    final relatedAccountProfileIds = profileGroups.isNotEmpty
+        ? _profileIdsFromGroups(profileGroups)
+        : eventPartiesRaw
+            .map(_asMap)
+            .where((party) => (_asString(party['party_type']) ?? '') != 'venue')
+            .map((party) => party['party_ref_id'])
+            .map(_asString)
+            .where((value) => value != null && value.isNotEmpty)
+            .cast<String>()
+            .map(TenantAdminAccountProfileIdValue.new)
+            .toList(growable: false);
 
     final taxonomyTermsRaw = _asList(row['taxonomy_terms']);
     final taxonomyTerms = taxonomyTermsRaw
@@ -241,6 +250,7 @@ class TenantAdminEventsResponseDecoder {
         ),
         relatedAccountProfileIdValues: relatedAccountProfileIds,
         relatedAccountProfiles: relatedAccountProfiles,
+        profileGroups: profileGroups,
         eventParties: eventParties,
         taxonomyTerms: (() {
           final terms = TenantAdminTaxonomyTerms();
@@ -288,6 +298,7 @@ class TenantAdminEventsResponseDecoder {
       ),
       relatedAccountProfileIdValues: relatedAccountProfileIds,
       relatedAccountProfiles: relatedAccountProfiles,
+      profileGroups: profileGroups,
       eventParties: eventParties,
       taxonomyTerms: (() {
         final terms = TenantAdminTaxonomyTerms();
@@ -333,12 +344,20 @@ class TenantAdminEventsResponseDecoder {
             .map(_asMap)
             .where((party) => party.isNotEmpty)
             .toList(growable: false);
-    final ownProfileIds = ownParties.isNotEmpty
-        ? _mapPartyProfileIds(ownParties)
-        : ownProfiles
-            .where((profile) => profile.profileType.trim() != 'venue')
-            .map((profile) => TenantAdminAccountProfileIdValue(profile.id))
-            .toList(growable: false);
+    final profileGroups = _decodeProfileGroups(
+      item['profile_groups'],
+      allowedProfileIds: {
+        for (final profile in ownProfiles) profile.id,
+      },
+    );
+    final ownProfileIds = profileGroups.isNotEmpty
+        ? _profileIdsFromGroups(profileGroups)
+        : ownParties.isNotEmpty
+            ? _mapPartyProfileIds(ownParties)
+            : ownProfiles
+                .where((profile) => profile.profileType.trim() != 'venue')
+                .map((profile) => TenantAdminAccountProfileIdValue(profile.id))
+                .toList(growable: false);
     final ownTaxonomyTerms = _taxonomyTermsFromRaw(item['own_taxonomy_terms']);
 
     return TenantAdminEventOccurrence(
@@ -354,6 +373,7 @@ class TenantAdminEventsResponseDecoder {
       ),
       relatedAccountProfileIdValues: ownProfileIds,
       relatedAccountProfiles: ownProfiles,
+      profileGroups: profileGroups,
       programmingItems: _mapProgrammingItems(item['programming_items']),
       taxonomyTerms: ownTaxonomyTerms,
     );
@@ -380,6 +400,60 @@ class TenantAdminEventsResponseDecoder {
         .where((value) => value != null && value.isNotEmpty)
         .cast<String>()
         .map(TenantAdminAccountProfileIdValue.new)
+        .toList(growable: false);
+  }
+
+  List<TenantAdminAccountProfileIdValue> _profileIdsFromGroups(
+    List<TenantAdminNestedProfileGroup> groups,
+  ) {
+    final seen = <String>{};
+    final ids = <TenantAdminAccountProfileIdValue>[];
+    for (final group in groups) {
+      for (final entry in group.accountProfileIdValues) {
+        if (seen.add(entry.value)) {
+          ids.add(TenantAdminAccountProfileIdValue(entry.value));
+        }
+      }
+    }
+    return ids;
+  }
+
+  List<TenantAdminNestedProfileGroup> _decodeProfileGroups(
+    Object? raw, {
+    Set<String>? allowedProfileIds,
+  }) {
+    return _asList(raw)
+        .map(_asMap)
+        .where((group) => group.isNotEmpty)
+        .map((group) {
+          final id = _asString(group['id']) ?? _asString(group['key']) ?? '';
+          final label = _asString(group['label']) ?? '';
+          if (id.trim().isEmpty || label.trim().isEmpty) {
+            return null;
+          }
+
+          return TenantAdminNestedProfileGroup(
+            idValue: TenantAdminNestedProfileGroupTextValue(id),
+            labelValue: TenantAdminNestedProfileGroupTextValue(label),
+            orderValue: TenantAdminNestedProfileGroupOrderValue(
+              group['order'],
+            ),
+            accountProfileIdValues: _asList(
+              group['account_profile_ids'] ?? group['profile_ids'],
+            )
+                .map(_asString)
+                .where((value) => value != null && value.isNotEmpty)
+                .where(
+                  (value) =>
+                      allowedProfileIds == null ||
+                      allowedProfileIds.contains(value),
+                )
+                .cast<String>()
+                .map(TenantAdminNestedProfileGroupTextValue.new)
+                .toList(growable: false),
+          );
+        })
+        .whereType<TenantAdminNestedProfileGroup>()
         .toList(growable: false);
   }
 
@@ -596,6 +670,7 @@ class TenantAdminEventsResponseDecoder {
     return _asList(raw)
         .whereType<Map>()
         .map((row) => _mapRelatedAccountProfile(Map<String, dynamic>.from(row)))
+        .where((profile) => profile.profileType.trim() != 'venue')
         .toList(growable: false);
   }
 

@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_card_reference_point_action.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_card_secondary_action.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_detail_card_builder.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/size_reporting_widget.dart';
@@ -16,8 +17,10 @@ class FilteredDeck extends StatelessWidget {
     required this.pageController,
     required this.cardBuilder,
     required this.onPrimaryAction,
+    required this.showPrimaryActionForPoi,
     required this.secondaryActionForPoi,
     required this.onRoute,
+    required this.referencePointActionForPoi,
     required this.onClose,
     required this.onChanged,
     required this.deckHeight,
@@ -31,9 +34,12 @@ class FilteredDeck extends StatelessWidget {
   final PageController pageController;
   final PoiDetailCardBuilder cardBuilder;
   final ValueChanged<CityPoiModel> onPrimaryAction;
+  final bool Function(CityPoiModel poi) showPrimaryActionForPoi;
   final PoiCardSecondaryAction? Function(CityPoiModel poi)
       secondaryActionForPoi;
   final ValueChanged<CityPoiModel> onRoute;
+  final PoiCardReferencePointAction? Function(CityPoiModel poi)
+      referencePointActionForPoi;
   final VoidCallback onClose;
   final ValueChanged<int> onChanged;
   final double deckHeight;
@@ -64,8 +70,10 @@ class FilteredDeck extends StatelessWidget {
                 colorScheme: colorScheme,
                 cardBuilder: cardBuilder,
                 onPrimaryAction: onPrimaryAction,
+                showPrimaryActionForPoi: showPrimaryActionForPoi,
                 secondaryActionForPoi: secondaryActionForPoi,
                 onRoute: onRoute,
+                referencePointActionForPoi: referencePointActionForPoi,
                 onClose: onClose,
                 onCardHeightChanged: onCardHeightChanged,
                 deckMeasurementPadding: deckMeasurementPadding,
@@ -110,8 +118,10 @@ class _FilteredDeckPage extends StatefulWidget {
     required this.colorScheme,
     required this.cardBuilder,
     required this.onPrimaryAction,
+    required this.showPrimaryActionForPoi,
     required this.secondaryActionForPoi,
     required this.onRoute,
+    required this.referencePointActionForPoi,
     required this.onClose,
     required this.onCardHeightChanged,
     required this.deckMeasurementPadding,
@@ -122,9 +132,12 @@ class _FilteredDeckPage extends StatefulWidget {
   final ColorScheme colorScheme;
   final PoiDetailCardBuilder cardBuilder;
   final ValueChanged<CityPoiModel> onPrimaryAction;
+  final bool Function(CityPoiModel poi) showPrimaryActionForPoi;
   final PoiCardSecondaryAction? Function(CityPoiModel poi)
       secondaryActionForPoi;
   final ValueChanged<CityPoiModel> onRoute;
+  final PoiCardReferencePointAction? Function(CityPoiModel poi)
+      referencePointActionForPoi;
   final VoidCallback onClose;
   final void Function(String poiId, double height) onCardHeightChanged;
   final double deckMeasurementPadding;
@@ -176,8 +189,10 @@ class _FilteredDeckPageState extends State<_FilteredDeckPage> {
                   widget.controller.selectPoi(poi);
                   widget.onPrimaryAction(poi);
                 },
+                showPrimaryAction: widget.showPrimaryActionForPoi(poi),
                 secondaryAction: widget.secondaryActionForPoi(poi),
                 onRoute: () => widget.onRoute(poi),
+                referencePointAction: widget.referencePointActionForPoi(poi),
                 onClose: widget.onClose,
                 heroMaxHeight: heroMaxHeight,
               ),

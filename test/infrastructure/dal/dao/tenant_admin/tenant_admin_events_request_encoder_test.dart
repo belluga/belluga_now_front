@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_taxonomy_values.dart';
@@ -44,6 +45,90 @@ void main() {
         'party_ref_id': 'artist-1',
         'permissions': {'can_edit': true},
       },
+      {
+        'party_ref_id': 'artist-2',
+        'permissions': {'can_edit': true},
+      },
+    ]);
+  });
+
+  test('encodes profile groups and derives canonical event_parties from them',
+      () {
+    const encoder = TenantAdminEventsRequestEncoder();
+    final payload = encoder.encodeDraft(
+      TenantAdminEventDraft(
+        titleValue: tenantAdminRequiredText('Evento'),
+        contentValue: tenantAdminOptionalText('Conteudo'),
+        type: TenantAdminEventType(
+          nameValue: tenantAdminRequiredText('Show'),
+          slugValue: tenantAdminRequiredText('show'),
+        ),
+        occurrences: [
+          TenantAdminEventOccurrence(
+            dateTimeStartValue: tenantAdminDateTime(
+              DateTime(2026, 4, 5, 20),
+            ),
+            relatedAccountProfileIdValues: [
+              TenantAdminAccountProfileIdValue('ignored-occurrence-flat-id'),
+            ],
+            profileGroups: [
+              TenantAdminNestedProfileGroup(
+                idValue: TenantAdminNestedProfileGroupTextValue('convidados'),
+                labelValue:
+                    TenantAdminNestedProfileGroupTextValue('Convidados'),
+                orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+                accountProfileIdValues: [
+                  TenantAdminNestedProfileGroupTextValue('artist-2'),
+                ],
+              ),
+            ],
+          ),
+        ],
+        publication: TenantAdminEventPublication(
+          statusValue: tenantAdminRequiredText('draft'),
+        ),
+        relatedAccountProfileIdValues: [
+          TenantAdminAccountProfileIdValue('ignored-flat-id'),
+        ],
+        profileGroups: [
+          TenantAdminNestedProfileGroup(
+            idValue: TenantAdminNestedProfileGroupTextValue('atracoes'),
+            labelValue: TenantAdminNestedProfileGroupTextValue('Atrações'),
+            orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+            accountProfileIdValues: [
+              TenantAdminNestedProfileGroupTextValue('artist-1'),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    expect(payload['profile_groups'], [
+      {
+        'id': 'atracoes',
+        'label': 'Atrações',
+        'order': 0,
+        'account_profile_ids': ['artist-1'],
+      },
+    ]);
+    expect(payload['event_parties'], [
+      {
+        'party_ref_id': 'artist-1',
+        'permissions': {'can_edit': true},
+      },
+    ]);
+
+    final occurrence =
+        (payload['occurrences'] as List<Object?>).first as Map<String, dynamic>;
+    expect(occurrence['profile_groups'], [
+      {
+        'id': 'convidados',
+        'label': 'Convidados',
+        'order': 0,
+        'account_profile_ids': ['artist-2'],
+      },
+    ]);
+    expect(occurrence['event_parties'], [
       {
         'party_ref_id': 'artist-2',
         'permissions': {'can_edit': true},
@@ -139,6 +224,16 @@ void main() {
             relatedAccountProfileIdValues: [
               TenantAdminAccountProfileIdValue('artist-1'),
             ],
+            profileGroups: [
+              TenantAdminNestedProfileGroup(
+                idValue: TenantAdminNestedProfileGroupTextValue('bandas'),
+                labelValue: TenantAdminNestedProfileGroupTextValue('Bandas'),
+                orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+                accountProfileIdValues: [
+                  TenantAdminNestedProfileGroupTextValue('artist-1'),
+                ],
+              ),
+            ],
             programmingItems: [
               TenantAdminEventProgrammingItem(
                 timeValue: tenantAdminRequiredText('17:00'),
@@ -164,6 +259,14 @@ void main() {
     final occurrence =
         (payload['occurrences'] as List<Object?>).first as Map<String, dynamic>;
 
+    expect(occurrence['profile_groups'], [
+      {
+        'id': 'bandas',
+        'label': 'Bandas',
+        'order': 0,
+        'account_profile_ids': ['artist-1'],
+      },
+    ]);
     expect(occurrence['event_parties'], [
       {
         'party_ref_id': 'artist-1',
@@ -187,6 +290,46 @@ void main() {
           'type': 'account_profile',
           'id': 'venue-1',
         },
+      },
+    ]);
+  });
+
+  test(
+      'encodes legacy occurrence related ids as canonical event parties when no occurrence group is present',
+      () {
+    const encoder = TenantAdminEventsRequestEncoder();
+    final payload = encoder.encodeDraft(
+      TenantAdminEventDraft(
+        titleValue: tenantAdminRequiredText('Evento'),
+        contentValue: tenantAdminOptionalText('Conteudo'),
+        type: TenantAdminEventType(
+          nameValue: tenantAdminRequiredText('Show'),
+          slugValue: tenantAdminRequiredText('show'),
+        ),
+        occurrences: [
+          TenantAdminEventOccurrence(
+            dateTimeStartValue: tenantAdminDateTime(
+              DateTime(2026, 4, 5, 20),
+            ),
+            relatedAccountProfileIdValues: [
+              TenantAdminAccountProfileIdValue('legacy-occurrence-profile'),
+            ],
+          ),
+        ],
+        publication: TenantAdminEventPublication(
+          statusValue: tenantAdminRequiredText('draft'),
+        ),
+      ),
+    );
+
+    final occurrence =
+        (payload['occurrences'] as List<Object?>).first as Map<String, dynamic>;
+
+    expect(occurrence.containsKey('profile_groups'), isFalse);
+    expect(occurrence['event_parties'], [
+      {
+        'party_ref_id': 'legacy-occurrence-profile',
+        'permissions': {'can_edit': true},
       },
     ]);
   });

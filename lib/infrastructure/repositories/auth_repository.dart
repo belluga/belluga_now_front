@@ -8,6 +8,7 @@ import 'package:belluga_now/domain/auth/value_objects/auth_phone_otp_delivery_ch
 import 'package:belluga_now/domain/auth/value_objects/auth_phone_otp_phone_value.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/auth_repository_contract_values.dart';
 import 'package:belluga_now/domain/user/user_belluga.dart';
@@ -56,6 +57,10 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
   final StreamValue<String?> _userTokenStreamValue = StreamValue<String?>();
   final StreamValue<String?> _userIdStreamValue = StreamValue<String?>();
   final FlutterSecureStorage _storage;
+  Future<void>? _initInFlight;
+  Future<void>? _tenantPublicIdentityReadyInFlight;
+  bool _hasCompletedBootstrap = false;
+  bool _hasCompletedTenantPublicIdentityReadiness = false;
 
   static FlutterSecureStorage get storage => const FlutterSecureStorage();
 
@@ -87,29 +92,100 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
 
   @override
   Future<void> init() async {
-    await _getUserTokenFromLocalStorage();
-    await _getUserIdFromLocalStorage();
-    await autoLogin();
-    await _ensureIdentityToken();
-    if (isAuthorized) {
-      await _syncProximityPreferencesIfAvailable();
+    if (_hasCompletedBootstrap) {
+      return;
     }
+
+    final inFlight = _initInFlight;
+    if (inFlight != null) {
+      return inFlight;
+    }
+
+    final completer = Completer<void>();
+    _initInFlight = completer.future;
+    unawaited(
+      () async {
+        try {
+          await ensureTenantPublicIdentityReady();
+          if (isAuthorized) {
+            await _syncProximityPreferencesIfAvailable();
+          }
+          _hasCompletedBootstrap = true;
+          completer.complete();
+        } catch (error, stackTrace) {
+          _hasCompletedBootstrap = false;
+          completer.completeError(error, stackTrace);
+        } finally {
+          if (identical(_initInFlight, completer.future)) {
+            _initInFlight = null;
+          }
+        }
+      }(),
+    );
+
+    return completer.future;
+  }
+
+  @override
+  Future<void> ensureTenantPublicIdentityReady() async {
+    if (_hasCompletedTenantPublicIdentityReadiness) {
+      return;
+    }
+
+    final inFlight = _tenantPublicIdentityReadyInFlight;
+    if (inFlight != null) {
+      return inFlight;
+    }
+
+    final completer = Completer<void>();
+    _tenantPublicIdentityReadyInFlight = completer.future;
+    unawaited(
+      () async {
+        try {
+          final tokenLoadedFromStorage =
+              await _getUserTokenFromLocalStorage();
+          await _getUserIdFromLocalStorage();
+          await _autoLoginAfterInit(
+            tokenLoadedFromStorage:
+                tokenLoadedFromStorage || userToken.trim().isNotEmpty,
+          );
+          await _ensureIdentityToken();
+          _hasCompletedTenantPublicIdentityReadiness = true;
+          completer.complete();
+        } catch (error, stackTrace) {
+          _hasCompletedTenantPublicIdentityReadiness = false;
+          completer.completeError(error, stackTrace);
+        } finally {
+          if (identical(
+            _tenantPublicIdentityReadyInFlight,
+            completer.future,
+          )) {
+            _tenantPublicIdentityReadyInFlight = null;
+          }
+        }
+      }(),
+    );
+
+    return completer.future;
   }
 
   @override
   Future<void> autoLogin() async {
-    String? token;
-    try {
-      token = await _storage.read(key: _userTokenStorageKey);
-    } catch (error, stackTrace) {
-      _logStorageFailure(
-        operation: 'autoLogin.readUserToken',
-        error: error,
-        stackTrace: stackTrace,
-      );
+    final tokenLoadedFromStorage = await _getUserTokenFromLocalStorage();
+    await _autoLoginAfterInit(tokenLoadedFromStorage: tokenLoadedFromStorage);
+  }
+
+  Future<void> _autoLoginAfterInit({
+    required bool tokenLoadedFromStorage,
+  }) async {
+    if (!tokenLoadedFromStorage) {
+      return;
     }
 
-    if (token == null) {
+    String? token;
+    token = _userTokenStreamValue.value?.trim();
+
+    if (token == null || token.isEmpty) {
       return;
     }
 
@@ -124,7 +200,7 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
       await _resetStaleIdentity(error);
     }
 
-    return Future.value();
+    return;
   }
 
   @override
@@ -206,6 +282,8 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
     userStreamValue.addValue(null);
     _userTokenStreamValue.addValue(null);
     await _setUserId(null);
+    _hasCompletedBootstrap = false;
+    _hasCompletedTenantPublicIdentityReadiness = false;
 
     return Future.value();
   }
@@ -311,18 +389,32 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
     );
   }
 
-  Future<void> _getUserTokenFromLocalStorage() async {
+  Future<bool> _getUserTokenFromLocalStorage() async {
+    final currentToken = _userTokenStreamValue.value?.trim();
     try {
       final token = await _storage.read(key: _userTokenStorageKey);
-      _userTokenStreamValue.addValue(token);
+      final normalizedToken = token?.trim();
+      if (normalizedToken != null && normalizedToken.isNotEmpty) {
+        if (normalizedToken != currentToken) {
+          _userTokenStreamValue.addValue(normalizedToken);
+        }
+        return true;
+      }
+      if (currentToken != null && currentToken.isNotEmpty) {
+        return false;
+      }
+      _userTokenStreamValue.addValue(null);
     } catch (error, stackTrace) {
       _logStorageFailure(
         operation: 'getUserTokenFromLocalStorage',
         error: error,
         stackTrace: stackTrace,
       );
-      _userTokenStreamValue.addValue(null);
+      if (currentToken == null || currentToken.isEmpty) {
+        _userTokenStreamValue.addValue(null);
+      }
     }
+    return false;
   }
 
   @override
@@ -348,10 +440,13 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
   }
 
   Future<void> _getUserIdFromLocalStorage() async {
+    final currentUserId = _userIdStreamValue.value?.trim();
     try {
       final stored = await _storage.read(key: _userIdStorageKey);
       if (stored != null && stored.isNotEmpty) {
-        _userIdStreamValue.addValue(stored);
+        if (stored != currentUserId) {
+          _userIdStreamValue.addValue(stored);
+        }
         return;
       }
     } catch (error, stackTrace) {
@@ -361,7 +456,9 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
         stackTrace: stackTrace,
       );
     }
-    _userIdStreamValue.addValue(null);
+    if (currentUserId == null || currentUserId.isEmpty) {
+      _userIdStreamValue.addValue(null);
+    }
   }
 
   Future<void> _setUserId(String? userId) async {
@@ -388,6 +485,8 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
     userStreamValue.addValue(null);
     await _setUserId(null);
     userTokenDelete();
+    _hasCompletedBootstrap = false;
+    _hasCompletedTenantPublicIdentityReadiness = false;
   }
 
   Future<void> _ensureIdentityToken() async {
@@ -522,7 +621,16 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
       return false;
     }
 
-    return GetIt.I.get<AdminModeRepositoryContract>().isLandlordMode;
+    final adminModeRepository = GetIt.I.get<AdminModeRepositoryContract>();
+    if (!adminModeRepository.isLandlordMode) {
+      return false;
+    }
+
+    if (!GetIt.I.isRegistered<LandlordAuthRepositoryContract>()) {
+      return false;
+    }
+
+    return GetIt.I.get<LandlordAuthRepositoryContract>().hasValidSession;
   }
 
   AppData? _tryGetAppData() {

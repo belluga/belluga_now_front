@@ -45,6 +45,30 @@ void main() {
     expect(resolver.nextCalls, [true]);
   });
 
+  test('web granted result performs full-document reentry', () async {
+    final router = _RecordingStackRouter();
+    final reentryPaths = <String>[];
+    final guard = LiveLocationRouteGuard(
+      blockerLoader: () async => LocationPermissionState.denied,
+      documentReentry: (redirectPath) {
+        reentryPaths.add(redirectPath);
+        return true;
+      },
+    );
+    final resolver = _RecordingNavigationResolver(
+      router: router,
+      route: _FakeRouteMatch(fullPath: '/location-sensitive'),
+    );
+
+    await guard.onNavigation(resolver, router);
+
+    final captured = resolver.redirectedRoute! as LocationPermissionRoute;
+    captured.args?.onResult?.call(LocationPermissionGateResult.granted);
+
+    expect(reentryPaths, ['/location-sensitive']);
+    expect(resolver.nextCalls, [false]);
+  });
+
   test('blocks navigation when result is cancelled', () async {
     final router = _RecordingStackRouter();
     final guard = LiveLocationRouteGuard(

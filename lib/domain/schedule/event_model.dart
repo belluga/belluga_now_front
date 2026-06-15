@@ -2,7 +2,9 @@ export 'value_objects/event_model_values.dart';
 
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
+import 'package:belluga_now/domain/schedule/event_profile_group.dart';
 import 'package:belluga_now/domain/schedule/event_programming_item.dart';
+import 'package:belluga_now/domain/schedule/event_schedule_display.dart';
 import 'package:belluga_now/domain/thumb/thumb_model.dart';
 import 'package:belluga_now/domain/partner/partner_resume.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
@@ -40,6 +42,7 @@ class EventModel {
   final DateTimeValue dateTimeStart;
   final DateTimeValue? dateTimeEnd;
   final List<EventLinkedAccountProfile> linkedAccountProfiles;
+  final List<EventProfileGroup> profileGroups;
   final List<EventOccurrenceOption> occurrences;
   final List<EventProgrammingItem> programmingItems;
   final CityCoordinate? coordinate;
@@ -80,6 +83,21 @@ class EventModel {
   }
 
   EventModelPrimBool get hasMultipleOccurrences => occurrences.length > 1;
+  EventScheduleDisplay get scheduleDisplay {
+    final selected = selectedOccurrence;
+    if (selected != null) {
+      return selected.scheduleDisplay;
+    }
+    return EventScheduleDisplay(
+      startValue: dateTimeStart,
+      endValue: dateTimeEnd,
+    );
+  }
+
+  EventModelPrimString get detailScheduleLabel => scheduleDisplay.detailLabel;
+  EventModelPrimString get agendaScheduleLabel => scheduleDisplay.agendaLabel;
+  EventModelPrimString get flyerScheduleLabel => scheduleDisplay.flyerLabel;
+
   EventModelPrimBool get hasProgrammingItems => programmingItems.isNotEmpty;
   EventModelPrimBool get hasAnyProgrammingItems =>
       hasProgrammingItems ||
@@ -121,20 +139,9 @@ class EventModel {
   List<VenueEventTagValue> get taxonomyTags {
     final cleaned =
         tags.map((tag) => tag.value.trim()).where((t) => t.isNotEmpty).toSet();
-    if (cleaned.isNotEmpty) {
-      return List<VenueEventTagValue>.unmodifiable(
-        cleaned.map(VenueEventTagValue.new),
-      );
-    }
-
-    final linkedTerms = counterpartProfiles
-        .expand((profile) => profile.taxonomyTerms)
-        .map((term) => term.labelValue.value.trim())
-        .where((g) => g.isNotEmpty)
-        .toSet()
-        .map(VenueEventTagValue.new)
-        .toList(growable: false);
-    return linkedTerms;
+    return List<VenueEventTagValue>.unmodifiable(
+      cleaned.map(VenueEventTagValue.new),
+    );
   }
 
   EventModel({
@@ -149,6 +156,7 @@ class EventModel {
     required this.dateTimeStart,
     required this.dateTimeEnd,
     List<EventLinkedAccountProfile> linkedAccountProfiles = const [],
+    List<EventProfileGroup> profileGroups = const [],
     List<EventOccurrenceOption> occurrences = const [],
     List<EventProgrammingItem> programmingItems = const [],
     required this.coordinate,
@@ -161,6 +169,7 @@ class EventModel {
     required this.totalConfirmedValue,
   })  : linkedAccountProfiles =
             List<EventLinkedAccountProfile>.unmodifiable(linkedAccountProfiles),
+        profileGroups = List<EventProfileGroup>.unmodifiable(profileGroups),
         occurrences = List<EventOccurrenceOption>.unmodifiable(occurrences),
         programmingItems =
             List<EventProgrammingItem>.unmodifiable(programmingItems),

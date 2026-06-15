@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/map/city_poi_model.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_card_reference_point_action.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_card_secondary_action.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_detail_card_builder.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/size_reporting_widget.dart';
@@ -11,8 +12,10 @@ class SinglePoiCard extends StatelessWidget {
     required this.colorScheme,
     required this.cardBuilder,
     required this.onPrimaryAction,
+    required this.showPrimaryAction,
     required this.secondaryAction,
     required this.onRoute,
+    required this.referencePointAction,
     required this.onClose,
     required this.onCardHeightChanged,
     required this.deckHeight,
@@ -23,8 +26,10 @@ class SinglePoiCard extends StatelessWidget {
   final ColorScheme colorScheme;
   final PoiDetailCardBuilder cardBuilder;
   final ValueChanged<CityPoiModel> onPrimaryAction;
+  final bool showPrimaryAction;
   final PoiCardSecondaryAction? secondaryAction;
   final ValueChanged<CityPoiModel> onRoute;
+  final PoiCardReferencePointAction? referencePointAction;
   final VoidCallback onClose;
   final void Function(String poiId, double height) onCardHeightChanged;
   final double deckHeight;
@@ -49,8 +54,10 @@ class SinglePoiCard extends StatelessWidget {
             poi: poi,
             colorScheme: colorScheme,
             onPrimaryAction: () => onPrimaryAction(poi),
+            showPrimaryAction: showPrimaryAction,
             secondaryAction: secondaryAction,
             onRoute: () => onRoute(poi),
+            referencePointAction: referencePointAction,
             onClose: onClose,
           ),
         ),

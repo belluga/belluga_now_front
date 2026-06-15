@@ -58,7 +58,6 @@ class MockScheduleBackend implements ScheduleBackendContract {
     bool liveNowOnly = false,
     String? searchQuery,
     List<String>? categories,
-    List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
     List<String>? occurrenceIds,
@@ -101,9 +100,8 @@ class MockScheduleBackend implements ScheduleBackendContract {
     }).toList();
 
     final filteredByCategory = _filterByCategories(timeFiltered, categories);
-    final filteredByTags = _filterByTags(filteredByCategory, tags);
     final filteredByOccurrences =
-        _filterByOccurrenceIds(filteredByTags, occurrenceIds);
+        _filterByOccurrenceIds(filteredByCategory, occurrenceIds);
 
     final locationFiltered = _filterWithinRadiusIfAvailable(
       filteredByOccurrences,
@@ -239,21 +237,6 @@ class MockScheduleBackend implements ScheduleBackendContract {
         .toList();
   }
 
-  List<EventDTO> _filterByTags(
-    List<EventDTO> input,
-    List<String>? tags,
-  ) {
-    if (tags == null || tags.isEmpty) return input;
-    final normalized = tags.map((t) => t.toLowerCase().trim()).toSet();
-    return input
-        .where(
-          (event) => event.tags.any(
-            (tag) => normalized.contains(tag.toLowerCase()),
-          ),
-        )
-        .toList();
-  }
-
   List<EventDTO> _filterByOccurrenceIds(
     List<EventDTO> input,
     List<String>? occurrenceIds,
@@ -287,7 +270,6 @@ class MockScheduleBackend implements ScheduleBackendContract {
   Stream<EventDeltaDTO> watchEventsStream({
     String? searchQuery,
     List<String>? categories,
-    List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
     List<String>? occurrenceIds,

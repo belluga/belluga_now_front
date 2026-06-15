@@ -2,9 +2,11 @@ import 'package:belluga_now/domain/favorite/favorite_badge.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_event_occurrence_id_value.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_primary_flag_value.dart';
+import 'package:belluga_now/domain/favorite/value_objects/favorite_public_detail_path_value.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_target_type_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
+import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_optional_date_time_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
@@ -23,6 +25,8 @@ FavoriteResume favoriteResumeFromRaw({
   String? targetType,
   String? profileType,
   ThumbUriValue? coverImageUriValue,
+  bool canOpenPublicDetail = false,
+  String? publicDetailPath,
   DateTime? nextEventOccurrenceAt,
   DateTime? lastEventOccurrenceAt,
   String? liveNowEventOccurrenceId,
@@ -40,6 +44,11 @@ FavoriteResume favoriteResumeFromRaw({
     targetTypeValue: _targetTypeValueOrNull(targetType),
     profileTypeValue: _profileTypeValueOrNull(profileType),
     coverImageUriValue: coverImageUriValue,
+    canOpenPublicDetailValue: DomainBooleanValue(
+      defaultValue: canOpenPublicDetail,
+      isRequired: false,
+    )..parse(canOpenPublicDetail.toString()),
+    publicDetailPathValue: _publicDetailPathValueOrNull(publicDetailPath),
     nextEventOccurrenceAtValue: _optionalDateTimeValue(nextEventOccurrenceAt),
     lastEventOccurrenceAtValue: _optionalDateTimeValue(lastEventOccurrenceAt),
     liveNowEventOccurrenceIdValue:
@@ -71,6 +80,14 @@ FavoriteEventOccurrenceIdValue? _occurrenceIdValueOrNull(String? raw) {
     return null;
   }
   return FavoriteEventOccurrenceIdValue(normalized);
+}
+
+FavoritePublicDetailPathValue? _publicDetailPathValueOrNull(String? raw) {
+  final normalized = raw?.trim();
+  if (normalized == null || normalized.isEmpty) {
+    return null;
+  }
+  return FavoritePublicDetailPathValue(normalized);
 }
 
 DomainOptionalDateTimeValue _optionalDateTimeValue(DateTime? raw) {

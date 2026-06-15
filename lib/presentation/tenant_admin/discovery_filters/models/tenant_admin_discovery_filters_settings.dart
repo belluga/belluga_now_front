@@ -75,12 +75,10 @@ class TenantAdminDiscoveryFiltersSettings {
 
   static TenantAdminDiscoveryFiltersSettings fromRaw({
     required Map<String, dynamic> discoveryFilters,
-    Map<String, dynamic>? legacyMapUi,
   }) {
     final next =
         const TenantAdminDiscoveryFiltersSettingsCanonicalizer().canonicalize(
       discoveryFilters: discoveryFilters,
-      legacyMapUi: legacyMapUi,
     );
     return TenantAdminDiscoveryFiltersSettings(
       rawDiscoveryFiltersValue: TenantAdminDynamicMapValue(

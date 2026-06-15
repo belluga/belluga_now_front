@@ -10,6 +10,8 @@ class TenantAdminSettingsKeys {
       ValueKey('tenant_admin_settings_hub_card_visual_identity');
   static const hubCardDomains =
       ValueKey('tenant_admin_settings_hub_card_domains');
+  static const hubCardDiscoveryFilters =
+      ValueKey('tenant_admin_settings_hub_card_discovery_filters');
   static const hubCardTechnicalIntegrations =
       ValueKey('tenant_admin_settings_hub_card_technical_integrations');
   static const hubCardEnvironmentSnapshot =
@@ -21,6 +23,8 @@ class TenantAdminSettingsKeys {
       ValueKey('tenant_admin_settings_hub_action_visual_identity');
   static const hubActionDomains =
       ValueKey('tenant_admin_settings_hub_action_domains');
+  static const hubActionDiscoveryFilters =
+      ValueKey('tenant_admin_settings_hub_action_discovery_filters');
   static const hubActionTechnicalIntegrations =
       ValueKey('tenant_admin_settings_hub_action_technical_integrations');
   static const hubActionEnvironmentSnapshot =

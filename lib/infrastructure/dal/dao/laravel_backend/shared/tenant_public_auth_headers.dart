@@ -4,6 +4,15 @@ import 'package:get_it/get_it.dart';
 final class TenantPublicAuthHeaders {
   const TenantPublicAuthHeaders._();
 
+  static StateError _missingAuthRepository() => StateError(
+        'Protected tenant-public requests require a registered '
+        'AuthRepositoryContract.',
+      );
+
+  static StateError _missingBearerToken() => StateError(
+        'Protected tenant-public requests require a resolved bearer token.',
+      );
+
   static Future<Map<String, String>> build({
     bool includeJsonAccept = false,
     bool bootstrapIfEmpty = true,
@@ -23,42 +32,21 @@ final class TenantPublicAuthHeaders {
     return headers;
   }
 
-  static Map<String, String> buildSync({
-    bool includeJsonAccept = false,
-  }) {
-    final headers = <String, String>{};
-    if (includeJsonAccept) {
-      headers['Accept'] = 'application/json';
-    }
-
-    final token = currentToken();
-    if (token.isNotEmpty) {
-      headers['Authorization'] = 'Bearer $token';
-    }
-
-    return headers;
-  }
-
   static Future<String> resolveToken({
     bool bootstrapIfEmpty = true,
   }) async {
     if (!GetIt.I.isRegistered<AuthRepositoryContract>()) {
-      return '';
+      throw _missingAuthRepository();
     }
 
     final authRepository = GetIt.I.get<AuthRepositoryContract>();
-    var token = authRepository.userToken.trim();
-    if (token.isEmpty && bootstrapIfEmpty) {
-      await authRepository.init();
-      token = authRepository.userToken.trim();
+    if (bootstrapIfEmpty) {
+      await authRepository.ensureTenantPublicIdentityReady();
+    }
+    final token = authRepository.userToken.trim();
+    if (token.isEmpty) {
+      throw _missingBearerToken();
     }
     return token;
-  }
-
-  static String currentToken() {
-    if (!GetIt.I.isRegistered<AuthRepositoryContract>()) {
-      return '';
-    }
-    return GetIt.I.get<AuthRepositoryContract>().userToken.trim();
   }
 }

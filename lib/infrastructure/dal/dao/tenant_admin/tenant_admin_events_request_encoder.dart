@@ -1,5 +1,6 @@
 import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 
 class TenantAdminEventsRequestEncoder {
@@ -93,9 +94,18 @@ class TenantAdminEventsRequestEncoder {
           .toList(growable: false);
     }
 
-    payload['event_parties'] = draft.relatedAccountProfileIds.map((profileId) {
+    if (draft.profileGroups.isNotEmpty) {
+      payload['profile_groups'] = _encodeProfileGroups(draft.profileGroups);
+    }
+
+    payload['event_parties'] = _profileIdsForParties(
+      profileGroups: draft.profileGroups,
+      fallbackProfileIds: draft.relatedAccountProfileIds
+          .map((profileId) => profileId.value)
+          .toList(growable: false),
+    ).map((profileId) {
       return <String, dynamic>{
-        'party_ref_id': profileId.value,
+        'party_ref_id': profileId,
         'permissions': <String, dynamic>{
           'can_edit': true,
         },
@@ -146,10 +156,21 @@ class TenantAdminEventsRequestEncoder {
         ).toIso8601String(),
     };
 
-    payload['event_parties'] =
-        occurrence.relatedAccountProfileIds.map((profileId) {
+    if (occurrence.profileGroups.isNotEmpty) {
+      payload['profile_groups'] = _encodeProfileGroups(
+        occurrence.profileGroups,
+      );
+    }
+
+    final occurrencePartyIds = _profileIdsForParties(
+      profileGroups: occurrence.profileGroups,
+      fallbackProfileIds: occurrence.relatedAccountProfileIds
+          .map((profileId) => profileId.value)
+          .toList(growable: false),
+    );
+    payload['event_parties'] = occurrencePartyIds.map((profileId) {
       return <String, dynamic>{
-        'party_ref_id': profileId.value,
+        'party_ref_id': profileId,
         'permissions': <String, dynamic>{
           'can_edit': true,
         },
@@ -183,6 +204,44 @@ class TenantAdminEventsRequestEncoder {
         .toList(growable: false);
 
     return payload;
+  }
+
+  List<Map<String, dynamic>> _encodeProfileGroups(
+    List<TenantAdminNestedProfileGroup> groups,
+  ) {
+    return groups
+        .map(
+          (group) => <String, dynamic>{
+            'id': group.id,
+            'label': group.label,
+            'order': group.order,
+            'account_profile_ids': group.accountProfileIdValues
+                .map((profileId) => profileId.value)
+                .toList(growable: false),
+          },
+        )
+        .toList(growable: false);
+  }
+
+  List<String> _profileIdsForParties({
+    required List<TenantAdminNestedProfileGroup> profileGroups,
+    required List<String> fallbackProfileIds,
+  }) {
+    final ids = <String>[];
+    final sourceIds = profileGroups.isEmpty
+        ? fallbackProfileIds
+        : [
+            for (final group in profileGroups)
+              for (final profileId in group.accountProfileIdValues)
+                profileId.value,
+          ];
+    for (final profileId in sourceIds) {
+      final normalized = profileId.trim();
+      if (normalized.isNotEmpty && !ids.contains(normalized)) {
+        ids.add(normalized);
+      }
+    }
+    return List<String>.unmodifiable(ids);
   }
 
   Map<String, dynamic> _encodeLocation(TenantAdminEventLocation location) {

@@ -30,9 +30,12 @@ class LaravelInvitesBackend implements InvitesBackendContract {
     );
   }
 
-  Map<String, String> _streamHeaders({bool includeJsonAccept = false}) {
-    return TenantPublicAuthHeaders.buildSync(
+  Future<Map<String, String>> _streamHeaders({
+    bool includeJsonAccept = false,
+  }) {
+    return TenantPublicAuthHeaders.build(
       includeJsonAccept: includeJsonAccept,
+      bootstrapIfEmpty: true,
     );
   }
 
@@ -54,35 +57,53 @@ class LaravelInvitesBackend implements InvitesBackendContract {
   Stream<InviteRealtimeDeltaDto> watchInvitesStream({
     String? lastEventId,
   }) {
-    final uri = _inviteStreamUri(lastEventId: lastEventId);
-    return _sseClient
-        .connect(
-          uri,
-          lastEventId: lastEventId,
-          headers: _streamHeaders(),
-        )
-        .map((message) => _parseRealtimeDelta(
-              data: message.data,
-              fallbackType: message.event,
-              lastEventId: message.id,
-            ));
+    return Stream<Map<String, String>>.fromFuture(
+      _streamHeaders(),
+    ).asyncExpand((headers) async* {
+      final uri = _inviteStreamUri(
+        accessToken: _extractBearerToken(headers),
+        lastEventId: lastEventId,
+      );
+      yield* _sseClient
+          .connect(
+            uri,
+            lastEventId: lastEventId,
+            headers: headers,
+          )
+          .map((message) => _parseRealtimeDelta(
+                data: message.data,
+                fallbackType: message.event,
+                lastEventId: message.id,
+              ));
+    });
   }
 
-  Uri _inviteStreamUri({String? lastEventId}) {
+  Uri _inviteStreamUri({
+    required String accessToken,
+    String? lastEventId,
+  }) {
     final uri = Uri.parse('$_apiBaseUrl/v1/invites/stream');
-    final token = TenantPublicAuthHeaders.currentToken();
     final cursor = lastEventId?.trim() ?? '';
-    if (token.isEmpty && cursor.isEmpty) {
+    if (accessToken.isEmpty && cursor.isEmpty) {
       return uri;
     }
 
     return uri.replace(
       queryParameters: <String, String>{
         ...uri.queryParameters,
-        if (token.isNotEmpty) 'access_token': token,
+        if (accessToken.isNotEmpty) 'access_token': accessToken,
         if (cursor.isNotEmpty) 'last_event_id': cursor,
       },
     );
+  }
+
+  String _extractBearerToken(Map<String, String> headers) {
+    final raw = headers['Authorization']?.trim() ?? '';
+    const prefix = 'Bearer ';
+    if (!raw.startsWith(prefix)) {
+      return '';
+    }
+    return raw.substring(prefix.length).trim();
   }
 
   @override

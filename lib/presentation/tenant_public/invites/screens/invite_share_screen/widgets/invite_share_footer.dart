@@ -1,6 +1,6 @@
+import 'package:belluga_now/application/sharing/event_invite_share_payload.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
-import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -11,16 +11,19 @@ class InviteShareFooter extends StatelessWidget {
     required this.shareUri,
     required this.isGeneratingShareCode,
     required this.onRetryShareCode,
+    this.participantGroups = const [],
   });
 
   final InviteModel invite;
   final Uri? shareUri;
   final bool isGeneratingShareCode;
   final VoidCallback onRetryShareCode;
+  final List<EventInviteShareParticipantGroup> participantGroups;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final resolvedShareUri = shareUri;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -57,7 +60,12 @@ class InviteShareFooter extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Bora? ${invite.eventName} em ${invite.location}.',
+                  EventInviteSharePayloadBuilder.preview(
+                    eventName: invite.eventName,
+                    location: invite.location,
+                    eventScheduleLabel: invite.eventDateFlyerLabel,
+                    inviterName: invite.inviterName,
+                  ),
                   style: theme.textTheme.bodySmall
                       ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                   maxLines: 2,
@@ -70,18 +78,22 @@ class InviteShareFooter extends StatelessWidget {
           FilledButton.icon(
             onPressed: isGeneratingShareCode
                 ? null
-                : shareUri == null
+                : resolvedShareUri == null
                     ? onRetryShareCode
                     : () {
-                        final localEventDate =
-                            TimezoneConverter.utcToLocal(invite.eventDateTime);
-                        final text =
-                            'Bora? ${invite.eventName} em ${invite.location} no dia $localEventDate.'
-                            '\nDetalhes: $shareUri';
+                        final payload =
+                            EventInviteSharePayloadBuilder.buildInvitation(
+                          eventName: invite.eventName,
+                          location: invite.location,
+                          eventScheduleLabel: invite.eventDateFlyerLabel,
+                          inviteUri: resolvedShareUri,
+                          inviterName: invite.inviterName,
+                          participantGroups: participantGroups,
+                        );
                         SharePlus.instance.share(
                           ShareParams(
-                            text: text,
-                            subject: 'Convite Belluga Now',
+                            text: payload.message,
+                            subject: payload.subject,
                           ),
                         );
                       },

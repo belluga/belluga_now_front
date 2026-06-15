@@ -1,3 +1,4 @@
+import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_external_contact_share_target.dart';
 import 'package:flutter/material.dart';
 
@@ -29,7 +30,7 @@ class InviteExternalContactCard extends StatelessWidget {
               foregroundColor: colorScheme.onSecondaryContainer,
               child: Icon(
                 target.hasPhone
-                    ? Icons.chat_bubble_outline
+                    ? BooraIcons.whatsapp
                     : Icons.ios_share_outlined,
                 size: 20,
               ),
@@ -66,7 +67,7 @@ class InviteExternalContactCard extends StatelessWidget {
               onPressed: onShare,
               icon: Icon(
                 target.hasPhone
-                    ? Icons.chat_bubble_outline
+                    ? BooraIcons.whatsapp
                     : Icons.ios_share_outlined,
                 size: 18,
               ),

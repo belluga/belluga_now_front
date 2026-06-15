@@ -18,6 +18,13 @@ void main() {
         'content': '<p>Bora?</p>',
         'location': 'Guarapari',
         'date_time_start': '2026-03-13T20:00:00Z',
+        'taxonomy_terms': [
+          {
+            'type': 'event_style',
+            'value': 'showcase',
+            'name': 'Showcase',
+          },
+        ],
         'occurrence_id': 'occ-second',
         'occurrences': [
           {
@@ -40,6 +47,7 @@ void main() {
 
       expect(invite.eventId, '507f1f77bcf86cd799439011');
       expect(invite.occurrenceId, 'occ-second');
+      expect(invite.tags.map((tag) => tag.value).toList(), ['Showcase']);
     },
   );
 }

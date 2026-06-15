@@ -2,8 +2,18 @@ import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/d
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_launch_target.dart';
 import 'package:flutter/material.dart';
 
+enum DirectionsDirectProvider {
+  waze,
+  uber,
+}
+
 abstract class DirectionsAppChooserContract {
   Future<List<DirectionsAppChoice>> loadOptions({
+    required DirectionsLaunchTarget target,
+  });
+
+  Future<bool> launchDirect({
+    required DirectionsDirectProvider provider,
     required DirectionsLaunchTarget target,
   });
 

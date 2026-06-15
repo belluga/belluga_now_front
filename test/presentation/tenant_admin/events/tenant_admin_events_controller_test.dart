@@ -11,6 +11,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profi
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
@@ -183,6 +184,84 @@ void main() {
   });
 
   test(
+      'initEventForm seeds related profile cache with occurrence-owned profiles',
+      () {
+    final controller = TenantAdminEventsController(
+      eventsRepository: _TrackingEventsRepository(),
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+      landlordAuthRepository:
+          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
+    );
+    final occurrenceArtist = tenantAdminAccountProfileFromRaw(
+      id: 'occ-artist-1',
+      accountId: 'acc-occ-artist-1',
+      profileType: 'artist',
+      displayName: 'Occurrence Artist',
+    );
+    final occurrenceExhibitor = tenantAdminAccountProfileFromRaw(
+      id: 'occ-exhibitor-1',
+      accountId: 'acc-occ-exhibitor-1',
+      profileType: 'exhibitor',
+      displayName: 'Occurrence Exhibitor',
+    );
+    final existingEvent = TenantAdminEvent(
+      eventIdValue: tenantAdminRequiredText('evt-occ-cache'),
+      slugValue: tenantAdminRequiredText('evt-occ-cache'),
+      titleValue: tenantAdminRequiredText('Evento em edição'),
+      contentValue: tenantAdminOptionalText('Conteúdo'),
+      type: TenantAdminEventType(
+        idValue: tenantAdminOptionalText('type-1'),
+        nameValue: tenantAdminRequiredText('Show'),
+        slugValue: tenantAdminRequiredText('show'),
+      ),
+      occurrences: <TenantAdminEventOccurrence>[
+        TenantAdminEventOccurrence(
+          dateTimeStartValue: tenantAdminDateTime(DateTime.utc(2026, 6, 7, 3)),
+        ),
+        TenantAdminEventOccurrence(
+          occurrenceIdValue: tenantAdminOptionalText('occurrence-2'),
+          dateTimeStartValue: tenantAdminDateTime(DateTime.utc(2026, 6, 8, 3)),
+          relatedAccountProfileIdValues: [
+            TenantAdminAccountProfileIdValue(occurrenceArtist.id),
+            TenantAdminAccountProfileIdValue(occurrenceExhibitor.id),
+          ],
+          relatedAccountProfiles: [
+            occurrenceArtist,
+            occurrenceExhibitor,
+          ],
+          profileGroups: [
+            TenantAdminNestedProfileGroup(
+              idValue: TenantAdminNestedProfileGroupTextValue('outro-grupo'),
+              labelValue: TenantAdminNestedProfileGroupTextValue('Outro Grupo'),
+              orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+              accountProfileIdValues: [
+                TenantAdminNestedProfileGroupTextValue(occurrenceArtist.id),
+                TenantAdminNestedProfileGroupTextValue(
+                  occurrenceExhibitor.id,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
+      publication: TenantAdminEventPublication(
+        statusValue: tenantAdminRequiredText('draft'),
+      ),
+    );
+
+    controller.initEventForm(existingEvent: existingEvent);
+
+    expect(
+      controller.relatedAccountProfileCandidatesStreamValue.value
+          .map((profile) => profile.id),
+      containsAll([
+        occurrenceArtist.id,
+        occurrenceExhibitor.id,
+      ]),
+    );
+  });
+
+  test(
       'upsertOccurrence keeps occurrence programming profiles out of event-level related selection',
       () {
     final controller = TenantAdminEventsController(
@@ -242,6 +321,79 @@ void main() {
           .toList(growable: false),
       ['artist-1'],
     );
+  });
+
+  test(
+      'occurrence profile-group changes clear stale programming profile links for removed members',
+      () {
+    final controller = TenantAdminEventsController(
+      eventsRepository: _TrackingEventsRepository(),
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+      landlordAuthRepository:
+          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
+    );
+    final occurrenceProfile = tenantAdminAccountProfileFromRaw(
+      id: 'artist-1',
+      accountId: 'acc-artist-1',
+      profileType: 'artist',
+      displayName: 'Artist A',
+    );
+
+    controller.initEventForm();
+    controller.upsertOccurrence(
+      index: null,
+      occurrence: TenantAdminEventOccurrence(
+        dateTimeStartValue: tenantAdminDateTime(DateTime(2026, 4, 22, 20)),
+        relatedAccountProfileIdValues:
+            List<TenantAdminAccountProfileIdValue>.of(
+          [
+            TenantAdminAccountProfileIdValue('artist-1'),
+          ],
+        ),
+        relatedAccountProfiles: [occurrenceProfile],
+        profileGroups: [
+          TenantAdminNestedProfileGroup(
+            idValue: TenantAdminNestedProfileGroupTextValue('bandas'),
+            labelValue: TenantAdminNestedProfileGroupTextValue('Bandas'),
+            orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+            accountProfileIdValues: [
+              TenantAdminNestedProfileGroupTextValue('artist-1'),
+            ],
+          ),
+        ],
+        programmingItems: List<TenantAdminEventProgrammingItem>.of([
+          TenantAdminEventProgrammingItem(
+            timeValue: tenantAdminRequiredText('20:00'),
+            titleValue: tenantAdminOptionalText('Show principal'),
+            accountProfileIdValues: List<TenantAdminAccountProfileIdValue>.of([
+              TenantAdminAccountProfileIdValue('artist-1'),
+            ]),
+            linkedAccountProfiles: [occurrenceProfile],
+          ),
+        ]),
+      ),
+    );
+
+    controller.toggleOccurrenceProfileGroupMember(
+      occurrenceKey: (controller.primaryOccurrenceKey())!,
+      groupId: 'bandas',
+      profileId: 'artist-1',
+      selected: false,
+    );
+
+    final occurrence =
+        controller.eventFormStateStreamValue.value.occurrences.single;
+    expect(occurrence.relatedAccountProfileIds, isEmpty);
+    expect(occurrence.relatedAccountProfiles, isEmpty);
+    expect(
+      occurrence.programmingItems.single.accountProfileIds,
+      isEmpty,
+    );
+    expect(
+      occurrence.programmingItems.single.linkedAccountProfiles,
+      isEmpty,
+    );
+    expect(occurrence.programmingItems.single.title, 'Show principal');
   });
 
   test(

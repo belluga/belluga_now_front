@@ -1,6 +1,9 @@
 import 'dart:convert';
 
 import 'package:belluga_now/domain/map/queries/poi_query.dart';
+import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_key_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_source_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_taxonomy_token_value.dart';
@@ -118,11 +121,64 @@ void main() {
       dio: dio,
     );
 
-    await service.getPois(PoiQuery());
+    await service.getPois(_buildPoiQuery());
 
     final request = adapter.requests.single;
-    expect(authRepository.initCallCount, 1);
+    expect(authRepository.ensureTenantPublicIdentityReadyCallCount, 1);
+    expect(authRepository.initCallCount, 0);
     expect(request.headers['Authorization'], 'Bearer refreshed-token');
+  });
+
+  test('getPois revalidates persisted token before tenant-public map requests',
+      () async {
+    final authRepository =
+        GetIt.I.get<AuthRepositoryContract>() as _FakeAuthRepository;
+    authRepository.setUserToken(authRepoString('stale-token'));
+    authRepository.tokenAfterInit = 'refreshed-token';
+    authRepository.refreshTokenOnInit = true;
+
+    final adapter = _RecordingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final service = LaravelMapPoiHttpService(
+      context: BackendContext(
+        baseUrl: 'https://tenant.test/api',
+        adminUrl: 'https://tenant.test/admin/api',
+      ),
+      dio: dio,
+    );
+
+    await service.getPois(_buildPoiQuery());
+
+    final request = adapter.requests.single;
+    expect(authRepository.ensureTenantPublicIdentityReadyCallCount, 1);
+    expect(authRepository.initCallCount, 0);
+    expect(request.headers['Authorization'], 'Bearer refreshed-token');
+  });
+
+  test('getPois fails closed when auth repository is missing', () async {
+    await GetIt.I.reset();
+
+    final adapter = _RecordingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final service = LaravelMapPoiHttpService(
+      context: BackendContext(
+        baseUrl: 'https://tenant.test/api',
+        adminUrl: 'https://tenant.test/admin/api',
+      ),
+      dio: dio,
+    );
+
+    await expectLater(
+      () => service.getPois(_buildPoiQuery()),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          contains('require a registered AuthRepositoryContract'),
+        ),
+      ),
+    );
+    expect(adapter.requests, isEmpty);
   });
 
   test('getPois preserves icon visual contract from stacks payload', () async {
@@ -136,7 +192,7 @@ void main() {
       dio: dio,
     );
 
-    final pois = await service.getPois(PoiQuery());
+    final pois = await service.getPois(_buildPoiQuery());
 
     expect(pois, hasLength(1));
     expect(pois.first.visual, isNotNull);
@@ -146,8 +202,7 @@ void main() {
     expect(pois.first.visual?.iconColor, '#101010');
   });
 
-  test('getPois preserves image visual contract from stacks payload',
-      () async {
+  test('getPois preserves image visual contract from stacks payload', () async {
     final adapter = _PoiImageStacksAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
     final service = LaravelMapPoiHttpService(
@@ -158,7 +213,7 @@ void main() {
       dio: dio,
     );
 
-    final pois = await service.getPois(PoiQuery());
+    final pois = await service.getPois(_buildPoiQuery());
 
     expect(pois, hasLength(1));
     expect(pois.first.visual, isNotNull);
@@ -167,6 +222,53 @@ void main() {
       pois.first.visual?.imageUri,
       'https://tenant.test/api/v1/media/event-types/type-1/type_asset?v=9',
     );
+  });
+  test('getPois rejects map requests without a resolved origin', () async {
+    final adapter = _RecordingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final service = LaravelMapPoiHttpService(
+      context: BackendContext(
+        baseUrl: 'https://tenant.test/api',
+        adminUrl: 'https://tenant.test/admin/api',
+      ),
+      dio: dio,
+    );
+
+    await expectLater(
+      () => service.getPois(PoiQuery()),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          contains('requires a resolved origin'),
+        ),
+      ),
+    );
+    expect(adapter.requests, isEmpty);
+  });
+
+  test('getFilters rejects map requests without a resolved origin', () async {
+    final adapter = _RecordingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final service = LaravelMapPoiHttpService(
+      context: BackendContext(
+        baseUrl: 'https://tenant.test/api',
+        adminUrl: 'https://tenant.test/admin/api',
+      ),
+      dio: dio,
+    );
+
+    await expectLater(
+      () => service.getFilters(PoiQuery()),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          contains('requires a resolved origin'),
+        ),
+      ),
+    );
+    expect(adapter.requests, isEmpty);
   });
 }
 
@@ -178,6 +280,7 @@ PoiQuery _buildPoiQuery({
   Set<String>? taxonomy,
 }) {
   return PoiQuery(
+    origin: _buildOrigin(),
     sourceValue: _buildSourceValue(source),
     categoryKeyValues:
         categoryKeys == null ? null : _buildFilterKeyValues(categoryKeys),
@@ -185,6 +288,13 @@ PoiQuery _buildPoiQuery({
     tagValues: tags == null ? null : _buildTagValues(tags),
     taxonomyTokenValues:
         taxonomy == null ? null : _buildTaxonomyValues(taxonomy),
+  );
+}
+
+CityCoordinate _buildOrigin() {
+  return CityCoordinate(
+    latitudeValue: LatitudeValue()..parse('-20.3155'),
+    longitudeValue: LongitudeValue()..parse('-40.3128'),
   );
 }
 
@@ -262,6 +372,8 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   String _token = 'test-token';
   String? tokenAfterInit;
   int initCallCount = 0;
+  int ensureTenantPublicIdentityReadyCallCount = 0;
+  bool refreshTokenOnInit = false;
 
   @override
   Object get backend => Object();
@@ -289,7 +401,17 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   @override
   Future<void> init() async {
     initCallCount += 1;
-    if (_token.trim().isEmpty &&
+    if ((refreshTokenOnInit || _token.trim().isEmpty) &&
+        tokenAfterInit != null &&
+        tokenAfterInit!.trim().isNotEmpty) {
+      _token = tokenAfterInit!;
+    }
+  }
+
+  @override
+  Future<void> ensureTenantPublicIdentityReady() async {
+    ensureTenantPublicIdentityReadyCallCount += 1;
+    if ((refreshTokenOnInit || _token.trim().isEmpty) &&
         tokenAfterInit != null &&
         tokenAfterInit!.trim().isNotEmpty) {
       _token = tokenAfterInit!;
@@ -327,8 +449,7 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
       AuthRepositoryContractParamString email) async {}
 
   @override
-  Future<void> updateUser(
-      UserCustomData data) async {}
+  Future<void> updateUser(UserCustomData data) async {}
 }
 
 class _RecordingAdapter implements HttpClientAdapter {

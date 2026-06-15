@@ -3,6 +3,7 @@ import 'package:belluga_now/application/rich_text/account_profile_rich_text_limi
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
@@ -15,6 +16,7 @@ import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admi
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_upload_field.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_nested_profile_groups_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_xfile_preview.dart';
 import 'package:flutter/foundation.dart';
@@ -50,6 +52,7 @@ class _TenantAdminAccountProfileCreateScreenState
     _controller.loadProfileTypes();
     _controller.loadTaxonomies();
     _controller.loadAccountForCreate(_currentAccountSlugForRequests());
+    _controller.loadNestedProfileCandidates();
   }
 
   bool _isResolvedSlug(String? value) {
@@ -153,6 +156,11 @@ class _TenantAdminAccountProfileCreateScreenState
   bool _hasCover(String? selectedType) {
     final definition = _profileTypeDefinition(selectedType);
     return definition?.capabilities.hasCover ?? false;
+  }
+
+  bool _hasNestedProfileGroups(String? selectedType) {
+    final definition = _profileTypeDefinition(selectedType);
+    return definition?.capabilities.hasNestedProfileGroups ?? false;
   }
 
   List<String> _allowedTaxonomies(String? selectedType) {
@@ -311,7 +319,7 @@ class _TenantAdminAccountProfileCreateScreenState
     final coverUpload = _hasCover(state.selectedProfileType)
         ? await _controller.buildImageUpload(
             state.coverFile,
-            slot: TenantAdminImageSlot.cover,
+            slot: TenantAdminImageSlot.accountProfileHeroCover,
           )
         : null;
     _controller.submitCreateProfile(
@@ -330,6 +338,9 @@ class _TenantAdminAccountProfileCreateScreenState
       coverUpload: coverUpload,
       avatarUrl: null,
       coverUrl: null,
+      nestedProfileGroups: _hasNestedProfileGroups(state.selectedProfileType)
+          ? state.nestedProfileGroups
+          : const <TenantAdminNestedProfileGroup>[],
     );
   }
 
@@ -354,6 +365,9 @@ class _TenantAdminAccountProfileCreateScreenState
                 final hasContent = _hasBio(state.selectedProfileType) ||
                     _hasContent(state.selectedProfileType) ||
                     _hasTaxonomies(state.selectedProfileType);
+                final hasNestedProfileGroups = _hasNestedProfileGroups(
+                  state.selectedProfileType,
+                );
                 final accountSlugForUi = _currentAccountSlugForRequests();
                 return TenantAdminFormScaffold(
                   closePolicy: buildTenantAdminCurrentRouteBackPolicy(context),
@@ -376,6 +390,37 @@ class _TenantAdminAccountProfileCreateScreenState
                           if (requiresLocation) ...[
                             const SizedBox(height: 16),
                             _buildLocationSection(context),
+                          ],
+                          if (hasNestedProfileGroups) ...[
+                            const SizedBox(height: 16),
+                            TenantAdminNestedProfileGroupsEditor(
+                              keyPrefix: 'tenantAdminCreate',
+                              groups: state.nestedProfileGroups,
+                              candidatesStreamValue: _controller
+                                  .nestedProfileCandidatesStreamValue,
+                              profileTypes:
+                                  _controller.profileTypesStreamValue.value,
+                              addButtonKey: const Key(
+                                'tenantAdminCreateAddNestedGroupButton',
+                              ),
+                              onAddGroup:
+                                  _controller.addCreateNestedProfileGroup,
+                              onRenameGroup:
+                                  _controller.renameCreateNestedProfileGroup,
+                              onMoveGroup:
+                                  _controller.moveCreateNestedProfileGroup,
+                              onRemoveGroup:
+                                  _controller.removeCreateNestedProfileGroup,
+                              onSelectionChanged:
+                                  (groupId, profileId, selected) {
+                                _controller
+                                    .toggleCreateNestedProfileGroupMember(
+                                  groupId: groupId,
+                                  profileId: profileId,
+                                  selected: selected,
+                                );
+                              },
+                            ),
                           ],
                           const SizedBox(height: 24),
                           TenantAdminPrimaryFormAction(
@@ -766,9 +811,9 @@ class _TenantAdminAccountProfileCreateScreenState
               canRemove: state.coverFile != null || hasCoverUrl,
               onRemove: () => _clearImage(isAvatar: false),
               initialWebUrl: coverUrl,
-              slot: TenantAdminImageSlot.cover,
+              slot: TenantAdminImageSlot.accountProfileHeroCover,
               pickFromDevice: () => _controller.pickImageFromDevice(
-                slot: TenantAdminImageSlot.cover,
+                slot: TenantAdminImageSlot.accountProfileHeroCover,
               ),
               fetchImageFromUrlForCrop: _controller.fetchImageFromUrlForCrop,
               readBytesForCrop: _controller.readImageBytesForCrop,

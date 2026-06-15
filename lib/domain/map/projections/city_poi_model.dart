@@ -22,8 +22,11 @@ import 'package:belluga_now/domain/map/value_objects/poi_time_start_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_updated_at_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_image_uri_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_type_label_value.dart';
+import 'package:belluga_now/domain/schedule/event_schedule_display.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
 import 'package:belluga_now/domain/map/projections/city_poi_visual.dart';
+import 'package:belluga_now/application/time/timezone_converter.dart';
+import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 
 class CityPoiModel implements MapPoi {
   CityPoiModel({
@@ -168,6 +171,70 @@ class CityPoiModel implements MapPoi {
   DateTime? get timeEnd => timeEndValue?.value;
   DateTime? get updatedAt => updatedAtValue?.value;
   double? get distanceMeters => distanceMetersValue?.value;
+
+  bool get isEventReference => refType.trim().toLowerCase() == 'event';
+
+  EventScheduleDisplay? get eventScheduleDisplay {
+    if (!isEventReference || timeStart == null) {
+      return null;
+    }
+    final startValue = DateTimeValue()..parse(timeStart!.toIso8601String());
+    final end = timeEnd;
+    final endValue =
+        end == null ? null : (DateTimeValue()..parse(end.toIso8601String()));
+    return EventScheduleDisplay(
+      startValue: startValue,
+      endValue: endValue,
+    );
+  }
+
+  String? get eventScheduleLabel => eventScheduleDisplay?.detailLabel;
+
+  String? get eventTimingBadgeLabel {
+    if (!isEventReference) {
+      return null;
+    }
+    if (isHappeningNow) {
+      return 'AGORA';
+    }
+    return eventScheduleDisplay?.startTimeLabel;
+  }
+
+  String? eventRelativeTimingBadgeLabel({DateTimeValue? referenceTimeValue}) {
+    if (!isEventReference) {
+      return null;
+    }
+    if (isHappeningNow) {
+      return 'AGORA';
+    }
+    final display = eventScheduleDisplay;
+    if (display == null) {
+      return null;
+    }
+
+    final localStart = display.start;
+    final localReference = TimezoneConverter.utcToLocal(
+      referenceTimeValue?.value ?? DateTime.now(),
+    );
+    final startDay = DateTime(
+      localStart.year,
+      localStart.month,
+      localStart.day,
+    );
+    final referenceDay = DateTime(
+      localReference.year,
+      localReference.month,
+      localReference.day,
+    );
+    final dayOffset = startDay.difference(referenceDay).inDays;
+    if (dayOffset == 0) {
+      return 'Hoje ${display.startTimeLabel}';
+    }
+    if (dayOffset == 1) {
+      return 'Amanhã ${display.startTimeLabel}';
+    }
+    return display.detailLabel;
+  }
 
   bool get hasStack => stackCount > 1 && stackItems.isNotEmpty;
 

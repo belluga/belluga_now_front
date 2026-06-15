@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
@@ -9,6 +10,7 @@ import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_programming_item_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/widgets/tenant_admin_account_profile_location_picker_sheet.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_nested_profile_groups_editor.dart';
 import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
@@ -162,6 +164,14 @@ class _TenantAdminEventOccurrenceEditorSheetState
     extends State<_TenantAdminEventOccurrenceEditorSheet> {
   String? _errorMessage;
 
+  List<TenantAdminAccountProfile> get _currentVenues {
+    final liveVenues = widget.controller.venueCandidatesStreamValue.value;
+    if (liveVenues.isNotEmpty) {
+      return liveVenues;
+    }
+    return widget.venues;
+  }
+
   Future<void> _pickStart() async {
     final picked = await widget.pickDateTime(
       initialDateTime: widget.occurrence.dateTimeStart,
@@ -189,24 +199,6 @@ class _TenantAdminEventOccurrenceEditorSheetState
     }
     setState(() {
       widget.controller.updateOccurrenceEnd(widget.occurrenceKey, picked);
-      _errorMessage = null;
-    });
-  }
-
-  Future<void> _addRelatedProfile() async {
-    final selected = await widget.pickRelatedAccountProfile(
-      excludedProfileIds: widget.occurrence.relatedAccountProfileIds
-          .map((profileId) => profileId.value)
-          .toSet(),
-    );
-    if (selected == null || !mounted) {
-      return;
-    }
-    setState(() {
-      widget.controller.addOccurrenceRelatedProfile(
-        widget.occurrenceKey,
-        selected,
-      );
       _errorMessage = null;
     });
   }
@@ -420,48 +412,47 @@ class _TenantAdminEventOccurrenceEditorSheetState
             ),
             _buildOccurrenceTaxonomySection(context),
             const Divider(height: 28),
-            Text(
-              'Perfis próprios da ocorrência',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            const SizedBox(height: 8),
-            if (widget.occurrence.relatedAccountProfileIds.isEmpty)
-              Text(
-                'Nenhum perfil próprio nesta data.',
-                style: Theme.of(context).textTheme.bodySmall,
-              )
-            else
-              for (final profileId
-                  in widget.occurrence.relatedAccountProfileIds)
-                ListTile(
-                  key: Key('tenantAdminOccurrenceProfile_${profileId.value}'),
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.person_outline),
-                  title: Text(
-                    TenantAdminEventOccurrenceEditorDraft.profileDisplayName(
-                      profileId.value,
-                      widget.occurrence.relatedAccountProfiles,
-                    ),
-                  ),
-                  trailing: IconButton(
-                    tooltip: 'Remover perfil da ocorrência',
-                    onPressed: () {
-                      setState(() {
-                        widget.controller.removeOccurrenceRelatedProfile(
-                          widget.occurrenceKey,
-                          profileId.value,
-                        );
-                        _errorMessage = null;
-                      });
-                    },
-                    icon: const Icon(Icons.close),
-                  ),
-                ),
-            OutlinedButton.icon(
-              key: const Key('tenantAdminOccurrenceAddProfileButton'),
-              onPressed: _addRelatedProfile,
-              icon: const Icon(Icons.add),
-              label: const Text('Adicionar perfil próprio'),
+            TenantAdminNestedProfileGroupsEditor(
+              keyPrefix: 'OccurrenceProfile',
+              title: 'Abas de perfis próprios da ocorrência',
+              selectorTitle: 'Perfis',
+              emptyCandidatesText: 'Nenhum perfil disponivel.',
+              emptySelectionText: 'Selecionar perfis',
+              selectedCountLabel: 'perfil(is) selecionado(s)',
+              searchLabelText: 'Buscar perfil',
+              emptySearchText: 'Nenhum perfil encontrado.',
+              groups: widget.occurrence.profileGroups,
+              candidatesStreamValue:
+                  widget.controller.relatedAccountProfileCandidatesStreamValue,
+              profileTypes: const [],
+              addButtonKey: const Key('TenantAdminOccurrenceProfileGroupAdd'),
+              onAddGroup: () => widget.controller.addOccurrenceProfileGroup(
+                widget.occurrenceKey,
+              ),
+              onRenameGroup: (groupId, label) =>
+                  widget.controller.renameOccurrenceProfileGroup(
+                occurrenceKey: widget.occurrenceKey,
+                groupId: groupId,
+                label: label,
+              ),
+              onMoveGroup: (groupId, delta) =>
+                  widget.controller.moveOccurrenceProfileGroup(
+                occurrenceKey: widget.occurrenceKey,
+                groupId: groupId,
+                delta: delta,
+              ),
+              onRemoveGroup: (groupId) =>
+                  widget.controller.removeOccurrenceProfileGroup(
+                occurrenceKey: widget.occurrenceKey,
+                groupId: groupId,
+              ),
+              onSelectionChanged: (groupId, profileId, selected) =>
+                  widget.controller.toggleOccurrenceProfileGroupMember(
+                occurrenceKey: widget.occurrenceKey,
+                groupId: groupId,
+                profileId: profileId,
+                selected: selected,
+              ),
             ),
             const Divider(height: 28),
             Text(
@@ -481,7 +472,7 @@ class _TenantAdminEventOccurrenceEditorSheetState
                 _ProgrammingItemListTile(
                   key: Key('tenantAdminOccurrenceProgrammingItem_$itemIndex'),
                   item: widget.programmingItems[itemIndex].value,
-                  venues: widget.venues,
+                  venues: _currentVenues,
                   onTap: () => _editProgrammingItem(
                     itemKey: widget.programmingItems[itemIndex].key,
                     item: widget.programmingItems[itemIndex].value,
@@ -547,12 +538,41 @@ class _TenantAdminEventProgrammingItemEditorSheetState
       TenantAdminEventProgrammingItemDraft(existing: widget.existing);
   String? _errorMessage;
 
+  @override
+  void initState() {
+    super.initState();
+    _synchronizeDraftWithOccurrence();
+  }
+
+  void _synchronizeDraftWithOccurrence() {
+    final occurrence = widget.controller.occurrenceForKey(widget.occurrenceKey);
+    final allowedProfileIds = occurrence?.relatedAccountProfileIds
+            .map((profileId) => profileId.value)
+            .toSet() ??
+        <String>{};
+
+    _draft.linkedProfileIds.removeWhere(
+      (profileId) => !allowedProfileIds.contains(profileId.value),
+    );
+    _draft.linkedProfiles.removeWhere(
+      (profile) => !allowedProfileIds.contains(profile.id),
+    );
+  }
+
+  List<TenantAdminAccountProfile> get _currentVenues {
+    final liveVenues = widget.controller.venueCandidatesStreamValue.value;
+    if (liveVenues.isNotEmpty) {
+      return liveVenues;
+    }
+    return widget.venues;
+  }
+
   String get _selectedLocationLabel {
     final selectedId = _draft.selectedLocationProfileId;
     if (selectedId == null || selectedId.isEmpty) {
       return 'Sem local específico';
     }
-    for (final venue in widget.venues) {
+    for (final venue in _currentVenues) {
       if (venue.id == selectedId) {
         return venue.displayName;
       }
@@ -574,8 +594,27 @@ class _TenantAdminEventProgrammingItemEditorSheetState
     });
   }
 
-  Future<void> _addOccurrenceProfile() async {
+  Future<void> _addOccurrenceProfile({
+    required String groupId,
+  }) async {
     final occurrence = widget.controller.occurrenceForKey(widget.occurrenceKey);
+    final profileGroups =
+        occurrence?.profileGroups ?? const <TenantAdminNestedProfileGroup>[];
+    if (profileGroups.isEmpty) {
+      setState(() {
+        _errorMessage =
+            'Crie uma aba de perfis próprios da ocorrência antes de adicionar perfis pela programação.';
+      });
+      return;
+    }
+    final selectedGroupId =
+        profileGroups.any((group) => group.id == groupId) ? groupId : null;
+    if (selectedGroupId == null) {
+      setState(() {
+        _errorMessage = 'Grupo da ocorrência inválido.';
+      });
+      return;
+    }
     final selected = await widget.pickRelatedAccountProfile(
       excludedProfileIds: occurrence?.relatedAccountProfileIds
               .map((profileId) => profileId.value)
@@ -586,9 +625,10 @@ class _TenantAdminEventProgrammingItemEditorSheetState
       return;
     }
     setState(() {
-      widget.controller.addOccurrenceRelatedProfile(
-        widget.occurrenceKey,
-        selected,
+      widget.controller.addOccurrenceRelatedProfileToGroup(
+        occurrenceKey: widget.occurrenceKey,
+        groupId: selectedGroupId,
+        profile: selected,
       );
       _draft.upsertLinkedProfile(selected);
       _errorMessage = null;
@@ -650,9 +690,27 @@ class _TenantAdminEventProgrammingItemEditorSheetState
   }
 
   Future<void> _pickProgrammingLocation() async {
+    await widget.controller.ensureVenueCandidatesReady();
+    if (!mounted) {
+      return;
+    }
+    final venues = _currentVenues;
+    if (venues.isEmpty) {
+      setState(() {
+        _errorMessage = widget
+                    .controller.accountProfileCandidatesErrorStreamValue.value
+                    ?.trim()
+                    .isNotEmpty ==
+                true
+            ? widget.controller.accountProfileCandidatesErrorStreamValue.value
+            : 'Nenhum local disponível para seleção no momento.';
+      });
+      return;
+    }
+
     final selected = await showTenantAdminAccountProfileLocationPickerSheet(
       context: context,
-      venues: widget.venues,
+      venues: venues,
       selectedLocationProfileId: _draft.selectedLocationProfileId,
       title: 'Local da programação',
       subtitle: 'Selecione um local específico para este item de programação.',
@@ -675,6 +733,8 @@ class _TenantAdminEventProgrammingItemEditorSheetState
     final occurrence = widget.controller.occurrenceForKey(widget.occurrenceKey);
     final occurrenceRelatedProfiles = occurrence?.relatedAccountProfiles ??
         const <TenantAdminAccountProfile>[];
+    final occurrenceProfileGroups =
+        occurrence?.profileGroups ?? const <TenantAdminNestedProfileGroup>[];
     final availableOccurrenceProfileIds = _draft.availableOccurrenceProfileIds(
       occurrenceRelatedProfiles,
     );
@@ -792,16 +852,60 @@ class _TenantAdminEventProgrammingItemEditorSheetState
                   icon: const Icon(Icons.link),
                   label: const Text('Vincular perfil da data'),
                 ),
-                OutlinedButton.icon(
+              ],
+            ),
+            if (occurrenceProfileGroups.isEmpty) ...[
+              const SizedBox(height: 12),
+              Tooltip(
+                message:
+                    'Crie uma aba de perfis próprios da ocorrência antes de adicionar perfis pela programação.',
+                child: OutlinedButton.icon(
                   key: const Key(
                     'tenantAdminProgrammingAddOccurrenceProfileButton',
                   ),
-                  onPressed: _addOccurrenceProfile,
+                  onPressed: null,
                   icon: const Icon(Icons.person_add_alt_1_outlined),
                   label: const Text('Adicionar perfil à data'),
                 ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                key: const Key(
+                  'tenantAdminProgrammingAddOccurrenceProfileGroupRequiredText',
+                ),
+                'Crie uma aba de perfis próprios da ocorrência antes de adicionar perfis pela programação.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+            ] else ...[
+              const SizedBox(height: 12),
+              Text(
+                'Adicionar perfil à data',
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+              const SizedBox(height: 8),
+              for (final group in occurrenceProfileGroups) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    key: Key(
+                      'tenantAdminProgrammingAddOccurrenceProfileButton_${group.id}',
+                    ),
+                    onPressed: () => _addOccurrenceProfile(groupId: group.id),
+                    icon: const Icon(Icons.person_add_alt_1_outlined),
+                    label: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        group.label,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
               ],
-            ),
+            ],
             const SizedBox(height: 16),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,

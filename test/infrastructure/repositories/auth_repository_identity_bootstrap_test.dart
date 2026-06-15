@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/auth_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
@@ -14,6 +16,8 @@ import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/landlord_auth_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/value_objects/auth_repository_contract_values.dart';
 import 'package:belluga_now/domain/tenant/tenant.dart';
 import 'package:belluga_now/infrastructure/dal/dto/app_data_dto.dart';
@@ -65,6 +69,32 @@ void main() {
     expect(storedUserId, 'user-1');
   });
 
+  test('ensureTenantPublicIdentityReady issues identity token when none exists',
+      () async {
+    final authBackend = _FakeAuthBackend(
+      tokenToReturn: 'identity-token-public-ready',
+      userIdToReturn: 'user-public-ready',
+    );
+    GetIt.I.registerSingleton<BackendContract>(
+      _FakeBackend(auth: authBackend),
+    );
+
+    final repository = AuthRepository();
+    await repository.ensureTenantPublicIdentityReady();
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+
+    expect(authBackend.issueCount, 1);
+    expect(repository.userToken, 'identity-token-public-ready');
+    expect(
+      await AuthRepository.storage.read(key: 'user_token'),
+      'identity-token-public-ready',
+    );
+    expect(
+      await AuthRepository.storage.read(key: 'user_id'),
+      'user-public-ready',
+    );
+  });
+
   test('init skips identity bootstrap in landlord environment', () async {
     final authBackend = _FakeAuthBackend(
       tokenToReturn: 'identity-token-landlord',
@@ -97,6 +127,9 @@ void main() {
     GetIt.I.registerSingleton<AdminModeRepositoryContract>(
       _FakeAdminModeRepository(AdminMode.landlord),
     );
+    GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
+      _FakeLandlordAuthRepository(hasValidSession: true, token: 'landlord'),
+    );
 
     final repository = AuthRepository();
     await repository.init();
@@ -106,6 +139,33 @@ void main() {
     expect(repository.userToken, '');
     final stored = await AuthRepository.storage.read(key: 'user_token');
     expect(stored, isNull);
+  });
+
+  test(
+      'init does not skip tenant-public identity bootstrap when landlord mode is stale but no landlord session exists',
+      () async {
+    final authBackend = _FakeAuthBackend(
+      tokenToReturn: 'identity-token-user-scope',
+      userIdToReturn: 'user-scope-user',
+    );
+    GetIt.I.registerSingleton<BackendContract>(
+      _FakeBackend(auth: authBackend),
+    );
+    GetIt.I.registerSingleton<AdminModeRepositoryContract>(
+      _FakeAdminModeRepository(AdminMode.landlord),
+    );
+    GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
+      _FakeLandlordAuthRepository(hasValidSession: false),
+    );
+
+    final repository = AuthRepository();
+    await repository.init();
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+
+    expect(authBackend.issueCount, 1);
+    expect(repository.userToken, 'identity-token-user-scope');
+    final stored = await AuthRepository.storage.read(key: 'user_token');
+    expect(stored, 'identity-token-user-scope');
   });
 
   test('init skips identity token when stored token exists', () async {
@@ -169,6 +229,34 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 10));
 
     expect(proximityRepository.syncCount, 1);
+  });
+
+  test(
+      'ensureTenantPublicIdentityReady validates persisted token without syncing proximity preferences',
+      () async {
+    FlutterSecureStorage.setMockInitialValues({'user_token': 'stored-token'});
+    final authBackend = _FakeAuthBackend(
+      tokenToReturn: 'identity-token-user-mode',
+      userIdToReturn: 'user-user-mode',
+    );
+    final proximityRepository = _FakeProximityPreferencesRepository();
+    GetIt.I.registerSingleton<BackendContract>(
+      _FakeBackend(auth: authBackend),
+    );
+    GetIt.I.registerSingleton<AdminModeRepositoryContract>(
+      _FakeAdminModeRepository(AdminMode.user),
+    );
+    GetIt.I.registerSingleton<ProximityPreferencesRepositoryContract>(
+      proximityRepository,
+    );
+
+    final repository = AuthRepository();
+    await repository.ensureTenantPublicIdentityReady();
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+
+    expect(repository.userToken, 'stored-token');
+    expect(repository.isAuthorized, isTrue);
+    expect(proximityRepository.syncCount, 0);
   });
 
   test('init keeps auth ready when proximity sync fails', () async {
@@ -238,6 +326,9 @@ void main() {
     );
     GetIt.I.registerSingleton<AdminModeRepositoryContract>(
       _FakeAdminModeRepository(AdminMode.landlord),
+    );
+    GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
+      _FakeLandlordAuthRepository(hasValidSession: true, token: 'landlord'),
     );
     GetIt.I.registerSingleton<ProximityPreferencesRepositoryContract>(
       proximityRepository,
@@ -341,6 +432,100 @@ void main() {
     final storedUserId = await AuthRepository.storage.read(key: 'user_id');
     expect(storedUserId, 'user-refresh');
   });
+
+  test(
+      'ensureTenantPublicIdentityReady reissues identity when stored token fails validation',
+      () async {
+    FlutterSecureStorage.setMockInitialValues({
+      'user_token': 'stored-token',
+      'user_id': 'legacy-user',
+    });
+    final authBackend = _FailingLoginCheckBackend(
+      tokenToReturn: 'identity-token-refresh-public-ready',
+      userIdToReturn: 'user-refresh-public-ready',
+    );
+    GetIt.I.registerSingleton<BackendContract>(
+      _FakeBackend(auth: authBackend),
+    );
+
+    final repository = AuthRepository();
+    await repository.ensureTenantPublicIdentityReady();
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+
+    expect(authBackend.issueCount, 1);
+    expect(repository.userToken, 'identity-token-refresh-public-ready');
+    expect(
+      await AuthRepository.storage.read(key: 'user_token'),
+      'identity-token-refresh-public-ready',
+    );
+    expect(
+      await AuthRepository.storage.read(key: 'user_id'),
+      'user-refresh-public-ready',
+    );
+  });
+
+  test('init is single-flight across concurrent anonymous bootstrap callers',
+      () async {
+    final authBackend = _BlockingAuthBackend(
+      tokenToReturn: 'identity-token-concurrent',
+      userIdToReturn: 'user-concurrent',
+    );
+    GetIt.I.registerSingleton<BackendContract>(
+      _FakeBackend(auth: authBackend),
+    );
+
+    final repository = AuthRepository();
+    final firstInit = repository.init();
+    final secondInit = repository.init();
+
+    await Future<void>.delayed(Duration.zero);
+    expect(authBackend.issueCount, 1);
+
+    authBackend.completeIssue();
+    await Future.wait(<Future<void>>[firstInit, secondInit]);
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+
+    expect(authBackend.issueCount, 1);
+    expect(repository.userToken, 'identity-token-concurrent');
+    final stored = await AuthRepository.storage.read(key: 'user_token');
+    expect(stored, 'identity-token-concurrent');
+  });
+
+  test(
+      'init does not reissue anonymous identity when secure storage persistence is still pending',
+      () async {
+    final authBackend = _FakeAuthBackend(
+      tokenToReturn: 'identity-token-pending-storage',
+      userIdToReturn: 'user-pending-storage',
+    );
+    final storage = _DeferredWriteSecureStorage();
+    addTearDown(storage.flushPendingWrites);
+    GetIt.I.registerSingleton<BackendContract>(
+      _FakeBackend(auth: authBackend),
+    );
+
+    final repository = AuthRepository(storage: storage);
+    await repository.init();
+
+    expect(authBackend.issueCount, 1);
+    expect(repository.userToken, 'identity-token-pending-storage');
+    expect(await storage.read(key: 'user_token'), isNull);
+
+    await repository.init();
+
+    expect(authBackend.issueCount, 1);
+    expect(repository.userToken, 'identity-token-pending-storage');
+
+    await storage.flushPendingWrites();
+    expect(
+      await storage.read(key: 'user_token'),
+      'identity-token-pending-storage',
+    );
+    expect(
+      await storage.read(key: 'user_id'),
+      'user-pending-storage',
+    );
+  });
 }
 
 class _FakeBackend extends BackendContract {
@@ -434,6 +619,31 @@ class _FakeAdminModeRepository implements AdminModeRepositoryContract {
 
   @override
   Future<void> setUserMode() async {}
+}
+
+class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
+  _FakeLandlordAuthRepository({
+    required this.hasValidSession,
+    this.token = '',
+  });
+
+  @override
+  final bool hasValidSession;
+
+  @override
+  final String token;
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<void> loginWithEmailPassword(
+    LandlordAuthRepositoryContractTextValue email,
+    LandlordAuthRepositoryContractTextValue password,
+  ) async {}
+
+  @override
+  Future<void> logout() async {}
 }
 
 class _FakeProximityPreferencesRepository
@@ -593,6 +803,38 @@ class _FlakyAuthBackend extends AuthBackendContract {
       throw UnimplementedError();
 }
 
+class _BlockingAuthBackend extends _FakeAuthBackend {
+  _BlockingAuthBackend({
+    required super.tokenToReturn,
+    required super.userIdToReturn,
+  });
+
+  final Completer<void> _issueCompleter = Completer<void>();
+
+  void completeIssue() {
+    if (!_issueCompleter.isCompleted) {
+      _issueCompleter.complete();
+    }
+  }
+
+  @override
+  Future<AnonymousIdentityResponse> issueAnonymousIdentity({
+    required String deviceName,
+    required String fingerprintHash,
+    String? userAgent,
+    String? locale,
+    Map<String, dynamic>? metadata,
+  }) async {
+    issueCount += 1;
+    await _issueCompleter.future;
+    return AnonymousIdentityResponse(
+      token: tokenToReturn,
+      userId: userIdToReturn,
+      identityState: 'anonymous',
+    );
+  }
+}
+
 class _FailingLoginCheckBackend extends _FakeAuthBackend {
   _FailingLoginCheckBackend({
     required super.tokenToReturn,
@@ -650,7 +892,6 @@ class _UnsupportedScheduleBackend extends ScheduleBackendContract {
     bool liveNowOnly = false,
     String? searchQuery,
     List<String>? categories,
-    List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
     List<String>? occurrenceIds,
@@ -664,7 +905,6 @@ class _UnsupportedScheduleBackend extends ScheduleBackendContract {
   Stream<EventDeltaDTO> watchEventsStream({
     String? searchQuery,
     List<String>? categories,
-    List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
     List<String>? occurrenceIds,
@@ -745,5 +985,79 @@ class _ThrowingSecureStorage extends FlutterSecureStorage {
     AppleOptions? mOptions,
   }) {
     throw StateError('secure storage delete failed');
+  }
+}
+
+class _DeferredWriteSecureStorage extends FlutterSecureStorage {
+  _DeferredWriteSecureStorage();
+
+  final Map<String, String?> _values = <String, String?>{};
+  final List<Completer<void>> _pendingWrites = <Completer<void>>[];
+  final Set<String> deferredKeys = const <String>{'user_token'};
+
+  Future<void> flushPendingWrites() async {
+    final pending = List<Completer<void>>.from(_pendingWrites);
+    _pendingWrites.clear();
+    for (final completer in pending) {
+      if (!completer.isCompleted) {
+        completer.complete();
+      }
+    }
+    await Future<void>.delayed(Duration.zero);
+  }
+
+  @override
+  Future<String?> read({
+    required String key,
+    AppleOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    WindowsOptions? wOptions,
+    AppleOptions? mOptions,
+  }) async {
+    return _values[key];
+  }
+
+  @override
+  Future<void> write({
+    required String key,
+    required String? value,
+    AppleOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    WindowsOptions? wOptions,
+    AppleOptions? mOptions,
+  }) async {
+    if (!deferredKeys.contains(key)) {
+      if (value == null) {
+        _values.remove(key);
+        return;
+      }
+      _values[key] = value;
+      return;
+    }
+    final completer = Completer<void>();
+    _pendingWrites.add(completer);
+    await completer.future;
+    if (value == null) {
+      _values.remove(key);
+      return;
+    }
+    _values[key] = value;
+  }
+
+  @override
+  Future<void> delete({
+    required String key,
+    AppleOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    WindowsOptions? wOptions,
+    AppleOptions? mOptions,
+  }) async {
+    _values.remove(key);
   }
 }

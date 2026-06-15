@@ -4,10 +4,10 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/guards/any_location_route_guard.dart';
 import 'package:belluga_now/application/router/guards/location_permission_gate_result.dart';
-import 'package:belluga_now/application/router/guards/location_permission_gate_runtime.dart';
 import 'package:belluga_now/application/router/guards/location_permission_state.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_bool_value.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_duration_value.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_text_value.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,12 +18,10 @@ import 'package:stream_value/core/stream_value.dart';
 void main() {
   setUp(() async {
     await GetIt.I.reset();
-    LocationPermissionGateRuntime.resetForTesting();
   });
 
   tearDown(() async {
     await GetIt.I.reset();
-    LocationPermissionGateRuntime.resetForTesting();
   });
 
   test('allows navigation when blocker is absent', () async {
@@ -38,6 +36,32 @@ void main() {
     final resolver = _RecordingNavigationResolver(
       router: router,
       route: _FakeRouteMatch(fullPath: '/mapa'),
+    );
+
+    await guard.onNavigation(resolver, router);
+
+    expect(resolver.nextCalls, [true]);
+    expect(resolver.redirectedRoute, isNull);
+  });
+
+  test('allows navigation when map route already carries a granted gate result',
+      () async {
+    GetIt.I.registerSingleton<UserLocationRepositoryContract>(
+      _FakeUserLocationRepository(),
+    );
+    final router = _RecordingStackRouter();
+
+    final guard = AnyLocationRouteGuard(
+      blockerLoader: () async => LocationPermissionState.denied,
+    );
+    final resolver = _RecordingNavigationResolver(
+      router: router,
+      route: _FakeRouteMatch(
+        fullPath: '/mapa',
+        args: const CityMapRouteArgs(
+          locationGateResult: LocationPermissionGateResult.granted,
+        ),
+      ),
     );
 
     await guard.onNavigation(resolver, router);
@@ -71,11 +95,44 @@ void main() {
 
     args?.onResult?.call(LocationPermissionGateResult.granted);
 
-    expect(resolver.nextCalls, [true]);
+    expect(resolver.nextCalls, isEmpty);
     expect(
-      LocationPermissionGateRuntime.consumeSoftLocationFallbackEntry(),
-      isFalse,
+      resolver.overrideArgs,
+      const CityMapRouteArgs(
+        locationGateResult: LocationPermissionGateResult.granted,
+      ),
     );
+  });
+
+  test(
+      'web granted result performs full-document reentry instead of resuming inside the same SPA',
+      () async {
+    GetIt.I.registerSingleton<UserLocationRepositoryContract>(
+      _FakeUserLocationRepository(),
+    );
+    final router = _RecordingStackRouter();
+    final reentryPaths = <String>[];
+
+    final guard = AnyLocationRouteGuard(
+      blockerLoader: () async => LocationPermissionState.denied,
+      documentReentry: (redirectPath) {
+        reentryPaths.add(redirectPath);
+        return true;
+      },
+    );
+    final resolver = _RecordingNavigationResolver(
+      router: router,
+      route: _FakeRouteMatch(fullPath: '/mapa'),
+    );
+
+    await guard.onNavigation(resolver, router);
+
+    final captured = resolver.redirectedRoute! as LocationPermissionRoute;
+    captured.args?.onResult?.call(LocationPermissionGateResult.granted);
+
+    expect(reentryPaths, ['/mapa']);
+    expect(resolver.nextCalls, [false]);
+    expect(resolver.overrideArgs, isNull);
   });
 
   test(
@@ -104,10 +161,14 @@ void main() {
     captured.args?.onResult
         ?.call(LocationPermissionGateResult.continueWithoutLocation);
 
-    expect(resolver.nextCalls, [true]);
+    expect(resolver.nextCalls, isEmpty);
     expect(
-      LocationPermissionGateRuntime.consumeSoftLocationFallbackEntry(),
-      isTrue,
+      resolver.overrideArgs,
+      const PoiDetailsRouteArgs(
+        poi: 'event:evt-001',
+        locationGateResult:
+            LocationPermissionGateResult.continueWithoutLocation,
+      ),
     );
   });
 
@@ -224,6 +285,7 @@ class _RecordingNavigationResolver extends NavigationResolver {
 
   final List<bool> nextCalls = <bool>[];
   PageRouteInfo? redirectedRoute;
+  Object? overrideArgs;
 
   @override
   void next([bool continueNavigation = true]) {
@@ -237,6 +299,17 @@ class _RecordingNavigationResolver extends NavigationResolver {
     bool replace = false,
   }) {
     redirectedRoute = route;
+  }
+
+  @override
+  void overrideNext({
+    List<PageRouteInfo>? children,
+    Object? args,
+    Map<String, dynamic>? queryParams,
+    String? fragment,
+    bool reevaluateNext = true,
+  }) {
+    overrideArgs = args;
   }
 }
 
@@ -300,10 +373,19 @@ class _FakeRouteMatch extends Fake implements RouteMatch {
   _FakeRouteMatch({
     required this.fullPath,
     Map<String, dynamic> queryParams = const {},
+    this.args,
   }) : _queryParams = Parameters(queryParams);
 
   @override
   final String fullPath;
+
+  @override
+  final Object? args;
+
+  @override
+  String get name => fullPath.startsWith('/mapa/poi')
+      ? PoiDetailsRoute.name
+      : CityMapRoute.name;
 
   final Parameters _queryParams;
 
@@ -356,7 +438,11 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
       false;
 
   @override
-  Future<String?> resolveUserLocation() async => null;
+  Future<String?> resolveUserLocation({
+    Object? timeout,
+    UserLocationRepositoryContractBoolValue? requestPermissionIfNeededValue,
+  }) async =>
+      null;
 
   @override
   Future<bool> startTracking({

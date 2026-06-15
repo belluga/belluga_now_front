@@ -12,6 +12,10 @@ import 'package:image_picker/image_picker.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  const expectedLegacyCoverAspectRatio = 560 / 512;
+  const expectedEventHeroCoverAspectRatio = 5 / 7;
+  const expectedAccountProfileHeroCoverAspectRatio = 15 / 16;
+
   const pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
   final fallbackTempDir =
       Directory.systemTemp.createTempSync('tenant-admin-test');
@@ -52,7 +56,8 @@ void main() {
     expect(decoded.height, lessThanOrEqualTo(1024));
   });
 
-  test('prepareXFile normalizes cover to 16:9 and max 1920x1080', () async {
+  test('prepareXFile keeps legacy cover at 560:512 ratio and existing bounds',
+      () async {
     final service = TenantAdminImageIngestionService();
     final source =
         await _writeImage(width: 1200, height: 1800, name: 'cover_source.png');
@@ -66,9 +71,137 @@ void main() {
     final decoded = img.decodeImage(bytes);
     expect(decoded, isNotNull);
     final ratio = decoded!.width / decoded.height;
-    expect((ratio - (16 / 9)).abs(), lessThan(0.02));
+    expect((ratio - expectedLegacyCoverAspectRatio).abs(), lessThan(0.02));
     expect(decoded.width, lessThanOrEqualTo(1920));
     expect(decoded.height, lessThanOrEqualTo(1080));
+  });
+
+  test('prepareXFile normalizes event hero cover to 5:7 ratio and bounds',
+      () async {
+    final service = TenantAdminImageIngestionService();
+    final source = await _writeImage(
+      width: 2400,
+      height: 1800,
+      name: 'event_hero_cover_source.png',
+    );
+
+    final output = await service.prepareXFile(
+      source,
+      slot: TenantAdminImageSlot.eventHeroCover,
+    );
+
+    final bytes = await output.readAsBytes();
+    final decoded = img.decodeImage(bytes);
+    expect(decoded, isNotNull);
+    final ratio = decoded!.width / decoded.height;
+    expect((ratio - expectedEventHeroCoverAspectRatio).abs(), lessThan(0.02));
+    expect(decoded.width, lessThanOrEqualTo(1800));
+    expect(decoded.height, lessThanOrEqualTo(2520));
+    expect(output.mimeType, 'image/jpeg');
+  });
+
+  test(
+      'prepareXFile normalizes account profile hero cover to 15:16 ratio and bounds',
+      () async {
+    final service = TenantAdminImageIngestionService();
+    final source = await _writeImage(
+      width: 2400,
+      height: 1800,
+      name: 'account_profile_hero_cover_source.png',
+    );
+
+    final output = await service.prepareXFile(
+      source,
+      slot: TenantAdminImageSlot.accountProfileHeroCover,
+    );
+
+    final bytes = await output.readAsBytes();
+    final decoded = img.decodeImage(bytes);
+    expect(decoded, isNotNull);
+    final ratio = decoded!.width / decoded.height;
+    expect(
+      (ratio - expectedAccountProfileHeroCoverAspectRatio).abs(),
+      lessThan(0.02),
+    );
+    expect(decoded.width, lessThanOrEqualTo(1800));
+    expect(decoded.height, lessThanOrEqualTo(1920));
+    expect(output.mimeType, 'image/jpeg');
+  });
+
+  test('prepareXFile preserves all non-cover slot aspect ratios', () async {
+    final service = TenantAdminImageIngestionService();
+    final cases = <_SlotRatioCase>[
+      const _SlotRatioCase(
+        slot: TenantAdminImageSlot.avatar,
+        expectedAspectRatio: 1.0,
+      ),
+      const _SlotRatioCase(
+        slot: TenantAdminImageSlot.lightLogo,
+        expectedAspectRatio: 18 / 5,
+        expectedMimeType: 'image/png',
+      ),
+      const _SlotRatioCase(
+        slot: TenantAdminImageSlot.darkLogo,
+        expectedAspectRatio: 18 / 5,
+        expectedMimeType: 'image/png',
+      ),
+      const _SlotRatioCase(
+        slot: TenantAdminImageSlot.lightIcon,
+        expectedAspectRatio: 1.0,
+        expectedMimeType: 'image/png',
+      ),
+      const _SlotRatioCase(
+        slot: TenantAdminImageSlot.darkIcon,
+        expectedAspectRatio: 1.0,
+        expectedMimeType: 'image/png',
+      ),
+      const _SlotRatioCase(
+        slot: TenantAdminImageSlot.pwaIcon,
+        expectedAspectRatio: 1.0,
+        expectedMimeType: 'image/png',
+      ),
+      const _SlotRatioCase(
+        slot: TenantAdminImageSlot.publicWebDefaultImage,
+        expectedAspectRatio: tenantAdminPublicWebDefaultImageAspectRatio,
+      ),
+      const _SlotRatioCase(
+        slot: TenantAdminImageSlot.mapFilter,
+        expectedAspectRatio: 1.0,
+        expectedMimeType: 'image/png',
+      ),
+      const _SlotRatioCase(
+        slot: TenantAdminImageSlot.typeVisual,
+        expectedAspectRatio: 1.0,
+        expectedMimeType: 'image/png',
+      ),
+    ];
+
+    for (final scenario in cases) {
+      final source = await _writeImage(
+        width: 1200,
+        height: 1800,
+        name: 'non_cover_${scenario.slot.name}.png',
+      );
+
+      final output = await service.prepareXFile(
+        source,
+        slot: scenario.slot,
+      );
+
+      final decoded = img.decodeImage(await output.readAsBytes());
+      expect(decoded, isNotNull, reason: scenario.slot.name);
+      final ratio = decoded!.width / decoded.height;
+      expect(
+        (ratio - scenario.expectedAspectRatio).abs(),
+        lessThan(0.03),
+        reason: scenario.slot.name,
+      );
+      expect(
+        output.mimeType,
+        scenario.expectedMimeType,
+        reason: scenario.slot.name,
+      );
+    }
   });
 
   test(
@@ -234,7 +367,7 @@ void main() {
     expect(decoded.width, lessThanOrEqualTo(1024));
   });
 
-  test('pickFromDevice applies cover 16:9 crop pipeline', () async {
+  test('pickFromDevice applies cover 560:512 crop pipeline', () async {
     final source =
         await _writeImage(width: 1200, height: 1800, name: 'pick_cover.png');
     final service = TenantAdminImageIngestionService(
@@ -254,7 +387,7 @@ void main() {
     final decoded = img.decodeImage(await output.readAsBytes());
     expect(decoded, isNotNull);
     final ratio = decoded!.width / decoded.height;
-    expect((ratio - (16 / 9)).abs(), lessThan(0.02));
+    expect((ratio - expectedLegacyCoverAspectRatio).abs(), lessThan(0.02));
     expect(decoded.width, lessThanOrEqualTo(1920));
     expect(decoded.height, lessThanOrEqualTo(1080));
   });
@@ -276,6 +409,18 @@ Future<XFile> _writeBytes(Uint8List bytes, {required String name}) async {
   final file = File('${dir.path}/$name');
   await file.writeAsBytes(bytes, flush: true);
   return XFile(file.path, name: name);
+}
+
+class _SlotRatioCase {
+  const _SlotRatioCase({
+    required this.slot,
+    required this.expectedAspectRatio,
+    this.expectedMimeType = 'image/jpeg',
+  });
+
+  final TenantAdminImageSlot slot;
+  final double expectedAspectRatio;
+  final String expectedMimeType;
 }
 
 class _FailingExternalImageProxy

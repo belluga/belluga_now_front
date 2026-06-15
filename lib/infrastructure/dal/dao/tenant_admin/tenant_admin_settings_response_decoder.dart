@@ -48,17 +48,12 @@ class TenantAdminSettingsResponseDecoder {
       label: 'discovery_filters settings',
       emptyWhenDataIsNotMap: true,
     );
-    final discoveryFilters = _extractNamedMap(
-      payload,
-      namespace: 'discovery_filters',
-    );
-    final legacyMapUi = _extractNamedMap(payload, namespace: 'map_ui');
+    final discoveryFilters = _extractDiscoveryFiltersPayload(payload);
     return TenantAdminDiscoveryFiltersSettingsValue(
       TenantAdminDynamicMapValue(
         Map<String, dynamic>.unmodifiable(
           const TenantAdminDiscoveryFiltersSettingsCanonicalizer().canonicalize(
             discoveryFilters: discoveryFilters,
-            legacyMapUi: legacyMapUi,
           ),
         ),
       ),
@@ -432,10 +427,28 @@ class TenantAdminSettingsResponseDecoder {
     if (payload.containsKey(namespace)) {
       throw Exception('Unexpected $namespace payload shape.');
     }
-    return payload.containsKey('surfaces') ||
-            payload.keys.any((key) => key.startsWith('surfaces.'))
-        ? Map<String, dynamic>.from(payload)
-        : const <String, dynamic>{};
+    return const <String, dynamic>{};
+  }
+
+  Map<String, dynamic> _extractDiscoveryFiltersPayload(
+    Map<String, dynamic> payload,
+  ) {
+    final named = _extractNamedMap(
+      payload,
+      namespace: 'discovery_filters',
+    );
+    if (named.isNotEmpty || payload.containsKey('discovery_filters')) {
+      return named;
+    }
+
+    final hasSurfaceRoot = payload['surfaces'] is Map;
+    final hasDottedSurfaceKey = payload.keys.any(
+      (key) => key.trim().startsWith('surfaces.'),
+    );
+    if (hasSurfaceRoot || hasDottedSurfaceKey) {
+      return Map<String, dynamic>.from(payload);
+    }
+    return const <String, dynamic>{};
   }
 
   Map<String, dynamic> _extractAppLinksPayload(Object? raw) {
@@ -597,7 +610,6 @@ class TenantAdminSettingsResponseDecoder {
         );
         final overrideMarker = _parseBool(filterMap['override_marker']);
         final markerOverride = _mapMapFilterMarkerOverride(
-          overrideMarker: overrideMarker,
           raw: filterMap['marker_override'],
           fallbackImageUri: imageUri,
         );
@@ -663,11 +675,10 @@ class TenantAdminSettingsResponseDecoder {
   }
 
   TenantAdminMapFilterMarkerOverride? _mapMapFilterMarkerOverride({
-    required bool overrideMarker,
     required Object? raw,
     required String? fallbackImageUri,
   }) {
-    if (!overrideMarker || raw is! Map) {
+    if (raw is! Map) {
       return null;
     }
 
@@ -1130,7 +1141,7 @@ class TenantAdminSettingsResponseDecoder {
     required Object? rawImageUri,
     required Uri tenantOrigin,
   }) {
-    final normalizedKey = key.trim().toLowerCase();
+    final normalizedKey = key.trim();
     final value = rawImageUri?.toString().trim();
     if (normalizedKey.isEmpty || value == null || value.isEmpty) {
       return null;
@@ -1141,23 +1152,24 @@ class TenantAdminSettingsResponseDecoder {
       return value;
     }
 
-    final path = parsed.path.trim();
-    final legacyPath = '/map-filters/$normalizedKey/image';
-    final canonicalPath = '/api/v1/media/map-filters/$normalizedKey';
+    final resolved = parsed.host.trim().isNotEmpty
+        ? parsed
+        : tenantOrigin.resolveUri(parsed);
+    return _rewriteLegacyMapFilterImageUri(
+      key: normalizedKey,
+      uri: resolved,
+    );
+  }
 
-    if (path == legacyPath || path == canonicalPath) {
-      final canonicalUri = tenantOrigin.resolve(canonicalPath);
-      final query = parsed.hasQuery ? parsed.query : null;
-      return canonicalUri
-          .replace(query: query == null || query.isEmpty ? null : query)
-          .toString();
+  String _rewriteLegacyMapFilterImageUri({
+    required String key,
+    required Uri uri,
+  }) {
+    final legacyPath = '/map-filters/$key/image';
+    if (uri.path != legacyPath) {
+      return uri.toString();
     }
-
-    if (parsed.host.trim().isNotEmpty) {
-      return parsed.toString();
-    }
-
-    return tenantOrigin.resolveUri(parsed).toString();
+    return uri.replace(path: '/api/v1/media/map-filters/$key').toString();
   }
 
   bool _parseBool(Object? value) {

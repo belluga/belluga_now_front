@@ -136,7 +136,8 @@ class _TenantAdminDiscoveryFilterSurfaceScreenState
         clearImageUriValue: TenantAdminFlagValue(result.imageUri == null),
         overrideMarkerValue: TenantAdminFlagValue(result.overrideMarker),
         markerOverride: result.markerOverride,
-        clearMarkerOverrideValue: TenantAdminFlagValue(!result.overrideMarker),
+        clearMarkerOverrideValue:
+            TenantAdminFlagValue(result.markerOverride == null),
       ),
     );
   }

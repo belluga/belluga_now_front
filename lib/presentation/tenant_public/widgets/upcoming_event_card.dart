@@ -1,12 +1,10 @@
 export 'package:belluga_now/presentation/tenant_public/widgets/upcoming_event_card_models.dart';
 
-import 'package:belluga_now/application/extensions/event_data_formating.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/invite_status_icon.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/upcoming_event_card_models.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 class UpcomingEventCard extends StatelessWidget {
   const UpcomingEventCard({
@@ -43,7 +41,7 @@ class UpcomingEventCard extends StatelessWidget {
       data: UpcomingEventCardData(
         imageUri: event.imageUri,
         headline: event.title,
-        metaLabel: _dateLabelFor(event),
+        metaLabel: event.agendaScheduleLabel,
         counterparts: event.counterpartProfiles
             .map(
               (counterpart) => (
@@ -258,27 +256,6 @@ class UpcomingEventCard extends StatelessWidget {
       return null;
     }
     return Key('$namespace${suffix}_$id');
-  }
-
-  static String _dateLabelFor(VenueEventResume event) {
-    final weekday = DateFormat.E().format(event.startDateTime);
-    final day = event.startDateTime.day.toString().padLeft(2, '0');
-    final explicitEnd = event.endDateTime;
-    if (explicitEnd == null) {
-      return '$weekday, $day • ${event.startDateTime.timeLabel}'.toUpperCase();
-    }
-
-    final sameDay = event.startDateTime.year == explicitEnd.year &&
-        event.startDateTime.month == explicitEnd.month &&
-        event.startDateTime.day == explicitEnd.day;
-    if (sameDay) {
-      return '${weekday.toUpperCase()}, $day • ${event.startDateTime.timeLabel} às ${explicitEnd.timeLabel}';
-    }
-
-    final endWeekday = DateFormat.E().format(explicitEnd);
-    final endDay = explicitEnd.day.toString().padLeft(2, '0');
-    return '${weekday.toUpperCase()}, $day • ${event.startDateTime.timeLabel} às '
-        '${endWeekday.toUpperCase()}, $endDay • ${explicitEnd.timeLabel}';
   }
 }
 

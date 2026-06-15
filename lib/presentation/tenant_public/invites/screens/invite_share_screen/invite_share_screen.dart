@@ -3,11 +3,12 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/invites/invite_contact_phone_normalization.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/application/time/timezone_converter.dart';
+import 'package:belluga_now/application/sharing/event_invite_share_payload.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/invites/projections/friend_resume.dart';
 import 'package:belluga_now/domain/invites/projections/friend_resume_with_status.dart';
+import 'package:belluga_now/application/schedule/event_related_profile_groups.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_external_contact_share_target.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_share_screen_controller.dart';
@@ -213,6 +214,7 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
                     shareUri: _controller.buildShareUri(shareCode),
                     isGeneratingShareCode: isGeneratingShareCode,
                     onRetryShareCode: _controller.reloadShareCode,
+                    participantGroups: _participantGroupsForShare(),
                   );
                 },
               );
@@ -615,7 +617,12 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
       return;
     }
 
-    await _shareSystem(ShareParams(text: text, subject: 'Convite Belluga Now'));
+    await _shareSystem(
+      ShareParams(
+        text: text,
+        subject: 'Convite para ${widget.invite.eventName}',
+      ),
+    );
   }
 
   Uri? _buildWhatsappUri(InviteExternalContactShareTarget target, String text) {
@@ -656,10 +663,28 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
   }
 
   String _buildShareText(Uri shareUri) {
-    final localEventDate = TimezoneConverter.utcToLocal(
-      widget.invite.eventDateTime,
-    );
-    return 'Bora? ${widget.invite.eventName} em ${widget.invite.location} no dia $localEventDate.'
-        '\nDetalhes: $shareUri';
+    return EventInviteSharePayloadBuilder.buildInvitation(
+      eventName: widget.invite.eventName,
+      location: widget.invite.location,
+      eventScheduleLabel: widget.invite.eventDateFlyerLabel,
+      inviteUri: shareUri,
+      inviterName: widget.invite.inviterName,
+      participantGroups: _participantGroupsForShare(),
+    ).message;
+  }
+
+  List<EventInviteShareParticipantGroup> _participantGroupsForShare() {
+    return EventRelatedProfileGroups.fromParts(
+      profileGroups: widget.invite.profileGroups,
+      linkedAccountProfiles: widget.invite.linkedAccountProfiles,
+      venueId: widget.invite.venueAccountProfileId,
+    )
+        .map(
+          (group) => (
+            label: group.label,
+            names: group.profileNames,
+          ),
+        )
+        .toList(growable: false);
   }
 }

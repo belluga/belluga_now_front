@@ -1,4 +1,8 @@
+import 'dart:async';
+
+import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_external_contact_share_target.dart';
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 
 class InviteExternalContactsSheet extends StatelessWidget {
@@ -75,7 +79,7 @@ class InviteExternalContactsSheet extends StatelessWidget {
                           ),
                     trailing: FilledButton.tonal(
                       onPressed: () {
-                        ModalRoute.of(context)?.navigator?.maybePop();
+                        unawaited(context.router.maybePop());
                         onShare(target);
                       },
                       child: Row(
@@ -83,7 +87,7 @@ class InviteExternalContactsSheet extends StatelessWidget {
                         children: [
                           Icon(
                             target.hasPhone
-                                ? Icons.chat_bubble_outline
+                                ? BooraIcons.whatsapp
                                 : Icons.ios_share,
                             size: 18,
                           ),

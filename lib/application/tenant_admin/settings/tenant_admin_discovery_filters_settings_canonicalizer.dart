@@ -1,5 +1,3 @@
-import 'package:belluga_now/application/tenant_admin/settings/tenant_admin_legacy_map_filter_canonicalizer.dart';
-
 class TenantAdminDiscoveryFiltersSettingsCanonicalizer {
   const TenantAdminDiscoveryFiltersSettingsCanonicalizer();
 
@@ -11,24 +9,8 @@ class TenantAdminDiscoveryFiltersSettingsCanonicalizer {
 
   Map<String, dynamic> canonicalize({
     required Map<String, dynamic> discoveryFilters,
-    Map<String, dynamic>? legacyMapUi,
   }) {
-    final next = _normalizeSurfaces(discoveryFilters);
-    final surfaces = _mutableMap(next['surfaces']);
-    final mapSurface = _mutableMap(surfaces['public_map.primary']);
-    final hasCanonicalMapFilters = mapSurface.containsKey('filters');
-    final legacyFilters = legacyMapUi?['filters'];
-    if (!hasCanonicalMapFilters && legacyFilters is Iterable) {
-      mapSurface['target'] = 'map_poi';
-      mapSurface['primary_selection_mode'] = 'single';
-      mapSurface['filters'] = legacyFilters
-          .map(const TenantAdminLegacyMapFilterCanonicalizer().canonicalize)
-          .whereType<Map<String, dynamic>>()
-          .toList(growable: false);
-      surfaces['public_map.primary'] = mapSurface;
-      next['surfaces'] = surfaces;
-    }
-    return next;
+    return _normalizeSurfaces(discoveryFilters);
   }
 
   Map<String, dynamic> _normalizeSurfaces(

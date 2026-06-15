@@ -11,10 +11,10 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:auto_route/auto_route.dart' as _i69;
 import 'package:belluga_now/application/router/guards/location_permission_gate_result.dart'
-    as _i74;
+    as _i71;
 import 'package:belluga_now/application/router/guards/location_permission_state.dart'
-    as _i73;
-import 'package:belluga_now/domain/invites/invite_model.dart' as _i72;
+    as _i74;
+import 'package:belluga_now/domain/invites/invite_model.dart' as _i73;
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart'
     as _i75;
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart'
@@ -156,7 +156,7 @@ import 'package:belluga_now/presentation/tenant_public/schedule/routes/event_sea
 import 'package:belluga_now/presentation/tenant_public/schedule/routes/immersive_event_detail_route.dart'
     as _i11;
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart'
-    as _i71;
+    as _i72;
 import 'package:belluga_now/presentation/tenant_public/static_assets/routes/static_asset_detail_route.dart'
     as _i22;
 import 'package:flutter/material.dart' as _i70;
@@ -434,10 +434,16 @@ class CityMapRoute extends _i69.PageRouteInfo<CityMapRouteArgs> {
     _i70.Key? key,
     String? poi,
     String? stack,
+    _i71.LocationPermissionGateResult? locationGateResult,
     List<_i69.PageRouteInfo>? children,
   }) : super(
           CityMapRoute.name,
-          args: CityMapRouteArgs(key: key, poi: poi, stack: stack),
+          args: CityMapRouteArgs(
+            key: key,
+            poi: poi,
+            stack: stack,
+            locationGateResult: locationGateResult,
+          ),
           rawQueryParams: {'poi': poi, 'stack': stack},
           initialChildren: children,
         );
@@ -458,13 +464,19 @@ class CityMapRoute extends _i69.PageRouteInfo<CityMapRouteArgs> {
         key: args.key,
         poi: args.poi,
         stack: args.stack,
+        locationGateResult: args.locationGateResult,
       );
     },
   );
 }
 
 class CityMapRouteArgs {
-  const CityMapRouteArgs({this.key, this.poi, this.stack});
+  const CityMapRouteArgs({
+    this.key,
+    this.poi,
+    this.stack,
+    this.locationGateResult,
+  });
 
   final _i70.Key? key;
 
@@ -472,20 +484,29 @@ class CityMapRouteArgs {
 
   final String? stack;
 
+  final _i71.LocationPermissionGateResult? locationGateResult;
+
   @override
   String toString() {
-    return 'CityMapRouteArgs{key: $key, poi: $poi, stack: $stack}';
+    return 'CityMapRouteArgs{key: $key, poi: $poi, stack: $stack, locationGateResult: $locationGateResult}';
   }
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     if (other is! CityMapRouteArgs) return false;
-    return key == other.key && poi == other.poi && stack == other.stack;
+    return key == other.key &&
+        poi == other.poi &&
+        stack == other.stack &&
+        locationGateResult == other.locationGateResult;
   }
 
   @override
-  int get hashCode => key.hashCode ^ poi.hashCode ^ stack.hashCode;
+  int get hashCode =>
+      key.hashCode ^
+      poi.hashCode ^
+      stack.hashCode ^
+      locationGateResult.hashCode;
 }
 
 /// generated route for
@@ -525,7 +546,7 @@ class DiscoveryRoute extends _i69.PageRouteInfo<void> {
 class EventSearchRoute extends _i69.PageRouteInfo<EventSearchRouteArgs> {
   EventSearchRoute({
     _i70.Key? key,
-    _i71.InviteFilter inviteFilter = _i71.InviteFilter.none,
+    _i72.InviteFilter inviteFilter = _i72.InviteFilter.none,
     bool startWithHistory = false,
     List<_i69.PageRouteInfo>? children,
   }) : super(
@@ -558,13 +579,13 @@ class EventSearchRoute extends _i69.PageRouteInfo<EventSearchRouteArgs> {
 class EventSearchRouteArgs {
   const EventSearchRouteArgs({
     this.key,
-    this.inviteFilter = _i71.InviteFilter.none,
+    this.inviteFilter = _i72.InviteFilter.none,
     this.startWithHistory = false,
   });
 
   final _i70.Key? key;
 
-  final _i71.InviteFilter inviteFilter;
+  final _i72.InviteFilter inviteFilter;
 
   final bool startWithHistory;
 
@@ -624,11 +645,13 @@ class ImmersiveEventDetailRoute
           tab: queryParams.optString('tab'),
         ),
       );
-      return _i11.ImmersiveEventDetailRoutePage(
-        key: args.key,
-        eventSlug: args.eventSlug,
-        occurrenceId: args.occurrenceId,
-        tab: args.tab,
+      return _i69.WrappedRoute(
+        child: _i11.ImmersiveEventDetailRoutePage(
+          key: args.key,
+          eventSlug: args.eventSlug,
+          occurrenceId: args.occurrenceId,
+          tab: args.tab,
+        ),
       );
     },
   );
@@ -723,7 +746,7 @@ class InviteFlowRoute extends _i69.PageRouteInfo<void> {
 class InviteShareRoute extends _i69.PageRouteInfo<InviteShareRouteArgs> {
   InviteShareRoute({
     _i70.Key? key,
-    _i72.InviteModel? invite,
+    _i73.InviteModel? invite,
     List<_i69.PageRouteInfo>? children,
   }) : super(
           InviteShareRoute.name,
@@ -749,7 +772,7 @@ class InviteShareRouteArgs {
 
   final _i70.Key? key;
 
-  final _i72.InviteModel? invite;
+  final _i73.InviteModel? invite;
 
   @override
   String toString() {
@@ -789,9 +812,9 @@ class LocationPermissionRoute
     extends _i69.PageRouteInfo<LocationPermissionRouteArgs> {
   LocationPermissionRoute({
     _i70.Key? key,
-    _i73.LocationPermissionState? initialState,
+    _i74.LocationPermissionState? initialState,
     bool allowContinueWithoutLocation = true,
-    _i70.ValueChanged<_i74.LocationPermissionGateResult>? onResult,
+    _i70.ValueChanged<_i71.LocationPermissionGateResult>? onResult,
     bool popRouteAfterResult = false,
     List<_i69.PageRouteInfo>? children,
   }) : super(
@@ -836,11 +859,11 @@ class LocationPermissionRouteArgs {
 
   final _i70.Key? key;
 
-  final _i73.LocationPermissionState? initialState;
+  final _i74.LocationPermissionState? initialState;
 
   final bool allowContinueWithoutLocation;
 
-  final _i70.ValueChanged<_i74.LocationPermissionGateResult>? onResult;
+  final _i70.ValueChanged<_i71.LocationPermissionGateResult>? onResult;
 
   final bool popRouteAfterResult;
 
@@ -893,7 +916,9 @@ class PartnerDetailRoute extends _i69.PageRouteInfo<PartnerDetailRouteArgs> {
         orElse: () =>
             PartnerDetailRouteArgs(slug: pathParams.getString('slug')),
       );
-      return _i18.PartnerDetailRoute(key: args.key, slug: args.slug);
+      return _i69.WrappedRoute(
+        child: _i18.PartnerDetailRoute(key: args.key, slug: args.slug),
+      );
     },
   );
 }
@@ -928,10 +953,16 @@ class PoiDetailsRoute extends _i69.PageRouteInfo<PoiDetailsRouteArgs> {
     _i70.Key? key,
     String? poi,
     String? stack,
+    _i71.LocationPermissionGateResult? locationGateResult,
     List<_i69.PageRouteInfo>? children,
   }) : super(
           PoiDetailsRoute.name,
-          args: PoiDetailsRouteArgs(key: key, poi: poi, stack: stack),
+          args: PoiDetailsRouteArgs(
+            key: key,
+            poi: poi,
+            stack: stack,
+            locationGateResult: locationGateResult,
+          ),
           rawQueryParams: {'poi': poi, 'stack': stack},
           initialChildren: children,
         );
@@ -952,13 +983,19 @@ class PoiDetailsRoute extends _i69.PageRouteInfo<PoiDetailsRouteArgs> {
         key: args.key,
         poi: args.poi,
         stack: args.stack,
+        locationGateResult: args.locationGateResult,
       );
     },
   );
 }
 
 class PoiDetailsRouteArgs {
-  const PoiDetailsRouteArgs({this.key, this.poi, this.stack});
+  const PoiDetailsRouteArgs({
+    this.key,
+    this.poi,
+    this.stack,
+    this.locationGateResult,
+  });
 
   final _i70.Key? key;
 
@@ -966,20 +1003,29 @@ class PoiDetailsRouteArgs {
 
   final String? stack;
 
+  final _i71.LocationPermissionGateResult? locationGateResult;
+
   @override
   String toString() {
-    return 'PoiDetailsRouteArgs{key: $key, poi: $poi, stack: $stack}';
+    return 'PoiDetailsRouteArgs{key: $key, poi: $poi, stack: $stack, locationGateResult: $locationGateResult}';
   }
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     if (other is! PoiDetailsRouteArgs) return false;
-    return key == other.key && poi == other.poi && stack == other.stack;
+    return key == other.key &&
+        poi == other.poi &&
+        stack == other.stack &&
+        locationGateResult == other.locationGateResult;
   }
 
   @override
-  int get hashCode => key.hashCode ^ poi.hashCode ^ stack.hashCode;
+  int get hashCode =>
+      key.hashCode ^
+      poi.hashCode ^
+      stack.hashCode ^
+      locationGateResult.hashCode;
 }
 
 /// generated route for
@@ -1080,9 +1126,11 @@ class StaticAssetDetailRoute
           assetRef: pathParams.getString('assetRef'),
         ),
       );
-      return _i22.StaticAssetDetailRoute(
-        key: args.key,
-        assetRef: args.assetRef,
+      return _i69.WrappedRoute(
+        child: _i22.StaticAssetDetailRoute(
+          key: args.key,
+          assetRef: args.assetRef,
+        ),
       );
     },
   );

@@ -20,6 +20,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 
+import '../../../../../support/auto_route_test_harness.dart';
+
 void main() {
   setUp(() async {
     await GetIt.I.reset(dispose: false);
@@ -40,10 +42,10 @@ void main() {
     GetIt.I.registerSingleton<ContactGroupManagementController>(controller);
     addTearDown(controller.onDispose);
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: const ContactGroupManagementScreen(),
-      ),
+    await pumpAutoRouteTestApp(
+      tester,
+      routeName: 'contact-group-management-test',
+      child: const ContactGroupManagementScreen(),
     );
     await tester.pumpAndSettle();
 

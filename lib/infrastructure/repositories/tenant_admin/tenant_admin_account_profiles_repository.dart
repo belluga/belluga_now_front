@@ -48,12 +48,18 @@ class TenantAdminAccountProfilesRepository
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
     TenantAdminAccountProfilesRepoString? accountId,
+    TenantAdminAccountProfilesRepoBool? queryableOnly,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async {
     try {
+      final queryParameters = _requestEncoder.encodeFetchAccountProfilesQuery(
+        accountId: accountId?.value,
+        queryableOnly: queryableOnly?.value ?? false,
+        excludeAccountProfileId: excludeAccountProfileId?.value,
+      );
       final response = await _dio.get(
         '$_apiBaseUrl/v1/account_profiles',
-        queryParameters:
-            accountId == null ? null : {'account_id': accountId.value},
+        queryParameters: queryParameters.isEmpty ? null : queryParameters,
         options: Options(headers: _buildHeaders()),
       );
       final dtos = _responseDecoder.decodeAccountProfileList(response.data);
@@ -93,6 +99,8 @@ class TenantAdminAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup> nestedProfileGroups =
+        const <TenantAdminNestedProfileGroup>[],
   }) async {
     try {
       final payload = _requestEncoder.encodeCreateAccountProfile(
@@ -105,6 +113,7 @@ class TenantAdminAccountProfilesRepository
         content: content?.value,
         avatarUrl: avatarUrl?.value,
         coverUrl: coverUrl?.value,
+        nestedProfileGroups: nestedProfileGroups,
       );
       final uploadPayload = _mediaFormDataBuilder.buildAvatarCoverPayload(
         payload: payload,
@@ -144,6 +153,7 @@ class TenantAdminAccountProfilesRepository
     TenantAdminAccountProfilesRepoBool? removeCover,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
   }) async {
     try {
       final payload = _requestEncoder.encodeUpdateAccountProfile(
@@ -158,6 +168,7 @@ class TenantAdminAccountProfilesRepository
         coverUrl: coverUrl?.value,
         removeAvatar: removeAvatar?.value,
         removeCover: removeCover?.value,
+        nestedProfileGroups: nestedProfileGroups,
       );
       final uploadPayload = _mediaFormDataBuilder.buildAvatarCoverPayload(
         payload: payload,

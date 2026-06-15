@@ -8,43 +8,13 @@ import 'package:belluga_now/presentation/tenant_admin/discovery_filters/models/t
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('loads legacy map_ui filters as canonical public map surface', () {
+  test('does not load legacy map_ui filters after public map cutoff', () {
     final settings = TenantAdminDiscoveryFiltersSettings.fromRaw(
       discoveryFilters: const <String, dynamic>{},
-      legacyMapUi: const <String, dynamic>{
-        'filters': [
-          {
-            'key': 'events',
-            'label': 'Eventos',
-            'image_uri': 'https://tenant.test/map-filters/events.png',
-            'query': {
-              'source': 'event',
-              'types': ['show'],
-              'taxonomy': ['music_genre:rock'],
-            },
-          },
-        ],
-      },
     );
 
     final filters = settings.filtersForSurface('public_map.primary');
-    expect(filters, hasLength(1));
-    final filter = filters.first;
-    expect(filter.key, 'events');
-    expect(filter.label, 'Eventos');
-    expect(filter.query.entities, <String>['event']);
-    expect(
-      filter.query.typeValuesByEntity['event']!
-          .map((entry) => entry.value)
-          .toList(),
-      <String>['show'],
-    );
-    expect(
-      filter.query.taxonomyValuesByGroup['music_genre']!
-          .map((entry) => entry.value)
-          .toList(),
-      <String>['rock'],
-    );
+    expect(filters, isEmpty);
   });
 
   test('applies surface filters with canonical target and query payload', () {

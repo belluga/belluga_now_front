@@ -3,7 +3,6 @@ import 'dart:typed_data';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
-import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_public_web_image_spec.dart';
 import 'package:crop_your_image/crop_your_image.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -61,6 +60,9 @@ class _TenantAdminImageCropSheetState
   bool _loading = true;
   bool _submitting = false;
 
+  TenantAdminImageSlotSpec get _slotSpec =>
+      tenantAdminImageSlotSpecFor(widget.slot);
+
   @override
   void initState() {
     super.initState();
@@ -99,35 +101,9 @@ class _TenantAdminImageCropSheetState
     }
   }
 
-  double get _aspectRatio => widget.slot == TenantAdminImageSlot.avatar
-      ? 1.0
-      : switch (widget.slot) {
-          TenantAdminImageSlot.cover => 16 / 9,
-          TenantAdminImageSlot.lightLogo => 18 / 5,
-          TenantAdminImageSlot.darkLogo => 18 / 5,
-          TenantAdminImageSlot.lightIcon => 1.0,
-          TenantAdminImageSlot.darkIcon => 1.0,
-          TenantAdminImageSlot.pwaIcon => 1.0,
-          TenantAdminImageSlot.publicWebDefaultImage =>
-            tenantAdminPublicWebDefaultImageAspectRatio,
-          TenantAdminImageSlot.mapFilter => 1.0,
-          TenantAdminImageSlot.typeVisual => 1.0,
-          TenantAdminImageSlot.avatar => 1.0,
-        };
+  double get _aspectRatio => _slotSpec.aspectRatio;
 
-  String get _title => switch (widget.slot) {
-        TenantAdminImageSlot.avatar => 'Recortar avatar',
-        TenantAdminImageSlot.cover => 'Recortar capa',
-        TenantAdminImageSlot.lightLogo => 'Recortar logo claro',
-        TenantAdminImageSlot.darkLogo => 'Recortar logo escuro',
-        TenantAdminImageSlot.lightIcon => 'Recortar icone claro',
-        TenantAdminImageSlot.darkIcon => 'Recortar icone escuro',
-        TenantAdminImageSlot.pwaIcon => 'Recortar icone PWA',
-        TenantAdminImageSlot.publicWebDefaultImage =>
-          'Recortar imagem de compartilhamento',
-        TenantAdminImageSlot.mapFilter => 'Recortar imagem do filtro',
-        TenantAdminImageSlot.typeVisual => 'Recortar imagem canônica do tipo',
-      };
+  String get _title => _slotSpec.cropTitle;
 
   Future<void> _submit() async {
     if (_submitting || _bytes == null) return;
@@ -213,9 +189,14 @@ class _TenantAdminImageCropSheetState
                       Crop(
                         image: _bytes!,
                         controller: _cropController,
-                        withCircleUi:
-                            widget.slot == TenantAdminImageSlot.avatar,
+                        withCircleUi: _slotSpec.circularCrop,
                         aspectRatio: _aspectRatio,
+                        overlayBuilder: _slotSpec.safeAreaGuide == null
+                            ? null
+                            : (context, rect) =>
+                                _TenantAdminImageSafeAreaGuideOverlay(
+                                  guide: _slotSpec.safeAreaGuide!,
+                                ),
                         onCropped: (result) {
                           unawaited(_handleCropResult(result));
                         },
@@ -259,6 +240,231 @@ class _TenantAdminImageCropSheetState
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _TenantAdminImageSafeAreaGuideOverlay extends StatelessWidget {
+  const _TenantAdminImageSafeAreaGuideOverlay({required this.guide});
+
+  final TenantAdminImageSafeAreaGuideSpec guide;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return IgnorePointer(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final height = constraints.maxHeight;
+          final topHeight =
+              height * guide.topOverlayFraction.clamp(0.0, 0.45).toDouble();
+          final bottomHeight =
+              height * guide.bottomOverlayFraction.clamp(0.0, 0.55).toDouble();
+          final sideWidth =
+              width * guide.sideInsetFraction.clamp(0.0, 0.25).toDouble();
+
+          return Stack(
+            key: const ValueKey<String>(
+              'tenantAdminHeroCropCompositionGuide',
+            ),
+            fit: StackFit.expand,
+            children: [
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.84),
+                      width: 1.5,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+              Positioned(
+                key: const ValueKey<String>(
+                  'tenantAdminHeroCropTopInterfaceZone',
+                ),
+                left: 0,
+                right: 0,
+                top: 0,
+                height: topHeight,
+                child: _TenantAdminImageGuideBand(
+                  label: guide.topLabel,
+                  color: Colors.black.withValues(alpha: 0.34),
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                ),
+              ),
+              Positioned(
+                key: const ValueKey<String>(
+                  'tenantAdminHeroCropBottomInterfaceZone',
+                ),
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: bottomHeight,
+                child: _TenantAdminImageGuideBand(
+                  label: guide.bottomLabel,
+                  helper: guide.helper,
+                  color: Colors.black.withValues(alpha: 0.44),
+                  alignment: Alignment.bottomLeft,
+                  padding: const EdgeInsets.all(12),
+                ),
+              ),
+              Positioned(
+                key: const ValueKey<String>(
+                  'tenantAdminHeroCropLeftBreathingZone',
+                ),
+                left: 0,
+                top: topHeight,
+                bottom: bottomHeight,
+                width: sideWidth,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.16),
+                  ),
+                ),
+              ),
+              Positioned(
+                key: const ValueKey<String>(
+                  'tenantAdminHeroCropRightBreathingZone',
+                ),
+                right: 0,
+                top: topHeight,
+                bottom: bottomHeight,
+                width: sideWidth,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.16),
+                  ),
+                ),
+              ),
+              Positioned(
+                key: const ValueKey<String>(
+                  'tenantAdminHeroCropFocusZone',
+                ),
+                left: sideWidth,
+                right: sideWidth,
+                top: topHeight,
+                bottom: bottomHeight,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    border: Border.symmetric(
+                      horizontal: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.72),
+                        width: 1.2,
+                      ),
+                    ),
+                  ),
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surface.withValues(alpha: 0.86),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        guide.focusLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: colorScheme.onSurface,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _TenantAdminImageGuideBand extends StatelessWidget {
+  const _TenantAdminImageGuideBand({
+    required this.label,
+    required this.color,
+    required this.alignment,
+    required this.padding,
+    this.helper,
+  });
+
+  final String label;
+  final String? helper;
+  final Color color;
+  final AlignmentGeometry alignment;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return DecoratedBox(
+      decoration: BoxDecoration(color: color),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return Align(
+            alignment: alignment,
+            child: Padding(
+              padding: padding,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: constraints.maxWidth * 0.88,
+                ),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.88),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: Colors.black87,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        if (helper != null)
+                          Text(
+                            helper!,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: Colors.black.withValues(alpha: 0.66),
+                              height: 1.1,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

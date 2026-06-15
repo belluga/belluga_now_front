@@ -1,17 +1,37 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/application/extensions/event_data_formating.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/modular_app/modules/discovery_module.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
+import 'package:belluga_now/application/router/support/route_instance_scope.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
+import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/static_assets_repository_contract.dart';
+import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
+import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
+import 'package:belluga_now/domain/static_assets/public_static_asset_model.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/account_profile_detail_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_state.dart';
+import 'package:belluga_now/presentation/tenant_public/widgets/upcoming_event_card.dart';
+import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_screen_controller.dart';
+import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_store_platform.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_contract.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_choice.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_launch_target.dart';
@@ -24,6 +44,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:stream_value/core/stream_value.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 void main() {
@@ -142,6 +166,11 @@ void main() {
     final decoration = avatarContainer.decoration as BoxDecoration;
     expect(decoration.shape, BoxShape.circle);
     expect(decoration.color, const Color(0xFF7E22CE));
+
+    final heroFallback = tester.widget<Container>(
+      find.byKey(const Key('accountProfileHeroDefaultFallback')),
+    );
+    expect(heroFallback.alignment, const Alignment(0, -0.62));
   });
 
   testWidgets('hero renders avatar with type badge overlay when avatar exists',
@@ -176,6 +205,93 @@ void main() {
         find.byKey(const Key('accountProfileHeroTypeAvatar')), findsOneWidget);
   });
 
+  testWidgets('hero fades cover into theme surface before profile data',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await GetIt.I.reset(dispose: false);
+    GetIt.I.registerSingleton<AppData>(
+      _buildAppData(restaurantReferenceLocationEnabled: true),
+    );
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+      proximityPreferencesRepository: _FakeProximityPreferencesRepository(),
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: AccountProfileDetailScreen(
+          accountProfile: buildAccountProfileModelFromPrimitives(
+            id: '507f1f77bcf86cd799439115',
+            name: 'QA Discovery Tag Longa',
+            slug: 'qa-discovery-tag-longa',
+            type: 'restaurant',
+            coverUrl: 'https://tenant.test/cover.png',
+            distanceMeters: 0,
+            locationLat: -20.7389,
+            locationLng: -40.8212,
+            tags: const [
+              'Super Festival Gastronômico Com Nome Muito Grande',
+              'Música Instrumental Experimental Noturna',
+              'Ao Vivo',
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final appBar = tester.widget<SliverAppBar>(find.byType(SliverAppBar));
+    expect(appBar.expandedHeight, 400);
+
+    final summaryFinder = find.byKey(
+      const Key('accountProfileHeroSurfaceSummary'),
+    );
+    expect(summaryFinder, findsOneWidget);
+
+    final summaryContext = tester.element(summaryFinder);
+    final colorScheme = Theme.of(summaryContext).colorScheme;
+
+    final fadeBox = tester.widget<DecoratedBox>(
+      find.byKey(const Key('accountProfileHeroFadeGradient')),
+    );
+    final decoration = fadeBox.decoration as BoxDecoration;
+    final gradient = decoration.gradient as LinearGradient;
+
+    expect(
+      gradient.stops,
+      const <double>[0, 0.16, 0.32, 0.48, 0.64, 0.8, 1],
+    );
+    expect(gradient.colors.first, Colors.transparent);
+    expect(gradient.colors.last, colorScheme.surface);
+
+    final title = tester.widget<Text>(
+      find.descendant(
+        of: summaryFinder,
+        matching: find.text('QA Discovery Tag Longa'),
+      ),
+    );
+    expect(title.style?.color, colorScheme.onSurface);
+
+    final referencePointButton = find.byKey(
+      const Key('accountProfileHeroReferencePointButton'),
+    );
+    expect(referencePointButton, findsOneWidget);
+    final buttonLabel = tester.widget<Text>(
+      find.descendant(
+        of: referencePointButton,
+        matching: find.text('Usar como ponto de referência'),
+      ),
+    );
+    expect(buttonLabel.maxLines, 1);
+  });
+
   testWidgets('account profile detail exposes the canonical share action',
       (tester) async {
     final repository = _FakeAccountProfilesRepository();
@@ -194,7 +310,199 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('immersiveShareAction')), findsOneWidget);
+    expect(find.byKey(const Key('accountProfileShareAction')), findsOneWidget);
+    expect(
+      find.byKey(const Key('accountProfileWhatsappAction')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets(
+      'web authenticated favorite action toggles instead of leaving the page',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(authorized: true),
+    );
+    final router = _RecordingStackRouter();
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: router,
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildArtistProfile(),
+          isWebRuntime: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('accountProfileFavoriteAction')));
+    await tester.pumpAndSettle();
+
+    expect(
+      repository
+          .isFavorite(
+            AccountProfilesRepositoryContractPrimString.fromRaw(
+              _buildArtistProfile().id,
+            ),
+          )
+          .value,
+      isTrue,
+    );
+    expect(router.lastPushedPath, isNull);
+    expect(router.lastReplacedPath, isNull);
+  });
+
+  testWidgets(
+      'web anonymous favorite action promotes app instead of phone login',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final authRepository = _FakeAuthRepository(authorized: false);
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+      authRepository: authRepository,
+    );
+    final router = _RecordingStackRouter();
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+    _registerAppPromotionController();
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: router,
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildArtistProfile(),
+          isWebRuntime: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('accountProfileFavoriteAction')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Entrar para favoritar'), findsNothing);
+    expect(find.byKey(const Key('app_promotion_modal')), findsOneWidget);
+    expect(find.text('Escolha seus favoritos pelo app'), findsOneWidget);
+    expect(
+      find.text('Use o app para salvar perfis favoritos e receber novidades.'),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('app_promotion_store_badge_android')),
+      findsOneWidget,
+    );
+    expect(
+      repository
+          .isFavorite(
+            AccountProfilesRepositoryContractPrimString.fromRaw(
+              _buildArtistProfile().id,
+            ),
+          )
+          .value,
+      isFalse,
+    );
+    expect(router.lastPushedPath, isNull);
+    expect(router.lastReplacedPath, isNull);
+  });
+
+  testWidgets(
+      'non-web anonymous favorite action redirects to login with replay path',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(authorized: false),
+    );
+    final router = _RecordingStackRouter();
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: router,
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildArtistProfile(),
+          isWebRuntime: false,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('accountProfileFavoriteAction')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('app_promotion_modal')), findsNothing);
+    expect(
+      repository
+          .isFavorite(
+            AccountProfilesRepositoryContractPrimString.fromRaw(
+              _buildArtistProfile().id,
+            ),
+          )
+          .value,
+      isFalse,
+    );
+    expect(router.lastPushedPath, isNull);
+    expect(
+      router.lastReplacedPath,
+      '/auth/login?redirect=%2Fparceiro%2Fteste',
+    );
+  });
+
+  testWidgets('account profile WhatsApp action uses public profile payload',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+    );
+    final sharedParams = <ShareParams>[];
+    final launchedUris = <Uri>[];
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: AccountProfileDetailScreen(
+          accountProfile: buildAccountProfileModelFromPrimitives(
+            id: '507f1f77bcf86cd799439099',
+            name: 'Cafe de la Musique',
+            slug: 'cafe-de-la-musique',
+            type: 'artist',
+            publicDetailPath: '/parceiro/caminho-canonico',
+          ),
+          shareLauncher: (params) async {
+            sharedParams.add(params);
+          },
+          externalUrlLauncher: (uri, {required mode}) async {
+            launchedUris.add(uri);
+            expect(mode, LaunchMode.externalApplication);
+            return false;
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('accountProfileWhatsappAction')));
+    await tester.pumpAndSettle();
+
+    expect(launchedUris, hasLength(2));
+    expect(launchedUris.first.scheme, 'whatsapp');
+    expect(launchedUris.first.host, 'send');
+    expect(launchedUris.last.host, 'wa.me');
+    expect(
+      launchedUris.last.queryParameters['text'],
+      contains('https://tenant.test/parceiro/caminho-canonico'),
+    );
+    expect(sharedParams, hasLength(1));
+    expect(sharedParams.single.subject, 'Cafe de la Musique');
+    expect(sharedParams.single.text, contains('Cafe de la Musique'));
+    expect(
+      sharedParams.single.text,
+      contains('https://tenant.test/parceiro/caminho-canonico'),
+    );
   });
 
   testWidgets(
@@ -280,7 +588,7 @@ void main() {
   });
 
   testWidgets(
-      'renders directions section and route CTA for restaurant with POI coordinates',
+      'renders directions section and inline provider actions for restaurant with POI coordinates',
       (tester) async {
     final repository = _FakeAccountProfilesRepository();
     final controller = AccountProfileDetailController(
@@ -302,13 +610,20 @@ void main() {
     expect(find.text('Como Chegar'), findsWidgets);
     expect(find.text('Ver no mapa'), findsOneWidget);
     expect(find.text('752 m de você'), findsWidgets);
-    expect(find.text('Traçar rota'), findsOneWidget);
+    expect(find.text('Traçar rota'), findsNothing);
     expect(find.text('Seguir'), findsNothing);
     expect(find.byKey(const Key('accountProfileLocationTile')), findsOneWidget);
     expect(find.byKey(const Key('accountProfileLocationDistanceBadge')),
         findsOneWidget);
-    expect(find.byKey(const Key('accountProfileRouteFooterButton')),
+    expect(
+        find.byKey(const Key('accountProfileRouteFooterButton')), findsNothing);
+    expect(
+        find.byKey(const Key('accountProfileMainWazeButton')), findsOneWidget);
+    expect(
+        find.byKey(const Key('accountProfileMainUberButton')), findsOneWidget);
+    expect(find.byKey(const Key('accountProfileMainOtherDirectionsButton')),
         findsOneWidget);
+    expect(find.bySemanticsLabel('Outros'), findsOneWidget);
     expect(find.byKey(const Key('accountProfileEmbeddedMapPreview')),
         findsOneWidget);
   });
@@ -493,7 +808,7 @@ void main() {
     );
     final sliverAppBar = tester.widget<SliverAppBar>(find.byType(SliverAppBar));
     final collapsedHeaderCenter = tester.getCenter(
-      find.byKey(const Key('accountProfileCollapsedTaxonomySummary')),
+      find.byKey(const Key('immersiveCollapsedTitle')),
     );
     final navigationToolbarRect =
         tester.getRect(find.byType(NavigationToolbar));
@@ -505,7 +820,7 @@ void main() {
         findsNothing);
     expect(find.byKey(const Key('immersiveCollapsedTitle')), findsOneWidget);
     expect(find.text('Cafe de la Musique'), findsWidgets);
-    expect(collapsedTitle.maxLines, 1);
+    expect(collapsedTitle.maxLines, 2);
     expect(collapsedTitle.overflow, TextOverflow.ellipsis);
     expect(sliverAppBar.toolbarHeight, 72);
     expect((collapsedHeaderCenter.dy - toolbarCenterY).abs(),
@@ -513,7 +828,7 @@ void main() {
   });
 
   testWidgets(
-      'collapsed header keeps taxonomy labels readable after hero scroll',
+      'collapsed header keeps only the account title readable after hero scroll',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 640));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -543,68 +858,25 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('immersiveCollapsedTitle')), findsOneWidget);
-    final collapsedTitle = tester.widget<Text>(
-      find.byKey(const Key('immersiveCollapsedTitle')),
+    final collapsedTitleFinder = find.byKey(
+      const Key('immersiveCollapsedTitle'),
     );
-    final collapsedTaxonomy = find.byKey(
-      const Key('accountProfileCollapsedTaxonomySummary'),
-    );
-    final collapsedTaxonomyRect = tester.getRect(collapsedTaxonomy);
+    final collapsedTitle = tester.widget<Text>(collapsedTitleFinder);
+    final collapsedTitleRect = tester.getRect(collapsedTitleFinder);
     final navigationToolbarRect =
         tester.getRect(find.byType(NavigationToolbar));
 
-    expect(collapsedTitle.maxLines, 1);
-    expect(collapsedTaxonomy, findsOneWidget);
+    expect(collapsedTitle.maxLines, 2);
     expect(
-      collapsedTaxonomyRect.top,
+      collapsedTitleRect.top,
       greaterThanOrEqualTo(navigationToolbarRect.top - 0.5),
     );
     expect(
-      collapsedTaxonomyRect.bottom,
+      collapsedTitleRect.bottom,
       lessThanOrEqualTo(navigationToolbarRect.bottom + 0.5),
     );
-    expect(
-      find.descendant(
-        of: collapsedTaxonomy,
-        matching: find.text('Sunset Premium'),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(
-        of: collapsedTaxonomy,
-        matching: find.text('Teatro Experimental'),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(
-        of: collapsedTaxonomy,
-        matching: find.text('Gastronomia Autoral'),
-      ),
-      findsOneWidget,
-    );
-  });
-
-  testWidgets(
-      'collapsed taxonomy chips choose foreground from rendered background contrast',
-      (tester) async {
-    await _expectCollapsedTaxonomyChipContrast(
-      tester,
-      chipBackground: const Color(0xFFFFFFFF),
-      unsafeForegroundCandidate: const Color(0xFFFDFDFD),
-    );
-  });
-
-  testWidgets(
-      'collapsed taxonomy chips choose foreground from dark background contrast',
-      (tester) async {
-    await _expectCollapsedTaxonomyChipContrast(
-      tester,
-      chipBackground: const Color(0xFF000000),
-      unsafeForegroundCandidate: const Color(0xFF010101),
-      brightness: Brightness.dark,
-    );
+    expect(find.byKey(const Key('accountProfileCollapsedTaxonomySummary')),
+        findsNothing);
   });
 
   testWidgets('live agenda highlight navigates to the highlighted event',
@@ -643,7 +915,55 @@ void main() {
     );
     await tester.pump();
 
-    expect(router.lastPushedPath, '/agenda/evento/jazz-na-orla');
+    expect(router.lastPushedPath, isNull);
+    expect(router.pushedRoutes, hasLength(1));
+    final route = router.pushedRoutes.single;
+    expect(route, isA<ImmersiveEventDetailRoute>());
+    final immersiveRoute = route as ImmersiveEventDetailRoute;
+    expect(immersiveRoute.rawPathParams, {'slug': 'jazz-na-orla'});
+    expect(
+      immersiveRoute.rawQueryParams['occurrence'],
+      '507f1f77bcf86cd799439121',
+    );
+  });
+
+  testWidgets('upcoming agenda card preserves the selected occurrence route',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+    final router = _RecordingStackRouter();
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: router,
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildArtistProfileWithPaddedUpcomingOccurrence(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final futureCard = tester
+        .widgetList<UpcomingEventCard>(
+          find.byType(UpcomingEventCard),
+        )
+        .last;
+    futureCard.onTap?.call();
+    await tester.pump();
+
+    expect(router.lastPushedPath, isNull);
+    expect(router.pushedRoutes, hasLength(1));
+    final route = router.pushedRoutes.single;
+    expect(route, isA<ImmersiveEventDetailRoute>());
+    final immersiveRoute = route as ImmersiveEventDetailRoute;
+    expect(immersiveRoute.rawPathParams, {'slug': 'sunset-premium'});
+    expect(
+      immersiveRoute.rawQueryParams['occurrence'],
+      '507f1f77bcf86cd799439122',
+    );
   });
 
   testWidgets(
@@ -656,12 +976,7 @@ void main() {
     GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
 
     final liveEvent = _buildArtistAgendaEvents().first;
-    final expectedSchedule =
-        '${DateFormat.E().format(liveEvent.startDateTime).toUpperCase()}, '
-        '${liveEvent.startDateTime.day.toString().padLeft(2, '0')} • ${liveEvent.startDateTime.timeLabel} às '
-        '${DateFormat.E().format((liveEvent.endDateTime ?? liveEvent.startDateTime.add(const Duration(hours: 3)))).toUpperCase()}, '
-        '${(liveEvent.endDateTime ?? liveEvent.startDateTime.add(const Duration(hours: 3))).day.toString().padLeft(2, '0')} • '
-        '${(liveEvent.endDateTime ?? liveEvent.startDateTime.add(const Duration(hours: 3))).timeLabel}';
+    final expectedSchedule = liveEvent.expandedScheduleLabel;
 
     await tester.pumpWidget(
       _buildRoutedTestApp(
@@ -941,6 +1256,410 @@ void main() {
     );
   });
 
+  testWidgets(
+      'renders nested account profile groups as custom tabs and navigates linked profile',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+    final router = _RecordingStackRouter();
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: router,
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildVenueFullProfile().copyWith(
+            nestedProfileGroupValues: [_buildNestedAccountProfileGroup()],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<Text>(find.byKey(const Key('immersiveTabLabel_3'))).data,
+      'Parceiros',
+    );
+
+    await tester.ensureVisible(find.byKey(const Key('immersiveTabLabel_3')));
+    await tester.tap(find.byKey(const Key('immersiveTabLabel_3')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('accountProfileNestedGroup_parceiros')),
+        findsOneWidget);
+    expect(find.text('Ananda Torres'), findsOneWidget);
+    expect(find.text('Música'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(
+        const Key(
+          'accountProfileNestedCard_parceiros_507f1f77bcf86cd799439081',
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(router.lastPushedPath, '/parceiro/ananda-torres');
+  });
+
+  testWidgets(
+      'renders non navigable nested members without chevron and does not navigate',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+    final router = _RecordingStackRouter();
+
+    final nonNavigableGroup = AccountProfileNestedGroup(
+      idValue: AccountProfileNestedGroupIdValue('parceiros'),
+      labelValue: AccountProfileNestedGroupLabelValue('Parceiros'),
+      orderValue: AccountProfileNestedGroupOrderValue(0),
+      profiles: [
+        AccountProfileNestedGroupMember(
+          idValue: MongoIDValue()..parse('507f1f77bcf86cd799439082'),
+          nameValue: TitleValue()..parse('Parceiro Sem Link'),
+          profileTypeValue: AccountProfileTypeValue('guest_public'),
+          canOpenPublicDetailValue: DomainBooleanValue(
+            defaultValue: false,
+            isRequired: false,
+          )..parse('false'),
+          tagValues: [AccountProfileTagValue('Convidado')],
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: router,
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildVenueFullProfile().copyWith(
+            nestedProfileGroupValues: [nonNavigableGroup],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.byKey(const Key('immersiveTabLabel_3')));
+    await tester.tap(find.byKey(const Key('immersiveTabLabel_3')));
+    await tester.pumpAndSettle();
+
+    final cardFinder = find.byKey(
+      const Key('accountProfileNestedCard_parceiros_507f1f77bcf86cd799439082'),
+    );
+    expect(cardFinder, findsOneWidget);
+    expect(
+      find.descendant(
+          of: cardFinder, matching: find.byIcon(Icons.chevron_right)),
+      findsNothing,
+    );
+
+    await tester.tap(cardFinder);
+    await tester.pump();
+
+    expect(router.lastPushedPath, isNull);
+  });
+
+  testWidgets(
+      'keeps parent profile data when a stacked partner detail changes repository selection',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+    final parentProfile = _buildVenueFullProfile().copyWith(
+      nameValue: TitleValue()..parse('Du Jorge'),
+      slugValue: SlugValue()..parse('du-jorge'),
+      nestedProfileGroupValues: [_buildNestedAccountProfileGroup()],
+    );
+    final childProfile = _buildArtistProfile().copyWith(
+      nameValue: TitleValue()..parse('QA Discovery Tag Várias Tags'),
+      slugValue: SlugValue()..parse('qa-discovery-tag-varias-tags'),
+    );
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: AccountProfileDetailScreen(
+          accountProfile: parentProfile,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.byKey(const Key('immersiveTabLabel_3')));
+    await tester.tap(find.byKey(const Key('immersiveTabLabel_3')));
+    await tester.pumpAndSettle();
+
+    repository.setSelectedAccountProfile(childProfile);
+    await tester.pumpAndSettle();
+
+    final heroSummary = find.byKey(
+      const Key('accountProfileHeroSurfaceSummary'),
+    );
+    expect(
+      find.descendant(of: heroSummary, matching: find.text('Du Jorge')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: heroSummary,
+        matching: find.text('QA Discovery Tag Várias Tags'),
+      ),
+      findsNothing,
+    );
+    expect(
+      tester.widget<Text>(find.byKey(const Key('immersiveTabLabel_3'))).data,
+      'Parceiros',
+    );
+    expect(find.byKey(const Key('accountProfileNestedGroup_parceiros')),
+        findsOneWidget);
+  });
+
+  testWidgets(
+      'back from a nested linked profile restores the parent account detail',
+      (tester) async {
+    final parentProfile = _buildVenueFullProfile().copyWith(
+      nameValue: TitleValue()..parse('Du Jorge'),
+      slugValue: SlugValue()..parse('du-jorge'),
+      nestedProfileGroupValues: [_buildNestedAccountProfileGroup()],
+    );
+    final childProfile = _buildArtistProfile().copyWith(
+      idValue: MongoIDValue()..parse('507f1f77bcf86cd799439081'),
+      nameValue: TitleValue()..parse('Ananda Torres'),
+      slugValue: SlugValue()..parse('ananda-torres'),
+    );
+    final repository = _FakeAccountProfilesRepository(
+      profiles: [parentProfile, childProfile],
+    );
+    GetIt.I.registerSingleton<AccountProfilesRepositoryContract>(repository);
+    GetIt.I.registerSingleton<StaticAssetsRepositoryContract>(
+      _FakeStaticAssetsRepository(),
+    );
+    GetIt.I.registerSingleton<DiscoveryModule>(DiscoveryModule());
+
+    final router = RootStackRouter.build(
+      routes: [
+        NamedRouteDef(
+          name: 'discovery-test-root',
+          path: '/',
+          builder: (context, _) => Scaffold(
+            body: Center(
+              child: TextButton(
+                key: const Key('openParentAccountDetail'),
+                onPressed: () => context.router.push(
+                  PartnerDetailRoute(slug: 'du-jorge'),
+                ),
+                child: const Text('Abrir Du Jorge'),
+              ),
+            ),
+          ),
+        ),
+        AutoRoute(
+          path: '/parceiro/:slug',
+          page: PartnerDetailRoute.page,
+          meta: canonicalRouteMeta(
+            family: CanonicalRouteFamily.partnerDetail,
+          ),
+        ),
+      ],
+    )..ignorePopCompleters = true;
+
+    await tester.pumpWidget(
+      MaterialApp.router(
+        locale: const Locale('pt', 'BR'),
+        supportedLocales: const <Locale>[Locale('pt', 'BR')],
+        localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        routeInformationParser: router.defaultRouteParser(),
+        routerDelegate: router.delegate(),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('openParentAccountDetail')));
+    await tester.pumpAndSettle();
+
+    final parentHeroSummary = find.byKey(
+      const Key('accountProfileHeroSurfaceSummary'),
+    );
+    expect(
+      find.descendant(of: parentHeroSummary, matching: find.text('Du Jorge')),
+      findsOneWidget,
+    );
+
+    await tester.ensureVisible(find.byKey(const Key('immersiveTabLabel_3')));
+    await tester.tap(find.byKey(const Key('immersiveTabLabel_3')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(
+        const Key(
+          'accountProfileNestedCard_parceiros_507f1f77bcf86cd799439081',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final childHeroSummary = find.byKey(
+      const Key('accountProfileHeroSurfaceSummary'),
+    );
+    expect(
+      find.descendant(
+        of: childHeroSummary,
+        matching: find.text('Ananda Torres'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byTooltip('Voltar'));
+    await tester.pumpAndSettle();
+
+    final restoredParentHeroSummary = find.byKey(
+      const Key('accountProfileHeroSurfaceSummary'),
+    );
+    expect(
+      find.descendant(
+        of: restoredParentHeroSummary,
+        matching: find.text('Du Jorge'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: restoredParentHeroSummary,
+        matching: find.text('Ananda Torres'),
+      ),
+      findsNothing,
+    );
+    expect(find.byKey(const Key('accountProfileNestedGroup_parceiros')),
+        findsOneWidget);
+  });
+
+  testWidgets(
+      'nested linked profile routes keep isolated detail controller instances',
+      (tester) async {
+    final parentProfile = _buildVenueFullProfile().copyWith(
+      nameValue: TitleValue()..parse('Du Jorge'),
+      slugValue: SlugValue()..parse('du-jorge'),
+      nestedProfileGroupValues: [_buildNestedAccountProfileGroup()],
+    );
+    final childProfile = _buildArtistProfile().copyWith(
+      idValue: MongoIDValue()..parse('507f1f77bcf86cd799439081'),
+      nameValue: TitleValue()..parse('Ananda Torres'),
+      slugValue: SlugValue()..parse('ananda-torres'),
+    );
+    final repository = _FakeAccountProfilesRepository(
+      profiles: [parentProfile, childProfile],
+    );
+    final createdControllers = <_TrackingAccountProfileDetailController>[];
+    GetIt.I.registerSingleton<AccountProfilesRepositoryContract>(repository);
+    GetIt.I.registerSingleton<StaticAssetsRepositoryContract>(
+      _FakeStaticAssetsRepository(),
+    );
+    GetIt.I.registerFactory<AccountProfileDetailController>(() {
+      final controller = _TrackingAccountProfileDetailController(
+        id: createdControllers.length + 1,
+        accountProfilesRepository: repository,
+      );
+      createdControllers.add(controller);
+      return controller;
+    });
+    GetIt.I.registerSingleton<DiscoveryModule>(DiscoveryModule());
+
+    final router = RootStackRouter.build(
+      routes: [
+        NamedRouteDef(
+          name: 'discovery-test-root',
+          path: '/',
+          builder: (context, _) => Scaffold(
+            body: Center(
+              child: TextButton(
+                key: const Key('openParentAccountDetail'),
+                onPressed: () => context.router.push(
+                  PartnerDetailRoute(slug: 'du-jorge'),
+                ),
+                child: const Text('Abrir Du Jorge'),
+              ),
+            ),
+          ),
+        ),
+        AutoRoute(
+          path: '/parceiro/:slug',
+          page: PartnerDetailRoute.page,
+          meta: canonicalRouteMeta(
+            family: CanonicalRouteFamily.partnerDetail,
+          ),
+        ),
+      ],
+    )..ignorePopCompleters = true;
+
+    await tester.pumpWidget(
+      MaterialApp.router(
+        locale: const Locale('pt', 'BR'),
+        supportedLocales: const <Locale>[Locale('pt', 'BR')],
+        localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        routeInformationParser: router.defaultRouteParser(),
+        routerDelegate: router.delegate(),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('openParentAccountDetail')));
+    await tester.pumpAndSettle();
+
+    expect(createdControllers, hasLength(1));
+    final parentController = createdControllers.single;
+    expect(parentController.id, 1);
+    expect(parentController.loadedSlugs, contains('du-jorge'));
+
+    await tester.ensureVisible(find.byKey(const Key('immersiveTabLabel_3')));
+    await tester.tap(find.byKey(const Key('immersiveTabLabel_3')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(
+        const Key(
+          'accountProfileNestedCard_parceiros_507f1f77bcf86cd799439081',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(createdControllers, hasLength(2));
+    final childController = createdControllers.last;
+    expect(childController.id, 2);
+    expect(identical(parentController, childController), isFalse);
+    expect(childController.loadedSlugs, contains('ananda-torres'));
+    expect(parentController.disposed, isFalse);
+
+    await tester.tap(find.byTooltip('Voltar'));
+    await tester.pumpAndSettle();
+
+    expect(createdControllers, hasLength(2));
+    expect(parentController.disposed, isFalse);
+    expect(childController.disposed, isTrue);
+    expect(
+      parentController.detailStateStreamValue.value.accountProfile?.slug,
+      'du-jorge',
+    );
+    expect(find.text('Du Jorge'), findsWidgets);
+    expect(
+      find.byKey(const Key('accountProfileNestedGroup_parceiros')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('removes social metrics from the account profile MVP surface',
       (tester) async {
     final repository = _FakeAccountProfilesRepository();
@@ -1029,7 +1748,7 @@ void main() {
     );
   });
 
-  testWidgets('tapping route footer delegates to shared directions chooser',
+  testWidgets('tapping inline directions delegates to shared directions widget',
       (tester) async {
     final repository = _FakeAccountProfilesRepository();
     final controller = AccountProfileDetailController(
@@ -1049,13 +1768,180 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('accountProfileRouteFooterButton')));
+    final otherDirectionsButton =
+        find.byKey(const Key('accountProfileMainOtherDirectionsButton'));
+    await tester.ensureVisible(otherDirectionsButton);
+    await tester.pumpAndSettle();
+    await tester.tap(otherDirectionsButton);
     await tester.pump();
 
     expect(chooser.presentCallCount, 1);
     expect(chooser.lastTarget?.destinationName, 'Casa Marracini');
     expect(chooser.lastTarget?.latitude, closeTo(-20.7389, 0.00001));
     expect(chooser.lastTarget?.longitude, closeTo(-40.8212, 0.00001));
+
+    final wazeButton = find.byKey(const Key('accountProfileMainWazeButton'));
+    await tester.ensureVisible(wazeButton);
+    await tester.pumpAndSettle();
+    await tester.tap(wazeButton);
+    await tester.pump();
+
+    expect(chooser.directCallCount, 1);
+    expect(chooser.lastDirectProvider, DirectionsDirectProvider.waze);
+    expect(chooser.lastDirectTarget?.destinationName, 'Casa Marracini');
+    expect(chooser.lastDirectTarget?.latitude, closeTo(-20.7389, 0.00001));
+    expect(chooser.lastDirectTarget?.longitude, closeTo(-40.8212, 0.00001));
+  });
+
+  testWidgets(
+      'hero saves eligible account profile as ponto de referência with provenance',
+      (tester) async {
+    await GetIt.I.reset(dispose: false);
+    GetIt.I.registerSingleton<AppData>(
+      _buildAppData(restaurantReferenceLocationEnabled: true),
+    );
+    final repository = _FakeAccountProfilesRepository();
+    final proximityRepository = _FakeProximityPreferencesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+      proximityPreferencesRepository: proximityRepository,
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+    await tester.pumpWidget(
+      _buildAutoRouteTestApp(
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildRestaurantProfile(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final referencePointButton = find.byKey(
+      const Key('accountProfileHeroReferencePointButton'),
+    );
+    expect(find.text('Usar como ponto de referência'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: referencePointButton,
+        matching: find.byIcon(Icons.location_on_outlined),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(referencePointButton);
+    await tester.pumpAndSettle();
+
+    expect(proximityRepository.lastFixedReference, isNull);
+    expect(
+      find.byKey(const Key('accountProfileReferencePointDialogCopy')),
+      findsOneWidget,
+    );
+    final previewCard = find.byKey(
+      const Key('accountProfileReferencePointPreviewCard'),
+    );
+    expect(previewCard, findsOneWidget);
+    expect(
+      find.descendant(of: previewCard, matching: find.text('Casa Marracini')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: previewCard, matching: find.text('Restaurante')),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(const Key('accountProfileReferencePointConfirmButton')),
+    );
+    await tester.pumpAndSettle();
+
+    final fixedReference = proximityRepository.lastFixedReference;
+    expect(fixedReference, isNotNull);
+    expect(fixedReference!.entityNamespace, 'account_profile');
+    expect(fixedReference.entityType, 'restaurant');
+    expect(fixedReference.entityId, '507f1f77bcf86cd799439012');
+    expect(fixedReference.entitySlug, 'casa-marracini');
+    expect(fixedReference.label, 'Casa Marracini');
+    expect(fixedReference.coordinate.latitude, closeTo(-20.7389, 0.00001));
+    expect(fixedReference.coordinate.longitude, closeTo(-40.8212, 0.00001));
+    expect(find.text('Ponto de referência'), findsOneWidget);
+  });
+
+  testWidgets('hero renders current ponto de referência selected state',
+      (tester) async {
+    await GetIt.I.reset(dispose: false);
+    GetIt.I.registerSingleton<AppData>(
+      _buildAppData(restaurantReferenceLocationEnabled: true),
+    );
+    final profile = _buildRestaurantProfile();
+    final repository = _FakeAccountProfilesRepository();
+    final proximityRepository = _FakeProximityPreferencesRepository(
+      fixedReference: _fixedReferenceFor(profile),
+    );
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+      proximityPreferencesRepository: proximityRepository,
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+    await tester.pumpWidget(
+      _buildAutoRouteTestApp(
+        child: AccountProfileDetailScreen(accountProfile: profile),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ponto de referência'), findsOneWidget);
+    expect(find.text('Usar como ponto de referência'), findsNothing);
+    expect(
+      find.byKey(const Key('accountProfileHeroClearReferencePointButton')),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(const Key('accountProfileHeroClearReferencePointButton')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('accountProfileClearReferencePointDialog')),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(const Key('accountProfileClearReferencePointConfirmButton')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(proximityRepository.clearFixedReferenceCalls, 1);
+    expect(proximityRepository.lastFixedReference, isNull);
+    expect(find.text('Usar como ponto de referência'), findsOneWidget);
+  });
+
+  testWidgets('hero hides reference point action when capability is disabled',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+      proximityPreferencesRepository: _FakeProximityPreferencesRepository(),
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: AccountProfileDetailScreen(
+          accountProfile: _buildRestaurantProfile(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Usar como ponto de referência'), findsNothing);
+    expect(
+      find.byKey(const Key('accountProfileHeroReferencePointButton')),
+      findsNothing,
+    );
   });
 
   testWidgets(
@@ -1380,59 +2266,35 @@ void main() {
   });
 }
 
-Future<void> _expectCollapsedTaxonomyChipContrast(
-  WidgetTester tester, {
-  required Color chipBackground,
-  required Color unsafeForegroundCandidate,
-  Brightness brightness = Brightness.light,
-}) async {
-  await tester.binding.setSurfaceSize(const Size(390, 640));
-  addTearDown(() => tester.binding.setSurfaceSize(null));
-
-  final repository = _FakeAccountProfilesRepository();
-  final controller = AccountProfileDetailController(
-    accountProfilesRepository: repository,
-  );
-  GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
-
-  await tester.pumpWidget(
-    _buildRoutedTestApp(
-      router: _RecordingStackRouter(),
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blue,
-          brightness: brightness,
-        ).copyWith(
-          secondaryContainer: chipBackground,
-          onSecondaryContainer: unsafeForegroundCandidate,
+Widget _buildAutoRouteTestApp({
+  required Widget child,
+  ThemeData? theme,
+}) {
+  final router = RootStackRouter.build(
+    routes: [
+      NamedRouteDef(
+        name: 'partner-detail-test',
+        path: '/',
+        meta: canonicalRouteMeta(
+          family: CanonicalRouteFamily.partnerDetail,
         ),
+        builder: (_, __) => RouteInstanceScope(child: child),
       ),
-      child: AccountProfileDetailScreen(
-        accountProfile: _buildArtistProfileWithManyTaxonomies(),
-      ),
-    ),
-  );
-  await tester.pumpAndSettle();
+    ],
+  )..ignorePopCompleters = true;
 
-  await tester.drag(find.byType(NestedScrollView), const Offset(0, -1000));
-  await tester.pumpAndSettle();
-  await tester.drag(find.byType(NestedScrollView), const Offset(0, -1000));
-  await tester.pumpAndSettle();
-
-  final collapsedTaxonomy = find.byKey(
-    const Key('accountProfileCollapsedTaxonomySummary'),
+  return MaterialApp.router(
+    theme: theme,
+    locale: const Locale('pt', 'BR'),
+    supportedLocales: const <Locale>[Locale('pt', 'BR')],
+    localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
+      GlobalMaterialLocalizations.delegate,
+      GlobalWidgetsLocalizations.delegate,
+      GlobalCupertinoLocalizations.delegate,
+    ],
+    routeInformationParser: router.defaultRouteParser(),
+    routerDelegate: router.delegate(),
   );
-  final label = tester.widget<Text>(
-    find.descendant(
-      of: collapsedTaxonomy,
-      matching: find.text('Sunset Premium'),
-    ),
-  );
-  final foreground = label.style?.color;
-
-  expect(foreground, isNotNull);
-  expect(
-      _contrastRatio(chipBackground, foreground!), greaterThanOrEqualTo(4.5));
 }
 
 Widget _buildRoutedTestApp({
@@ -1462,22 +2324,10 @@ Widget _buildRoutedTestApp({
       ],
       home: RouteDataScope(
         routeData: routeData,
-        child: child,
+        child: RouteInstanceScope(child: child),
       ),
     ),
   );
-}
-
-double _contrastRatio(Color background, Color foreground) {
-  final backgroundLuminance = background.computeLuminance();
-  final foregroundLuminance = foreground.computeLuminance();
-  final brighter = backgroundLuminance > foregroundLuminance
-      ? backgroundLuminance
-      : foregroundLuminance;
-  final darker = backgroundLuminance > foregroundLuminance
-      ? foregroundLuminance
-      : backgroundLuminance;
-  return (brighter + 0.05) / (darker + 0.05);
 }
 
 class _RecordingStackRouter extends Fake implements StackRouter {
@@ -1487,6 +2337,7 @@ class _RecordingStackRouter extends Fake implements StackRouter {
   int canPopCallCount = 0;
   int popCallCount = 0;
   final List<List<PageRouteInfo<dynamic>>> replaceAllRoutes = [];
+  final List<PageRouteInfo<dynamic>> pushedRoutes = [];
 
   @override
   RootStackRouter get root => _FakeRootStackRouter('/parceiro/ananda-torres');
@@ -1498,6 +2349,16 @@ class _RecordingStackRouter extends Fake implements StackRouter {
     OnNavigationFailure? onFailure,
   }) async {
     lastPushedPath = path;
+    return null;
+  }
+
+  @override
+  Future<T?> push<T extends Object?>(
+    PageRouteInfo route, {
+    OnNavigationFailure? onFailure,
+    bool notify = true,
+  }) async {
+    pushedRoutes.add(route);
     return null;
   }
 
@@ -1587,13 +2448,27 @@ class _FakeRouteMatch extends Fake implements RouteMatch {
 
 class _RecordingDirectionsAppChooser implements DirectionsAppChooserContract {
   int presentCallCount = 0;
+  int directCallCount = 0;
   DirectionsLaunchTarget? lastTarget;
+  DirectionsDirectProvider? lastDirectProvider;
+  DirectionsLaunchTarget? lastDirectTarget;
 
   @override
   Future<List<DirectionsAppChoice>> loadOptions({
     required DirectionsLaunchTarget target,
   }) async =>
       const <DirectionsAppChoice>[];
+
+  @override
+  Future<bool> launchDirect({
+    required DirectionsDirectProvider provider,
+    required DirectionsLaunchTarget target,
+  }) async {
+    directCallCount += 1;
+    lastDirectProvider = provider;
+    lastDirectTarget = target;
+    return true;
+  }
 
   @override
   Future<void> present(
@@ -1603,6 +2478,50 @@ class _RecordingDirectionsAppChooser implements DirectionsAppChooserContract {
   }) async {
     presentCallCount += 1;
     lastTarget = target;
+  }
+}
+
+class _FakeProximityPreferencesRepository
+    extends ProximityPreferencesRepositoryContract {
+  _FakeProximityPreferencesRepository({
+    FixedLocationReference? fixedReference,
+  }) {
+    if (fixedReference != null) {
+      setCurrentPreference(_preferenceWith(fixedReference));
+    }
+  }
+
+  FixedLocationReference? lastFixedReference;
+  int clearFixedReferenceCalls = 0;
+
+  @override
+  Future<void> setFixedReference({
+    required FixedLocationReference fixedReference,
+  }) async {
+    lastFixedReference = fixedReference;
+    setCurrentPreference(_preferenceWith(fixedReference));
+  }
+
+  @override
+  Future<void> clearFixedReference() async {
+    clearFixedReferenceCalls += 1;
+    lastFixedReference = null;
+    setCurrentPreference(
+      ProximityPreference(
+        maxDistanceMetersValue: DistanceInMetersValue.fromRaw(25000),
+        locationPreference:
+            const ProximityLocationPreference.liveDeviceLocation(),
+      ),
+    );
+  }
+
+  ProximityPreference _preferenceWith(FixedLocationReference fixedReference) {
+    return ProximityPreference(
+      maxDistanceMetersValue: DistanceInMetersValue.fromRaw(25000),
+      locationPreference: ProximityLocationPreference.fixedReference(
+        fixedReference: fixedReference,
+      ),
+    );
   }
 }
 
@@ -1628,7 +2547,7 @@ class _EmptyAccountProfileDetailController
   @override
   Future<void> loadResolvedAccountProfile(
       AccountProfileModel accountProfile) async {
-    accountProfileStreamValue.addValue(null);
+    detailStateStreamValue.addValue(AccountProfileDetailState.empty);
     profileConfigStreamValue.addValue(null);
   }
 }
@@ -1646,10 +2565,107 @@ class _ErrorAccountProfileDetailController
   }
 }
 
+class _TrackingAccountProfileDetailController
+    extends AccountProfileDetailController {
+  _TrackingAccountProfileDetailController({
+    required this.id,
+    required super.accountProfilesRepository,
+  });
+
+  final int id;
+  final loadedSlugs = <String>[];
+  bool disposed = false;
+
+  @override
+  Future<void> loadResolvedAccountProfile(
+    AccountProfileModel accountProfile,
+  ) {
+    loadedSlugs.add(accountProfile.slug);
+    return super.loadResolvedAccountProfile(accountProfile);
+  }
+
+  @override
+  void onDispose() {
+    disposed = true;
+    super.onDispose();
+  }
+}
+
+class _FakeAuthRepository extends AuthRepositoryContract {
+  _FakeAuthRepository({required this.authorized});
+
+  final bool authorized;
+
+  @override
+  Object get backend => Object();
+
+  @override
+  Future<void> autoLogin() async {}
+
+  @override
+  Future<void> createNewPassword(
+    AuthRepositoryContractParamString newPassword,
+    AuthRepositoryContractParamString confirmPassword,
+  ) async {}
+
+  @override
+  Future<String> getDeviceId() async => 'device-id';
+
+  @override
+  Future<String?> getUserId() async => authorized ? 'user-id' : null;
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  bool get isAuthorized => authorized;
+
+  @override
+  bool get isUserLoggedIn => authorized;
+
+  @override
+  Future<void> loginWithEmailPassword(
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
+  ) async {}
+
+  @override
+  Future<void> logout() async {}
+
+  @override
+  Future<void> sendPasswordResetEmail(
+    AuthRepositoryContractParamString email,
+  ) async {}
+
+  @override
+  Future<void> sendTokenRecoveryPassword(
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString codigoEnviado,
+  ) async {}
+
+  @override
+  void setUserToken(AuthRepositoryContractParamString? token) {}
+
+  @override
+  Future<void> signUpWithEmailPassword(
+    AuthRepositoryContractParamString name,
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
+  ) async {}
+
+  @override
+  Future<void> updateUser(UserCustomData data) async {}
+
+  @override
+  String get userToken => authorized ? 'token' : '';
+}
+
 class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   _FakeAccountProfilesRepository({
     Set<String> initialFavoriteIds = const <String>{},
-  }) : _favoriteIds = Set<String>.from(initialFavoriteIds) {
+    List<AccountProfileModel> profiles = const <AccountProfileModel>[],
+  })  : _favoriteIds = Set<String>.from(initialFavoriteIds),
+        _profiles = List<AccountProfileModel>.from(profiles) {
     favoriteAccountProfileIdsStreamValue.addValue(
       _favoriteIds
           .map(
@@ -1660,7 +2676,7 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   }
 
   final Set<String> _favoriteIds;
-  final List<AccountProfileModel> _profiles = <AccountProfileModel>[];
+  final List<AccountProfileModel> _profiles;
 
   @override
   Future<void> init() async {}
@@ -1730,6 +2746,14 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
 
   @override
   List<AccountProfileModel> getFavoriteAccountProfiles() => const [];
+}
+
+class _FakeStaticAssetsRepository implements StaticAssetsRepositoryContract {
+  @override
+  Future<PublicStaticAssetModel?> getStaticAssetByRef(
+    StaticAssetRepoText assetRef,
+  ) async =>
+      null;
 }
 
 AccountProfileModel _buildArtistProfile() {
@@ -1835,6 +2859,23 @@ AccountProfileModel _buildRestaurantProfile() {
   );
 }
 
+FixedLocationReference _fixedReferenceFor(AccountProfileModel profile) {
+  return FixedLocationReference(
+    sourceKind: FixedLocationReferenceSourceKind.entityReference,
+    coordinate: CityCoordinate(
+      latitudeValue: LatitudeValue()..parse(profile.locationLat.toString()),
+      longitudeValue: LongitudeValue()..parse(profile.locationLng.toString()),
+    ),
+    labelValue: ProximityPreferenceOptionalTextValue.fromRaw(profile.name),
+    entityNamespaceValue:
+        ProximityPreferenceOptionalTextValue.fromRaw('account_profile'),
+    entityTypeValue:
+        ProximityPreferenceOptionalTextValue.fromRaw(profile.profileType),
+    entityIdValue: ProximityPreferenceOptionalTextValue.fromRaw(profile.id),
+    entitySlugValue: ProximityPreferenceOptionalTextValue.fromRaw(profile.slug),
+  );
+}
+
 AccountProfileModel _buildRestaurantWithAgendaProfile() {
   return buildAccountProfileModelFromPrimitives(
     id: '507f1f77bcf86cd799439015',
@@ -1914,6 +2955,30 @@ AccountProfileModel _buildVenueFullProfile() {
   );
 }
 
+AccountProfileNestedGroup _buildNestedAccountProfileGroup() {
+  return AccountProfileNestedGroup(
+    idValue: AccountProfileNestedGroupIdValue('parceiros'),
+    labelValue: AccountProfileNestedGroupLabelValue('Parceiros'),
+    orderValue: AccountProfileNestedGroupOrderValue(0),
+    profiles: [
+      AccountProfileNestedGroupMember(
+        idValue: MongoIDValue()..parse('507f1f77bcf86cd799439081'),
+        nameValue: TitleValue()..parse('Ananda Torres'),
+        slugValue: SlugValue()..parse('ananda-torres'),
+        profileTypeValue: AccountProfileTypeValue('artist'),
+        canOpenPublicDetailValue: DomainBooleanValue(
+          defaultValue: false,
+          isRequired: false,
+        )..parse('true'),
+        publicDetailPathValue: AccountProfileNestedGroupMemberTextValue(
+          '/parceiro/ananda-torres',
+        ),
+        tagValues: [AccountProfileTagValue('Música')],
+      ),
+    ],
+  );
+}
+
 List<PartnerEventView> _buildArtistAgendaEvents() {
   final now = DateTime.now().toUtc();
   return [
@@ -1947,6 +3012,50 @@ List<PartnerEventView> _buildArtistAgendaEvents() {
       imageUri: Uri.parse('https://example.com/sunset-premium.jpg'),
     ),
   ];
+}
+
+AccountProfileModel _buildArtistProfileWithPaddedUpcomingOccurrence() {
+  final now = DateTime.now().toUtc();
+  return buildAccountProfileModelFromPrimitives(
+    id: '507f1f77bcf86cd799439011',
+    name: 'Cafe de la Musique',
+    slug: 'cafe-de-la-musique',
+    type: 'artist',
+    tags: const ['Sunset Premium', 'Praia', 'Guarapari'],
+    agendaEvents: [
+      buildPartnerEventView(
+        eventId: '507f1f77bcf86cd799439021',
+        occurrenceId: '507f1f77bcf86cd799439121',
+        slug: 'jazz-na-orla',
+        title: 'Jazz na Orla',
+        eventTypeLabel: 'Show',
+        location: 'Deck Principal',
+        venueTitle: 'Cafe de la Musique',
+        venueId: '507f1f77bcf86cd799439011',
+        startDateTime: now.subtract(const Duration(minutes: 45)),
+        endDateTime: now.add(const Duration(hours: 1)),
+        artistNames: const ['Marco Aurélio'],
+        artistIds: const ['507f1f77bcf86cd799439099'],
+        imageUri: Uri.parse('https://example.com/jazz-na-orla.jpg'),
+      ),
+      buildPartnerEventView(
+        eventId: '507f1f77bcf86cd799439022',
+        occurrenceId: ' 507f1f77bcf86cd799439122 ',
+        slug: 'sunset-premium',
+        title: 'Sunset Premium',
+        eventTypeLabel: 'Show',
+        location: 'Terraço Panorâmico',
+        venueTitle: 'Cafe de la Musique',
+        venueId: '507f1f77bcf86cd799439011',
+        startDateTime: now.add(const Duration(days: 1)),
+        artistNames: const ['DJ Nightwave'],
+        artistIds: const ['507f1f77bcf86cd799439098'],
+        imageUri: Uri.parse('https://example.com/sunset-premium.jpg'),
+      ),
+    ],
+    isVerified: true,
+    acceptedInvites: 87,
+  );
 }
 
 List<PartnerEventView> _buildRestaurantAgendaEvents() {
@@ -2026,8 +3135,55 @@ AccountProfileModel _buildProfileWithCrowdedLiveAgenda() {
   );
 }
 
+void _registerAppPromotionController() {
+  final appDataRepository = _FakeAppDataRepository(_buildAppData());
+  GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
+  GetIt.I.registerSingleton<AppPromotionScreenController>(
+    AppPromotionScreenController(
+      appDataRepository: appDataRepository,
+      preferredStorePlatformResolver: () => AppPromotionStorePlatform.android,
+    ),
+  );
+}
+
+class _FakeAppDataRepository extends AppDataRepositoryContract {
+  _FakeAppDataRepository(this._appData);
+
+  final AppData _appData;
+
+  @override
+  AppData get appData => _appData;
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  StreamValue<ThemeMode?> get themeModeStreamValue =>
+      StreamValue<ThemeMode?>(defaultValue: ThemeMode.system);
+
+  @override
+  ThemeMode get themeMode => ThemeMode.system;
+
+  @override
+  Future<void> setThemeMode(AppThemeModeValue mode) async {}
+
+  @override
+  StreamValue<DistanceInMetersValue> get maxRadiusMetersStreamValue =>
+      StreamValue<DistanceInMetersValue>(
+        defaultValue: DistanceInMetersValue(defaultValue: 5000),
+      );
+
+  @override
+  DistanceInMetersValue get maxRadiusMeters =>
+      DistanceInMetersValue(defaultValue: 5000);
+
+  @override
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {}
+}
+
 AppData _buildAppData({
   bool artistFavoritable = true,
+  bool restaurantReferenceLocationEnabled = false,
 }) {
   final remoteData = {
     'name': 'Tenant Test',
@@ -2082,6 +3238,7 @@ AppData _buildAppData({
         'capabilities': {
           'is_favoritable': true,
           'is_poi_enabled': true,
+          'is_reference_location_enabled': restaurantReferenceLocationEnabled,
           'has_events': false,
           'has_bio': false,
         },

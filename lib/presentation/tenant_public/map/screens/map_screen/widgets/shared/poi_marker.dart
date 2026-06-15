@@ -297,7 +297,7 @@ class PoiMarker extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         child: Text(
-          label.toUpperCase(),
+          isLiveNow ? label.toUpperCase() : label,
           maxLines: 1,
           overflow: TextOverflow.visible,
           softWrap: false,

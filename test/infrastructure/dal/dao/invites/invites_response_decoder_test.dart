@@ -1,4 +1,5 @@
 import 'package:belluga_now/infrastructure/dal/dao/invites/invites_response_decoder.dart';
+import 'package:belluga_now/domain/invites/invite_inviter_type.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -12,8 +13,61 @@ void main() {
 
     expect(dto.id, 'invite-1');
     expect(dto.eventId, 'event-1');
+    expect(dto.eventSlug, 'invite-event');
     expect(dto.occurrenceId, 'occurrence-1');
     expect(dto.eventName, 'Invite Event');
+  });
+
+  test('decodeRequiredInviteDto tolerates missing event slug', () {
+    final dto = decoder.decodeRequiredInviteDto(
+      _buildInvitePayload()..remove('event_slug'),
+      context: 'preview',
+    );
+    final domain = dto.toDomain();
+
+    expect(dto.eventSlug, isEmpty);
+    expect(domain.eventSlug, isEmpty);
+    expect(domain.eventId, 'event-1');
+  });
+
+  test('decodeRequiredInviteDto hydrates linked profiles and profile groups',
+      () {
+    final dto = decoder.decodeRequiredInviteDto(
+      _buildInvitePayload(),
+      context: 'preview',
+    );
+    final domain = dto.toDomain();
+
+    expect(domain.venueAccountProfileId, 'venue-1');
+    expect(domain.linkedAccountProfiles, hasLength(3));
+    expect(domain.profileGroups, hasLength(2));
+    expect(domain.profileGroups.first.label, 'Bandas');
+    expect(
+      domain.profileGroups.first.accountProfileIdValues.first.value,
+      'band-1',
+    );
+    expect(domain.linkedAccountProfiles[1].displayName, 'Du Jorge');
+    expect(domain.primaryInviter?.principal?.type, InviteInviterType.user);
+    expect(domain.primaryInviter?.principal?.id, 'user-1');
+  });
+
+  test('decodeRequiredInviteDto tolerates missing event image url', () {
+    final dto = decoder.decodeRequiredInviteDto(
+      _buildInvitePayload()
+        ..['event_image_url'] = ''
+        ..['linked_account_profiles'] = [
+          {
+            'id': 'venue-1',
+            'display_name': 'Promotion Smoke Perfil Público',
+            'profile_type': 'venue',
+          },
+        ],
+      context: 'preview',
+    );
+    final domain = dto.toDomain();
+
+    expect(domain.eventImageUrl, startsWith('data:image/gif;base64,'));
+    expect(domain.eventName, 'Invite Event');
   });
 
   test('decodeRequiredInviteDto rejects non-object payload', () {
@@ -91,6 +145,7 @@ Map<String, dynamic> _buildInvitePayload({
   return {
     'id': id,
     'event_id': eventId,
+    'event_slug': 'invite-event',
     'occurrence_id': occurrenceId,
     'event_name': 'Invite Event',
     'event_date': '2099-01-01T20:00:00Z',
@@ -98,7 +153,46 @@ Map<String, dynamic> _buildInvitePayload({
     'location': 'Guarapari',
     'host_name': 'Belluga',
     'message': 'Bora?',
-    'tags': ['music'],
+    'taxonomy_terms': [
+      {
+        'type': 'genre',
+        'value': 'music',
+        'name': 'Music',
+        'label': 'Music',
+      },
+    ],
+    'linked_account_profiles': [
+      {
+        'id': 'venue-1',
+        'display_name': 'Promotion Smoke Perfil Público',
+        'profile_type': 'venue',
+      },
+      {
+        'id': 'band-1',
+        'display_name': 'Du Jorge',
+        'profile_type': 'artist',
+      },
+      {
+        'id': 'exhibitor-1',
+        'display_name': 'QA Discovery Tag Sem Tags',
+        'profile_type': 'exhibitor',
+      },
+    ],
+    'profile_groups': [
+      {
+        'id': 'bandas',
+        'label': 'Bandas',
+        'order': 0,
+        'account_profile_ids': ['band-1'],
+      },
+      {
+        'id': 'expositores',
+        'label': 'Expositores',
+        'order': 1,
+        'account_profile_ids': ['exhibitor-1'],
+      },
+    ],
+    'venue_account_profile_id': 'venue-1',
     'attendance_policy': 'free_confirmation_only',
     'inviter_candidates': [
       {
@@ -106,8 +200,10 @@ Map<String, dynamic> _buildInvitePayload({
         'display_name': 'Invite Sender',
         'avatar_url': 'https://example.com/avatar.png',
         'status': 'pending',
-        'principal_kind': 'user',
-        'principal_id': 'user-1',
+        'inviter_principal': {
+          'kind': 'user',
+          'id': 'user-1',
+        },
       }
     ],
     'inviter_principal': {

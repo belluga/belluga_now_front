@@ -41,7 +41,7 @@ class LaravelMapPoiHttpService {
     PoiQuery query, {
     String? stackKey,
   }) async {
-    final params = _buildQueryParams(
+    final params = _buildMapQueryParams(
       query,
       stackKey: stackKey,
     );
@@ -125,7 +125,7 @@ class LaravelMapPoiHttpService {
   Future<MapFiltersDTO> getFilters(PoiQuery query) async {
     final response = await _dio.get(
       '/v1/map/filters',
-      queryParameters: _buildQueryParams(query),
+      queryParameters: _buildMapQueryParams(query),
       options: Options(
         headers: await _buildHeaders(),
         listFormat: ListFormat.multiCompatible,
@@ -138,6 +138,24 @@ class LaravelMapPoiHttpService {
       throw Exception('Unexpected /v1/map/filters response envelope');
     }
     return MapFiltersDTO.fromJson(payload);
+  }
+
+  Map<String, dynamic> _buildMapQueryParams(
+    PoiQuery query, {
+    String? stackKey,
+  }) {
+    final params = _buildQueryParams(
+      query,
+      stackKey: stackKey,
+    );
+    final originLat = params['origin_lat'];
+    final originLng = params['origin_lng'];
+    if (originLat == null || originLng == null) {
+      throw StateError(
+        'LaravelMapPoiHttpService requires a resolved origin before calling map endpoints.',
+      );
+    }
+    return params;
   }
 
   Map<String, dynamic> _buildQueryParams(
@@ -157,11 +175,6 @@ class LaravelMapPoiHttpService {
     if (origin != null) {
       params['origin_lat'] = origin.latitude;
       params['origin_lng'] = origin.longitude;
-    } else if (query.hasBounds) {
-      params['origin_lat'] =
-          (query.northEast!.latitude + query.southWest!.latitude) / 2;
-      params['origin_lng'] =
-          (query.northEast!.longitude + query.southWest!.longitude) / 2;
     }
 
     final maxDistanceMeters = query.maxDistanceMetersValue?.value;

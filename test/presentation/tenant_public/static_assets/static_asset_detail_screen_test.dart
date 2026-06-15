@@ -2,6 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
+import 'package:belluga_now/application/router/support/route_instance_scope.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
@@ -13,11 +14,19 @@ import 'package:belluga_now/presentation/tenant_public/static_assets/static_asse
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get_it/get_it.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 void main() {
-  setUp(() {
+  setUp(() async {
+    await GetIt.I.reset(dispose: false);
     VisibilityDetectorController.instance.updateInterval = Duration.zero;
+  });
+
+  tearDown(() async {
+    await GetIt.I.reset(dispose: false);
   });
 
   testWidgets(
@@ -41,6 +50,7 @@ void main() {
     final controller = StaticAssetDetailController(
       appData: _buildAppData(),
     );
+    GetIt.I.registerSingleton<StaticAssetDetailController>(controller);
     final router = _RecordingStackRouter();
 
     await tester.pumpWidget(
@@ -48,13 +58,14 @@ void main() {
         router: router,
         child: StaticAssetDetailScreen(
           asset: asset,
-          controller: controller,
         ),
       ),
     );
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('immersiveShareAction')), findsOneWidget);
+    expect(find.byKey(const Key('staticAssetShareAction')), findsOneWidget);
+    expect(find.byKey(const Key('staticAssetWhatsappAction')), findsOneWidget);
+    expect(find.byKey(const Key('accountProfileFavoriteAction')), findsNothing);
     expect(
       tester.widget<Text>(find.byKey(const Key('immersiveTabLabel_0'))).data,
       'Sobre',
@@ -64,6 +75,13 @@ void main() {
       'Como Chegar',
     );
     expect(find.text('Quiosques, píer e acesso fácil.'), findsOneWidget);
+    expect(find.text('Traçar rota'), findsNothing);
+    expect(find.byKey(const Key('staticAssetMainWazeButton')), findsOneWidget);
+    expect(find.byKey(const Key('staticAssetMainUberButton')), findsOneWidget);
+    expect(
+      find.byKey(const Key('staticAssetMainOtherDirectionsButton')),
+      findsOneWidget,
+    );
   });
 
   testWidgets(
@@ -72,6 +90,7 @@ void main() {
     final controller = StaticAssetDetailController(
       appData: _buildAppData(),
     );
+    GetIt.I.registerSingleton<StaticAssetDetailController>(controller);
     final router = _RecordingStackRouter()..canPopResult = false;
 
     await tester.pumpWidget(
@@ -79,7 +98,6 @@ void main() {
         router: router,
         child: StaticAssetDetailScreen(
           asset: _buildStaticAsset(),
-          controller: controller,
         ),
       ),
     );
@@ -103,6 +121,7 @@ void main() {
     final controller = StaticAssetDetailController(
       appData: _buildAppData(),
     );
+    GetIt.I.registerSingleton<StaticAssetDetailController>(controller);
     final router = _RecordingStackRouter()..canPopResult = false;
 
     await tester.pumpWidget(
@@ -110,7 +129,6 @@ void main() {
         router: router,
         child: StaticAssetDetailScreen(
           asset: _buildStaticAsset(),
-          controller: controller,
         ),
       ),
     );
@@ -137,6 +155,7 @@ void main() {
     final controller = StaticAssetDetailController(
       appData: _buildAppData(),
     );
+    GetIt.I.registerSingleton<StaticAssetDetailController>(controller);
     final router = _RecordingStackRouter()..canPopResult = true;
 
     await tester.pumpWidget(
@@ -144,7 +163,6 @@ void main() {
         router: router,
         child: StaticAssetDetailScreen(
           asset: _buildStaticAsset(),
-          controller: controller,
         ),
       ),
     );
@@ -156,6 +174,59 @@ void main() {
     expect(router.canPopCallCount, 1);
     expect(router.popCallCount, 1);
     expect(router.replaceAllRoutes, isEmpty);
+  });
+
+  testWidgets('static asset share and WhatsApp actions use public payloads',
+      (tester) async {
+    final sharedParams = <ShareParams>[];
+    final launchedUris = <Uri>[];
+    final controller = StaticAssetDetailController(
+      appData: _buildAppData(),
+    );
+    GetIt.I.registerSingleton<StaticAssetDetailController>(controller);
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: StaticAssetDetailScreen(
+          asset: _buildStaticAsset(),
+          shareLauncher: (params) async {
+            sharedParams.add(params);
+          },
+          externalUrlLauncher: (uri, {required mode}) async {
+            launchedUris.add(uri);
+            expect(mode, LaunchMode.externalApplication);
+            return false;
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('staticAssetShareAction')));
+    await tester.pumpAndSettle();
+
+    expect(sharedParams, hasLength(1));
+    expect(sharedParams.single.subject, 'Praia das Virtudes');
+    expect(sharedParams.single.text, contains('Praia das Virtudes'));
+    expect(sharedParams.single.text, contains('Quiosques'));
+    expect(
+      sharedParams.single.text,
+      contains('https://tenant.test/static/praia-das-virtudes'),
+    );
+
+    await tester.tap(find.byKey(const Key('staticAssetWhatsappAction')));
+    await tester.pumpAndSettle();
+
+    expect(launchedUris, hasLength(2));
+    expect(launchedUris.first.scheme, 'whatsapp');
+    expect(launchedUris.first.host, 'send');
+    expect(launchedUris.last.host, 'wa.me');
+    expect(
+      launchedUris.last.queryParameters['text'],
+      contains('https://tenant.test/static/praia-das-virtudes'),
+    );
+    expect(sharedParams, hasLength(2));
   });
 }
 
@@ -253,7 +324,7 @@ Widget _buildRoutedTestApp({
     child: MaterialApp(
       home: RouteDataScope(
         routeData: routeData,
-        child: child,
+        child: RouteInstanceScope(child: child),
       ),
     ),
   );
@@ -267,7 +338,8 @@ class _RecordingStackRouter extends Fake implements StackRouter {
       <List<PageRouteInfo<dynamic>>>[];
 
   @override
-  RootStackRouter get root => _FakeRootStackRouter('/static/praia-das-virtudes');
+  RootStackRouter get root =>
+      _FakeRootStackRouter('/static/praia-das-virtudes');
 
   @override
   bool canPop({

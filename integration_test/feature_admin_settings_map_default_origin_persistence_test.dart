@@ -318,7 +318,7 @@ void main() {
         expect(controller.remoteErrorStreamValue.value, isNull);
         expect(
           controller.remoteSuccessStreamValue.value,
-          'Origem padrão atualizada com sucesso.',
+          'Ponto de referência atualizado com sucesso.',
         );
 
         final persistedSettings = await waitForMapUiOrigin(

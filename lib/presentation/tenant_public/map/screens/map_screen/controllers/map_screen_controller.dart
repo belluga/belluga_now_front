@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:belluga_now/application/router/guards/location_permission_gate_runtime.dart';
+import 'package:belluga_now/application/router/guards/location_permission_gate_result.dart';
+import 'package:belluga_now/application/router/support/tenant_public_event_path.dart';
 import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/application/map_surface/belluga_map_handle.dart';
 import 'package:belluga_now/application/map_surface/belluga_map_handle_contract.dart';
 import 'package:belluga_now/application/map_surface/belluga_map_interaction.dart';
+import 'package:belluga_now/application/proximity_preferences/account_profile_reference_point_resolver.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/location_origin_resolution.dart';
 import 'package:belluga_now/domain/app_data/location_origin_settings.dart';
@@ -40,9 +42,12 @@ import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_type_label_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
+import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/poi_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
@@ -57,18 +62,22 @@ import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_resolution_request_factory.dart';
 import 'package:belluga_now/presentation/shared/location_permission/location_origin_message_resolver.dart';
+import 'package:belluga_now/presentation/shared/visuals/account_profile_visual_resolver.dart';
+import 'package:belluga_now/presentation/shared/visuals/resolved_account_profile_visual.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_location_feedback_state.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_selected_poi_memory.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_tray_mode.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class MapScreenController implements Disposable {
+  static const _bootstrapLocationResolutionTimeout = Duration(seconds: 8);
+
   static const double minZoom = 14.5;
   static const double maxZoom = 17.0;
   static const double _selectedPoiViewportAnchor = 0.28;
   static const double _filteredPreviewViewportAnchor = 0.40;
   static const String missingDefaultOriginConfigurationMessage =
-      'Configure a origem padrão do mapa nas configurações do tenant.';
+      'Configure o ponto de referência do mapa nas configurações do tenant.';
   static const Duration _postFilterMarkerTapSuppression = Duration(
     milliseconds: 1000,
   );
@@ -82,6 +91,7 @@ class MapScreenController implements Disposable {
     AppDataRepositoryContract? appDataRepository,
     LocationOriginServiceContract? locationOriginService,
     AuthRepositoryContract? authRepository,
+    ProximityPreferencesRepositoryContract? proximityPreferencesRepository,
   })  : _poiRepository = poiRepository ?? GetIt.I.get<PoiRepositoryContract>(),
         _userLocationRepository = userLocationRepository ??
             GetIt.I.get<UserLocationRepositoryContract>(),
@@ -96,6 +106,10 @@ class MapScreenController implements Disposable {
             (GetIt.I.isRegistered<AuthRepositoryContract>()
                 ? GetIt.I.get<AuthRepositoryContract>()
                 : null),
+        _proximityPreferencesRepository = proximityPreferencesRepository ??
+            (GetIt.I.isRegistered<ProximityPreferencesRepositoryContract>()
+                ? GetIt.I.get<ProximityPreferencesRepositoryContract>()
+                : null),
         mapHandle = mapHandle ?? BellugaMapHandle();
 
   final PoiRepositoryContract _poiRepository;
@@ -105,6 +119,7 @@ class MapScreenController implements Disposable {
   final AppDataRepositoryContract _appDataRepository;
   final LocationOriginServiceContract _locationOriginService;
   final AuthRepositoryContract? _authRepository;
+  final ProximityPreferencesRepositoryContract? _proximityPreferencesRepository;
 
   final BellugaMapHandleContract mapHandle;
 
@@ -153,6 +168,8 @@ class MapScreenController implements Disposable {
   final StreamValue<int> poiDeckHeightRevisionStreamValue = StreamValue<int>(
     defaultValue: 0,
   );
+  final StreamValue<ProximityPreference?> _emptyProximityPreferenceStreamValue =
+      StreamValue<ProximityPreference?>(defaultValue: null);
   final Map<String, double> poiDeckHeights = <String, double>{};
 
   StreamValue<CityCoordinate?> get userLocationStreamValue =>
@@ -175,6 +192,12 @@ class MapScreenController implements Disposable {
       _poiRepository.filterOptionsStreamValue;
   StreamValue<int> get poiDeckContentRevisionStreamValue =>
       _poiRepository.poiHydrationRevisionStreamValue;
+
+  StreamValue<ProximityPreference?> get proximityPreferenceStreamValue =>
+      _proximityPreferencesRepository?.proximityPreferenceStreamValue ??
+      _emptyProximityPreferenceStreamValue;
+  ProximityPreference? get proximityPreference =>
+      _proximityPreferencesRepository?.proximityPreference;
 
   final StreamValue<Set<String>> activeCategoryKeysStreamValue =
       StreamValue<Set<String>>(defaultValue: const <String>{});
@@ -225,6 +248,8 @@ class MapScreenController implements Disposable {
   bool _isReconcilingLocationOrigin = false;
   int _selectedPoiHydrationSequence = 0;
   CityCoordinate? _searchTrayOrigin;
+  bool _hasEstablishedInitialPoiQuery = false;
+  bool _awaitingBootstrapLiveOrigin = false;
 
   bool get isUserAuthenticated => _authRepository?.isUserLoggedIn ?? false;
 
@@ -239,6 +264,126 @@ class MapScreenController implements Disposable {
 
   AccountProfileModel? hydratedAccountProfileForPoi(CityPoiModel poi) {
     return _poiRepository.hydratedAccountProfileForPoi(poi);
+  }
+
+  ResolvedAccountProfileVisual resolvedVisualForAccountProfile(
+    AccountProfileModel accountProfile,
+  ) {
+    return AccountProfileVisualResolver.resolve(
+      accountProfile: accountProfile,
+      registry: _appData.profileTypeRegistry,
+    );
+  }
+
+  bool canUsePoiAsReferencePoint(CityPoiModel poi) {
+    if (!_isAccountProfilePoi(poi)) {
+      return false;
+    }
+    final profile = hydratedAccountProfileForPoi(poi);
+    if (profile == null) {
+      return false;
+    }
+    return AccountProfileReferencePointResolver.canUseAccountProfile(
+      profile,
+      capabilities: _appData.profileTypeRegistry.capabilitiesFor(
+        ProfileTypeKeyValue(profile.profileType),
+      ),
+      fallbackCoordinate: poi.coordinate,
+    );
+  }
+
+  bool isPoiReferencePoint(CityPoiModel poi) {
+    final fixedReference = _proximityPreferencesRepository
+        ?.proximityPreference?.locationPreference.fixedReference;
+    final profile = hydratedAccountProfileForPoi(poi);
+    if (profile != null) {
+      return AccountProfileReferencePointResolver.matchesAccountProfile(
+        fixedReference,
+        profile,
+      );
+    }
+    if (_isAccountProfilePoi(poi)) {
+      return AccountProfileReferencePointResolver.matchesEntity(
+        fixedReference,
+        entityType: '',
+        entityId: poi.refId,
+        entitySlug: poi.refSlug,
+      );
+    }
+    return AccountProfileReferencePointResolver.matchesEntity(
+      fixedReference,
+      entityType: poi.resolvedCategoryLabel ?? '',
+      entityId: poi.refId,
+      entitySlug: poi.refSlug,
+    );
+  }
+
+  Future<bool> setPoiAsReferencePoint(CityPoiModel poi) async {
+    final repository = _proximityPreferencesRepository;
+    if (repository == null) {
+      statusMessageStreamValue.addValue(
+        'Não foi possível salvar o ponto de referência.',
+      );
+      return false;
+    }
+    final profile = hydratedAccountProfileForPoi(poi);
+    if (profile == null || !canUsePoiAsReferencePoint(poi)) {
+      statusMessageStreamValue.addValue(
+        'Este perfil não pode ser usado como ponto de referência.',
+      );
+      return false;
+    }
+    final fixedReference =
+        AccountProfileReferencePointResolver.buildFromAccountProfile(
+      profile,
+      fallbackCoordinate: poi.coordinate,
+    );
+    if (fixedReference == null) {
+      statusMessageStreamValue.addValue(
+        'Localização indisponível para ${poi.name}.',
+      );
+      return false;
+    }
+    try {
+      await repository.setFixedReference(fixedReference: fixedReference);
+      statusMessageStreamValue.addValue('Ponto de referência atualizado.');
+      return true;
+    } catch (_) {
+      statusMessageStreamValue.addValue(
+        'Não foi possível salvar o ponto de referência.',
+      );
+      return false;
+    }
+  }
+
+  Future<bool> clearReferencePoint() async {
+    final repository = _proximityPreferencesRepository;
+    if (repository == null) {
+      statusMessageStreamValue.addValue(
+        'Não foi possível remover o ponto de referência.',
+      );
+      return false;
+    }
+    try {
+      await repository.clearFixedReference();
+      statusMessageStreamValue.addValue('Ponto de referência removido.');
+      return true;
+    } catch (_) {
+      statusMessageStreamValue.addValue(
+        'Não foi possível remover o ponto de referência.',
+      );
+      return false;
+    }
+  }
+
+  Future<void> setRouteReferencePointPolicy(bool? useReferencePoint) async {
+    final repository = _proximityPreferencesRepository;
+    if (repository == null) {
+      return;
+    }
+    await repository.setRouteReferencePointPolicy(
+      RouteReferencePointPolicyValue(useReferencePoint),
+    );
   }
 
   EventModel? hydratedEventForPoi(CityPoiModel poi) {
@@ -268,12 +413,15 @@ class MapScreenController implements Disposable {
   Future<void> init({
     String? initialPoiQuery,
     String? initialPoiStackQuery,
+    LocationPermissionGateResult? initialLocationGateResult,
   }) async {
-    final enteredViaSoftLocationGate =
-        LocationPermissionGateRuntime.consumeSoftLocationFallbackEntry();
+    final enteredViaSoftLocationGate = initialLocationGateResult ==
+        LocationPermissionGateResult.continueWithoutLocation;
     _resetInitialPoiFocusState();
     _resetBootstrapUserOriginHandoffState();
     _forceTenantDefaultUnavailableEntry = enteredViaSoftLocationGate;
+    _hasEstablishedInitialPoiQuery = false;
+    _awaitingBootstrapLiveOrigin = false;
     _locationFeedbackNoticesArmed = false;
     _cancelSoftLocationNoticeTimer();
     softLocationNoticeStreamValue.addValue('');
@@ -284,6 +432,8 @@ class MapScreenController implements Disposable {
       return;
     }
     final hasInitialPoiQuery = _normalizePoiQuery(initialPoiQuery) != null;
+    final shouldAwaitFreshBootstrapOrigin = !enteredViaSoftLocationGate &&
+        _locationOriginService.resolveCached().liveUserCoordinate == null;
     _bindFilteredPoisClamp();
     _bindSelectedPoiPresence();
     _attachZoomListener();
@@ -295,25 +445,45 @@ class MapScreenController implements Disposable {
             emitNotFoundMessage: false,
           )
         : Future<void>.value();
+    final requiresResolvedOriginForFirstLoad =
+        !enteredViaSoftLocationGate && !hasInitialPoiQuery;
+    final bootstrapLocationRefreshFuture = _primeBootstrapOriginBeforeFirstLoad(
+      requiresResolvedOriginForFirstLoad: requiresResolvedOriginForFirstLoad,
+    );
+    var bootstrapOriginReady = !requiresResolvedOriginForFirstLoad;
 
-    await Future.wait([
-      loadFilters(force: true),
-      loadPois(PoiQuery()),
-      _userLocationRepository.refreshIfPermitted(
-        minInterval: UserLocationRepositoryContractDurationValue.fromRaw(
-          Duration.zero,
-          defaultValue: Duration.zero,
-        ),
-      ),
-      initialPoiHydrationFuture,
-    ]);
+    if (shouldAwaitFreshBootstrapOrigin) {
+      final bootstrapResults = await Future.wait<Object?>([
+        loadFilters(force: true),
+        bootstrapLocationRefreshFuture,
+        initialPoiHydrationFuture,
+      ]);
+      bootstrapOriginReady = bootstrapResults[1] as bool;
+      if (bootstrapOriginReady) {
+        await loadPois(PoiQuery());
+      } else {
+        _awaitingBootstrapLiveOrigin = true;
+        _setIdleState();
+        _setMapStatus(MapStatus.locating);
+        _setMapMessage(null);
+        statusMessageStreamValue.addValue('Obtendo sua localização...');
+      }
+    } else {
+      await Future.wait([
+        loadFilters(force: true),
+        loadPois(PoiQuery()),
+        bootstrapLocationRefreshFuture,
+        initialPoiHydrationFuture,
+      ]);
+    }
+    await _retryBootstrapLoadsIfNeeded();
 
     if (hasInitialPoiQuery) {
       await _applyInitialPoiQuery(
         initialPoiQuery: initialPoiQuery,
         initialPoiStackQuery: initialPoiStackQuery,
       );
-    } else if (!enteredViaSoftLocationGate) {
+    } else if (!enteredViaSoftLocationGate && bootstrapOriginReady) {
       _requestLocationPermissionIfNeeded();
     }
 
@@ -324,6 +494,51 @@ class MapScreenController implements Disposable {
       force: true,
     );
     _tryApplyPendingInitialPoiFocus();
+  }
+
+  Future<void> _retryBootstrapLoadsIfNeeded() async {
+    if (_filtersLoadFailed && filterOptionsStreamValue.value == null) {
+      await loadFilters(force: true);
+    }
+
+    final hasVisiblePois =
+        (filteredPoisStreamValue.value?.isNotEmpty ?? false) ||
+            selectedPoiStreamValue.value != null;
+    if (!hasVisiblePois && mapStatusStreamValue.value == MapStatus.error) {
+      await loadPois(PoiQuery(), announceLoadingMessage: false);
+    }
+  }
+
+  Future<bool> _primeBootstrapOriginBeforeFirstLoad({
+    required bool requiresResolvedOriginForFirstLoad,
+  }) async {
+    final didWarmUp = await _userLocationRepository.refreshIfPermitted(
+      minInterval: UserLocationRepositoryContractDurationValue.fromRaw(
+        Duration.zero,
+        defaultValue: Duration.zero,
+      ),
+    );
+
+    if (!requiresResolvedOriginForFirstLoad ||
+        hasResolvedUserLocation ||
+        didWarmUp) {
+      return true;
+    }
+
+    try {
+      await _userLocationRepository.resolveUserLocation(
+        timeout: UserLocationRepositoryContractDurationValue.fromRaw(
+          _bootstrapLocationResolutionTimeout,
+          defaultValue: _bootstrapLocationResolutionTimeout,
+        ),
+      );
+    } catch (error) {
+      debugPrint(
+        'MapScreenController._primeBootstrapOriginBeforeFirstLoad: $error',
+      );
+    }
+
+    return hasResolvedUserLocation;
   }
 
   void _requestLocationPermissionIfNeeded() {
@@ -409,7 +624,16 @@ class MapScreenController implements Disposable {
       return;
     }
     try {
-      await _poiRepository.fetchFilters();
+      final baseQuery =
+          _hasEstablishedInitialPoiQuery ? _currentQuery : PoiQuery();
+      final resolvedQuery = await _resolveRuntimeQuery(baseQuery);
+      if (resolvedQuery.origin == null) {
+        _filtersLoadFailed = true;
+        debugPrint(
+            'Skipped POI filters load because no canonical origin was resolved.');
+        return;
+      }
+      await _poiRepository.fetchFilters(resolvedQuery);
       _filtersLoadFailed = false;
     } catch (error) {
       _filtersLoadFailed = true;
@@ -495,7 +719,12 @@ class MapScreenController implements Disposable {
     required bool emitNotice,
     required bool reloadPoisIfOriginChanged,
   }) async {
-    await _userLocationRepository.resolveUserLocation();
+    await _userLocationRepository.resolveUserLocation(
+      timeout: UserLocationRepositoryContractDurationValue.fromRaw(
+        _bootstrapLocationResolutionTimeout,
+        defaultValue: _bootstrapLocationResolutionTimeout,
+      ),
+    );
     _refreshLocationFeedback(emitNotice: emitNotice);
     if (!reloadPoisIfOriginChanged) {
       return;
@@ -707,6 +936,25 @@ class MapScreenController implements Disposable {
     }
 
     final nextResolution = _locationOriginService.resolveCached();
+    if (_awaitingBootstrapLiveOrigin) {
+      final liveUserCoordinate = nextResolution.liveUserCoordinate;
+      if (liveUserCoordinate == null) {
+        return;
+      }
+
+      _isReconcilingLocationOrigin = true;
+      _awaitingBootstrapLiveOrigin = false;
+      try {
+        await loadPois(PoiQuery(), loadingMessage: 'Carregando pontos...');
+      } finally {
+        _isReconcilingLocationOrigin = false;
+      }
+      return;
+    }
+    if (!_hasEstablishedInitialPoiQuery) {
+      return;
+    }
+
     final nextSettings = nextResolution.settings;
     final nextOrigin = _resolveCurrentEffectiveOrigin();
     _queueBootstrapUserOriginHandoffIfEligible(nextResolution);
@@ -816,6 +1064,8 @@ class MapScreenController implements Disposable {
     final requestSequence = ++_poiRequestSequence;
     final resolvedQuery = await _resolveRuntimeQuery(query);
     _currentQuery = resolvedQuery;
+    _hasEstablishedInitialPoiQuery = true;
+    _awaitingBootstrapLiveOrigin = false;
     searchTermStreamValue.addValue(resolvedQuery.searchTermValue?.value);
     final nextSearchText = resolvedQuery.searchTermValue?.value ?? '';
     if (searchTextController.text != nextSearchText) {
@@ -907,10 +1157,13 @@ class MapScreenController implements Disposable {
       return;
     }
 
-    if (selectedPoiStreamValue.value?.id != resolvedPoi.id) {
-      selectPoi(resolvedPoi);
+    final hydratedPoi = await _hydratePoiForSelection(resolvedPoi);
+    final selectablePoi = hydratedPoi ?? resolvedPoi;
+
+    if (selectedPoiStreamValue.value?.id != selectablePoi.id) {
+      selectPoi(selectablePoi);
     }
-    _queueInitialPoiFocus(resolvedPoi);
+    _queueInitialPoiFocus(selectablePoi);
   }
 
   String? _normalizePoiQuery(String? rawPoiQuery) {
@@ -999,6 +1252,13 @@ class MapScreenController implements Disposable {
       return false;
     }
     return poiQueryKey == normalizedPoiQuery;
+  }
+
+  bool _isAccountProfilePoi(CityPoiModel poi) {
+    final refType = poi.refType.trim().toLowerCase();
+    return refType == 'account_profile' ||
+        refType == 'accountprofile' ||
+        refType == 'partner';
   }
 
   String _buildPoiQueryKey(CityPoiModel poi) {
@@ -1288,7 +1548,11 @@ class MapScreenController implements Disposable {
     final categoryLabelValue = normalizedProfileType.isEmpty
         ? null
         : _parseTypeLabelValue(normalizedProfileType);
-    final canonicalProfilePath = '/parceiro/${profile.slug}';
+    final canonicalProfilePath = profile.canOpenPublicDetail
+        ? _normalizedPublicDetailPath(profile.publicDetailPath)
+        : null;
+    final clearedReferencePathValue =
+        poi.refPath == null ? null : PoiReferencePathValue(isRequired: false);
 
     return poi.copyWith(
       descriptionValue: mergedDescription,
@@ -1299,11 +1563,16 @@ class MapScreenController implements Disposable {
           coverUrl == null ? null : _parseImageUriValue(coverUrl),
       coordinate: mergedCoordinate,
       visual: mergedVisual,
-      refSlugValue:
-          poi.refSlug == null ? _parseReferenceSlugValue(profile.slug) : null,
-      refPathValue: poi.refPath?.trim() == canonicalProfilePath
-          ? null
-          : _parseReferencePathValue(canonicalProfilePath),
+      refSlugValue: poi.refSlug == null &&
+              profile.canOpenPublicDetail &&
+              profile.slug.trim().isNotEmpty
+          ? _parseReferenceSlugValue(profile.slug)
+          : null,
+      refPathValue: canonicalProfilePath == null
+          ? clearedReferencePathValue
+          : poi.refPath?.trim() == canonicalProfilePath
+              ? null
+              : _parseReferencePathValue(canonicalProfilePath),
     );
   }
 
@@ -1317,8 +1586,10 @@ class MapScreenController implements Disposable {
         : CityPoiVisual.image(
             imageUriValue: _parseImageUriValue(markerImageUrl),
           );
-    final canonicalEventPath =
-        event.slug.trim().isEmpty ? null : '/agenda/evento/${event.slug}';
+    final canonicalEventPath = buildTenantPublicEventPath(
+      eventSlug: event.slug,
+      occurrenceId: event.selectedOccurrenceId,
+    );
 
     return poi.copyWith(
       descriptionValue: descriptionExcerpt == null
@@ -1336,6 +1607,14 @@ class MapScreenController implements Disposable {
           ? null
           : _parseReferencePathValue(canonicalEventPath),
     );
+  }
+
+  String? _normalizedPublicDetailPath(String? rawPath) {
+    final normalized = rawPath?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+    return normalized;
   }
 
   CityPoiModel _mergeStaticAssetIntoPoi(
@@ -2726,6 +3005,7 @@ class MapScreenController implements Disposable {
     pendingFilterLabelStreamValue.dispose();
     poiDeckIndexStreamValue.dispose();
     poiDeckHeightRevisionStreamValue.dispose();
+    _emptyProximityPreferenceStreamValue.dispose();
     filterInteractionLockedStreamValue.dispose();
     mapInteractionGuardActiveStreamValue.dispose();
     mapTrayModeStreamValue.dispose();

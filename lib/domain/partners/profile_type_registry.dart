@@ -26,6 +26,9 @@ class ProfileTypeRegistry {
   bool isFavoritable(ProfileTypeKeyValue typeValue) =>
       _byType(typeValue)?.capabilities.isFavoritable ?? false;
 
+  bool isPubliclyDiscoverable(ProfileTypeKeyValue typeValue) =>
+      _byType(typeValue)?.capabilities.isPubliclyDiscoverable ?? false;
+
   ProfileTypeCapabilities? capabilitiesFor(ProfileTypeKeyValue typeValue) =>
       _byType(typeValue)?.capabilities;
 
@@ -33,6 +36,9 @@ class ProfileTypeRegistry {
 
   bool isFavoritableFor(ProfileTypeKeyValue typeValue) =>
       isFavoritable(typeValue);
+
+  bool isPubliclyDiscoverableFor(ProfileTypeKeyValue typeValue) =>
+      isPubliclyDiscoverable(typeValue);
 
   String labelForType(ProfileTypeKeyValue typeValue) =>
       _byType(typeValue)?.label ?? typeValue.value;

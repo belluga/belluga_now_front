@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
+import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/domain/favorite/favorite.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
@@ -59,6 +60,40 @@ void main() {
 
     expect(page.profiles, hasLength(1));
     expect(page.profiles.first.type, 'artist');
+  });
+
+  test(
+      'fetchAccountProfilesPage still calls backend and preserves public results when the local registry has not caught up to the selected type',
+      () async {
+    final backend = _StubAccountProfilesBackend(
+      accountProfiles: [
+        buildAccountProfileModelFromPrimitives(
+          id: _generateMongoId(),
+          name: 'Dynamic Public Type',
+          slug: 'dynamic-public-type',
+          type: 'dynamic-public-type',
+        ),
+      ],
+    );
+    final repository = AccountProfilesRepository(
+      backend: backend,
+      favoriteBackend: _StubFavoriteBackend(favorites: const []),
+      favoriteAccountProfileIds: const {},
+    );
+
+    final page = await repository.fetchAccountProfilesPage(
+      page: AccountProfilesRepositoryContractPrimInt.fromRaw(1),
+      pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
+      typeFilters: [
+        AccountProfilesRepositoryContractPrimString.fromRaw(
+          'dynamic-public-type',
+        ),
+      ],
+    );
+
+    expect(backend.fetchAccountProfilesPageCalls, 1);
+    expect(page.profiles, hasLength(1));
+    expect(page.profiles.first.type, 'dynamic-public-type');
   });
 
   test('fetchAccountProfilesPage does not force profile_type list for "Todos"',
@@ -133,6 +168,59 @@ void main() {
         const ['genre']);
     expect(backend.lastTaxonomyFilters.map((filter) => filter.term.value),
         const ['rock']);
+  });
+
+  test('fetchAccountProfilesPage preserves backend runtime discovery facets',
+      () async {
+    final runtimeFacets = DiscoveryFilterRuntimeFacets.fromJson(
+      <String, Object?>{
+        'surface': 'discovery.account_profiles',
+        'filter_keys': <String>['artist', 'venue'],
+        'taxonomy_options': <String, Object?>{
+          'cuisine': <String, Object?>{
+            'key': 'cuisine',
+            'label': 'Cozinha',
+            'terms': <Object?>[
+              <String, Object?>{
+                'value': 'italian',
+                'label': 'Italiano',
+              },
+            ],
+          },
+        },
+      },
+    );
+    final backend = _StubAccountProfilesBackend(
+      accountProfiles: [
+        buildAccountProfileModelFromPrimitives(
+          id: _generateMongoId(),
+          name: 'Artist One',
+          slug: 'artist-one',
+          type: 'artist',
+        ),
+      ],
+      discoveryFilterFacets: runtimeFacets,
+    );
+    final repository = AccountProfilesRepository(
+      backend: backend,
+      favoriteBackend: _StubFavoriteBackend(favorites: const []),
+      favoriteAccountProfileIds: const {},
+    );
+
+    final page = await repository.fetchAccountProfilesPage(
+      page: AccountProfilesRepositoryContractPrimInt.fromRaw(1),
+      pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
+    );
+
+    expect(page.discoveryFilterFacets, isNotNull);
+    expect(page.discoveryFilterFacets?.surface, 'discovery.account_profiles');
+    expect(page.discoveryFilterFacets?.filterKeys, <String>{'artist', 'venue'});
+    expect(
+      page.discoveryFilterFacets?.taxonomyOptionsByKey['cuisine']?.terms
+          .map((entry) => entry.value)
+          .toList(),
+      <String>['italian'],
+    );
   });
 
   test(
@@ -511,6 +599,36 @@ void main() {
     expect(backend.fetchAccountProfilesPageCalls, 0);
   });
 
+  test(
+      'getAccountProfileBySlug does not reject a backend-authoritative public profile just because the local registry does not know the type yet',
+      () async {
+    final backend = _StubAccountProfilesBackend(
+      accountProfiles: [
+        buildAccountProfileModelFromPrimitives(
+          id: _generateMongoId(),
+          name: 'Dynamic Public Type',
+          slug: 'dynamic-public-type',
+          type: 'dynamic-public-type',
+        ),
+      ],
+    );
+    final repository = AccountProfilesRepository(
+      backend: backend,
+      favoriteBackend: _StubFavoriteBackend(favorites: const []),
+      favoriteAccountProfileIds: const {},
+    );
+
+    final profile = await repository.getAccountProfileBySlug(
+      AccountProfilesRepositoryContractPrimString.fromRaw(
+        'dynamic-public-type',
+      ),
+    );
+
+    expect(profile, isNotNull);
+    expect(profile?.type, 'dynamic-public-type');
+    expect(backend.fetchBySlugCalls, 1);
+  });
+
   test('paged account profiles stream accumulates loaded pages canonically',
       () async {
     final backend = _StubAccountProfilesBackend(
@@ -618,10 +736,12 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
   _StubAccountProfilesBackend({
     required this.accountProfiles,
     this.nearbyProfiles = const <AccountProfileModel>[],
+    this.discoveryFilterFacets,
   });
 
   final List<AccountProfileModel> accountProfiles;
   final List<AccountProfileModel> nearbyProfiles;
+  final DiscoveryFilterRuntimeFacets? discoveryFilterFacets;
   List<String>? lastAllowedTypes;
   List<String>? lastTypeFilters;
   List<AccountProfilesRepositoryTaxonomyFilter> lastTaxonomyFilters =
@@ -656,6 +776,7 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
     return pagedAccountProfilesResultFromRaw(
       profiles: accountProfiles.sublist(start, end),
       hasMore: end < accountProfiles.length,
+      discoveryFilterFacets: discoveryFilterFacets,
     );
   }
 
@@ -893,6 +1014,7 @@ AppData _buildAppData() {
         'label': 'Artist',
         'allowed_taxonomies': [],
         'capabilities': {
+          'is_publicly_discoverable': true,
           'is_favoritable': true,
           'is_poi_enabled': false,
         },
@@ -902,8 +1024,19 @@ AppData _buildAppData() {
         'label': 'Venue',
         'allowed_taxonomies': ['genre'],
         'capabilities': {
+          'is_publicly_discoverable': true,
           'is_favoritable': true,
           'is_poi_enabled': true,
+        },
+      },
+      {
+        'type': 'curator',
+        'label': 'Curator',
+        'allowed_taxonomies': [],
+        'capabilities': {
+          'is_publicly_discoverable': false,
+          'is_favoritable': false,
+          'is_poi_enabled': false,
         },
       },
     ],

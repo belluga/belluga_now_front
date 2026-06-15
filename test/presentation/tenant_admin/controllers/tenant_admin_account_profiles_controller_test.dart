@@ -144,6 +144,8 @@ class _FakeAccountsRepository
     TenantAdminAccountsRepositoryContractPrimString? content,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup> nestedProfileGroups =
+        const <TenantAdminNestedProfileGroup>[],
   }) async {
     final account = await createAccount(
       name: name,
@@ -214,12 +216,22 @@ class _FakeAccountProfilesRepository
   String? lastUpdateDisplayName;
   String? lastUpdateBio;
   String? lastUpdateContent;
+  bool? lastFetchQueryableOnly;
+  String? lastFetchExcludeAccountProfileId;
+  List<TenantAdminNestedProfileGroup>? lastCreateNestedProfileGroups;
+  List<TenantAdminNestedProfileGroup>? lastUpdateNestedProfileGroups;
 
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
     TenantAdminAccountProfilesRepoString? accountId,
+    TenantAdminAccountProfilesRepoBool? queryableOnly,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async =>
-      _profiles;
+      () {
+        lastFetchQueryableOnly = queryableOnly?.value;
+        lastFetchExcludeAccountProfileId = excludeAccountProfileId?.value;
+        return _profiles;
+      }();
 
   @override
   Future<TenantAdminAccountProfile> createAccountProfile({
@@ -235,8 +247,11 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup> nestedProfileGroups =
+        const <TenantAdminNestedProfileGroup>[],
   }) async {
     createProfileCalls += 1;
+    lastCreateNestedProfileGroups = nestedProfileGroups;
     final created = tenantAdminAccountProfileFromRaw(
       id: 'profile-$createProfileCalls',
       accountId: accountId.value,
@@ -308,12 +323,14 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoBool? removeCover,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
   }) async {
     lastUpdateSlug = slug?.value;
     lastUpdateProfileType = profileType?.value;
     lastUpdateDisplayName = displayName?.value;
     lastUpdateBio = bio?.value;
     lastUpdateContent = content?.value;
+    lastUpdateNestedProfileGroups = nestedProfileGroups;
     return _profiles.first;
   }
 
@@ -649,6 +666,112 @@ void main() {
     expect(profilesRepository.lastUpdateSlug, 'perfil-atualizado');
     expect(profilesRepository.lastUpdateProfileType, 'venue');
     expect(profilesRepository.lastUpdateDisplayName, 'Perfil atualizado');
+  });
+
+  test(
+      'submitUpdateProfile forwards nested profile groups to repository update',
+      () async {
+    final profilesRepository = _FakeAccountProfilesRepository(
+      [
+        tenantAdminAccountProfileFromRaw(
+          id: 'profile-1',
+          accountId: 'acc-1',
+          profileType: 'venue',
+          displayName: 'Perfil',
+          slug: 'perfil-original',
+        ),
+      ],
+      [
+        tenantAdminProfileTypeDefinitionFromRaw(
+          type: 'venue',
+          label: 'Venue',
+          allowedTaxonomies: [],
+          capabilities: TenantAdminProfileTypeCapabilities(
+            isFavoritable: TenantAdminFlagValue(true),
+            isPoiEnabled: TenantAdminFlagValue(true),
+            hasBio: TenantAdminFlagValue(false),
+            hasContent: TenantAdminFlagValue(false),
+            hasTaxonomies: TenantAdminFlagValue(false),
+            hasAvatar: TenantAdminFlagValue(false),
+            hasCover: TenantAdminFlagValue(false),
+            hasEvents: TenantAdminFlagValue(false),
+          ),
+        ),
+      ],
+    );
+    final accountsRepository = _FakeAccountsRepository();
+    final TenantAdminLocationSelectionContract locationSelectionService =
+        TenantAdminLocationSelectionService();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+
+    final controller = TenantAdminAccountProfilesController(
+      profilesRepository: profilesRepository,
+      accountsRepository: accountsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+      locationSelectionService: locationSelectionService,
+    );
+
+    final groups = <TenantAdminNestedProfileGroup>[
+      TenantAdminNestedProfileGroup(
+        idValue: TenantAdminNestedProfileGroupTextValue('parceiros'),
+        labelValue: TenantAdminNestedProfileGroupTextValue('Parceiros'),
+        orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+        accountProfileIdValues: <TenantAdminNestedProfileGroupTextValue>[
+          TenantAdminNestedProfileGroupTextValue('profile-2'),
+        ],
+      ),
+    ];
+
+    await controller.submitUpdateProfile(
+      accountProfileId: 'profile-1',
+      profileType: 'venue',
+      displayName: 'Perfil atualizado',
+      slug: 'perfil-atualizado',
+      location: null,
+      bio: null,
+      content: null,
+      taxonomyTerms: const TenantAdminTaxonomyTerms.empty(),
+      avatarUpload: null,
+      coverUpload: null,
+      nestedProfileGroups: groups,
+    );
+
+    expect(profilesRepository.lastUpdateNestedProfileGroups, groups);
+  });
+
+  test(
+      'loadNestedProfileCandidates requests backend queryable-only candidates and excludes current profile',
+      () async {
+    final profilesRepository = _FakeAccountProfilesRepository(
+      [
+        tenantAdminAccountProfileFromRaw(
+          id: 'profile-1',
+          accountId: 'acc-1',
+          profileType: 'venue',
+          displayName: 'Perfil atual',
+          slug: 'perfil-atual',
+        ),
+        tenantAdminAccountProfileFromRaw(
+          id: 'profile-2',
+          accountId: 'acc-2',
+          profileType: 'artist',
+          displayName: 'Perfil candidato',
+          slug: 'perfil-candidato',
+        ),
+      ],
+      const [],
+    );
+    final controller = TenantAdminAccountProfilesController(
+      profilesRepository: profilesRepository,
+      accountsRepository: _FakeAccountsRepository(),
+      taxonomiesRepository: _FakeTaxonomiesRepository(),
+      locationSelectionService: TenantAdminLocationSelectionService(),
+    );
+
+    await controller.loadNestedProfileCandidates(excludeProfileId: 'profile-1');
+
+    expect(profilesRepository.lastFetchQueryableOnly, isTrue);
+    expect(profilesRepository.lastFetchExcludeAccountProfileId, 'profile-1');
   });
 
   test(

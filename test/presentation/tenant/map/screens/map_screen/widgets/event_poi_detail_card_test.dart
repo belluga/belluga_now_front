@@ -39,8 +39,8 @@ void main() {
       ),
     );
 
-    expect(find.text('07/04 • 18:30 às 20:00'), findsOneWidget);
-    expect(find.textContaining('18:30 -'), findsNothing);
+    expect(find.text('Ter, 7 abr · 18h30 às 20h'), findsOneWidget);
+    expect(find.textContaining('18:30'), findsNothing);
   });
 
   testWidgets('event detail card shows linked profiles before description',

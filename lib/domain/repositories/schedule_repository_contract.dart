@@ -1,3 +1,4 @@
+import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/domain/repositories/value_objects/schedule_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
@@ -14,6 +15,8 @@ typedef ScheduleRepoTaxonomyEntries = ScheduleTaxonomyEntries;
 abstract class ScheduleRepositoryContract {
   StreamValue<List<EventModel>?> get homeAgendaStreamValue;
   StreamValue<List<EventModel>?> get discoveryLiveNowEventsStreamValue;
+  final homeAgendaDiscoveryFilterFacetsStreamValue =
+      StreamValue<DiscoveryFilterRuntimeFacets?>(defaultValue: null);
 
   List<EventModel>? readHomeAgenda({
     required ScheduleRepoBool showPastOnly,
@@ -86,7 +89,6 @@ abstract class ScheduleRepositoryContract {
   Stream<EventDeltaModel> watchEventsStream({
     ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
-    List<ScheduleRepoString>? tags,
     ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
     List<ScheduleRepoString>? occurrenceIds,
@@ -101,7 +103,6 @@ abstract class ScheduleRepositoryContract {
     required ScheduleRepositoryContractDeltaHandler onDelta,
     ScheduleRepoString? searchQuery,
     List<ScheduleRepoString>? categories,
-    List<ScheduleRepoString>? tags,
     ScheduleRepoTaxonomyEntries? taxonomy,
     ScheduleRepoBool? confirmedOnly,
     List<ScheduleRepoString>? occurrenceIds,
@@ -114,7 +115,6 @@ abstract class ScheduleRepositoryContract {
     return watchEventsStream(
       searchQuery: searchQuery,
       categories: categories,
-      tags: tags,
       taxonomy: taxonomy,
       confirmedOnly: confirmedOnly,
       occurrenceIds: occurrenceIds,

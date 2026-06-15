@@ -108,7 +108,13 @@ class _TenantAdminMapFilterVisualSheetState
       return imageUriError;
     }
 
-    if (!_overrideMarker) {
+    final hasIconVisual = _markerMode ==
+            TenantAdminMapFilterMarkerOverrideMode.icon &&
+        _markerIconController.text.trim().isNotEmpty;
+    final hasImageVisual =
+        _markerMode == TenantAdminMapFilterMarkerOverrideMode.image &&
+            _normalizeImageUri(_imageUriController.text) != null;
+    if (!_overrideMarker && !hasIconVisual && !hasImageVisual) {
       return null;
     }
 
@@ -134,8 +140,8 @@ class _TenantAdminMapFilterVisualSheetState
   TenantAdminMapFilterCatalogItem _buildResult() {
     final imageUri = _normalizeImageUri(_imageUriController.text);
     TenantAdminMapFilterMarkerOverride? nextMarkerOverride;
-    if (_overrideMarker) {
-      if (_markerMode == TenantAdminMapFilterMarkerOverrideMode.icon) {
+    if (_markerMode == TenantAdminMapFilterMarkerOverrideMode.icon) {
+      if (_overrideMarker || _markerIconController.text.trim().isNotEmpty) {
         final iconValue = TenantAdminRequiredTextValue()
           ..parse(_markerIconController.text);
         final colorValue = TenantAdminHexColorValue()
@@ -147,7 +153,9 @@ class _TenantAdminMapFilterVisualSheetState
           colorValue: colorValue,
           iconColorValue: iconColorValue,
         );
-      } else {
+      }
+    } else {
+      if (_overrideMarker || imageUri != null) {
         final imageUriValue = TenantAdminOptionalUrlValue()
           ..parse(imageUri ?? '');
         nextMarkerOverride = TenantAdminMapFilterMarkerOverride.image(
@@ -164,7 +172,8 @@ class _TenantAdminMapFilterVisualSheetState
       clearImageUriValue: TenantAdminFlagValue(imageUri == null),
       overrideMarkerValue: TenantAdminFlagValue(_overrideMarker),
       markerOverride: nextMarkerOverride,
-      clearMarkerOverrideValue: TenantAdminFlagValue(!_overrideMarker),
+      clearMarkerOverrideValue:
+          TenantAdminFlagValue(nextMarkerOverride == null),
     );
   }
 
@@ -201,63 +210,61 @@ class _TenantAdminMapFilterVisualSheetState
                   });
                 },
               ),
-              if (_overrideMarker) ...[
-                const SizedBox(height: 8),
-                DropdownButtonFormField<TenantAdminMapFilterMarkerOverrideMode>(
-                  initialValue: _markerMode,
-                  decoration: const InputDecoration(
-                    labelText: 'Modo do marcador',
-                  ),
-                  items: TenantAdminMapFilterMarkerOverrideMode.values
-                      .map(
-                        (mode) => DropdownMenuItem(
-                          value: mode,
-                          child: Text(mode.label),
-                        ),
-                      )
-                      .toList(growable: false),
-                  onChanged: (value) {
-                    if (value == null) {
-                      return;
-                    }
-                    setState(() {
-                      _markerMode = value;
-                    });
-                  },
+              const SizedBox(height: 8),
+              DropdownButtonFormField<TenantAdminMapFilterMarkerOverrideMode>(
+                initialValue: _markerMode,
+                decoration: const InputDecoration(
+                  labelText: 'Modo do marcador',
                 ),
-                if (_markerMode ==
-                    TenantAdminMapFilterMarkerOverrideMode.icon) ...[
-                  const SizedBox(height: 12),
-                  TenantAdminMapMarkerIconPickerField(
-                    controller: _markerIconController,
-                    labelText: 'Ícone',
+                items: TenantAdminMapFilterMarkerOverrideMode.values
+                    .map(
+                      (mode) => DropdownMenuItem(
+                        value: mode,
+                        child: Text(mode.label),
+                      ),
+                    )
+                    .toList(growable: false),
+                onChanged: (value) {
+                  if (value == null) {
+                    return;
+                  }
+                  setState(() {
+                    _markerMode = value;
+                  });
+                },
+              ),
+              if (_markerMode ==
+                  TenantAdminMapFilterMarkerOverrideMode.icon) ...[
+                const SizedBox(height: 12),
+                TenantAdminMapMarkerIconPickerField(
+                  controller: _markerIconController,
+                  labelText: 'Ícone',
+                ),
+                const SizedBox(height: 12),
+                TenantAdminColorPickerField(
+                  controller: _markerColorController,
+                  labelText: 'Cor do marcador',
+                ),
+                const SizedBox(height: 12),
+                TenantAdminColorPickerField(
+                  controller: _markerIconColorController,
+                  labelText: 'Cor do ícone',
+                ),
+              ],
+              if (_markerMode ==
+                  TenantAdminMapFilterMarkerOverrideMode.image) ...[
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _imageUriController,
+                  decoration: const InputDecoration(
+                    labelText: 'Imagem do marcador (URL)',
+                    hintText: 'https://...',
                   ),
-                  const SizedBox(height: 12),
-                  TenantAdminColorPickerField(
-                    controller: _markerColorController,
-                    labelText: 'Cor do marcador',
-                  ),
-                  const SizedBox(height: 12),
-                  TenantAdminColorPickerField(
-                    controller: _markerIconColorController,
-                    labelText: 'Cor do ícone',
-                  ),
-                ],
-                if (_markerMode ==
-                    TenantAdminMapFilterMarkerOverrideMode.image) ...[
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _imageUriController,
-                    decoration: const InputDecoration(
-                      labelText: 'Imagem do marcador (URL)',
-                      hintText: 'https://...',
-                    ),
-                    keyboardType: TextInputType.url,
-                    textCapitalization: TextCapitalization.none,
-                    autocorrect: false,
-                    enableSuggestions: false,
-                  ),
-                ],
+                  keyboardType: TextInputType.url,
+                  textCapitalization: TextCapitalization.none,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                ),
               ],
               const SizedBox(height: 8),
               Row(

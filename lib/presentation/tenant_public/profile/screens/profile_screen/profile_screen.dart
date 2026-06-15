@@ -373,7 +373,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   .trim()
                                   .isEmpty) {
                                 _controller.fixedOriginLabelController.text =
-                                    'Origem selecionada no mapa';
+                                    'Ponto de referência selecionado no mapa';
                               }
                               setModalState(() {});
                             },
@@ -384,7 +384,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const SizedBox(height: 12),
                       ] else
                         Text(
-                          'Use a sua localização atual como origem padrão das distâncias no Home.',
+                          'Use a sua localização atual como ponto de referência das distâncias no Home.',
                           style: theme.textTheme.bodyMedium,
                         ),
                       const SizedBox(height: 16),
@@ -407,7 +407,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             }
                             sheetContext.router.pop();
                           },
-                          child: const Text('Salvar origem'),
+                          child: const Text('Salvar ponto de referência'),
                         ),
                       ),
                     ],

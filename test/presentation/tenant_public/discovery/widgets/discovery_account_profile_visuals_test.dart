@@ -51,6 +51,7 @@ void main() {
     expect(find.byKey(const Key('discoveryPartnerIdentityAvatar')),
         findsOneWidget);
     expect(find.byKey(const Key('discoveryPartnerTypeAvatar')), findsOneWidget);
+    expect(find.byTooltip('Favoritar perfil Ananda Torres'), findsOneWidget);
     expect(find.text('Ananda Torres'), findsOneWidget);
     expect(find.text('brasilidades'), findsOneWidget);
     expect(find.text('samba'), findsOneWidget);
@@ -298,6 +299,52 @@ void main() {
     }
   });
 
+  testWidgets('DiscoveryPartnerCard exposes a named semantic favorite button',
+      (tester) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      final registry = _buildAppData().profileTypeRegistry;
+      final partner = buildAccountProfileModelFromPrimitives(
+        id: '507f1f77bcf86cd79943902f',
+        name: 'Ananda Torres',
+        slug: 'ananda-torres',
+        type: 'artist',
+      );
+      var favoriteTapCount = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 240,
+              child: DiscoveryPartnerCard(
+                partner: partner,
+                isFavorite: false,
+                isFavoritable: true,
+                onFavoriteTap: () => favoriteTapCount += 1,
+                onTap: () {},
+                resolvedVisual: AccountProfileVisualResolver.resolve(
+                  accountProfile: partner,
+                  registry: registry,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final favoriteAction =
+          find.bySemanticsLabel(RegExp('Favoritar perfil Ananda Torres'));
+      expect(favoriteAction, findsOneWidget);
+
+      await tester.tap(favoriteAction);
+      await tester.pump();
+      expect(favoriteTapCount, 1);
+    } finally {
+      semantics.dispose();
+    }
+  });
+
   testWidgets(
       'DiscoveryPartnerCard uses type visuals as fallback avatar when no avatar exists even if cover exists',
       (tester) async {
@@ -412,6 +459,102 @@ void main() {
 
       await tester.tap(action);
       expect(tappedSlug, 'com-avatar');
+    } finally {
+      semantics.dispose();
+    }
+  });
+
+  testWidgets(
+      'DiscoveryPartnerCard removes button semantics when public detail is unavailable',
+      (tester) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      final registry = _buildAppData().profileTypeRegistry;
+      final partner = buildAccountProfileModelFromPrimitives(
+        id: '507f1f77bcf86cd799439028',
+        name: 'Perfil Sem Rota',
+        slug: 'perfil-sem-rota',
+        type: 'artist',
+        canOpenPublicDetail: false,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 240,
+              child: DiscoveryPartnerCard(
+                partner: partner,
+                isFavorite: false,
+                isFavoritable: true,
+                onFavoriteTap: () {},
+                onTap: null,
+                resolvedVisual: AccountProfileVisualResolver.resolve(
+                  accountProfile: partner,
+                  registry: registry,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(
+        find.bySemanticsLabel(RegExp('Abrir perfil Perfil Sem Rota')),
+        findsNothing,
+      );
+      expect(
+        find.bySemanticsLabel(RegExp('Perfil Perfil Sem Rota')),
+        findsOneWidget,
+      );
+    } finally {
+      semantics.dispose();
+    }
+  });
+
+  testWidgets(
+      'DiscoveryNearbyRow removes button semantics when public detail is unavailable',
+      (tester) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      final registry = _buildAppData().profileTypeRegistry;
+      final items = <AccountProfileModel>[
+        buildAccountProfileModelFromPrimitives(
+          id: '507f1f77bcf86cd799439029',
+          name: 'Sem Navegação',
+          slug: 'sem-navegacao',
+          type: 'artist',
+          canOpenPublicDetail: false,
+        ),
+      ];
+      var tapped = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: DiscoveryNearbyRow(
+              items: items,
+              onTap: (_) => tapped = true,
+              resolvedVisualForItem: (item) =>
+                  AccountProfileVisualResolver.resolve(
+                accountProfile: item,
+                registry: registry,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(
+        find.bySemanticsLabel(RegExp('Abrir perfil Sem Navegação')),
+        findsNothing,
+      );
+      final staticLabel = find.bySemanticsLabel(RegExp('Perfil Sem Navegação'));
+      expect(staticLabel, findsOneWidget);
+
+      await tester.tap(find.text('Sem Navegação'));
+      await tester.pump();
+      expect(tapped, isFalse);
     } finally {
       semantics.dispose();
     }

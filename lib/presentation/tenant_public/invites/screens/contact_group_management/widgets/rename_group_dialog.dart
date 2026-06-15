@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 
 class RenameGroupDialog extends StatefulWidget {
@@ -45,6 +48,6 @@ class _RenameGroupDialogState extends State<RenameGroupDialog> {
   }
 
   void _popDialog(BuildContext context, [String? value]) {
-    ModalRoute.of(context)?.navigator?.maybePop(value);
+    unawaited(context.router.maybePop(value));
   }
 }

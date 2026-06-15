@@ -39,6 +39,7 @@ import 'package:belluga_analysis_plugin/src/rules/repository_raw_transport_typin
 import 'package:belluga_analysis_plugin/src/rules/route_page_must_live_in_routes_folder_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/route_path_param_requires_resolver_route_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/route_required_non_url_args_forbidden_rule.dart';
+import 'package:belluga_analysis_plugin/src/rules/route_scoped_detail_controller_getit_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/screen_controller_resolution_pattern_required_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/screen_descendant_widget_controller_resolution_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/service_json_parsing_forbidden_rule.dart';
@@ -143,6 +144,9 @@ class BellugaAnalysisPlugin extends Plugin {
     registry.registerWarningRule(RoutePageMustLiveInRoutesFolderRule());
     registry.registerWarningRule(RoutePathParamRequiresResolverRouteRule());
     registry.registerWarningRule(RouteRequiredNonUrlArgsForbiddenRule());
+    registry.registerWarningRule(
+      RouteScopedDetailControllerGetItForbiddenRule(),
+    );
     registry.registerWarningRule(
       ScreenControllerResolutionPatternRequiredRule(),
     );

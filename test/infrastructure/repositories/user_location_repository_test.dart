@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_bool_value.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_duration_value.dart';
 import 'package:belluga_now/infrastructure/repositories/user_location_repository.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -22,8 +24,7 @@ void main() {
     GeolocatorPlatform.instance = originalPlatform;
   });
 
-  test(
-      'falls back to current position when last known position is unsupported',
+  test('falls back to current position when last known position is unsupported',
       () async {
     final platform = _FakeGeolocatorPlatform()
       ..serviceEnabledResult = true
@@ -99,13 +100,84 @@ void main() {
       LocationResolutionPhase.resolved,
     );
   });
+
+  test('resolveUserLocation enforces deterministic timeout around position fix',
+      () async {
+    final platform = _FakeGeolocatorPlatform()
+      ..serviceEnabledResult = true
+      ..checkPermissionResult = LocationPermission.whileInUse
+      ..holdCurrentPositionOpen = true;
+    GeolocatorPlatform.instance = platform;
+
+    final repository = UserLocationRepository();
+
+    final result = await repository.resolveUserLocation(
+      timeout: UserLocationRepositoryContractDurationValue.fromRaw(
+        const Duration(milliseconds: 10),
+        defaultValue: const Duration(milliseconds: 10),
+      ),
+    );
+
+    expect(result, isNotNull);
+    expect(platform.getCurrentPositionCalls, 1);
+    expect(
+      repository.locationResolutionPhaseStreamValue.value,
+      LocationResolutionPhase.unavailable,
+    );
+  });
+
+  test(
+      'web resolveUserLocation retries once after prompt-window timeout when permission becomes granted',
+      () async {
+    final platform = _FakeGeolocatorPlatform()
+      ..serviceEnabledResult = true
+      ..checkPermissionResults = <LocationPermission>[
+        LocationPermission.denied,
+        LocationPermission.whileInUse,
+      ]
+      ..currentPositionFutures = <Future<Position>>[
+        Completer<Position>().future,
+        Future<Position>.value(
+          _buildPosition(
+            latitude: -20.6772,
+            longitude: -40.5093,
+          ),
+        ),
+      ];
+    GeolocatorPlatform.instance = platform;
+
+    final repository = UserLocationRepository(isWebOverride: true);
+
+    final result = await repository.resolveUserLocation(
+      timeout: UserLocationRepositoryContractDurationValue.fromRaw(
+        const Duration(milliseconds: 10),
+        defaultValue: const Duration(milliseconds: 10),
+      ),
+      requestPermissionIfNeededValue:
+          UserLocationRepositoryContractBoolValue.fromRaw(
+        true,
+        defaultValue: true,
+      ),
+    );
+
+    expect(result, isNull);
+    expect(platform.getCurrentPositionCalls, 2);
+    expect(repository.userLocationStreamValue.value, isNotNull);
+    expect(
+      repository.locationResolutionPhaseStreamValue.value,
+      LocationResolutionPhase.resolved,
+    );
+  });
 }
 
 class _FakeGeolocatorPlatform extends GeolocatorPlatform {
   bool serviceEnabledResult = true;
   LocationPermission checkPermissionResult = LocationPermission.denied;
+  List<LocationPermission>? checkPermissionResults;
   bool throwUnsupportedOnLastKnownPosition = false;
   bool throwOnCurrentPosition = false;
+  bool holdCurrentPositionOpen = false;
+  List<Future<Position>>? currentPositionFutures;
   Position? lastKnownPositionResult;
   Position? currentPositionResult;
   int getLastKnownPositionCalls = 0;
@@ -115,7 +187,13 @@ class _FakeGeolocatorPlatform extends GeolocatorPlatform {
   Future<bool> isLocationServiceEnabled() async => serviceEnabledResult;
 
   @override
-  Future<LocationPermission> checkPermission() async => checkPermissionResult;
+  Future<LocationPermission> checkPermission() async {
+    if (checkPermissionResults case final List<LocationPermission> values
+        when values.isNotEmpty) {
+      return values.removeAt(0);
+    }
+    return checkPermissionResult;
+  }
 
   @override
   Future<LocationPermission> requestPermission() async => checkPermissionResult;
@@ -138,12 +216,20 @@ class _FakeGeolocatorPlatform extends GeolocatorPlatform {
     LocationSettings? locationSettings,
   }) async {
     getCurrentPositionCalls += 1;
+    if (currentPositionFutures case final List<Future<Position>> values
+        when values.isNotEmpty) {
+      return values.removeAt(0);
+    }
+    if (holdCurrentPositionOpen) {
+      return Completer<Position>().future;
+    }
     if (throwOnCurrentPosition) {
       throw Exception('forced current position failure');
     }
     final position = currentPositionResult;
     if (position == null) {
-      throw StateError('currentPositionResult must be configured for this test');
+      throw StateError(
+          'currentPositionResult must be configured for this test');
     }
     return position;
   }

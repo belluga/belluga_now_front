@@ -10,6 +10,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_onboarding_
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_accounts_result.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_taxonomy_terms_value.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_loaded_account_watch.dart';
@@ -237,6 +238,8 @@ abstract class TenantAdminAccountsRepositoryContract {
     TenantAdminAccountsRepositoryContractPrimString? content,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup> nestedProfileGroups =
+        const <TenantAdminNestedProfileGroup>[],
   });
   Future<TenantAdminAccount> updateAccount({
     required TenantAdminAccountsRepositoryContractPrimString accountSlug,

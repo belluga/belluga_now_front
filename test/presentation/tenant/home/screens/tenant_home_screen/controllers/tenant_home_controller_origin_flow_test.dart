@@ -9,6 +9,7 @@ import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_bool_value.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
@@ -225,7 +226,6 @@ class _CapturingScheduleBackend implements ScheduleBackendContract {
     bool liveNowOnly = false,
     String? searchQuery,
     List<String>? categories,
-    List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
     List<String>? occurrenceIds,
@@ -259,7 +259,6 @@ class _CapturingScheduleBackend implements ScheduleBackendContract {
   Stream<EventDeltaDTO> watchEventsStream({
     String? searchQuery,
     List<String>? categories,
-    List<String>? tags,
     List<Map<String, String>>? taxonomy,
     bool confirmedOnly = false,
     List<String>? occurrenceIds,
@@ -448,7 +447,11 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
       false;
 
   @override
-  Future<String?> resolveUserLocation() async => null;
+  Future<String?> resolveUserLocation({
+    Object? timeout,
+    UserLocationRepositoryContractBoolValue? requestPermissionIfNeededValue,
+  }) async =>
+      null;
 
   @override
   Future<bool> startTracking({

@@ -8,8 +8,7 @@ void main() {
   const decoder = TenantAdminSettingsResponseDecoder();
   const encoder = TenantAdminSettingsRequestEncoder();
 
-  test('decoder extracts discovery_filters and backfills legacy map filters',
-      () {
+  test('decoder ignores legacy map_ui filters after map filter cutoff', () {
     final settings = decoder.decodeDiscoveryFiltersSettings(
       {
         'data': {
@@ -32,13 +31,7 @@ void main() {
       tenantOrigin: Uri.parse('https://tenant.test'),
     );
 
-    final surfaces = settings.rawDiscoveryFilters.value['surfaces'] as Map;
-    final publicMap = surfaces['public_map.primary'] as Map;
-    expect(publicMap['target'], 'map_poi');
-    final filter = (publicMap['filters'] as List).single as Map;
-    expect(filter['query']['entities'], <String>['event']);
-    expect(filter['query']['types_by_entity']['event'], <String>['show']);
-    expect(filter['query']['taxonomy']['music_genre'], <String>['rock']);
+    expect(settings.rawDiscoveryFilters.value['surfaces'], isNull);
   });
 
   test('decoder preserves explicit empty canonical map filters', () {

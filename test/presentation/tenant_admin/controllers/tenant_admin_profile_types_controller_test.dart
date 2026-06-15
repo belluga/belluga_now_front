@@ -41,7 +41,7 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminProfileTypeDefinition>>
-  fetchProfileTypesPage({
+      fetchProfileTypesPage({
     required TenantAdminAccountProfilesRepoInt page,
     required TenantAdminAccountProfilesRepoInt pageSize,
   }) async {
@@ -75,9 +75,8 @@ class _FakeAccountProfilesRepository
       type: type.value,
       label: label.value,
       pluralLabel: pluralLabel?.value ?? label.value,
-      allowedTaxonomies: allowedTaxonomies
-          .map((entry) => entry.value)
-          .toList(growable: false),
+      allowedTaxonomies:
+          allowedTaxonomies.map((entry) => entry.value).toList(growable: false),
       capabilities: capabilities,
     );
     _types = [..._types, created];
@@ -98,13 +97,11 @@ class _FakeAccountProfilesRepository
       type: newType?.value ?? type.value,
       label: label?.value ?? 'Updated',
       pluralLabel: pluralLabel?.value ?? label?.value ?? 'Updated',
-      allowedTaxonomies:
-          allowedTaxonomies
+      allowedTaxonomies: allowedTaxonomies
               ?.map((entry) => entry.value)
               .toList(growable: false) ??
           <String>[],
-      capabilities:
-          capabilities ??
+      capabilities: capabilities ??
           TenantAdminProfileTypeCapabilities(
             isFavoritable: TenantAdminFlagValue(true),
             isPoiEnabled: TenantAdminFlagValue(false),
@@ -116,14 +113,12 @@ class _FakeAccountProfilesRepository
             hasEvents: TenantAdminFlagValue(false),
           ),
     );
-    _types = _types
-        .map((entry) {
-          if (entry.type == type.value) {
-            return updated;
-          }
-          return entry;
-        })
-        .toList(growable: false);
+    _types = _types.map((entry) {
+      if (entry.type == type.value) {
+        return updated;
+      }
+      return entry;
+    }).toList(growable: false);
     return updated;
   }
 
@@ -138,7 +133,10 @@ class _FakeAccountProfilesRepository
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
     TenantAdminAccountProfilesRepoString? accountId,
-  }) async => [];
+    TenantAdminAccountProfilesRepoBool? queryableOnly,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
+  }) async =>
+      [];
 
   @override
   Future<TenantAdminAccountProfile> fetchAccountProfile(
@@ -166,6 +164,8 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup> nestedProfileGroups =
+        const <TenantAdminNestedProfileGroup>[],
   }) async {
     return tenantAdminAccountProfileFromRaw(
       id: 'profile-1',
@@ -191,6 +191,7 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoBool? removeCover,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
+    List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
   }) async {
     return tenantAdminAccountProfileFromRaw(
       id: 'profile-1',
@@ -224,7 +225,7 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<TenantAdminAccountProfilesRepoInt>
-  fetchProfileTypeMapPoiProjectionImpact({
+      fetchProfileTypeMapPoiProjectionImpact({
     required TenantAdminAccountProfilesRepoString type,
   }) async {
     lastProjectionImpactType = type.value;
@@ -264,7 +265,7 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
-  fetchTaxonomiesPage({
+      fetchTaxonomiesPage({
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
   }) async {
@@ -293,7 +294,7 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
-  fetchTermsPage({
+      fetchTermsPage({
     required TenantAdminTaxRepoString taxonomyId,
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
@@ -666,7 +667,7 @@ void main() {
   );
 
   test(
-    'disables favoritable capability when public discovery is turned off and does not auto-restore it',
+    'keeps favoritable capability independent when public discovery is toggled',
     () async {
       final repository = _FakeAccountProfilesRepository([]);
       final controller = TenantAdminProfileTypesController(
@@ -683,12 +684,37 @@ void main() {
       controller.updateCapabilities(isPubliclyDiscoverable: false);
 
       expect(controller.currentCapabilities.isPubliclyDiscoverable, isFalse);
-      expect(controller.currentCapabilities.isFavoritable, isFalse);
+      expect(controller.currentCapabilities.isFavoritable, isTrue);
 
       controller.updateCapabilities(isPubliclyDiscoverable: true);
 
       expect(controller.currentCapabilities.isPubliclyDiscoverable, isTrue);
-      expect(controller.currentCapabilities.isFavoritable, isFalse);
+      expect(controller.currentCapabilities.isFavoritable, isTrue);
+    },
+  );
+
+  test(
+    'keeps public discovery capability independent when queryability is turned off',
+    () async {
+      final repository = _FakeAccountProfilesRepository([]);
+      final controller = TenantAdminProfileTypesController(
+        repository: repository,
+      );
+
+      controller.updateCapabilities(
+        isQueryable: true,
+        isPubliclyNavigable: true,
+        isPubliclyDiscoverable: true,
+      );
+      expect(controller.currentCapabilities.isQueryable, isTrue);
+      expect(controller.currentCapabilities.isPubliclyNavigable, isTrue);
+      expect(controller.currentCapabilities.isPubliclyDiscoverable, isTrue);
+
+      controller.updateCapabilities(isQueryable: false);
+
+      expect(controller.currentCapabilities.isQueryable, isFalse);
+      expect(controller.currentCapabilities.isPubliclyDiscoverable, isTrue);
+      expect(controller.currentCapabilities.isPubliclyNavigable, isTrue);
     },
   );
 
@@ -795,9 +821,9 @@ void main() {
 
 class _FakeTenantScope implements TenantAdminTenantScopeContract {
   _FakeTenantScope(String initialDomain)
-    : _selectedTenantDomainStreamValue = StreamValue<String?>(
-        defaultValue: initialDomain,
-      );
+      : _selectedTenantDomainStreamValue = StreamValue<String?>(
+          defaultValue: initialDomain,
+        );
 
   final StreamValue<String?> _selectedTenantDomainStreamValue;
 

@@ -6,12 +6,17 @@ import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/value_object/environment_name_value.dart';
 import 'package:belluga_now/domain/favorite/favorite.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
+import 'package:belluga_now/domain/favorite/value_objects/favorite_public_detail_path_value.dart';
+import 'package:belluga_now/domain/favorite/value_objects/favorite_target_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
+import 'package:belluga_now/domain/partners/profile_type_registry.dart';
+import 'package:belluga_now/domain/partners/profile_type_definitions.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
 import 'package:belluga_now/domain/tenant/value_objects/icon_url_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/main_color_value.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
+import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorites_section_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/favorites_section_view.dart';
@@ -24,15 +29,23 @@ import 'package:stream_value/core/stream_value.dart';
 class _FakeFavoriteRepository extends FavoriteRepositoryContract {
   _FakeFavoriteRepository({
     this.favoriteResumes = const <FavoriteResume>[],
+    this.failuresBeforeSuccess = 0,
   });
 
   final List<FavoriteResume> favoriteResumes;
+  int failuresBeforeSuccess;
 
   @override
   Future<List<Favorite>> fetchFavorites() async => <Favorite>[];
 
   @override
-  Future<List<FavoriteResume>> fetchFavoriteResumes() async => favoriteResumes;
+  Future<List<FavoriteResume>> fetchFavoriteResumes() async {
+    if (failuresBeforeSuccess > 0) {
+      failuresBeforeSuccess -= 1;
+      throw StateError('favorite resumes unavailable');
+    }
+    return favoriteResumes;
+  }
 }
 
 class _FakeAppData extends Fake implements AppData {
@@ -46,6 +59,11 @@ class _FakeAppData extends Fake implements AppData {
 
   @override
   MainColorValue get mainColor => MainColorValue()..parse('#000000');
+
+  @override
+  ProfileTypeRegistry get profileTypeRegistry => ProfileTypeRegistry(
+        types: ProfileTypeDefinitions(),
+      );
 }
 
 class _FakeAppDataRepository extends AppDataRepositoryContract {
@@ -94,6 +112,7 @@ class _RecordingStackRouter extends Mock implements StackRouter {
   List<PageRouteInfo>? lastRoutes;
   int pushCalls = 0;
   PageRouteInfo<dynamic>? lastPushedRoute;
+  String? lastPushedPath;
 
   @override
   Future<void> replaceAll(
@@ -113,6 +132,16 @@ class _RecordingStackRouter extends Mock implements StackRouter {
   }) async {
     pushCalls += 1;
     lastPushedRoute = route;
+    return null;
+  }
+
+  @override
+  Future<T?> pushPath<T extends Object?>(
+    String path, {
+    bool includePrefixMatches = false,
+    OnNavigationFailure? onFailure,
+  }) async {
+    lastPushedPath = path;
     return null;
   }
 }
@@ -168,6 +197,88 @@ void main() {
     expect(router.replaceAllCalled, isFalse);
     expect(router.pushCalls, 1);
     expect(router.lastPushedRoute, isA<EventSearchRoute>());
+  });
+
+  testWidgets(
+      'path-based favorite tap preserves stack and pushes canonical path',
+      (tester) async {
+    final favoriteItem = FavoriteResume(
+      titleValue: TitleValue()..parse('Du Jorge'),
+      assetPathValue: AssetPathValue()
+        ..parse('assets/images/placeholder_avatar.png'),
+      targetTypeValue: FavoriteTargetTypeValue()..parse('account_profile'),
+      canOpenPublicDetailValue: DomainBooleanValue(
+        defaultValue: true,
+        isRequired: false,
+      )..parse('true'),
+      publicDetailPathValue: FavoritePublicDetailPathValue(
+        '/parceiro/du-jorge',
+      ),
+    );
+
+    final controller = FavoritesSectionController(
+      favoriteRepository: _FakeFavoriteRepository(
+        favoriteResumes: [favoriteItem],
+      ),
+      appDataRepository: _FakeAppDataRepository(),
+    );
+    await controller.init();
+
+    final router = _RecordingStackRouter();
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: Scaffold(
+            body: FavoritesSectionView(controller: controller),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.text('Du Jorge').first);
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(router.replaceAllCalled, isFalse);
+    expect(router.pushCalls, 0);
+    expect(router.lastPushedRoute, isNull);
+    expect(router.lastPushedPath, '/parceiro/du-jorge');
+  });
+
+  testWidgets(
+      'favorites view leaves spinner after bounded initial retry exhaustion',
+      (tester) async {
+    final controller = FavoritesSectionController(
+      favoriteRepository: _FakeFavoriteRepository(failuresBeforeSuccess: 3),
+      appDataRepository: _FakeAppDataRepository(),
+    );
+    final router = _RecordingStackRouter();
+    final initFuture = controller.init();
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: Scaffold(
+            body: FavoritesSectionView(controller: controller),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 900));
+    await initFuture;
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 }
 
