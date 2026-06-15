@@ -26,11 +26,17 @@ class TenantAdminNestedProfileGroupOperations {
     required String groupId,
     required String label,
   }) {
+    final normalizedLabel = label.trim();
+    if (normalizedLabel.isEmpty) {
+      return groups;
+    }
     return groups
         .map(
           (group) => group.id == groupId
               ? group.copyWith(
-                  labelValue: TenantAdminNestedProfileGroupTextValue(label),
+                  labelValue: TenantAdminNestedProfileGroupTextValue(
+                    normalizedLabel,
+                  ),
                 )
               : group,
         )
