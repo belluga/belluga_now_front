@@ -78,6 +78,7 @@ class TenantAdminProfileTypesController implements Disposable {
     hasAvatar: TenantAdminFlagValue(false),
     hasCover: TenantAdminFlagValue(false),
     hasEvents: TenantAdminFlagValue(false),
+    hasGallery: TenantAdminFlagValue(false),
     hasNestedProfileGroups: TenantAdminFlagValue(false),
   );
   final StreamValue<String?> successMessageStreamValue = StreamValue<String?>();
@@ -430,6 +431,7 @@ class TenantAdminProfileTypesController implements Disposable {
     bool? hasAvatar,
     bool? hasCover,
     bool? hasEvents,
+    bool? hasGallery,
     bool? hasNestedProfileGroups,
   }) {
     final current = currentCapabilities;
@@ -482,6 +484,10 @@ class TenantAdminProfileTypesController implements Disposable {
     if (hasEvents != null) {
       next[TenantAdminProfileTypeCapabilityKey.hasEvents.apiValue] = hasEvents;
     }
+    if (hasGallery != null) {
+      next[TenantAdminProfileTypeCapabilityKey.hasGallery.apiValue] =
+          hasGallery;
+    }
     if (hasNestedProfileGroups != null) {
       next[TenantAdminProfileTypeCapabilityKey
           .hasNestedProfileGroups.apiValue] = hasNestedProfileGroups;
@@ -529,6 +535,9 @@ class TenantAdminProfileTypesController implements Disposable {
         ),
         hasEvents: normalized.flagValue(
           TenantAdminProfileTypeCapabilityKey.hasEvents,
+        ),
+        hasGallery: normalized.flagValue(
+          TenantAdminProfileTypeCapabilityKey.hasGallery,
         ),
         hasNestedProfileGroups: normalized.flagValue(
           TenantAdminProfileTypeCapabilityKey.hasNestedProfileGroups,

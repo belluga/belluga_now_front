@@ -1165,7 +1165,7 @@ void main() {
     );
 
     test(
-      'home agenda hides expanded filter panel on scroll without clearing selection',
+      'home agenda no longer hides filter state on scroll',
       () async {
         final catalog = _homeEventsFilterCatalog();
         final primaryFilter = catalog.filters.single;
@@ -1195,7 +1195,7 @@ void main() {
         controller.updateRadiusActionCompactStateFromScroll(24);
 
         expect(
-            controller.isDiscoveryFilterPanelVisibleStreamValue.value, isFalse);
+            controller.isDiscoveryFilterPanelVisibleStreamValue.value, isTrue);
         expect(controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
             <String>{primaryFilter.key});
 
@@ -1254,10 +1254,9 @@ void main() {
     );
 
     testWidgets(
-      'home agenda app bar exposes filter action and active hint before radius',
+      'home agenda app bar no longer renders a filter toggle button',
       (tester) async {
         final catalog = _homeEventsFilterCatalog();
-        final primaryFilter = catalog.filters.single;
         final controller = _buildAgendaController(
           scheduleRepository: _FakeScheduleRepository(),
           userEventsRepository: _FakeUserEventsRepository(),
@@ -1291,37 +1290,13 @@ void main() {
 
         expect(
           find.byKey(const ValueKey<String>('home-agenda-filter-button')),
+          findsNothing,
+        );
+        expect(find.byTooltip('Filtrar eventos'), findsNothing);
+        expect(
+          find.byKey(const ValueKey<String>('agenda-radius-expanded')),
           findsOneWidget,
         );
-        expect(find.byTooltip('Filtrar eventos'), findsOneWidget);
-        expect(
-          tester
-              .getTopLeft(
-                find.byKey(const ValueKey<String>('home-agenda-filter-button')),
-              )
-              .dx,
-          lessThan(
-            tester
-                .getTopLeft(
-                  find.byKey(
-                    const ValueKey<String>('agenda-radius-expanded'),
-                  ),
-                )
-                .dx,
-          ),
-        );
-
-        controller.setDiscoveryFilterSelection(
-          DiscoveryFilterSelection(primaryKeys: <String>{primaryFilter.key}),
-        );
-        await tester.pump();
-
-        expect(find.byTooltip('Filtros ativos'), findsOneWidget);
-        expect(
-          find.byKey(const ValueKey<String>('home-agenda-filter-badge')),
-          findsOneWidget,
-        );
-        expect(find.text('1'), findsOneWidget);
 
         controller.onDispose();
       },
@@ -3251,7 +3226,7 @@ void main() {
     );
 
     testWidgets(
-      'home filter action reveals panel when shell is already scrolled',
+      'home agenda renders canonical filters by default without a toggle button',
       (tester) async {
         final catalog = _homeEventsFilterCatalog();
         final primaryFilter = catalog.filters.single;
@@ -3304,29 +3279,48 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        await tester.drag(find.byType(ListView), const Offset(0, -380));
+        await tester.drag(
+          find.byWidgetPredicate(
+            (widget) =>
+                widget is ListView && widget.scrollDirection == Axis.vertical,
+          ),
+          const Offset(0, -380),
+        );
         await tester.pumpAndSettle();
 
         expect(shellScrollController.offset, greaterThan(kToolbarHeight));
         expect(
           find.byKey(_primaryFilterKey(primaryFilter)),
-          findsNothing,
+          findsOneWidget,
         );
-
-        await tester.tap(
-          find.byKey(const ValueKey<String>('home-agenda-filter-button')),
-        );
-        await tester.pumpAndSettle();
 
         final filterTopLeft = tester.getTopLeft(
           find.byKey(_primaryFilterKey(primaryFilter)),
         );
-        expect(filterTopLeft.dy, greaterThanOrEqualTo(0));
+        await tester.drag(
+          find.byWidgetPredicate(
+            (widget) =>
+                widget is ListView && widget.scrollDirection == Axis.vertical,
+          ),
+          const Offset(0, -220),
+        );
+        await tester.pumpAndSettle();
+
+        final stillPinnedFilterTopLeft = tester.getTopLeft(
+          find.byKey(_primaryFilterKey(primaryFilter)),
+        );
+        expect((stillPinnedFilterTopLeft.dy - filterTopLeft.dy).abs(),
+            lessThan(4));
+        expect(filterTopLeft.dy, greaterThan(-kToolbarHeight));
         expect(filterTopLeft.dy, lessThan(320));
         expect(find.text(primaryFilter.label), findsOneWidget);
         expect(
-          controller.isDiscoveryFilterPanelVisibleStreamValue.value,
-          isTrue,
+          find.byKey(const ValueKey<String>('home-agenda-filter-button')),
+          findsNothing,
+        );
+        expect(
+          find.bySemanticsLabel('Painel de filtros de eventos'),
+          findsOneWidget,
         );
       },
     );
@@ -3442,7 +3436,6 @@ void main() {
         addTearDown(controller.onDispose);
 
         await controller.init();
-        controller.setDiscoveryFilterPanelVisible(true);
         controller.setDiscoveryFilterSelection(
           DiscoveryFilterSelection(primaryKeys: <String>{primaryFilter.key}),
         );
@@ -3476,6 +3469,64 @@ void main() {
         expect(
           find.byKey(_taxonomyChipKey(secondTaxonomyGroup, secondTaxonomyTerm)),
           findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'home agenda omits filter chrome when the canonical catalog is empty',
+      (tester) async {
+        final controller = _buildAgendaController(
+          scheduleRepository: _FakeScheduleRepository(),
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+            catalog: const DiscoveryFilterCatalog(surface: 'home.events'),
+          ),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(
+            _buildAppData(
+              minKm: 1,
+              defaultKm: 5,
+              maxKm: 10,
+            ),
+          ),
+        );
+
+        addTearDown(controller.onDispose);
+
+        await controller.init();
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              appBar: PreferredSize(
+                preferredSize: const Size.fromHeight(kToolbarHeight),
+                child: HomeAgendaAppBar(controller: controller),
+              ),
+              body: HomeAgendaSectionView(
+                controller: controller,
+                builder: (context, slots) {
+                  return CustomScrollView(
+                    slivers: [
+                      ...slots.headerSlivers,
+                      SliverFillRemaining(child: slots.body),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(const ValueKey<String>('home-agenda-filter-button')),
+          findsNothing,
+        );
+        expect(
+          find.bySemanticsLabel('Painel de filtros de eventos'),
+          findsNothing,
         );
       },
     );

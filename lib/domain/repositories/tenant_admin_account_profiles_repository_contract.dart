@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:belluga_now/domain/repositories/value_objects/tenant_admin_account_profiles_repository_contract_values.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_update.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
@@ -13,6 +14,7 @@ import 'package:stream_value/core/stream_value.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 
 export 'package:belluga_now/domain/repositories/value_objects/tenant_admin_account_profiles_repository_contract_values.dart';
+export 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_update.dart';
 export 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 export 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_taxonomy_terms_value.dart';
 
@@ -72,6 +74,14 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
   });
+  Future<TenantAdminAccountProfile> updateAccountProfileGallery({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    List<TenantAdminAccountProfileGalleryUpdateGroup> galleryGroups =
+        const <TenantAdminAccountProfileGalleryUpdateGroup>[],
+  }) async {
+    return fetchAccountProfile(accountProfileId);
+  }
+
   Future<void> deleteAccountProfile(
       TenantAdminAccountProfilesRepoString accountProfileId);
   Future<TenantAdminAccountProfile> restoreAccountProfile(

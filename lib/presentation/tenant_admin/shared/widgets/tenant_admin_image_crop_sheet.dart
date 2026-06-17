@@ -101,7 +101,7 @@ class _TenantAdminImageCropSheetState
     }
   }
 
-  double get _aspectRatio => _slotSpec.aspectRatio;
+  double? get _aspectRatio => _slotSpec.aspectRatio;
 
   String get _title => _slotSpec.cropTitle;
 

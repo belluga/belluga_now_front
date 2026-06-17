@@ -442,6 +442,9 @@ class AppDataDTO {
             hasEventsValue: ProfileTypeFlagValue(
               capabilitiesMap['has_events'] == true,
             ),
+            hasGalleryValue: ProfileTypeFlagValue(
+              capabilitiesMap['has_gallery'] == true,
+            ),
             hasNestedProfileGroupsValue: ProfileTypeFlagValue(
               capabilitiesMap['has_nested_profile_groups'] == true,
             ),

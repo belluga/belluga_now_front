@@ -19,6 +19,7 @@ class TenantAdminProfileTypeCapabilities {
     required TenantAdminFlagValue hasAvatar,
     required TenantAdminFlagValue hasCover,
     required TenantAdminFlagValue hasEvents,
+    TenantAdminFlagValue? hasGallery,
     TenantAdminFlagValue? hasNestedProfileGroups,
   }) {
     final normalized = TenantAdminProfileTypeCapabilityStateValue({
@@ -48,6 +49,9 @@ class TenantAdminProfileTypeCapabilities {
       TenantAdminProfileTypeCapabilityKey.hasAvatar.apiValue: hasAvatar.value,
       TenantAdminProfileTypeCapabilityKey.hasCover.apiValue: hasCover.value,
       TenantAdminProfileTypeCapabilityKey.hasEvents.apiValue: hasEvents.value,
+      if (hasGallery != null)
+        TenantAdminProfileTypeCapabilityKey.hasGallery.apiValue:
+            hasGallery.value,
       if (hasNestedProfileGroups != null)
         TenantAdminProfileTypeCapabilityKey.hasNestedProfileGroups.apiValue:
             hasNestedProfileGroups.value,
@@ -93,6 +97,9 @@ class TenantAdminProfileTypeCapabilities {
       hasEvents: normalized.flagValue(
         TenantAdminProfileTypeCapabilityKey.hasEvents,
       ),
+      hasGallery: normalized.flagValue(
+        TenantAdminProfileTypeCapabilityKey.hasGallery,
+      ),
       hasNestedProfileGroups: normalized.flagValue(
         TenantAdminProfileTypeCapabilityKey.hasNestedProfileGroups,
       ),
@@ -113,6 +120,7 @@ class TenantAdminProfileTypeCapabilities {
     required TenantAdminFlagValue hasAvatar,
     required TenantAdminFlagValue hasCover,
     required TenantAdminFlagValue hasEvents,
+    required TenantAdminFlagValue hasGallery,
     required TenantAdminFlagValue hasNestedProfileGroups,
   })  : isQueryableValue = isQueryable,
         isPubliclyNavigableValue = isPubliclyNavigable,
@@ -127,6 +135,7 @@ class TenantAdminProfileTypeCapabilities {
         hasAvatarValue = hasAvatar,
         hasCoverValue = hasCover,
         hasEventsValue = hasEvents,
+        hasGalleryValue = hasGallery,
         hasNestedProfileGroupsValue = hasNestedProfileGroups;
 
   final TenantAdminFlagValue isQueryableValue;
@@ -142,6 +151,7 @@ class TenantAdminProfileTypeCapabilities {
   final TenantAdminFlagValue hasAvatarValue;
   final TenantAdminFlagValue hasCoverValue;
   final TenantAdminFlagValue hasEventsValue;
+  final TenantAdminFlagValue hasGalleryValue;
   final TenantAdminFlagValue hasNestedProfileGroupsValue;
 
   bool get isQueryable => isQueryableValue.value;
@@ -157,6 +167,7 @@ class TenantAdminProfileTypeCapabilities {
   bool get hasAvatar => hasAvatarValue.value;
   bool get hasCover => hasCoverValue.value;
   bool get hasEvents => hasEventsValue.value;
+  bool get hasGallery => hasGalleryValue.value;
   bool get hasNestedProfileGroups => hasNestedProfileGroupsValue.value;
 
   TenantAdminProfileTypeCapabilityStateValue toCapabilityMap() {
@@ -186,6 +197,8 @@ class TenantAdminProfileTypeCapabilities {
           hasCoverValue.value,
       TenantAdminProfileTypeCapabilityKey.hasEvents.apiValue:
           hasEventsValue.value,
+      TenantAdminProfileTypeCapabilityKey.hasGallery.apiValue:
+          hasGalleryValue.value,
       TenantAdminProfileTypeCapabilityKey.hasNestedProfileGroups.apiValue:
           hasNestedProfileGroupsValue.value,
     }).normalized();

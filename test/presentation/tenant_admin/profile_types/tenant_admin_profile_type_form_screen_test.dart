@@ -353,6 +353,45 @@ void main() {
     expect(controller.currentCapabilities.hasNestedProfileGroups, isTrue);
   });
 
+  testWidgets('gallery capability toggle updates controller state', (
+    tester,
+  ) async {
+    final controller = _TestProfileTypesController(impactCount: 0);
+    await _pumpFormScreen(
+      tester,
+      controller: controller,
+      definition: tenantAdminProfileTypeDefinitionFromRaw(
+        type: 'venue',
+        label: 'Venue',
+        allowedTaxonomies: const [],
+        capabilities: TenantAdminProfileTypeCapabilities(
+          isFavoritable: TenantAdminFlagValue(true),
+          isPoiEnabled: TenantAdminFlagValue(false),
+          hasBio: TenantAdminFlagValue(false),
+          hasContent: TenantAdminFlagValue(false),
+          hasTaxonomies: TenantAdminFlagValue(false),
+          hasAvatar: TenantAdminFlagValue(false),
+          hasCover: TenantAdminFlagValue(false),
+          hasEvents: TenantAdminFlagValue(false),
+          hasGallery: TenantAdminFlagValue(false),
+        ),
+      ),
+    );
+
+    final toggle = find.widgetWithText(
+      SwitchListTile,
+      'Galeria habilitada',
+    );
+    await tester.ensureVisible(toggle);
+    expect(tester.widget<SwitchListTile>(toggle).value, isFalse);
+
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<SwitchListTile>(toggle).value, isTrue);
+    expect(controller.currentCapabilities.hasGallery, isTrue);
+  });
+
   testWidgets('favoritable capability is editable without public discovery', (
     tester,
   ) async {
@@ -679,6 +718,15 @@ class _FakeAccountProfilesRepository
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<TenantAdminAccountProfile> updateAccountProfileGallery({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    List<TenantAdminAccountProfileGalleryUpdateGroup> galleryGroups =
+        const <TenantAdminAccountProfileGalleryUpdateGroup>[],
   }) async {
     throw UnimplementedError();
   }

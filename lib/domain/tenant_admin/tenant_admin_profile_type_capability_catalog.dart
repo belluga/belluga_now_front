@@ -51,6 +51,9 @@ class TenantAdminProfileTypeCapabilityCatalog {
       keyValue: TenantAdminProfileTypeCapabilityKey.hasEvents,
     ),
     _TenantAdminProfileTypeCapabilityDefinition(
+      keyValue: TenantAdminProfileTypeCapabilityKey.hasGallery,
+    ),
+    _TenantAdminProfileTypeCapabilityDefinition(
       keyValue: TenantAdminProfileTypeCapabilityKey.hasNestedProfileGroups,
     ),
   ];

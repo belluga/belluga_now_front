@@ -976,7 +976,7 @@ void main() {
   });
 
   testWidgets(
-      'DiscoveryScreen toggles canonical filters and hides expanded panel on scroll while keeping active badge',
+      'DiscoveryScreen renders canonical filters by default without a toggle button',
       (tester) async {
     final profiles = List<AccountProfileModel>.generate(
       24,
@@ -1028,25 +1028,23 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 120));
 
-    final header = tester.widget<SliverPersistentHeader>(
-      find.byType(SliverPersistentHeader),
-    );
-    expect(header.pinned, isTrue);
+    final pinnedHeaders = tester
+        .widgetList<SliverPersistentHeader>(find.byType(SliverPersistentHeader))
+        .where((header) => header.pinned)
+        .toList(growable: false);
+    expect(pinnedHeaders, hasLength(2));
     expect(find.text('Descubra'), findsOneWidget);
     expect(
       find.byKey(_primaryFilterKey(primaryFilter)),
-      findsNothing,
-    );
-    expect(find.byKey(const ValueKey<String>('discovery-filter-button')),
-        findsOneWidget);
-
-    await tester
-        .tap(find.byKey(const ValueKey<String>('discovery-filter-button')));
-    await tester.pumpAndSettle();
-
-    expect(
-      find.byKey(_primaryFilterKey(primaryFilter)),
       findsOneWidget,
+    );
+    expect(
+      find.bySemanticsLabel('Painel de filtros de perfis'),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey<String>('discovery-filter-button')),
+      findsNothing,
     );
     expect(find.text(primaryFilter.label), findsOneWidget);
     expect(find.text(taxonomyGroup.label), findsNothing);
@@ -1058,34 +1056,108 @@ void main() {
 
     expect(find.text(taxonomyGroup.label), findsNothing);
     expect(
-      find.byKey(const ValueKey<String>('discovery-filter-badge')),
+      find.byKey(_selectedPrimaryFilterKey(primaryFilter)),
       findsOneWidget,
     );
-    expect(find.text('1'), findsOneWidget);
-
-    await tester.drag(
-      find.byType(CustomScrollView),
-      const Offset(0, -900),
+    controller.scrollController.jumpTo(
+      controller.scrollController.position.maxScrollExtent / 2,
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Descubra'), findsOneWidget);
+    final pinnedFilterTop = tester.getTopLeft(
+      find.byKey(_selectedPrimaryFilterKey(primaryFilter)),
+    );
+    controller.scrollController.jumpTo(
+      controller.scrollController.position.maxScrollExtent,
+    );
+    await tester.pumpAndSettle();
+
+    final stillPinnedFilterTop = tester.getTopLeft(
+      find.byKey(_selectedPrimaryFilterKey(primaryFilter)),
+    );
+    expect((stillPinnedFilterTop.dy - pinnedFilterTop.dy).abs(), lessThan(4));
+
+    controller.scrollController.jumpTo(0);
+    await tester.pumpAndSettle();
+
     expect(
       find.byKey(_selectedPrimaryFilterKey(primaryFilter)),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey<String>('discovery-filter-button')),
       findsNothing,
     );
     expect(
-      find.byKey(const ValueKey<String>('discovery-filter-badge')),
+      find.bySemanticsLabel('Painel de filtros de perfis'),
       findsOneWidget,
     );
 
-    await tester
-        .tap(find.byKey(const ValueKey<String>('discovery-filter-button')));
+    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+  });
+
+  testWidgets(
+      'DiscoveryScreen keeps top discovery chrome hidden while search mode is active',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: pagedAccountProfilesResultFromRaw(
+          profiles: [
+            _profile(
+              id: _mongoId('search-mode-filter-1'),
+              type: 'venue',
+              name: 'Perfil Busca',
+            ),
+          ],
+          hasMore: false,
+        ),
+      },
+    );
+    final catalog = _accountProfileDiscoveryFilterCatalogWithMultipleTypes();
+    final primaryFilter = catalog.filters.first;
+    final controller = _buildDiscoveryController(
+      accountProfilesRepository: repository,
+      discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+        catalog: catalog,
+      ),
+    );
+    GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/descobrir'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: const DiscoveryScreen(),
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 120));
+
+    expect(find.text('Descubra'), findsOneWidget);
+    expect(find.byKey(_primaryFilterKey(primaryFilter)), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.search));
     await tester.pumpAndSettle();
 
+    expect(find.byType(TextField), findsOneWidget);
+    expect(find.text('Descubra'), findsNothing);
+    expect(find.byKey(_primaryFilterKey(primaryFilter)), findsNothing);
     expect(
-      find.byKey(_selectedPrimaryFilterKey(primaryFilter)),
-      findsOneWidget,
+      find.bySemanticsLabel('Painel de filtros de perfis'),
+      findsNothing,
     );
 
     await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
@@ -1148,9 +1220,6 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 120));
 
-    await tester
-        .tap(find.byKey(const ValueKey<String>('discovery-filter-button')));
-    await tester.pumpAndSettle();
     await tester.tap(
       find.byKey(_primaryFilterKey(primaryFilter)),
     );
@@ -1680,8 +1749,7 @@ void main() {
     controller.onDispose();
   });
 
-  test('discovery hides expanded filter panel on scroll without clearing state',
-      () async {
+  test('discovery no longer hides filter state on scroll', () async {
     final repository = _FakeAccountProfilesRepository(
       pages: {
         1: pagedAccountProfilesResultFromRaw(
@@ -1709,7 +1777,7 @@ void main() {
 
     controller.updateDiscoveryFilterPanelVisibilityFromScroll(24);
 
-    expect(controller.isDiscoveryFilterPanelVisibleStreamValue.value, isFalse);
+    expect(controller.isDiscoveryFilterPanelVisibleStreamValue.value, isTrue);
     expect(controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
         <String>{primaryFilter.key});
     controller.onDispose();

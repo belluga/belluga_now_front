@@ -52,10 +52,7 @@ mixin PublicDiscoveryFilterControllerMixin {
     double pixels, {
     double epsilon = 0.5,
   }) {
-    if (pixels <= epsilon || !isDiscoveryFilterPanelVisibleStreamValue.value) {
-      return;
-    }
-    setDiscoveryFilterPanelVisible(false);
+    return;
   }
 
   void setDiscoveryFilterSelection(DiscoveryFilterSelection selection) {

@@ -1,12 +1,52 @@
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_update.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/support/tenant_admin_nested_profile_group_payload_encoder.dart';
 
 class TenantAdminAccountProfilesRequestEncoder {
   const TenantAdminAccountProfilesRequestEncoder();
+
+  TenantAdminAccountProfileGalleryEncodedPayload
+      encodeUpdateAccountProfileGallery(
+    List<TenantAdminAccountProfileGalleryUpdateGroup> groups,
+  ) {
+    final uploads = <String, TenantAdminMediaUpload>{};
+
+    final payload = groups.map((group) {
+      final items = group.items.map((item) {
+        final upload = item.upload;
+        String? uploadKey;
+        if (upload != null) {
+          uploadKey = 'upload_${group.groupId}_${item.itemId}'
+              .replaceAll(RegExp(r'[^a-zA-Z0-9_]+'), '_');
+          uploads[uploadKey] = upload;
+        }
+
+        return <String, dynamic>{
+          'item_id': item.itemId,
+          'description': item.description,
+          'order': item.order,
+          if (uploadKey != null) 'upload': uploadKey,
+        };
+      }).toList(growable: false);
+
+      return <String, dynamic>{
+        'group_id': group.groupId,
+        'subtitle': group.subtitle,
+        'order': group.order,
+        'items': items,
+      };
+    }).toList(growable: false);
+
+    return (
+      galleryGroups: payload,
+      uploads: uploads,
+    );
+  }
 
   Map<String, dynamic> encodeFetchAccountProfilesQuery({
     String? accountId,
@@ -179,3 +219,8 @@ class TenantAdminAccountProfilesRequestEncoder {
     return Map<String, dynamic>.from(capabilities.toCapabilityMap().toJson());
   }
 }
+
+typedef TenantAdminAccountProfileGalleryEncodedPayload = ({
+  List<Map<String, dynamic>> galleryGroups,
+  Map<String, TenantAdminMediaUpload> uploads,
+});

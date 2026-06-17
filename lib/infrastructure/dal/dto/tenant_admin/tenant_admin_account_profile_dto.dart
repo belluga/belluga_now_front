@@ -1,9 +1,12 @@
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_group.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_taxonomy_term_dto.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 
 class TenantAdminAccountProfileDTO {
   const TenantAdminAccountProfileDTO({
@@ -19,6 +22,7 @@ class TenantAdminAccountProfileDTO {
     this.locationLat,
     this.locationLng,
     this.taxonomyTerms = const [],
+    this.galleryGroups = const [],
     this.nestedProfileGroups = const [],
     this.ownershipState,
   });
@@ -35,6 +39,7 @@ class TenantAdminAccountProfileDTO {
   final double? locationLat;
   final double? locationLng;
   final List<TenantAdminTaxonomyTermDTO> taxonomyTerms;
+  final List<TenantAdminAccountProfileGalleryGroup> galleryGroups;
   final List<TenantAdminNestedProfileGroup> nestedProfileGroups;
   final String? ownershipState;
 
@@ -52,6 +57,17 @@ class TenantAdminAccountProfileDTO {
       for (final entry in taxonomyRaw) {
         if (entry is Map<String, dynamic>) {
           terms.add(TenantAdminTaxonomyTermDTO.fromJson(entry));
+        }
+      }
+    }
+    final galleryGroups = <TenantAdminAccountProfileGalleryGroup>[];
+    final galleryRaw = json['gallery_groups'];
+    if (galleryRaw is List) {
+      for (final entry in galleryRaw) {
+        if (entry is! Map) continue;
+        final group = _galleryGroupFromRaw(Map<String, dynamic>.from(entry));
+        if (group != null) {
+          galleryGroups.add(group);
         }
       }
     }
@@ -87,6 +103,7 @@ class TenantAdminAccountProfileDTO {
       locationLat: lat,
       locationLng: lng,
       taxonomyTerms: terms,
+      galleryGroups: galleryGroups,
       nestedProfileGroups: nestedGroups,
       ownershipState: json['ownership_state']?.toString(),
     );
@@ -121,12 +138,91 @@ class TenantAdminAccountProfileDTO {
       content: content,
       location: location,
       taxonomyTerms: taxonomy,
+      galleryGroups: galleryGroups,
       nestedProfileGroups: nestedProfileGroups,
       ownershipState: ownershipState == null
           ? null
           : tenantAdminOwnershipStateFromRaw(ownershipState),
     );
   }
+}
+
+TenantAdminAccountProfileGalleryGroup? _galleryGroupFromRaw(
+  Map<String, dynamic> json,
+) {
+  final groupId = json['group_id']?.toString().trim() ?? '';
+  final subtitle = json['subtitle']?.toString().trim() ?? '';
+  if (groupId.isEmpty || subtitle.isEmpty) {
+    return null;
+  }
+
+  final items = <TenantAdminAccountProfileGalleryItem>[];
+  final rawItems = json['items'];
+  if (rawItems is List) {
+    for (final entry in rawItems) {
+      if (entry is! Map) continue;
+      final item = _galleryItemFromRaw(Map<String, dynamic>.from(entry));
+      if (item != null) {
+        items.add(item);
+      }
+    }
+  }
+
+  if (items.isEmpty) {
+    return null;
+  }
+
+  items.sort((left, right) => left.order.compareTo(right.order));
+
+  return TenantAdminAccountProfileGalleryGroup(
+    groupIdValue: TenantAdminNestedProfileGroupTextValue(groupId),
+    subtitleValue: TenantAdminNestedProfileGroupTextValue(subtitle),
+    orderValue: TenantAdminNestedProfileGroupOrderValue(
+      _toInt(json['order']) ?? 0,
+    ),
+    items: items,
+  );
+}
+
+TenantAdminAccountProfileGalleryItem? _galleryItemFromRaw(
+  Map<String, dynamic> json,
+) {
+  final itemId = json['item_id']?.toString().trim() ?? '';
+  final imageUrl = json['image_url']?.toString().trim() ?? '';
+  final thumbUrl = json['thumb_url']?.toString().trim() ?? '';
+  final cardUrl = json['card_url']?.toString().trim() ?? '';
+  final modalUrl = json['modal_url']?.toString().trim() ?? '';
+  if (itemId.isEmpty ||
+      imageUrl.isEmpty ||
+      thumbUrl.isEmpty ||
+      cardUrl.isEmpty ||
+      modalUrl.isEmpty) {
+    return null;
+  }
+
+  final description = json['description']?.toString().trim();
+  return TenantAdminAccountProfileGalleryItem(
+    itemIdValue: TenantAdminNestedProfileGroupTextValue(itemId),
+    descriptionValue: TenantAdminOptionalTextValue()
+      ..parse(description == null || description.isEmpty ? null : description),
+    orderValue: TenantAdminNestedProfileGroupOrderValue(
+      _toInt(json['order']) ?? 0,
+    ),
+    imageUrlValue: TenantAdminOptionalUrlValue()..parse(imageUrl),
+    thumbUrlValue: TenantAdminOptionalUrlValue()..parse(thumbUrl),
+    cardUrlValue: TenantAdminOptionalUrlValue()..parse(cardUrl),
+    modalUrlValue: TenantAdminOptionalUrlValue()..parse(modalUrl),
+  );
+}
+
+int? _toInt(Object? value) {
+  if (value == null) {
+    return null;
+  }
+  if (value is num) {
+    return value.toInt();
+  }
+  return int.tryParse(value.toString());
 }
 
 TenantAdminNestedProfileGroup _nestedProfileGroupFromRaw({

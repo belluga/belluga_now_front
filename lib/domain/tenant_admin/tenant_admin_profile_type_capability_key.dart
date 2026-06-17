@@ -14,6 +14,7 @@ enum TenantAdminProfileTypeCapabilityKey {
   hasAvatar,
   hasCover,
   hasEvents,
+  hasGallery,
   hasNestedProfileGroups;
 
   TenantAdminProfileTypeCapabilityKeyPrimString get apiValue => switch (this) {
@@ -33,6 +34,7 @@ enum TenantAdminProfileTypeCapabilityKey {
         TenantAdminProfileTypeCapabilityKey.hasAvatar => 'has_avatar',
         TenantAdminProfileTypeCapabilityKey.hasCover => 'has_cover',
         TenantAdminProfileTypeCapabilityKey.hasEvents => 'has_events',
+        TenantAdminProfileTypeCapabilityKey.hasGallery => 'has_gallery',
         TenantAdminProfileTypeCapabilityKey.hasNestedProfileGroups =>
           'has_nested_profile_groups',
       };

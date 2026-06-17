@@ -13,6 +13,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
@@ -220,6 +221,7 @@ class _FakeAccountProfilesRepository
   String? lastFetchExcludeAccountProfileId;
   List<TenantAdminNestedProfileGroup>? lastCreateNestedProfileGroups;
   List<TenantAdminNestedProfileGroup>? lastUpdateNestedProfileGroups;
+  List<TenantAdminAccountProfileGalleryUpdateGroup>? lastGalleryGroups;
 
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
@@ -331,6 +333,16 @@ class _FakeAccountProfilesRepository
     lastUpdateBio = bio?.value;
     lastUpdateContent = content?.value;
     lastUpdateNestedProfileGroups = nestedProfileGroups;
+    return _profiles.first;
+  }
+
+  @override
+  Future<TenantAdminAccountProfile> updateAccountProfileGallery({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    List<TenantAdminAccountProfileGalleryUpdateGroup> galleryGroups =
+        const <TenantAdminAccountProfileGalleryUpdateGroup>[],
+  }) async {
+    lastGalleryGroups = galleryGroups;
     return _profiles.first;
   }
 
@@ -737,6 +749,78 @@ void main() {
     );
 
     expect(profilesRepository.lastUpdateNestedProfileGroups, groups);
+  });
+
+  test('submitUpdateProfile forwards gallery groups to gallery update',
+      () async {
+    final profilesRepository = _FakeAccountProfilesRepository(
+      [
+        tenantAdminAccountProfileFromRaw(
+          id: 'profile-1',
+          accountId: 'acc-1',
+          profileType: 'venue',
+          displayName: 'Perfil',
+        ),
+      ],
+      [
+        tenantAdminProfileTypeDefinitionFromRaw(
+          type: 'venue',
+          label: 'Venue',
+          allowedTaxonomies: [],
+          capabilities: TenantAdminProfileTypeCapabilities(
+            isFavoritable: TenantAdminFlagValue(true),
+            isPoiEnabled: TenantAdminFlagValue(true),
+            hasBio: TenantAdminFlagValue(false),
+            hasContent: TenantAdminFlagValue(false),
+            hasTaxonomies: TenantAdminFlagValue(false),
+            hasAvatar: TenantAdminFlagValue(false),
+            hasCover: TenantAdminFlagValue(false),
+            hasEvents: TenantAdminFlagValue(false),
+          ),
+        ),
+      ],
+    );
+    final controller = TenantAdminAccountProfilesController(
+      profilesRepository: profilesRepository,
+      accountsRepository: _FakeAccountsRepository(),
+      taxonomiesRepository: _FakeTaxonomiesRepository(),
+      locationSelectionService: TenantAdminLocationSelectionService(),
+    );
+
+    await controller.submitUpdateProfile(
+      accountProfileId: 'profile-1',
+      profileType: 'venue',
+      displayName: 'Perfil atualizado',
+      location: null,
+      bio: null,
+      content: null,
+      taxonomyTerms: const TenantAdminTaxonomyTerms.empty(),
+      avatarUpload: null,
+      coverUpload: null,
+      galleryGroups: <TenantAdminAccountProfileGalleryUpdateGroup>[
+        TenantAdminAccountProfileGalleryUpdateGroup(
+          groupIdValue: TenantAdminNestedProfileGroupTextValue('group-1'),
+          subtitleValue: TenantAdminNestedProfileGroupTextValue('Ambiente'),
+          orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+          items: <TenantAdminAccountProfileGalleryUpdateItem>[
+            TenantAdminAccountProfileGalleryUpdateItem(
+              itemIdValue:
+                  TenantAdminNestedProfileGroupTextValue('gallery-item-1'),
+              descriptionValue: TenantAdminOptionalTextValue()
+                ..parse('Vista para o palco'),
+              orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+            ),
+          ],
+        ),
+      ],
+    );
+
+    expect(profilesRepository.lastGalleryGroups, hasLength(1));
+    expect(profilesRepository.lastGalleryGroups!.first.subtitle, 'Ambiente');
+    expect(
+      profilesRepository.lastGalleryGroups!.first.items.first.description,
+      'Vista para o palco',
+    );
   });
 
   test(

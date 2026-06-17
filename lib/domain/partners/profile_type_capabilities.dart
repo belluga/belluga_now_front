@@ -12,9 +12,11 @@ class ProfileTypeCapabilities {
     required this.hasAvatarValue,
     required this.hasCoverValue,
     required this.hasEventsValue,
+    ProfileTypeFlagValue? hasGalleryValue,
     ProfileTypeFlagValue? hasNestedProfileGroupsValue,
   })  : isReferenceLocationEnabledValue =
             isReferenceLocationEnabledValue ?? ProfileTypeFlagValue(false),
+        hasGalleryValue = hasGalleryValue ?? ProfileTypeFlagValue(false),
         hasNestedProfileGroupsValue =
             hasNestedProfileGroupsValue ?? ProfileTypeFlagValue(false);
 
@@ -28,6 +30,7 @@ class ProfileTypeCapabilities {
   final ProfileTypeFlagValue hasAvatarValue;
   final ProfileTypeFlagValue hasCoverValue;
   final ProfileTypeFlagValue hasEventsValue;
+  final ProfileTypeFlagValue hasGalleryValue;
   final ProfileTypeFlagValue hasNestedProfileGroupsValue;
 
   bool get isPubliclyDiscoverable => isPubliclyDiscoverableValue.value;
@@ -41,5 +44,6 @@ class ProfileTypeCapabilities {
   bool get hasAvatar => hasAvatarValue.value;
   bool get hasCover => hasCoverValue.value;
   bool get hasEvents => hasEventsValue.value;
+  bool get hasGallery => hasGalleryValue.value;
   bool get hasNestedProfileGroups => hasNestedProfileGroupsValue.value;
 }

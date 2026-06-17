@@ -6,6 +6,7 @@ import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/value_object/environment_name_value.dart';
 import 'package:belluga_now/domain/favorite/favorite.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
+import 'package:belluga_now/domain/favorite/value_objects/favorite_event_occurrence_id_value.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_public_detail_path_value.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_target_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
@@ -17,7 +18,9 @@ import 'package:belluga_now/domain/tenant/value_objects/icon_url_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/main_color_value.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
+import 'package:belluga_now/domain/value_objects/domain_optional_date_time_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
+import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_chip.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorites_section_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/favorites_section_view.dart';
 import 'package:flutter/material.dart';
@@ -280,6 +283,75 @@ void main() {
 
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });
+
+  testWidgets(
+      'favorites view preserves backend order and renders distinct event halos',
+      (tester) async {
+    final controller = FavoritesSectionController(
+      favoriteRepository: _FakeFavoriteRepository(
+        favoriteResumes: [
+          _favoriteResume(
+            title: 'Ao Vivo',
+            liveNowEventOccurrenceId: 'occ-live',
+          ),
+          _favoriteResume(
+            title: 'Tem Evento',
+            nextEventOccurrenceAt: DateTime(2026, 4, 4, 20),
+          ),
+          _favoriteResume(title: 'Sem Evento'),
+        ],
+      ),
+      appDataRepository: _FakeAppDataRepository(),
+    );
+    await controller.init();
+
+    final router = _RecordingStackRouter();
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: Scaffold(
+            body: FavoritesSectionView(controller: controller),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final chips =
+        tester.widgetList<FavoriteChip>(find.byType(FavoriteChip)).toList();
+
+    expect(
+      chips.map((chip) => chip.title).toList(),
+      ['Test App', 'Ao Vivo', 'Tem Evento', 'Sem Evento', 'Procurar'],
+    );
+    expect(chips[1].haloState, FavoriteChipHaloState.liveNow);
+    expect(chips[2].haloState, FavoriteChipHaloState.upcoming);
+    expect(chips[3].haloState, FavoriteChipHaloState.none);
+    expect(find.bySemanticsLabel('Ao Vivo, TOCANDO AGORA'), findsOneWidget);
+    expect(find.bySemanticsLabel('Tem Evento, TEM EVENTO'), findsOneWidget);
+    expect(find.bySemanticsLabel('Sem Evento'), findsOneWidget);
+  });
+}
+
+FavoriteResume _favoriteResume({
+  required String title,
+  DateTime? nextEventOccurrenceAt,
+  String? liveNowEventOccurrenceId,
+}) {
+  return FavoriteResume(
+    titleValue: TitleValue()..parse(title),
+    assetPathValue: AssetPathValue()
+      ..parse('assets/images/placeholder_avatar.png'),
+    nextEventOccurrenceAtValue: DomainOptionalDateTimeValue(
+      defaultValue: nextEventOccurrenceAt,
+    )..parse(nextEventOccurrenceAt?.toIso8601String()),
+    liveNowEventOccurrenceIdValue: liveNowEventOccurrenceId == null
+        ? null
+        : FavoriteEventOccurrenceIdValue(liveNowEventOccurrenceId),
+  );
 }
 
 class _TestHttpOverrides extends HttpOverrides {

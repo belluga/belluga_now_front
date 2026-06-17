@@ -421,6 +421,16 @@ class _TenantAdminProfileTypeFormScreenState
                                 ),
                                 SwitchListTile(
                                   contentPadding: EdgeInsets.zero,
+                                  title: const Text('Galeria habilitada'),
+                                  subtitle: const Text(
+                                    'Permite configurar galerias de fotos agrupadas neste tipo.',
+                                  ),
+                                  value: capabilities.hasGallery,
+                                  onChanged: (value) => _controller
+                                      .updateCapabilities(hasGallery: value),
+                                ),
+                                SwitchListTile(
+                                  contentPadding: EdgeInsets.zero,
                                   title: const Text(
                                     'Abas de contas vinculadas',
                                   ),

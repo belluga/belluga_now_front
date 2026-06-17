@@ -15,12 +15,15 @@ import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_onboarding_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/screens/tenant_admin_account_profile_edit_screen.dart';
@@ -159,6 +162,87 @@ void main() {
     expect(find.text('Do tenant'), findsOneWidget);
   });
 
+  testWidgets('renders persisted gallery groups and descriptions',
+      (tester) async {
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+    profilesRepository.profileTypesToReturn = [
+      _profileType(
+        hasGallery: true,
+        hasNestedProfileGroups: false,
+      ),
+    ];
+    profilesRepository.profileToReturn = _profile(
+      id: 'route-profile',
+      galleryGroups: [_galleryGroup()],
+    );
+
+    await _pumpScreen(
+      tester,
+      TenantAdminAccountProfileEditScreen(
+        accountSlug: 'route-account',
+        accountProfileId: 'route-profile',
+      ),
+    );
+
+    final scrollable = find.byType(Scrollable).first;
+    await tester.scrollUntilVisible(
+      find.text('Galerias de fotos'),
+      200,
+      scrollable: scrollable,
+    );
+
+    expect(find.text('Galerias de fotos'), findsOneWidget);
+    expect(
+      find.byKey(const Key('tenantAdminGalleryGroup_group-1')),
+      findsOneWidget,
+    );
+    expect(find.text('Ambiente'), findsOneWidget);
+    expect(find.text('Vista para o palco'), findsOneWidget);
+  });
+
+  testWidgets(
+      'hides gallery editor and omits gallery payload when capability is disabled',
+      (tester) async {
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+    profilesRepository.profileTypesToReturn = [
+      _profileType(
+        hasGallery: false,
+        hasNestedProfileGroups: false,
+      ),
+    ];
+    profilesRepository.profileToReturn = _profile(
+      id: 'route-profile',
+      galleryGroups: [_galleryGroup()],
+    );
+
+    await _pumpScreen(
+      tester,
+      TenantAdminAccountProfileEditScreen(
+        accountSlug: 'route-account',
+        accountProfileId: 'route-profile',
+      ),
+    );
+
+    expect(find.text('Galerias de fotos'), findsNothing);
+    expect(
+        find.byKey(const Key('tenantAdminGalleryGroup_group-1')), findsNothing);
+
+    final scrollable = find.byType(Scrollable).first;
+    await tester.scrollUntilVisible(
+      find.text('Salvar alteracoes'),
+      200,
+      scrollable: scrollable,
+    );
+    await tester.tap(find.text('Salvar alteracoes'));
+    await tester.pumpAndSettle();
+
+    expect(profilesRepository.lastGalleryGroups, isNull);
+  });
+
   testWidgets(
       'hides nested group editor and omits nested payload when capability is disabled',
       (tester) async {
@@ -166,7 +250,10 @@ void main() {
         GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
             as _FakeAccountProfilesRepository;
     profilesRepository.profileTypesToReturn = [
-      _profileType(hasNestedProfileGroups: false),
+      _profileType(
+        hasGallery: false,
+        hasNestedProfileGroups: false,
+      ),
     ];
     profilesRepository.profileToReturn = _profile(
       id: 'route-profile',
@@ -205,7 +292,10 @@ void main() {
         GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
             as _FakeAccountProfilesRepository;
     profilesRepository.profileTypesToReturn = [
-      _profileType(hasNestedProfileGroups: true),
+      _profileType(
+        hasGallery: false,
+        hasNestedProfileGroups: true,
+      ),
     ];
     profilesRepository.profileToReturn = _profile(
       id: 'route-profile',
@@ -393,9 +483,13 @@ class _FakeAccountProfilesRepository
   bool? lastRemoveAvatar;
   bool? lastRemoveCover;
   List<TenantAdminProfileTypeDefinition> profileTypesToReturn = [
-    _profileType(hasNestedProfileGroups: false),
+    _profileType(
+      hasGallery: true,
+      hasNestedProfileGroups: false,
+    ),
   ];
   List<TenantAdminAccountProfile> profilesToReturn = [];
+  List<TenantAdminAccountProfileGalleryUpdateGroup>? lastGalleryGroups;
   List<TenantAdminNestedProfileGroup>? lastNestedProfileGroups;
 
   @override
@@ -419,6 +513,7 @@ class _FakeAccountProfilesRepository
       coverUrl: profileToReturn.coverUrl,
       displayName: profileToReturn.displayName,
       profileType: profileToReturn.profileType,
+      galleryGroups: profileToReturn.galleryGroups,
       nestedProfileGroups: profileToReturn.nestedProfileGroups,
     );
   }
@@ -494,10 +589,21 @@ class _FakeAccountProfilesRepository
       content: content?.value ?? profileToReturn.content,
       location: location ?? profileToReturn.location,
       taxonomyTerms: taxonomyTerms ?? profileToReturn.taxonomyTerms,
+      galleryGroups: profileToReturn.galleryGroups,
       nestedProfileGroups:
           nestedProfileGroups ?? profileToReturn.nestedProfileGroups,
       ownershipState: profileToReturn.ownershipState,
     );
+    return profileToReturn;
+  }
+
+  @override
+  Future<TenantAdminAccountProfile> updateAccountProfileGallery({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    List<TenantAdminAccountProfileGalleryUpdateGroup> galleryGroups =
+        const <TenantAdminAccountProfileGalleryUpdateGroup>[],
+  }) async {
+    lastGalleryGroups = galleryGroups;
     return profileToReturn;
   }
 
@@ -632,6 +738,8 @@ TenantAdminAccountProfile _profile({
   String profileType = 'poi',
   String? avatarUrl,
   String? coverUrl,
+  List<TenantAdminAccountProfileGalleryGroup> galleryGroups =
+      const <TenantAdminAccountProfileGalleryGroup>[],
   List<TenantAdminNestedProfileGroup> nestedProfileGroups =
       const <TenantAdminNestedProfileGroup>[],
 }) {
@@ -643,12 +751,40 @@ TenantAdminAccountProfile _profile({
     slug: 'slug-$id',
     avatarUrl: avatarUrl,
     coverUrl: coverUrl,
+    galleryGroups: galleryGroups,
     nestedProfileGroups: nestedProfileGroups,
     ownershipState: TenantAdminOwnershipState.tenantOwned,
   );
 }
 
+TenantAdminAccountProfileGalleryGroup _galleryGroup() {
+  return TenantAdminAccountProfileGalleryGroup(
+    groupIdValue: TenantAdminNestedProfileGroupTextValue('group-1'),
+    subtitleValue: TenantAdminNestedProfileGroupTextValue('Ambiente'),
+    orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+    items: [_galleryItem()],
+  );
+}
+
+TenantAdminAccountProfileGalleryItem _galleryItem() {
+  return TenantAdminAccountProfileGalleryItem(
+    itemIdValue: TenantAdminNestedProfileGroupTextValue('item-1'),
+    descriptionValue: TenantAdminOptionalTextValue()
+      ..parse('Vista para o palco'),
+    orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+    imageUrlValue: TenantAdminOptionalUrlValue()
+      ..parse('https://tenant.test/gallery/image.jpg'),
+    thumbUrlValue: TenantAdminOptionalUrlValue()
+      ..parse('https://tenant.test/gallery/thumb.jpg'),
+    cardUrlValue: TenantAdminOptionalUrlValue()
+      ..parse('https://tenant.test/gallery/card.jpg'),
+    modalUrlValue: TenantAdminOptionalUrlValue()
+      ..parse('https://tenant.test/gallery/modal.jpg'),
+  );
+}
+
 TenantAdminProfileTypeDefinition _profileType({
+  required bool hasGallery,
   required bool hasNestedProfileGroups,
 }) {
   return tenantAdminProfileTypeDefinitionFromRaw(
@@ -664,6 +800,7 @@ TenantAdminProfileTypeDefinition _profileType({
       hasAvatar: TenantAdminFlagValue(true),
       hasCover: TenantAdminFlagValue(true),
       hasEvents: TenantAdminFlagValue(false),
+      hasGallery: TenantAdminFlagValue(hasGallery),
       hasNestedProfileGroups: TenantAdminFlagValue(hasNestedProfileGroups),
     ),
   );

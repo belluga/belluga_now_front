@@ -218,5 +218,18 @@ void main() {
 
       expect(dto.toDomain().capabilities.hasNestedProfileGroups, isTrue);
     });
+
+    test('parses gallery capability for account profile types', () {
+      final dto = TenantAdminProfileTypeDTO.fromJson({
+        'type': 'market',
+        'label': 'Market',
+        'allowed_taxonomies': const [],
+        'capabilities': {
+          'has_gallery': true,
+        },
+      });
+
+      expect(dto.toDomain().capabilities.hasGallery, isTrue);
+    });
   });
 }
