@@ -227,6 +227,7 @@ class TenantAdminProfileTypesController implements Disposable {
         hasAvatar: TenantAdminFlagValue(capabilities.hasAvatar),
         hasCover: TenantAdminFlagValue(capabilities.hasCover),
         hasEvents: TenantAdminFlagValue(capabilities.hasEvents),
+        hasGallery: TenantAdminFlagValue(capabilities.hasGallery),
         hasNestedProfileGroups: TenantAdminFlagValue(
           capabilities.hasNestedProfileGroups,
         ),

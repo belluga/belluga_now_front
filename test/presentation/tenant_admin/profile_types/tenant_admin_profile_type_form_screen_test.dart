@@ -13,7 +13,9 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_c
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/presentation/tenant_admin/profile_types/controllers/tenant_admin_profile_types_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/profile_types/screens/tenant_admin_profile_type_detail_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/profile_types/screens/tenant_admin_profile_type_form_screen.dart';
+import 'package:belluga_now/presentation/tenant_admin/profile_types/screens/tenant_admin_profile_types_list_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_upload_field.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_map_marker_icon_picker_field.dart';
 import 'package:flutter/material.dart';
@@ -392,6 +394,101 @@ void main() {
     expect(controller.currentCapabilities.hasGallery, isTrue);
   });
 
+  testWidgets('hydrates gallery capability as enabled when type already has it',
+      (tester) async {
+    final controller = _TestProfileTypesController(impactCount: 0);
+    await _pumpFormScreen(
+      tester,
+      controller: controller,
+      definition: tenantAdminProfileTypeDefinitionFromRaw(
+        type: 'venue',
+        label: 'Venue',
+        allowedTaxonomies: const [],
+        capabilities: TenantAdminProfileTypeCapabilities(
+          isFavoritable: TenantAdminFlagValue(true),
+          isPoiEnabled: TenantAdminFlagValue(false),
+          hasBio: TenantAdminFlagValue(false),
+          hasContent: TenantAdminFlagValue(false),
+          hasTaxonomies: TenantAdminFlagValue(false),
+          hasAvatar: TenantAdminFlagValue(false),
+          hasCover: TenantAdminFlagValue(false),
+          hasEvents: TenantAdminFlagValue(false),
+          hasGallery: TenantAdminFlagValue(true),
+        ),
+      ),
+    );
+
+    final toggle = find.widgetWithText(
+      SwitchListTile,
+      'Galeria habilitada',
+    );
+    await tester.ensureVisible(toggle);
+
+    expect(tester.widget<SwitchListTile>(toggle).value, isTrue);
+    expect(controller.currentCapabilities.hasGallery, isTrue);
+  });
+
+  testWidgets('shows gallery capability label in profile type list cards', (
+    tester,
+  ) async {
+    final controller = _TestProfileTypesController(
+      impactCount: 0,
+      initialProfileTypes: [
+        tenantAdminProfileTypeDefinitionFromRaw(
+          type: 'venue',
+          label: 'Venue',
+          allowedTaxonomies: const [],
+          capabilities: TenantAdminProfileTypeCapabilities(
+            isFavoritable: TenantAdminFlagValue(true),
+            isPoiEnabled: TenantAdminFlagValue(false),
+            hasBio: TenantAdminFlagValue(false),
+            hasContent: TenantAdminFlagValue(false),
+            hasTaxonomies: TenantAdminFlagValue(false),
+            hasAvatar: TenantAdminFlagValue(false),
+            hasCover: TenantAdminFlagValue(false),
+            hasEvents: TenantAdminFlagValue(false),
+            hasGallery: TenantAdminFlagValue(true),
+          ),
+        ),
+      ],
+    );
+
+    await _pumpListScreen(tester, controller: controller);
+
+    expect(find.text('Venue'), findsOneWidget);
+    expect(find.textContaining('Galeria'), findsOneWidget);
+  });
+
+  testWidgets('shows gallery capability chip in profile type detail', (
+    tester,
+  ) async {
+    final controller = _TestProfileTypesController(impactCount: 0);
+    final definition = tenantAdminProfileTypeDefinitionFromRaw(
+      type: 'venue',
+      label: 'Venue',
+      allowedTaxonomies: const [],
+      capabilities: TenantAdminProfileTypeCapabilities(
+        isFavoritable: TenantAdminFlagValue(true),
+        isPoiEnabled: TenantAdminFlagValue(false),
+        hasBio: TenantAdminFlagValue(false),
+        hasContent: TenantAdminFlagValue(false),
+        hasTaxonomies: TenantAdminFlagValue(false),
+        hasAvatar: TenantAdminFlagValue(false),
+        hasCover: TenantAdminFlagValue(false),
+        hasEvents: TenantAdminFlagValue(false),
+        hasGallery: TenantAdminFlagValue(true),
+      ),
+    );
+
+    await _pumpDetailScreen(
+      tester,
+      controller: controller,
+      definition: definition,
+    );
+
+    expect(find.widgetWithText(Chip, 'Galeria'), findsOneWidget);
+  });
+
   testWidgets('favoritable capability is editable without public discovery', (
     tester,
   ) async {
@@ -562,11 +659,59 @@ Future<void> _pumpFormScreen(
   await tester.pumpAndSettle();
 }
 
+Future<void> _pumpListScreen(
+  WidgetTester tester, {
+  required TenantAdminProfileTypesController controller,
+}) async {
+  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = const Size(1200, 2000);
+  addTearDown(() {
+    tester.view.resetDevicePixelRatio();
+    tester.view.resetPhysicalSize();
+  });
+  await controller.loadTypes();
+  GetIt.I.registerSingleton<TenantAdminProfileTypesController>(controller);
+
+  await pumpAutoRouteTestApp(
+    tester,
+    routeName: 'tenant-admin-profile-types-list-test',
+    routeFamily: CanonicalRouteFamily.tenantAdminAccountsInternal,
+    child: const TenantAdminProfileTypesListScreen(),
+  );
+  await tester.pumpAndSettle();
+}
+
+Future<void> _pumpDetailScreen(
+  WidgetTester tester, {
+  required TenantAdminProfileTypesController controller,
+  required TenantAdminProfileTypeDefinition definition,
+}) async {
+  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = const Size(1200, 2000);
+  addTearDown(() {
+    tester.view.resetDevicePixelRatio();
+    tester.view.resetPhysicalSize();
+  });
+  GetIt.I.registerSingleton<TenantAdminProfileTypesController>(controller);
+
+  await pumpAutoRouteTestApp(
+    tester,
+    routeName: 'tenant-admin-profile-type-detail-test',
+    routeFamily: CanonicalRouteFamily.tenantAdminAccountsInternal,
+    child: TenantAdminProfileTypeDetailScreen(definition: definition),
+  );
+  await tester.pumpAndSettle();
+}
+
 class _TestProfileTypesController extends TenantAdminProfileTypesController {
-  _TestProfileTypesController({required int impactCount})
-      : _impactCount = impactCount,
+  _TestProfileTypesController({
+    required int impactCount,
+    List<TenantAdminProfileTypeDefinition> initialProfileTypes = const [],
+  })  : _impactCount = impactCount,
         super(
-          repository: _FakeAccountProfilesRepository(),
+          repository: _FakeAccountProfilesRepository(
+            initialProfileTypes: initialProfileTypes,
+          ),
           taxonomiesRepository: _FakeTaxonomiesRepository(),
         );
 
@@ -602,6 +747,15 @@ class _TestProfileTypesController extends TenantAdminProfileTypesController {
 class _FakeAccountProfilesRepository
     with TenantAdminProfileTypesPaginationMixin
     implements TenantAdminAccountProfilesRepositoryContract {
+  _FakeAccountProfilesRepository({
+    List<TenantAdminProfileTypeDefinition> initialProfileTypes = const [],
+  }) : _initialProfileTypes =
+            List<TenantAdminProfileTypeDefinition>.unmodifiable(
+          initialProfileTypes,
+        );
+
+  final List<TenantAdminProfileTypeDefinition> _initialProfileTypes;
+
   @override
   Future<TenantAdminAccountProfile> createAccountProfile({
     required TenantAdminAccountProfilesRepoString accountId,
@@ -667,13 +821,18 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async {
-    return const <TenantAdminProfileTypeDefinition>[];
+    return _initialProfileTypes;
   }
 
   @override
   Future<TenantAdminProfileTypeDefinition> fetchProfileType(
     TenantAdminAccountProfilesRepoString profileType,
   ) async {
+    for (final definition in _initialProfileTypes) {
+      if (definition.type == profileType.value) {
+        return definition;
+      }
+    }
     throw StateError('Profile type not found: ${profileType.value}');
   }
 
@@ -684,7 +843,7 @@ class _FakeAccountProfilesRepository
     required TenantAdminAccountProfilesRepoInt pageSize,
   }) async {
     return tenantAdminPagedResultFromRaw(
-      items: const <TenantAdminProfileTypeDefinition>[],
+      items: _initialProfileTypes,
       hasMore: false,
     );
   }

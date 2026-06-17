@@ -188,6 +188,7 @@ class _TenantAdminProfileTypesListScreenState
           if (type.capabilities.hasAvatar) 'Avatar',
           if (type.capabilities.hasCover) 'Capa',
           if (type.capabilities.hasEvents) 'Agenda',
+          if (type.capabilities.hasGallery) 'Galeria',
           if (type.capabilities.hasNestedProfileGroups) 'Abas vinculadas',
           if (type.allowedTaxonomies.isNotEmpty)
             'Taxonomias: ${type.allowedTaxonomies.join(', ')}',
