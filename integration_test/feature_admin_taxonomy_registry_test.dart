@@ -713,8 +713,10 @@ class _FakeAccountProfilesRepository
 class _FakeTaxonomiesRepository
     with TenantAdminTaxonomiesPaginationMixin
     implements TenantAdminTaxonomiesRepositoryContract {
-  final List<TenantAdminTaxonomyDefinition> _taxonomies = const [];
-  final Map<String, List<TenantAdminTaxonomyTermDefinition>> _terms = const {};
+  final List<TenantAdminTaxonomyDefinition> _taxonomies =
+      <TenantAdminTaxonomyDefinition>[];
+  final Map<String, List<TenantAdminTaxonomyTermDefinition>> _terms =
+      <String, List<TenantAdminTaxonomyTermDefinition>>{};
 
   void seedTaxonomy(
     TenantAdminTaxonomyDefinition taxonomy,
