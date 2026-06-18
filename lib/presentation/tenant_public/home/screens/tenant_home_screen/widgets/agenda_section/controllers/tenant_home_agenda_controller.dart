@@ -171,6 +171,8 @@ class TenantHomeAgendaController extends Object
   @override
   final isDiscoveryFilterCatalogLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
+  final hasCanonicalDiscoveryFilterCatalogStreamValue =
+      StreamValue<bool>(defaultValue: false);
 
   @override
   StreamValue<double> get maxRadiusMetersStreamValue =>
@@ -239,8 +241,7 @@ class TenantHomeAgendaController extends Object
   String get publicDiscoveryFilterLogLabel => 'TenantHomeAgendaController';
 
   bool get hasCanonicalDiscoveryFilterCatalog =>
-      _scheduleRepository.homeAgendaDiscoveryFilterCatalogStreamValue.value !=
-      null;
+      hasCanonicalDiscoveryFilterCatalogStreamValue.value;
 
   @override
   void onPublicDiscoveryFilterSelectionChanged(
@@ -971,6 +972,15 @@ class TenantHomeAgendaController extends Object
   bool _consumeCanonicalRuntimeDiscoveryFilterCatalog() {
     final runtimeCatalog =
         _scheduleRepository.homeAgendaDiscoveryFilterCatalogStreamValue.value;
+    final hasRuntimeCatalog = runtimeCatalog != null;
+    if (hasCanonicalDiscoveryFilterCatalogStreamValue.value !=
+        hasRuntimeCatalog) {
+      _ifAlive(
+        () => hasCanonicalDiscoveryFilterCatalogStreamValue.addValue(
+          hasRuntimeCatalog,
+        ),
+      );
+    }
     if (runtimeCatalog == null) {
       return false;
     }
@@ -1365,6 +1375,7 @@ class TenantHomeAgendaController extends Object
     discoveryFilterSelectionStreamValue.dispose();
     isDiscoveryFilterPanelVisibleStreamValue.dispose();
     isDiscoveryFilterCatalogLoadingStreamValue.dispose();
+    hasCanonicalDiscoveryFilterCatalogStreamValue.dispose();
     radiusMetersStreamValue.dispose();
     isRadiusRefreshLoadingStreamValue.dispose();
     isRadiusActionCompactStreamValue.dispose();

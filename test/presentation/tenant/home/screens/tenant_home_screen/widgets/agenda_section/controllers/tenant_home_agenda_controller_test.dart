@@ -3461,6 +3461,100 @@ void main() {
     );
 
     testWidgets(
+      'home agenda reveals filter chrome when the canonical runtime catalog matches the preloaded catalog',
+      (tester) async {
+        const baselineCatalog = DiscoveryFilterCatalog(
+          surface: 'home.events',
+          filters: <DiscoveryFilterCatalogItem>[
+            DiscoveryFilterCatalogItem(
+              key: 'artist',
+              label: 'Artistas',
+              entities: <String>{'event'},
+              types: <String>{'show'},
+              typesByEntity: <String, Set<String>>{
+                'event': <String>{'show'},
+              },
+            ),
+          ],
+          typeOptionsByEntity: <String, List<DiscoveryFilterTypeOption>>{
+            'event': <DiscoveryFilterTypeOption>[
+              DiscoveryFilterTypeOption(
+                value: 'show',
+                label: 'Artistas',
+              ),
+            ],
+          },
+        );
+        final pendingFetch = Completer<void>();
+        final scheduleRepository = _FakeScheduleRepository(
+          pages: <int, List<EventModel>>{
+            1: <EventModel>[
+              _buildHomeAgendaEvent(
+                occurrenceId: '100000000000000000000002',
+                slug: 'matching-runtime-catalog-home-event',
+                title: 'Evento Canonico',
+              ),
+            ],
+          },
+          homeAgendaRuntimeCatalog: baselineCatalog,
+        )..nextFetchGate = pendingFetch;
+        final controller = _buildAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+            catalog: baselineCatalog,
+          ),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(
+            _buildAppData(
+              minKm: 1,
+              defaultKm: 5,
+              maxKm: 10,
+            ),
+          ),
+        );
+
+        addTearDown(controller.onDispose);
+
+        unawaited(controller.init());
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: HomeAgendaSectionView(
+                controller: controller,
+                builder: (context, slots) {
+                  return CustomScrollView(
+                    slivers: [
+                      ...slots.headerSlivers,
+                      SliverFillRemaining(child: slots.body),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        expect(
+          find.bySemanticsLabel('Painel de filtros de eventos'),
+          findsNothing,
+        );
+
+        pendingFetch.complete();
+        await tester.pumpAndSettle();
+
+        expect(
+          find.bySemanticsLabel('Painel de filtros de eventos'),
+          findsOneWidget,
+        );
+        expect(find.text('Artistas'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
       'home nested inner agenda scroll keeps radius action compact and restores at top',
       (tester) async {
         final controller = _buildAgendaController(

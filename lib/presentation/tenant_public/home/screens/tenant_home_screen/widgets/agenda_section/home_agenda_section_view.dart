@@ -126,60 +126,65 @@ class _HomeAgendaSectionViewState extends State<HomeAgendaSectionView> {
     return StreamValueBuilder<DiscoveryFilterCatalog>(
       streamValue: widget.controller.discoveryFilterCatalogStreamValue,
       builder: (context, catalog) {
-        return StreamValueBuilder<DiscoveryFilterSelection>(
-          streamValue: widget.controller.discoveryFilterSelectionStreamValue,
-          builder: (context, selection) {
-            final showFilterPanel =
-                widget.controller.hasCanonicalDiscoveryFilterCatalog &&
-                    catalog.filters.isNotEmpty;
+        return StreamValueBuilder<bool>(
+          streamValue:
+              widget.controller.hasCanonicalDiscoveryFilterCatalogStreamValue,
+          builder: (context, hasCanonicalCatalog) {
+            return StreamValueBuilder<DiscoveryFilterSelection>(
+              streamValue: widget.controller.discoveryFilterSelectionStreamValue,
+              builder: (context, selection) {
+                final showFilterPanel =
+                    hasCanonicalCatalog && catalog.filters.isNotEmpty;
 
-            return widget.builder(
-              context,
-              HomeAgendaSectionSlots(
-                headerSlivers: [
-                  if (showFilterPanel)
-                    SliverToBoxAdapter(
-                      child: Offstage(
-                        offstage: true,
-                        child: SizeReportingWidget(
-                          onSizeChanged: _updateFilterPanelExtent,
-                          child: _HomeAgendaFilterPanel(
-                            controller: widget.controller,
-                            catalog: catalog,
-                            selection: selection,
+                return widget.builder(
+                  context,
+                  HomeAgendaSectionSlots(
+                    headerSlivers: [
+                      if (showFilterPanel)
+                        SliverToBoxAdapter(
+                          child: Offstage(
+                            offstage: true,
+                            child: SizeReportingWidget(
+                              onSizeChanged: _updateFilterPanelExtent,
+                              child: _HomeAgendaFilterPanel(
+                                controller: widget.controller,
+                                catalog: catalog,
+                                selection: selection,
+                              ),
+                            ),
+                          ),
+                        ),
+                      SliverPersistentHeader(
+                        pinned: true,
+                        delegate: _PinnedHeaderDelegate(
+                          minHeight: kToolbarHeight,
+                          maxHeight: kToolbarHeight,
+                          child: SizedBox(
+                            height: kToolbarHeight,
+                            child: HomeAgendaAppBar(
+                              controller: widget.controller,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  SliverPersistentHeader(
-                    pinned: true,
-                    delegate: _PinnedHeaderDelegate(
-                      minHeight: kToolbarHeight,
-                      maxHeight: kToolbarHeight,
-                      child: SizedBox(
-                        height: kToolbarHeight,
-                        child: HomeAgendaAppBar(
-                          controller: widget.controller,
+                      if (showFilterPanel)
+                        SliverPersistentHeader(
+                          pinned: true,
+                          delegate: _PinnedHeaderDelegate(
+                            minHeight: _filterPanelExtent,
+                            maxHeight: _filterPanelExtent,
+                            child: _HomeAgendaFilterPanel(
+                              controller: widget.controller,
+                              catalog: catalog,
+                              selection: selection,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
+                    ],
+                    body: HomeAgendaBody(controller: widget.controller),
                   ),
-                  if (showFilterPanel)
-                    SliverPersistentHeader(
-                      pinned: true,
-                      delegate: _PinnedHeaderDelegate(
-                        minHeight: _filterPanelExtent,
-                        maxHeight: _filterPanelExtent,
-                        child: _HomeAgendaFilterPanel(
-                          controller: widget.controller,
-                          catalog: catalog,
-                          selection: selection,
-                        ),
-                      ),
-                    ),
-                ],
-                body: HomeAgendaBody(controller: widget.controller),
-              ),
+                );
+              },
             );
           },
         );
