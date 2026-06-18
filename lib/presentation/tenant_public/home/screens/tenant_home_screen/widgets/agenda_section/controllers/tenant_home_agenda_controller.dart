@@ -972,16 +972,12 @@ class TenantHomeAgendaController extends Object
   bool _consumeCanonicalRuntimeDiscoveryFilterCatalog() {
     final runtimeCatalog =
         _scheduleRepository.homeAgendaDiscoveryFilterCatalogStreamValue.value;
-    final hasRuntimeCatalog = runtimeCatalog != null;
-    if (hasCanonicalDiscoveryFilterCatalogStreamValue.value !=
-        hasRuntimeCatalog) {
-      _ifAlive(
-        () => hasCanonicalDiscoveryFilterCatalogStreamValue.addValue(
-          hasRuntimeCatalog,
-        ),
-      );
-    }
     if (runtimeCatalog == null) {
+      if (hasCanonicalDiscoveryFilterCatalogStreamValue.value) {
+        _ifAlive(
+          () => hasCanonicalDiscoveryFilterCatalogStreamValue.addValue(false),
+        );
+      }
       return false;
     }
 
@@ -1002,12 +998,22 @@ class TenantHomeAgendaController extends Object
       selection,
       repairedSelection,
     )) {
+      if (!hasCanonicalDiscoveryFilterCatalogStreamValue.value) {
+        _ifAlive(
+          () => hasCanonicalDiscoveryFilterCatalogStreamValue.addValue(true),
+        );
+      }
       return false;
     }
 
     _ifAlive(
       () => discoveryFilterSelectionStreamValue.addValue(repairedSelection),
     );
+    if (!hasCanonicalDiscoveryFilterCatalogStreamValue.value) {
+      _ifAlive(
+        () => hasCanonicalDiscoveryFilterCatalogStreamValue.addValue(true),
+      );
+    }
     unawaited(persistPublicDiscoveryFilterSelection(repairedSelection));
     _queueRefreshRequest(preserveCurrentResults: true);
     return true;

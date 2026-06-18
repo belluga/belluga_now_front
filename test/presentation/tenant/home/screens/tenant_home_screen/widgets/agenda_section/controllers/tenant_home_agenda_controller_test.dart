@@ -3554,6 +3554,174 @@ void main() {
       },
     );
 
+    test(
+      'home agenda marks the canonical runtime catalog ready only after catalog and selection are repaired',
+      () async {
+        const baselineCatalog = DiscoveryFilterCatalog(
+          surface: 'home.events',
+          filters: <DiscoveryFilterCatalogItem>[
+            DiscoveryFilterCatalogItem(
+              key: 'artist',
+              label: 'Artistas',
+              entities: <String>{'event'},
+              types: <String>{'show'},
+              typesByEntity: <String, Set<String>>{
+                'event': <String>{'show'},
+              },
+            ),
+            DiscoveryFilterCatalogItem(
+              key: 'empty-type',
+              label: 'Tipo Vazio',
+              entities: <String>{'event'},
+              types: <String>{'empty-type'},
+              typesByEntity: <String, Set<String>>{
+                'event': <String>{'empty-type'},
+              },
+            ),
+          ],
+          typeOptionsByEntity: <String, List<DiscoveryFilterTypeOption>>{
+            'event': <DiscoveryFilterTypeOption>[
+              DiscoveryFilterTypeOption(
+                value: 'show',
+                label: 'Artistas',
+              ),
+              DiscoveryFilterTypeOption(
+                value: 'empty-type',
+                label: 'Tipo Vazio',
+              ),
+            ],
+          },
+        );
+        const runtimeCatalog = DiscoveryFilterCatalog(
+          surface: 'home.events',
+          filters: <DiscoveryFilterCatalogItem>[
+            DiscoveryFilterCatalogItem(
+              key: 'artist',
+              label: 'Artistas',
+              entities: <String>{'event'},
+              types: <String>{'show'},
+              typesByEntity: <String, Set<String>>{
+                'event': <String>{'show'},
+              },
+            ),
+          ],
+          typeOptionsByEntity: <String, List<DiscoveryFilterTypeOption>>{
+            'event': <DiscoveryFilterTypeOption>[
+              DiscoveryFilterTypeOption(
+                value: 'show',
+                label: 'Artistas',
+              ),
+            ],
+          },
+        );
+        final pendingFetch = Completer<void>();
+        final scheduleRepository = _FakeScheduleRepository(
+          pages: <int, List<EventModel>>{
+            1: <EventModel>[
+              _buildHomeAgendaEvent(
+                occurrenceId: '100000000000000000000003',
+                slug: 'runtime-catalog-order-home-event',
+                title: 'Evento Ordem Runtime',
+              ),
+            ],
+          },
+          homeAgendaRuntimeCatalog: runtimeCatalog,
+        )..nextFetchGate = pendingFetch;
+        final controller = _buildAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+            catalog: baselineCatalog,
+          ),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(
+            _buildAppData(
+              minKm: 1,
+              defaultKm: 5,
+              maxKm: 10,
+            ),
+          ),
+        );
+        final transitions = <String>[];
+        final canonicalReadySnapshots = <List<String>>[];
+        addTearDown(controller.onDispose);
+        final catalogSubscription =
+            controller.discoveryFilterCatalogStreamValue.stream.listen((catalog) {
+          transitions.add(
+            'catalog:${catalog.filters.map((item) => item.key).join(",")}',
+          );
+        });
+        final selectionSubscription = controller
+            .discoveryFilterSelectionStreamValue.stream
+            .listen((selection) {
+          final primaryKeys = selection.primaryKeys.toList()..sort();
+          final taxonomySelections = selection.taxonomyTermKeys.entries
+              .map(
+                (entry) =>
+                    'taxonomy:${entry.key}:${(entry.value.toList()..sort()).join("|")}',
+              )
+              .toList()
+            ..sort();
+          final filters = <String>[
+            ...primaryKeys.map((key) => 'primary:$key'),
+            ...taxonomySelections,
+          ].join(',');
+          transitions.add('selection:$filters');
+        });
+        final canonicalSubscription = controller
+            .hasCanonicalDiscoveryFilterCatalogStreamValue.stream
+            .listen((value) {
+          if (!value) {
+            return;
+          }
+          canonicalReadySnapshots.add(
+            controller.discoveryFilterCatalogStreamValue.value.filters
+                .map((item) => item.key)
+                .toList(growable: false),
+          );
+          transitions.add(
+            'ready:${controller.discoveryFilterCatalogStreamValue.value.filters.map((item) => item.key).join(",")}',
+          );
+        });
+        addTearDown(() async {
+          await catalogSubscription.cancel();
+          await selectionSubscription.cancel();
+          await canonicalSubscription.cancel();
+        });
+
+        controller.discoveryFilterSelectionStreamValue.addValue(
+          const DiscoveryFilterSelection(
+            primaryKeys: <String>{'empty-type'},
+          ),
+        );
+        final initFuture = controller.init();
+        await Future<void>.delayed(Duration.zero);
+        transitions.clear();
+
+        pendingFetch.complete();
+        await initFuture;
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(
+          transitions,
+          containsAllInOrder(<String>[
+            'catalog:artist',
+            'selection:',
+            'ready:artist',
+          ]),
+        );
+        expect(canonicalReadySnapshots, <List<String>>[
+          <String>['artist'],
+        ]);
+        expect(
+          controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
+          isEmpty,
+        );
+      },
+    );
+
     testWidgets(
       'home nested inner agenda scroll keeps radius action compact and restores at top',
       (tester) async {
