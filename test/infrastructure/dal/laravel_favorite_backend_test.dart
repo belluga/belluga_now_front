@@ -44,6 +44,10 @@ void main() {
     expect(favorites.first.profileType, 'artist');
     expect(favorites.first.canOpenPublicDetail, isTrue);
     expect(favorites.first.publicDetailPath, '/parceiro/profile-1');
+    expect(
+      favorites.first.eventTargetPath,
+      '/agenda/evento/profile-1-show?occurrence=occ-live-1',
+    );
     expect(favorites.first.nextEventOccurrenceAt, isNotNull);
     expect(favorites.first.liveNowEventOccurrenceId, 'occ-live-1');
     expect(favorites[1].id, 'profile-2');
@@ -248,9 +252,15 @@ class _FavoritesApiAdapter implements HttpClientAdapter {
                 'live_now_event_occurrence_at': '2026-03-20T20:00:00Z',
               },
               'navigation': {
-                'kind': 'account_profile',
-                'target_slug': 'profile-1',
-                'target_path': '/parceiro/profile-1',
+                'kind': 'event',
+                'target_slug': 'profile-1-show',
+                'target_path':
+                    '/agenda/evento/profile-1-show?occurrence=occ-live-1',
+                'profile_target_path': '/parceiro/profile-1',
+                'event_target_path':
+                    '/agenda/evento/profile-1-show?occurrence=occ-live-1',
+                'event_target_slug': 'profile-1-show',
+                'event_occurrence_id': 'occ-live-1',
                 'can_open_public_detail': true,
               },
             },

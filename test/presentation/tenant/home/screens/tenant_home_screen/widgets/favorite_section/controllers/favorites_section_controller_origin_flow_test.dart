@@ -134,27 +134,38 @@ void main() {
   });
 
   test(
-      'favorites section resolves profile navigation when contract allows, search otherwise',
+      'favorites section resolves canonical event target when the backend exposes an active event path',
       () async {
     final controller = FavoritesSectionController(
       favoriteRepository: _FakeFavoriteRepository(),
       appDataRepository: _FakeAppDataRepository(),
     );
 
-    final profileTarget = await controller.resolveNavigationTarget(
+    final eventTarget = await controller.resolveNavigationTarget(
       _favoriteResume(
-        title: 'Com Slug',
-        slug: 'com-slug',
+        title: 'Com Evento',
+        slug: 'com-evento',
         targetType: 'account_profile',
         canOpenPublicDetail: true,
-        publicDetailPath: '/parceiro/com-slug',
+        publicDetailPath: '/parceiro/com-evento',
+        eventTargetPath: '/agenda/evento/com-evento?occurrence=occ-live',
+        liveNowEventOccurrenceId: 'occ-live',
       ),
     );
 
-    expect(profileTarget, isA<FavoriteNavigationPath>());
+    expect(eventTarget, isA<FavoriteNavigationPath>());
     expect(
-      (profileTarget as FavoriteNavigationPath).path,
-      '/parceiro/com-slug',
+      (eventTarget as FavoriteNavigationPath).path,
+      '/agenda/evento/com-evento?occurrence=occ-live',
+    );
+  });
+
+  test(
+      'favorites section resolves canonical profile navigation when no active event target exists',
+      () async {
+    final controller = FavoritesSectionController(
+      favoriteRepository: _FakeFavoriteRepository(),
+      appDataRepository: _FakeAppDataRepository(),
     );
 
     final pathTarget = await controller.resolveNavigationTarget(
@@ -172,22 +183,10 @@ void main() {
       (pathTarget as FavoriteNavigationPath).path,
       '/parceiro/path-only',
     );
-
-    final searchTarget = await controller.resolveNavigationTarget(
-      _favoriteResume(title: 'Sem slug', slug: null),
-    );
-
-    expect(searchTarget, isA<FavoriteNavigationSearch>());
-    expect(
-      (searchTarget as FavoriteNavigationSearch).query,
-      'Sem slug',
-    );
-
-    controller.onDispose();
   });
 
   test(
-      'favorites section blocks unavailable account profile targets before slug fallback',
+      'favorites section blocks unavailable favorites instead of falling back to guessed search navigation',
       () async {
     final controller = FavoritesSectionController(
       favoriteRepository: _FakeFavoriteRepository(),
@@ -293,6 +292,7 @@ FavoriteResume _favoriteResume({
   String? coverUrl,
   bool canOpenPublicDetail = false,
   String? publicDetailPath,
+  String? eventTargetPath,
   DateTime? nextEventOccurrenceAt,
   String? liveNowEventOccurrenceId,
 }) {
@@ -312,6 +312,7 @@ FavoriteResume _favoriteResume({
     coverImageUriValue: coverImageUriValue,
     canOpenPublicDetail: canOpenPublicDetail,
     publicDetailPath: publicDetailPath,
+    eventTargetPath: eventTargetPath,
     nextEventOccurrenceAt: nextEventOccurrenceAt,
     liveNowEventOccurrenceId: liveNowEventOccurrenceId,
   );

@@ -29,6 +29,8 @@ abstract class AccountProfilesRepositoryContract {
       StreamValue<List<AccountProfileModel>>(defaultValue: const []);
   final publicDiscoveryFilterFacetsStreamValue =
       StreamValue<DiscoveryFilterRuntimeFacets?>(defaultValue: null);
+  final publicDiscoveryFilterCatalogStreamValue =
+      StreamValue<DiscoveryFilterCatalog?>(defaultValue: null);
 
   /// Stream of favorite account profile IDs
   final favoriteAccountProfileIdsStreamValue =
@@ -247,11 +249,15 @@ abstract class AccountProfilesRepositoryContract {
       publicDiscoveryFilterFacetsStreamValue.addValue(
         result.discoveryFilterFacets,
       );
+      publicDiscoveryFilterCatalogStreamValue.addValue(
+        result.discoveryFilterCatalog,
+      );
       pagedAccountProfilesStreamValue.addValue(
         pagedAccountProfilesResultFromRaw(
           profiles: accumulatedProfiles,
           hasMore: result.hasMore,
           discoveryFilterFacets: result.discoveryFilterFacets,
+          discoveryFilterCatalog: result.discoveryFilterCatalog,
         ),
       );
       discoveryFilteredAccountProfilesStreamValue.addValue(
@@ -272,6 +278,7 @@ abstract class AccountProfilesRepositoryContract {
       );
       if (page.value == 1) {
         publicDiscoveryFilterFacetsStreamValue.addValue(null);
+        publicDiscoveryFilterCatalogStreamValue.addValue(null);
         discoveryFilteredAccountProfilesStreamValue.addValue(
           const <AccountProfileModel>[],
         );
@@ -280,6 +287,7 @@ abstract class AccountProfilesRepositoryContract {
             profiles: <AccountProfileModel>[],
             hasMore: false,
             discoveryFilterFacets: null,
+            discoveryFilterCatalog: null,
           ),
         );
       } else {
@@ -292,6 +300,8 @@ abstract class AccountProfilesRepositoryContract {
             hasMore: false,
             discoveryFilterFacets:
                 publicDiscoveryFilterFacetsStreamValue.value,
+            discoveryFilterCatalog:
+                publicDiscoveryFilterCatalogStreamValue.value,
           ),
         );
       }

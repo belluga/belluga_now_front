@@ -203,11 +203,6 @@ class TenantHomeAgendaController extends Object
   LocationOriginSettings? _effectiveOriginSettings;
   double? _pendingPersistedRadiusEchoMeters;
   bool _locationPermissionRequested = false;
-  DiscoveryFilterCatalog _baselineDiscoveryFilterCatalog =
-      const DiscoveryFilterCatalog(surface: _homeEventsFilterSurface);
-  DiscoveryFilterCatalog _runtimePrimaryDiscoveryFilterCatalog =
-      const DiscoveryFilterCatalog(surface: _homeEventsFilterSurface);
-
   Uri get defaultEventImageUri {
     final configured = _appDataRepository.appData.mainLogoDarkUrl.value;
     if (configured != null && configured.toString().trim().isNotEmpty) {
@@ -382,9 +377,6 @@ class TenantHomeAgendaController extends Object
     final catalogFuture = loadPublicDiscoveryFilterCatalog(
       restoredSelection: restoredSelection,
     ).then((_) {
-      _baselineDiscoveryFilterCatalog = discoveryFilterCatalogStreamValue.value;
-      _runtimePrimaryDiscoveryFilterCatalog =
-          discoveryFilterCatalogStreamValue.value;
       _reconcileRuntimeDiscoveryFilterCatalog();
     });
     if (mustAwaitCatalogBeforeResults) {
@@ -879,6 +871,7 @@ class TenantHomeAgendaController extends Object
     _effectiveOriginLat = cacheOrigin?.latitude;
     _effectiveOriginLng = cacheOrigin?.longitude;
     _ifAlive(() => hasMoreStreamValue.addValue(_hasMore));
+    _reconcileRuntimeDiscoveryFilterCatalog();
     _applyFiltersAndPublish();
     return true;
   }
@@ -968,33 +961,24 @@ class TenantHomeAgendaController extends Object
   }
 
   bool _reconcileRuntimeDiscoveryFilterCatalog() {
-    final facets =
-        _scheduleRepository.homeAgendaDiscoveryFilterFacetsStreamValue.value;
-    if (facets == null || _baselineDiscoveryFilterCatalog.isEmpty) {
+    return _consumeCanonicalRuntimeDiscoveryFilterCatalog();
+  }
+
+  bool _consumeCanonicalRuntimeDiscoveryFilterCatalog() {
+    final runtimeCatalog =
+        _scheduleRepository.homeAgendaDiscoveryFilterCatalogStreamValue.value;
+    if (runtimeCatalog == null) {
       return false;
     }
 
-    final selection = discoveryFilterSelectionStreamValue.value;
-    final preservePrimaryFilters = selection.primaryKeys.isNotEmpty;
-    final baselineCatalog =
-        preservePrimaryFilters && !_runtimePrimaryDiscoveryFilterCatalog.isEmpty
-            ? _runtimePrimaryDiscoveryFilterCatalog
-            : _baselineDiscoveryFilterCatalog;
-    final runtimeCatalog = facets.applyToCatalog(
-      baselineCatalog,
-      preservePrimaryFilters: preservePrimaryFilters,
-    );
-    if (!preservePrimaryFilters && !runtimeCatalog.isEmpty) {
-      _runtimePrimaryDiscoveryFilterCatalog = runtimeCatalog;
-    }
     if (!_sameDiscoveryFilterCatalog(
       discoveryFilterCatalogStreamValue.value,
       runtimeCatalog,
     )) {
-      _ifAlive(
-          () => discoveryFilterCatalogStreamValue.addValue(runtimeCatalog));
+      _ifAlive(() => discoveryFilterCatalogStreamValue.addValue(runtimeCatalog));
     }
 
+    final selection = discoveryFilterSelectionStreamValue.value;
     final repairedSelection = repairPublicDiscoveryFilterSelection(
       selection,
       catalogOverride: runtimeCatalog,

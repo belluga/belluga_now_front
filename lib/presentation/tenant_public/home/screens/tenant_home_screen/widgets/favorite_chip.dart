@@ -6,6 +6,8 @@ import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_
 import 'package:flutter/material.dart';
 
 class FavoriteChip extends StatelessWidget {
+  static const double _avatarFrameSize = 72;
+
   const FavoriteChip({
     super.key,
     required this.title,
@@ -52,10 +54,16 @@ class FavoriteChip extends StatelessWidget {
               Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  Container(
-                    padding: _haloPadding(haloState),
-                    decoration: _haloDecoration(colorScheme, haloState),
-                    child: _buildAvatar(context, colorScheme, badgeGlyph),
+                  SizedBox(
+                    width: _avatarFrameSize,
+                    height: _avatarFrameSize,
+                    child: Center(
+                      child: Container(
+                        padding: _haloPadding(haloState),
+                        decoration: _haloDecoration(colorScheme, haloState),
+                        child: _buildAvatar(context, colorScheme, badgeGlyph),
+                      ),
+                    ),
                   ),
                   if (badgeGlyph != null && !isPrimary)
                     Positioned(

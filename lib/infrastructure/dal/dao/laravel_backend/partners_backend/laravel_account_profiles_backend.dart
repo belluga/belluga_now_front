@@ -122,6 +122,9 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
         discoveryFilterFacets: _parseDiscoveryFilterFacets(
           raw['discovery_filter_facets'],
         ),
+        discoveryFilterCatalog: _parseDiscoveryFilterCatalog(
+          raw['discovery_filter_catalog'],
+        ),
       );
     } on DioException catch (error) {
       final statusCode = error.response?.statusCode;
@@ -245,6 +248,18 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     }
 
     return DiscoveryFilterRuntimeFacets.fromJson(
+      raw.map(
+        (key, value) => MapEntry<String, Object?>(key.toString(), value),
+      ),
+    );
+  }
+
+  DiscoveryFilterCatalog? _parseDiscoveryFilterCatalog(Object? raw) {
+    if (raw is! Map) {
+      return null;
+    }
+
+    return DiscoveryFilterCatalog.fromJson(
       raw.map(
         (key, value) => MapEntry<String, Object?>(key.toString(), value),
       ),

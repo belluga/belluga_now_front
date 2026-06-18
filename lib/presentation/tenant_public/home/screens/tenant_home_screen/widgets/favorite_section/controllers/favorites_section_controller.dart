@@ -68,20 +68,19 @@ class FavoritesSectionController implements Disposable {
       return const FavoriteNavigationPrimary();
     }
 
-    if (favorite.isAccountProfileTarget && !favorite.canOpenPublicDetail) {
-      return const FavoriteNavigationUnavailable();
+    final eventTargetPath = favorite.eventTargetPath?.trim();
+    if (eventTargetPath != null && eventTargetPath.isNotEmpty) {
+      return FavoriteNavigationPath(path: eventTargetPath);
     }
 
     final publicDetailPath = favorite.publicDetailPath?.trim();
-    if (publicDetailPath != null && publicDetailPath.isNotEmpty) {
+    if (favorite.canOpenPublicDetail &&
+        publicDetailPath != null &&
+        publicDetailPath.isNotEmpty) {
       return FavoriteNavigationPath(path: publicDetailPath);
     }
 
-    if (favorite.isAccountProfileTarget) {
-      return const FavoriteNavigationUnavailable();
-    }
-
-    return FavoriteNavigationSearch(query: favorite.title.trim());
+    return const FavoriteNavigationUnavailable();
   }
 
   Future<void> requestNavigationTarget(FavoriteResume favorite) async {

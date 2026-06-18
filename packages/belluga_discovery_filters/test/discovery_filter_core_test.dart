@@ -231,73 +231,8 @@ void main() {
     );
   });
 
-  test('runtime facets prune baseline catalog using backend-filtered universe',
+  test('runtime facets parse backend-filtered universe without local pruning',
       () {
-    final baseline = DiscoveryFilterCatalog.fromJson(
-      <String, Object?>{
-        'surface': 'home.events',
-        'filters': <Object?>[
-          <String, Object?>{
-            'key': 'show',
-            'label': 'Show',
-            'target': 'event_occurrence',
-            'query': <String, Object?>{
-              'entities': <String>['event'],
-              'types_by_entity': <String, Object?>{
-                'event': <String>['show'],
-              },
-            },
-          },
-          <String, Object?>{
-            'key': 'fair',
-            'label': 'Feira',
-            'target': 'event_occurrence',
-            'query': <String, Object?>{
-              'entities': <String>['event'],
-              'types_by_entity': <String, Object?>{
-                'event': <String>['fair'],
-              },
-            },
-          },
-          <String, Object?>{
-            'key': 'ghost',
-            'label': 'Fantasma',
-            'target': 'event_occurrence',
-            'query': <String, Object?>{
-              'entities': <String>['event'],
-              'types_by_entity': <String, Object?>{
-                'event': <String>['ghost'],
-              },
-            },
-          },
-        ],
-        'type_options': <String, Object?>{
-          'event': <Object?>[
-            <String, Object?>{'value': 'show', 'label': 'Show'},
-            <String, Object?>{'value': 'fair', 'label': 'Feira'},
-            <String, Object?>{'value': 'ghost', 'label': 'Fantasma'},
-          ],
-        },
-        'taxonomy_options': <String, Object?>{
-          'mood': <String, Object?>{
-            'key': 'mood',
-            'label': 'Clima',
-            'terms': <Object?>[
-              <String, Object?>{'value': 'sunset', 'label': 'Sunset'},
-              <String, Object?>{'value': 'night', 'label': 'Night'},
-            ],
-          },
-          'audience': <String, Object?>{
-            'key': 'audience',
-            'label': 'Público',
-            'terms': <Object?>[
-              <String, Object?>{'value': 'family', 'label': 'Família'},
-            ],
-          },
-        },
-      },
-    );
-
     final runtimeFacets = DiscoveryFilterRuntimeFacets.fromJson(
       <String, Object?>{
         'surface': 'home.events',
@@ -314,17 +249,14 @@ void main() {
       },
     );
 
-    final runtimeCatalog = runtimeFacets.applyToCatalog(baseline);
-
-    expect(runtimeCatalog.filters.map((item) => item.key).toList(),
-        <String>['show', 'fair']);
+    expect(runtimeFacets.surface, 'home.events');
+    expect(runtimeFacets.filterKeys, <String>{'show', 'fair'});
+    expect(runtimeFacets.taxonomyOptionsByKey.keys, <String>{'mood'});
+    expect(runtimeFacets.taxonomyOptionsByKey['mood']?.label, 'Mood runtime');
     expect(
-        runtimeCatalog.typeOptionsByEntity['event']?.map((item) => item.value),
-        <String>['show', 'fair']);
-    expect(runtimeCatalog.taxonomyOptionsByKey.keys, <String>{'mood'});
-    expect(runtimeCatalog.taxonomyOptionsByKey['mood']?.label, 'Clima');
-    expect(runtimeCatalog.taxonomyOptionsByKey['mood']?.terms.single.value,
-        'night');
+      runtimeFacets.taxonomyOptionsByKey['mood']?.terms.single.value,
+      'night',
+    );
   });
 
   test('selection toggles single primary and multi taxonomy terms', () {
@@ -338,105 +270,6 @@ void main() {
     expect(
         selection.taxonomyTermKeys['music_styles'], <String>{'rock', 'jazz'});
     expect(selection.activeCount, 3);
-  });
-
-  test(
-      'runtime facets preserve primary filters while tightening taxonomy options',
-      () {
-    final baseline = DiscoveryFilterCatalog.fromJson(
-      <String, Object?>{
-        'surface': 'home.events',
-        'filters': <Object?>[
-          <String, Object?>{
-            'key': 'show',
-            'label': 'Show',
-            'query': <String, Object?>{
-              'entities': <String>['event'],
-              'types_by_entity': <String, Object?>{
-                'event': <String>['show'],
-              },
-            },
-          },
-          <String, Object?>{
-            'key': 'fair',
-            'label': 'Feira',
-            'query': <String, Object?>{
-              'entities': <String>['event'],
-              'types_by_entity': <String, Object?>{
-                'event': <String>['fair'],
-              },
-            },
-          },
-        ],
-        'type_options': <String, Object?>{
-          'event': <Object?>[
-            <String, Object?>{
-              'value': 'show',
-              'label': 'Show',
-              'allowed_taxonomies': <String>['mood'],
-            },
-            <String, Object?>{
-              'value': 'fair',
-              'label': 'Feira',
-              'allowed_taxonomies': <String>['mood'],
-            },
-          ],
-        },
-        'taxonomy_options': <String, Object?>{
-          'mood': <String, Object?>{
-            'key': 'mood',
-            'label': 'Clima',
-            'terms': <Object?>[
-              <String, Object?>{'value': 'sunset', 'label': 'Sunset'},
-              <String, Object?>{'value': 'night', 'label': 'Night'},
-            ],
-          },
-          'audience': <String, Object?>{
-            'key': 'audience',
-            'label': 'Público',
-            'terms': <Object?>[
-              <String, Object?>{'value': 'family', 'label': 'Família'},
-            ],
-          },
-        },
-      },
-    );
-
-    final runtimeFacets = DiscoveryFilterRuntimeFacets.fromJson(
-      <String, Object?>{
-        'surface': 'home.events',
-        'filter_keys': <String>['show'],
-        'taxonomy_options': <String, Object?>{
-          'mood': <String, Object?>{
-            'key': 'mood',
-            'label': 'Mood runtime',
-            'terms': <Object?>[
-              <String, Object?>{'value': 'night', 'label': 'Night'},
-            ],
-          },
-        },
-      },
-    );
-
-    final runtimeCatalog = runtimeFacets.applyToCatalog(
-      baseline,
-      preservePrimaryFilters: true,
-    );
-
-    expect(
-      runtimeCatalog.filters.map((item) => item.key).toList(),
-      <String>['show', 'fair'],
-    );
-    expect(
-      runtimeCatalog.typeOptionsByEntity['event']?.map((item) => item.value),
-      <String>['show', 'fair'],
-    );
-    expect(runtimeCatalog.taxonomyOptionsByKey.keys, <String>{'mood'});
-    expect(runtimeCatalog.taxonomyOptionsByKey['mood']?.label, 'Clima');
-    expect(
-      runtimeCatalog.taxonomyOptionsByKey['mood']?.terms.single.value,
-      'night',
-    );
   });
 
   test('repair drops taxonomy selections when no primary is selected', () {

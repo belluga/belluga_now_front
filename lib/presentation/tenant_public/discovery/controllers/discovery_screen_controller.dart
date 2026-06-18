@@ -90,11 +90,6 @@ class DiscoveryScreenController extends Object
   bool _isProgrammaticSearchTextChange = false;
   bool _isRevealingDiscoveryFilterPanel = false;
   String? _lastOriginSignature;
-  DiscoveryFilterCatalog _baselineDiscoveryFilterCatalog =
-      const DiscoveryFilterCatalog(surface: _discoveryAccountProfilesSurface);
-  DiscoveryFilterCatalog _runtimePrimaryDiscoveryFilterCatalog =
-      const DiscoveryFilterCatalog(surface: _discoveryAccountProfilesSurface);
-
   final ScrollController scrollController = ScrollController();
   final searchQueryStreamValue = StreamValue<String>(defaultValue: '');
   final selectedTypeFilterStreamValue = StreamValue<String?>();
@@ -206,9 +201,6 @@ class DiscoveryScreenController extends Object
     final catalogFuture = loadPublicDiscoveryFilterCatalog(
       restoredSelection: restoredSelection,
     ).then((_) {
-      _baselineDiscoveryFilterCatalog = discoveryFilterCatalogStreamValue.value;
-      _runtimePrimaryDiscoveryFilterCatalog =
-          discoveryFilterCatalogStreamValue.value;
       _reconcileRuntimeDiscoveryFilterCatalog();
     });
     if (mustAwaitCatalogBeforeResults) {
@@ -657,6 +649,7 @@ class DiscoveryScreenController extends Object
 
     hasLoadedStreamValue.addValue(true);
     hasMoreStreamValue.addValue(cachedPage.hasMore);
+    _reconcileRuntimeDiscoveryFilterCatalog();
     _updateAvailableTypes();
   }
 
@@ -713,25 +706,16 @@ class DiscoveryScreenController extends Object
   }
 
   bool _reconcileRuntimeDiscoveryFilterCatalog() {
-    final facets =
-        _accountProfilesRepository.publicDiscoveryFilterFacetsStreamValue.value;
-    if (facets == null || _baselineDiscoveryFilterCatalog.isEmpty) {
+    return _consumeCanonicalRuntimeDiscoveryFilterCatalog();
+  }
+
+  bool _consumeCanonicalRuntimeDiscoveryFilterCatalog() {
+    final runtimeCatalog =
+        _accountProfilesRepository.publicDiscoveryFilterCatalogStreamValue.value;
+    if (runtimeCatalog == null) {
       return false;
     }
 
-    final selection = discoveryFilterSelectionStreamValue.value;
-    final preservePrimaryFilters = selection.primaryKeys.isNotEmpty;
-    final baselineCatalog =
-        preservePrimaryFilters && !_runtimePrimaryDiscoveryFilterCatalog.isEmpty
-            ? _runtimePrimaryDiscoveryFilterCatalog
-            : _baselineDiscoveryFilterCatalog;
-    final runtimeCatalog = facets.applyToCatalog(
-      baselineCatalog,
-      preservePrimaryFilters: preservePrimaryFilters,
-    );
-    if (!preservePrimaryFilters && !runtimeCatalog.isEmpty) {
-      _runtimePrimaryDiscoveryFilterCatalog = runtimeCatalog;
-    }
     if (!_sameDiscoveryFilterCatalog(
       discoveryFilterCatalogStreamValue.value,
       runtimeCatalog,
@@ -739,6 +723,7 @@ class DiscoveryScreenController extends Object
       discoveryFilterCatalogStreamValue.addValue(runtimeCatalog);
     }
 
+    final selection = discoveryFilterSelectionStreamValue.value;
     final repairedSelection = repairPublicDiscoveryFilterSelection(
       selection,
       catalogOverride: runtimeCatalog,

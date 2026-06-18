@@ -1,11 +1,11 @@
 import 'dart:io';
 
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/value_object/environment_name_value.dart';
 import 'package:belluga_now/domain/favorite/favorite.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
+import 'package:belluga_now/domain/favorite/value_objects/favorite_event_target_path_value.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_event_occurrence_id_value.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_public_detail_path_value.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_target_type_value.dart';
@@ -162,12 +162,17 @@ void main() {
     await GetIt.I.reset();
   });
 
-  testWidgets('direct favorite tap preserves stack and pushes event search',
+  testWidgets(
+      'full favorite chip tap pushes canonical event path when active event exists',
       (tester) async {
     final favoriteItem = FavoriteResume(
       titleValue: TitleValue()..parse('Pizza Place'),
       assetPathValue: AssetPathValue()
         ..parse('assets/images/placeholder_avatar.png'),
+      eventTargetPathValue: FavoriteEventTargetPathValue(
+        '/agenda/evento/pizza-place?occurrence=occ-live',
+      ),
+      liveNowEventOccurrenceIdValue: FavoriteEventOccurrenceIdValue('occ-live'),
     );
 
     final controller = FavoritesSectionController(
@@ -193,13 +198,20 @@ void main() {
     );
     await tester.pump();
 
-    await tester.tap(find.text('Pizza Place').first);
+    final chipFinder =
+        find.bySemanticsLabel('Pizza Place, TOCANDO AGORA').first;
+    final chipRect = tester.getRect(chipFinder);
+    await tester.tapAt(Offset(chipRect.center.dx, chipRect.top + 18));
     await tester.pump();
     await tester.pumpAndSettle();
 
     expect(router.replaceAllCalled, isFalse);
-    expect(router.pushCalls, 1);
-    expect(router.lastPushedRoute, isA<EventSearchRoute>());
+    expect(router.pushCalls, 0);
+    expect(router.lastPushedRoute, isNull);
+    expect(
+      router.lastPushedPath,
+      '/agenda/evento/pizza-place?occurrence=occ-live',
+    );
   });
 
   testWidgets(
@@ -333,6 +345,44 @@ void main() {
     expect(find.bySemanticsLabel('Ao Vivo, TOCANDO AGORA'), findsOneWidget);
     expect(find.bySemanticsLabel('Tem Evento, TEM EVENTO'), findsOneWidget);
     expect(find.bySemanticsLabel('Sem Evento'), findsOneWidget);
+  });
+
+  testWidgets(
+      'favorites view keeps label baselines aligned across halo and non-halo chips',
+      (tester) async {
+    final controller = FavoritesSectionController(
+      favoriteRepository: _FakeFavoriteRepository(
+        favoriteResumes: [
+          _favoriteResume(
+            title: 'Ao Vivo',
+            liveNowEventOccurrenceId: 'occ-live',
+          ),
+          _favoriteResume(title: 'Sem Evento'),
+        ],
+      ),
+      appDataRepository: _FakeAppDataRepository(),
+    );
+    await controller.init();
+
+    final router = _RecordingStackRouter();
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: Scaffold(
+            body: FavoritesSectionView(controller: controller),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final liveLabelTop = tester.getTopLeft(find.text('Ao Vivo')).dy;
+    final noEventLabelTop = tester.getTopLeft(find.text('Sem Evento')).dy;
+
+    expect((liveLabelTop - noEventLabelTop).abs(), lessThan(0.1));
   });
 }
 

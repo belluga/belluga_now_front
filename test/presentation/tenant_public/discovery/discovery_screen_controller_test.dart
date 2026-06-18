@@ -1164,6 +1164,124 @@ void main() {
   });
 
   testWidgets(
+      'DiscoveryScreen replaces the baseline catalog with the canonical runtime catalog from the paged query',
+      (tester) async {
+    const baselineCatalog = DiscoveryFilterCatalog(
+      surface: 'discovery.account_profiles',
+      filters: <DiscoveryFilterCatalogItem>[
+        DiscoveryFilterCatalogItem(
+          key: 'artist',
+          label: 'Artistas',
+          entities: <String>{'account_profile'},
+          types: <String>{'artist'},
+          typesByEntity: <String, Set<String>>{
+            'account_profile': <String>{'artist'},
+          },
+        ),
+        DiscoveryFilterCatalogItem(
+          key: 'empty-type',
+          label: 'Tipo Vazio',
+          entities: <String>{'account_profile'},
+          types: <String>{'empty-type'},
+          typesByEntity: <String, Set<String>>{
+            'account_profile': <String>{'empty-type'},
+          },
+        ),
+      ],
+      typeOptionsByEntity: <String, List<DiscoveryFilterTypeOption>>{
+        'account_profile': <DiscoveryFilterTypeOption>[
+          DiscoveryFilterTypeOption(
+            value: 'artist',
+            label: 'Artistas',
+          ),
+          DiscoveryFilterTypeOption(
+            value: 'empty-type',
+            label: 'Tipo Vazio',
+          ),
+        ],
+      },
+    );
+    const runtimeCatalog = DiscoveryFilterCatalog(
+      surface: 'discovery.account_profiles',
+      filters: <DiscoveryFilterCatalogItem>[
+        DiscoveryFilterCatalogItem(
+          key: 'artist',
+          label: 'Artistas',
+          entities: <String>{'account_profile'},
+          types: <String>{'artist'},
+          typesByEntity: <String, Set<String>>{
+            'account_profile': <String>{'artist'},
+          },
+        ),
+      ],
+      typeOptionsByEntity: <String, List<DiscoveryFilterTypeOption>>{
+        'account_profile': <DiscoveryFilterTypeOption>[
+          DiscoveryFilterTypeOption(
+            value: 'artist',
+            label: 'Artistas',
+          ),
+        ],
+      },
+    );
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: pagedAccountProfilesResultFromRaw(
+          profiles: [
+            _profile(
+              id: _mongoId('runtime-catalog-1'),
+              type: 'artist',
+              name: 'Perfil Runtime',
+            ),
+          ],
+          hasMore: false,
+          discoveryFilterCatalog: runtimeCatalog,
+        ),
+      },
+    );
+    final controller = _buildDiscoveryController(
+      accountProfilesRepository: repository,
+      discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+        catalog: baselineCatalog,
+      ),
+    );
+    GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
+
+    final router = _RecordingStackRouter();
+    final routeData = RouteData(
+      route: _FakeRouteMatch(fullPath: '/descobrir'),
+      router: router,
+      stackKey: const ValueKey('stack'),
+      pendingChildren: const [],
+      type: const RouteType.material(),
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: const DiscoveryScreen(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Artistas'), findsOneWidget);
+    expect(find.text('Tipo Vazio'), findsNothing);
+    expect(
+      controller.discoveryFilterCatalogStreamValue.value.filters
+          .map((entry) => entry.key)
+          .toList(),
+      <String>['artist'],
+    );
+
+    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+  });
+
+  testWidgets(
       'DiscoveryScreen renders secondary taxonomy filters after primary selection without overflow',
       (tester) async {
     final repository = _FakeAccountProfilesRepository(
@@ -2297,6 +2415,7 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
       profiles: profiles,
       hasMore: result.hasMore,
       discoveryFilterFacets: result.discoveryFilterFacets,
+      discoveryFilterCatalog: result.discoveryFilterCatalog,
     );
 
     return result;

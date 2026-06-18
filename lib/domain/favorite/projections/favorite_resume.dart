@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/favorite/favorite.dart';
 import 'package:belluga_now/domain/favorite/favorite_badge.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_event_occurrence_id_value.dart';
+import 'package:belluga_now/domain/favorite/value_objects/favorite_event_target_path_value.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_primary_flag_value.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_public_detail_path_value.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_target_type_value.dart';
@@ -34,6 +35,7 @@ class FavoriteResume {
     this.coverImageUriValue,
     DomainBooleanValue? canOpenPublicDetailValue,
     this.publicDetailPathValue,
+    this.eventTargetPathValue,
     DomainOptionalDateTimeValue? nextEventOccurrenceAtValue,
     DomainOptionalDateTimeValue? lastEventOccurrenceAtValue,
     this.liveNowEventOccurrenceIdValue,
@@ -71,6 +73,7 @@ class FavoriteResume {
   final ThumbUriValue? coverImageUriValue;
   final DomainBooleanValue canOpenPublicDetailValue;
   final FavoritePublicDetailPathValue? publicDetailPathValue;
+  final FavoriteEventTargetPathValue? eventTargetPathValue;
   final DomainOptionalDateTimeValue nextEventOccurrenceAtValue;
   final DomainOptionalDateTimeValue lastEventOccurrenceAtValue;
   final FavoriteEventOccurrenceIdValue? liveNowEventOccurrenceIdValue;
@@ -89,6 +92,14 @@ class FavoriteResume {
   bool get canOpenPublicDetail => canOpenPublicDetailValue.value;
   String? get publicDetailPath {
     final value = publicDetailPathValue?.value.trim();
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+    return value;
+  }
+
+  String? get eventTargetPath {
+    final value = eventTargetPathValue?.value.trim();
     if (value == null || value.isEmpty) {
       return null;
     }

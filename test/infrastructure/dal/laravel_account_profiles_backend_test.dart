@@ -271,6 +271,83 @@ void main() {
     );
   });
 
+  test('fetchAccountProfiles parses canonical runtime discovery catalog',
+      () async {
+    final validId = _generateMongoId();
+    final adapter = _RecordingAdapter(
+      response: {
+        'data': [
+          {
+            'id': validId,
+            'display_name': 'Artist One',
+            'slug': 'artist-one',
+            'profile_type': 'artist',
+            'taxonomy_terms': const [],
+          },
+        ],
+        'has_more': true,
+        'discovery_filter_catalog': {
+          'surface': 'discovery.account_profiles',
+          'filters': [
+            {
+              'key': 'venue',
+              'label': 'Venue',
+              'target': 'account_profile',
+              'query': {
+                'entities': ['account_profile'],
+                'types_by_entity': {
+                  'account_profile': ['venue'],
+                },
+              },
+            },
+          ],
+          'type_options': {
+            'account_profile': [
+              {
+                'value': 'venue',
+                'label': 'Venue',
+                'allowed_taxonomies': ['cuisine'],
+              },
+            ],
+          },
+          'taxonomy_options': {
+            'cuisine': {
+              'key': 'cuisine',
+              'label': 'Cozinha',
+              'terms': [
+                {'value': 'italian', 'label': 'Italian'},
+              ],
+            },
+          },
+        },
+      },
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final backend = LaravelAccountProfilesBackend(
+      dio: dio,
+      locationOriginService: LocationOriginService(
+        appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+      ),
+    );
+
+    final page = await backend.fetchAccountProfilesPage(
+      page: 1,
+      pageSize: 30,
+    );
+
+    expect(page.discoveryFilterCatalog, isNotNull);
+    expect(
+      page.discoveryFilterCatalog?.filters.map((item) => item.key).toList(),
+      <String>['venue'],
+    );
+    expect(
+      page.discoveryFilterCatalog?.taxonomyOptionsByKey['cuisine']?.terms
+          .map((term) => term.value)
+          .toList(),
+      <String>['italian'],
+    );
+  });
+
   test('fetchAccountProfileBySlug hits direct slug endpoint and parses profile',
       () async {
     final validId = _generateMongoId();

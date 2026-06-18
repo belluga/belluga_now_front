@@ -31,6 +31,7 @@ class FavoritePreviewDTO {
     this.profileType,
     this.canOpenPublicDetail = false,
     this.publicDetailPath,
+    this.eventTargetPath,
     this.assetPath,
     this.badgeIconCodePoint,
     this.badgeFontFamily,
@@ -80,13 +81,19 @@ class FavoritePreviewDTO {
     final title =
         (target['display_name'] ?? json['title'] ?? targetId).toString().trim();
     final slug =
-        (navigation['target_slug'] ?? target['slug'])?.toString().trim();
-    final publicDetailPath =
-        (navigation['target_path'] ?? target['public_detail_path'])
-            ?.toString()
-            .trim();
-    final canOpenPublicDetail =
-        navigation['can_open_public_detail'] == true ||
+        (target['slug'] ?? navigation['target_slug'])?.toString().trim();
+    final navigationKind = navigation['kind']?.toString().trim();
+    final navigationTargetPath = navigation['target_path']?.toString().trim();
+    final publicDetailPath = (navigation['profile_target_path'] ??
+            target['public_detail_path'] ??
+            (navigationKind == 'account_profile' ? navigationTargetPath : null))
+        ?.toString()
+        .trim();
+    final eventTargetPath = (navigation['event_target_path'] ??
+            (navigationKind == 'event' ? navigationTargetPath : null))
+        ?.toString()
+        .trim();
+    final canOpenPublicDetail = navigation['can_open_public_detail'] == true ||
         target['can_open_public_detail'] == true;
 
     DateTime? parseDate(dynamic value) {
@@ -116,9 +123,10 @@ class FavoritePreviewDTO {
       coverUrl: target['cover_url']?.toString(),
       profileType: target['profile_type']?.toString().trim(),
       canOpenPublicDetail: canOpenPublicDetail,
-      publicDetailPath: publicDetailPath?.isNotEmpty == true
-          ? publicDetailPath
-          : null,
+      publicDetailPath:
+          publicDetailPath?.isNotEmpty == true ? publicDetailPath : null,
+      eventTargetPath:
+          eventTargetPath?.isNotEmpty == true ? eventTargetPath : null,
       assetPath: null,
       isPrimary: false,
     );
@@ -140,6 +148,7 @@ class FavoritePreviewDTO {
   final String? profileType;
   final bool canOpenPublicDetail;
   final String? publicDetailPath;
+  final String? eventTargetPath;
   final String? assetPath;
   final int? badgeIconCodePoint;
   final String? badgeFontFamily;
@@ -228,6 +237,7 @@ class FavoritePreviewDTO {
       coverImageUriValue: _thumbUriFromString(coverUrl),
       canOpenPublicDetail: canOpenPublicDetail,
       publicDetailPath: _trimOrNull(publicDetailPath),
+      eventTargetPath: _trimOrNull(eventTargetPath),
       nextEventOccurrenceAt: nextEventOccurrenceAt,
       lastEventOccurrenceAt: lastEventOccurrenceAt,
       liveNowEventOccurrenceId: _trimOrNull(liveNowEventOccurrenceId),

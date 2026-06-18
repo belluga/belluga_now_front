@@ -1,5 +1,4 @@
 import 'discovery_filter_catalog.dart';
-import 'discovery_filter_entity_registry.dart';
 
 class DiscoveryFilterRuntimeFacets {
   const DiscoveryFilterRuntimeFacets({
@@ -40,53 +39,6 @@ class DiscoveryFilterRuntimeFacets {
   final Map<String, DiscoveryFilterTaxonomyGroupOption> taxonomyOptionsByKey;
 
   bool get isEmpty => filterKeys.isEmpty && taxonomyOptionsByKey.isEmpty;
-
-  DiscoveryFilterCatalog applyToCatalog(
-    DiscoveryFilterCatalog baseline, {
-    bool preservePrimaryFilters = false,
-  }) {
-    final normalizedKeys = filterKeys
-        .map((value) => value.trim())
-        .where((value) => value.isNotEmpty)
-        .toSet();
-
-    final filters = preservePrimaryFilters
-        ? baseline.filters.toList(growable: false)
-        : baseline.filters
-            .where((item) => normalizedKeys.contains(item.key))
-            .toList(growable: false);
-
-    final typeOptionsByEntity = <String, List<DiscoveryFilterTypeOption>>{};
-    for (final entry in baseline.typeOptionsByEntity.entries) {
-      final filtered = preservePrimaryFilters
-          ? entry.value.toList(growable: false)
-          : entry.value
-              .where((option) => normalizedKeys.contains(option.value))
-              .toList(growable: false);
-      if (filtered.isNotEmpty) {
-        typeOptionsByEntity[entry.key] = filtered;
-      }
-    }
-
-    final taxonomyOptions = <String, DiscoveryFilterTaxonomyGroupOption>{};
-    for (final entry in taxonomyOptionsByKey.entries) {
-      final baselineOption = baseline.taxonomyOptionsByKey[entry.key];
-      taxonomyOptions[entry.key] = DiscoveryFilterTaxonomyGroupOption(
-        key: entry.value.key,
-        label: baselineOption?.label ?? entry.value.label,
-        terms: entry.value.terms,
-        termsTruncated: entry.value.termsTruncated,
-        termsLimit: entry.value.termsLimit,
-      );
-    }
-
-    return DiscoveryFilterCatalog(
-      surface: baseline.surface,
-      filters: filters,
-      typeOptionsByEntity: typeOptionsByEntity,
-      taxonomyOptionsByKey: taxonomyOptions,
-    );
-  }
 
   Map<String, Object?> toJson() => <String, Object?>{
         'surface': surface,
