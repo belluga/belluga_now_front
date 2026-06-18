@@ -28,6 +28,9 @@ enum FavoriteToggleOutcome {
   requiresAuthentication,
 }
 
+final StreamValue<List<EventModel>?> _emptyDiscoveryLiveNowEventsStreamValue =
+    StreamValue<List<EventModel>?>(defaultValue: null);
+
 class DiscoveryScreenController extends Object
     with PublicDiscoveryFilterControllerMixin
     implements Disposable {
@@ -124,7 +127,7 @@ class DiscoveryScreenController extends Object
 
   StreamValue<List<EventModel>?> get liveNowEventsStreamValue =>
       _resolveScheduleRepository()?.discoveryLiveNowEventsStreamValue ??
-      StreamValue<List<EventModel>?>(defaultValue: null);
+      _emptyDiscoveryLiveNowEventsStreamValue;
   StreamValue<List<AccountProfileModel>> get filteredPartnersStreamValue =>
       _accountProfilesRepository.discoveryFilteredAccountProfilesStreamValue;
   StreamValue<List<AccountProfileModel>> get nearbyStreamValue =>
@@ -710,8 +713,8 @@ class DiscoveryScreenController extends Object
   }
 
   bool _consumeCanonicalRuntimeDiscoveryFilterCatalog() {
-    final runtimeCatalog =
-        _accountProfilesRepository.publicDiscoveryFilterCatalogStreamValue.value;
+    final runtimeCatalog = _accountProfilesRepository
+        .publicDiscoveryFilterCatalogStreamValue.value;
     if (runtimeCatalog == null) {
       return false;
     }
@@ -855,6 +858,7 @@ class DiscoveryScreenController extends Object
     _searchDebounce?.cancel();
     searchController.removeListener(_handleSearchControllerChanged);
     _effectiveOriginSubscription?.cancel();
+    _favoriteIdsSubscription?.cancel();
     searchQueryStreamValue.dispose();
     selectedTypeFilterStreamValue.dispose();
     discoveryFilterCatalogStreamValue.dispose();
@@ -871,6 +875,5 @@ class DiscoveryScreenController extends Object
     isLoadingStreamValue.dispose();
     searchController.dispose();
     scrollController.dispose();
-    _favoriteIdsSubscription?.cancel();
   }
 }

@@ -625,6 +625,34 @@ void main() {
     controller.onDispose();
   });
 
+  test(
+      'discovery live-now fallback stream remains stable without a schedule repository',
+      () async {
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: pagedAccountProfilesResultFromRaw(
+          profiles: <AccountProfileModel>[],
+          hasMore: false,
+        ),
+      },
+    );
+    final controller = _buildDiscoveryController(
+      accountProfilesRepository: repository,
+    );
+
+    final firstStream = controller.liveNowEventsStreamValue;
+    final secondStream = controller.liveNowEventsStreamValue;
+
+    expect(identical(firstStream, secondStream), isTrue);
+    expect(firstStream.value, isNull);
+
+    await controller.init();
+
+    expect(identical(firstStream, controller.liveNowEventsStreamValue), isTrue);
+    expect(controller.liveNowEventsStreamValue.value, isNull);
+    controller.onDispose();
+  });
+
   testWidgets(
       'DiscoveryScreen renders "Tocando agora" when live-now stream contains events',
       (tester) async {
