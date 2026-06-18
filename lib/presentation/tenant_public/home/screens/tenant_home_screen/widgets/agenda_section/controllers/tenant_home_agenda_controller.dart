@@ -238,6 +238,10 @@ class TenantHomeAgendaController extends Object
   @override
   String get publicDiscoveryFilterLogLabel => 'TenantHomeAgendaController';
 
+  bool get hasCanonicalDiscoveryFilterCatalog =>
+      _scheduleRepository.homeAgendaDiscoveryFilterCatalogStreamValue.value !=
+      null;
+
   @override
   void onPublicDiscoveryFilterSelectionChanged(
     DiscoveryFilterSelection selection,
@@ -975,7 +979,8 @@ class TenantHomeAgendaController extends Object
       discoveryFilterCatalogStreamValue.value,
       runtimeCatalog,
     )) {
-      _ifAlive(() => discoveryFilterCatalogStreamValue.addValue(runtimeCatalog));
+      _ifAlive(
+          () => discoveryFilterCatalogStreamValue.addValue(runtimeCatalog));
     }
 
     final selection = discoveryFilterSelectionStreamValue.value;

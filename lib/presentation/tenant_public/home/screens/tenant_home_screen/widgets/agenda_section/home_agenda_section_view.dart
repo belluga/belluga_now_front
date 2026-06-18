@@ -129,7 +129,9 @@ class _HomeAgendaSectionViewState extends State<HomeAgendaSectionView> {
         return StreamValueBuilder<DiscoveryFilterSelection>(
           streamValue: widget.controller.discoveryFilterSelectionStreamValue,
           builder: (context, selection) {
-            final showFilterPanel = catalog.filters.isNotEmpty;
+            final showFilterPanel =
+                widget.controller.hasCanonicalDiscoveryFilterCatalog &&
+                    catalog.filters.isNotEmpty;
 
             return widget.builder(
               context,

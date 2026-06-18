@@ -1170,7 +1170,9 @@ void main() {
         final catalog = _homeEventsFilterCatalog();
         final primaryFilter = catalog.filters.single;
         final controller = _buildAgendaController(
-          scheduleRepository: _FakeScheduleRepository(),
+          scheduleRepository: _FakeScheduleRepository(
+            homeAgendaRuntimeCatalog: catalog,
+          ),
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
           discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
@@ -3232,7 +3234,9 @@ void main() {
         final primaryFilter = catalog.filters.single;
         final controller = _buildAgendaController(
           scheduleRepository: ScheduleRepository(
-            backend: _ScrollableAgendaBackend(),
+            backend: _ScrollableAgendaBackend(
+              discoveryFilterCatalog: catalog,
+            ),
           ),
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
@@ -3322,6 +3326,137 @@ void main() {
           find.bySemanticsLabel('Painel de filtros de eventos'),
           findsOneWidget,
         );
+      },
+    );
+
+    testWidgets(
+      'home agenda keeps filter chrome hidden until the canonical runtime catalog is available',
+      (tester) async {
+        const baselineCatalog = DiscoveryFilterCatalog(
+          surface: 'home.events',
+          filters: <DiscoveryFilterCatalogItem>[
+            DiscoveryFilterCatalogItem(
+              key: 'artist',
+              label: 'Artistas',
+              entities: <String>{'event'},
+              types: <String>{'show'},
+              typesByEntity: <String, Set<String>>{
+                'event': <String>{'show'},
+              },
+            ),
+            DiscoveryFilterCatalogItem(
+              key: 'empty-type',
+              label: 'Tipo Vazio',
+              entities: <String>{'event'},
+              types: <String>{'empty-type'},
+              typesByEntity: <String, Set<String>>{
+                'event': <String>{'empty-type'},
+              },
+            ),
+          ],
+          typeOptionsByEntity: <String, List<DiscoveryFilterTypeOption>>{
+            'event': <DiscoveryFilterTypeOption>[
+              DiscoveryFilterTypeOption(
+                value: 'show',
+                label: 'Artistas',
+              ),
+              DiscoveryFilterTypeOption(
+                value: 'empty-type',
+                label: 'Tipo Vazio',
+              ),
+            ],
+          },
+        );
+        const runtimeCatalog = DiscoveryFilterCatalog(
+          surface: 'home.events',
+          filters: <DiscoveryFilterCatalogItem>[
+            DiscoveryFilterCatalogItem(
+              key: 'artist',
+              label: 'Artistas',
+              entities: <String>{'event'},
+              types: <String>{'show'},
+              typesByEntity: <String, Set<String>>{
+                'event': <String>{'show'},
+              },
+            ),
+          ],
+          typeOptionsByEntity: <String, List<DiscoveryFilterTypeOption>>{
+            'event': <DiscoveryFilterTypeOption>[
+              DiscoveryFilterTypeOption(
+                value: 'show',
+                label: 'Artistas',
+              ),
+            ],
+          },
+        );
+        final pendingFetch = Completer<void>();
+        final scheduleRepository = _FakeScheduleRepository(
+          pages: <int, List<EventModel>>{
+            1: <EventModel>[
+              _buildHomeAgendaEvent(
+                occurrenceId: '100000000000000000000001',
+                slug: 'runtime-catalog-home-event',
+                title: 'Evento Runtime',
+              ),
+            ],
+          },
+          homeAgendaRuntimeCatalog: runtimeCatalog,
+        )..nextFetchGate = pendingFetch;
+        final controller = _buildAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+            catalog: baselineCatalog,
+          ),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(
+            _buildAppData(
+              minKm: 1,
+              defaultKm: 5,
+              maxKm: 10,
+            ),
+          ),
+        );
+
+        addTearDown(controller.onDispose);
+
+        unawaited(controller.init());
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: HomeAgendaSectionView(
+                controller: controller,
+                builder: (context, slots) {
+                  return CustomScrollView(
+                    slivers: [
+                      ...slots.headerSlivers,
+                      SliverFillRemaining(child: slots.body),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        expect(
+          find.bySemanticsLabel('Painel de filtros de eventos'),
+          findsNothing,
+        );
+        expect(find.text('Tipo Vazio'), findsNothing);
+
+        pendingFetch.complete();
+        await tester.pumpAndSettle();
+
+        expect(
+          find.bySemanticsLabel('Painel de filtros de eventos'),
+          findsOneWidget,
+        );
+        expect(find.text('Artistas'), findsOneWidget);
+        expect(find.text('Tipo Vazio'), findsNothing);
       },
     );
 
@@ -3417,7 +3552,9 @@ void main() {
         final firstTaxonomyTerm = firstTaxonomyGroup.terms.single;
         final secondTaxonomyTerm = secondTaxonomyGroup.terms.single;
         final controller = _buildAgendaController(
-          scheduleRepository: _FakeScheduleRepository(),
+          scheduleRepository: _FakeScheduleRepository(
+            homeAgendaRuntimeCatalog: catalog,
+          ),
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
           discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
@@ -4291,6 +4428,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   _FakeScheduleRepository({
     this.pages = const <int, List<EventModel>>{},
     this.homeAgendaRuntimeFacets,
+    this.homeAgendaRuntimeCatalog,
   });
 
   @override
@@ -4308,6 +4446,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
 
   final Map<int, List<EventModel>> pages;
   final DiscoveryFilterRuntimeFacets? homeAgendaRuntimeFacets;
+  final DiscoveryFilterCatalog? homeAgendaRuntimeCatalog;
   int getEventsPageCallCount = 0;
   double? lastOriginLat;
   double? lastOriginLng;
@@ -4427,6 +4566,8 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     );
     homeAgendaDiscoveryFilterFacetsStreamValue
         .addValue(homeAgendaRuntimeFacets);
+    homeAgendaDiscoveryFilterCatalogStreamValue
+        .addValue(homeAgendaRuntimeCatalog);
     return events;
   }
 
@@ -4481,6 +4622,8 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     );
     homeAgendaDiscoveryFilterFacetsStreamValue
         .addValue(homeAgendaRuntimeFacets);
+    homeAgendaDiscoveryFilterCatalogStreamValue
+        .addValue(homeAgendaRuntimeCatalog);
     return nextEvents;
   }
 
@@ -5270,6 +5413,12 @@ class _ProductionLikePagedHomeAgendaBackend implements ScheduleBackendContract {
 }
 
 class _ScrollableAgendaBackend implements ScheduleBackendContract {
+  _ScrollableAgendaBackend({
+    this.discoveryFilterCatalog,
+  });
+
+  final DiscoveryFilterCatalog? discoveryFilterCatalog;
+
   @override
   Future<EventDTO?> fetchEventDetail({
     required String eventIdOrSlug,
@@ -5302,6 +5451,7 @@ class _ScrollableAgendaBackend implements ScheduleBackendContract {
         (index) => _eventDto(index: index),
       ),
       hasMore: false,
+      discoveryFilterCatalog: discoveryFilterCatalog,
     );
   }
 
