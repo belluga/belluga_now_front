@@ -80,7 +80,8 @@ void main() {
     );
   });
 
-  test('fetchFavorites falls back to target_path for legacy event favorites',
+  test(
+      'fetchFavorites leaves event target empty when canonical event path is absent',
       () async {
     final adapter = _FavoritesApiAdapter(
       omitFirstPageEventTargetPath: true,
@@ -95,10 +96,7 @@ void main() {
     final backend = LaravelFavoriteBackend(dio: dio);
     final favorites = await backend.fetchFavorites();
 
-    expect(
-      favorites.first.eventTargetPath,
-      '/agenda/evento/profile-1-show?occurrence=occ-live-1',
-    );
+    expect(favorites.first.eventTargetPath, isNull);
   });
 
   test(

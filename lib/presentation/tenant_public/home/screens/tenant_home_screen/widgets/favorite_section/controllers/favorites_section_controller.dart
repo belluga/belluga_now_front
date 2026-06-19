@@ -68,9 +68,13 @@ class FavoritesSectionController implements Disposable {
       return const FavoriteNavigationPrimary();
     }
 
-    final eventTargetPath = favorite.eventTargetPath?.trim();
-    if (eventTargetPath != null && eventTargetPath.isNotEmpty) {
-      return FavoriteNavigationPath(path: eventTargetPath);
+    if (favorite.haloState != FavoriteChipHaloState.none) {
+      final eventTargetPath = favorite.eventTargetPath?.trim();
+      if (eventTargetPath != null && eventTargetPath.isNotEmpty) {
+        return FavoriteNavigationPath(path: eventTargetPath);
+      }
+
+      return const FavoriteNavigationUnavailable();
     }
 
     final publicDetailPath = favorite.publicDetailPath?.trim();

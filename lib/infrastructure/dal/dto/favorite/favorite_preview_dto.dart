@@ -89,10 +89,7 @@ class FavoritePreviewDTO {
             (navigationKind == 'account_profile' ? navigationTargetPath : null))
         ?.toString()
         .trim();
-    final eventTargetPath = (navigation['event_target_path'] ??
-            (navigationKind == 'event' ? navigationTargetPath : null))
-        ?.toString()
-        .trim();
+    final eventTargetPath = navigation['event_target_path']?.toString().trim();
     final canOpenPublicDetail = navigation['can_open_public_detail'] == true ||
         target['can_open_public_detail'] == true;
 

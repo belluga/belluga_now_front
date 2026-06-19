@@ -185,6 +185,28 @@ void main() {
     );
   });
 
+  test(
+      'favorites section fails closed when an event-eligible favorite is missing the canonical event target path',
+      () async {
+    final controller = FavoritesSectionController(
+      favoriteRepository: _FakeFavoriteRepository(),
+      appDataRepository: _FakeAppDataRepository(),
+    );
+
+    final unavailableTarget = await controller.resolveNavigationTarget(
+      _favoriteResume(
+        title: 'Evento Sem Rota Canonica',
+        slug: 'evento-sem-rota-canonica',
+        targetType: 'account_profile',
+        canOpenPublicDetail: true,
+        publicDetailPath: '/parceiro/evento-sem-rota-canonica',
+        liveNowEventOccurrenceId: 'occ-live',
+      ),
+    );
+
+    expect(unavailableTarget, isA<FavoriteNavigationUnavailable>());
+  });
+
   test('favorites section publishes resolved navigation targets to the stream',
       () async {
     final controller = FavoritesSectionController(
@@ -256,6 +278,7 @@ void main() {
         canOpenPublicDetail: true,
         publicDetailPath: '/parceiro/evento',
         eventTargetPath: '/agenda/evento/evento?occurrence=occ-2',
+        liveNowEventOccurrenceId: 'occ-2',
       ),
     );
     final overwrittenTarget = controller.navigationTargetStreamValue.value;
