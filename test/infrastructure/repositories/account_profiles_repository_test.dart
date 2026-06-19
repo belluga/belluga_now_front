@@ -283,6 +283,75 @@ void main() {
     );
   });
 
+  test('resetPagedAccountProfilesState clears paired discovery filter streams',
+      () async {
+    const runtimeCatalog = DiscoveryFilterCatalog(
+      surface: 'discovery.account_profiles',
+      filters: <DiscoveryFilterCatalogItem>[
+        DiscoveryFilterCatalogItem(
+          key: 'artist',
+          label: 'Artistas',
+          entities: <String>{'account_profile'},
+          types: <String>{'artist'},
+          typesByEntity: <String, Set<String>>{
+            'account_profile': <String>{'artist'},
+          },
+        ),
+      ],
+      typeOptionsByEntity: <String, List<DiscoveryFilterTypeOption>>{
+        'account_profile': <DiscoveryFilterTypeOption>[
+          DiscoveryFilterTypeOption(
+            value: 'artist',
+            label: 'Artistas',
+          ),
+        ],
+      },
+    );
+    const runtimeFacets = DiscoveryFilterRuntimeFacets(
+      surface: 'discovery.account_profiles',
+      filterKeys: <String>{'artist'},
+      taxonomyOptionsByKey: <String, DiscoveryFilterTaxonomyGroupOption>{
+        'music': DiscoveryFilterTaxonomyGroupOption(
+          key: 'music',
+          label: 'Musica',
+          terms: <DiscoveryFilterTaxonomyTermOption>[
+            DiscoveryFilterTaxonomyTermOption(value: 'forro', label: 'Forro'),
+          ],
+        ),
+      },
+    );
+    final backend = _StubAccountProfilesBackend(
+      accountProfiles: [
+        buildAccountProfileModelFromPrimitives(
+          id: _generateMongoId(),
+          name: 'Artist One',
+          slug: 'artist-one',
+          type: 'artist',
+        ),
+      ],
+      discoveryFilterCatalog: runtimeCatalog,
+      discoveryFilterFacets: runtimeFacets,
+    );
+    final repository = AccountProfilesRepository(
+      backend: backend,
+      favoriteBackend: _StubFavoriteBackend(favorites: const []),
+      favoriteAccountProfileIds: const {},
+    );
+
+    await repository.loadAccountProfilesPage(
+      pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
+    );
+
+    expect(repository.publicDiscoveryFilterFacetsStreamValue.value, isNotNull);
+    expect(repository.publicDiscoveryFilterCatalogStreamValue.value, isNotNull);
+
+    repository.resetPagedAccountProfilesState();
+
+    expect(repository.publicDiscoveryFilterFacetsStreamValue.value, isNull);
+    expect(repository.publicDiscoveryFilterCatalogStreamValue.value, isNull);
+    expect(repository.pagedAccountProfilesStreamValue.value, isNull);
+  });
+
   test(
       'init loads favorite ids from backend favorites source without preloading full catalog',
       () async {

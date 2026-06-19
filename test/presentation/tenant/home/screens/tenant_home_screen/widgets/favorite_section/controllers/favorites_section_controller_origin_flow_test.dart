@@ -185,6 +185,89 @@ void main() {
     );
   });
 
+  test('favorites section publishes resolved navigation targets to the stream',
+      () async {
+    final controller = FavoritesSectionController(
+      favoriteRepository: _FakeFavoriteRepository(),
+      appDataRepository: _FakeAppDataRepository(),
+    );
+
+    await controller.requestNavigationTarget(
+      _favoriteResume(
+        title: 'Com Evento',
+        slug: 'com-evento',
+        targetType: 'account_profile',
+        canOpenPublicDetail: true,
+        publicDetailPath: '/parceiro/com-evento',
+        eventTargetPath: '/agenda/evento/com-evento?occurrence=occ-live',
+        liveNowEventOccurrenceId: 'occ-live',
+      ),
+    );
+
+    final streamTarget = controller.navigationTargetStreamValue.value;
+    expect(streamTarget, isA<FavoriteNavigationPath>());
+    expect(
+      (streamTarget as FavoriteNavigationPath).path,
+      '/agenda/evento/com-evento?occurrence=occ-live',
+    );
+
+    controller.onDispose();
+  });
+
+  test('favorites section clears and overwrites navigation stream state',
+      () async {
+    final controller = FavoritesSectionController(
+      favoriteRepository: _FakeFavoriteRepository(),
+      appDataRepository: _FakeAppDataRepository(),
+    );
+
+    await controller.requestNavigationTarget(
+      _favoriteResume(
+        title: 'Primeiro',
+        slug: 'primeiro',
+        targetType: 'account_profile',
+        canOpenPublicDetail: true,
+        publicDetailPath: '/parceiro/primeiro',
+      ),
+    );
+    expect(controller.navigationTargetStreamValue.value, isNotNull);
+
+    controller.clearNavigationTarget();
+    expect(controller.navigationTargetStreamValue.value, isNull);
+
+    await controller.requestNavigationTarget(
+      _favoriteResume(
+        title: 'Segundo',
+        slug: 'segundo',
+        targetType: 'account_profile',
+        canOpenPublicDetail: true,
+        publicDetailPath: '/parceiro/segundo',
+      ),
+    );
+    final secondTarget = controller.navigationTargetStreamValue.value;
+    expect(secondTarget, isA<FavoriteNavigationPath>());
+    expect((secondTarget as FavoriteNavigationPath).path, '/parceiro/segundo');
+
+    await controller.requestNavigationTarget(
+      _favoriteResume(
+        title: 'Evento',
+        slug: 'evento',
+        targetType: 'account_profile',
+        canOpenPublicDetail: true,
+        publicDetailPath: '/parceiro/evento',
+        eventTargetPath: '/agenda/evento/evento?occurrence=occ-2',
+      ),
+    );
+    final overwrittenTarget = controller.navigationTargetStreamValue.value;
+    expect(overwrittenTarget, isA<FavoriteNavigationPath>());
+    expect(
+      (overwrittenTarget as FavoriteNavigationPath).path,
+      '/agenda/evento/evento?occurrence=occ-2',
+    );
+
+    controller.onDispose();
+  });
+
   test(
       'favorites section blocks unavailable favorites instead of falling back to guessed search navigation',
       () async {

@@ -298,8 +298,7 @@ abstract class AccountProfilesRepositoryContract {
           pagedAccountProfilesResultFromRaw(
             profiles: currentProfiles,
             hasMore: false,
-            discoveryFilterFacets:
-                publicDiscoveryFilterFacetsStreamValue.value,
+            discoveryFilterFacets: publicDiscoveryFilterFacetsStreamValue.value,
             discoveryFilterCatalog:
                 publicDiscoveryFilterCatalogStreamValue.value,
           ),
@@ -349,6 +348,7 @@ abstract class AccountProfilesRepositoryContract {
       ),
     );
     publicDiscoveryFilterFacetsStreamValue.addValue(null);
+    publicDiscoveryFilterCatalogStreamValue.addValue(null);
   }
 
   List<AccountProfileModel> _filterDiscoveryMvpProfiles(

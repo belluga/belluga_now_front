@@ -80,6 +80,27 @@ void main() {
     );
   });
 
+  test('fetchFavorites falls back to target_path for legacy event favorites',
+      () async {
+    final adapter = _FavoritesApiAdapter(
+      omitFirstPageEventTargetPath: true,
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+
+    GetIt.I.registerSingleton<AuthRepositoryContract<UserContract>>(
+      _FakeAuthRepository(userTokenValue: 'test-token'),
+    );
+    GetIt.I.registerSingleton<AppData>(_buildAppData());
+
+    final backend = LaravelFavoriteBackend(dio: dio);
+    final favorites = await backend.fetchFavorites();
+
+    expect(
+      favorites.first.eventTargetPath,
+      '/agenda/evento/profile-1-show?occurrence=occ-live-1',
+    );
+  });
+
   test('fetchFavorites bootstraps token when initially missing', () async {
     final adapter = _FavoritesApiAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
@@ -185,7 +206,12 @@ class _RecordedRequest {
 }
 
 class _FavoritesApiAdapter implements HttpClientAdapter {
+  _FavoritesApiAdapter({
+    this.omitFirstPageEventTargetPath = false,
+  });
+
   final List<_RecordedRequest> requests = <_RecordedRequest>[];
+  final bool omitFirstPageEventTargetPath;
 
   @override
   void close({bool force = false}) {}
@@ -257,8 +283,9 @@ class _FavoritesApiAdapter implements HttpClientAdapter {
                 'target_path':
                     '/agenda/evento/profile-1-show?occurrence=occ-live-1',
                 'profile_target_path': '/parceiro/profile-1',
-                'event_target_path':
-                    '/agenda/evento/profile-1-show?occurrence=occ-live-1',
+                if (!omitFirstPageEventTargetPath)
+                  'event_target_path':
+                      '/agenda/evento/profile-1-show?occurrence=occ-live-1',
                 'event_target_slug': 'profile-1-show',
                 'event_occurrence_id': 'occ-live-1',
                 'can_open_public_detail': true,

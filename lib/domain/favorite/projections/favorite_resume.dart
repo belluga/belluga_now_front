@@ -122,6 +122,12 @@ class FavoriteResume {
     return FavoriteChipHaloState.none;
   }
 
+  /// Display-only compatibility factory.
+  ///
+  /// Use `FavoritePreviewDTO.toResume()` for navigation-capable favorites,
+  /// because the legacy `Favorite` domain object does not carry the routed
+  /// public-detail / event-target snapshot fields.
+  @Deprecated('Use FavoritePreviewDTO.toResume for navigation-capable data.')
   factory FavoriteResume.fromFavorite(Favorite favorite) {
     return FavoriteResume(
       titleValue: favorite.titleValue,
