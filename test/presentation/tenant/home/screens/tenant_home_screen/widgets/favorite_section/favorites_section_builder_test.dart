@@ -149,6 +149,32 @@ class _RecordingStackRouter extends Mock implements StackRouter {
   }
 }
 
+const double _avatarFrameSize = 72;
+
+ThemeData _testTheme() => ThemeData(
+      useMaterial3: true,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xFF006D77),
+        brightness: Brightness.light,
+      ),
+    );
+
+Widget _favoritesHarness({
+  required FavoritesSectionController controller,
+  required StackRouter router,
+}) {
+  return StackRouterScope(
+    controller: router,
+    stateHash: 0,
+    child: MaterialApp(
+      theme: _testTheme(),
+      home: Scaffold(
+        body: FavoritesSectionView(controller: controller),
+      ),
+    ),
+  );
+}
+
 void main() {
   setUpAll(() {
     HttpOverrides.global = _TestHttpOverrides();
@@ -186,15 +212,7 @@ void main() {
     final router = _RecordingStackRouter();
 
     await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: Scaffold(
-            body: FavoritesSectionView(controller: controller),
-          ),
-        ),
-      ),
+      _favoritesHarness(controller: controller, router: router),
     );
     await tester.pump();
 
@@ -242,15 +260,7 @@ void main() {
     final router = _RecordingStackRouter();
 
     await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: Scaffold(
-            body: FavoritesSectionView(controller: controller),
-          ),
-        ),
-      ),
+      _favoritesHarness(controller: controller, router: router),
     );
     await tester.pump();
 
@@ -275,15 +285,7 @@ void main() {
     final initFuture = controller.init();
 
     await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: Scaffold(
-            body: FavoritesSectionView(controller: controller),
-          ),
-        ),
-      ),
+      _favoritesHarness(controller: controller, router: router),
     );
     await tester.pump();
 
@@ -320,15 +322,7 @@ void main() {
     final router = _RecordingStackRouter();
 
     await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: Scaffold(
-            body: FavoritesSectionView(controller: controller),
-          ),
-        ),
-      ),
+      _favoritesHarness(controller: controller, router: router),
     );
     await tester.pump();
 
@@ -348,7 +342,7 @@ void main() {
   });
 
   testWidgets(
-      'favorites view keeps label baselines aligned across halo and non-halo chips',
+      'favorites view uses accent-family upcoming halo and stronger live halo',
       (tester) async {
     final controller = FavoritesSectionController(
       favoriteRepository: _FakeFavoriteRepository(
@@ -356,6 +350,86 @@ void main() {
           _favoriteResume(
             title: 'Ao Vivo',
             liveNowEventOccurrenceId: 'occ-live',
+          ),
+          _favoriteResume(
+            title: 'Tem Evento',
+            nextEventOccurrenceAt: DateTime(2026, 4, 4, 20),
+          ),
+        ],
+      ),
+      appDataRepository: _FakeAppDataRepository(),
+    );
+    await controller.init();
+
+    final router = _RecordingStackRouter();
+    final colorScheme = _testTheme().colorScheme;
+
+    await tester.pumpWidget(
+      _favoritesHarness(controller: controller, router: router),
+    );
+    await tester.pump();
+
+    final liveDecoration = _haloDecorationFor(
+      tester,
+      'Ao Vivo, TOCANDO AGORA',
+    );
+    final upcomingDecoration = _haloDecorationFor(
+      tester,
+      'Tem Evento, TEM EVENTO',
+    );
+    final liveBorder = liveDecoration.border! as Border;
+    final upcomingBorder = upcomingDecoration.border! as Border;
+    final liveShadow = liveDecoration.boxShadow!.single;
+    final upcomingShadow = upcomingDecoration.boxShadow!.single;
+
+    expect(
+      liveDecoration.color,
+      colorScheme.primary.withValues(alpha: 0.12),
+    );
+    expect(
+      upcomingDecoration.color,
+      colorScheme.secondary.withValues(alpha: 0.10),
+    );
+    expect(
+      liveBorder.top.color,
+      colorScheme.primary.withValues(alpha: 0.95),
+    );
+    expect(
+      upcomingBorder.top.color,
+      colorScheme.secondary.withValues(alpha: 0.88),
+    );
+    expect(liveBorder.top.width, 2.2);
+    expect(upcomingBorder.top.width, 1.5);
+    expect(
+      liveShadow.color,
+      colorScheme.primary.withValues(alpha: 0.30),
+    );
+    expect(
+      upcomingShadow.color,
+      colorScheme.secondary.withValues(alpha: 0.18),
+    );
+    expect(liveShadow.blurRadius, 16);
+    expect(upcomingShadow.blurRadius, 10);
+    expect(liveShadow.spreadRadius, 1.5);
+    expect(upcomingShadow.spreadRadius, 0.4);
+    expect(liveBorder.top.width, greaterThan(upcomingBorder.top.width));
+    expect(liveShadow.blurRadius, greaterThan(upcomingShadow.blurRadius));
+    expect(liveShadow.spreadRadius, greaterThan(upcomingShadow.spreadRadius));
+  });
+
+  testWidgets(
+      'favorites view keeps mixed-row frames and label baselines aligned across live upcoming and no-halo chips',
+      (tester) async {
+    final controller = FavoritesSectionController(
+      favoriteRepository: _FakeFavoriteRepository(
+        favoriteResumes: [
+          _favoriteResume(
+            title: 'Ao Vivo',
+            liveNowEventOccurrenceId: 'occ-live',
+          ),
+          _favoriteResume(
+            title: 'Tem Evento',
+            nextEventOccurrenceAt: DateTime(2026, 4, 4, 20),
           ),
           _favoriteResume(title: 'Sem Evento'),
         ],
@@ -367,23 +441,74 @@ void main() {
     final router = _RecordingStackRouter();
 
     await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: Scaffold(
-            body: FavoritesSectionView(controller: controller),
-          ),
-        ),
-      ),
+      _favoritesHarness(controller: controller, router: router),
     );
     await tester.pump();
 
+    final liveFrameRect = _avatarFrameRectFor(
+      tester,
+      'Ao Vivo, TOCANDO AGORA',
+    );
+    final upcomingFrameRect = _avatarFrameRectFor(
+      tester,
+      'Tem Evento, TEM EVENTO',
+    );
+    final noEventFrameRect = _avatarFrameRectFor(tester, 'Sem Evento');
     final liveLabelTop = tester.getTopLeft(find.text('Ao Vivo')).dy;
+    final upcomingLabelTop = tester.getTopLeft(find.text('Tem Evento')).dy;
     final noEventLabelTop = tester.getTopLeft(find.text('Sem Evento')).dy;
 
+    expect(liveFrameRect.size, noEventFrameRect.size);
+    expect(upcomingFrameRect.size, noEventFrameRect.size);
+    expect(
+      (liveFrameRect.center.dy - noEventFrameRect.center.dy).abs(),
+      lessThan(0.1),
+    );
+    expect(
+      (upcomingFrameRect.center.dy - noEventFrameRect.center.dy).abs(),
+      lessThan(0.1),
+    );
     expect((liveLabelTop - noEventLabelTop).abs(), lessThan(0.1));
+    expect((upcomingLabelTop - noEventLabelTop).abs(), lessThan(0.1));
   });
+}
+
+BoxDecoration _haloDecorationFor(
+  WidgetTester tester,
+  String semanticsLabel,
+) {
+  final chipFinder = find.ancestor(
+    of: find.bySemanticsLabel(semanticsLabel),
+    matching: find.byType(FavoriteChip),
+  );
+  final haloFinder = find.descendant(
+    of: chipFinder,
+    matching: find.byWidgetPredicate(
+      (widget) => widget is Container && widget.decoration is BoxDecoration,
+    ),
+  );
+  return tester.widget<Container>(haloFinder.first).decoration!
+      as BoxDecoration;
+}
+
+Rect _avatarFrameRectFor(
+  WidgetTester tester,
+  String semanticsLabel,
+) {
+  final chipFinder = find.ancestor(
+    of: find.bySemanticsLabel(semanticsLabel),
+    matching: find.byType(FavoriteChip),
+  );
+  final frameFinder = find.descendant(
+    of: chipFinder,
+    matching: find.byWidgetPredicate(
+      (widget) =>
+          widget is SizedBox &&
+          widget.width == _avatarFrameSize &&
+          widget.height == _avatarFrameSize,
+    ),
+  );
+  return tester.getRect(frameFinder.first);
 }
 
 FavoriteResume _favoriteResume({

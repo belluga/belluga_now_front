@@ -244,29 +244,32 @@ class FavoriteChip extends StatelessWidget {
       case FavoriteChipHaloState.liveNow:
         return BoxDecoration(
           shape: BoxShape.circle,
+          color: colorScheme.primary.withValues(alpha: 0.12),
           border: Border.all(
-            color: colorScheme.primary.withValues(alpha: 0.55),
-            width: 1.75,
+            color: colorScheme.primary.withValues(alpha: 0.95),
+            width: 2.2,
           ),
           boxShadow: [
             BoxShadow(
-              color: colorScheme.primary.withValues(alpha: 0.22),
-              blurRadius: 12,
-              spreadRadius: 1,
+              color: colorScheme.primary.withValues(alpha: 0.30),
+              blurRadius: 16,
+              spreadRadius: 1.5,
             ),
           ],
         );
       case FavoriteChipHaloState.upcoming:
         return BoxDecoration(
           shape: BoxShape.circle,
+          color: colorScheme.secondary.withValues(alpha: 0.10),
           border: Border.all(
-            color: colorScheme.outlineVariant.withValues(alpha: 0.85),
-            width: 1.2,
+            color: colorScheme.secondary.withValues(alpha: 0.88),
+            width: 1.5,
           ),
           boxShadow: [
             BoxShadow(
-              color: colorScheme.primary.withValues(alpha: 0.1),
-              blurRadius: 8,
+              color: colorScheme.secondary.withValues(alpha: 0.18),
+              blurRadius: 10,
+              spreadRadius: 0.4,
             ),
           ],
         );
