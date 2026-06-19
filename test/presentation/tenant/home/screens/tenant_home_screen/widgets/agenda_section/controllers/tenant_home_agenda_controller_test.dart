@@ -390,7 +390,6 @@ void main() {
       controller.setRadiusMeters(4000);
       controller.setRadiusMeters(5000);
       controller.setRadiusMeters(6000);
-      await Future<void>.delayed(const Duration(milliseconds: 20));
       expect(
         scheduleRepository.getEventsPageCallCount,
         1,
@@ -434,7 +433,6 @@ void main() {
       controller.setRadiusMeters(4000);
       expect(controller.isRadiusRefreshLoadingStreamValue.value, isTrue);
 
-      await Future<void>.delayed(const Duration(milliseconds: 10));
       expect(
         scheduleRepository.getEventsPageCallCount,
         1,
@@ -3646,8 +3644,9 @@ void main() {
         final transitions = <String>[];
         final canonicalReadySnapshots = <List<String>>[];
         addTearDown(controller.onDispose);
-        final catalogSubscription =
-            controller.discoveryFilterCatalogStreamValue.stream.listen((catalog) {
+        final catalogSubscription = controller
+            .discoveryFilterCatalogStreamValue.stream
+            .listen((catalog) {
           transitions.add(
             'catalog:${catalog.filters.map((item) => item.key).join(",")}',
           );
@@ -4260,7 +4259,6 @@ class _CountingHomeAgendaController extends TenantHomeAgendaController {
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
           appDataRepository: appDataRepository,
-          userLocationRepository: _FakeUserLocationRepository(),
           locationOriginService: LocationOriginService(
             appDataRepository: appDataRepository,
             userLocationRepository: _FakeUserLocationRepository(),

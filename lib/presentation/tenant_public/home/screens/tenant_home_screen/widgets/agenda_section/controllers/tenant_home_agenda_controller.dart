@@ -13,7 +13,6 @@ import 'package:belluga_now/domain/repositories/invites_repository_contract.dart
 import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
@@ -46,7 +45,6 @@ class TenantHomeAgendaController extends Object
     InvitesRepositoryContract? invitesRepository,
     AppDataRepositoryContract? appDataRepository,
     AuthRepositoryContract? authRepository,
-    UserLocationRepositoryContract? userLocationRepository,
     ProximityPreferencesRepositoryContract? proximityPreferencesRepository,
     LocationOriginServiceContract? locationOriginService,
     TelemetryRepositoryContract? telemetryRepository,

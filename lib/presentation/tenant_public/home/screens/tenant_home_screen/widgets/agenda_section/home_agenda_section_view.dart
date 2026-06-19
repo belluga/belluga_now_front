@@ -108,8 +108,14 @@ class _HomeAgendaSectionViewState extends State<HomeAgendaSectionView> {
       return 0.0;
     }
 
+    // Some delayed-attach/test-double controllers can report `hasClients`
+    // before exposing concrete positions. Fall back safely in that edge case.
     if (controller.positions.isEmpty) {
-      return controller.offset;
+      try {
+        return controller.offset;
+      } on StateError catch (_) {
+        return 0.0;
+      }
     }
 
     var resolvedPixels = 0.0;
@@ -131,7 +137,8 @@ class _HomeAgendaSectionViewState extends State<HomeAgendaSectionView> {
               widget.controller.hasCanonicalDiscoveryFilterCatalogStreamValue,
           builder: (context, hasCanonicalCatalog) {
             return StreamValueBuilder<DiscoveryFilterSelection>(
-              streamValue: widget.controller.discoveryFilterSelectionStreamValue,
+              streamValue:
+                  widget.controller.discoveryFilterSelectionStreamValue,
               builder: (context, selection) {
                 final showFilterPanel =
                     hasCanonicalCatalog && catalog.filters.isNotEmpty;
