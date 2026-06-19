@@ -101,6 +101,99 @@ void main() {
     );
   });
 
+  test(
+      'fetchFavorites falls back to target public detail when navigation profile path is absent',
+      () async {
+    final adapter = _FavoritesApiAdapter(
+      firstPageNavigationRemovals: const <String>{'profile_target_path'},
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+
+    GetIt.I.registerSingleton<AuthRepositoryContract<UserContract>>(
+      _FakeAuthRepository(userTokenValue: 'test-token'),
+    );
+    GetIt.I.registerSingleton<AppData>(_buildAppData());
+
+    final backend = LaravelFavoriteBackend(dio: dio);
+    final favorites = await backend.fetchFavorites();
+
+    expect(favorites.first.publicDetailPath, '/parceiro/profile-1');
+  });
+
+  test(
+      'fetchFavorites falls back to target_path for account-profile navigation when explicit public detail path is absent',
+      () async {
+    final adapter = _FavoritesApiAdapter(
+      firstPageNavigationOverrides: const <String, Object?>{
+        'kind': 'account_profile',
+        'target_path': '/parceiro/profile-1-target',
+      },
+      firstPageTargetRemovals: const <String>{'public_detail_path'},
+      firstPageNavigationRemovals: const <String>{
+        'event_target_path',
+        'profile_target_path',
+      },
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+
+    GetIt.I.registerSingleton<AuthRepositoryContract<UserContract>>(
+      _FakeAuthRepository(userTokenValue: 'test-token'),
+    );
+    GetIt.I.registerSingleton<AppData>(_buildAppData());
+
+    final backend = LaravelFavoriteBackend(dio: dio);
+    final favorites = await backend.fetchFavorites();
+
+    expect(favorites.first.publicDetailPath, '/parceiro/profile-1-target');
+    expect(favorites.first.eventTargetPath, isNull);
+  });
+
+  test(
+      'fetchFavorites honors public detail access when only navigation advertises the capability',
+      () async {
+    final adapter = _FavoritesApiAdapter(
+      firstPageTargetOverrides: const <String, Object?>{
+        'can_open_public_detail': false,
+      },
+      firstPageNavigationOverrides: const <String, Object?>{
+        'can_open_public_detail': true,
+      },
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+
+    GetIt.I.registerSingleton<AuthRepositoryContract<UserContract>>(
+      _FakeAuthRepository(userTokenValue: 'test-token'),
+    );
+    GetIt.I.registerSingleton<AppData>(_buildAppData());
+
+    final backend = LaravelFavoriteBackend(dio: dio);
+    final favorites = await backend.fetchFavorites();
+
+    expect(favorites.first.canOpenPublicDetail, isTrue);
+  });
+
+  test(
+      'fetchFavorites honors public detail access when only target metadata advertises the capability',
+      () async {
+    final adapter = _FavoritesApiAdapter(
+      firstPageTargetOverrides: const <String, Object?>{
+        'can_open_public_detail': true,
+      },
+      firstPageNavigationRemovals: const <String>{'can_open_public_detail'},
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+
+    GetIt.I.registerSingleton<AuthRepositoryContract<UserContract>>(
+      _FakeAuthRepository(userTokenValue: 'test-token'),
+    );
+    GetIt.I.registerSingleton<AppData>(_buildAppData());
+
+    final backend = LaravelFavoriteBackend(dio: dio);
+    final favorites = await backend.fetchFavorites();
+
+    expect(favorites.first.canOpenPublicDetail, isTrue);
+  });
+
   test('fetchFavorites bootstraps token when initially missing', () async {
     final adapter = _FavoritesApiAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
@@ -208,10 +301,18 @@ class _RecordedRequest {
 class _FavoritesApiAdapter implements HttpClientAdapter {
   _FavoritesApiAdapter({
     this.omitFirstPageEventTargetPath = false,
+    this.firstPageTargetOverrides = const <String, Object?>{},
+    this.firstPageNavigationOverrides = const <String, Object?>{},
+    this.firstPageTargetRemovals = const <String>{},
+    this.firstPageNavigationRemovals = const <String>{},
   });
 
   final List<_RecordedRequest> requests = <_RecordedRequest>[];
   final bool omitFirstPageEventTargetPath;
+  final Map<String, Object?> firstPageTargetOverrides;
+  final Map<String, Object?> firstPageNavigationOverrides;
+  final Set<String> firstPageTargetRemovals;
+  final Set<String> firstPageNavigationRemovals;
 
   @override
   void close({bool force = false}) {}
@@ -252,6 +353,36 @@ class _FavoritesApiAdapter implements HttpClientAdapter {
 
     Map<String, Object?> payload;
     if (pageNumber == 1) {
+      final firstPageTarget = <String, Object?>{
+        'id': 'profile-1',
+        'slug': 'profile-1',
+        'display_name': 'Profile One',
+        'avatar_url': 'https://cdn.test/profile-1.png',
+        'cover_url': 'https://cdn.test/profile-1-cover.png',
+        'profile_type': 'artist',
+        'can_open_public_detail': true,
+        'public_detail_path': '/parceiro/profile-1',
+      }
+        ..removeWhere((key, _) => firstPageTargetRemovals.contains(key))
+        ..addAll(firstPageTargetOverrides);
+      final firstPageNavigation = <String, Object?>{
+        'kind': 'event',
+        'target_slug': 'profile-1-show',
+        'target_path': '/agenda/evento/profile-1-show?occurrence=occ-live-1',
+        'profile_target_path': '/parceiro/profile-1',
+        'event_target_path':
+            '/agenda/evento/profile-1-show?occurrence=occ-live-1',
+        'event_target_slug': 'profile-1-show',
+        'event_occurrence_id': 'occ-live-1',
+        'can_open_public_detail': true,
+      };
+      if (omitFirstPageEventTargetPath) {
+        firstPageNavigation.remove('event_target_path');
+      }
+      firstPageNavigation
+        ..removeWhere((key, _) => firstPageNavigationRemovals.contains(key))
+        ..addAll(firstPageNavigationOverrides);
+
       payload = {
         'data': {
           'items': [
@@ -260,16 +391,7 @@ class _FavoritesApiAdapter implements HttpClientAdapter {
               'target_type': 'account_profile',
               'target_id': 'profile-1',
               'favorited_at': '2026-03-20T10:00:00Z',
-              'target': {
-                'id': 'profile-1',
-                'slug': 'profile-1',
-                'display_name': 'Profile One',
-                'avatar_url': 'https://cdn.test/profile-1.png',
-                'cover_url': 'https://cdn.test/profile-1-cover.png',
-                'profile_type': 'artist',
-                'can_open_public_detail': true,
-                'public_detail_path': '/parceiro/profile-1',
-              },
+              'target': firstPageTarget,
               'snapshot': {
                 'next_event_occurrence_id': 'occ-1',
                 'next_event_occurrence_at': '2026-03-22T20:00:00Z',
@@ -277,19 +399,7 @@ class _FavoritesApiAdapter implements HttpClientAdapter {
                 'live_now_event_occurrence_id': 'occ-live-1',
                 'live_now_event_occurrence_at': '2026-03-20T20:00:00Z',
               },
-              'navigation': {
-                'kind': 'event',
-                'target_slug': 'profile-1-show',
-                'target_path':
-                    '/agenda/evento/profile-1-show?occurrence=occ-live-1',
-                'profile_target_path': '/parceiro/profile-1',
-                if (!omitFirstPageEventTargetPath)
-                  'event_target_path':
-                      '/agenda/evento/profile-1-show?occurrence=occ-live-1',
-                'event_target_slug': 'profile-1-show',
-                'event_occurrence_id': 'occ-live-1',
-                'can_open_public_detail': true,
-              },
+              'navigation': firstPageNavigation,
             },
           ],
           'has_more': true,

@@ -259,6 +259,39 @@ void main() {
     );
   });
 
+  test('runtime facets emptiness depends on both primary and taxonomy payloads',
+      () {
+    expect(
+      const DiscoveryFilterRuntimeFacets(surface: 'home.events').isEmpty,
+      isTrue,
+    );
+    expect(
+      const DiscoveryFilterRuntimeFacets(
+        surface: 'home.events',
+        filterKeys: <String>{'show'},
+      ).isEmpty,
+      isFalse,
+    );
+    expect(
+      const DiscoveryFilterRuntimeFacets(
+        surface: 'home.events',
+        taxonomyOptionsByKey: <String, DiscoveryFilterTaxonomyGroupOption>{
+          'mood': DiscoveryFilterTaxonomyGroupOption(
+            key: 'mood',
+            label: 'Mood',
+            terms: <DiscoveryFilterTaxonomyTermOption>[
+              DiscoveryFilterTaxonomyTermOption(
+                value: 'night',
+                label: 'Night',
+              ),
+            ],
+          ),
+        },
+      ).isEmpty,
+      isFalse,
+    );
+  });
+
   test('selection toggles single primary and multi taxonomy terms', () {
     final selection = const DiscoveryFilterSelection()
         .togglePrimary('events')
