@@ -1,3 +1,4 @@
+import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
@@ -155,6 +156,80 @@ void main() {
         confirmedOnly: confirmedOnly,
       ),
       hasLength(2),
+    );
+  });
+
+  test(
+      'loadMoreHomeAgenda preserves the current runtime catalog when next page omits it',
+      () async {
+    const runtimeCatalog = DiscoveryFilterCatalog(
+      surface: 'home.events',
+      filters: <DiscoveryFilterCatalogItem>[
+        DiscoveryFilterCatalogItem(
+          key: 'artist',
+          label: 'Artistas',
+          entities: <String>{'event'},
+          types: <String>{'show'},
+          typesByEntity: <String, Set<String>>{
+            'event': <String>{'show'},
+          },
+        ),
+      ],
+      typeOptionsByEntity: <String, List<DiscoveryFilterTypeOption>>{
+        'event': <DiscoveryFilterTypeOption>[
+          DiscoveryFilterTypeOption(
+            value: 'show',
+            label: 'Artistas',
+          ),
+        ],
+      },
+    );
+    final backend = _CapturingScheduleBackend(
+      pagedResponses: [
+        EventPageDTO(
+          events: [
+            _buildEventDto(
+              eventId: '507f1f77bcf86cd799439191',
+              occurrenceId: '507f1f77bcf86cd799439192',
+            ),
+          ],
+          hasMore: true,
+          discoveryFilterCatalog: runtimeCatalog,
+        ),
+        EventPageDTO(
+          events: [
+            _buildEventDto(
+              eventId: '507f1f77bcf86cd799439193',
+              occurrenceId: '507f1f77bcf86cd799439194',
+            ),
+          ],
+          hasMore: false,
+          discoveryFilterCatalog: null,
+        ),
+      ],
+    );
+    final repository = ScheduleRepository(backend: backend);
+    final showPastOnly = ScheduleRepoBool.fromRaw(false, defaultValue: false);
+    final searchQuery = ScheduleRepoString.fromRaw('', defaultValue: '');
+    final confirmedOnly = ScheduleRepoBool.fromRaw(false, defaultValue: false);
+
+    await repository.loadHomeAgenda(
+      showPastOnly: showPastOnly,
+      searchQuery: searchQuery,
+      confirmedOnly: confirmedOnly,
+    );
+    await repository.loadMoreHomeAgenda(
+      showPastOnly: showPastOnly,
+      searchQuery: searchQuery,
+      confirmedOnly: confirmedOnly,
+    );
+
+    expect(repository.homeAgendaDiscoveryFilterCatalogStreamValue.value,
+        isNotNull);
+    expect(
+      repository.homeAgendaDiscoveryFilterCatalogStreamValue.value!.filters
+          .map((item) => item.key),
+      ['artist'],
     );
   });
 

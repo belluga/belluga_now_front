@@ -196,6 +196,42 @@ void main() {
     );
   });
 
+  test(
+      'loadResolvedAccountProfile omits the gallery module when capability data has no gallery groups',
+      () async {
+    await _registerGalleryAppData(
+      galleryEnabled: true,
+      hasBio: true,
+    );
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: _FakeAccountProfilesRepository(),
+    );
+    final profile = buildAccountProfileModelFromPrimitives(
+      id: '507f1f77bcf86cd799439011',
+      name: 'Cafe de la Musique',
+      slug: 'cafe-de-la-musique',
+      type: 'artist',
+      bio: '<p>Bio sem galeria</p>',
+      galleryGroups: const [],
+    );
+
+    await controller.loadResolvedAccountProfile(profile);
+
+    final aboutTab = controller.profileConfigStreamValue.value?.tabs.firstWhere(
+      (tab) => tab.title.contains('Sobre'),
+    );
+
+    expect(aboutTab, isNotNull);
+    expect(
+      aboutTab?.modules.map((module) => module.id),
+      isNot(contains(ProfileModuleId.photoGallery)),
+    );
+    expect(
+      controller.moduleDataStreamValue.value[ProfileModuleId.photoGallery],
+      isNull,
+    );
+  });
+
   test('controller resolves invite status and distance for agenda cards',
       () async {
     final accountProfileRepository = _FakeAccountProfilesRepository();
@@ -388,6 +424,8 @@ Future<void> _registerReferenceAppData({
 
 Future<void> _registerGalleryAppData({
   required bool galleryEnabled,
+  bool hasBio = false,
+  bool hasContent = false,
 }) async {
   await GetIt.I.reset(dispose: false);
   GetIt.I.registerSingleton<AppData>(
@@ -405,7 +443,8 @@ Future<void> _registerGalleryAppData({
               'is_favoritable': true,
               'is_poi_enabled': false,
               'has_events': false,
-              'has_bio': false,
+              'has_bio': hasBio,
+              'has_content': hasContent,
               'has_gallery': galleryEnabled,
             },
           },
