@@ -223,22 +223,9 @@ jobs:
       - name: Flutter dependencies
         run: fvm flutter pub get
 
-      - name: Prepare analyzer rule matrix fixture workspace
+      - name: Flutter promotion architecture gate (shared wrapper)
         if: steps.architecture_gate.outputs.enabled == 'true'
-        run: |
-          fvm dart pub get --directory tool/belluga_analysis_plugin/test_fixtures/lint_matrix
-
-      - name: Validate analyzer plugin rule matrix
-        if: steps.architecture_gate.outputs.enabled == 'true'
-        run: |
-          set -euo pipefail
-          bash tool/belluga_analysis_plugin/bin/validate_rule_matrix.sh
-
-      - name: Flutter architecture analyzer plugin gate (blocking)
-        if: steps.architecture_gate.outputs.enabled == 'true'
-        run: |
-          set -euo pipefail
-          fvm dart analyze --format machine
+        run: bash tool/ci/run_stage_promotion_architecture_gate.sh "${{ steps.lane_defines.outputs.lane }}"
 
       - name: Skip architecture gate on DEV/non-promotion contexts
         if: steps.architecture_gate.outputs.enabled != 'true'
@@ -246,8 +233,7 @@ jobs:
           echo "SKIP: architecture gate runs only from PR to stage/main."
 
       - name: Flutter unit/widget tests
-        run: |
-          bash tool/run_workspace_flutter_tests.sh "${{ steps.lane_defines.outputs.defines_file }}"
+        run: bash tool/ci/run_workspace_test_contract.sh "${{ steps.lane_defines.outputs.defines_file }}"
 
       - name: Build web artifact
         env:

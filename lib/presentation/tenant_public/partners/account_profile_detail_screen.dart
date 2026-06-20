@@ -2537,7 +2537,7 @@ class _AccountProfileDetailScreenState
                         top: 8,
                         right: 8,
                         child: IconButton.filledTonal(
-                          onPressed: () => Navigator.of(dialogContext).pop(),
+                          onPressed: () => dialogContext.router.maybePop(),
                           tooltip: 'Fechar galeria',
                           icon: const Icon(Icons.close),
                         ),

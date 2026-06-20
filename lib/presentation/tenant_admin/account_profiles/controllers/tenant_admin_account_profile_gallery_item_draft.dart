@@ -37,21 +37,24 @@ class TenantAdminAccountProfileGalleryItemDraft {
   final XFile? uploadFile;
 
   String? get previewUrl {
-    final thumb = thumbUrl?.trim();
-    if (thumb != null && thumb.isNotEmpty) {
-      return thumb;
+    final image = imageUrl?.trim();
+    if (image != null && image.isNotEmpty) {
+      return image;
     }
     final card = cardUrl?.trim();
     if (card != null && card.isNotEmpty) {
       return card;
     }
-    final image = imageUrl?.trim();
-    if (image != null && image.isNotEmpty) {
-      return image;
-    }
     final modal = modalUrl?.trim();
     if (modal != null && modal.isNotEmpty) {
       return modal;
+    }
+    // Admin edit previews prefer the canonical/default gallery asset first.
+    // Freshly generated thumb variants can lag behind the save response and
+    // cause transient 404s during immediate post-save rebuilds.
+    final thumb = thumbUrl?.trim();
+    if (thumb != null && thumb.isNotEmpty) {
+      return thumb;
     }
     return null;
   }
