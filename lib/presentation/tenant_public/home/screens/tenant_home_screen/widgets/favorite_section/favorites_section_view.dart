@@ -66,11 +66,6 @@ class FavoritesSectionView extends StatelessWidget {
           return;
         case FavoriteNavigationUnavailable():
           return;
-        case FavoriteNavigationSearch():
-          router.push(
-            EventSearchRoute(),
-          );
-          return;
       }
     });
   }

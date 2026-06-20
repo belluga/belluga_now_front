@@ -28,6 +28,9 @@ enum FavoriteToggleOutcome {
   requiresAuthentication,
 }
 
+final StreamValue<List<EventModel>?> _emptyDiscoveryLiveNowEventsStreamValue =
+    StreamValue<List<EventModel>?>(defaultValue: null);
+
 class DiscoveryScreenController extends Object
     with PublicDiscoveryFilterControllerMixin
     implements Disposable {
@@ -90,11 +93,6 @@ class DiscoveryScreenController extends Object
   bool _isProgrammaticSearchTextChange = false;
   bool _isRevealingDiscoveryFilterPanel = false;
   String? _lastOriginSignature;
-  DiscoveryFilterCatalog _baselineDiscoveryFilterCatalog =
-      const DiscoveryFilterCatalog(surface: _discoveryAccountProfilesSurface);
-  DiscoveryFilterCatalog _runtimePrimaryDiscoveryFilterCatalog =
-      const DiscoveryFilterCatalog(surface: _discoveryAccountProfilesSurface);
-
   final ScrollController scrollController = ScrollController();
   final searchQueryStreamValue = StreamValue<String>(defaultValue: '');
   final selectedTypeFilterStreamValue = StreamValue<String?>();
@@ -129,7 +127,7 @@ class DiscoveryScreenController extends Object
 
   StreamValue<List<EventModel>?> get liveNowEventsStreamValue =>
       _resolveScheduleRepository()?.discoveryLiveNowEventsStreamValue ??
-      StreamValue<List<EventModel>?>(defaultValue: null);
+      _emptyDiscoveryLiveNowEventsStreamValue;
   StreamValue<List<AccountProfileModel>> get filteredPartnersStreamValue =>
       _accountProfilesRepository.discoveryFilteredAccountProfilesStreamValue;
   StreamValue<List<AccountProfileModel>> get nearbyStreamValue =>
@@ -206,9 +204,6 @@ class DiscoveryScreenController extends Object
     final catalogFuture = loadPublicDiscoveryFilterCatalog(
       restoredSelection: restoredSelection,
     ).then((_) {
-      _baselineDiscoveryFilterCatalog = discoveryFilterCatalogStreamValue.value;
-      _runtimePrimaryDiscoveryFilterCatalog =
-          discoveryFilterCatalogStreamValue.value;
       _reconcileRuntimeDiscoveryFilterCatalog();
     });
     if (mustAwaitCatalogBeforeResults) {
@@ -657,6 +652,7 @@ class DiscoveryScreenController extends Object
 
     hasLoadedStreamValue.addValue(true);
     hasMoreStreamValue.addValue(cachedPage.hasMore);
+    _reconcileRuntimeDiscoveryFilterCatalog();
     _updateAvailableTypes();
   }
 
@@ -713,25 +709,16 @@ class DiscoveryScreenController extends Object
   }
 
   bool _reconcileRuntimeDiscoveryFilterCatalog() {
-    final facets =
-        _accountProfilesRepository.publicDiscoveryFilterFacetsStreamValue.value;
-    if (facets == null || _baselineDiscoveryFilterCatalog.isEmpty) {
+    return _consumeCanonicalRuntimeDiscoveryFilterCatalog();
+  }
+
+  bool _consumeCanonicalRuntimeDiscoveryFilterCatalog() {
+    final runtimeCatalog = _accountProfilesRepository
+        .publicDiscoveryFilterCatalogStreamValue.value;
+    if (runtimeCatalog == null) {
       return false;
     }
 
-    final selection = discoveryFilterSelectionStreamValue.value;
-    final preservePrimaryFilters = selection.primaryKeys.isNotEmpty;
-    final baselineCatalog =
-        preservePrimaryFilters && !_runtimePrimaryDiscoveryFilterCatalog.isEmpty
-            ? _runtimePrimaryDiscoveryFilterCatalog
-            : _baselineDiscoveryFilterCatalog;
-    final runtimeCatalog = facets.applyToCatalog(
-      baselineCatalog,
-      preservePrimaryFilters: preservePrimaryFilters,
-    );
-    if (!preservePrimaryFilters && !runtimeCatalog.isEmpty) {
-      _runtimePrimaryDiscoveryFilterCatalog = runtimeCatalog;
-    }
     if (!_sameDiscoveryFilterCatalog(
       discoveryFilterCatalogStreamValue.value,
       runtimeCatalog,
@@ -739,6 +726,7 @@ class DiscoveryScreenController extends Object
       discoveryFilterCatalogStreamValue.addValue(runtimeCatalog);
     }
 
+    final selection = discoveryFilterSelectionStreamValue.value;
     final repairedSelection = repairPublicDiscoveryFilterSelection(
       selection,
       catalogOverride: runtimeCatalog,
@@ -870,6 +858,7 @@ class DiscoveryScreenController extends Object
     _searchDebounce?.cancel();
     searchController.removeListener(_handleSearchControllerChanged);
     _effectiveOriginSubscription?.cancel();
+    _favoriteIdsSubscription?.cancel();
     searchQueryStreamValue.dispose();
     selectedTypeFilterStreamValue.dispose();
     discoveryFilterCatalogStreamValue.dispose();
@@ -886,6 +875,5 @@ class DiscoveryScreenController extends Object
     isLoadingStreamValue.dispose();
     searchController.dispose();
     scrollController.dispose();
-    _favoriteIdsSubscription?.cancel();
   }
 }

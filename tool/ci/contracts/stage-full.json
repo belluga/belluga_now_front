@@ -1,0 +1,23 @@
+{
+  "schema_version": "ci-contract-v1",
+  "contract_id": "flutter-stage-full",
+  "description": "Flutter repo-owned local contract surface mirrored by the stage-promotion web workflow.",
+  "entries": [
+    {
+      "id": "flutter-stage-promotion-architecture-gate",
+      "repo": "flutter-app",
+      "kind": "workflow-parity",
+      "cwd": "../../..",
+      "command": ["bash", "tool/ci/run_stage_promotion_architecture_gate.sh", "stage"],
+      "description": "Run the promotion-lane architecture gate for the local stage-full contract."
+    },
+    {
+      "id": "flutter-workspace-tests",
+      "repo": "flutter-app",
+      "kind": "workflow-parity",
+      "cwd": "../../..",
+      "command": ["bash", "tool/ci/run_workspace_test_contract.sh", "config/defines/stage.json"],
+      "description": "Run the repo-owned workspace Flutter test contract using the stage define file."
+    }
+  ]
+}

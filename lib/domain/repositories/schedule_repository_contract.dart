@@ -17,6 +17,8 @@ abstract class ScheduleRepositoryContract {
   StreamValue<List<EventModel>?> get discoveryLiveNowEventsStreamValue;
   final homeAgendaDiscoveryFilterFacetsStreamValue =
       StreamValue<DiscoveryFilterRuntimeFacets?>(defaultValue: null);
+  final homeAgendaDiscoveryFilterCatalogStreamValue =
+      StreamValue<DiscoveryFilterCatalog?>(defaultValue: null);
 
   List<EventModel>? readHomeAgenda({
     required ScheduleRepoBool showPastOnly,

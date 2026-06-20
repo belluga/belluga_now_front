@@ -12,7 +12,7 @@ class TenantAdminImageSlotSpec {
     this.safeAreaGuide,
   });
 
-  final double aspectRatio;
+  final double? aspectRatio;
   final int maxWidth;
   final int maxHeight;
   final String mimeType;

@@ -198,6 +198,36 @@ class TenantAdminAccountProfilesRepository
   }
 
   @override
+  Future<TenantAdminAccountProfile> updateAccountProfileGallery({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    List<TenantAdminAccountProfileGalleryUpdateGroup> galleryGroups =
+        const <TenantAdminAccountProfileGalleryUpdateGroup>[],
+  }) async {
+    try {
+      final encoded = _requestEncoder.encodeUpdateAccountProfileGallery(
+        galleryGroups,
+      );
+      final formData = _mediaFormDataBuilder.buildGalleryPayload(
+        galleryGroups: encoded.galleryGroups,
+        uploads: encoded.uploads,
+      );
+
+      final response = await _dio.post(
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}/gallery',
+        data: formData,
+        options: Options(
+          headers: _buildHeaders(),
+          contentType: 'multipart/form-data',
+        ),
+      );
+      final dto = _responseDecoder.decodeAccountProfileItem(response.data);
+      return dto.toDomain();
+    } on DioException catch (error) {
+      throw _wrapError(error, 'update account profile gallery');
+    }
+  }
+
+  @override
   Future<void> deleteAccountProfile(
     TenantAdminAccountProfilesRepoString accountProfileId,
   ) async {

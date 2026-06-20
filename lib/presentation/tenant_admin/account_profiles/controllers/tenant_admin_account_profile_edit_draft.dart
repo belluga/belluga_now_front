@@ -1,3 +1,4 @@
+import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profile_gallery_group_draft.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:image_picker/image_picker.dart';
@@ -19,6 +20,7 @@ class TenantAdminAccountProfileEditDraft {
     required this.coverPreloadUrl,
     required this.avatarBusy,
     required this.coverBusy,
+    this.galleryGroups = const <TenantAdminAccountProfileGalleryGroupDraft>[],
     this.nestedProfileGroups = const <TenantAdminNestedProfileGroup>[],
   });
 
@@ -37,6 +39,7 @@ class TenantAdminAccountProfileEditDraft {
         coverPreloadUrl: null,
         avatarBusy: false,
         coverBusy: false,
+        galleryGroups: <TenantAdminAccountProfileGalleryGroupDraft>[],
         nestedProfileGroups: <TenantAdminNestedProfileGroup>[],
       );
 
@@ -53,6 +56,7 @@ class TenantAdminAccountProfileEditDraft {
   final String? coverPreloadUrl;
   final bool avatarBusy;
   final bool coverBusy;
+  final List<TenantAdminAccountProfileGalleryGroupDraft> galleryGroups;
   final List<TenantAdminNestedProfileGroup> nestedProfileGroups;
 
   TenantAdminAccountProfileEditDraft copyWith({
@@ -69,6 +73,7 @@ class TenantAdminAccountProfileEditDraft {
     Object? coverPreloadUrl = _unset,
     bool? avatarBusy,
     bool? coverBusy,
+    List<TenantAdminAccountProfileGalleryGroupDraft>? galleryGroups,
     List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
   }) {
     final nextSelectedProfileType = selectedProfileType == _unset
@@ -105,6 +110,7 @@ class TenantAdminAccountProfileEditDraft {
       coverPreloadUrl: nextCoverPreloadUrl,
       avatarBusy: avatarBusy ?? this.avatarBusy,
       coverBusy: coverBusy ?? this.coverBusy,
+      galleryGroups: galleryGroups ?? this.galleryGroups,
       nestedProfileGroups: nestedProfileGroups ?? this.nestedProfileGroups,
     );
   }
@@ -123,6 +129,9 @@ class TenantAdminAccountProfileEditDraft {
       coverRemoteError: false,
       avatarPreloadUrl: null,
       coverPreloadUrl: null,
+      galleryGroups: updated.galleryGroups
+          .map(TenantAdminAccountProfileGalleryGroupDraft.fromRead)
+          .toList(growable: false),
       nestedProfileGroups: updated.nestedProfileGroups,
     );
   }

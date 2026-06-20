@@ -135,4 +135,57 @@ void main() {
       <String>['sunset', 'night'],
     );
   });
+
+  test('parses canonical runtime discovery catalog from agenda payload', () {
+    final page = EventPageDTO.fromJson({
+      'items': const [],
+      'has_more': true,
+      'discovery_filter_catalog': {
+        'surface': 'home.events',
+        'filters': [
+          {
+            'key': 'show',
+            'label': 'Show',
+            'target': 'event_occurrence',
+            'query': {
+              'entities': ['event'],
+              'types_by_entity': {
+                'event': ['show'],
+              },
+            },
+          },
+        ],
+        'type_options': {
+          'event': [
+            {
+              'value': 'show',
+              'label': 'Show',
+              'allowed_taxonomies': ['mood'],
+            },
+          ],
+        },
+        'taxonomy_options': {
+          'mood': {
+            'key': 'mood',
+            'label': 'Clima',
+            'terms': [
+              {'value': 'night', 'label': 'Night'},
+            ],
+          },
+        },
+      },
+    });
+
+    expect(page.discoveryFilterCatalog, isNotNull);
+    expect(
+      page.discoveryFilterCatalog?.filters.map((item) => item.key).toList(),
+      <String>['show'],
+    );
+    expect(
+      page.discoveryFilterCatalog?.taxonomyOptionsByKey['mood']?.terms
+          .map((term) => term.value)
+          .toList(),
+      <String>['night'],
+    );
+  });
 }

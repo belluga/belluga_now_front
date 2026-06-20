@@ -139,6 +139,7 @@ class _TenantAdminProfileTypeDetailScreenState
           if (definition.capabilities.hasAvatar) 'Avatar',
           if (definition.capabilities.hasCover) 'Capa',
           if (definition.capabilities.hasEvents) 'Agenda',
+          if (definition.capabilities.hasGallery) 'Galeria',
           if (definition.capabilities.hasNestedProfileGroups) 'Abas vinculadas',
         ];
 

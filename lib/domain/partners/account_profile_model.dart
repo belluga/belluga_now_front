@@ -1,3 +1,4 @@
+import 'package:belluga_now/domain/partners/account_profile_gallery_group.dart';
 import 'package:belluga_now/domain/partners/engagement_data.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
@@ -21,6 +22,7 @@ class AccountProfileModel {
   final ThumbUriValue? coverValue;
   final DescriptionValue? bioValue;
   final DescriptionValue? contentValue;
+  final List<AccountProfileGalleryGroup> galleryGroupValues;
   final List<AccountProfileTagValue> tagValues;
   final List<PartnerEventView> agendaEventViews;
   final AccountProfileIsVerifiedValue isVerifiedValue;
@@ -43,6 +45,7 @@ class AccountProfileModel {
     this.coverValue,
     this.bioValue,
     this.contentValue,
+    List<AccountProfileGalleryGroup>? galleryGroupValues,
     List<AccountProfileTagValue>? tagValues,
     List<PartnerEventView>? agendaEventViews,
     AccountProfileIsVerifiedValue? isVerifiedValue,
@@ -58,14 +61,16 @@ class AccountProfileModel {
   })  : tagValues = List<AccountProfileTagValue>.unmodifiable(
           tagValues ?? const <AccountProfileTagValue>[],
         ),
+        galleryGroupValues = List<AccountProfileGalleryGroup>.unmodifiable(
+          galleryGroupValues ?? const <AccountProfileGalleryGroup>[],
+        ),
         agendaEventViews = List<PartnerEventView>.unmodifiable(
           agendaEventViews ?? const <PartnerEventView>[],
         ),
         nestedProfileGroupValues = List<AccountProfileNestedGroup>.unmodifiable(
           nestedProfileGroupValues ?? const <AccountProfileNestedGroup>[],
         ),
-        canOpenPublicDetailValue =
-            canOpenPublicDetailValue ??
+        canOpenPublicDetailValue = canOpenPublicDetailValue ??
             (DomainBooleanValue(defaultValue: false, isRequired: false)
               ..parse('false')),
         isVerifiedValue = isVerifiedValue ?? AccountProfileIsVerifiedValue(),
@@ -85,6 +90,8 @@ class AccountProfileModel {
   String? get coverUrl => coverUri?.toString();
   String? get bio => bioValue?.value;
   String? get content => contentValue?.value;
+  List<AccountProfileGalleryGroup> get galleryGroups =>
+      List<AccountProfileGalleryGroup>.unmodifiable(galleryGroupValues);
   List<AccountProfileTagValue> get tags =>
       List<AccountProfileTagValue>.unmodifiable(tagValues);
   List<PartnerEventView> get agendaEvents =>
@@ -122,6 +129,7 @@ class AccountProfileModel {
     ThumbUriValue? coverValue,
     DescriptionValue? bioValue,
     DescriptionValue? contentValue,
+    List<AccountProfileGalleryGroup>? galleryGroupValues,
     List<AccountProfileTagValue>? tagValues,
     List<PartnerEventView>? agendaEventViews,
     AccountProfileIsVerifiedValue? isVerifiedValue,
@@ -144,6 +152,7 @@ class AccountProfileModel {
       coverValue: coverValue ?? this.coverValue,
       bioValue: bioValue ?? this.bioValue,
       contentValue: contentValue ?? this.contentValue,
+      galleryGroupValues: galleryGroupValues ?? this.galleryGroupValues,
       tagValues: tagValues ?? this.tagValues,
       agendaEventViews: agendaEventViews ?? this.agendaEventViews,
       isVerifiedValue: isVerifiedValue ?? this.isVerifiedValue,
@@ -159,7 +168,8 @@ class AccountProfileModel {
           nestedProfileGroupValues ?? this.nestedProfileGroupValues,
       canOpenPublicDetailValue:
           canOpenPublicDetailValue ?? this.canOpenPublicDetailValue,
-      publicDetailPathValue: publicDetailPathValue ?? this.publicDetailPathValue,
+      publicDetailPathValue:
+          publicDetailPathValue ?? this.publicDetailPathValue,
     );
   }
 }

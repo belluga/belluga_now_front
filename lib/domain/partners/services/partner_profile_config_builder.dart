@@ -15,12 +15,13 @@ class PartnerProfileConfigBuilder {
       final tabs = <ProfileTabConfig>[];
       final hasAgenda =
           capabilities.hasEvents || partner.agendaEvents.isNotEmpty;
-      if (_hasCapabilityRichText(partner, capabilities)) {
+      if (_hasAboutContentForCapabilities(partner, capabilities)) {
         tabs.add(
           ProfileTabConfig(
             titleValue: partnerProjectionRequiredText('Sobre'),
             modules: [
               ProfileModuleConfig(id: ProfileModuleId.richText),
+              ProfileModuleConfig(id: ProfileModuleId.photoGallery),
             ],
           ),
         );
@@ -54,12 +55,13 @@ class PartnerProfileConfigBuilder {
     switch (partner.type) {
       case 'artist':
         final tabs = <ProfileTabConfig>[];
-        if (_hasAnyRichText(partner)) {
+        if (_hasAboutContent(partner)) {
           tabs.add(
             ProfileTabConfig(
               titleValue: partnerProjectionRequiredText('Sobre'),
               modules: [
                 ProfileModuleConfig(id: ProfileModuleId.richText),
+                ProfileModuleConfig(id: ProfileModuleId.photoGallery),
               ],
             ),
           );
@@ -78,12 +80,13 @@ class PartnerProfileConfigBuilder {
         );
       case 'venue':
         final tabs = <ProfileTabConfig>[];
-        if (_hasAnyRichText(partner)) {
+        if (_hasAboutContent(partner)) {
           tabs.add(
             ProfileTabConfig(
               titleValue: partnerProjectionRequiredText('Sobre'),
               modules: [
                 ProfileModuleConfig(id: ProfileModuleId.richText),
+                ProfileModuleConfig(id: ProfileModuleId.photoGallery),
               ],
             ),
           );
@@ -198,6 +201,18 @@ class PartnerProfileConfigBuilder {
   ) {
     return (capabilities.hasBio && _hasBio(partner)) ||
         (capabilities.hasContent && _hasContent(partner));
+  }
+
+  bool _hasAboutContentForCapabilities(
+    AccountProfileModel partner,
+    ProfileTypeCapabilities capabilities,
+  ) {
+    return _hasCapabilityRichText(partner, capabilities) ||
+        (capabilities.hasGallery && partner.galleryGroups.isNotEmpty);
+  }
+
+  bool _hasAboutContent(AccountProfileModel partner) {
+    return _hasAnyRichText(partner) || partner.galleryGroups.isNotEmpty;
   }
 
   bool _hasAnyRichText(AccountProfileModel partner) {

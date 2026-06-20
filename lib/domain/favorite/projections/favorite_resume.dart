@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/favorite/favorite.dart';
 import 'package:belluga_now/domain/favorite/favorite_badge.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_event_occurrence_id_value.dart';
+import 'package:belluga_now/domain/favorite/value_objects/favorite_event_target_path_value.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_primary_flag_value.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_public_detail_path_value.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_target_type_value.dart';
@@ -34,6 +35,7 @@ class FavoriteResume {
     this.coverImageUriValue,
     DomainBooleanValue? canOpenPublicDetailValue,
     this.publicDetailPathValue,
+    this.eventTargetPathValue,
     DomainOptionalDateTimeValue? nextEventOccurrenceAtValue,
     DomainOptionalDateTimeValue? lastEventOccurrenceAtValue,
     this.liveNowEventOccurrenceIdValue,
@@ -71,6 +73,7 @@ class FavoriteResume {
   final ThumbUriValue? coverImageUriValue;
   final DomainBooleanValue canOpenPublicDetailValue;
   final FavoritePublicDetailPathValue? publicDetailPathValue;
+  final FavoriteEventTargetPathValue? eventTargetPathValue;
   final DomainOptionalDateTimeValue nextEventOccurrenceAtValue;
   final DomainOptionalDateTimeValue lastEventOccurrenceAtValue;
   final FavoriteEventOccurrenceIdValue? liveNowEventOccurrenceIdValue;
@@ -95,6 +98,14 @@ class FavoriteResume {
     return value;
   }
 
+  String? get eventTargetPath {
+    final value = eventTargetPathValue?.value.trim();
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+    return value;
+  }
+
   DateTime? get nextEventOccurrenceAt => nextEventOccurrenceAtValue.value;
   DateTime? get lastEventOccurrenceAt => lastEventOccurrenceAtValue.value;
   String? get liveNowEventOccurrenceId => liveNowEventOccurrenceIdValue?.value;
@@ -111,6 +122,12 @@ class FavoriteResume {
     return FavoriteChipHaloState.none;
   }
 
+  /// Display-only compatibility factory.
+  ///
+  /// Use `FavoritePreviewDTO.toResume()` for navigation-capable favorites,
+  /// because the legacy `Favorite` domain object does not carry the routed
+  /// public-detail / event-target snapshot fields.
+  @Deprecated('Use FavoritePreviewDTO.toResume for navigation-capable data.')
   factory FavoriteResume.fromFavorite(Favorite favorite) {
     return FavoriteResume(
       titleValue: favorite.titleValue,
