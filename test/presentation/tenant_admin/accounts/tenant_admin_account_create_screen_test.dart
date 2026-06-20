@@ -447,6 +447,15 @@ class _FakeAccountProfilesRepository
       taxonomyTerms: taxonomyTerms ?? const TenantAdminTaxonomyTerms.empty(),
     );
   }
+
+  @override
+  Future<TenantAdminAccountProfile> updateAccountProfileGallery({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    List<TenantAdminAccountProfileGalleryUpdateGroup> galleryGroups =
+        const <TenantAdminAccountProfileGalleryUpdateGroup>[],
+  }) async {
+    return fetchAccountProfile(accountProfileId);
+  }
 }
 
 class _FakeTaxonomiesRepository

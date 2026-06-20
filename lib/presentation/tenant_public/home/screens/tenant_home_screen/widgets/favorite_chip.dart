@@ -6,6 +6,8 @@ import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_
 import 'package:flutter/material.dart';
 
 class FavoriteChip extends StatelessWidget {
+  static const double _avatarFrameSize = 72;
+
   const FavoriteChip({
     super.key,
     required this.title,
@@ -34,59 +36,71 @@ class FavoriteChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-
     final badgeGlyph = _resolveBadgeGlyph();
 
-    return SizedBox(
-      width: 82,
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  padding: _haloPadding(haloState),
-                  decoration: _haloDecoration(colorScheme, haloState),
-                  child: _buildAvatar(context, colorScheme, badgeGlyph),
-                ),
-                if (badgeGlyph != null && !isPrimary)
-                  Positioned(
-                    right: -4,
-                    bottom: -4,
-                    child: CircleAvatar(
-                      radius: 12,
-                      backgroundColor: colorScheme.surface,
-                      child: FavoriteBadgeGlyph(
-                        codePoint: badgeGlyph.codePoint,
-                        fontFamily: badgeGlyph.fontFamily,
-                        size: 14,
-                        color: colorScheme.onSurface,
+    return Semantics(
+      container: true,
+      button: onTap != null,
+      excludeSemantics: true,
+      label: _semanticLabel(),
+      onTap: onTap,
+      child: SizedBox(
+        width: 82,
+        child: InkWell(
+          onTap: onTap,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  SizedBox(
+                    width: _avatarFrameSize,
+                    height: _avatarFrameSize,
+                    child: Center(
+                      child: Container(
+                        padding: _haloPadding(haloState),
+                        decoration: _haloDecoration(colorScheme, haloState),
+                        child: _buildAvatar(context, colorScheme, badgeGlyph),
                       ),
                     ),
                   ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-          ],
+                  if (badgeGlyph != null && !isPrimary)
+                    Positioned(
+                      right: -4,
+                      bottom: -4,
+                      child: CircleAvatar(
+                        radius: 12,
+                        backgroundColor: colorScheme.surface,
+                        child: FavoriteBadgeGlyph(
+                          codePoint: badgeGlyph.codePoint,
+                          fontFamily: badgeGlyph.fontFamily,
+                          size: 14,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildAvatar(
-      BuildContext context, ColorScheme colorScheme, FavoriteBadge? badgeGlyph) {
+  Widget _buildAvatar(BuildContext context, ColorScheme colorScheme,
+      FavoriteBadge? badgeGlyph) {
     // For app owner (primary), use colored background with icon image
     if (isPrimary && iconImageUrl != null) {
       final backgroundColor = primaryColor ?? colorScheme.primary;
@@ -230,29 +244,32 @@ class FavoriteChip extends StatelessWidget {
       case FavoriteChipHaloState.liveNow:
         return BoxDecoration(
           shape: BoxShape.circle,
+          color: colorScheme.primary.withValues(alpha: 0.12),
           border: Border.all(
-            color: colorScheme.primary.withValues(alpha: 0.55),
-            width: 1.75,
+            color: colorScheme.primary.withValues(alpha: 0.95),
+            width: 2.2,
           ),
           boxShadow: [
             BoxShadow(
-              color: colorScheme.primary.withValues(alpha: 0.22),
-              blurRadius: 12,
-              spreadRadius: 1,
+              color: colorScheme.primary.withValues(alpha: 0.30),
+              blurRadius: 16,
+              spreadRadius: 1.5,
             ),
           ],
         );
       case FavoriteChipHaloState.upcoming:
         return BoxDecoration(
           shape: BoxShape.circle,
+          color: colorScheme.secondary.withValues(alpha: 0.10),
           border: Border.all(
-            color: colorScheme.outlineVariant.withValues(alpha: 0.85),
-            width: 1.2,
+            color: colorScheme.secondary.withValues(alpha: 0.88),
+            width: 1.5,
           ),
           boxShadow: [
             BoxShadow(
-              color: colorScheme.primary.withValues(alpha: 0.1),
-              blurRadius: 8,
+              color: colorScheme.secondary.withValues(alpha: 0.18),
+              blurRadius: 10,
+              spreadRadius: 0.4,
             ),
           ],
         );
@@ -266,5 +283,17 @@ class FavoriteChip extends StatelessWidget {
     if (badgeData == null) return null;
     if (badgeData.codePoint <= 0) return null;
     return badgeData;
+  }
+
+  String _semanticLabel() {
+    final haloLabel = switch (haloState) {
+      FavoriteChipHaloState.liveNow => 'TOCANDO AGORA',
+      FavoriteChipHaloState.upcoming => 'TEM EVENTO',
+      FavoriteChipHaloState.none => null,
+    };
+    if (haloLabel == null) {
+      return title;
+    }
+    return '$title, $haloLabel';
   }
 }

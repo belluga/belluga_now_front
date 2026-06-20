@@ -8,11 +8,13 @@ class EventPageDTO {
     required this.events,
     required this.hasMore,
     this.discoveryFilterFacets,
+    this.discoveryFilterCatalog,
   });
 
   final List<EventDTO> events;
   final bool hasMore;
   final DiscoveryFilterRuntimeFacets? discoveryFilterFacets;
+  final DiscoveryFilterCatalog? discoveryFilterCatalog;
 
   factory EventPageDTO.fromJson(Map<String, dynamic> json) {
     final items = _parseItems(json['items']);
@@ -21,6 +23,9 @@ class EventPageDTO {
       hasMore: _asBool(json['has_more']),
       discoveryFilterFacets: _parseDiscoveryFilterFacets(
         json['discovery_filter_facets'],
+      ),
+      discoveryFilterCatalog: _parseDiscoveryFilterCatalog(
+        json['discovery_filter_catalog'],
       ),
     );
   }
@@ -100,6 +105,18 @@ class EventPageDTO {
     }
 
     return DiscoveryFilterRuntimeFacets.fromJson(
+      raw.map(
+        (key, value) => MapEntry<String, Object?>(key.toString(), value),
+      ),
+    );
+  }
+
+  static DiscoveryFilterCatalog? _parseDiscoveryFilterCatalog(Object? raw) {
+    if (raw is! Map) {
+      return null;
+    }
+
+    return DiscoveryFilterCatalog.fromJson(
       raw.map(
         (key, value) => MapEntry<String, Object?>(key.toString(), value),
       ),

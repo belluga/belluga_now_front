@@ -319,6 +319,10 @@ class AccountProfileDetailController implements Disposable {
     if (richTextBlocks.isNotEmpty) {
       modules[ProfileModuleId.richText] = richTextBlocks;
     }
+    final canRenderGallery = capabilities?.hasGallery ?? false;
+    if (canRenderGallery && accountProfile.galleryGroups.isNotEmpty) {
+      modules[ProfileModuleId.photoGallery] = accountProfile.galleryGroups;
+    }
     final location = _buildLocationModuleData(accountProfile);
     if (location != null) {
       modules[ProfileModuleId.locationInfo] = location;

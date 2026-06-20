@@ -18,6 +18,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_defin
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profile_create_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profile_edit_draft.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_account_profile_gallery_operations.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_nested_profile_group_operations.dart';
 import 'package:flutter/material.dart';
@@ -753,6 +754,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     String? coverUrl,
     bool? removeAvatar,
     bool? removeCover,
+    List<TenantAdminAccountProfileGalleryUpdateGroup>? galleryGroups,
     List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
   }) async {
     editSubmittingStreamValue.addValue(true);
@@ -774,8 +776,18 @@ class TenantAdminAccountProfilesController implements Disposable {
         removeCover: removeCover ?? _removeCoverOnSubmit,
         nestedProfileGroups: nestedProfileGroups,
       );
+      final finalProfile = galleryGroups == null
+          ? updated
+          : await _profilesRepository.updateAccountProfileGallery(
+              accountProfileId: tenantAdminAccountProfilesRepoString(
+                accountProfileId,
+                defaultValue: '',
+                isRequired: true,
+              ),
+              galleryGroups: galleryGroups,
+            );
       if (_isDisposed) return;
-      updateEditProfile(updated);
+      updateEditProfile(finalProfile);
       editErrorMessageStreamValue.addValue(null);
       editSuccessMessageStreamValue.addValue('Perfil atualizado.');
     } catch (error) {
@@ -998,6 +1010,146 @@ class TenantAdminAccountProfilesController implements Disposable {
           groups,
         ),
       ),
+    );
+  }
+
+  void addEditGalleryGroup() {
+    final groups = editStateStreamValue.value.galleryGroups;
+    if (groups.length >= TenantAdminAccountProfileGalleryOperations.maxGroups) {
+      reportEditErrorMessage('Limite de grupos da galeria atingido.');
+      return;
+    }
+    _updateEditState(
+      editStateStreamValue.value.copyWith(
+        galleryGroups:
+            TenantAdminAccountProfileGalleryOperations.appendGroup(groups),
+      ),
+    );
+  }
+
+  void renameEditGalleryGroup(String groupId, String subtitle) {
+    _updateEditState(
+      editStateStreamValue.value.copyWith(
+        galleryGroups: TenantAdminAccountProfileGalleryOperations.renameGroup(
+          editStateStreamValue.value.galleryGroups,
+          groupId: groupId,
+          subtitle: subtitle,
+        ),
+      ),
+    );
+  }
+
+  void moveEditGalleryGroup(String groupId, int delta) {
+    _updateEditState(
+      editStateStreamValue.value.copyWith(
+        galleryGroups: TenantAdminAccountProfileGalleryOperations.moveGroup(
+          editStateStreamValue.value.galleryGroups,
+          groupId: groupId,
+          delta: delta,
+        ),
+      ),
+    );
+  }
+
+  void removeEditGalleryGroup(String groupId) {
+    _updateEditState(
+      editStateStreamValue.value.copyWith(
+        galleryGroups: TenantAdminAccountProfileGalleryOperations.removeGroup(
+          editStateStreamValue.value.galleryGroups,
+          groupId: groupId,
+        ),
+      ),
+    );
+  }
+
+  void addEditGalleryItem({
+    required String groupId,
+    required XFile uploadFile,
+  }) {
+    _updateEditState(
+      editStateStreamValue.value.copyWith(
+        galleryGroups: TenantAdminAccountProfileGalleryOperations.appendItem(
+          editStateStreamValue.value.galleryGroups,
+          groupId: groupId,
+          uploadFile: uploadFile,
+          onLimit: () =>
+              reportEditErrorMessage('Limite total de fotos atingido.'),
+        ),
+      ),
+    );
+  }
+
+  void replaceEditGalleryItemUpload({
+    required String groupId,
+    required String itemId,
+    required XFile uploadFile,
+  }) {
+    _updateEditState(
+      editStateStreamValue.value.copyWith(
+        galleryGroups:
+            TenantAdminAccountProfileGalleryOperations.replaceItemUpload(
+          editStateStreamValue.value.galleryGroups,
+          groupId: groupId,
+          itemId: itemId,
+          uploadFile: uploadFile,
+        ),
+      ),
+    );
+  }
+
+  void updateEditGalleryItemDescription({
+    required String groupId,
+    required String itemId,
+    required String description,
+  }) {
+    _updateEditState(
+      editStateStreamValue.value.copyWith(
+        galleryGroups:
+            TenantAdminAccountProfileGalleryOperations.updateItemDescription(
+          editStateStreamValue.value.galleryGroups,
+          groupId: groupId,
+          itemId: itemId,
+          description: description,
+        ),
+      ),
+    );
+  }
+
+  void moveEditGalleryItem({
+    required String groupId,
+    required String itemId,
+    required int delta,
+  }) {
+    _updateEditState(
+      editStateStreamValue.value.copyWith(
+        galleryGroups: TenantAdminAccountProfileGalleryOperations.moveItem(
+          editStateStreamValue.value.galleryGroups,
+          groupId: groupId,
+          itemId: itemId,
+          delta: delta,
+        ),
+      ),
+    );
+  }
+
+  void removeEditGalleryItem({
+    required String groupId,
+    required String itemId,
+  }) {
+    _updateEditState(
+      editStateStreamValue.value.copyWith(
+        galleryGroups: TenantAdminAccountProfileGalleryOperations.removeItem(
+          editStateStreamValue.value.galleryGroups,
+          groupId: groupId,
+          itemId: itemId,
+        ),
+      ),
+    );
+  }
+
+  int editGalleryItemCount() {
+    return TenantAdminAccountProfileGalleryOperations.totalItemCount(
+      editStateStreamValue.value.galleryGroups,
     );
   }
 

@@ -13,7 +13,6 @@ import 'package:belluga_now/domain/repositories/invites_repository_contract.dart
 import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
@@ -46,7 +45,6 @@ class TenantHomeAgendaController extends Object
     InvitesRepositoryContract? invitesRepository,
     AppDataRepositoryContract? appDataRepository,
     AuthRepositoryContract? authRepository,
-    UserLocationRepositoryContract? userLocationRepository,
     ProximityPreferencesRepositoryContract? proximityPreferencesRepository,
     LocationOriginServiceContract? locationOriginService,
     TelemetryRepositoryContract? telemetryRepository,
@@ -171,6 +169,8 @@ class TenantHomeAgendaController extends Object
   @override
   final isDiscoveryFilterCatalogLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
+  final hasCanonicalDiscoveryFilterCatalogStreamValue =
+      StreamValue<bool>(defaultValue: false);
 
   @override
   StreamValue<double> get maxRadiusMetersStreamValue =>
@@ -203,11 +203,6 @@ class TenantHomeAgendaController extends Object
   LocationOriginSettings? _effectiveOriginSettings;
   double? _pendingPersistedRadiusEchoMeters;
   bool _locationPermissionRequested = false;
-  DiscoveryFilterCatalog _baselineDiscoveryFilterCatalog =
-      const DiscoveryFilterCatalog(surface: _homeEventsFilterSurface);
-  DiscoveryFilterCatalog _runtimePrimaryDiscoveryFilterCatalog =
-      const DiscoveryFilterCatalog(surface: _homeEventsFilterSurface);
-
   Uri get defaultEventImageUri {
     final configured = _appDataRepository.appData.mainLogoDarkUrl.value;
     if (configured != null && configured.toString().trim().isNotEmpty) {
@@ -242,6 +237,9 @@ class TenantHomeAgendaController extends Object
 
   @override
   String get publicDiscoveryFilterLogLabel => 'TenantHomeAgendaController';
+
+  bool get hasCanonicalDiscoveryFilterCatalog =>
+      hasCanonicalDiscoveryFilterCatalogStreamValue.value;
 
   @override
   void onPublicDiscoveryFilterSelectionChanged(
@@ -382,9 +380,6 @@ class TenantHomeAgendaController extends Object
     final catalogFuture = loadPublicDiscoveryFilterCatalog(
       restoredSelection: restoredSelection,
     ).then((_) {
-      _baselineDiscoveryFilterCatalog = discoveryFilterCatalogStreamValue.value;
-      _runtimePrimaryDiscoveryFilterCatalog =
-          discoveryFilterCatalogStreamValue.value;
       _reconcileRuntimeDiscoveryFilterCatalog();
     });
     if (mustAwaitCatalogBeforeResults) {
@@ -879,6 +874,7 @@ class TenantHomeAgendaController extends Object
     _effectiveOriginLat = cacheOrigin?.latitude;
     _effectiveOriginLng = cacheOrigin?.longitude;
     _ifAlive(() => hasMoreStreamValue.addValue(_hasMore));
+    _reconcileRuntimeDiscoveryFilterCatalog();
     _applyFiltersAndPublish();
     return true;
   }
@@ -968,25 +964,21 @@ class TenantHomeAgendaController extends Object
   }
 
   bool _reconcileRuntimeDiscoveryFilterCatalog() {
-    final facets =
-        _scheduleRepository.homeAgendaDiscoveryFilterFacetsStreamValue.value;
-    if (facets == null || _baselineDiscoveryFilterCatalog.isEmpty) {
+    return _consumeCanonicalRuntimeDiscoveryFilterCatalog();
+  }
+
+  bool _consumeCanonicalRuntimeDiscoveryFilterCatalog() {
+    final runtimeCatalog =
+        _scheduleRepository.homeAgendaDiscoveryFilterCatalogStreamValue.value;
+    if (runtimeCatalog == null) {
+      if (hasCanonicalDiscoveryFilterCatalogStreamValue.value) {
+        _ifAlive(
+          () => hasCanonicalDiscoveryFilterCatalogStreamValue.addValue(false),
+        );
+      }
       return false;
     }
 
-    final selection = discoveryFilterSelectionStreamValue.value;
-    final preservePrimaryFilters = selection.primaryKeys.isNotEmpty;
-    final baselineCatalog =
-        preservePrimaryFilters && !_runtimePrimaryDiscoveryFilterCatalog.isEmpty
-            ? _runtimePrimaryDiscoveryFilterCatalog
-            : _baselineDiscoveryFilterCatalog;
-    final runtimeCatalog = facets.applyToCatalog(
-      baselineCatalog,
-      preservePrimaryFilters: preservePrimaryFilters,
-    );
-    if (!preservePrimaryFilters && !runtimeCatalog.isEmpty) {
-      _runtimePrimaryDiscoveryFilterCatalog = runtimeCatalog;
-    }
     if (!_sameDiscoveryFilterCatalog(
       discoveryFilterCatalogStreamValue.value,
       runtimeCatalog,
@@ -995,6 +987,7 @@ class TenantHomeAgendaController extends Object
           () => discoveryFilterCatalogStreamValue.addValue(runtimeCatalog));
     }
 
+    final selection = discoveryFilterSelectionStreamValue.value;
     final repairedSelection = repairPublicDiscoveryFilterSelection(
       selection,
       catalogOverride: runtimeCatalog,
@@ -1003,12 +996,22 @@ class TenantHomeAgendaController extends Object
       selection,
       repairedSelection,
     )) {
+      if (!hasCanonicalDiscoveryFilterCatalogStreamValue.value) {
+        _ifAlive(
+          () => hasCanonicalDiscoveryFilterCatalogStreamValue.addValue(true),
+        );
+      }
       return false;
     }
 
     _ifAlive(
       () => discoveryFilterSelectionStreamValue.addValue(repairedSelection),
     );
+    if (!hasCanonicalDiscoveryFilterCatalogStreamValue.value) {
+      _ifAlive(
+        () => hasCanonicalDiscoveryFilterCatalogStreamValue.addValue(true),
+      );
+    }
     unawaited(persistPublicDiscoveryFilterSelection(repairedSelection));
     _queueRefreshRequest(preserveCurrentResults: true);
     return true;
@@ -1376,6 +1379,7 @@ class TenantHomeAgendaController extends Object
     discoveryFilterSelectionStreamValue.dispose();
     isDiscoveryFilterPanelVisibleStreamValue.dispose();
     isDiscoveryFilterCatalogLoadingStreamValue.dispose();
+    hasCanonicalDiscoveryFilterCatalogStreamValue.dispose();
     radiusMetersStreamValue.dispose();
     isRadiusRefreshLoadingStreamValue.dispose();
     isRadiusActionCompactStreamValue.dispose();

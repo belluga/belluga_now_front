@@ -634,6 +634,15 @@ class _FakeAccountProfilesRepository
   }
 
   @override
+  Future<TenantAdminAccountProfile> updateAccountProfileGallery({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    List<TenantAdminAccountProfileGalleryUpdateGroup> galleryGroups =
+        const <TenantAdminAccountProfileGalleryUpdateGroup>[],
+  }) async {
+    return fetchAccountProfile(accountProfileId);
+  }
+
+  @override
   Future<void> deleteAccountProfile(
       TenantAdminAccountProfilesRepoString accountProfileId) async {}
 
@@ -704,8 +713,10 @@ class _FakeAccountProfilesRepository
 class _FakeTaxonomiesRepository
     with TenantAdminTaxonomiesPaginationMixin
     implements TenantAdminTaxonomiesRepositoryContract {
-  final List<TenantAdminTaxonomyDefinition> _taxonomies = const [];
-  final Map<String, List<TenantAdminTaxonomyTermDefinition>> _terms = const {};
+  final List<TenantAdminTaxonomyDefinition> _taxonomies =
+      <TenantAdminTaxonomyDefinition>[];
+  final Map<String, List<TenantAdminTaxonomyTermDefinition>> _terms =
+      <String, List<TenantAdminTaxonomyTermDefinition>>{};
 
   void seedTaxonomy(
     TenantAdminTaxonomyDefinition taxonomy,

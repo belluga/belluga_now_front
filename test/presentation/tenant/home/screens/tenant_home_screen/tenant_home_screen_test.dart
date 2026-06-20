@@ -87,6 +87,8 @@ class _TestTenantHomeAgendaController extends MockTenantHomeAgendaController {
             StreamValue<DiscoveryFilterSelection>(
           defaultValue: const DiscoveryFilterSelection(),
         ),
+        _hasCanonicalDiscoveryFilterCatalogStreamValue =
+            StreamValue<bool>(defaultValue: true),
         _isDiscoveryFilterCatalogLoadingStreamValue =
             StreamValue<bool>(defaultValue: false),
         _isDiscoveryFilterPanelVisibleStreamValue =
@@ -98,6 +100,7 @@ class _TestTenantHomeAgendaController extends MockTenantHomeAgendaController {
   final StreamValue<DiscoveryFilterCatalog> _discoveryFilterCatalogStreamValue;
   final StreamValue<DiscoveryFilterSelection>
       _discoveryFilterSelectionStreamValue;
+  final StreamValue<bool> _hasCanonicalDiscoveryFilterCatalogStreamValue;
   final StreamValue<bool> _isDiscoveryFilterCatalogLoadingStreamValue;
   final StreamValue<bool> _isDiscoveryFilterPanelVisibleStreamValue;
 
@@ -120,6 +123,10 @@ class _TestTenantHomeAgendaController extends MockTenantHomeAgendaController {
   StreamValue<DiscoveryFilterSelection>
       get discoveryFilterSelectionStreamValue =>
           _discoveryFilterSelectionStreamValue;
+
+  @override
+  StreamValue<bool> get hasCanonicalDiscoveryFilterCatalogStreamValue =>
+      _hasCanonicalDiscoveryFilterCatalogStreamValue;
 
   @override
   StreamValue<bool> get isDiscoveryFilterCatalogLoadingStreamValue =>

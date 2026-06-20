@@ -4,6 +4,7 @@ import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_body.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_section_slots.dart';
 import 'package:belluga_now/presentation/shared/widgets/discovery_filter_visual_icon.dart';
+import 'package:belluga_now/presentation/shared/widgets/size_reporting_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
@@ -26,8 +27,10 @@ class HomeAgendaSectionView extends StatefulWidget {
 
 class _HomeAgendaSectionViewState extends State<HomeAgendaSectionView> {
   static const int _coordinatedScrollSyncWarmupFrames = 8;
+  static const double _defaultFilterPanelExtent = 60;
 
   ScrollController? _attachedScrollController;
+  double _filterPanelExtent = _defaultFilterPanelExtent;
 
   @override
   void initState() {
@@ -105,8 +108,14 @@ class _HomeAgendaSectionViewState extends State<HomeAgendaSectionView> {
       return 0.0;
     }
 
+    // Some delayed-attach/test-double controllers can report `hasClients`
+    // before exposing concrete positions. Fall back safely in that edge case.
     if (controller.positions.isEmpty) {
-      return controller.offset;
+      try {
+        return controller.offset;
+      } on StateError catch (_) {
+        return 0.0;
+      }
     }
 
     var resolvedPixels = 0.0;
@@ -123,20 +132,35 @@ class _HomeAgendaSectionViewState extends State<HomeAgendaSectionView> {
     return StreamValueBuilder<DiscoveryFilterCatalog>(
       streamValue: widget.controller.discoveryFilterCatalogStreamValue,
       builder: (context, catalog) {
-        return StreamValueBuilder<DiscoveryFilterSelection>(
-          streamValue: widget.controller.discoveryFilterSelectionStreamValue,
-          builder: (context, selection) {
-            return StreamValueBuilder<bool>(
+        return StreamValueBuilder<bool>(
+          streamValue:
+              widget.controller.hasCanonicalDiscoveryFilterCatalogStreamValue,
+          builder: (context, hasCanonicalCatalog) {
+            return StreamValueBuilder<DiscoveryFilterSelection>(
               streamValue:
-                  widget.controller.isDiscoveryFilterPanelVisibleStreamValue,
-              builder: (context, isPanelVisible) {
+                  widget.controller.discoveryFilterSelectionStreamValue,
+              builder: (context, selection) {
                 final showFilterPanel =
-                    isPanelVisible && catalog.filters.isNotEmpty;
+                    hasCanonicalCatalog && catalog.filters.isNotEmpty;
 
                 return widget.builder(
                   context,
                   HomeAgendaSectionSlots(
                     headerSlivers: [
+                      if (showFilterPanel)
+                        SliverToBoxAdapter(
+                          child: Offstage(
+                            offstage: true,
+                            child: SizeReportingWidget(
+                              onSizeChanged: _updateFilterPanelExtent,
+                              child: _HomeAgendaFilterPanel(
+                                controller: widget.controller,
+                                catalog: catalog,
+                                selection: selection,
+                              ),
+                            ),
+                          ),
+                        ),
                       SliverPersistentHeader(
                         pinned: true,
                         delegate: _PinnedHeaderDelegate(
@@ -146,17 +170,16 @@ class _HomeAgendaSectionViewState extends State<HomeAgendaSectionView> {
                             height: kToolbarHeight,
                             child: HomeAgendaAppBar(
                               controller: widget.controller,
-                              onFilterPressed: () =>
-                                  _handleFilterPressed(isPanelVisible),
                             ),
                           ),
                         ),
                       ),
                       if (showFilterPanel)
-                        SliverToBoxAdapter(
-                          child: _HomeAgendaFilterPanelReveal(
-                            onRevealFinished: widget
-                                .controller.completeDiscoveryFilterPanelReveal,
+                        SliverPersistentHeader(
+                          pinned: true,
+                          delegate: _PinnedHeaderDelegate(
+                            minHeight: _filterPanelExtent,
+                            maxHeight: _filterPanelExtent,
                             child: _HomeAgendaFilterPanel(
                               controller: widget.controller,
                               catalog: catalog,
@@ -176,57 +199,15 @@ class _HomeAgendaSectionViewState extends State<HomeAgendaSectionView> {
     );
   }
 
-  void _handleFilterPressed(bool isPanelVisible) {
-    if (isPanelVisible) {
-      widget.controller.closeDiscoveryFilterPanel();
+  void _updateFilterPanelExtent(Size size) {
+    final nextExtent =
+        size.height <= 0 ? _defaultFilterPanelExtent : size.height;
+    if ((nextExtent - _filterPanelExtent).abs() < 0.5 || !mounted) {
       return;
     }
-    widget.controller.openDiscoveryFilterPanelForReveal();
-  }
-}
-
-class _HomeAgendaFilterPanelReveal extends StatefulWidget {
-  const _HomeAgendaFilterPanelReveal({
-    required this.child,
-    required this.onRevealFinished,
-  });
-
-  final Widget child;
-  final VoidCallback onRevealFinished;
-
-  @override
-  State<_HomeAgendaFilterPanelReveal> createState() =>
-      _HomeAgendaFilterPanelRevealState();
-}
-
-class _HomeAgendaFilterPanelRevealState
-    extends State<_HomeAgendaFilterPanelReveal> {
-  final GlobalKey _panelKey = GlobalKey();
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final panelContext = _panelKey.currentContext;
-      if (panelContext == null) {
-        widget.onRevealFinished();
-        return;
-      }
-      Scrollable.ensureVisible(
-        panelContext,
-        alignment: 0,
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
-      ).whenComplete(widget.onRevealFinished);
+    setState(() {
+      _filterPanelExtent = nextExtent;
     });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return KeyedSubtree(
-      key: _panelKey,
-      child: widget.child,
-    );
   }
 }
 
@@ -299,7 +280,14 @@ class _PinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
   ) {
     return Material(
       color: Theme.of(context).scaffoldBackgroundColor,
-      child: SizedBox.expand(child: child),
+      child: SizedBox.expand(
+        child: ClipRect(
+          child: SingleChildScrollView(
+            physics: const NeverScrollableScrollPhysics(),
+            child: child,
+          ),
+        ),
+      ),
     );
   }
 

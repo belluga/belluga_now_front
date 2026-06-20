@@ -18,6 +18,7 @@ enum TenantAdminImageSlot {
   publicWebDefaultImage,
   mapFilter,
   typeVisual,
+  accountProfileGallery,
 }
 
 TenantAdminImageSlotSpec tenantAdminImageSlotSpecFor(
@@ -131,6 +132,15 @@ TenantAdminImageSlotSpec tenantAdminImageSlotSpecFor(
         mimeType: 'image/png',
         fileExtension: 'png',
         cropTitle: 'Recortar imagem canônica do tipo',
+      ),
+    TenantAdminImageSlot.accountProfileGallery =>
+      const TenantAdminImageSlotSpec(
+        aspectRatio: null,
+        maxWidth: 2048,
+        maxHeight: 2048,
+        mimeType: 'image/jpeg',
+        fileExtension: 'jpg',
+        cropTitle: 'Ajustar foto da galeria',
       ),
     TenantAdminImageSlot.publicWebDefaultImage =>
       const TenantAdminImageSlotSpec(

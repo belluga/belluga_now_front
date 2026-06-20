@@ -315,7 +315,6 @@ class _AgendaFiltersHarness {
       scheduleRepository: scheduleRepository,
       userEventsRepository: userEventsRepository,
       invitesRepository: invitesRepository,
-      userLocationRepository: userLocationRepository,
       appDataRepository: appDataRepository,
       locationOriginService: locationOriginService,
     );
@@ -763,14 +762,12 @@ class _TestTenantHomeAgendaController extends TenantHomeAgendaController {
     required ScheduleRepositoryContract scheduleRepository,
     required UserEventsRepositoryContract userEventsRepository,
     required InvitesRepositoryContract invitesRepository,
-    required UserLocationRepositoryContract userLocationRepository,
     required AppDataRepository appDataRepository,
     required LocationOriginServiceContract locationOriginService,
   }) : super(
           scheduleRepository: scheduleRepository,
           userEventsRepository: userEventsRepository,
           invitesRepository: invitesRepository,
-          userLocationRepository: userLocationRepository,
           appDataRepository: appDataRepository,
           locationOriginService: locationOriginService,
         );

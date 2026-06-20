@@ -1,7 +1,9 @@
+import 'package:belluga_now/domain/partners/account_profile_gallery_group.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
 import 'package:belluga_now/domain/partners/engagement_data.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
@@ -22,6 +24,7 @@ AccountProfileModel buildAccountProfileModelFromPrimitives({
   String? coverUrl,
   String? bio,
   String? content,
+  List<AccountProfileGalleryGroup>? galleryGroups,
   List<String>? tags,
   List<PartnerEventView>? agendaEvents,
   bool isVerified = false,
@@ -87,6 +90,7 @@ AccountProfileModel buildAccountProfileModelFromPrimitives({
     coverValue: coverValue,
     bioValue: bioValue,
     contentValue: contentValue,
+    galleryGroupValues: galleryGroups,
     tagValues: _buildTagValues(tags),
     agendaEventViews: List<PartnerEventView>.unmodifiable(
       agendaEvents ?? const <PartnerEventView>[],
@@ -110,4 +114,43 @@ List<AccountProfileTagValue> _buildTagValues(List<String>? tags) {
   return (tags ?? const <String>[])
       .map(AccountProfileTagValue.new)
       .toList(growable: false);
+}
+
+AccountProfileGalleryGroup buildAccountProfileGalleryGroupFromPrimitives({
+  required String groupId,
+  required String subtitle,
+  int order = 0,
+  List<AccountProfileGalleryItem>? items,
+}) {
+  return AccountProfileGalleryGroup(
+    groupIdValue: AccountProfileNestedGroupIdValue(groupId),
+    subtitleValue: AccountProfileNestedGroupLabelValue(subtitle),
+    orderValue: AccountProfileNestedGroupOrderValue(order),
+    items: items,
+  );
+}
+
+AccountProfileGalleryItem buildAccountProfileGalleryItemFromPrimitives({
+  required String itemId,
+  required String imageUrl,
+  required String thumbUrl,
+  required String cardUrl,
+  required String modalUrl,
+  String? description,
+  int order = 0,
+}) {
+  return AccountProfileGalleryItem(
+    itemIdValue: AccountProfileNestedGroupIdValue(itemId),
+    descriptionValue:
+        AccountProfileNestedGroupMemberTextValue(description ?? ''),
+    orderValue: AccountProfileNestedGroupOrderValue(order),
+    imageUrlValue: ThumbUriValue(defaultValue: Uri.parse(imageUrl))
+      ..parse(imageUrl),
+    thumbUrlValue: ThumbUriValue(defaultValue: Uri.parse(thumbUrl))
+      ..parse(thumbUrl),
+    cardUrlValue: ThumbUriValue(defaultValue: Uri.parse(cardUrl))
+      ..parse(cardUrl),
+    modalUrlValue: ThumbUriValue(defaultValue: Uri.parse(modalUrl))
+      ..parse(modalUrl),
+  );
 }

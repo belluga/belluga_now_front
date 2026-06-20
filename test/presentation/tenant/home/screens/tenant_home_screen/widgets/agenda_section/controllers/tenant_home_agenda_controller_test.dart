@@ -390,7 +390,6 @@ void main() {
       controller.setRadiusMeters(4000);
       controller.setRadiusMeters(5000);
       controller.setRadiusMeters(6000);
-      await Future<void>.delayed(const Duration(milliseconds: 20));
       expect(
         scheduleRepository.getEventsPageCallCount,
         1,
@@ -434,7 +433,6 @@ void main() {
       controller.setRadiusMeters(4000);
       expect(controller.isRadiusRefreshLoadingStreamValue.value, isTrue);
 
-      await Future<void>.delayed(const Duration(milliseconds: 10));
       expect(
         scheduleRepository.getEventsPageCallCount,
         1,
@@ -1165,12 +1163,14 @@ void main() {
     );
 
     test(
-      'home agenda hides expanded filter panel on scroll without clearing selection',
+      'home agenda no longer hides filter state on scroll',
       () async {
         final catalog = _homeEventsFilterCatalog();
         final primaryFilter = catalog.filters.single;
         final controller = _buildAgendaController(
-          scheduleRepository: _FakeScheduleRepository(),
+          scheduleRepository: _FakeScheduleRepository(
+            homeAgendaRuntimeCatalog: catalog,
+          ),
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
           discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
@@ -1195,7 +1195,7 @@ void main() {
         controller.updateRadiusActionCompactStateFromScroll(24);
 
         expect(
-            controller.isDiscoveryFilterPanelVisibleStreamValue.value, isFalse);
+            controller.isDiscoveryFilterPanelVisibleStreamValue.value, isTrue);
         expect(controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
             <String>{primaryFilter.key});
 
@@ -1254,10 +1254,9 @@ void main() {
     );
 
     testWidgets(
-      'home agenda app bar exposes filter action and active hint before radius',
+      'home agenda app bar no longer renders a filter toggle button',
       (tester) async {
         final catalog = _homeEventsFilterCatalog();
-        final primaryFilter = catalog.filters.single;
         final controller = _buildAgendaController(
           scheduleRepository: _FakeScheduleRepository(),
           userEventsRepository: _FakeUserEventsRepository(),
@@ -1291,37 +1290,13 @@ void main() {
 
         expect(
           find.byKey(const ValueKey<String>('home-agenda-filter-button')),
+          findsNothing,
+        );
+        expect(find.byTooltip('Filtrar eventos'), findsNothing);
+        expect(
+          find.byKey(const ValueKey<String>('agenda-radius-expanded')),
           findsOneWidget,
         );
-        expect(find.byTooltip('Filtrar eventos'), findsOneWidget);
-        expect(
-          tester
-              .getTopLeft(
-                find.byKey(const ValueKey<String>('home-agenda-filter-button')),
-              )
-              .dx,
-          lessThan(
-            tester
-                .getTopLeft(
-                  find.byKey(
-                    const ValueKey<String>('agenda-radius-expanded'),
-                  ),
-                )
-                .dx,
-          ),
-        );
-
-        controller.setDiscoveryFilterSelection(
-          DiscoveryFilterSelection(primaryKeys: <String>{primaryFilter.key}),
-        );
-        await tester.pump();
-
-        expect(find.byTooltip('Filtros ativos'), findsOneWidget);
-        expect(
-          find.byKey(const ValueKey<String>('home-agenda-filter-badge')),
-          findsOneWidget,
-        );
-        expect(find.text('1'), findsOneWidget);
 
         controller.onDispose();
       },
@@ -3251,13 +3226,15 @@ void main() {
     );
 
     testWidgets(
-      'home filter action reveals panel when shell is already scrolled',
+      'home agenda renders canonical filters by default without a toggle button',
       (tester) async {
         final catalog = _homeEventsFilterCatalog();
         final primaryFilter = catalog.filters.single;
         final controller = _buildAgendaController(
           scheduleRepository: ScheduleRepository(
-            backend: _ScrollableAgendaBackend(),
+            backend: _ScrollableAgendaBackend(
+              discoveryFilterCatalog: catalog,
+            ),
           ),
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
@@ -3304,29 +3281,442 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        await tester.drag(find.byType(ListView), const Offset(0, -380));
+        await tester.drag(
+          find.byWidgetPredicate(
+            (widget) =>
+                widget is ListView && widget.scrollDirection == Axis.vertical,
+          ),
+          const Offset(0, -380),
+        );
         await tester.pumpAndSettle();
 
         expect(shellScrollController.offset, greaterThan(kToolbarHeight));
         expect(
           find.byKey(_primaryFilterKey(primaryFilter)),
-          findsNothing,
+          findsOneWidget,
         );
-
-        await tester.tap(
-          find.byKey(const ValueKey<String>('home-agenda-filter-button')),
-        );
-        await tester.pumpAndSettle();
 
         final filterTopLeft = tester.getTopLeft(
           find.byKey(_primaryFilterKey(primaryFilter)),
         );
-        expect(filterTopLeft.dy, greaterThanOrEqualTo(0));
+        await tester.drag(
+          find.byWidgetPredicate(
+            (widget) =>
+                widget is ListView && widget.scrollDirection == Axis.vertical,
+          ),
+          const Offset(0, -220),
+        );
+        await tester.pumpAndSettle();
+
+        final stillPinnedFilterTopLeft = tester.getTopLeft(
+          find.byKey(_primaryFilterKey(primaryFilter)),
+        );
+        expect((stillPinnedFilterTopLeft.dy - filterTopLeft.dy).abs(),
+            lessThan(4));
+        expect(filterTopLeft.dy, greaterThan(-kToolbarHeight));
         expect(filterTopLeft.dy, lessThan(320));
         expect(find.text(primaryFilter.label), findsOneWidget);
         expect(
-          controller.isDiscoveryFilterPanelVisibleStreamValue.value,
-          isTrue,
+          find.byKey(const ValueKey<String>('home-agenda-filter-button')),
+          findsNothing,
+        );
+        expect(
+          find.bySemanticsLabel('Painel de filtros de eventos'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'home agenda keeps filter chrome hidden until the canonical runtime catalog is available',
+      (tester) async {
+        const baselineCatalog = DiscoveryFilterCatalog(
+          surface: 'home.events',
+          filters: <DiscoveryFilterCatalogItem>[
+            DiscoveryFilterCatalogItem(
+              key: 'artist',
+              label: 'Artistas',
+              entities: <String>{'event'},
+              types: <String>{'show'},
+              typesByEntity: <String, Set<String>>{
+                'event': <String>{'show'},
+              },
+            ),
+            DiscoveryFilterCatalogItem(
+              key: 'empty-type',
+              label: 'Tipo Vazio',
+              entities: <String>{'event'},
+              types: <String>{'empty-type'},
+              typesByEntity: <String, Set<String>>{
+                'event': <String>{'empty-type'},
+              },
+            ),
+          ],
+          typeOptionsByEntity: <String, List<DiscoveryFilterTypeOption>>{
+            'event': <DiscoveryFilterTypeOption>[
+              DiscoveryFilterTypeOption(
+                value: 'show',
+                label: 'Artistas',
+              ),
+              DiscoveryFilterTypeOption(
+                value: 'empty-type',
+                label: 'Tipo Vazio',
+              ),
+            ],
+          },
+        );
+        const runtimeCatalog = DiscoveryFilterCatalog(
+          surface: 'home.events',
+          filters: <DiscoveryFilterCatalogItem>[
+            DiscoveryFilterCatalogItem(
+              key: 'artist',
+              label: 'Artistas',
+              entities: <String>{'event'},
+              types: <String>{'show'},
+              typesByEntity: <String, Set<String>>{
+                'event': <String>{'show'},
+              },
+            ),
+          ],
+          typeOptionsByEntity: <String, List<DiscoveryFilterTypeOption>>{
+            'event': <DiscoveryFilterTypeOption>[
+              DiscoveryFilterTypeOption(
+                value: 'show',
+                label: 'Artistas',
+              ),
+            ],
+          },
+        );
+        final pendingFetch = Completer<void>();
+        final scheduleRepository = _FakeScheduleRepository(
+          pages: <int, List<EventModel>>{
+            1: <EventModel>[
+              _buildHomeAgendaEvent(
+                occurrenceId: '100000000000000000000001',
+                slug: 'runtime-catalog-home-event',
+                title: 'Evento Runtime',
+              ),
+            ],
+          },
+          homeAgendaRuntimeCatalog: runtimeCatalog,
+        )..nextFetchGate = pendingFetch;
+        final controller = _buildAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+            catalog: baselineCatalog,
+          ),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(
+            _buildAppData(
+              minKm: 1,
+              defaultKm: 5,
+              maxKm: 10,
+            ),
+          ),
+        );
+
+        addTearDown(controller.onDispose);
+
+        unawaited(controller.init());
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: HomeAgendaSectionView(
+                controller: controller,
+                builder: (context, slots) {
+                  return CustomScrollView(
+                    slivers: [
+                      ...slots.headerSlivers,
+                      SliverFillRemaining(child: slots.body),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        expect(
+          find.bySemanticsLabel('Painel de filtros de eventos'),
+          findsNothing,
+        );
+        expect(find.text('Tipo Vazio'), findsNothing);
+
+        pendingFetch.complete();
+        await tester.pumpAndSettle();
+
+        expect(
+          find.bySemanticsLabel('Painel de filtros de eventos'),
+          findsOneWidget,
+        );
+        expect(find.text('Artistas'), findsOneWidget);
+        expect(find.text('Tipo Vazio'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'home agenda reveals filter chrome when the canonical runtime catalog matches the preloaded catalog',
+      (tester) async {
+        const baselineCatalog = DiscoveryFilterCatalog(
+          surface: 'home.events',
+          filters: <DiscoveryFilterCatalogItem>[
+            DiscoveryFilterCatalogItem(
+              key: 'artist',
+              label: 'Artistas',
+              entities: <String>{'event'},
+              types: <String>{'show'},
+              typesByEntity: <String, Set<String>>{
+                'event': <String>{'show'},
+              },
+            ),
+          ],
+          typeOptionsByEntity: <String, List<DiscoveryFilterTypeOption>>{
+            'event': <DiscoveryFilterTypeOption>[
+              DiscoveryFilterTypeOption(
+                value: 'show',
+                label: 'Artistas',
+              ),
+            ],
+          },
+        );
+        final pendingFetch = Completer<void>();
+        final scheduleRepository = _FakeScheduleRepository(
+          pages: <int, List<EventModel>>{
+            1: <EventModel>[
+              _buildHomeAgendaEvent(
+                occurrenceId: '100000000000000000000002',
+                slug: 'matching-runtime-catalog-home-event',
+                title: 'Evento Canonico',
+              ),
+            ],
+          },
+          homeAgendaRuntimeCatalog: baselineCatalog,
+        )..nextFetchGate = pendingFetch;
+        final controller = _buildAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+            catalog: baselineCatalog,
+          ),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(
+            _buildAppData(
+              minKm: 1,
+              defaultKm: 5,
+              maxKm: 10,
+            ),
+          ),
+        );
+
+        addTearDown(controller.onDispose);
+
+        unawaited(controller.init());
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: HomeAgendaSectionView(
+                controller: controller,
+                builder: (context, slots) {
+                  return CustomScrollView(
+                    slivers: [
+                      ...slots.headerSlivers,
+                      SliverFillRemaining(child: slots.body),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        expect(
+          find.bySemanticsLabel('Painel de filtros de eventos'),
+          findsNothing,
+        );
+
+        pendingFetch.complete();
+        await tester.pumpAndSettle();
+
+        expect(
+          find.bySemanticsLabel('Painel de filtros de eventos'),
+          findsOneWidget,
+        );
+        expect(find.text('Artistas'), findsOneWidget);
+      },
+    );
+
+    test(
+      'home agenda marks the canonical runtime catalog ready only after catalog and selection are repaired',
+      () async {
+        const baselineCatalog = DiscoveryFilterCatalog(
+          surface: 'home.events',
+          filters: <DiscoveryFilterCatalogItem>[
+            DiscoveryFilterCatalogItem(
+              key: 'artist',
+              label: 'Artistas',
+              entities: <String>{'event'},
+              types: <String>{'show'},
+              typesByEntity: <String, Set<String>>{
+                'event': <String>{'show'},
+              },
+            ),
+            DiscoveryFilterCatalogItem(
+              key: 'empty-type',
+              label: 'Tipo Vazio',
+              entities: <String>{'event'},
+              types: <String>{'empty-type'},
+              typesByEntity: <String, Set<String>>{
+                'event': <String>{'empty-type'},
+              },
+            ),
+          ],
+          typeOptionsByEntity: <String, List<DiscoveryFilterTypeOption>>{
+            'event': <DiscoveryFilterTypeOption>[
+              DiscoveryFilterTypeOption(
+                value: 'show',
+                label: 'Artistas',
+              ),
+              DiscoveryFilterTypeOption(
+                value: 'empty-type',
+                label: 'Tipo Vazio',
+              ),
+            ],
+          },
+        );
+        const runtimeCatalog = DiscoveryFilterCatalog(
+          surface: 'home.events',
+          filters: <DiscoveryFilterCatalogItem>[
+            DiscoveryFilterCatalogItem(
+              key: 'artist',
+              label: 'Artistas',
+              entities: <String>{'event'},
+              types: <String>{'show'},
+              typesByEntity: <String, Set<String>>{
+                'event': <String>{'show'},
+              },
+            ),
+          ],
+          typeOptionsByEntity: <String, List<DiscoveryFilterTypeOption>>{
+            'event': <DiscoveryFilterTypeOption>[
+              DiscoveryFilterTypeOption(
+                value: 'show',
+                label: 'Artistas',
+              ),
+            ],
+          },
+        );
+        final pendingFetch = Completer<void>();
+        final scheduleRepository = _FakeScheduleRepository(
+          pages: <int, List<EventModel>>{
+            1: <EventModel>[
+              _buildHomeAgendaEvent(
+                occurrenceId: '100000000000000000000003',
+                slug: 'runtime-catalog-order-home-event',
+                title: 'Evento Ordem Runtime',
+              ),
+            ],
+          },
+          homeAgendaRuntimeCatalog: runtimeCatalog,
+        )..nextFetchGate = pendingFetch;
+        final controller = _buildAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+            catalog: baselineCatalog,
+          ),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(
+            _buildAppData(
+              minKm: 1,
+              defaultKm: 5,
+              maxKm: 10,
+            ),
+          ),
+        );
+        final transitions = <String>[];
+        final canonicalReadySnapshots = <List<String>>[];
+        addTearDown(controller.onDispose);
+        final catalogSubscription = controller
+            .discoveryFilterCatalogStreamValue.stream
+            .listen((catalog) {
+          transitions.add(
+            'catalog:${catalog.filters.map((item) => item.key).join(",")}',
+          );
+        });
+        final selectionSubscription = controller
+            .discoveryFilterSelectionStreamValue.stream
+            .listen((selection) {
+          final primaryKeys = selection.primaryKeys.toList()..sort();
+          final taxonomySelections = selection.taxonomyTermKeys.entries
+              .map(
+                (entry) =>
+                    'taxonomy:${entry.key}:${(entry.value.toList()..sort()).join("|")}',
+              )
+              .toList()
+            ..sort();
+          final filters = <String>[
+            ...primaryKeys.map((key) => 'primary:$key'),
+            ...taxonomySelections,
+          ].join(',');
+          transitions.add('selection:$filters');
+        });
+        final canonicalSubscription = controller
+            .hasCanonicalDiscoveryFilterCatalogStreamValue.stream
+            .listen((value) {
+          if (!value) {
+            return;
+          }
+          canonicalReadySnapshots.add(
+            controller.discoveryFilterCatalogStreamValue.value.filters
+                .map((item) => item.key)
+                .toList(growable: false),
+          );
+          transitions.add(
+            'ready:${controller.discoveryFilterCatalogStreamValue.value.filters.map((item) => item.key).join(",")}',
+          );
+        });
+        addTearDown(() async {
+          await catalogSubscription.cancel();
+          await selectionSubscription.cancel();
+          await canonicalSubscription.cancel();
+        });
+
+        controller.discoveryFilterSelectionStreamValue.addValue(
+          const DiscoveryFilterSelection(
+            primaryKeys: <String>{'empty-type'},
+          ),
+        );
+        final initFuture = controller.init();
+        await Future<void>.delayed(Duration.zero);
+        transitions.clear();
+
+        pendingFetch.complete();
+        await initFuture;
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(
+          transitions,
+          containsAllInOrder(<String>[
+            'catalog:artist',
+            'selection:',
+            'ready:artist',
+          ]),
+        );
+        expect(canonicalReadySnapshots, <List<String>>[
+          <String>['artist'],
+        ]);
+        expect(
+          controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
+          isEmpty,
         );
       },
     );
@@ -3423,7 +3813,9 @@ void main() {
         final firstTaxonomyTerm = firstTaxonomyGroup.terms.single;
         final secondTaxonomyTerm = secondTaxonomyGroup.terms.single;
         final controller = _buildAgendaController(
-          scheduleRepository: _FakeScheduleRepository(),
+          scheduleRepository: _FakeScheduleRepository(
+            homeAgendaRuntimeCatalog: catalog,
+          ),
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
           discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
@@ -3442,7 +3834,6 @@ void main() {
         addTearDown(controller.onDispose);
 
         await controller.init();
-        controller.setDiscoveryFilterPanelVisible(true);
         controller.setDiscoveryFilterSelection(
           DiscoveryFilterSelection(primaryKeys: <String>{primaryFilter.key}),
         );
@@ -3476,6 +3867,64 @@ void main() {
         expect(
           find.byKey(_taxonomyChipKey(secondTaxonomyGroup, secondTaxonomyTerm)),
           findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'home agenda omits filter chrome when the canonical catalog is empty',
+      (tester) async {
+        final controller = _buildAgendaController(
+          scheduleRepository: _FakeScheduleRepository(),
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+            catalog: const DiscoveryFilterCatalog(surface: 'home.events'),
+          ),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(
+            _buildAppData(
+              minKm: 1,
+              defaultKm: 5,
+              maxKm: 10,
+            ),
+          ),
+        );
+
+        addTearDown(controller.onDispose);
+
+        await controller.init();
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              appBar: PreferredSize(
+                preferredSize: const Size.fromHeight(kToolbarHeight),
+                child: HomeAgendaAppBar(controller: controller),
+              ),
+              body: HomeAgendaSectionView(
+                controller: controller,
+                builder: (context, slots) {
+                  return CustomScrollView(
+                    slivers: [
+                      ...slots.headerSlivers,
+                      SliverFillRemaining(child: slots.body),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(const ValueKey<String>('home-agenda-filter-button')),
+          findsNothing,
+        );
+        expect(
+          find.bySemanticsLabel('Painel de filtros de eventos'),
+          findsNothing,
         );
       },
     );
@@ -3810,7 +4259,6 @@ class _CountingHomeAgendaController extends TenantHomeAgendaController {
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
           appDataRepository: appDataRepository,
-          userLocationRepository: _FakeUserLocationRepository(),
           locationOriginService: LocationOriginService(
             appDataRepository: appDataRepository,
             userLocationRepository: _FakeUserLocationRepository(),
@@ -4240,6 +4688,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   _FakeScheduleRepository({
     this.pages = const <int, List<EventModel>>{},
     this.homeAgendaRuntimeFacets,
+    this.homeAgendaRuntimeCatalog,
   });
 
   @override
@@ -4251,9 +4700,13 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   @override
   final homeAgendaDiscoveryFilterFacetsStreamValue =
       StreamValue<DiscoveryFilterRuntimeFacets?>(defaultValue: null);
+  @override
+  final homeAgendaDiscoveryFilterCatalogStreamValue =
+      StreamValue<DiscoveryFilterCatalog?>(defaultValue: null);
 
   final Map<int, List<EventModel>> pages;
   final DiscoveryFilterRuntimeFacets? homeAgendaRuntimeFacets;
+  final DiscoveryFilterCatalog? homeAgendaRuntimeCatalog;
   int getEventsPageCallCount = 0;
   double? lastOriginLat;
   double? lastOriginLng;
@@ -4373,6 +4826,8 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     );
     homeAgendaDiscoveryFilterFacetsStreamValue
         .addValue(homeAgendaRuntimeFacets);
+    homeAgendaDiscoveryFilterCatalogStreamValue
+        .addValue(homeAgendaRuntimeCatalog);
     return events;
   }
 
@@ -4427,6 +4882,8 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     );
     homeAgendaDiscoveryFilterFacetsStreamValue
         .addValue(homeAgendaRuntimeFacets);
+    homeAgendaDiscoveryFilterCatalogStreamValue
+        .addValue(homeAgendaRuntimeCatalog);
     return nextEvents;
   }
 
@@ -5216,6 +5673,12 @@ class _ProductionLikePagedHomeAgendaBackend implements ScheduleBackendContract {
 }
 
 class _ScrollableAgendaBackend implements ScheduleBackendContract {
+  _ScrollableAgendaBackend({
+    this.discoveryFilterCatalog,
+  });
+
+  final DiscoveryFilterCatalog? discoveryFilterCatalog;
+
   @override
   Future<EventDTO?> fetchEventDetail({
     required String eventIdOrSlug,
@@ -5248,6 +5711,7 @@ class _ScrollableAgendaBackend implements ScheduleBackendContract {
         (index) => _eventDto(index: index),
       ),
       hasMore: false,
+      discoveryFilterCatalog: discoveryFilterCatalog,
     );
   }
 

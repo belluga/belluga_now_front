@@ -92,6 +92,7 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
       profiles: filtered,
       hasMore: result.hasMore,
       discoveryFilterFacets: result.discoveryFilterFacets,
+      discoveryFilterCatalog: result.discoveryFilterCatalog,
     );
   }
 

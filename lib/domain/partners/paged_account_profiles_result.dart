@@ -9,11 +9,13 @@ class PagedAccountProfilesResult {
     required this.profiles,
     required this.hasMoreValue,
     this.discoveryFilterFacets,
+    this.discoveryFilterCatalog,
   });
 
   final List<AccountProfileModel> profiles;
   final DomainBooleanValue hasMoreValue;
   final DiscoveryFilterRuntimeFacets? discoveryFilterFacets;
+  final DiscoveryFilterCatalog? discoveryFilterCatalog;
 
   bool get hasMore => hasMoreValue.value;
 }

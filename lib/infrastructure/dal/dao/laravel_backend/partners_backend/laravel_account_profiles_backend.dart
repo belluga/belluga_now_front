@@ -1,5 +1,6 @@
 import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/partners/account_profile_gallery_group.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
@@ -111,8 +112,8 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       final hasMore = raw.containsKey('has_more')
           ? hasMoreFlag
           : lastPage != null
-          ? currentPage < lastPage
-          : raw['next_page_url'] != null;
+              ? currentPage < lastPage
+              : raw['next_page_url'] != null;
 
       final distanceOrigin = await _resolveDistanceOrigin();
       return pagedAccountProfilesResultFromRaw(
@@ -120,6 +121,9 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
         hasMore: hasMore,
         discoveryFilterFacets: _parseDiscoveryFilterFacets(
           raw['discovery_filter_facets'],
+        ),
+        discoveryFilterCatalog: _parseDiscoveryFilterCatalog(
+          raw['discovery_filter_catalog'],
         ),
       );
     } on DioException catch (error) {
@@ -250,6 +254,18 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     );
   }
 
+  DiscoveryFilterCatalog? _parseDiscoveryFilterCatalog(Object? raw) {
+    if (raw is! Map) {
+      return null;
+    }
+
+    return DiscoveryFilterCatalog.fromJson(
+      raw.map(
+        (key, value) => MapEntry<String, Object?>(key.toString(), value),
+      ),
+    );
+  }
+
   @override
   Future<AccountProfileModel?> fetchAccountProfileBySlug(String slug) async {
     final normalizedSlug = slug.trim();
@@ -321,6 +337,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       if (trimmedType.isEmpty) continue;
       final tags = _extractTags(json['taxonomy_terms']);
       final agendaEvents = _extractAgendaEvents(json['agenda_occurrences']);
+      final galleryGroups = _extractGalleryGroups(json['gallery_groups']);
       final nestedGroups =
           _extractNestedProfileGroups(json['nested_profile_groups']);
       final distanceMeters = _resolveDistanceMeters(
@@ -382,6 +399,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           coverValue: coverValue,
           bioValue: bioValue,
           contentValue: contentValue,
+          galleryGroupValues: galleryGroups,
           tagValues:
               tags.map(AccountProfileTagValue.new).toList(growable: false),
           agendaEventViews: agendaEvents,
@@ -401,6 +419,90 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       );
     }
     return profiles;
+  }
+
+  List<AccountProfileGalleryGroup> _extractGalleryGroups(dynamic raw) {
+    if (raw is! List) {
+      return const <AccountProfileGalleryGroup>[];
+    }
+
+    final groups = <AccountProfileGalleryGroup>[];
+    for (final entry in raw) {
+      if (entry is! Map) continue;
+      final json = Map<String, dynamic>.from(entry);
+      final groupId = json['group_id']?.toString().trim() ?? '';
+      final subtitle = json['subtitle']?.toString().trim() ?? '';
+      if (groupId.isEmpty || subtitle.isEmpty) {
+        continue;
+      }
+
+      final items = _extractGalleryItems(json['items']);
+      if (items.isEmpty) {
+        continue;
+      }
+
+      groups.add(
+        AccountProfileGalleryGroup(
+          groupIdValue: AccountProfileNestedGroupIdValue(groupId),
+          subtitleValue: AccountProfileNestedGroupLabelValue(subtitle),
+          orderValue: AccountProfileNestedGroupOrderValue(
+            _parsePageValue(json['order']) ?? groups.length,
+          ),
+          items: items,
+        ),
+      );
+    }
+
+    groups.sort((left, right) => left.order.compareTo(right.order));
+    return List<AccountProfileGalleryGroup>.unmodifiable(groups);
+  }
+
+  List<AccountProfileGalleryItem> _extractGalleryItems(dynamic raw) {
+    if (raw is! List) {
+      return const <AccountProfileGalleryItem>[];
+    }
+
+    final items = <AccountProfileGalleryItem>[];
+    for (final entry in raw) {
+      if (entry is! Map) continue;
+      final json = Map<String, dynamic>.from(entry);
+      final itemId = json['item_id']?.toString().trim() ?? '';
+      final imageUrl = json['image_url']?.toString().trim() ?? '';
+      final thumbUrl = json['thumb_url']?.toString().trim() ?? '';
+      final cardUrl = json['card_url']?.toString().trim() ?? '';
+      final modalUrl = json['modal_url']?.toString().trim() ?? '';
+      if (itemId.isEmpty ||
+          imageUrl.isEmpty ||
+          thumbUrl.isEmpty ||
+          cardUrl.isEmpty ||
+          modalUrl.isEmpty) {
+        continue;
+      }
+
+      final description = json['description']?.toString().trim();
+      items.add(
+        AccountProfileGalleryItem(
+          itemIdValue: AccountProfileNestedGroupIdValue(itemId),
+          descriptionValue: AccountProfileNestedGroupMemberTextValue(
+            description == null || description.isEmpty ? '' : description,
+          ),
+          orderValue: AccountProfileNestedGroupOrderValue(
+            _parsePageValue(json['order']) ?? items.length,
+          ),
+          imageUrlValue: ThumbUriValue(defaultValue: Uri.parse(imageUrl))
+            ..parse(imageUrl),
+          thumbUrlValue: ThumbUriValue(defaultValue: Uri.parse(thumbUrl))
+            ..parse(thumbUrl),
+          cardUrlValue: ThumbUriValue(defaultValue: Uri.parse(cardUrl))
+            ..parse(cardUrl),
+          modalUrlValue: ThumbUriValue(defaultValue: Uri.parse(modalUrl))
+            ..parse(modalUrl),
+        ),
+      );
+    }
+
+    items.sort((left, right) => left.order.compareTo(right.order));
+    return List<AccountProfileGalleryItem>.unmodifiable(items);
   }
 
   List<AccountProfileNestedGroup> _extractNestedProfileGroups(dynamic raw) {
