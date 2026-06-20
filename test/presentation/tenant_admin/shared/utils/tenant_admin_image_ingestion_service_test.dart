@@ -128,81 +128,38 @@ void main() {
     expect(output.mimeType, 'image/jpeg');
   });
 
-  test('prepareXFile preserves all non-cover slot aspect ratios', () async {
-    final service = TenantAdminImageIngestionService();
-    final cases = <_SlotRatioCase>[
-      const _SlotRatioCase(
-        slot: TenantAdminImageSlot.avatar,
-        expectedAspectRatio: 1.0,
-      ),
-      const _SlotRatioCase(
-        slot: TenantAdminImageSlot.lightLogo,
-        expectedAspectRatio: 18 / 5,
-        expectedMimeType: 'image/png',
-      ),
-      const _SlotRatioCase(
-        slot: TenantAdminImageSlot.darkLogo,
-        expectedAspectRatio: 18 / 5,
-        expectedMimeType: 'image/png',
-      ),
-      const _SlotRatioCase(
-        slot: TenantAdminImageSlot.lightIcon,
-        expectedAspectRatio: 1.0,
-        expectedMimeType: 'image/png',
-      ),
-      const _SlotRatioCase(
-        slot: TenantAdminImageSlot.darkIcon,
-        expectedAspectRatio: 1.0,
-        expectedMimeType: 'image/png',
-      ),
-      const _SlotRatioCase(
-        slot: TenantAdminImageSlot.pwaIcon,
-        expectedAspectRatio: 1.0,
-        expectedMimeType: 'image/png',
-      ),
-      const _SlotRatioCase(
-        slot: TenantAdminImageSlot.publicWebDefaultImage,
-        expectedAspectRatio: tenantAdminPublicWebDefaultImageAspectRatio,
-      ),
-      const _SlotRatioCase(
-        slot: TenantAdminImageSlot.mapFilter,
-        expectedAspectRatio: 1.0,
-        expectedMimeType: 'image/png',
-      ),
-      const _SlotRatioCase(
-        slot: TenantAdminImageSlot.typeVisual,
-        expectedAspectRatio: 1.0,
-        expectedMimeType: 'image/png',
-      ),
-    ];
+  for (final scenario in _nonCoverSlotRatioCases) {
+    test(
+      'prepareXFile preserves ${scenario.slot.name} aspect ratio',
+      () async {
+        final service = TenantAdminImageIngestionService();
+        final source = await _writeImage(
+          width: _nonCoverSourceWidth,
+          height: _nonCoverSourceHeight,
+          name: 'non_cover_${scenario.slot.name}.png',
+        );
 
-    for (final scenario in cases) {
-      final source = await _writeImage(
-        width: 1200,
-        height: 1800,
-        name: 'non_cover_${scenario.slot.name}.png',
-      );
+        final output = await service.prepareXFile(
+          source,
+          slot: scenario.slot,
+        );
 
-      final output = await service.prepareXFile(
-        source,
-        slot: scenario.slot,
-      );
-
-      final decoded = img.decodeImage(await output.readAsBytes());
-      expect(decoded, isNotNull, reason: scenario.slot.name);
-      final ratio = decoded!.width / decoded.height;
-      expect(
-        (ratio - scenario.expectedAspectRatio).abs(),
-        lessThan(0.03),
-        reason: scenario.slot.name,
-      );
-      expect(
-        output.mimeType,
-        scenario.expectedMimeType,
-        reason: scenario.slot.name,
-      );
-    }
-  });
+        final decoded = img.decodeImage(await output.readAsBytes());
+        expect(decoded, isNotNull, reason: scenario.slot.name);
+        final ratio = decoded!.width / decoded.height;
+        expect(
+          (ratio - scenario.expectedAspectRatio).abs(),
+          lessThan(0.03),
+          reason: scenario.slot.name,
+        );
+        expect(
+          output.mimeType,
+          scenario.expectedMimeType,
+          reason: scenario.slot.name,
+        );
+      },
+    );
+  }
 
   test(
       'prepareXFile normalizes public web default image to canonical OG dimensions',
@@ -422,6 +379,55 @@ class _SlotRatioCase {
   final double expectedAspectRatio;
   final String expectedMimeType;
 }
+
+const _nonCoverSourceWidth = 480;
+const _nonCoverSourceHeight = 720;
+
+const _nonCoverSlotRatioCases = <_SlotRatioCase>[
+  _SlotRatioCase(
+    slot: TenantAdminImageSlot.avatar,
+    expectedAspectRatio: 1.0,
+  ),
+  _SlotRatioCase(
+    slot: TenantAdminImageSlot.lightLogo,
+    expectedAspectRatio: 18 / 5,
+    expectedMimeType: 'image/png',
+  ),
+  _SlotRatioCase(
+    slot: TenantAdminImageSlot.darkLogo,
+    expectedAspectRatio: 18 / 5,
+    expectedMimeType: 'image/png',
+  ),
+  _SlotRatioCase(
+    slot: TenantAdminImageSlot.lightIcon,
+    expectedAspectRatio: 1.0,
+    expectedMimeType: 'image/png',
+  ),
+  _SlotRatioCase(
+    slot: TenantAdminImageSlot.darkIcon,
+    expectedAspectRatio: 1.0,
+    expectedMimeType: 'image/png',
+  ),
+  _SlotRatioCase(
+    slot: TenantAdminImageSlot.pwaIcon,
+    expectedAspectRatio: 1.0,
+    expectedMimeType: 'image/png',
+  ),
+  _SlotRatioCase(
+    slot: TenantAdminImageSlot.publicWebDefaultImage,
+    expectedAspectRatio: tenantAdminPublicWebDefaultImageAspectRatio,
+  ),
+  _SlotRatioCase(
+    slot: TenantAdminImageSlot.mapFilter,
+    expectedAspectRatio: 1.0,
+    expectedMimeType: 'image/png',
+  ),
+  _SlotRatioCase(
+    slot: TenantAdminImageSlot.typeVisual,
+    expectedAspectRatio: 1.0,
+    expectedMimeType: 'image/png',
+  ),
+];
 
 class _FailingExternalImageProxy
     implements TenantAdminExternalImageProxyContract {
