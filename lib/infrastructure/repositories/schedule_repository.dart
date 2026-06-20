@@ -380,9 +380,10 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     homeAgendaDiscoveryFilterFacetsStreamValue.addValue(
       nextSlice.discoveryFilterFacets,
     );
-    homeAgendaDiscoveryFilterCatalogStreamValue.addValue(
-      nextSlice.discoveryFilterCatalog,
-    );
+    final nextCatalog = nextSlice.discoveryFilterCatalog;
+    if (nextCatalog != null) {
+      homeAgendaDiscoveryFilterCatalogStreamValue.addValue(nextCatalog);
+    }
     _publishHomeAgendaState(state);
     return state.events;
   }

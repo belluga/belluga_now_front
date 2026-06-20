@@ -128,21 +128,24 @@ class AccountProfileDetailController implements Disposable {
     );
     final capabilities = _resolveRegistry()
         ?.capabilitiesFor(ProfileTypeKeyValue(accountProfile.type));
-    profileConfigStreamValue.addValue(
-      _profileConfigBuilder.build(
-        accountProfile,
-        capabilities: capabilities,
-      ),
+    final rawConfig = _profileConfigBuilder.build(
+      accountProfile,
+      capabilities: capabilities,
     );
     try {
-      moduleDataStreamValue.addValue(
-        await _buildModuleData(
-          accountProfile,
-          capabilities: capabilities,
-        ),
+      final moduleData = await _buildModuleData(
+        accountProfile,
+        capabilities: capabilities,
       );
+      profileConfigStreamValue.addValue(
+        _filterConfigToAvailableModules(rawConfig, moduleData),
+      );
+      moduleDataStreamValue.addValue(moduleData);
     } catch (_) {
       errorMessageStreamValue.addValue('Falha ao preparar o perfil');
+      profileConfigStreamValue.addValue(
+        _filterConfigToAvailableModules(rawConfig, const {}),
+      );
       moduleDataStreamValue.addValue(const {});
     }
   }
@@ -332,6 +335,32 @@ class AccountProfileDetailController implements Disposable {
       modules[ProfileModuleId.agendaList] = agenda;
     }
     return modules;
+  }
+
+  PartnerProfileConfig _filterConfigToAvailableModules(
+    PartnerProfileConfig config,
+    Map<ProfileModuleId, Object?> moduleData,
+  ) {
+    final filteredTabs = config.tabs
+        .map((tab) {
+          final modules = tab.modules
+              .where((module) => moduleData.containsKey(module.id))
+              .toList(growable: false);
+          if (modules.isEmpty) {
+            return null;
+          }
+          return ProfileTabConfig(
+            titleValue: tab.titleValue,
+            modules: modules,
+          );
+        })
+        .whereType<ProfileTabConfig>()
+        .toList(growable: false);
+
+    return PartnerProfileConfig(
+      partner: config.partner,
+      tabs: filteredTabs,
+    );
   }
 
   List<AccountProfileRichTextBlock> _buildRichTextModuleData(
