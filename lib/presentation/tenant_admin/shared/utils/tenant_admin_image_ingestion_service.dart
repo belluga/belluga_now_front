@@ -158,8 +158,9 @@ class TenantAdminImageIngestionService {
 
     final spec = tenantAdminImageSlotSpecFor(slot);
     final ratio = spec.aspectRatio;
-    final cropped =
-        applyAspectCrop ? _centerCropToRatio(decoded, ratio) : decoded;
+    final cropped = applyAspectCrop && ratio != null
+        ? _centerCropToRatio(decoded, ratio)
+        : decoded;
     final resized = _resizeToBounds(
       cropped,
       maxWidth: spec.maxWidth,

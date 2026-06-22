@@ -70,6 +70,8 @@ class _TestTenantHomeAgendaController extends MockTenantHomeAgendaController {
             StreamValue<bool>(defaultValue: false),
         _isRadiusRefreshLoadingStreamValue =
             StreamValue<bool>(defaultValue: false),
+        _hasCanonicalDiscoveryFilterCatalogStreamValue =
+            StreamValue<bool>(defaultValue: true),
         _discoveryFilterCatalogStreamValue =
             StreamValue<DiscoveryFilterCatalog>(
           defaultValue: const DiscoveryFilterCatalog(surface: 'home.events'),
@@ -86,6 +88,7 @@ class _TestTenantHomeAgendaController extends MockTenantHomeAgendaController {
   final StreamValue<UserContract?> _authUserStreamValue;
   final StreamValue<bool> _isRadiusActionCompactStreamValue;
   final StreamValue<bool> _isRadiusRefreshLoadingStreamValue;
+  final StreamValue<bool> _hasCanonicalDiscoveryFilterCatalogStreamValue;
   final StreamValue<DiscoveryFilterCatalog> _discoveryFilterCatalogStreamValue;
   final StreamValue<DiscoveryFilterSelection>
       _discoveryFilterSelectionStreamValue;
@@ -102,6 +105,10 @@ class _TestTenantHomeAgendaController extends MockTenantHomeAgendaController {
   @override
   StreamValue<bool> get isRadiusRefreshLoadingStreamValue =>
       _isRadiusRefreshLoadingStreamValue;
+
+  @override
+  StreamValue<bool> get hasCanonicalDiscoveryFilterCatalogStreamValue =>
+      _hasCanonicalDiscoveryFilterCatalogStreamValue;
 
   @override
   StreamValue<DiscoveryFilterCatalog> get discoveryFilterCatalogStreamValue =>

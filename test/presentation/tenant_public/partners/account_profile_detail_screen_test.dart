@@ -125,6 +125,61 @@ void main() {
     expect(find.text('Falha ao preparar o perfil'), findsOneWidget);
   });
 
+  testWidgets('renders grouped gallery and opens modal with description',
+      (tester) async {
+    final repository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: repository,
+    );
+    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: _RecordingStackRouter(),
+        child: AccountProfileDetailScreen(
+          accountProfile: buildAccountProfileModelFromPrimitives(
+            id: '507f1f77bcf86cd799439011',
+            name: 'Cafe de la Musique',
+            slug: 'cafe-de-la-musique',
+            type: 'artist',
+            galleryGroups: [
+              buildAccountProfileGalleryGroupFromPrimitives(
+                groupId: 'group-1',
+                subtitle: 'Ambiente',
+                items: [
+                  buildAccountProfileGalleryItemFromPrimitives(
+                    itemId: 'gallery-item-1',
+                    description: 'Vista para o palco',
+                    imageUrl: 'https://tenant.test/gallery/image.jpg',
+                    thumbUrl: 'https://tenant.test/gallery/thumb.jpg',
+                    cardUrl: 'https://tenant.test/gallery/card.jpg',
+                    modalUrl: 'https://tenant.test/gallery/modal.jpg',
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+        find.byKey(const Key('accountProfileGroupedGallery')), findsOneWidget);
+    expect(find.text('Ambiente'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const Key('accountProfileGalleryItem_gallery-item-1')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('accountProfileGalleryModal_gallery-item-1')),
+      findsOneWidget,
+    );
+    expect(find.text('Vista para o palco'), findsOneWidget);
+  });
+
   testWidgets(
       'hero uses type visuals as left avatar fallback when no avatar exists',
       (tester) async {
@@ -3205,6 +3260,7 @@ AppData _buildAppData({
           'is_poi_enabled': false,
           'has_events': true,
           'has_bio': false,
+          'has_gallery': true,
         },
       },
       {
@@ -3223,6 +3279,7 @@ AppData _buildAppData({
           'has_events': true,
           'has_bio': true,
           'has_content': true,
+          'has_gallery': true,
         },
       },
       {

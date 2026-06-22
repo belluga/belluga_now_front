@@ -10,6 +10,7 @@ import 'package:belluga_now/application/router/support/canonical_route_governanc
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
 import 'package:belluga_now/application/router/support/route_instance_scope.dart';
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
+import 'package:belluga_now/domain/partners/account_profile_gallery_group.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
@@ -2417,6 +2418,180 @@ class _AccountProfileDetailScreenState
     );
   }
 
+  Widget _groupedPhotoGallery(List<AccountProfileGalleryGroup>? groups) {
+    if (groups == null || groups.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        key: const Key('accountProfileGroupedGallery'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var groupIndex = 0;
+              groupIndex < groups.length;
+              groupIndex++) ...[
+            if (groupIndex > 0) const SizedBox(height: 24),
+            Text(
+              groups[groupIndex].subtitle,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+            ),
+            const SizedBox(height: 12),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+                childAspectRatio: 1.1,
+              ),
+              itemCount: groups[groupIndex].items.length,
+              itemBuilder: (context, itemIndex) {
+                final item = groups[groupIndex].items[itemIndex];
+                return Material(
+                  color: Colors.transparent,
+                  child: Semantics(
+                    container: true,
+                    button: true,
+                    label: _galleryItemSemanticLabel(
+                      group: groups[groupIndex],
+                      item: item,
+                    ),
+                    child: InkWell(
+                      key: Key('accountProfileGalleryItem_${item.itemId}'),
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: () => _openGalleryItemModal(
+                        group: groups[groupIndex],
+                        item: item,
+                      ),
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          color: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest,
+                        ),
+                        child: BellugaNetworkImage(
+                          item.previewUrl,
+                          fit: BoxFit.cover,
+                          clipBorderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openGalleryItemModal({
+    required AccountProfileGalleryGroup group,
+    required AccountProfileGalleryItem item,
+  }) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        final viewport = MediaQuery.sizeOf(dialogContext);
+        return Dialog(
+          key: Key('accountProfileGalleryModal_${item.itemId}'),
+          insetPadding: const EdgeInsets.all(16),
+          clipBehavior: Clip.antiAlias,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 720,
+              maxHeight: viewport.height - 32,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Stack(
+                    children: [
+                      AspectRatio(
+                        aspectRatio: 1,
+                        child: InteractiveViewer(
+                          child: BellugaNetworkImage(
+                            item.modalUrl,
+                            fit: BoxFit.contain,
+                            placeholder: Container(
+                              color: Theme.of(dialogContext)
+                                  .colorScheme
+                                  .surfaceContainerHighest,
+                              child: const Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: IconButton.filledTonal(
+                          onPressed: () => dialogContext.router.maybePop(),
+                          tooltip: 'Fechar galeria',
+                          icon: const Icon(Icons.close),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          group.subtitle,
+                          style: Theme.of(dialogContext)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                        if (item.description?.trim().isNotEmpty == true) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            item.description!.trim(),
+                            key: Key(
+                              'accountProfileGalleryModalDescription_${item.itemId}',
+                            ),
+                            style: Theme.of(dialogContext).textTheme.bodyLarge,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _galleryItemSemanticLabel({
+    required AccountProfileGalleryGroup group,
+    required AccountProfileGalleryItem item,
+  }) {
+    final description = item.description?.trim();
+    if (description != null && description.isNotEmpty) {
+      return 'Abrir foto da galeria ${group.subtitle}: $description';
+    }
+    return 'Abrir foto da galeria ${group.subtitle}';
+  }
+
   Widget _affinityCarousel(List<PartnerRecommendationView>? recommendations) {
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -2851,6 +3026,9 @@ class _AccountProfileDetailScreenState
           data is List<PartnerProductView> ? data : null,
         );
       case ProfileModuleId.photoGallery:
+        if (data is List<AccountProfileGalleryGroup>) {
+          return _groupedPhotoGallery(data);
+        }
         return _photoGrid(
           data is List<PartnerMediaView> ? data : null,
         );

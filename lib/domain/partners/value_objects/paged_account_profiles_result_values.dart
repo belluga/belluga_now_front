@@ -7,6 +7,7 @@ PagedAccountProfilesResult pagedAccountProfilesResultFromRaw({
   required List<AccountProfileModel> profiles,
   required Object? hasMore,
   DiscoveryFilterRuntimeFacets? discoveryFilterFacets,
+  DiscoveryFilterCatalog? discoveryFilterCatalog,
 }) {
   final hasMoreValue = DomainBooleanValue();
   hasMoreValue.parse(hasMore.toString());
@@ -14,5 +15,6 @@ PagedAccountProfilesResult pagedAccountProfilesResultFromRaw({
     profiles: profiles,
     hasMoreValue: hasMoreValue,
     discoveryFilterFacets: discoveryFilterFacets,
+    discoveryFilterCatalog: discoveryFilterCatalog,
   );
 }

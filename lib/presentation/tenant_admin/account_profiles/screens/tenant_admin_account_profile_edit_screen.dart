@@ -7,24 +7,33 @@ import 'package:belluga_now/application/router/support/tenant_admin_safe_back.da
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_update.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_nested_profile_group_values.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_account_profile_gallery_operations.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_account_profile_gallery_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_canonical_image_upload_field.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_crop_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_upload_field.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_source_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_nested_profile_groups_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_xfile_preview.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class TenantAdminAccountProfileEditScreen extends StatefulWidget {
@@ -129,6 +138,11 @@ class _TenantAdminAccountProfileEditScreenState
   bool _hasCover(String? selectedType) {
     final definition = _selectedProfileTypeDefinition(selectedType);
     return definition?.capabilities.hasCover ?? false;
+  }
+
+  bool _hasGallery(String? selectedType) {
+    final definition = _selectedProfileTypeDefinition(selectedType);
+    return definition?.capabilities.hasGallery ?? false;
   }
 
   bool _hasNestedProfileGroups(String? selectedType) {
@@ -492,6 +506,167 @@ class _TenantAdminAccountProfileEditScreenState
     }
   }
 
+  Future<String?> _promptGalleryWebImageUrl() async {
+    final result = await showTenantAdminFieldEditSheet(
+      context: context,
+      title: 'URL da foto da galeria',
+      label: 'URL da imagem',
+      initialValue: '',
+      helperText: 'Use URL completa (http/https).',
+      keyboardType: TextInputType.url,
+      textCapitalization: TextCapitalization.none,
+      autocorrect: false,
+      enableSuggestions: false,
+      validator: (value) {
+        final trimmed = value?.trim() ?? '';
+        if (trimmed.isEmpty) {
+          return 'URL obrigatória.';
+        }
+        final uri = Uri.tryParse(trimmed);
+        final hasScheme = uri != null &&
+            (uri.scheme == 'http' || uri.scheme == 'https') &&
+            uri.host.isNotEmpty;
+        if (!hasScheme) {
+          return 'URL inválida.';
+        }
+        return null;
+      },
+    );
+    return result?.value.trim();
+  }
+
+  Future<XFile?> _pickGalleryImage() async {
+    final source = await showTenantAdminImageSourceSheet(
+      context: context,
+      title: 'Adicionar foto da galeria',
+    );
+    if (!mounted || source == null) {
+      return null;
+    }
+
+    try {
+      XFile? sourceFile;
+      if (source == TenantAdminImageSourceOption.device) {
+        sourceFile = await _controller.pickImageFromDevice(
+          slot: TenantAdminImageSlot.accountProfileGallery,
+        );
+      } else {
+        final url = await _promptGalleryWebImageUrl();
+        if (!mounted || url == null) {
+          return null;
+        }
+        sourceFile = await _controller.fetchImageFromUrlForCrop(imageUrl: url);
+      }
+
+      if (!mounted || sourceFile == null) {
+        return null;
+      }
+
+      return showTenantAdminImageCropSheet(
+        context: context,
+        sourceFile: sourceFile,
+        slot: TenantAdminImageSlot.accountProfileGallery,
+        readBytesForCrop: _controller.readImageBytesForCrop,
+        prepareCroppedFile: (croppedData, slot) =>
+            _controller.prepareCroppedImage(croppedData, slot: slot),
+      );
+    } on TenantAdminImageIngestionException catch (error) {
+      _controller.reportEditErrorMessage(error.message);
+      return null;
+    } catch (_) {
+      _controller.reportEditErrorMessage(
+        'Não foi possível preparar a foto da galeria.',
+      );
+      return null;
+    }
+  }
+
+  Future<void> _addGalleryItem(String groupId) async {
+    final file = await _pickGalleryImage();
+    if (!mounted || file == null) {
+      return;
+    }
+    _controller.addEditGalleryItem(groupId: groupId, uploadFile: file);
+  }
+
+  Future<void> _replaceGalleryItem(String groupId, String itemId) async {
+    final file = await _pickGalleryImage();
+    if (!mounted || file == null) {
+      return;
+    }
+    _controller.replaceEditGalleryItemUpload(
+      groupId: groupId,
+      itemId: itemId,
+      uploadFile: file,
+    );
+  }
+
+  String? _validateGalleryState(TenantAdminAccountProfileEditDraft state) {
+    final groups = state.galleryGroups;
+    if (groups.length > TenantAdminAccountProfileGalleryOperations.maxGroups) {
+      return 'Limite de grupos da galeria atingido.';
+    }
+    final totalItems =
+        TenantAdminAccountProfileGalleryOperations.totalItemCount(
+      groups,
+    );
+    if (totalItems > TenantAdminAccountProfileGalleryOperations.maxItems) {
+      return 'Limite total de fotos da galeria atingido.';
+    }
+    for (final group in groups) {
+      if (group.subtitle.trim().isEmpty) {
+        return 'Todos os grupos da galeria precisam de subtítulo.';
+      }
+      if (group.items.isEmpty) {
+        return 'Cada grupo da galeria precisa ter ao menos uma foto.';
+      }
+    }
+    return null;
+  }
+
+  Future<List<TenantAdminAccountProfileGalleryUpdateGroup>>
+      _buildGalleryUpdateGroups(
+    TenantAdminAccountProfileEditDraft state,
+  ) async {
+    final groups = <TenantAdminAccountProfileGalleryUpdateGroup>[];
+    final orderedGroups = [...state.galleryGroups]
+      ..sort((left, right) => left.order.compareTo(right.order));
+    for (final group in orderedGroups) {
+      final items = <TenantAdminAccountProfileGalleryUpdateItem>[];
+      final orderedItems = [...group.items]
+        ..sort((left, right) => left.order.compareTo(right.order));
+      for (final item in orderedItems) {
+        final upload = await _controller.buildImageUpload(
+          item.uploadFile,
+          slot: TenantAdminImageSlot.accountProfileGallery,
+        );
+        items.add(
+          TenantAdminAccountProfileGalleryUpdateItem(
+            itemIdValue: TenantAdminNestedProfileGroupTextValue(item.itemId),
+            descriptionValue: TenantAdminOptionalTextValue()
+              ..parse(
+                item.description?.trim().isEmpty == true
+                    ? null
+                    : item.description?.trim(),
+              ),
+            orderValue: TenantAdminNestedProfileGroupOrderValue(item.order),
+            upload: upload,
+          ),
+        );
+      }
+      groups.add(
+        TenantAdminAccountProfileGalleryUpdateGroup(
+          groupIdValue: TenantAdminNestedProfileGroupTextValue(group.groupId),
+          subtitleValue:
+              TenantAdminNestedProfileGroupTextValue(group.subtitle.trim()),
+          orderValue: TenantAdminNestedProfileGroupOrderValue(group.order),
+          items: items,
+        ),
+      );
+    }
+    return groups;
+  }
+
   void _preloadRemoteImage({
     required String url,
     required bool isAvatar,
@@ -579,6 +754,9 @@ class _TenantAdminAccountProfileEditScreenState
                                     _hasNestedProfileGroups(
                                   state.selectedProfileType,
                                 );
+                                final hasGallery = _hasGallery(
+                                  state.selectedProfileType,
+                                );
 
                                 if (loadError?.isNotEmpty ?? false) {
                                   return TenantAdminFormScaffold(
@@ -650,8 +828,11 @@ class _TenantAdminAccountProfileEditScreenState
                                             const SizedBox(height: 16),
                                             _buildMediaSection(context, state),
                                           ],
-                                          if (hasContent) ...[
+                                          if (hasGallery) ...[
                                             const SizedBox(height: 16),
+                                            _buildGallerySection(state),
+                                          ],
+                                          if (hasContent) ...[
                                             _buildContentSection(
                                                 context, state),
                                           ],
@@ -763,6 +944,25 @@ class _TenantAdminAccountProfileEditScreenState
                                                                         .cover,
                                                               )
                                                             : null;
+                                                    final galleryValidationError =
+                                                        hasGallery
+                                                            ? _validateGalleryState(
+                                                                state,
+                                                              )
+                                                            : null;
+                                                    if (galleryValidationError !=
+                                                        null) {
+                                                      _controller
+                                                          .reportEditErrorMessage(
+                                                        galleryValidationError,
+                                                      );
+                                                      return;
+                                                    }
+                                                    final galleryGroups = hasGallery
+                                                        ? await _buildGalleryUpdateGroups(
+                                                            state,
+                                                          )
+                                                        : null;
                                                     _controller
                                                         .submitUpdateProfile(
                                                       accountProfileId:
@@ -802,6 +1002,8 @@ class _TenantAdminAccountProfileEditScreenState
                                                       coverUpload: coverUpload,
                                                       avatarUrl: null,
                                                       coverUrl: null,
+                                                      galleryGroups:
+                                                          galleryGroups,
                                                       nestedProfileGroups:
                                                           _hasNestedProfileGroups(
                                                         selectedType,
@@ -1352,6 +1554,38 @@ class _TenantAdminAccountProfileEditScreenState
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildGallerySection(TenantAdminAccountProfileEditDraft state) {
+    return TenantAdminAccountProfileGalleryEditor(
+      groups: state.galleryGroups,
+      totalItemCount: _controller.editGalleryItemCount(),
+      maxGroups: TenantAdminAccountProfileGalleryOperations.maxGroups,
+      maxItems: TenantAdminAccountProfileGalleryOperations.maxItems,
+      onAddGroup: _controller.addEditGalleryGroup,
+      onRenameGroup: _controller.renameEditGalleryGroup,
+      onMoveGroup: _controller.moveEditGalleryGroup,
+      onRemoveGroup: _controller.removeEditGalleryGroup,
+      onAddItemRequested: _addGalleryItem,
+      onReplaceItemRequested: _replaceGalleryItem,
+      onMoveItem: (groupId, itemId, delta) {
+        _controller.moveEditGalleryItem(
+          groupId: groupId,
+          itemId: itemId,
+          delta: delta,
+        );
+      },
+      onRemoveItem: (groupId, itemId) {
+        _controller.removeEditGalleryItem(groupId: groupId, itemId: itemId);
+      },
+      onDescriptionChanged: (groupId, itemId, description) {
+        _controller.updateEditGalleryItemDescription(
+          groupId: groupId,
+          itemId: itemId,
+          description: description,
+        );
+      },
     );
   }
 

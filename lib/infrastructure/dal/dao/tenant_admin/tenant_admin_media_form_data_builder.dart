@@ -115,6 +115,32 @@ class TenantAdminMediaFormDataBuilder {
     return formData;
   }
 
+  FormData buildGalleryPayload({
+    required List<Map<String, dynamic>> galleryGroups,
+    required Map<String, TenantAdminMediaUpload> uploads,
+  }) {
+    final formData = FormData.fromMap(
+      <String, dynamic>{
+        '_method': 'PATCH',
+        'gallery_groups': jsonEncode(galleryGroups),
+      },
+      ListFormat.multiCompatible,
+    );
+    for (final entry in uploads.entries) {
+      formData.files.add(
+        MapEntry(
+          entry.key,
+          MultipartFile.fromBytes(
+            entry.value.bytes,
+            filename: entry.value.fileName,
+            contentType: _resolveMediaType(entry.value),
+          ),
+        ),
+      );
+    }
+    return formData;
+  }
+
   MediaType _resolveMediaType(TenantAdminMediaUpload upload) {
     final mimeType = upload.mimeType ?? _inferMimeType(upload.fileName);
     if (mimeType == null) {
@@ -126,6 +152,9 @@ class TenantAdminMediaFormDataBuilder {
     }
     return MediaType(parts[0], parts[1]);
   }
+
+  MediaType resolveMediaType(TenantAdminMediaUpload upload) =>
+      _resolveMediaType(upload);
 
   String? _inferMimeType(String fileName) {
     final lower = fileName.toLowerCase();

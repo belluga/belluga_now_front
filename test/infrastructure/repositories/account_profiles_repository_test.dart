@@ -223,6 +223,135 @@ void main() {
     );
   });
 
+  test('fetchAccountProfilesPage preserves backend canonical discovery catalog',
+      () async {
+    const runtimeCatalog = DiscoveryFilterCatalog(
+      surface: 'discovery.account_profiles',
+      filters: <DiscoveryFilterCatalogItem>[
+        DiscoveryFilterCatalogItem(
+          key: 'artist',
+          label: 'Artistas',
+          entities: <String>{'account_profile'},
+          types: <String>{'artist'},
+          typesByEntity: <String, Set<String>>{
+            'account_profile': <String>{'artist'},
+          },
+        ),
+      ],
+      typeOptionsByEntity: <String, List<DiscoveryFilterTypeOption>>{
+        'account_profile': <DiscoveryFilterTypeOption>[
+          DiscoveryFilterTypeOption(
+            value: 'artist',
+            label: 'Artistas',
+          ),
+        ],
+      },
+    );
+    final backend = _StubAccountProfilesBackend(
+      accountProfiles: [
+        buildAccountProfileModelFromPrimitives(
+          id: _generateMongoId(),
+          name: 'Artist One',
+          slug: 'artist-one',
+          type: 'artist',
+        ),
+      ],
+      discoveryFilterCatalog: runtimeCatalog,
+    );
+    final repository = AccountProfilesRepository(
+      backend: backend,
+      favoriteBackend: _StubFavoriteBackend(favorites: const []),
+      favoriteAccountProfileIds: const {},
+    );
+
+    final page = await repository.fetchAccountProfilesPage(
+      page: AccountProfilesRepositoryContractPrimInt.fromRaw(1),
+      pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
+    );
+
+    expect(page.discoveryFilterCatalog, isNotNull);
+    expect(page.discoveryFilterCatalog?.surface, 'discovery.account_profiles');
+    expect(
+      page.discoveryFilterCatalog?.filters.map((entry) => entry.key).toList(),
+      <String>['artist'],
+    );
+    expect(
+      page.discoveryFilterCatalog?.typeOptionsByEntity['account_profile']
+          ?.map((entry) => entry.value)
+          .toList(),
+      <String>['artist'],
+    );
+  });
+
+  test('resetPagedAccountProfilesState clears paired discovery filter streams',
+      () async {
+    const runtimeCatalog = DiscoveryFilterCatalog(
+      surface: 'discovery.account_profiles',
+      filters: <DiscoveryFilterCatalogItem>[
+        DiscoveryFilterCatalogItem(
+          key: 'artist',
+          label: 'Artistas',
+          entities: <String>{'account_profile'},
+          types: <String>{'artist'},
+          typesByEntity: <String, Set<String>>{
+            'account_profile': <String>{'artist'},
+          },
+        ),
+      ],
+      typeOptionsByEntity: <String, List<DiscoveryFilterTypeOption>>{
+        'account_profile': <DiscoveryFilterTypeOption>[
+          DiscoveryFilterTypeOption(
+            value: 'artist',
+            label: 'Artistas',
+          ),
+        ],
+      },
+    );
+    const runtimeFacets = DiscoveryFilterRuntimeFacets(
+      surface: 'discovery.account_profiles',
+      filterKeys: <String>{'artist'},
+      taxonomyOptionsByKey: <String, DiscoveryFilterTaxonomyGroupOption>{
+        'music': DiscoveryFilterTaxonomyGroupOption(
+          key: 'music',
+          label: 'Musica',
+          terms: <DiscoveryFilterTaxonomyTermOption>[
+            DiscoveryFilterTaxonomyTermOption(value: 'forro', label: 'Forro'),
+          ],
+        ),
+      },
+    );
+    final backend = _StubAccountProfilesBackend(
+      accountProfiles: [
+        buildAccountProfileModelFromPrimitives(
+          id: _generateMongoId(),
+          name: 'Artist One',
+          slug: 'artist-one',
+          type: 'artist',
+        ),
+      ],
+      discoveryFilterCatalog: runtimeCatalog,
+      discoveryFilterFacets: runtimeFacets,
+    );
+    final repository = AccountProfilesRepository(
+      backend: backend,
+      favoriteBackend: _StubFavoriteBackend(favorites: const []),
+      favoriteAccountProfileIds: const {},
+    );
+
+    await repository.loadAccountProfilesPage(
+      pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
+    );
+
+    expect(repository.publicDiscoveryFilterFacetsStreamValue.value, isNotNull);
+    expect(repository.publicDiscoveryFilterCatalogStreamValue.value, isNotNull);
+
+    repository.resetPagedAccountProfilesState();
+
+    expect(repository.publicDiscoveryFilterFacetsStreamValue.value, isNull);
+    expect(repository.publicDiscoveryFilterCatalogStreamValue.value, isNull);
+    expect(repository.pagedAccountProfilesStreamValue.value, isNull);
+  });
+
   test(
       'init loads favorite ids from backend favorites source without preloading full catalog',
       () async {
@@ -737,11 +866,13 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
     required this.accountProfiles,
     this.nearbyProfiles = const <AccountProfileModel>[],
     this.discoveryFilterFacets,
+    this.discoveryFilterCatalog,
   });
 
   final List<AccountProfileModel> accountProfiles;
   final List<AccountProfileModel> nearbyProfiles;
   final DiscoveryFilterRuntimeFacets? discoveryFilterFacets;
+  final DiscoveryFilterCatalog? discoveryFilterCatalog;
   List<String>? lastAllowedTypes;
   List<String>? lastTypeFilters;
   List<AccountProfilesRepositoryTaxonomyFilter> lastTaxonomyFilters =
@@ -777,6 +908,7 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
       profiles: accountProfiles.sublist(start, end),
       hasMore: end < accountProfiles.length,
       discoveryFilterFacets: discoveryFilterFacets,
+      discoveryFilterCatalog: discoveryFilterCatalog,
     );
   }
 

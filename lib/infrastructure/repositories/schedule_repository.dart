@@ -274,6 +274,7 @@ class ScheduleRepository extends ScheduleRepositoryContract {
       events: pageDto.toDomainEvents(),
       hasMore: pageDto.hasMore,
       discoveryFilterFacets: pageDto.discoveryFilterFacets,
+      discoveryFilterCatalog: pageDto.discoveryFilterCatalog,
     );
   }
 
@@ -315,6 +316,9 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     );
     homeAgendaDiscoveryFilterFacetsStreamValue.addValue(
       firstSlice.discoveryFilterFacets,
+    );
+    homeAgendaDiscoveryFilterCatalogStreamValue.addValue(
+      firstSlice.discoveryFilterCatalog,
     );
     _publishHomeAgendaState(state);
     return state.events;
@@ -376,6 +380,10 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     homeAgendaDiscoveryFilterFacetsStreamValue.addValue(
       nextSlice.discoveryFilterFacets,
     );
+    final nextCatalog = nextSlice.discoveryFilterCatalog;
+    if (nextCatalog != null) {
+      homeAgendaDiscoveryFilterCatalogStreamValue.addValue(nextCatalog);
+    }
     _publishHomeAgendaState(state);
     return state.events;
   }
@@ -595,11 +603,13 @@ class _SchedulePageSlice {
     required this.events,
     required this.hasMore,
     this.discoveryFilterFacets,
+    this.discoveryFilterCatalog,
   });
 
   final List<EventModel> events;
   final bool hasMore;
   final DiscoveryFilterRuntimeFacets? discoveryFilterFacets;
+  final DiscoveryFilterCatalog? discoveryFilterCatalog;
 }
 
 class _HomeAgendaState {

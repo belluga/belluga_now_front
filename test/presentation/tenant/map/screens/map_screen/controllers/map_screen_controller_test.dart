@@ -594,6 +594,9 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   @override
   final homeAgendaDiscoveryFilterFacetsStreamValue =
       StreamValue<DiscoveryFilterRuntimeFacets?>(defaultValue: null);
+  @override
+  final homeAgendaDiscoveryFilterCatalogStreamValue =
+      StreamValue<DiscoveryFilterCatalog?>(defaultValue: null);
 
   final Map<String, EventModel?> eventsBySlug = <String, EventModel?>{};
   final List<String> requestedSlugs = <String>[];

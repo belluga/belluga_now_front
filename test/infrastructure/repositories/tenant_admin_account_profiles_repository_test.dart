@@ -12,6 +12,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_account_profiles_repository.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_base_url_resolver.dart';
@@ -203,6 +204,107 @@ void main() {
       },
     ]);
   });
+
+  test(
+    'updateAccountProfileGallery sends multipart patch tunnel with encoded groups and uploads',
+    () async {
+      final adapter = _CaptureAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+      await repository.updateAccountProfileGallery(
+        accountProfileId: tenantAdminAccountProfilesRepoString(
+          'profile-1',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        galleryGroups: <TenantAdminAccountProfileGalleryUpdateGroup>[
+          TenantAdminAccountProfileGalleryUpdateGroup(
+            groupIdValue: TenantAdminNestedProfileGroupTextValue('group/1'),
+            subtitleValue: TenantAdminNestedProfileGroupTextValue(
+              'Ambiente principal',
+            ),
+            orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+            items: <TenantAdminAccountProfileGalleryUpdateItem>[
+              TenantAdminAccountProfileGalleryUpdateItem(
+                itemIdValue: TenantAdminNestedProfileGroupTextValue(
+                  'item 1/novo',
+                ),
+                descriptionValue: TenantAdminOptionalTextValue()
+                  ..parse('Vista para o palco'),
+                orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+                upload: tenantAdminMediaUploadFromRaw(
+                  bytes: Uint8List.fromList([7, 8, 9]),
+                  fileName: 'gallery.png',
+                ),
+              ),
+              TenantAdminAccountProfileGalleryUpdateItem(
+                itemIdValue: TenantAdminNestedProfileGroupTextValue(
+                  'existing-item',
+                ),
+                descriptionValue: TenantAdminOptionalTextValue(),
+                orderValue: TenantAdminNestedProfileGroupOrderValue(1),
+              ),
+            ],
+          ),
+        ],
+      );
+
+      expect(adapter.lastRequest?.method, 'POST');
+      expect(
+        adapter.lastRequest?.path,
+        contains(
+            'https://tenant.test/admin/api/v1/account_profiles/profile-1/gallery'),
+      );
+      expect(adapter.lastRequest?.contentType, contains('multipart/form-data'));
+
+      final data = adapter.lastRequest?.data;
+      expect(data, isA<FormData>());
+      final formData = data as FormData;
+      expect(
+        formData.fields.any(
+          (entry) => entry.key == '_method' && entry.value == 'PATCH',
+        ),
+        isTrue,
+      );
+
+      final encodedGalleryGroups = jsonDecode(
+        formData.fields
+            .firstWhere((entry) => entry.key == 'gallery_groups')
+            .value,
+      ) as List<dynamic>;
+      expect(encodedGalleryGroups, hasLength(1));
+
+      final group = encodedGalleryGroups.single as Map<String, dynamic>;
+      expect(group['group_id'], 'group/1');
+      expect(group['subtitle'], 'Ambiente principal');
+      expect(group['order'], 0);
+
+      final items = group['items'] as List<dynamic>;
+      expect(items, hasLength(2));
+
+      final uploadedItem = items.first as Map<String, dynamic>;
+      expect(uploadedItem['item_id'], 'item 1/novo');
+      expect(uploadedItem['description'], 'Vista para o palco');
+      expect(uploadedItem['order'], 0);
+      expect(uploadedItem['upload'], 'upload_group_1_item_1_novo');
+
+      final existingItem = items.last as Map<String, dynamic>;
+      expect(existingItem['item_id'], 'existing-item');
+      expect(existingItem['description'], isNull);
+      expect(existingItem['order'], 1);
+      expect(existingItem.containsKey('upload'), isFalse);
+
+      expect(
+        formData.files.map((entry) => entry.key),
+        contains('upload_group_1_item_1_novo'),
+      );
+      final uploadEntry = formData.files.singleWhere(
+        (entry) => entry.key == 'upload_group_1_item_1_novo',
+      );
+      expect(uploadEntry.value.filename, 'gallery.png');
+    },
+  );
 
   test('fetchAccountProfiles sends queryable selector filters when requested',
       () async {
@@ -515,6 +617,19 @@ void main() {
           defaultValue: '',
           isRequired: true,
         ),
+        capabilities: TenantAdminProfileTypeCapabilities(
+          isFavoritable: TenantAdminFlagValue(true),
+          isPoiEnabled: TenantAdminFlagValue(true),
+          isReferenceLocationEnabled: TenantAdminFlagValue(true),
+          hasBio: TenantAdminFlagValue(true),
+          hasContent: TenantAdminFlagValue(true),
+          hasTaxonomies: TenantAdminFlagValue(true),
+          hasAvatar: TenantAdminFlagValue(true),
+          hasCover: TenantAdminFlagValue(true),
+          hasEvents: TenantAdminFlagValue(true),
+          hasGallery: TenantAdminFlagValue(true),
+          hasNestedProfileGroups: TenantAdminFlagValue(true),
+        ),
         visual: TenantAdminPoiVisual.image(
           imageSource: TenantAdminPoiVisualImageSource.typeAsset,
         ),
@@ -538,6 +653,36 @@ void main() {
       expect(
         formData.fields.any(
           (entry) => entry.key == 'remove_type_asset' && entry.value == '1',
+        ),
+        isTrue,
+      );
+      expect(
+        formData.fields.any(
+          (entry) =>
+              entry.key == 'capabilities[is_favoritable]' && entry.value == '1',
+        ),
+        isTrue,
+      );
+      expect(
+        formData.fields.any(
+          (entry) =>
+              entry.key == 'capabilities[is_reference_location_enabled]' &&
+              entry.value == '1',
+        ),
+        isTrue,
+      );
+      expect(
+        formData.fields.any(
+          (entry) =>
+              entry.key == 'capabilities[has_gallery]' && entry.value == '1',
+        ),
+        isTrue,
+      );
+      expect(
+        formData.fields.any(
+          (entry) =>
+              entry.key == 'capabilities[has_nested_profile_groups]' &&
+              entry.value == '1',
         ),
         isTrue,
       );
@@ -602,7 +747,7 @@ void main() {
       final dio = Dio()..httpClientAdapter = adapter;
       final repository = TenantAdminAccountProfilesRepository(dio: dio);
 
-      expect(
+      await expectLater(
         repository.createAccountProfile(
           accountId: tenantAdminAccountProfilesRepoString(
             'account-1',
@@ -644,7 +789,7 @@ void main() {
       final dio = Dio()..httpClientAdapter = adapter;
       final repository = TenantAdminAccountProfilesRepository(dio: dio);
 
-      expect(
+      await expectLater(
         repository.createAccountProfile(
           accountId: tenantAdminAccountProfilesRepoString(
             'account-1',
@@ -765,12 +910,15 @@ class _CaptureAdapter implements HttpClientAdapter {
             'capabilities': {
               'is_favoritable': true,
               'is_poi_enabled': true,
+              'is_reference_location_enabled': true,
               'has_bio': true,
               'has_content': true,
               'has_taxonomies': true,
               'has_avatar': true,
               'has_cover': true,
               'has_events': true,
+              'has_gallery': true,
+              'has_nested_profile_groups': true,
             },
           },
         }),

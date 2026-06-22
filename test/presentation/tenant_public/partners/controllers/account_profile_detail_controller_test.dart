@@ -3,6 +3,7 @@ import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
+import 'package:belluga_now/domain/partners/account_profile_gallery_group.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
@@ -111,6 +112,124 @@ void main() {
     expect(location.lat, '-20.7389');
     expect(location.lng, '-40.8212');
     expect(location.address, isEmpty);
+  });
+
+  test(
+      'loadResolvedAccountProfile exposes grouped gallery module when gallery exists',
+      () async {
+    await _registerGalleryAppData(galleryEnabled: true);
+    final accountProfileRepository = _FakeAccountProfilesRepository();
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: accountProfileRepository,
+    );
+    final profile = buildAccountProfileModelFromPrimitives(
+      id: '507f1f77bcf86cd799439011',
+      name: 'Cafe de la Musique',
+      slug: 'cafe-de-la-musique',
+      type: 'artist',
+      galleryGroups: [
+        buildAccountProfileGalleryGroupFromPrimitives(
+          groupId: 'group-1',
+          subtitle: 'Ambiente',
+          items: [
+            buildAccountProfileGalleryItemFromPrimitives(
+              itemId: 'gallery-item-1',
+              description: 'Vista para o palco',
+              imageUrl: 'https://tenant.test/gallery/image.jpg',
+              thumbUrl: 'https://tenant.test/gallery/thumb.jpg',
+              cardUrl: 'https://tenant.test/gallery/card.jpg',
+              modalUrl: 'https://tenant.test/gallery/modal.jpg',
+            ),
+          ],
+        ),
+      ],
+    );
+
+    await controller.loadResolvedAccountProfile(profile);
+
+    final config = controller.profileConfigStreamValue.value;
+    final galleryData =
+        controller.moduleDataStreamValue.value[ProfileModuleId.photoGallery];
+
+    expect(config?.tabs.any((tab) => tab.title.contains('Sobre')), isTrue);
+    expect(galleryData, isA<List<AccountProfileGalleryGroup>>());
+    final groups = galleryData! as List<AccountProfileGalleryGroup>;
+    expect(groups, hasLength(1));
+    expect(groups.first.subtitle, 'Ambiente');
+    expect(groups.first.items.first.description, 'Vista para o palco');
+  });
+
+  test(
+      'loadResolvedAccountProfile suppresses gallery module when gallery capability is disabled',
+      () async {
+    await _registerGalleryAppData(galleryEnabled: false);
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: _FakeAccountProfilesRepository(),
+    );
+    final profile = buildAccountProfileModelFromPrimitives(
+      id: '507f1f77bcf86cd799439011',
+      name: 'Cafe de la Musique',
+      slug: 'cafe-de-la-musique',
+      type: 'artist',
+      galleryGroups: [
+        buildAccountProfileGalleryGroupFromPrimitives(
+          groupId: 'group-1',
+          subtitle: 'Ambiente',
+          items: [
+            buildAccountProfileGalleryItemFromPrimitives(
+              itemId: 'gallery-item-1',
+              imageUrl: 'https://tenant.test/gallery/image.jpg',
+              thumbUrl: 'https://tenant.test/gallery/thumb.jpg',
+              cardUrl: 'https://tenant.test/gallery/card.jpg',
+              modalUrl: 'https://tenant.test/gallery/modal.jpg',
+            ),
+          ],
+        ),
+      ],
+    );
+
+    await controller.loadResolvedAccountProfile(profile);
+
+    expect(
+      controller.moduleDataStreamValue.value[ProfileModuleId.photoGallery],
+      isNull,
+    );
+  });
+
+  test(
+      'loadResolvedAccountProfile omits the gallery module when capability data has no gallery groups',
+      () async {
+    await _registerGalleryAppData(
+      galleryEnabled: true,
+      hasBio: true,
+    );
+    final controller = AccountProfileDetailController(
+      accountProfilesRepository: _FakeAccountProfilesRepository(),
+    );
+    final profile = buildAccountProfileModelFromPrimitives(
+      id: '507f1f77bcf86cd799439011',
+      name: 'Cafe de la Musique',
+      slug: 'cafe-de-la-musique',
+      type: 'artist',
+      bio: '<p>Bio sem galeria</p>',
+      galleryGroups: const [],
+    );
+
+    await controller.loadResolvedAccountProfile(profile);
+
+    final aboutTab = controller.profileConfigStreamValue.value?.tabs.firstWhere(
+      (tab) => tab.title.contains('Sobre'),
+    );
+
+    expect(aboutTab, isNotNull);
+    expect(
+      aboutTab?.modules.map((module) => module.id),
+      isNot(contains(ProfileModuleId.photoGallery)),
+    );
+    expect(
+      controller.moduleDataStreamValue.value[ProfileModuleId.photoGallery],
+      isNull,
+    );
   });
 
   test('controller resolves invite status and distance for agenda cards',
@@ -275,6 +394,58 @@ Future<void> _registerReferenceAppData({
               'is_reference_location_enabled': referenceLocationEnabled,
               'has_events': false,
               'has_bio': false,
+            },
+          },
+        ],
+        'domains': ['https://tenant.test'],
+        'app_domains': const [],
+        'theme_data_settings': {
+          'brightness_default': 'light',
+          'primary_seed_color': '#FFFFFF',
+          'secondary_seed_color': '#7E22CE',
+        },
+        'main_color': '#7E22CE',
+        'tenant_id': 'tenant-1',
+        'telemetry': const {'trackers': []},
+        'telemetry_context': const {'location_freshness_minutes': 5},
+        'firebase': null,
+        'push': null,
+      },
+      localInfo: const {
+        'platformType': 'mobile',
+        'hostname': 'tenant.test',
+        'href': 'https://tenant.test',
+        'port': null,
+        'device': 'test-device',
+      },
+    ),
+  );
+}
+
+Future<void> _registerGalleryAppData({
+  required bool galleryEnabled,
+  bool hasBio = false,
+  bool hasContent = false,
+}) async {
+  await GetIt.I.reset(dispose: false);
+  GetIt.I.registerSingleton<AppData>(
+    buildAppDataFromInitialization(
+      remoteData: {
+        'name': 'Tenant Test',
+        'type': 'tenant',
+        'main_domain': 'https://tenant.test',
+        'profile_types': [
+          {
+            'type': 'artist',
+            'label': 'Artista',
+            'allowed_taxonomies': [],
+            'capabilities': {
+              'is_favoritable': true,
+              'is_poi_enabled': false,
+              'has_events': false,
+              'has_bio': hasBio,
+              'has_content': hasContent,
+              'has_gallery': galleryEnabled,
             },
           },
         ],
