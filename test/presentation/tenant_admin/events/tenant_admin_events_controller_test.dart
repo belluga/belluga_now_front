@@ -983,6 +983,37 @@ void main() {
     );
   });
 
+  test(
+      'nested group related account profile search backfills later candidate pages into the known cache',
+      () async {
+    final eventsRepository = _NestedGroupLaterPageCandidatesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+    );
+
+    await controller.loadFormDependencies();
+
+    expect(
+      controller.relatedAccountProfileCandidatesStreamValue.value
+          .map((profile) => profile.displayName)
+          .toList(growable: false),
+      contains('Legacy Artist Page 1 001'),
+    );
+
+    await controller.searchRelatedAccountProfileCandidatesForNestedGroups(
+      '021',
+    );
+
+    expect(
+      controller.relatedAccountProfileCandidatesStreamValue.value
+          .map((profile) => profile.displayName)
+          .toList(growable: false),
+      contains('Legacy Artist Page 2 021'),
+    );
+    expect(eventsRepository.searchRequests, [('', 1), ('021', 1), ('021', 2)]);
+  });
+
   test('inspectLegacyEventParties delegates to repository', () async {
     final eventsRepository = _LegacySummaryTrackingEventsRepository();
     final controller = TenantAdminEventsController(
@@ -1685,7 +1716,8 @@ class _ConfigurableEventTypesRepository extends _AccountScopedEventsRepository {
   }
 }
 
-class _BootstrapPagedCandidatesRepository extends _AccountScopedEventsRepository {
+class _BootstrapPagedCandidatesRepository
+    extends _AccountScopedEventsRepository {
   final List<(TenantAdminEventAccountProfileCandidateType, int)>
       candidatePageRequests =
       <(TenantAdminEventAccountProfileCandidateType, int)>[];
@@ -1902,6 +1934,58 @@ class _SearchableRelatedAccountProfileCandidatesRepository
     return tenantAdminPagedResultFromRaw(
       items: result.$1,
       hasMore: result.$2,
+    );
+  }
+}
+
+class _NestedGroupLaterPageCandidatesRepository
+    extends _AccountScopedEventsRepository {
+  final List<(String, int)> searchRequests = <(String, int)>[];
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+      fetchEventAccountProfileCandidatesPage({
+    required TenantAdminEventAccountProfileCandidateType candidateType,
+    required TenantAdminEventsRepoInt page,
+    required TenantAdminEventsRepoInt pageSize,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? accountSlug,
+  }) async {
+    if (candidateType ==
+        TenantAdminEventAccountProfileCandidateType.physicalHost) {
+      return tenantAdminPagedResultFromRaw(
+        items: const <TenantAdminAccountProfile>[],
+        hasMore: false,
+      );
+    }
+
+    final normalizedSearch = search?.value.trim().toLowerCase() ?? '';
+    searchRequests.add((normalizedSearch, page.value));
+
+    final firstPageItems = List<TenantAdminAccountProfile>.generate(
+      20,
+      (index) => tenantAdminAccountProfileFromRaw(
+        id: 'artist-page-1-${index + 1}',
+        accountId: 'acc-page-1-${index + 1}',
+        profileType: 'artist',
+        displayName:
+            'Legacy Artist Page 1 ${(index + 1).toString().padLeft(3, '0')}',
+      ),
+      growable: false,
+    );
+
+    final pageTwoItems = <TenantAdminAccountProfile>[
+      tenantAdminAccountProfileFromRaw(
+        id: 'artist-page-2-021',
+        accountId: 'acc-page-2-021',
+        profileType: 'artist',
+        displayName: 'Legacy Artist Page 2 021',
+      ),
+    ];
+
+    return tenantAdminPagedResultFromRaw(
+      items: page.value == 1 ? firstPageItems : pageTwoItems,
+      hasMore: page.value == 1,
     );
   }
 }

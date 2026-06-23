@@ -424,6 +424,20 @@ class _TenantAdminEventOccurrenceEditorSheetState
               groups: widget.occurrence.profileGroups,
               candidatesStreamValue:
                   widget.controller.relatedAccountProfileCandidatesStreamValue,
+              onSearchChanged: (query) => unawaited(
+                widget.controller
+                    .searchRelatedAccountProfileCandidatesForNestedGroups(
+                  query,
+                ),
+              ),
+              onLoadMore: widget.controller
+                  .loadNextRelatedAccountProfileCandidatesForNestedGroups,
+              searchLoadingStreamValue: widget
+                  .controller.relatedAccountProfileSearchLoadingStreamValue,
+              searchPageLoadingStreamValue: widget
+                  .controller.relatedAccountProfileSearchPageLoadingStreamValue,
+              searchHasMoreStreamValue: widget
+                  .controller.relatedAccountProfileSearchHasMoreStreamValue,
               profileTypes: const [],
               addButtonKey: const Key('TenantAdminOccurrenceProfileGroupAdd'),
               onAddGroup: () => widget.controller.addOccurrenceProfileGroup(

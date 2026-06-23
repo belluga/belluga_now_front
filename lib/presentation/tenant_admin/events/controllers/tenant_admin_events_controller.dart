@@ -2123,6 +2123,56 @@ class TenantAdminEventsController implements Disposable {
     );
   }
 
+  Future<void> searchRelatedAccountProfileCandidatesForNestedGroups(
+    String query,
+  ) async {
+    await _ensureRelatedAccountProfilePickerReady();
+    updateRelatedAccountProfileSearchQuery(query);
+    await retryRelatedAccountProfileSearch();
+    await _loadRelatedAccountProfileCandidatePagesUntilQuerySatisfied(query);
+  }
+
+  Future<void> loadNextRelatedAccountProfileCandidatesForNestedGroups() async {
+    await _ensureRelatedAccountProfilePickerReady();
+    await loadNextRelatedAccountProfileSearchPage();
+  }
+
+  Future<void> _ensureRelatedAccountProfilePickerReady() async {
+    final normalizedAccountSlug =
+        _normalizeOptionalText(_formAccountProfileCandidatesAccountSlug);
+    if (_accountProfilePickerType ==
+            TenantAdminEventAccountProfileCandidateType.relatedAccountProfile &&
+        _accountProfilePickerAccountSlug == normalizedAccountSlug) {
+      return;
+    }
+
+    await prepareRelatedAccountProfilePicker(
+        accountSlug: normalizedAccountSlug);
+  }
+
+  Future<void> _loadRelatedAccountProfileCandidatePagesUntilQuerySatisfied(
+    String query,
+  ) async {
+    final normalizedQuery = query.trim().toLowerCase();
+    if (normalizedQuery.isEmpty) {
+      return;
+    }
+
+    while (!_isDisposed &&
+        accountProfilePickerHasMoreStreamValue.value &&
+        !_relatedAccountProfileCandidatesContainQuery(normalizedQuery)) {
+      await loadNextRelatedAccountProfileSearchPage();
+    }
+  }
+
+  bool _relatedAccountProfileCandidatesContainQuery(String query) {
+    return relatedAccountProfileCandidatesStreamValue.value.any((profile) {
+      final displayName = profile.displayName.toLowerCase();
+      final profileType = profile.profileType.toLowerCase();
+      return displayName.contains(query) || profileType.contains(query);
+    });
+  }
+
   void updateAccountProfilePickerSearchQuery(String query) {
     if (accountProfilePickerQueryStreamValue.value == query) {
       return;
@@ -2381,6 +2431,10 @@ class TenantAdminEventsController implements Disposable {
           isInitial ? 1 : _accountProfilePickerCurrentPage + 1;
       accountProfilePickerResultsStreamValue
           .addValue(List.unmodifiable(nextItems));
+      if (candidateType ==
+          TenantAdminEventAccountProfileCandidateType.relatedAccountProfile) {
+        _mergeKnownRelatedAccountProfiles(pageResult.items);
+      }
       accountProfilePickerHasMoreStreamValue.addValue(pageResult.hasMore);
       accountProfilePickerErrorStreamValue.addValue('');
     } catch (error) {
