@@ -673,6 +673,117 @@ void main() {
   });
 
   test(
+      'loadFormDependencies preserves an existing venue that is off the first bootstrap page',
+      () async {
+    final eventsRepository = _BootstrapPagedCandidatesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+    );
+    final existingEvent = TenantAdminEvent(
+      eventIdValue: tenantAdminRequiredText('evt-off-page-venue'),
+      slugValue: tenantAdminRequiredText('evt-off-page-venue'),
+      titleValue: tenantAdminRequiredText('Evento com venue fora da pagina'),
+      contentValue: tenantAdminOptionalText('Conteudo'),
+      type: TenantAdminEventType(
+        idValue: tenantAdminOptionalText('type-1'),
+        nameValue: tenantAdminRequiredText('Show'),
+        slugValue: tenantAdminRequiredText('show'),
+      ),
+      location: TenantAdminEventLocation(
+        modeValue: tenantAdminRequiredText('physical'),
+        latitudeValue: tenantAdminOptionalDouble(-20.0),
+        longitudeValue: tenantAdminOptionalDouble(-40.0),
+      ),
+      placeRef: TenantAdminEventPlaceRef(
+        typeValue: tenantAdminRequiredText('account_profile'),
+        idValue: tenantAdminRequiredText('venue-selected'),
+      ),
+      venueDisplayNameValue: tenantAdminOptionalText('Selected Venue'),
+      occurrences: [
+        TenantAdminEventOccurrence(
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 6, 7, 3),
+          ),
+        ),
+      ],
+      publication: TenantAdminEventPublication(
+        statusValue: tenantAdminRequiredText('draft'),
+      ),
+    );
+
+    controller.initEventForm(existingEvent: existingEvent);
+    await controller.loadFormDependencies();
+
+    expect(
+      controller.eventFormStateStreamValue.value.selectedVenueId,
+      'venue-selected',
+    );
+    expect(
+      controller.venueCandidatesStreamValue.value
+          .map((profile) => profile.id)
+          .toList(growable: false),
+      ['venue-selected', 'venue-bootstrap-1'],
+    );
+    expect(
+      controller.venueCandidatesStreamValue.value.first.displayName,
+      'Selected Venue',
+    );
+  });
+
+  test('bootstrap-seeded venue picker loads page 2 on next page request',
+      () async {
+    final eventsRepository = _BootstrapPagedCandidatesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+    );
+
+    await controller.loadFormDependencies();
+    await controller.prepareAccountProfilePicker(
+      candidateType: TenantAdminEventAccountProfileCandidateType.physicalHost,
+    );
+
+    expect(
+      controller.accountProfilePickerResultsStreamValue.value
+          .map((profile) => profile.id)
+          .toList(growable: false),
+      ['venue-bootstrap-1'],
+    );
+    expect(
+      eventsRepository.candidatePageRequests,
+      <(TenantAdminEventAccountProfileCandidateType, int)>[
+        (TenantAdminEventAccountProfileCandidateType.physicalHost, 1),
+        (
+          TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
+          1,
+        ),
+      ],
+    );
+
+    await controller.loadNextAccountProfilePickerPage();
+
+    expect(
+      eventsRepository.candidatePageRequests,
+      <(TenantAdminEventAccountProfileCandidateType, int)>[
+        (TenantAdminEventAccountProfileCandidateType.physicalHost, 1),
+        (
+          TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
+          1,
+        ),
+        (TenantAdminEventAccountProfileCandidateType.physicalHost, 2),
+      ],
+    );
+    expect(
+      controller.accountProfilePickerResultsStreamValue.value
+          .map((profile) => profile.id)
+          .toList(growable: false),
+      ['venue-bootstrap-1', 'venue-bootstrap-2'],
+    );
+    expect(controller.accountProfilePickerHasMoreStreamValue.value, isFalse);
+  });
+
+  test(
       'loadFormDependencies hydrates default event type and terms in controller',
       () async {
     final eventsRepository = _ConfigurableEventTypesRepository([

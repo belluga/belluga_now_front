@@ -21,6 +21,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_grou
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
@@ -284,6 +285,7 @@ class TenantAdminEventsController implements Disposable {
       _bootstrapVenueCandidatesPage;
   TenantAdminPagedResult<TenantAdminAccountProfile>?
       _bootstrapRelatedAccountProfileCandidatesPage;
+  TenantAdminAccountProfile? _bootstrapSelectedVenueCandidate;
   int _accountProfilePickerCurrentPage = 0;
   int _accountProfilePickerRequestToken = 0;
   int _eventFormLocalIdSerial = 0;
@@ -574,6 +576,8 @@ class TenantAdminEventsController implements Disposable {
     eventCoverFileStreamValue.addValue(null);
     eventCoverBusyStreamValue.addValue(false);
     eventCoverRemoveStreamValue.addValue(false);
+    _bootstrapSelectedVenueCandidate =
+        _selectedVenueCandidateFromEvent(existingEvent);
     relatedAccountProfileCandidatesStreamValue.addValue(
       List.unmodifiable(
         _knownRelatedProfilesFromEvent(existingEvent),
@@ -1411,8 +1415,8 @@ class TenantAdminEventsController implements Disposable {
     if (current.hasHydratedDefaultVenue) {
       return;
     }
-    if (current.selectedVenueId != null &&
-        venues.any((venue) => venue.id == current.selectedVenueId)) {
+    final selectedVenueId = current.selectedVenueId?.trim();
+    if (selectedVenueId != null && selectedVenueId.isNotEmpty) {
       _replaceEventFormState(
         current.copyWith(hasHydratedDefaultVenue: true),
       );
@@ -2233,11 +2237,15 @@ class TenantAdminEventsController implements Disposable {
           results[0] as TenantAdminPagedResult<TenantAdminAccountProfile>;
       final relatedAccountProfilesPage =
           results[1] as TenantAdminPagedResult<TenantAdminAccountProfile>;
-      _bootstrapVenueCandidatesPage = venuePage;
+      final mergedVenueItems = _mergeBootstrapVenueCandidates(venuePage.items);
+      _bootstrapVenueCandidatesPage = tenantAdminPagedResultFromRaw(
+        items: mergedVenueItems,
+        hasMore: venuePage.hasMore,
+      );
       _bootstrapRelatedAccountProfileCandidatesPage =
           relatedAccountProfilesPage;
 
-      final venues = venuePage.items;
+      final venues = _bootstrapVenueCandidatesPage!.items;
       final relatedAccountProfiles = relatedAccountProfilesPage.items;
 
       venueCandidatesStreamValue.addValue(List.unmodifiable(venues));
@@ -2266,17 +2274,36 @@ class TenantAdminEventsController implements Disposable {
     required TenantAdminEventAccountProfileCandidateType candidateType,
     String? accountSlug,
   }) async {
+    return _fetchAccountProfileCandidatesPage(
+      candidateType: candidateType,
+      pageNumber: 1,
+      accountSlug: accountSlug,
+    );
+  }
+
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+      _fetchAccountProfileCandidatesPage({
+    required TenantAdminEventAccountProfileCandidateType candidateType,
+    required int pageNumber,
+    String? accountSlug,
+    String query = '',
+  }) async {
     final pageSize = switch (candidateType) {
       TenantAdminEventAccountProfileCandidateType.relatedAccountProfile => 20,
       TenantAdminEventAccountProfileCandidateType.physicalHost => 50,
     };
+    final normalizedQuery = query.trim();
     return _eventsRepository.fetchEventAccountProfileCandidatesPage(
       candidateType: candidateType,
-      page: TenantAdminEventsRepoInt.fromRaw(1, defaultValue: 1),
+      page: TenantAdminEventsRepoInt.fromRaw(
+        pageNumber,
+        defaultValue: pageNumber,
+      ),
       pageSize: TenantAdminEventsRepoInt.fromRaw(
         pageSize,
         defaultValue: pageSize,
       ),
+      search: normalizedQuery.isEmpty ? null : _toEventsText(normalizedQuery),
       accountSlug: _toNullableEventsText(accountSlug),
     );
   }
@@ -2317,19 +2344,11 @@ class TenantAdminEventsController implements Disposable {
     required String query,
     String? accountSlug,
   }) {
-    final normalizedQuery = query.trim();
-    if (isInitial) {
-      return _eventsRepository.loadEventAccountProfileCandidates(
-        candidateType: candidateType,
-        search: normalizedQuery.isEmpty ? null : _toEventsText(normalizedQuery),
-        accountSlug: _toNullableEventsText(accountSlug),
-      );
-    }
-
-    return _eventsRepository.loadNextEventAccountProfileCandidates(
+    return _fetchAccountProfileCandidatesPage(
       candidateType: candidateType,
-      search: normalizedQuery.isEmpty ? null : _toEventsText(normalizedQuery),
-      accountSlug: _toNullableEventsText(accountSlug),
+      pageNumber: isInitial ? 1 : _accountProfilePickerCurrentPage + 1,
+      accountSlug: accountSlug,
+      query: query,
     );
   }
 
@@ -2518,6 +2537,54 @@ class TenantAdminEventsController implements Disposable {
     return orderedIds.map((id) => byId[id]!).toList(growable: false);
   }
 
+  List<TenantAdminAccountProfile> _mergeBootstrapVenueCandidates(
+    Iterable<TenantAdminAccountProfile> bootstrapCandidates,
+  ) {
+    final selectedVenueCandidate = _bootstrapSelectedVenueCandidate;
+    if (selectedVenueCandidate == null) {
+      return List<TenantAdminAccountProfile>.unmodifiable(
+        bootstrapCandidates.toList(growable: false),
+      );
+    }
+
+    return _mergeAccountProfiles(
+      [selectedVenueCandidate],
+      bootstrapCandidates,
+    );
+  }
+
+  TenantAdminAccountProfile? _selectedVenueCandidateFromEvent(
+    TenantAdminEvent? event,
+  ) {
+    if (event == null) {
+      return null;
+    }
+
+    final selectedVenueId = event.placeRef?.id.trim();
+    if (selectedVenueId == null || selectedVenueId.isEmpty) {
+      return null;
+    }
+
+    final displayName =
+        _normalizeOptionalText(event.venueDisplayName) ?? selectedVenueId;
+    final latitude = event.location?.latitude;
+    final longitude = event.location?.longitude;
+    final location = latitude == null || longitude == null
+        ? null
+        : tenantAdminLocationFromRaw(
+            latitude: latitude,
+            longitude: longitude,
+          );
+
+    return tenantAdminAccountProfileFromRaw(
+      id: selectedVenueId,
+      accountId: selectedVenueId,
+      profileType: 'venue',
+      displayName: displayName,
+      location: location,
+    );
+  }
+
   Future<TenantAdminEvent?> submitCreate(
     TenantAdminEventDraft draft, {
     String? accountSlug,
@@ -2641,6 +2708,7 @@ class TenantAdminEventsController implements Disposable {
     _formAccountProfileCandidatesAccountSlug = null;
     _bootstrapVenueCandidatesPage = null;
     _bootstrapRelatedAccountProfileCandidatesPage = null;
+    _bootstrapSelectedVenueCandidate = null;
     _accountProfilePickerCurrentPage = 0;
     _accountProfilePickerRequestToken = 0;
     _accountProfilePickerType = null;
