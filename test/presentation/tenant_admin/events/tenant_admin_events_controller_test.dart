@@ -636,6 +636,43 @@ void main() {
   });
 
   test(
+      'loadFormDependencies only fetches the first candidate page per type during bootstrap',
+      () async {
+    final eventsRepository = _BootstrapPagedCandidatesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+    );
+
+    await controller.loadFormDependencies();
+
+    expect(eventsRepository.accountProfileCandidatePageCalls, 2);
+    expect(
+      eventsRepository.candidatePageRequests,
+      <(TenantAdminEventAccountProfileCandidateType, int)>[
+        (TenantAdminEventAccountProfileCandidateType.physicalHost, 1),
+        (
+          TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
+          1,
+        ),
+      ],
+    );
+    expect(
+      controller.venueCandidatesStreamValue.value
+          .map((profile) => profile.id)
+          .toList(growable: false),
+      ['venue-bootstrap-1'],
+    );
+    expect(
+      controller.relatedAccountProfileCandidatesStreamValue.value
+          .map((profile) => profile.id)
+          .toList(growable: false),
+      ['artist-bootstrap-1'],
+    );
+    expect(controller.accountProfileCandidatesErrorStreamValue.value, isNull);
+  });
+
+  test(
       'loadFormDependencies hydrates default event type and terms in controller',
       () async {
     final eventsRepository = _ConfigurableEventTypesRepository([
@@ -908,6 +945,8 @@ void main() {
     await controller.loadFormDependencies();
     await controller.prepareRelatedAccountProfilePicker();
 
+    expect(eventsRepository.searchRequests, [('', 1)]);
+
     controller.updateRelatedAccountProfileSearchQuery('zulu');
     await controller.retryRelatedAccountProfileSearch();
 
@@ -938,7 +977,41 @@ void main() {
           .toList(growable: false),
       ['Echo Artist'],
     );
-    expect(eventsRepository.searchRequests.last, ('echo', 1));
+    expect(
+      eventsRepository.searchRequests,
+      [('', 1), ('zulu', 1), ('zulu', 2), ('echo', 1)],
+    );
+  });
+
+  test(
+      'nested group related account profile search backfills later candidate pages into the known cache',
+      () async {
+    final eventsRepository = _NestedGroupLaterPageCandidatesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+    );
+
+    await controller.loadFormDependencies();
+
+    expect(
+      controller.relatedAccountProfileCandidatesStreamValue.value
+          .map((profile) => profile.displayName)
+          .toList(growable: false),
+      contains('Legacy Artist Page 1 001'),
+    );
+
+    await controller.searchRelatedAccountProfileCandidatesForNestedGroups(
+      '021',
+    );
+
+    expect(
+      controller.relatedAccountProfileCandidatesStreamValue.value
+          .map((profile) => profile.displayName)
+          .toList(growable: false),
+      contains('Legacy Artist Page 2 021'),
+    );
+    expect(eventsRepository.searchRequests, [('', 1), ('021', 1), ('021', 2)]);
   });
 
   test('inspectLegacyEventParties delegates to repository', () async {
@@ -1643,6 +1716,50 @@ class _ConfigurableEventTypesRepository extends _AccountScopedEventsRepository {
   }
 }
 
+class _BootstrapPagedCandidatesRepository
+    extends _AccountScopedEventsRepository {
+  final List<(TenantAdminEventAccountProfileCandidateType, int)>
+      candidatePageRequests =
+      <(TenantAdminEventAccountProfileCandidateType, int)>[];
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+      fetchEventAccountProfileCandidatesPage({
+    required TenantAdminEventAccountProfileCandidateType candidateType,
+    required TenantAdminEventsRepoInt page,
+    required TenantAdminEventsRepoInt pageSize,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? accountSlug,
+  }) async {
+    accountProfileCandidatePageCalls += 1;
+    candidateTypes.add(candidateType);
+    lastAccountProfileCandidatesAccountSlug = accountSlug?.value;
+    candidatePageRequests.add((candidateType, page.value));
+
+    final item = switch (candidateType) {
+      TenantAdminEventAccountProfileCandidateType.physicalHost =>
+        tenantAdminAccountProfileFromRaw(
+          id: 'venue-bootstrap-${page.value}',
+          accountId: 'account-venue-${page.value}',
+          profileType: 'venue',
+          displayName: 'Bootstrap Venue ${page.value}',
+        ),
+      TenantAdminEventAccountProfileCandidateType.relatedAccountProfile =>
+        tenantAdminAccountProfileFromRaw(
+          id: 'artist-bootstrap-${page.value}',
+          accountId: 'account-artist-${page.value}',
+          profileType: 'artist',
+          displayName: 'Bootstrap Artist ${page.value}',
+        ),
+    };
+
+    return tenantAdminPagedResultFromRaw(
+      items: [item],
+      hasMore: page.value == 1,
+    );
+  }
+}
+
 class _EventTypeUpdateTrackingRepository
     extends _AccountScopedEventsRepository {
   String? lastUpdateDescription;
@@ -1817,6 +1934,58 @@ class _SearchableRelatedAccountProfileCandidatesRepository
     return tenantAdminPagedResultFromRaw(
       items: result.$1,
       hasMore: result.$2,
+    );
+  }
+}
+
+class _NestedGroupLaterPageCandidatesRepository
+    extends _AccountScopedEventsRepository {
+  final List<(String, int)> searchRequests = <(String, int)>[];
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+      fetchEventAccountProfileCandidatesPage({
+    required TenantAdminEventAccountProfileCandidateType candidateType,
+    required TenantAdminEventsRepoInt page,
+    required TenantAdminEventsRepoInt pageSize,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? accountSlug,
+  }) async {
+    if (candidateType ==
+        TenantAdminEventAccountProfileCandidateType.physicalHost) {
+      return tenantAdminPagedResultFromRaw(
+        items: const <TenantAdminAccountProfile>[],
+        hasMore: false,
+      );
+    }
+
+    final normalizedSearch = search?.value.trim().toLowerCase() ?? '';
+    searchRequests.add((normalizedSearch, page.value));
+
+    final firstPageItems = List<TenantAdminAccountProfile>.generate(
+      20,
+      (index) => tenantAdminAccountProfileFromRaw(
+        id: 'artist-page-1-${index + 1}',
+        accountId: 'acc-page-1-${index + 1}',
+        profileType: 'artist',
+        displayName:
+            'Legacy Artist Page 1 ${(index + 1).toString().padLeft(3, '0')}',
+      ),
+      growable: false,
+    );
+
+    final pageTwoItems = <TenantAdminAccountProfile>[
+      tenantAdminAccountProfileFromRaw(
+        id: 'artist-page-2-021',
+        accountId: 'acc-page-2-021',
+        profileType: 'artist',
+        displayName: 'Legacy Artist Page 2 021',
+      ),
+    ];
+
+    return tenantAdminPagedResultFromRaw(
+      items: page.value == 1 ? firstPageItems : pageTwoItems,
+      hasMore: page.value == 1,
     );
   }
 }
