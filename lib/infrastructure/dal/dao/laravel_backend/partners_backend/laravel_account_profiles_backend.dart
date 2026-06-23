@@ -30,6 +30,9 @@ import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
+  static const int _publicVisibleNameMinLength = 3;
+  static const String _publicUnavailableProfileLabel = 'Perfil indisponível';
+
   LaravelAccountProfilesBackend({
     Dio? dio,
     LocationOriginServiceContract? locationOriginService,
@@ -294,6 +297,8 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       final profiles = _parseProfiles(
         [Map<String, dynamic>.from(data)],
         distanceOrigin: distanceOrigin,
+        routeSlugFallback: normalizedSlug,
+        allowUnavailableNameFallback: true,
       );
       if (profiles.isEmpty) {
         throw Exception(
@@ -321,104 +326,181 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
   List<AccountProfileModel> _parseProfiles(
     List<dynamic> raw, {
     required CityCoordinate? distanceOrigin,
+    String? routeSlugFallback,
+    bool allowUnavailableNameFallback = false,
   }) {
     final profiles = <AccountProfileModel>[];
     for (final entry in raw) {
       if (entry is! Map) continue;
       final json = Map<String, dynamic>.from(entry);
-      final id = json['id']?.toString();
-      final name = json['display_name']?.toString();
-      final slug = json['slug']?.toString();
-      final typeRaw = json['profile_type']?.toString();
-      if (id == null || name == null || slug == null || typeRaw == null) {
+      try {
+        final id = json['id']?.toString().trim() ?? '';
+        final slug = _resolvePublicSlug(
+          payloadSlug: json['slug']?.toString(),
+          routeSlugFallback: routeSlugFallback,
+        );
+        final name = _resolvePublicVisibleName(
+          displayName: json['display_name']?.toString(),
+          payloadSlug: json['slug']?.toString(),
+          routeSlugFallback: routeSlugFallback,
+          allowUnavailableSentinel: allowUnavailableNameFallback,
+        );
+        final trimmedType = json['profile_type']?.toString().trim() ?? '';
+        if (id.isEmpty ||
+            slug == null ||
+            name == null ||
+            trimmedType.isEmpty) {
+          continue;
+        }
+        final tags = _extractTags(json['taxonomy_terms']);
+        final agendaEvents = _extractAgendaEvents(json['agenda_occurrences']);
+        final galleryGroups = _extractGalleryGroups(json['gallery_groups']);
+        final nestedGroups =
+            _extractNestedProfileGroups(json['nested_profile_groups']);
+        final distanceMeters = _resolveDistanceMeters(
+          json,
+          distanceOrigin: distanceOrigin,
+        );
+        final locationCoordinates =
+            _parseLocationLatLng(json['location']) ?? _parseTopLevelLatLng(json);
+        final locationAddress = _parseLocationAddress(json);
+        ThumbUriValue? avatarValue;
+        final avatarUrl = json['avatar_url']?.toString();
+        if (avatarUrl != null && avatarUrl.isNotEmpty) {
+          avatarValue = ThumbUriValue(defaultValue: Uri.parse(avatarUrl))
+            ..parse(avatarUrl);
+        }
+        ThumbUriValue? coverValue;
+        final coverUrl = json['cover_url']?.toString();
+        if (coverUrl != null && coverUrl.isNotEmpty) {
+          coverValue = ThumbUriValue(defaultValue: Uri.parse(coverUrl))
+            ..parse(coverUrl);
+        }
+        DescriptionValue? bioValue;
+        final bio = json['bio']?.toString();
+        if (bio != null && bio.isNotEmpty) {
+          bioValue = DescriptionValue()..parse(bio);
+        }
+        DescriptionValue? contentValue;
+        final content = json['content']?.toString();
+        if (content != null && content.isNotEmpty) {
+          contentValue = DescriptionValue()..parse(content);
+        }
+        final publicDetailPath =
+            json['public_detail_path']?.toString().trim().isNotEmpty == true
+                ? json['public_detail_path']?.toString().trim()
+                : null;
+        final canOpenPublicDetail = json['can_open_public_detail'] == true &&
+            publicDetailPath != null &&
+            publicDetailPath.isNotEmpty;
+        AccountProfileLocationAddressValue? locationAddressValue;
+        if (locationAddress != null) {
+          locationAddressValue = AccountProfileLocationAddressValue()
+            ..parse(locationAddress);
+        }
+        LatitudeValue? locationLatitudeValue;
+        LongitudeValue? locationLongitudeValue;
+        if (locationCoordinates != null) {
+          locationLatitudeValue = LatitudeValue()
+            ..parse(locationCoordinates.$1.toString());
+          locationLongitudeValue = LongitudeValue()
+            ..parse(locationCoordinates.$2.toString());
+        }
+        profiles.add(
+          AccountProfileModel(
+            idValue: MongoIDValue()..parse(id),
+            nameValue: TitleValue(minLenght: _publicVisibleNameMinLength)
+              ..parse(name),
+            slugValue: SlugValue()..parse(slug),
+            profileTypeValue: AccountProfileTypeValue(trimmedType),
+            avatarValue: avatarValue,
+            coverValue: coverValue,
+            bioValue: bioValue,
+            contentValue: contentValue,
+            galleryGroupValues: galleryGroups,
+            tagValues:
+                tags.map(AccountProfileTagValue.new).toList(growable: false),
+            agendaEventViews: agendaEvents,
+            nestedProfileGroupValues: nestedGroups,
+            distanceMetersValue:
+                AccountProfileDistanceMetersValue(distanceMeters),
+            locationAddressValue: locationAddressValue,
+            locationLatitudeValue: locationLatitudeValue,
+            locationLongitudeValue: locationLongitudeValue,
+            canOpenPublicDetailValue:
+                DomainBooleanValue(defaultValue: false, isRequired: false)
+                  ..parse(canOpenPublicDetail.toString()),
+            publicDetailPathValue: publicDetailPath == null
+                ? null
+                : AccountProfilePublicDetailPathValue(publicDetailPath),
+          ),
+        );
+      } catch (_) {
         continue;
       }
-      final trimmedType = typeRaw.trim();
-      if (trimmedType.isEmpty) continue;
-      final tags = _extractTags(json['taxonomy_terms']);
-      final agendaEvents = _extractAgendaEvents(json['agenda_occurrences']);
-      final galleryGroups = _extractGalleryGroups(json['gallery_groups']);
-      final nestedGroups =
-          _extractNestedProfileGroups(json['nested_profile_groups']);
-      final distanceMeters = _resolveDistanceMeters(
-        json,
-        distanceOrigin: distanceOrigin,
-      );
-      final locationCoordinates =
-          _parseLocationLatLng(json['location']) ?? _parseTopLevelLatLng(json);
-      final locationAddress = _parseLocationAddress(json);
-      ThumbUriValue? avatarValue;
-      final avatarUrl = json['avatar_url']?.toString();
-      if (avatarUrl != null && avatarUrl.isNotEmpty) {
-        avatarValue = ThumbUriValue(defaultValue: Uri.parse(avatarUrl))
-          ..parse(avatarUrl);
-      }
-      ThumbUriValue? coverValue;
-      final coverUrl = json['cover_url']?.toString();
-      if (coverUrl != null && coverUrl.isNotEmpty) {
-        coverValue = ThumbUriValue(defaultValue: Uri.parse(coverUrl))
-          ..parse(coverUrl);
-      }
-      DescriptionValue? bioValue;
-      final bio = json['bio']?.toString();
-      if (bio != null && bio.isNotEmpty) {
-        bioValue = DescriptionValue()..parse(bio);
-      }
-      DescriptionValue? contentValue;
-      final content = json['content']?.toString();
-      if (content != null && content.isNotEmpty) {
-        contentValue = DescriptionValue()..parse(content);
-      }
-      final publicDetailPath =
-          json['public_detail_path']?.toString().trim().isNotEmpty == true
-              ? json['public_detail_path']?.toString().trim()
-              : null;
-      final canOpenPublicDetail = json['can_open_public_detail'] == true &&
-          publicDetailPath != null &&
-          publicDetailPath.isNotEmpty;
-      AccountProfileLocationAddressValue? locationAddressValue;
-      if (locationAddress != null) {
-        locationAddressValue = AccountProfileLocationAddressValue()
-          ..parse(locationAddress);
-      }
-      LatitudeValue? locationLatitudeValue;
-      LongitudeValue? locationLongitudeValue;
-      if (locationCoordinates != null) {
-        locationLatitudeValue = LatitudeValue()
-          ..parse(locationCoordinates.$1.toString());
-        locationLongitudeValue = LongitudeValue()
-          ..parse(locationCoordinates.$2.toString());
-      }
-      profiles.add(
-        AccountProfileModel(
-          idValue: MongoIDValue()..parse(id),
-          nameValue: TitleValue()..parse(name),
-          slugValue: SlugValue()..parse(slug),
-          profileTypeValue: AccountProfileTypeValue(trimmedType),
-          avatarValue: avatarValue,
-          coverValue: coverValue,
-          bioValue: bioValue,
-          contentValue: contentValue,
-          galleryGroupValues: galleryGroups,
-          tagValues:
-              tags.map(AccountProfileTagValue.new).toList(growable: false),
-          agendaEventViews: agendaEvents,
-          nestedProfileGroupValues: nestedGroups,
-          distanceMetersValue:
-              AccountProfileDistanceMetersValue(distanceMeters),
-          locationAddressValue: locationAddressValue,
-          locationLatitudeValue: locationLatitudeValue,
-          locationLongitudeValue: locationLongitudeValue,
-          canOpenPublicDetailValue:
-              DomainBooleanValue(defaultValue: false, isRequired: false)
-                ..parse(canOpenPublicDetail.toString()),
-          publicDetailPathValue: publicDetailPath == null
-              ? null
-              : AccountProfilePublicDetailPathValue(publicDetailPath),
-        ),
-      );
     }
     return profiles;
+  }
+
+  String? _resolvePublicVisibleName({
+    String? displayName,
+    String? payloadSlug,
+    String? routeSlugFallback,
+    bool allowUnavailableSentinel = false,
+  }) {
+    final normalizedDisplayName = displayName?.trim() ?? '';
+    if (normalizedDisplayName.length >= _publicVisibleNameMinLength) {
+      return normalizedDisplayName;
+    }
+
+    final slugLabel = _humanizeSlugLabel(payloadSlug) ??
+        _humanizeSlugLabel(routeSlugFallback);
+    if (slugLabel != null) {
+      return slugLabel;
+    }
+
+    return allowUnavailableSentinel ? _publicUnavailableProfileLabel : null;
+  }
+
+  String? _resolvePublicSlug({
+    String? payloadSlug,
+    String? routeSlugFallback,
+  }) {
+    final normalizedPayloadSlug = payloadSlug?.trim() ?? '';
+    if (normalizedPayloadSlug.isNotEmpty) {
+      return normalizedPayloadSlug;
+    }
+
+    final normalizedRouteSlug = routeSlugFallback?.trim() ?? '';
+    if (normalizedRouteSlug.isNotEmpty) {
+      return normalizedRouteSlug;
+    }
+
+    return null;
+  }
+
+  String? _humanizeSlugLabel(String? rawSlug) {
+    final normalizedSlug = rawSlug?.trim() ?? '';
+    if (normalizedSlug.isEmpty) {
+      return null;
+    }
+
+    final normalized = normalizedSlug
+        .replaceAll(RegExp(r'[_-]+'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    if (normalized.isEmpty) {
+      return null;
+    }
+
+    return normalized
+        .split(' ')
+        .where((part) => part.isNotEmpty)
+        .map(
+          (part) =>
+              '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}',
+        )
+        .join(' ');
   }
 
   List<AccountProfileGalleryGroup> _extractGalleryGroups(dynamic raw) {
@@ -547,63 +629,70 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     for (final entry in raw) {
       if (entry is! Map) continue;
       final json = Map<String, dynamic>.from(entry);
-      final id = json['id']?.toString().trim() ?? '';
-      final displayName =
-          (json['display_name'] ?? json['name'])?.toString().trim() ?? '';
-      final slug = json['slug']?.toString().trim() ?? '';
-      final profileType = json['profile_type']?.toString().trim() ?? '';
-      final publicDetailPath =
-          json['public_detail_path']?.toString().trim().isNotEmpty == true
-              ? json['public_detail_path']?.toString().trim()
-              : null;
-      final canOpenPublicDetail = json['can_open_public_detail'] == true &&
-          publicDetailPath != null &&
-          publicDetailPath.isNotEmpty;
-      if (id.isEmpty ||
-          displayName.isEmpty ||
-          profileType.isEmpty ||
-          !seen.add(id)) {
+      try {
+        final id = json['id']?.toString().trim() ?? '';
+        final slug = json['slug']?.toString().trim() ?? '';
+        final displayName = _resolvePublicVisibleName(
+          displayName: json['display_name']?.toString(),
+          payloadSlug: slug,
+        );
+        final profileType = json['profile_type']?.toString().trim() ?? '';
+        final publicDetailPath =
+            json['public_detail_path']?.toString().trim().isNotEmpty == true
+                ? json['public_detail_path']?.toString().trim()
+                : null;
+        final canOpenPublicDetail = json['can_open_public_detail'] == true &&
+            publicDetailPath != null &&
+            publicDetailPath.isNotEmpty;
+        if (id.isEmpty ||
+            displayName == null ||
+            profileType.isEmpty ||
+            !seen.add(id)) {
+          continue;
+        }
+
+        SlugValue? slugValue;
+        if (slug.isNotEmpty) {
+          slugValue = SlugValue()..parse(slug);
+        }
+
+        ThumbUriValue? avatarValue;
+        final avatarUrl = json['avatar_url']?.toString().trim();
+        if (avatarUrl != null && avatarUrl.isNotEmpty) {
+          avatarValue = ThumbUriValue(defaultValue: Uri.parse(avatarUrl))
+            ..parse(avatarUrl);
+        }
+        ThumbUriValue? coverValue;
+        final coverUrl = json['cover_url']?.toString().trim();
+        if (coverUrl != null && coverUrl.isNotEmpty) {
+          coverValue = ThumbUriValue(defaultValue: Uri.parse(coverUrl))
+            ..parse(coverUrl);
+        }
+
+        members.add(
+          AccountProfileNestedGroupMember(
+            idValue: MongoIDValue()..parse(id),
+            nameValue: TitleValue(minLenght: _publicVisibleNameMinLength)
+              ..parse(displayName),
+            slugValue: slugValue,
+            profileTypeValue: AccountProfileTypeValue(profileType),
+            avatarValue: avatarValue,
+            coverValue: coverValue,
+            canOpenPublicDetailValue: DomainBooleanValue(
+              defaultValue: false,
+              isRequired: false,
+            )..parse(canOpenPublicDetail.toString()),
+            publicDetailPathValue: publicDetailPath == null
+                ? null
+                : AccountProfileNestedGroupMemberTextValue(publicDetailPath),
+            tagValues: _extractTags(json['taxonomy_terms'])
+                .map(AccountProfileTagValue.new)
+                .toList(growable: false),
+          ),
+        );
+      } catch (_) {
         continue;
       }
-
-      SlugValue? slugValue;
-      if (slug.isNotEmpty) {
-        slugValue = SlugValue()..parse(slug);
-      }
-
-      ThumbUriValue? avatarValue;
-      final avatarUrl = json['avatar_url']?.toString().trim();
-      if (avatarUrl != null && avatarUrl.isNotEmpty) {
-        avatarValue = ThumbUriValue(defaultValue: Uri.parse(avatarUrl))
-          ..parse(avatarUrl);
-      }
-      ThumbUriValue? coverValue;
-      final coverUrl = json['cover_url']?.toString().trim();
-      if (coverUrl != null && coverUrl.isNotEmpty) {
-        coverValue = ThumbUriValue(defaultValue: Uri.parse(coverUrl))
-          ..parse(coverUrl);
-      }
-
-      members.add(
-        AccountProfileNestedGroupMember(
-          idValue: MongoIDValue()..parse(id),
-          nameValue: TitleValue()..parse(displayName),
-          slugValue: slugValue,
-          profileTypeValue: AccountProfileTypeValue(profileType),
-          avatarValue: avatarValue,
-          coverValue: coverValue,
-          canOpenPublicDetailValue: DomainBooleanValue(
-            defaultValue: false,
-            isRequired: false,
-          )..parse(canOpenPublicDetail.toString()),
-          publicDetailPathValue: publicDetailPath == null
-              ? null
-              : AccountProfileNestedGroupMemberTextValue(publicDetailPath),
-          tagValues: _extractTags(json['taxonomy_terms'])
-              .map(AccountProfileTagValue.new)
-              .toList(growable: false),
-        ),
-      );
     }
 
     return List<AccountProfileNestedGroupMember>.unmodifiable(members);

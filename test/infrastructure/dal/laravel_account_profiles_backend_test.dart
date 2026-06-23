@@ -87,6 +87,118 @@ void main() {
   });
 
   test(
+      'fetchAccountProfiles accepts backend-valid three-character display_name',
+      () async {
+    final validId = _generateMongoId();
+    final adapter = _RecordingAdapter(
+      response: {
+        'data': [
+          {
+            'id': validId,
+            'display_name': 'Ane',
+            'slug': 'ane',
+            'profile_type': 'artist',
+            'taxonomy_terms': const [],
+          },
+        ],
+      },
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final backend = LaravelAccountProfilesBackend(
+      dio: dio,
+      locationOriginService: LocationOriginService(
+        appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+      ),
+    );
+
+    final page = await backend.fetchAccountProfilesPage(
+      page: 1,
+      pageSize: 30,
+    );
+
+    expect(page.profiles, hasLength(1));
+    expect(page.profiles.first.name, 'Ane');
+    expect(page.profiles.first.slug, 'ane');
+  });
+
+  test(
+      'fetchAccountProfiles falls back to humanized slug when persisted display_name is too short',
+      () async {
+    final validId = _generateMongoId();
+    final adapter = _RecordingAdapter(
+      response: {
+        'data': [
+          {
+            'id': validId,
+            'display_name': 'An',
+            'slug': 'casa-marracini',
+            'profile_type': 'artist',
+            'taxonomy_terms': const [],
+          },
+        ],
+      },
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final backend = LaravelAccountProfilesBackend(
+      dio: dio,
+      locationOriginService: LocationOriginService(
+        appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+      ),
+    );
+
+    final page = await backend.fetchAccountProfilesPage(
+      page: 1,
+      pageSize: 30,
+    );
+
+    expect(page.profiles, hasLength(1));
+    expect(page.profiles.first.name, 'Casa Marracini');
+  });
+
+  test(
+      'fetchAccountProfiles isolates malformed rows and preserves valid profiles in mixed batches',
+      () async {
+    final invalidId = _generateMongoId();
+    final validId = _generateMongoId();
+    final adapter = _RecordingAdapter(
+      response: {
+        'data': [
+          {
+            'id': invalidId,
+            'display_name': 'An',
+            'slug': '___',
+            'profile_type': 'artist',
+            'taxonomy_terms': const [],
+          },
+          {
+            'id': validId,
+            'display_name': 'Valid Artist',
+            'slug': 'valid-artist',
+            'profile_type': 'artist',
+            'taxonomy_terms': const [],
+          },
+        ],
+      },
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final backend = LaravelAccountProfilesBackend(
+      dio: dio,
+      locationOriginService: LocationOriginService(
+        appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+      ),
+    );
+
+    final page = await backend.fetchAccountProfilesPage(
+      page: 1,
+      pageSize: 30,
+    );
+
+    expect(page.profiles, hasLength(1));
+    expect(page.profiles.single.name, 'Valid Artist');
+    expect(page.profiles.single.slug, 'valid-artist');
+  });
+
+  test(
       'fetchAccountProfiles prefers taxonomy term name or label over slug-like value',
       () async {
     final validId = _generateMongoId();
@@ -390,6 +502,38 @@ void main() {
   });
 
   test(
+      'fetchAccountProfileBySlug falls back to humanized slug when persisted display_name is invalid',
+      () async {
+    final validId = _generateMongoId();
+    final adapter = _RecordingAdapter(
+      response: {
+        'data': {
+          'id': validId,
+          'display_name': 'An',
+          'slug': 'slug-detail-artist',
+          'profile_type': 'artist',
+          'taxonomy_terms': const [],
+        },
+      },
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final backend = LaravelAccountProfilesBackend(
+      dio: dio,
+      locationOriginService: LocationOriginService(
+        appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+      ),
+    );
+
+    final profile = await backend.fetchAccountProfileBySlug(
+      'slug-detail-artist',
+    );
+
+    expect(profile, isNotNull);
+    expect(profile?.name, 'Slug Detail Artist');
+    expect(profile?.slug, 'slug-detail-artist');
+  });
+
+  test(
       'fetchAccountProfileBySlug requires public detail path before enabling navigation',
       () async {
     final validId = _generateMongoId();
@@ -540,6 +684,66 @@ void main() {
     expect(member.slug, isEmpty);
     expect(member.canOpenPublicDetail, isFalse);
     expect(member.publicDetailPath, isNull);
+  });
+
+  test(
+      'fetchAccountProfileBySlug applies short-name and fallback rules to nested members',
+      () async {
+    final parentId = _generateMongoId();
+    final shortNameId = _generateMongoId();
+    final fallbackId = _generateMongoId();
+    final adapter = _RecordingAdapter(
+      response: {
+        'data': {
+          'id': parentId,
+          'display_name': 'Parent Profile',
+          'slug': 'parent-profile',
+          'profile_type': 'venue',
+          'taxonomy_terms': const [],
+          'nested_profile_groups': [
+            {
+              'id': 'parceiros',
+              'label': 'Parceiros',
+              'order': 1,
+              'profiles': [
+                {
+                  'id': shortNameId,
+                  'display_name': 'Ane',
+                  'slug': 'ane',
+                  'profile_type': 'artist',
+                  'can_open_public_detail': true,
+                  'public_detail_path': '/parceiro/ane',
+                },
+                {
+                  'id': fallbackId,
+                  'display_name': 'An',
+                  'slug': 'casa-marracini',
+                  'profile_type': 'artist',
+                  'can_open_public_detail': false,
+                },
+              ],
+            },
+          ],
+        },
+      },
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final backend = LaravelAccountProfilesBackend(
+      dio: dio,
+      locationOriginService: LocationOriginService(
+        appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+      ),
+    );
+
+    final profile = await backend.fetchAccountProfileBySlug('parent-profile');
+
+    expect(profile, isNotNull);
+    final members = profile!.nestedProfileGroups.single.profiles;
+    expect(members, hasLength(2));
+    expect(members.map((entry) => entry.name).toList(), [
+      'Ane',
+      'Casa Marracini',
+    ]);
   });
 
   test('fetchAccountProfileBySlug returns null on not found', () async {
@@ -868,6 +1072,44 @@ void main() {
     expect(profiles, hasLength(1));
     expect(profiles.first.name, 'Nearby Venue');
     expect(profiles.first.distanceMeters, closeTo(240.0, 0.001));
+  });
+
+  test('fetchNearbyAccountProfiles accepts four-character display_name',
+      () async {
+    _registerAppData(
+      defaultOriginLat: -20.670000,
+      defaultOriginLng: -40.500000,
+    );
+    final validId = _generateMongoId();
+    final adapter = _RecordingAdapter(
+      response: {
+        'page': 1,
+        'page_size': 5,
+        'has_more': false,
+        'data': [
+          {
+            'id': validId,
+            'display_name': 'Bela',
+            'slug': 'bela',
+            'profile_type': 'artist',
+            'taxonomy_terms': const [],
+            'distance_meters': 240.0,
+          },
+        ],
+      },
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final backend = LaravelAccountProfilesBackend(
+      dio: dio,
+      locationOriginService: LocationOriginService(
+        appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+      ),
+    );
+
+    final profiles = await backend.fetchNearbyAccountProfiles(pageSize: 5);
+
+    expect(profiles, hasLength(1));
+    expect(profiles.first.name, 'Bela');
   });
 
   test('fetchNearbyAccountProfiles sends canonical type and taxonomy filters',
