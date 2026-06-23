@@ -280,6 +280,10 @@ class TenantAdminEventsController implements Disposable {
   Timer? _accountProfilePickerDebounce;
   String? _accountProfilePickerAccountSlug;
   String? _formAccountProfileCandidatesAccountSlug;
+  TenantAdminPagedResult<TenantAdminAccountProfile>?
+      _bootstrapVenueCandidatesPage;
+  TenantAdminPagedResult<TenantAdminAccountProfile>?
+      _bootstrapRelatedAccountProfileCandidatesPage;
   int _accountProfilePickerCurrentPage = 0;
   int _accountProfilePickerRequestToken = 0;
   int _eventFormLocalIdSerial = 0;
@@ -2096,6 +2100,14 @@ class TenantAdminEventsController implements Disposable {
       accountProfilePickerScrollController.jumpTo(0);
     }
 
+    if (needsInitialLoad &&
+        _seedAccountProfilePickerFromBootstrapPage(
+          candidateType: candidateType,
+          accountSlug: normalizedAccountSlug,
+        )) {
+      return;
+    }
+
     if (typeChanged || accountChanged || hasSearch || needsInitialLoad) {
       await _reloadAccountProfilePicker(immediate: true);
     }
@@ -2151,11 +2163,15 @@ class TenantAdminEventsController implements Disposable {
 
     try {
       final results = await Future.wait<Object>([
-        _fetchAllPhysicalHostCandidates(accountSlug: normalizedAccountSlug),
-        _eventsRepository.fetchAllEventAccountProfileCandidates(
+        _fetchAccountProfileCandidatesFirstPage(
+          candidateType:
+              TenantAdminEventAccountProfileCandidateType.physicalHost,
+          accountSlug: normalizedAccountSlug,
+        ),
+        _fetchAccountProfileCandidatesFirstPage(
           candidateType:
               TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
-          accountSlug: _toNullableEventsText(normalizedAccountSlug),
+          accountSlug: normalizedAccountSlug,
         ),
       ]);
 
@@ -2163,9 +2179,16 @@ class TenantAdminEventsController implements Disposable {
         return;
       }
 
-      final venues = results[0] as List<TenantAdminAccountProfile>;
-      final relatedAccountProfiles =
-          results[1] as List<TenantAdminAccountProfile>;
+      final venuePage =
+          results[0] as TenantAdminPagedResult<TenantAdminAccountProfile>;
+      final relatedAccountProfilesPage =
+          results[1] as TenantAdminPagedResult<TenantAdminAccountProfile>;
+      _bootstrapVenueCandidatesPage = venuePage;
+      _bootstrapRelatedAccountProfileCandidatesPage =
+          relatedAccountProfilesPage;
+
+      final venues = venuePage.items;
+      final relatedAccountProfiles = relatedAccountProfilesPage.items;
 
       venueCandidatesStreamValue.addValue(List.unmodifiable(venues));
       relatedAccountProfileCandidatesStreamValue.addValue(
@@ -2188,13 +2211,53 @@ class TenantAdminEventsController implements Disposable {
     }
   }
 
-  Future<List<TenantAdminAccountProfile>> _fetchAllPhysicalHostCandidates({
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+      _fetchAccountProfileCandidatesFirstPage({
+    required TenantAdminEventAccountProfileCandidateType candidateType,
     String? accountSlug,
   }) async {
-    return _eventsRepository.fetchAllEventAccountProfileCandidates(
-      candidateType: TenantAdminEventAccountProfileCandidateType.physicalHost,
+    final pageSize = switch (candidateType) {
+      TenantAdminEventAccountProfileCandidateType.relatedAccountProfile => 20,
+      TenantAdminEventAccountProfileCandidateType.physicalHost => 50,
+    };
+    return _eventsRepository.fetchEventAccountProfileCandidatesPage(
+      candidateType: candidateType,
+      page: TenantAdminEventsRepoInt.fromRaw(1, defaultValue: 1),
+      pageSize: TenantAdminEventsRepoInt.fromRaw(
+        pageSize,
+        defaultValue: pageSize,
+      ),
       accountSlug: _toNullableEventsText(accountSlug),
     );
+  }
+
+  bool _seedAccountProfilePickerFromBootstrapPage({
+    required TenantAdminEventAccountProfileCandidateType candidateType,
+    String? accountSlug,
+  }) {
+    if (_accountProfilePickerCurrentPage > 0 ||
+        accountProfilePickerResultsStreamValue.value.isNotEmpty ||
+        _normalizeOptionalText(accountSlug) !=
+            _formAccountProfileCandidatesAccountSlug) {
+      return false;
+    }
+
+    final pageResult = switch (candidateType) {
+      TenantAdminEventAccountProfileCandidateType.relatedAccountProfile =>
+        _bootstrapRelatedAccountProfileCandidatesPage,
+      TenantAdminEventAccountProfileCandidateType.physicalHost =>
+        _bootstrapVenueCandidatesPage,
+    };
+    if (pageResult == null) {
+      return false;
+    }
+
+    accountProfilePickerResultsStreamValue
+        .addValue(List.unmodifiable(pageResult.items));
+    accountProfilePickerHasMoreStreamValue.addValue(pageResult.hasMore);
+    _accountProfilePickerCurrentPage = 1;
+
+    return true;
   }
 
   Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
@@ -2522,6 +2585,8 @@ class TenantAdminEventsController implements Disposable {
     _accountProfilePickerDebounce?.cancel();
     _accountProfilePickerAccountSlug = null;
     _formAccountProfileCandidatesAccountSlug = null;
+    _bootstrapVenueCandidatesPage = null;
+    _bootstrapRelatedAccountProfileCandidatesPage = null;
     _accountProfilePickerCurrentPage = 0;
     _accountProfilePickerRequestToken = 0;
     _accountProfilePickerType = null;

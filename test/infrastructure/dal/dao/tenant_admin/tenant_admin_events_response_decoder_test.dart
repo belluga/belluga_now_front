@@ -37,6 +37,39 @@ void main() {
     expect(eventType.allowedTaxonomies.value, ['genre', 'cuisine']);
   });
 
+  test(
+      'decodeAccountProfileCandidates skips malformed rows and keeps valid candidates',
+      () {
+    final candidates = decoder.decodeAccountProfileCandidates({
+      'data': [
+        {
+          'id': 'artist-1',
+          'account_id': 'account-1',
+          'profile_type': 'artist',
+          'display_name': 'Valid Artist',
+          'slug': 'valid-artist',
+          'avatar_url': 'https://tenant.test/artist-avatar.png',
+          'cover_url': 'https://tenant.test/artist-cover.png',
+        },
+        {
+          'id': 'artist-broken',
+          'account_id': 'account-broken',
+          'profile_type': 'artist',
+          'display_name': 'Broken Artist',
+          'avatar_url': {
+            'relative_path': '/api/v1/media/account-profiles/artist-broken/avatar',
+          },
+        },
+      ],
+    });
+
+    expect(candidates, hasLength(1));
+    expect(candidates.single.id, 'artist-1');
+    expect(candidates.single.displayName, 'Valid Artist');
+    expect(candidates.single.avatarUrl, 'https://tenant.test/artist-avatar.png');
+    expect(candidates.single.coverUrl, 'https://tenant.test/artist-cover.png');
+  });
+
   test('prefers related account profile ids from event_parties when available',
       () {
     final event = decoder.decodeEventItem({
