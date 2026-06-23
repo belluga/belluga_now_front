@@ -162,6 +162,34 @@ void main() {
     expect(find.text('Do tenant'), findsOneWidget);
   });
 
+  testWidgets('renders display name field in edit form', (tester) async {
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+    profilesRepository.profileToReturn = _profile(
+      id: 'route-profile',
+      displayName: 'Conta Parceira',
+    );
+
+    await _pumpScreen(
+      tester,
+      TenantAdminAccountProfileEditScreen(
+        accountSlug: 'route-account',
+        accountProfileId: 'route-profile',
+      ),
+    );
+
+    final scrollable = find.byType(Scrollable).first;
+    await tester.scrollUntilVisible(
+      find.text('Nome de exibicao'),
+      200,
+      scrollable: scrollable,
+    );
+
+    expect(find.text('Nome de exibicao'), findsOneWidget);
+    expect(find.text('Conta Parceira'), findsOneWidget);
+  });
+
   testWidgets('renders persisted gallery groups and descriptions',
       (tester) async {
     final profilesRepository =

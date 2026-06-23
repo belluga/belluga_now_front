@@ -749,7 +749,7 @@ class _TenantAdminEventFormScreenState
                   ) async {
                     final selected =
                         await showTenantAdminAccountProfileLocationPickerSheet(
-                    context: context,
+                      context: context,
                       venues: venues,
                       selectedLocationProfileId: formState.selectedVenueId,
                       title: 'Local do evento',
@@ -896,6 +896,19 @@ class _TenantAdminEventFormScreenState
       groups: formState.profileGroups,
       candidatesStreamValue:
           _controller.relatedAccountProfileCandidatesStreamValue,
+      onSearchChanged: (query) => unawaited(
+        _controller.searchRelatedAccountProfileCandidatesForNestedGroups(
+          query,
+        ),
+      ),
+      onLoadMore:
+          _controller.loadNextRelatedAccountProfileCandidatesForNestedGroups,
+      searchLoadingStreamValue:
+          _controller.relatedAccountProfileSearchLoadingStreamValue,
+      searchPageLoadingStreamValue:
+          _controller.relatedAccountProfileSearchPageLoadingStreamValue,
+      searchHasMoreStreamValue:
+          _controller.relatedAccountProfileSearchHasMoreStreamValue,
       profileTypes: const [],
       addButtonKey: const Key('TenantAdminEventProfileGroupAdd'),
       onAddGroup: _controller.addEventProfileGroup,

@@ -306,6 +306,43 @@ void main() {
     },
   );
 
+  test(
+    'updateAccountProfileGallery sends explicit empty gallery_groups array for clear-all',
+    () async {
+      final adapter = _CaptureAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+      await repository.updateAccountProfileGallery(
+        accountProfileId: tenantAdminAccountProfilesRepoString(
+          'profile-1',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        galleryGroups: const <TenantAdminAccountProfileGalleryUpdateGroup>[],
+      );
+
+      final data = adapter.lastRequest?.data;
+      expect(data, isA<FormData>());
+
+      final formData = data as FormData;
+      expect(
+        formData.fields.any(
+          (entry) => entry.key == '_method' && entry.value == 'PATCH',
+        ),
+        isTrue,
+      );
+      expect(
+        jsonDecode(
+          formData.fields
+              .firstWhere((entry) => entry.key == 'gallery_groups')
+              .value,
+        ),
+        isEmpty,
+      );
+    },
+  );
+
   test('fetchAccountProfiles sends queryable selector filters when requested',
       () async {
     final adapter = _ProfileListMediaAdapter();

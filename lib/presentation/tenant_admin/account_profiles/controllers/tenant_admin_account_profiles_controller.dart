@@ -128,6 +128,7 @@ class TenantAdminAccountProfilesController implements Disposable {
   StreamSubscription<TenantAdminLocation?>? _locationSelectionSubscription;
   StreamSubscription<TenantAdminAccount?>? _accountWatchSubscription;
   TenantAdminLoadedAccountWatch? _accountWatch;
+  TenantAdminAccountProfile? _loadedEditProfileSnapshot;
   String? _watchedAccountId;
   String? _watchedAccountSlug;
   bool _removeAvatarOnSubmit = false;
@@ -498,10 +499,12 @@ class TenantAdminAccountProfilesController implements Disposable {
   Future<void> loadEditProfile(String accountProfileId) async {
     editLoadingStreamValue.addValue(true);
     editLoadErrorStreamValue.addValue(null);
+    _loadedEditProfileSnapshot = null;
     try {
       await loadProfileTypes();
       final profile = await fetchProfile(accountProfileId);
       if (_isDisposed) return;
+      _loadedEditProfileSnapshot = profile;
       accountProfileStreamValue.addValue(profile);
       _updateEditState(
         editStateStreamValue.value
@@ -537,6 +540,7 @@ class TenantAdminAccountProfilesController implements Disposable {
   }
 
   void updateEditProfile(TenantAdminAccountProfile profile) {
+    _loadedEditProfileSnapshot = profile;
     accountProfileStreamValue.addValue(profile);
     _updateEditState(
       editStateStreamValue.value.copyWith().syncRemoteState(profile),
@@ -776,7 +780,12 @@ class TenantAdminAccountProfilesController implements Disposable {
         removeCover: removeCover ?? _removeCoverOnSubmit,
         nestedProfileGroups: nestedProfileGroups,
       );
-      final finalProfile = galleryGroups == null
+      final finalProfile = _shouldSkipGalleryUpdate(
+        accountProfileId: accountProfileId,
+        galleryGroups: galleryGroups,
+      )
+          ? updated
+          : galleryGroups == null
           ? updated
           : await _profilesRepository.updateAccountProfileGallery(
               accountProfileId: tenantAdminAccountProfilesRepoString(
@@ -919,6 +928,7 @@ class TenantAdminAccountProfilesController implements Disposable {
   }
 
   void resetEditState() {
+    _loadedEditProfileSnapshot = null;
     _updateEditState(TenantAdminAccountProfileEditDraft.initial());
     editLoadingStreamValue.addValue(false);
     editLoadErrorStreamValue.addValue(null);
@@ -1332,10 +1342,31 @@ class TenantAdminAccountProfilesController implements Disposable {
     _watchedAccountSlug = null;
     _accountDetailStreamValue.addValue(null);
     accountProfileStreamValue.addValue(null);
+    _loadedEditProfileSnapshot = null;
     accountDetailErrorStreamValue.addValue(null);
     accountDetailLoadingStreamValue.addValue(false);
     accountDeletingStreamValue.addValue(false);
     accountDeletedStreamValue.addValue(false);
+  }
+
+  bool _shouldSkipGalleryUpdate({
+    required String accountProfileId,
+    required List<TenantAdminAccountProfileGalleryUpdateGroup>? galleryGroups,
+  }) {
+    if (galleryGroups == null || galleryGroups.isNotEmpty) {
+      return false;
+    }
+
+    final loadedSnapshot = _loadedEditProfileSnapshot;
+    if (loadedSnapshot == null) {
+      return false;
+    }
+
+    if (loadedSnapshot.id.trim() != accountProfileId.trim()) {
+      return false;
+    }
+
+    return loadedSnapshot.galleryGroups.isEmpty;
   }
 
   void clearAccountDeletedFlag() {

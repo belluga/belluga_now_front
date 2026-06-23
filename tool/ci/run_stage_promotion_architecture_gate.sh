@@ -19,7 +19,17 @@ esac
 
 cd "$ROOT_DIR"
 
+ANALYZE_PATHS=(
+  assets
+  integration_test
+  lib
+  packages
+  test
+  test_driver
+  tool
+)
+
 echo "INFO: Running architecture gate for promotion lane ${PROMOTION_LANE}"
 fvm dart pub get --directory tool/belluga_analysis_plugin/test_fixtures/lint_matrix
 bash tool/belluga_analysis_plugin/bin/validate_rule_matrix.sh
-fvm dart analyze --format machine
+fvm dart analyze "${ANALYZE_PATHS[@]}" --format machine
