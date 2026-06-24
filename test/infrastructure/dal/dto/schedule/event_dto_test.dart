@@ -289,6 +289,56 @@ void main() {
     expect(groupedProfile.coverUrl, linkedProfile.coverUrl);
   });
 
+  test(
+      'hydrates grouped profiles from root aggregate media when group payload is shallow',
+      () {
+    final dto = EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439156',
+      'slug': 'evt-shallow-group-linked-media',
+      'type': {
+        'id': 'type-1',
+        'name': 'Feira',
+        'slug': 'feira',
+        'description': '',
+      },
+      'title': 'Evento com grupo shallow',
+      'content': '',
+      'location': 'Guarapari',
+      'date_time_start': '2026-03-03T10:00:00+00:00',
+      'linked_account_profiles': [
+        {
+          'id': 'profile-relative',
+          'display_name': 'Perfil relativo',
+          'profile_type': 'artist',
+          'avatar_url':
+              '/api/v1/media/account-profiles/profile-relative/avatar?v=7',
+          'cover_url': 'account-profiles/profile-relative/cover?v=8',
+        },
+      ],
+      'profile_groups': [
+        {
+          'id': 'artists',
+          'label': 'Artists',
+          'order': 0,
+          'profiles': [
+            {
+              'id': 'profile-relative',
+              'display_name': 'Perfil relativo',
+              'profile_type': 'artist',
+            },
+          ],
+        },
+      ],
+    });
+
+    final linkedProfile = dto.linkedAccountProfiles.single;
+    final groupedProfile = dto.profileGroups.single.profiles.single;
+
+    expect(groupedProfile.id, linkedProfile.id);
+    expect(groupedProfile.avatarUrl, linkedProfile.avatarUrl);
+    expect(groupedProfile.coverUrl, linkedProfile.coverUrl);
+  });
+
   test('parses venue navigation contract from explicit public detail fields',
       () {
     final dto = EventDTO.fromJson({

@@ -142,6 +142,13 @@ final class EventPublicProfilePayloadDecoder {
       );
       final resolvedProfiles = profiles.isNotEmpty
           ? profiles
+              .map(
+                (profile) => _mergeLinkedAccountProfileWithAggregate(
+                  profile,
+                  profilesById[profile.id.trim()],
+                ),
+              )
+              .toList(growable: false)
           : accountProfileIds
               .map((id) => profilesById[id.trim()])
               .whereType<EventLinkedAccountProfile>()
@@ -265,6 +272,75 @@ final class EventPublicProfilePayloadDecoder {
       ),
       taxonomyTerms: taxonomyTerms,
     );
+  }
+
+  static EventLinkedAccountProfile _mergeLinkedAccountProfileWithAggregate(
+    EventLinkedAccountProfile primary,
+    EventLinkedAccountProfile? aggregate,
+  ) {
+    if (aggregate == null) {
+      return primary;
+    }
+
+    return EventLinkedAccountProfile(
+      idValue: primary.idValue,
+      displayNameValue: primary.displayNameValue,
+      profileTypeValue: primary.profileTypeValue,
+      slugValue: primary.slugValue ?? aggregate.slugValue,
+      avatarUrlValue: primary.avatarUrlValue ?? aggregate.avatarUrlValue,
+      coverUrlValue: primary.coverUrlValue ?? aggregate.coverUrlValue,
+      partyTypeValue: primary.partyTypeValue ?? aggregate.partyTypeValue,
+      locationAddressValue:
+          primary.locationAddressValue ?? aggregate.locationAddressValue,
+      locationLatitudeValue:
+          primary.locationLatitudeValue ?? aggregate.locationLatitudeValue,
+      locationLongitudeValue:
+          primary.locationLongitudeValue ?? aggregate.locationLongitudeValue,
+      canOpenPublicDetailValue: primary.canOpenPublicDetail
+          ? primary.canOpenPublicDetailValue
+          : aggregate.canOpenPublicDetailValue,
+      publicDetailPathValue:
+          primary.publicDetailPathValue ?? aggregate.publicDetailPathValue,
+      taxonomyTerms: _mergeDomainTaxonomyTerms(
+        primary.taxonomyTerms,
+        aggregate.taxonomyTerms,
+      ),
+    );
+  }
+
+  static EventLinkedAccountProfileTaxonomyTerms _mergeDomainTaxonomyTerms(
+    EventLinkedAccountProfileTaxonomyTerms primary,
+    EventLinkedAccountProfileTaxonomyTerms aggregate,
+  ) {
+    if (primary.isEmpty) {
+      return aggregate;
+    }
+    if (aggregate.isEmpty) {
+      return primary;
+    }
+
+    final merged = EventLinkedAccountProfileTaxonomyTerms();
+    final seen = <String>{};
+
+    void ingest(EventLinkedAccountProfileTaxonomyTerms source) {
+      for (final term in source) {
+        final key = '${term.typeValue.value}:${term.valueValue.value}';
+        if (!seen.add(key)) {
+          continue;
+        }
+        merged.addTerm(
+          typeValue: term.typeValue,
+          valueValue: term.valueValue,
+          nameValue: term.nameValue,
+          taxonomyNameValue: term.taxonomyNameValue,
+          labelValue: term.compatibilityLabelValue,
+        );
+      }
+    }
+
+    ingest(primary);
+    ingest(aggregate);
+    return merged;
   }
 
   static dynamic _preferNonEmptyString(dynamic current, dynamic candidate) {
