@@ -9,6 +9,7 @@ import 'package:belluga_now/domain/schedule/value_objects/event_profile_group_or
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
+import 'package:belluga_now/infrastructure/dal/dto/schedule/support/public_media_url_normalizer.dart';
 
 final class EventPublicProfilePayloadDecoder {
   EventPublicProfilePayloadDecoder._();
@@ -386,7 +387,7 @@ final class EventPublicProfilePayloadDecoder {
   }
 
   static ThumbUriValue? _thumbUriValueOrNull(String? rawUrl) {
-    final normalized = rawUrl?.trim();
+    final normalized = normalizeTenantPublicMediaUrl(rawUrl);
     if (normalized == null || normalized.isEmpty) {
       return null;
     }

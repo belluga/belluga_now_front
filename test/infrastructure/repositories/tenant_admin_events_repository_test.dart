@@ -630,6 +630,34 @@ void main() {
     );
   });
 
+  test(
+      'fetchEventsPage normalizes relative related profile media urls to tenant origin before admin decode',
+      () async {
+    final adapter = _EventsListWithRelativeRelatedProfileMediaAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final result = await repository.fetchEventsPage(
+      page: _repoInt(1),
+      pageSize: _repoInt(20),
+    );
+
+    expect(result.items, hasLength(1));
+    expect(result.items.first.relatedAccountProfiles, hasLength(1));
+    expect(
+      result.items.first.relatedAccountProfiles.first.avatarUrl,
+      'https://tenant-a.test/api/v1/media/account-profiles/artist-relative/avatar?v=7',
+    );
+    expect(
+      result.items.first.relatedAccountProfiles.first.coverUrl,
+      'https://tenant-a.test/account-profiles/artist-relative/cover?v=8',
+    );
+  });
+
   test('fetchEventsPage wraps decoder failures with readable repository error',
       () async {
     final adapter = _MalformedEventsPayloadAdapter();
@@ -1500,6 +1528,85 @@ class _EventsListWithSummarizedRelatedProfilesAdapter
                   'profile_type': 'artist',
                   'avatar_url': 'https://example.com/dj-summary.jpg',
                   'slug': 'dj-summary',
+                }
+              ],
+            },
+          ],
+          'current_page': 1,
+          'last_page': 1,
+          'per_page': 20,
+          'total': 1,
+        }),
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
+
+    return ResponseBody.fromString(
+      jsonEncode({'data': {}}),
+      200,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+}
+
+class _EventsListWithRelativeRelatedProfileMediaAdapter
+    implements HttpClientAdapter {
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    if (options.path.endsWith('/admin/api/v1/events') &&
+        options.method == 'GET') {
+      return ResponseBody.fromString(
+        jsonEncode({
+          'data': [
+            {
+              'event_id': 'evt-relative-media-1',
+              'slug': 'relative-media-event',
+              'title': 'Relative Media Event',
+              'content': 'Content',
+              'type': {
+                'name': 'Show',
+                'slug': 'show',
+              },
+              'publication': {
+                'status': 'draft',
+              },
+              'occurrences': [
+                {
+                  'date_time_start': '2026-03-05T20:00:00Z',
+                }
+              ],
+              'event_parties': [
+                {
+                  'party_type': 'artist',
+                  'party_ref_id': 'artist-relative',
+                  'permissions': {
+                    'can_edit': true,
+                  },
+                }
+              ],
+              'linked_account_profiles': [
+                {
+                  'id': 'artist-relative',
+                  'account_id': 'artist-relative',
+                  'display_name': 'DJ Relative',
+                  'profile_type': 'artist',
+                  'avatar_url':
+                      '/api/v1/media/account-profiles/artist-relative/avatar?v=7',
+                  'cover_url':
+                      'account-profiles/artist-relative/cover?v=8',
+                  'slug': 'dj-relative',
                 }
               ],
             },

@@ -68,6 +68,7 @@ import 'package:belluga_now/domain/value_objects/thumb_type_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/presentation/shared/icons/map_marker_visual_resolver.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/controllers/immersive_event_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/immersive_event_detail_screen.dart';
@@ -1802,6 +1803,128 @@ void main() {
 
       expect(router.lastPushedPath, '/perfil-customizado/perfil-com-caminho');
       expect(router.lastPushedRoute, isNull);
+    },
+  );
+
+  testWidgets(
+    'linked profile card renders normalized avatar url from relative public payload media',
+    (tester) async {
+      GetIt.I.registerSingleton<AppData>(_buildAppData());
+      final tenantOrigin = GetIt.I.get<AppData>().mainDomainValue.value;
+      final expectedAvatarUrl = tenantOrigin
+          .resolve('/api/v1/media/account-profiles/artist-relative/avatar?v=11')
+          .toString();
+      final expectedCoverUrl = tenantOrigin
+          .resolve('/account-profiles/artist-relative/cover?v=12')
+          .toString();
+
+      final dto = EventDTO.fromJson({
+        'event_id': '507f1f77bcf86cd799439199',
+        'slug': 'evento-linked-profile-midia-relativa',
+        'type': {
+          'id': 'type-1',
+          'name': 'Feira',
+          'slug': 'feira',
+          'description': '',
+        },
+        'title': 'Evento com avatar relativo',
+        'content': '',
+        'location': 'Guarapari',
+        'date_time_start': '2026-03-03T10:00:00+00:00',
+        'linked_account_profiles': [
+          {
+            'id': 'artist-relative',
+            'display_name': 'Perfil relativo',
+            'profile_type': 'artist',
+            'slug': 'perfil-relativo',
+            'public_detail_path': '/parceiro/perfil-relativo',
+            'avatar_url':
+                '/api/v1/media/account-profiles/artist-relative/avatar?v=11',
+            'cover_url':
+                'account-profiles/artist-relative/cover?v=12',
+          },
+        ],
+        'profile_groups': [
+          {
+            'id': 'artists',
+            'label': 'Artists',
+            'order': 0,
+            'profiles': [
+              {
+                'id': 'artist-relative',
+                'display_name': 'Perfil relativo',
+                'profile_type': 'artist',
+                'slug': 'perfil-relativo',
+                'public_detail_path': '/parceiro/perfil-relativo',
+                'avatar_url':
+                    '/api/v1/media/account-profiles/artist-relative/avatar?v=11',
+                'cover_url':
+                    'account-profiles/artist-relative/cover?v=12',
+              },
+            ],
+          },
+        ],
+      });
+      final event = dto.toDomain();
+      final linkedProfile = event.profileGroups.single.profiles.single;
+
+      expect(
+        linkedProfile.coverUrl,
+        expectedCoverUrl,
+      );
+
+      final userEventsRepository = _FakeUserEventsRepository();
+      final invitesRepository = _FakeInvitesRepository();
+      final accountProfilesRepository = _FakeAccountProfilesRepository();
+      GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+        ImmersiveEventDetailController(
+          userEventsRepository: userEventsRepository,
+          invitesRepository: invitesRepository,
+          authRepository: _FakeAuthRepository(authorized: true),
+          appDataRepository: _FakeAppDataRepository(_buildAppData()),
+          accountProfilesRepository: accountProfilesRepository,
+        ),
+      );
+
+      final router = _RecordingStackRouter();
+      final routeData = RouteData(
+        route: _FakeRouteMatch(
+          fullPath: '/agenda/evento/evento-linked-profile-midia-relativa',
+        ),
+        router: router,
+        stackKey: const ValueKey('stack'),
+        pendingChildren: const [],
+        type: const RouteType.material(),
+      );
+
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: _routeScopedHome(
+              routeData: routeData,
+              child: ImmersiveEventDetailScreen(event: event),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      await _tapImmersiveTab(tester, 1);
+
+      final avatarImage = tester.widget<BellugaNetworkImage>(
+        find.descendant(
+          of: find.byKey(const Key('linkedProfileCardTapTarget_artist-relative')),
+          matching: find.byType(BellugaNetworkImage),
+        ),
+      );
+
+      expect(
+        avatarImage.url,
+        expectedAvatarUrl,
+      );
     },
   );
 
