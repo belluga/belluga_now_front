@@ -140,19 +140,25 @@ final class EventPublicProfilePayloadDecoder {
       final accountProfileIds = _resolveAccountProfileIds(
         group['account_profile_ids'] ?? group['profile_ids'],
       );
-      final resolvedProfiles = profiles.isNotEmpty
-          ? profiles
-              .map(
-                (profile) => _mergeLinkedAccountProfileWithAggregate(
-                  profile,
-                  profilesById[profile.id.trim()],
-                ),
-              )
-              .toList(growable: false)
-          : accountProfileIds
-              .map((id) => profilesById[id.trim()])
-              .whereType<EventLinkedAccountProfile>()
+      final snapshotProfilesById = <String, EventLinkedAccountProfile>{
+        for (final profile in profiles)
+          if (profile.id.trim().isNotEmpty) profile.id.trim(): profile,
+      };
+      final authoritativeIds = accountProfileIds.isNotEmpty
+          ? accountProfileIds
+          : profiles
+              .map((profile) => profile.id.trim())
+              .where((id) => id.isNotEmpty)
               .toList(growable: false);
+      final resolvedProfiles = authoritativeIds
+          .map(
+            (id) => _materializeGroupedProfile(
+              aggregate: profilesById[id.trim()],
+              snapshot: snapshotProfilesById[id.trim()],
+            ),
+          )
+          .whereType<EventLinkedAccountProfile>()
+          .toList(growable: false);
       if (resolvedProfiles.isEmpty && accountProfileIds.isEmpty) {
         continue;
       }
@@ -306,6 +312,16 @@ final class EventPublicProfilePayloadDecoder {
         aggregate.taxonomyTerms,
       ),
     );
+  }
+
+  static EventLinkedAccountProfile? _materializeGroupedProfile({
+    EventLinkedAccountProfile? aggregate,
+    EventLinkedAccountProfile? snapshot,
+  }) {
+    if (aggregate != null && snapshot != null) {
+      return _mergeLinkedAccountProfileWithAggregate(aggregate, snapshot);
+    }
+    return aggregate ?? snapshot;
   }
 
   static EventLinkedAccountProfileTaxonomyTerms _mergeDomainTaxonomyTerms(

@@ -339,6 +339,87 @@ void main() {
     expect(groupedProfile.coverUrl, linkedProfile.coverUrl);
   });
 
+  test(
+      'hydrates grouped profiles from aggregate when snapshot media is stale and membership is partial',
+      () {
+    final dto = EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439157',
+      'slug': 'evt-stale-group-linked-media',
+      'type': {
+        'id': 'type-1',
+        'name': 'Feira',
+        'slug': 'feira',
+        'description': '',
+      },
+      'title': 'Evento com grupo stale',
+      'content': '',
+      'location': 'Guarapari',
+      'date_time_start': '2026-03-03T10:00:00+00:00',
+      'linked_account_profiles': [
+        {
+          'id': 'profile-relative',
+          'display_name': 'Perfil relativo',
+          'profile_type': 'artist',
+          'slug': 'perfil-relativo',
+          'public_detail_path': '/parceiro/perfil-relativo',
+          'avatar_url':
+              '/api/v1/media/account-profiles/profile-relative/avatar?v=7',
+          'cover_url': 'account-profiles/profile-relative/cover?v=8',
+        },
+        {
+          'id': 'profile-secondary',
+          'display_name': 'Perfil secundario',
+          'profile_type': 'artist',
+          'slug': 'perfil-secundario',
+          'public_detail_path': '/parceiro/perfil-secundario',
+          'avatar_url':
+              '/api/v1/media/account-profiles/profile-secondary/avatar?v=17',
+          'cover_url': 'account-profiles/profile-secondary/cover?v=18',
+        },
+      ],
+      'profile_groups': [
+        {
+          'id': 'artists',
+          'label': 'Artists',
+          'order': 0,
+          'account_profile_ids': [
+            'profile-relative',
+            'profile-secondary',
+          ],
+          'profiles': [
+            {
+              'id': 'profile-relative',
+              'display_name': 'Perfil relativo',
+              'profile_type': 'artist',
+              'slug': 'perfil-relativo-stale',
+              'public_detail_path': '/parceiro/perfil-relativo-stale',
+              'avatar_url': 'https://tenant.test/stale-avatar.png',
+              'cover_url': 'https://tenant.test/stale-cover.png',
+            },
+          ],
+        },
+      ],
+    });
+
+    final linkedProfiles = dto.linkedAccountProfiles;
+    final groupedProfiles = dto.profileGroups.single.profiles;
+
+    expect(groupedProfiles, hasLength(2));
+    expect(groupedProfiles.map((profile) => profile.id), [
+      linkedProfiles[0].id,
+      linkedProfiles[1].id,
+    ]);
+    expect(groupedProfiles[0].avatarUrl, linkedProfiles[0].avatarUrl);
+    expect(groupedProfiles[0].coverUrl, linkedProfiles[0].coverUrl);
+    expect(groupedProfiles[0].slug, linkedProfiles[0].slug);
+    expect(
+      groupedProfiles[0].publicDetailPath,
+      linkedProfiles[0].publicDetailPath,
+    );
+    expect(groupedProfiles[1].avatarUrl, linkedProfiles[1].avatarUrl);
+    expect(groupedProfiles[1].coverUrl, linkedProfiles[1].coverUrl);
+  });
+
   test('parses venue navigation contract from explicit public detail fields',
       () {
     final dto = EventDTO.fromJson({

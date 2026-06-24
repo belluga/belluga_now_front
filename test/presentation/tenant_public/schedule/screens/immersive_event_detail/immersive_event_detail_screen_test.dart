@@ -2035,6 +2035,114 @@ void main() {
   );
 
   testWidgets(
+    'linked profile card prefers aggregate avatar when grouped profile snapshot is stale',
+    (tester) async {
+      GetIt.I.registerSingleton<AppData>(_buildAppData());
+      final tenantOrigin = GetIt.I.get<AppData>().mainDomainValue.value;
+      final expectedAvatarUrl = tenantOrigin
+          .resolve('/api/v1/media/account-profiles/artist-relative/avatar?v=31')
+          .toString();
+
+      final dto = EventDTO.fromJson({
+        'event_id': '507f1f77bcf86cd799439201',
+        'slug': 'evento-linked-profile-grupo-stale',
+        'type': {
+          'id': 'type-1',
+          'name': 'Feira',
+          'slug': 'feira',
+          'description': '',
+        },
+        'title': 'Evento com grupo stale',
+        'content': '',
+        'location': 'Guarapari',
+        'date_time_start': '2026-03-03T10:00:00+00:00',
+        'linked_account_profiles': [
+          {
+            'id': 'artist-relative',
+            'display_name': 'Perfil relativo',
+            'profile_type': 'artist',
+            'slug': 'perfil-relativo',
+            'public_detail_path': '/parceiro/perfil-relativo',
+            'avatar_url':
+                '/api/v1/media/account-profiles/artist-relative/avatar?v=31',
+            'cover_url':
+                'account-profiles/artist-relative/cover?v=32',
+          },
+        ],
+        'profile_groups': [
+          {
+            'id': 'artists',
+            'label': 'Artists',
+            'order': 0,
+            'account_profile_ids': ['artist-relative'],
+            'profiles': [
+              {
+                'id': 'artist-relative',
+                'display_name': 'Perfil relativo',
+                'profile_type': 'artist',
+                'slug': 'perfil-relativo-stale',
+                'public_detail_path': '/parceiro/perfil-relativo-stale',
+                'avatar_url': 'https://tenant.test/stale-avatar.png',
+              },
+            ],
+          },
+        ],
+      });
+      final event = dto.toDomain();
+
+      final userEventsRepository = _FakeUserEventsRepository();
+      final invitesRepository = _FakeInvitesRepository();
+      final accountProfilesRepository = _FakeAccountProfilesRepository();
+      GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+        ImmersiveEventDetailController(
+          userEventsRepository: userEventsRepository,
+          invitesRepository: invitesRepository,
+          authRepository: _FakeAuthRepository(authorized: true),
+          appDataRepository: _FakeAppDataRepository(_buildAppData()),
+          accountProfilesRepository: accountProfilesRepository,
+        ),
+      );
+
+      final router = _RecordingStackRouter();
+      final routeData = RouteData(
+        route: _FakeRouteMatch(
+          fullPath: '/agenda/evento/evento-linked-profile-grupo-stale',
+        ),
+        router: router,
+        stackKey: const ValueKey('stack'),
+        pendingChildren: const [],
+        type: const RouteType.material(),
+      );
+
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: _routeScopedHome(
+              routeData: routeData,
+              child: ImmersiveEventDetailScreen(event: event),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      await _tapImmersiveTab(tester, 1);
+
+      final avatarImage = tester.widget<BellugaNetworkImage>(
+        find.descendant(
+          of: find.byKey(const Key('linkedProfileCardTapTarget_artist-relative')),
+          matching: find.byType(BellugaNetworkImage),
+        ),
+      );
+
+      expect(avatarImage.url, expectedAvatarUrl);
+    },
+  );
+
+  testWidgets(
     'does not navigate linked profile card without public detail permission',
     (tester) async {
       final userEventsRepository = _FakeUserEventsRepository();
