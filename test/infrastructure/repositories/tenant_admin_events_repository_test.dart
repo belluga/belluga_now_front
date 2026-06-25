@@ -630,6 +630,34 @@ void main() {
     );
   });
 
+  test(
+      'fetchEventsPage normalizes relative related profile media urls to tenant origin before admin decode',
+      () async {
+    final adapter = _EventsListWithRelativeRelatedProfileMediaAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final result = await repository.fetchEventsPage(
+      page: _repoInt(1),
+      pageSize: _repoInt(20),
+    );
+
+    expect(result.items, hasLength(1));
+    expect(result.items.first.relatedAccountProfiles, hasLength(1));
+    expect(
+      result.items.first.relatedAccountProfiles.first.avatarUrl,
+      'https://tenant-a.test/api/v1/media/account-profiles/artist-relative/avatar?v=7',
+    );
+    expect(
+      result.items.first.relatedAccountProfiles.first.coverUrl,
+      'https://tenant-a.test/account-profiles/artist-relative/cover?v=8',
+    );
+  });
+
   test('fetchEventsPage wraps decoder failures with readable repository error',
       () async {
     final adapter = _MalformedEventsPayloadAdapter();
@@ -665,6 +693,46 @@ void main() {
             ),
       ),
     );
+  });
+
+  test(
+      'fetchEvent uses dedicated item readback and normalizes relative related profile media',
+      () async {
+    final adapter = _EventItemWithRelativeRelatedProfileMediaAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final event = await repository.fetchEvent(_repoText('evt-readback'));
+
+    expect(event.eventId, 'evt-readback');
+    expect(event.title, 'Evento readback');
+    expect(event.relatedAccountProfiles, hasLength(2));
+    expect(
+      event.relatedAccountProfiles.first.avatarUrl,
+      'https://tenant-a.test/api/v1/media/account-profiles/artist-1/avatar?v=7',
+    );
+    expect(
+      event.profileGroups.single.accountProfileIdValues
+          .map((value) => value.value)
+          .toList(growable: false),
+      ['artist-1', 'delegate-1'],
+    );
+    expect(
+      event.occurrences.single.profileGroups.single.accountProfileIdValues
+          .map((value) => value.value)
+          .toList(growable: false),
+      ['artist-1', 'delegate-1'],
+    );
+
+    expect(adapter.requests, hasLength(1));
+    final request = adapter.requests.single;
+    expect(request.method, 'GET');
+    expect(request.path, endsWith('/admin/api/v1/events/evt-readback'));
+    expect(request.headers['Authorization'], 'Bearer test-token');
   });
 
   test('fetchEventTypes prefers landlord token and maps payload', () async {
@@ -1526,6 +1594,85 @@ class _EventsListWithSummarizedRelatedProfilesAdapter
   }
 }
 
+class _EventsListWithRelativeRelatedProfileMediaAdapter
+    implements HttpClientAdapter {
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    if (options.path.endsWith('/admin/api/v1/events') &&
+        options.method == 'GET') {
+      return ResponseBody.fromString(
+        jsonEncode({
+          'data': [
+            {
+              'event_id': 'evt-relative-media-1',
+              'slug': 'relative-media-event',
+              'title': 'Relative Media Event',
+              'content': 'Content',
+              'type': {
+                'name': 'Show',
+                'slug': 'show',
+              },
+              'publication': {
+                'status': 'draft',
+              },
+              'occurrences': [
+                {
+                  'date_time_start': '2026-03-05T20:00:00Z',
+                }
+              ],
+              'event_parties': [
+                {
+                  'party_type': 'artist',
+                  'party_ref_id': 'artist-relative',
+                  'permissions': {
+                    'can_edit': true,
+                  },
+                }
+              ],
+              'linked_account_profiles': [
+                {
+                  'id': 'artist-relative',
+                  'account_id': 'artist-relative',
+                  'display_name': 'DJ Relative',
+                  'profile_type': 'artist',
+                  'avatar_url':
+                      '/api/v1/media/account-profiles/artist-relative/avatar?v=7',
+                  'cover_url':
+                      'account-profiles/artist-relative/cover?v=8',
+                  'slug': 'dj-relative',
+                }
+              ],
+            },
+          ],
+          'current_page': 1,
+          'last_page': 1,
+          'per_page': 20,
+          'total': 1,
+        }),
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
+
+    return ResponseBody.fromString(
+      jsonEncode({'data': {}}),
+      200,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+}
+
 class _NotFoundEventsAdapter implements HttpClientAdapter {
   @override
   void close({bool force = false}) {}
@@ -1549,6 +1696,148 @@ class _NotFoundEventsAdapter implements HttpClientAdapter {
 
     return ResponseBody.fromString(
       jsonEncode({'data': []}),
+      200,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+}
+
+class _EventItemWithRelativeRelatedProfileMediaAdapter
+    implements HttpClientAdapter {
+  final List<RequestOptions> requests = <RequestOptions>[];
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requests.add(options);
+
+    if (options.path.endsWith('/admin/api/v1/events/evt-readback') &&
+        options.method == 'GET') {
+      return ResponseBody.fromString(
+        jsonEncode({
+          'data': {
+            'event_id': 'evt-readback',
+            'slug': 'evento-readback',
+            'title': 'Evento readback',
+            'content': 'Conteudo readback',
+            'type': {
+              'id': 'type-1',
+              'name': 'Show',
+              'slug': 'show',
+            },
+            'date_time_start': '2026-04-05T20:00:00+00:00',
+            'publication': {
+              'status': 'draft',
+            },
+            'event_parties': [
+              {
+                'party_type': 'artist',
+                'party_ref_id': 'artist-1',
+                'permissions': {'can_edit': true},
+              },
+              {
+                'party_type': 'delegate',
+                'party_ref_id': 'delegate-1',
+                'permissions': {'can_edit': false},
+              },
+              {
+                'party_type': 'hidden_guest',
+                'party_ref_id': 'hidden-1',
+                'permissions': {'can_edit': false},
+              },
+            ],
+            'linked_account_profiles': [
+              {
+                'id': 'artist-1',
+                'account_id': 'artist-1',
+                'display_name': 'Artist One',
+                'profile_type': 'artist',
+                'avatar_url':
+                    '/api/v1/media/account-profiles/artist-1/avatar?v=7',
+              },
+              {
+                'id': 'delegate-1',
+                'account_id': 'delegate-1',
+                'display_name': 'Delegate One',
+                'profile_type': 'delegate',
+              },
+            ],
+            'profile_groups': [
+              {
+                'id': 'outro-grupo',
+                'label': 'Outro Grupo',
+                'order': 0,
+                'account_profile_ids': ['artist-1', 'delegate-1', 'hidden-1'],
+              },
+            ],
+            'occurrences': [
+              {
+                'occurrence_id': 'occ-1',
+                'date_time_start': '2026-04-05T20:00:00+00:00',
+                'own_event_parties': [
+                  {
+                    'party_type': 'artist',
+                    'party_ref_id': 'artist-1',
+                    'permissions': {'can_edit': true},
+                  },
+                  {
+                    'party_type': 'delegate',
+                    'party_ref_id': 'delegate-1',
+                    'permissions': {'can_edit': false},
+                  },
+                  {
+                    'party_type': 'hidden_guest',
+                    'party_ref_id': 'hidden-1',
+                    'permissions': {'can_edit': false},
+                  },
+                ],
+                'own_linked_account_profiles': [
+                  {
+                    'id': 'artist-1',
+                    'account_id': 'artist-1',
+                    'display_name': 'Artist One',
+                    'profile_type': 'artist',
+                  },
+                  {
+                    'id': 'delegate-1',
+                    'account_id': 'delegate-1',
+                    'display_name': 'Delegate One',
+                    'profile_type': 'delegate',
+                  },
+                ],
+                'profile_groups': [
+                  {
+                    'id': 'outro-grupo',
+                    'label': 'Outro Grupo',
+                    'order': 0,
+                    'account_profile_ids': [
+                      'artist-1',
+                      'delegate-1',
+                      'hidden-1',
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        }),
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
+
+    return ResponseBody.fromString(
+      jsonEncode({'data': {}}),
       200,
       headers: {
         Headers.contentTypeHeader: ['application/json'],

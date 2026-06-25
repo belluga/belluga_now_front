@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
@@ -117,6 +118,130 @@ void main() {
     expect(
       controller.eventsErrorStreamValue.value,
       contains('filtered load failed'),
+    );
+  });
+
+  test(
+      'root programming stays on the first occurrence after a second occurrence is drafted and populated',
+      () {
+    final eventsRepository = _TrackingEventsRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+      landlordAuthRepository:
+          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
+    );
+
+    controller.initEventForm(
+      existingEvent: _buildEventDetailFixture(
+        eventId: 'evt-programming-scope',
+        title: 'Programming Scope Event',
+      ),
+    );
+
+    final primaryKey = controller.primaryOccurrenceKey();
+    expect(primaryKey, isNotNull);
+
+    controller.addOccurrenceProgrammingItem(
+      primaryKey!,
+      TenantAdminEventProgrammingItem(
+        timeValue: tenantAdminRequiredText('09:30'),
+        titleValue: tenantAdminOptionalText('Programação raiz'),
+      ),
+    );
+
+    final secondOccurrenceKey = controller.createOccurrenceDraft();
+    controller.addOccurrenceProgrammingItem(
+      secondOccurrenceKey,
+      TenantAdminEventProgrammingItem(
+        timeValue: tenantAdminRequiredText('13:00'),
+        titleValue: tenantAdminOptionalText('Programação local'),
+      ),
+    );
+
+    final occurrences = controller.eventFormStateStreamValue.value.occurrences;
+    expect(occurrences, hasLength(2));
+    expect(
+      occurrences.first.programmingItems.map((item) => item.title).toList(),
+      ['Programação raiz'],
+    );
+    expect(
+      occurrences.last.programmingItems.map((item) => item.title).toList(),
+      ['Programação local'],
+    );
+  });
+
+  test(
+      'initEventForm preserves hydrated occurrence order when assigning the primary draft',
+      () {
+    final eventsRepository = _TrackingEventsRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+      landlordAuthRepository:
+          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
+    );
+
+    controller.initEventForm(
+      existingEvent: TenantAdminEvent(
+        eventIdValue: tenantAdminRequiredText('evt-programming-order'),
+        slugValue: tenantAdminRequiredText('evt-programming-order'),
+        titleValue: tenantAdminRequiredText('Programming Order Event'),
+        contentValue: tenantAdminOptionalText(''),
+        type: TenantAdminEventType(
+          nameValue: tenantAdminRequiredText('Show'),
+          slugValue: tenantAdminRequiredText('show'),
+        ),
+        occurrences: <TenantAdminEventOccurrence>[
+          TenantAdminEventOccurrence(
+            occurrenceIdValue: tenantAdminOptionalText('occ-2'),
+            occurrenceSlugValue: tenantAdminOptionalText('occ-2'),
+            dateTimeStartValue: tenantAdminDateTime(
+              DateTime.utc(2026, 4, 21, 20),
+            ),
+            programmingItems: [
+              TenantAdminEventProgrammingItem(
+                timeValue: tenantAdminRequiredText('13:00'),
+                titleValue: tenantAdminOptionalText('Programação local'),
+              ),
+            ],
+          ),
+          TenantAdminEventOccurrence(
+            occurrenceIdValue: tenantAdminOptionalText('occ-1'),
+            occurrenceSlugValue: tenantAdminOptionalText('occ-1'),
+            dateTimeStartValue: tenantAdminDateTime(
+              DateTime.utc(2026, 4, 20, 20),
+            ),
+            programmingItems: [
+              TenantAdminEventProgrammingItem(
+                timeValue: tenantAdminRequiredText('09:30'),
+                titleValue: tenantAdminOptionalText('Programação raiz'),
+              ),
+            ],
+          ),
+        ],
+        publication: TenantAdminEventPublication(
+          statusValue: tenantAdminRequiredText('draft'),
+        ),
+      ),
+    );
+
+    final occurrences = controller.eventFormStateStreamValue.value.occurrences;
+    expect(
+      occurrences.map((occurrence) => occurrence.occurrenceId).toList(),
+      ['occ-2', 'occ-1'],
+    );
+    expect(
+      occurrences.first.programmingItems.map((item) => item.title).toList(),
+      ['Programação local'],
+    );
+    expect(
+      occurrences.last.programmingItems.map((item) => item.title).toList(),
+      ['Programação raiz'],
+    );
+    expect(
+      controller.eventFormStateStreamValue.value.startAt,
+      TimezoneConverter.utcToLocal(DateTime.utc(2026, 4, 21, 20)),
     );
   });
 
@@ -673,6 +798,117 @@ void main() {
   });
 
   test(
+      'loadFormDependencies preserves an existing venue that is off the first bootstrap page',
+      () async {
+    final eventsRepository = _BootstrapPagedCandidatesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+    );
+    final existingEvent = TenantAdminEvent(
+      eventIdValue: tenantAdminRequiredText('evt-off-page-venue'),
+      slugValue: tenantAdminRequiredText('evt-off-page-venue'),
+      titleValue: tenantAdminRequiredText('Evento com venue fora da pagina'),
+      contentValue: tenantAdminOptionalText('Conteudo'),
+      type: TenantAdminEventType(
+        idValue: tenantAdminOptionalText('type-1'),
+        nameValue: tenantAdminRequiredText('Show'),
+        slugValue: tenantAdminRequiredText('show'),
+      ),
+      location: TenantAdminEventLocation(
+        modeValue: tenantAdminRequiredText('physical'),
+        latitudeValue: tenantAdminOptionalDouble(-20.0),
+        longitudeValue: tenantAdminOptionalDouble(-40.0),
+      ),
+      placeRef: TenantAdminEventPlaceRef(
+        typeValue: tenantAdminRequiredText('account_profile'),
+        idValue: tenantAdminRequiredText('venue-selected'),
+      ),
+      venueDisplayNameValue: tenantAdminOptionalText('Selected Venue'),
+      occurrences: [
+        TenantAdminEventOccurrence(
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 6, 7, 3),
+          ),
+        ),
+      ],
+      publication: TenantAdminEventPublication(
+        statusValue: tenantAdminRequiredText('draft'),
+      ),
+    );
+
+    controller.initEventForm(existingEvent: existingEvent);
+    await controller.loadFormDependencies();
+
+    expect(
+      controller.eventFormStateStreamValue.value.selectedVenueId,
+      'venue-selected',
+    );
+    expect(
+      controller.venueCandidatesStreamValue.value
+          .map((profile) => profile.id)
+          .toList(growable: false),
+      ['venue-selected', 'venue-bootstrap-1'],
+    );
+    expect(
+      controller.venueCandidatesStreamValue.value.first.displayName,
+      'Selected Venue',
+    );
+  });
+
+  test('bootstrap-seeded venue picker loads page 2 on next page request',
+      () async {
+    final eventsRepository = _BootstrapPagedCandidatesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+    );
+
+    await controller.loadFormDependencies();
+    await controller.prepareAccountProfilePicker(
+      candidateType: TenantAdminEventAccountProfileCandidateType.physicalHost,
+    );
+
+    expect(
+      controller.accountProfilePickerResultsStreamValue.value
+          .map((profile) => profile.id)
+          .toList(growable: false),
+      ['venue-bootstrap-1'],
+    );
+    expect(
+      eventsRepository.candidatePageRequests,
+      <(TenantAdminEventAccountProfileCandidateType, int)>[
+        (TenantAdminEventAccountProfileCandidateType.physicalHost, 1),
+        (
+          TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
+          1,
+        ),
+      ],
+    );
+
+    await controller.loadNextAccountProfilePickerPage();
+
+    expect(
+      eventsRepository.candidatePageRequests,
+      <(TenantAdminEventAccountProfileCandidateType, int)>[
+        (TenantAdminEventAccountProfileCandidateType.physicalHost, 1),
+        (
+          TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
+          1,
+        ),
+        (TenantAdminEventAccountProfileCandidateType.physicalHost, 2),
+      ],
+    );
+    expect(
+      controller.accountProfilePickerResultsStreamValue.value
+          .map((profile) => profile.id)
+          .toList(growable: false),
+      ['venue-bootstrap-1', 'venue-bootstrap-2'],
+    );
+    expect(controller.accountProfilePickerHasMoreStreamValue.value, isFalse);
+  });
+
+  test(
       'loadFormDependencies hydrates default event type and terms in controller',
       () async {
     final eventsRepository = _ConfigurableEventTypesRepository([
@@ -1040,6 +1276,34 @@ void main() {
     expect(eventsRepository.fetchEventsPageCalls, 1);
     expect(summary.repaired, 3);
   });
+}
+
+TenantAdminEvent _buildEventDetailFixture({
+  required String eventId,
+  required String title,
+}) {
+  return TenantAdminEvent(
+    eventIdValue: tenantAdminRequiredText(eventId),
+    slugValue: tenantAdminRequiredText('$eventId-slug'),
+    titleValue: tenantAdminRequiredText(title),
+    contentValue: tenantAdminOptionalText('Detailed content'),
+    type: TenantAdminEventType(
+      idValue: tenantAdminOptionalText('type-1'),
+      nameValue: tenantAdminRequiredText('Show'),
+      slugValue: tenantAdminRequiredText('show'),
+    ),
+    occurrences: <TenantAdminEventOccurrence>[
+      TenantAdminEventOccurrence(
+        occurrenceIdValue: tenantAdminOptionalText('$eventId-occurrence'),
+        dateTimeStartValue: tenantAdminDateTime(
+          DateTime.utc(2026, 6, 24, 18),
+        ),
+      ),
+    ],
+    publication: TenantAdminEventPublication(
+      statusValue: tenantAdminRequiredText('draft'),
+    ),
+  );
 }
 
 TenantAdminEventDraft _buildDraft() {

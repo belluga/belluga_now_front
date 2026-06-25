@@ -74,12 +74,15 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
     TenantAdminEvent event, {
     TenantAdminEventOccurrence? selectedOccurrence,
   }) {
-    final routeEvent = selectedOccurrence == null
-        ? event
-        : _eventWithOccurrenceFirst(event, selectedOccurrence);
+    final selectedOccurrenceId = selectedOccurrence?.occurrenceId?.trim();
     context.router
         .push<TenantAdminEvent>(
-      TenantAdminEventEditRoute(event: routeEvent),
+      TenantAdminEventEditRoute(
+        eventId: event.eventId,
+        occurrenceId: selectedOccurrenceId == null || selectedOccurrenceId.isEmpty
+            ? null
+            : selectedOccurrenceId,
+      ),
     )
         .then((updated) {
       if (updated == null || !mounted) {
@@ -90,42 +93,6 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
         const SnackBar(content: Text('Evento atualizado com sucesso.')),
       );
     });
-  }
-
-  TenantAdminEvent _eventWithOccurrenceFirst(
-    TenantAdminEvent event,
-    TenantAdminEventOccurrence selectedOccurrence,
-  ) {
-    if (event.occurrences.isEmpty ||
-        identical(event.occurrences.first, selectedOccurrence)) {
-      return event;
-    }
-
-    return TenantAdminEvent(
-      eventIdValue: event.eventIdValue,
-      slugValue: event.slugValue,
-      titleValue: event.titleValue,
-      contentValue: event.contentValue,
-      type: event.type,
-      occurrences: [
-        selectedOccurrence,
-        ...event.occurrences.where(
-          (occurrence) => !identical(occurrence, selectedOccurrence),
-        ),
-      ],
-      publication: event.publication,
-      location: event.location,
-      placeRef: event.placeRef,
-      thumbUrlValue: event.thumbUrlValue,
-      venueDisplayNameValue: event.venueDisplayNameValue,
-      relatedAccountProfileIdValues: event.relatedAccountProfileIds,
-      relatedAccountProfiles: event.relatedAccountProfiles,
-      eventParties: event.eventParties,
-      taxonomyTerms: event.taxonomyTerms,
-      createdAtValue: event.createdAtValue,
-      updatedAtValue: event.updatedAtValue,
-      deletedAtValue: event.deletedAtValue,
-    );
   }
 
   Future<void> _confirmDelete(TenantAdminEvent event) async {

@@ -69,7 +69,7 @@ void main() {
     await tester.tap(find.text('Seed Event'));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('EDIT-EVENT-ROUTE:'), findsOneWidget);
+    expect(find.text('EDIT-EVENT-ROUTE:evt-1:null'), findsOneWidget);
   });
 
   testWidgets('event card exposes accessible edit action', (tester) async {
@@ -90,7 +90,7 @@ void main() {
       await tester.tap(editAction);
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('EDIT-EVENT-ROUTE:'), findsOneWidget);
+      expect(find.text('EDIT-EVENT-ROUTE:evt-1:null'), findsOneWidget);
     } finally {
       semantics.dispose();
     }
@@ -130,9 +130,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-        find.textContaining(
-            'EDIT-EVENT-ROUTE:Multi Occurrence Event:occ-future'),
-        findsOneWidget);
+      find.text('EDIT-EVENT-ROUTE:evt-multi:occ-future'),
+      findsOneWidget,
+    );
   });
 
   testWidgets(
@@ -544,13 +544,12 @@ Future<void> _pumpEventsRouter(
       ),
       NamedRouteDef(
         name: TenantAdminEventEditRoute.name,
-        path: '/events/edit',
+        path: '/events/:eventId/edit',
         builder: (_, data) {
-          final args = data.argsAs<TenantAdminEventEditRouteArgs>();
           return Scaffold(
             body: Center(
               child: Text(
-                'EDIT-EVENT-ROUTE:${args.event!.title}:${args.event!.occurrences.first.occurrenceId}',
+                'EDIT-EVENT-ROUTE:${data.params.getString('eventId')}:${data.queryParams.optString('occurrence')}',
               ),
             ),
           );
