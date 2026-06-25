@@ -2064,7 +2064,7 @@ void main() {
   });
 
   testWidgets(
-      'edit submit preserves first-occurrence programming when existing occurrences arrive out of order',
+      'edit submit preserves hydrated occurrence order when existing occurrences arrive out of order',
       (tester) async {
     final eventsRepository = _FakeEventsRepository();
     final taxonomiesRepository = _FakeTaxonomiesRepository();
@@ -2152,19 +2152,19 @@ void main() {
       eventsRepository.lastUpdateDraft?.occurrences
           .map((occurrence) => occurrence.occurrenceId)
           .toList(growable: false),
-      ['occ-1', 'occ-2'],
+      ['occ-2', 'occ-1'],
     );
     expect(
       eventsRepository.lastUpdateDraft?.occurrences.first.programmingItems
           .map((item) => item.title)
           .toList(growable: false),
-      ['Programação raiz'],
+      ['Programação local'],
     );
     expect(
       eventsRepository.lastUpdateDraft?.occurrences[1].programmingItems
           .map((item) => item.title)
           .toList(growable: false),
-      ['Programação local'],
+      ['Programação raiz'],
     );
   });
 
