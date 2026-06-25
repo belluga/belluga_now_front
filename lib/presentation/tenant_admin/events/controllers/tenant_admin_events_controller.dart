@@ -125,14 +125,6 @@ class TenantAdminEventsController implements Disposable {
     defaultValue: TenantAdminEventTemporalBucket.defaultSelection,
   );
 
-  final StreamValue<TenantAdminEvent?> eventDetailStreamValue =
-      StreamValue<TenantAdminEvent?>();
-  final StreamValue<bool> eventDetailLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
-  final StreamValue<String?> eventDetailErrorStreamValue =
-      StreamValue<String?>();
-  int _eventDetailLoadSerial = 0;
-
   final StreamValue<bool> submitLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
   final StreamValue<String?> submitErrorMessageStreamValue =
@@ -1848,38 +1840,6 @@ class TenantAdminEventsController implements Disposable {
     await _loadEventTypeCatalog();
   }
 
-  Future<void> loadEventDetail(String eventIdOrSlug) async {
-    final requestSerial = ++_eventDetailLoadSerial;
-    eventDetailLoadingStreamValue.addValue(true);
-    eventDetailStreamValue.addValue(null);
-    eventDetailErrorStreamValue.addValue(null);
-    try {
-      final event = await _eventsRepository.fetchEvent(
-        _toEventsText(eventIdOrSlug),
-      );
-      if (_isDisposed || requestSerial != _eventDetailLoadSerial) {
-        return;
-      }
-      eventDetailStreamValue.addValue(event);
-    } catch (error) {
-      if (_isDisposed || requestSerial != _eventDetailLoadSerial) {
-        return;
-      }
-      eventDetailErrorStreamValue.addValue(error.toString());
-    } finally {
-      if (!_isDisposed && requestSerial == _eventDetailLoadSerial) {
-        eventDetailLoadingStreamValue.addValue(false);
-      }
-    }
-  }
-
-  void resetEventDetailState() {
-    _eventDetailLoadSerial += 1;
-    eventDetailStreamValue.addValue(null);
-    eventDetailLoadingStreamValue.addValue(false);
-    eventDetailErrorStreamValue.addValue(null);
-  }
-
   Future<void> loadFormDependencies({
     String? accountSlug,
   }) async {
@@ -2671,7 +2631,6 @@ class TenantAdminEventsController implements Disposable {
           .addValue('Evento atualizado com sucesso.');
       markEventFormClean();
       await loadEvents();
-      eventDetailStreamValue.addValue(updated);
       return updated;
     } catch (error) {
       if (_isDisposed) {
@@ -2739,7 +2698,6 @@ class TenantAdminEventsController implements Disposable {
     relatedAccountProfileFilterStreamValue.addValue(null);
     temporalFilterStreamValue
         .addValue(TenantAdminEventTemporalBucket.defaultSelection);
-    resetEventDetailState();
     taxonomiesStreamValue.addValue(const []);
     taxonomyTermsBySlugStreamValue.addValue(const {});
     _taxonomyTermsCacheBySlug.clear();
@@ -3592,9 +3550,6 @@ class TenantAdminEventsController implements Disposable {
     venueFilterStreamValue.dispose();
     relatedAccountProfileFilterStreamValue.dispose();
     temporalFilterStreamValue.dispose();
-    eventDetailStreamValue.dispose();
-    eventDetailLoadingStreamValue.dispose();
-    eventDetailErrorStreamValue.dispose();
     submitLoadingStreamValue.dispose();
     submitErrorMessageStreamValue.dispose();
     submitSuccessMessageStreamValue.dispose();
