@@ -4,6 +4,14 @@
   "description": "Flutter repo-owned local contract surface mirrored by the stage-promotion web workflow.",
   "entries": [
     {
+      "id": "flutter-dependencies",
+      "repo": "flutter-app",
+      "kind": "workflow-parity",
+      "cwd": "../../..",
+      "command": ["fvm", "flutter", "pub", "get"],
+      "description": "Bootstrap Flutter workspace dependencies before stage-facing analysis and tests."
+    },
+    {
       "id": "flutter-stage-promotion-architecture-gate",
       "repo": "flutter-app",
       "kind": "workflow-parity",
