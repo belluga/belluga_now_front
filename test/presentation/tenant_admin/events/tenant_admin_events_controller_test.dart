@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
@@ -171,7 +172,7 @@ void main() {
   });
 
   test(
-      'initEventForm sorts existing occurrences by date before assigning programming to the first occurrence',
+      'initEventForm preserves hydrated occurrence order when assigning the primary draft',
       () {
     final eventsRepository = _TrackingEventsRepository();
     final controller = TenantAdminEventsController(
@@ -228,15 +229,19 @@ void main() {
     final occurrences = controller.eventFormStateStreamValue.value.occurrences;
     expect(
       occurrences.map((occurrence) => occurrence.occurrenceId).toList(),
-      ['occ-1', 'occ-2'],
+      ['occ-2', 'occ-1'],
     );
     expect(
       occurrences.first.programmingItems.map((item) => item.title).toList(),
-      ['Programação raiz'],
+      ['Programação local'],
     );
     expect(
       occurrences.last.programmingItems.map((item) => item.title).toList(),
-      ['Programação local'],
+      ['Programação raiz'],
+    );
+    expect(
+      controller.eventFormStateStreamValue.value.startAt,
+      TimezoneConverter.utcToLocal(DateTime.utc(2026, 4, 21, 20)),
     );
   });
 

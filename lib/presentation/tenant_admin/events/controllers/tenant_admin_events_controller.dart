@@ -528,24 +528,7 @@ class TenantAdminEventsController implements Disposable {
       programmingItemLocalIdsByOccurrenceKey[occurrenceLocalIds[index]] =
           _newProgrammingItemKeys(localOccurrences[index].programmingItems);
     }
-    final sortedOccurrenceEntries = _sortOccurrenceEntries(
-      occurrences: localOccurrences,
-      occurrenceKeys: occurrenceLocalIds,
-    );
-    final sortedOccurrences = List<TenantAdminEventOccurrence>.unmodifiable(
-      sortedOccurrenceEntries.map((entry) => entry.occurrence),
-    );
-    final sortedOccurrenceLocalIds = List<String>.unmodifiable(
-      sortedOccurrenceEntries.map((entry) => entry.key),
-    );
-    final sortedProgrammingItemLocalIdsByOccurrenceKey =
-        <String, List<String>>{
-      for (final entry in sortedOccurrenceEntries)
-        entry.key:
-            programmingItemLocalIdsByOccurrenceKey[entry.key] ??
-                const <String>[],
-    };
-    final firstOccurrence = sortedOccurrences.firstOrNull;
+    final firstOccurrence = localOccurrences.firstOrNull;
     final profileGroups =
         existingEvent?.profileGroups ?? const <TenantAdminNestedProfileGroup>[];
     final selectedRelatedAccountProfileIds = profileGroups.isNotEmpty
@@ -571,10 +554,10 @@ class TenantAdminEventsController implements Disposable {
       selectedTypeSlug: existingEvent?.type.slug.trim(),
       selectedRelatedAccountProfileIds: selectedRelatedAccountProfileIds,
       profileGroups: profileGroups,
-      occurrences: sortedOccurrences,
-      occurrenceLocalIds: sortedOccurrenceLocalIds,
+      occurrences: List<TenantAdminEventOccurrence>.unmodifiable(localOccurrences),
+      occurrenceLocalIds: List<String>.unmodifiable(occurrenceLocalIds),
       programmingItemLocalIdsByOccurrenceKey:
-          Map.unmodifiable(sortedProgrammingItemLocalIdsByOccurrenceKey),
+          Map.unmodifiable(programmingItemLocalIdsByOccurrenceKey),
       selectedTaxonomyTerms: selectedTaxonomyTerms,
       hasHydratedDefaultVenue: false,
     );
