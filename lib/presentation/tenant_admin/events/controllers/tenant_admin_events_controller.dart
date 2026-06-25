@@ -7,6 +7,7 @@ import 'dart:typed_data';
 
 import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/application/tenant_admin/discovery_filters/tenant_admin_taxonomies_sequential_batch_terms_repository.dart';
+import 'package:belluga_now/application/tenant_admin/events/tenant_admin_event_account_profile_candidates_page_loader.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
@@ -130,6 +131,7 @@ class TenantAdminEventsController implements Disposable {
       StreamValue<bool>(defaultValue: false);
   final StreamValue<String?> eventDetailErrorStreamValue =
       StreamValue<String?>();
+  int _eventDetailLoadSerial = 0;
 
   final StreamValue<bool> submitLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
@@ -501,7 +503,6 @@ class TenantAdminEventsController implements Disposable {
   void initEventForm({
     TenantAdminEvent? existingEvent,
   }) {
-    final firstOccurrence = existingEvent?.occurrences.firstOrNull;
     _eventFormLocalIdSerial = 0;
     final selectedTaxonomyTerms = <String, Set<String>>{};
     for (final term in existingEvent?.taxonomyTerms ??
@@ -535,6 +536,24 @@ class TenantAdminEventsController implements Disposable {
       programmingItemLocalIdsByOccurrenceKey[occurrenceLocalIds[index]] =
           _newProgrammingItemKeys(localOccurrences[index].programmingItems);
     }
+    final sortedOccurrenceEntries = _sortOccurrenceEntries(
+      occurrences: localOccurrences,
+      occurrenceKeys: occurrenceLocalIds,
+    );
+    final sortedOccurrences = List<TenantAdminEventOccurrence>.unmodifiable(
+      sortedOccurrenceEntries.map((entry) => entry.occurrence),
+    );
+    final sortedOccurrenceLocalIds = List<String>.unmodifiable(
+      sortedOccurrenceEntries.map((entry) => entry.key),
+    );
+    final sortedProgrammingItemLocalIdsByOccurrenceKey =
+        <String, List<String>>{
+      for (final entry in sortedOccurrenceEntries)
+        entry.key:
+            programmingItemLocalIdsByOccurrenceKey[entry.key] ??
+                const <String>[],
+    };
+    final firstOccurrence = sortedOccurrences.firstOrNull;
     final profileGroups =
         existingEvent?.profileGroups ?? const <TenantAdminNestedProfileGroup>[];
     final selectedRelatedAccountProfileIds = profileGroups.isNotEmpty
@@ -560,10 +579,10 @@ class TenantAdminEventsController implements Disposable {
       selectedTypeSlug: existingEvent?.type.slug.trim(),
       selectedRelatedAccountProfileIds: selectedRelatedAccountProfileIds,
       profileGroups: profileGroups,
-      occurrences: localOccurrences,
-      occurrenceLocalIds: occurrenceLocalIds,
+      occurrences: sortedOccurrences,
+      occurrenceLocalIds: sortedOccurrenceLocalIds,
       programmingItemLocalIdsByOccurrenceKey:
-          Map.unmodifiable(programmingItemLocalIdsByOccurrenceKey),
+          Map.unmodifiable(sortedProgrammingItemLocalIdsByOccurrenceKey),
       selectedTaxonomyTerms: selectedTaxonomyTerms,
       hasHydratedDefaultVenue: false,
     );
@@ -1830,26 +1849,35 @@ class TenantAdminEventsController implements Disposable {
   }
 
   Future<void> loadEventDetail(String eventIdOrSlug) async {
+    final requestSerial = ++_eventDetailLoadSerial;
     eventDetailLoadingStreamValue.addValue(true);
+    eventDetailStreamValue.addValue(null);
     eventDetailErrorStreamValue.addValue(null);
     try {
       final event = await _eventsRepository.fetchEvent(
         _toEventsText(eventIdOrSlug),
       );
-      if (_isDisposed) {
+      if (_isDisposed || requestSerial != _eventDetailLoadSerial) {
         return;
       }
       eventDetailStreamValue.addValue(event);
     } catch (error) {
-      if (_isDisposed) {
+      if (_isDisposed || requestSerial != _eventDetailLoadSerial) {
         return;
       }
       eventDetailErrorStreamValue.addValue(error.toString());
     } finally {
-      if (!_isDisposed) {
+      if (!_isDisposed && requestSerial == _eventDetailLoadSerial) {
         eventDetailLoadingStreamValue.addValue(false);
       }
     }
+  }
+
+  void resetEventDetailState() {
+    _eventDetailLoadSerial += 1;
+    eventDetailStreamValue.addValue(null);
+    eventDetailLoadingStreamValue.addValue(false);
+    eventDetailErrorStreamValue.addValue(null);
   }
 
   Future<void> loadFormDependencies({
@@ -2288,21 +2316,12 @@ class TenantAdminEventsController implements Disposable {
     String? accountSlug,
     String query = '',
   }) async {
-    final pageSize = switch (candidateType) {
-      TenantAdminEventAccountProfileCandidateType.relatedAccountProfile => 20,
-      TenantAdminEventAccountProfileCandidateType.physicalHost => 50,
-    };
     final normalizedQuery = query.trim();
-    return _eventsRepository.fetchEventAccountProfileCandidatesPage(
+    return TenantAdminEventAccountProfileCandidatesPageLoader(
+      eventsRepository: _eventsRepository,
+    ).loadPage(
       candidateType: candidateType,
-      page: TenantAdminEventsRepoInt.fromRaw(
-        pageNumber,
-        defaultValue: pageNumber,
-      ),
-      pageSize: TenantAdminEventsRepoInt.fromRaw(
-        pageSize,
-        defaultValue: pageSize,
-      ),
+      pageNumber: pageNumber,
       search: normalizedQuery.isEmpty ? null : _toEventsText(normalizedQuery),
       accountSlug: _toNullableEventsText(accountSlug),
     );
@@ -2720,9 +2739,7 @@ class TenantAdminEventsController implements Disposable {
     relatedAccountProfileFilterStreamValue.addValue(null);
     temporalFilterStreamValue
         .addValue(TenantAdminEventTemporalBucket.defaultSelection);
-    eventDetailStreamValue.addValue(null);
-    eventDetailLoadingStreamValue.addValue(false);
-    eventDetailErrorStreamValue.addValue(null);
+    resetEventDetailState();
     taxonomiesStreamValue.addValue(const []);
     taxonomyTermsBySlugStreamValue.addValue(const {});
     _taxonomyTermsCacheBySlug.clear();

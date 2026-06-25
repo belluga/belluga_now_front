@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:async';
 import 'dart:typed_data';
 
@@ -118,6 +119,294 @@ void main() {
       controller.eventsErrorStreamValue.value,
       contains('filtered load failed'),
     );
+  });
+
+  test(
+      'root programming stays on the first occurrence after a second occurrence is drafted and populated',
+      () {
+    final eventsRepository = _TrackingEventsRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+      landlordAuthRepository:
+          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
+    );
+
+    controller.initEventForm(
+      existingEvent: _buildEventDetailFixture(
+        eventId: 'evt-programming-scope',
+        title: 'Programming Scope Event',
+      ),
+    );
+
+    final primaryKey = controller.primaryOccurrenceKey();
+    expect(primaryKey, isNotNull);
+
+    controller.addOccurrenceProgrammingItem(
+      primaryKey!,
+      TenantAdminEventProgrammingItem(
+        timeValue: tenantAdminRequiredText('09:30'),
+        titleValue: tenantAdminOptionalText('Programação raiz'),
+      ),
+    );
+
+    final secondOccurrenceKey = controller.createOccurrenceDraft();
+    controller.addOccurrenceProgrammingItem(
+      secondOccurrenceKey,
+      TenantAdminEventProgrammingItem(
+        timeValue: tenantAdminRequiredText('13:00'),
+        titleValue: tenantAdminOptionalText('Programação local'),
+      ),
+    );
+
+    final occurrences = controller.eventFormStateStreamValue.value.occurrences;
+    expect(occurrences, hasLength(2));
+    expect(
+      occurrences.first.programmingItems.map((item) => item.title).toList(),
+      ['Programação raiz'],
+    );
+    expect(
+      occurrences.last.programmingItems.map((item) => item.title).toList(),
+      ['Programação local'],
+    );
+  });
+
+  test(
+      'initEventForm sorts existing occurrences by date before assigning programming to the first occurrence',
+      () {
+    final eventsRepository = _TrackingEventsRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+      landlordAuthRepository:
+          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
+    );
+
+    controller.initEventForm(
+      existingEvent: TenantAdminEvent(
+        eventIdValue: tenantAdminRequiredText('evt-programming-order'),
+        slugValue: tenantAdminRequiredText('evt-programming-order'),
+        titleValue: tenantAdminRequiredText('Programming Order Event'),
+        contentValue: tenantAdminOptionalText(''),
+        type: TenantAdminEventType(
+          nameValue: tenantAdminRequiredText('Show'),
+          slugValue: tenantAdminRequiredText('show'),
+        ),
+        occurrences: <TenantAdminEventOccurrence>[
+          TenantAdminEventOccurrence(
+            occurrenceIdValue: tenantAdminOptionalText('occ-2'),
+            occurrenceSlugValue: tenantAdminOptionalText('occ-2'),
+            dateTimeStartValue: tenantAdminDateTime(
+              DateTime.utc(2026, 4, 21, 20),
+            ),
+            programmingItems: [
+              TenantAdminEventProgrammingItem(
+                timeValue: tenantAdminRequiredText('13:00'),
+                titleValue: tenantAdminOptionalText('Programação local'),
+              ),
+            ],
+          ),
+          TenantAdminEventOccurrence(
+            occurrenceIdValue: tenantAdminOptionalText('occ-1'),
+            occurrenceSlugValue: tenantAdminOptionalText('occ-1'),
+            dateTimeStartValue: tenantAdminDateTime(
+              DateTime.utc(2026, 4, 20, 20),
+            ),
+            programmingItems: [
+              TenantAdminEventProgrammingItem(
+                timeValue: tenantAdminRequiredText('09:30'),
+                titleValue: tenantAdminOptionalText('Programação raiz'),
+              ),
+            ],
+          ),
+        ],
+        publication: TenantAdminEventPublication(
+          statusValue: tenantAdminRequiredText('draft'),
+        ),
+      ),
+    );
+
+    final occurrences = controller.eventFormStateStreamValue.value.occurrences;
+    expect(
+      occurrences.map((occurrence) => occurrence.occurrenceId).toList(),
+      ['occ-1', 'occ-2'],
+    );
+    expect(
+      occurrences.first.programmingItems.map((item) => item.title).toList(),
+      ['Programação raiz'],
+    );
+    expect(
+      occurrences.last.programmingItems.map((item) => item.title).toList(),
+      ['Programação local'],
+    );
+  });
+
+  test('loadEventDetail keeps only the latest completed request', () async {
+    final eventsRepository = _DeferredFetchEventRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+      landlordAuthRepository:
+          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
+    );
+
+    unawaited(controller.loadEventDetail('evt-old'));
+    unawaited(controller.loadEventDetail('evt-new'));
+
+    expect(eventsRepository.requestedIds, ['evt-old', 'evt-new']);
+    expect(controller.eventDetailLoadingStreamValue.value, isTrue);
+
+    eventsRepository.complete(
+      'evt-old',
+      _buildEventDetailFixture(
+        eventId: 'evt-old',
+        title: 'Old Event',
+      ),
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    expect(controller.eventDetailStreamValue.value, isNull);
+    expect(controller.eventDetailLoadingStreamValue.value, isTrue);
+
+    eventsRepository.complete(
+      'evt-new',
+      _buildEventDetailFixture(
+        eventId: 'evt-new',
+        title: 'New Event',
+      ),
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    expect(controller.eventDetailStreamValue.value?.eventId, 'evt-new');
+    expect(controller.eventDetailStreamValue.value?.title, 'New Event');
+    expect(controller.eventDetailLoadingStreamValue.value, isFalse);
+    expect(controller.eventDetailErrorStreamValue.value, isNull);
+  });
+
+  test('resetEventDetailState clears and invalidates in-flight detail loads',
+      () async {
+    final eventsRepository = _DeferredFetchEventRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+      landlordAuthRepository:
+          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
+    );
+
+    unawaited(controller.loadEventDetail('evt-reset'));
+    expect(controller.eventDetailLoadingStreamValue.value, isTrue);
+
+    controller.resetEventDetailState();
+
+    expect(controller.eventDetailStreamValue.value, isNull);
+    expect(controller.eventDetailLoadingStreamValue.value, isFalse);
+    expect(controller.eventDetailErrorStreamValue.value, isNull);
+
+    eventsRepository.complete(
+      'evt-reset',
+      _buildEventDetailFixture(
+        eventId: 'evt-reset',
+        title: 'Should Be Ignored',
+      ),
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    expect(controller.eventDetailStreamValue.value, isNull);
+    expect(controller.eventDetailLoadingStreamValue.value, isFalse);
+    expect(controller.eventDetailErrorStreamValue.value, isNull);
+  });
+
+  test('race probe: loadEventDetail keeps newest detail across burst overlap',
+      () async {
+    if (!_raceScenarioEnabled(_eventDetailRaceScenario)) {
+      return;
+    }
+
+    final burstLevel = _raceBurstLevel();
+    final eventsRepository = _DeferredFetchEventRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+      landlordAuthRepository:
+          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
+    );
+
+    for (var index = 0; index < burstLevel; index += 1) {
+      unawaited(controller.loadEventDetail('evt-$index'));
+    }
+
+    expect(eventsRepository.requestedIds, hasLength(burstLevel));
+
+    final newestEventId = 'evt-${burstLevel - 1}';
+    eventsRepository.complete(
+      newestEventId,
+      _buildEventDetailFixture(
+        eventId: newestEventId,
+        title: 'Newest Event',
+      ),
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    expect(controller.eventDetailStreamValue.value?.eventId, newestEventId);
+    expect(controller.eventDetailLoadingStreamValue.value, isFalse);
+    expect(controller.eventDetailErrorStreamValue.value, isNull);
+
+    for (var index = burstLevel - 2; index >= 0; index -= 1) {
+      final staleEventId = 'evt-$index';
+      eventsRepository.complete(
+        staleEventId,
+        _buildEventDetailFixture(
+          eventId: staleEventId,
+          title: 'Stale Event $index',
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(controller.eventDetailStreamValue.value?.eventId, newestEventId);
+      expect(controller.eventDetailStreamValue.value?.title, 'Newest Event');
+      expect(controller.eventDetailLoadingStreamValue.value, isFalse);
+      expect(controller.eventDetailErrorStreamValue.value, isNull);
+    }
+  });
+
+  test(
+      'race probe: resetEventDetailState invalidates burst overlap completions',
+      () async {
+    if (!_raceScenarioEnabled(_eventDetailRaceScenario)) {
+      return;
+    }
+
+    final burstLevel = _raceBurstLevel();
+    final eventsRepository = _DeferredFetchEventRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+      landlordAuthRepository:
+          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
+    );
+
+    for (var index = 0; index < burstLevel; index += 1) {
+      unawaited(controller.loadEventDetail('evt-$index'));
+    }
+
+    expect(controller.eventDetailLoadingStreamValue.value, isTrue);
+    controller.resetEventDetailState();
+
+    for (var index = burstLevel - 1; index >= 0; index -= 1) {
+      final eventId = 'evt-$index';
+      eventsRepository.complete(
+        eventId,
+        _buildEventDetailFixture(
+          eventId: eventId,
+          title: 'Ignored Event $index',
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+    }
+
+    expect(controller.eventDetailStreamValue.value, isNull);
+    expect(controller.eventDetailLoadingStreamValue.value, isFalse);
+    expect(controller.eventDetailErrorStreamValue.value, isNull);
   });
 
   test('clearEventEndAt clears the optional first occurrence end date', () {
@@ -1153,6 +1442,42 @@ void main() {
   });
 }
 
+const String _eventDetailRaceScenario = 'tenant_admin_event_detail_readback';
+
+bool _raceScenarioEnabled(String scenario) =>
+    Platform.environment['DELPHI_RACE_SCENARIO'] == scenario;
+
+int _raceBurstLevel() =>
+    int.tryParse(Platform.environment['DELPHI_RACE_BURST_LEVEL'] ?? '') ?? 5;
+
+TenantAdminEvent _buildEventDetailFixture({
+  required String eventId,
+  required String title,
+}) {
+  return TenantAdminEvent(
+    eventIdValue: tenantAdminRequiredText(eventId),
+    slugValue: tenantAdminRequiredText('$eventId-slug'),
+    titleValue: tenantAdminRequiredText(title),
+    contentValue: tenantAdminOptionalText('Detailed content'),
+    type: TenantAdminEventType(
+      idValue: tenantAdminOptionalText('type-1'),
+      nameValue: tenantAdminRequiredText('Show'),
+      slugValue: tenantAdminRequiredText('show'),
+    ),
+    occurrences: <TenantAdminEventOccurrence>[
+      TenantAdminEventOccurrence(
+        occurrenceIdValue: tenantAdminOptionalText('$eventId-occurrence'),
+        dateTimeStartValue: tenantAdminDateTime(
+          DateTime.utc(2026, 6, 24, 18),
+        ),
+      ),
+    ],
+    publication: TenantAdminEventPublication(
+      statusValue: tenantAdminRequiredText('draft'),
+    ),
+  );
+}
+
 TenantAdminEventDraft _buildDraft() {
   return TenantAdminEventDraft(
     titleValue: tenantAdminRequiredText('My event'),
@@ -1824,6 +2149,30 @@ class _ConfigurableEventTypesRepository extends _AccountScopedEventsRepository {
   Future<List<TenantAdminEventType>> fetchEventTypes() async {
     fetchEventTypesCalls += 1;
     return List<TenantAdminEventType>.unmodifiable(eventTypes);
+  }
+}
+
+class _DeferredFetchEventRepository extends _TrackingEventsRepository {
+  final List<String> requestedIds = <String>[];
+  final Map<String, Completer<TenantAdminEvent>> _pendingById =
+      <String, Completer<TenantAdminEvent>>{};
+
+  @override
+  Future<TenantAdminEvent> fetchEvent(
+      TenantAdminEventsRepoString eventIdOrSlug) {
+    final eventId = eventIdOrSlug.value;
+    requestedIds.add(eventId);
+    final completer = Completer<TenantAdminEvent>();
+    _pendingById[eventId] = completer;
+    return completer.future;
+  }
+
+  void complete(String eventId, TenantAdminEvent event) {
+    final completer = _pendingById.remove(eventId);
+    if (completer == null || completer.isCompleted) {
+      throw StateError('Missing pending detail request for $eventId.');
+    }
+    completer.complete(event);
   }
 }
 
