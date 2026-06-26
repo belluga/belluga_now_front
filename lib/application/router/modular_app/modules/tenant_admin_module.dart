@@ -5,6 +5,7 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/guards/landlord_route_guard.dart';
 import 'package:belluga_now/application/router/resolvers/tenant_admin_account_by_slug_route_resolver.dart';
 import 'package:belluga_now/application/router/resolvers/tenant_admin_account_profile_edit_route_resolver.dart';
+import 'package:belluga_now/application/router/resolvers/tenant_admin_event_edit_route_resolver.dart';
 import 'package:belluga_now/application/router/resolvers/tenant_admin_organization_detail_route_resolver.dart';
 import 'package:belluga_now/application/router/resolvers/tenant_admin_profile_type_detail_route_resolver.dart';
 import 'package:belluga_now/application/router/resolvers/tenant_admin_static_asset_detail_route_resolver.dart';
@@ -16,6 +17,7 @@ import 'package:belluga_now/application/router/support/canonical_route_family.da
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_organization.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart';
@@ -60,6 +62,9 @@ class TenantAdminModule extends ModuleContract {
     );
     registerRouteResolver<TenantAdminAccountProfile>(
       TenantAdminAccountProfileEditRouteResolver.new,
+    );
+    registerRouteResolver<TenantAdminEvent>(
+      TenantAdminEventEditRouteResolver.new,
     );
     registerRouteResolver<TenantAdminStaticAsset>(
       TenantAdminStaticAssetDetailRouteResolver.new,
@@ -183,7 +188,7 @@ class TenantAdminModule extends ModuleContract {
               ),
             ),
             CustomRoute(
-              path: 'events/edit',
+              path: 'events/:eventId/edit',
               page: TenantAdminEventEditRoute.page,
               transitionsBuilder: TransitionsBuilders.slideBottom,
               duration: const Duration(milliseconds: 260),

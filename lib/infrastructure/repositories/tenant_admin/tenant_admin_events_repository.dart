@@ -10,6 +10,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_partie
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
+import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_events_media_payload_normalizer.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_media_form_data_builder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_events_request_encoder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_events_response_decoder.dart';
@@ -32,6 +33,8 @@ class TenantAdminEventsRepository
       const TenantAdminEventsRequestEncoder();
   final TenantAdminEventsResponseDecoder _responseDecoder =
       const TenantAdminEventsResponseDecoder();
+  final TenantAdminEventsMediaPayloadNormalizer _mediaPayloadNormalizer =
+      const TenantAdminEventsMediaPayloadNormalizer();
   final TenantAdminMediaFormDataBuilder _mediaFormDataBuilder =
       const TenantAdminMediaFormDataBuilder();
 
@@ -176,10 +179,11 @@ class TenantAdminEventsRepository
         },
         options: Options(headers: _buildLandlordHeaders()),
       );
+      final normalizedPayload = _normalizeEventMediaPayload(response.data);
       return tenantAdminPagedResultFromRaw(
-        items: _responseDecoder.decodeEventList(response.data),
+        items: _responseDecoder.decodeEventList(normalizedPayload),
         hasMore: tenantAdminResolveHasMore(
-          rawResponse: response.data,
+          rawResponse: normalizedPayload,
           requestedPage: page.value,
         ),
       );
@@ -209,7 +213,7 @@ class TenantAdminEventsRepository
         '$_apiBaseUrl/v1/events/${eventIdOrSlug.value}',
         options: Options(headers: _buildLandlordHeaders()),
       );
-      return _responseDecoder.decodeEventItem(response.data);
+      return _responseDecoder.decodeEventItem(_normalizeEventMediaPayload(response.data));
     } on DioException catch (error) {
       throw _wrapError(error, 'load event');
     } on FormatException catch (error) {
@@ -255,7 +259,7 @@ class TenantAdminEventsRepository
           contentType: hasMultipart ? 'multipart/form-data' : null,
         ),
       );
-      return _responseDecoder.decodeEventItem(response.data);
+      return _responseDecoder.decodeEventItem(_normalizeEventMediaPayload(response.data));
     } on DioException catch (error) {
       throw _wrapError(error, 'create event');
     }
@@ -290,7 +294,7 @@ class TenantAdminEventsRepository
           contentType: hasMultipart ? 'multipart/form-data' : null,
         ),
       );
-      return _responseDecoder.decodeEventItem(response.data);
+      return _responseDecoder.decodeEventItem(_normalizeEventMediaPayload(response.data));
     } on DioException catch (error) {
       throw _wrapError(error, 'create own event');
     }
@@ -329,7 +333,7 @@ class TenantAdminEventsRepository
               data: payload,
               options: Options(headers: _buildLandlordHeaders()),
             );
-      return _responseDecoder.decodeEventItem(response.data);
+      return _responseDecoder.decodeEventItem(_normalizeEventMediaPayload(response.data));
     } on DioException catch (error) {
       throw _wrapError(error, 'update event');
     }
@@ -641,6 +645,21 @@ class TenantAdminEventsRepository
     return FormatException(
       'Failed to $context [decode] ($uri): $error',
     );
+  }
+
+  Object? _normalizeEventMediaPayload(Object? raw) {
+    return _mediaPayloadNormalizer.normalize(
+      raw,
+      tenantOrigin: _resolveTenantOriginUri(),
+    );
+  }
+
+  Uri _resolveTenantOriginUri() {
+    final parsed = Uri.tryParse(_apiBaseUrl);
+    if (parsed == null || parsed.host.trim().isEmpty) {
+      throw Exception('Invalid tenant admin base URL: $_apiBaseUrl');
+    }
+    return parsed.replace(path: '/', query: null, fragment: null);
   }
 
   FormData _prepareEventMultipartPayload({

@@ -1,7 +1,19 @@
+import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
+import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get_it/get_it.dart';
 
 void main() {
+  setUp(() async {
+    await GetIt.I.reset();
+    GetIt.I.registerSingleton<AppData>(_buildAppData());
+  });
+
+  tearDown(() async {
+    await GetIt.I.reset();
+  });
+
   test('parses agenda occurrence payload shape without throwing', () {
     final dto = EventDTO.fromJson({
       'event_id': '507f1f77bcf86cd799439011',
@@ -215,6 +227,197 @@ void main() {
     expect(staticProfile.canOpenPublicDetail, isFalse);
     expect(staticProfile.publicDetailPath, isNull);
     expect(staticProfile.slug, isEmpty);
+  });
+
+  test(
+      'normalizes relative linked profile media urls to the current tenant origin',
+      () {
+    final dto = EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439155',
+      'slug': 'evt-relative-linked-media',
+      'type': {
+        'id': 'type-1',
+        'name': 'Feira',
+        'slug': 'feira',
+        'description': '',
+      },
+      'title': 'Evento com midia relativa',
+      'content': '',
+      'location': 'Guarapari',
+      'date_time_start': '2026-03-03T10:00:00+00:00',
+      'linked_account_profiles': [
+        {
+          'id': 'profile-relative',
+          'display_name': 'Perfil relativo',
+          'profile_type': 'artist',
+          'avatar_url':
+              '/api/v1/media/account-profiles/profile-relative/avatar?v=7',
+          'cover_url': 'account-profiles/profile-relative/cover?v=8',
+        },
+      ],
+      'profile_groups': [
+        {
+          'id': 'artists',
+          'label': 'Artists',
+          'order': 0,
+          'profiles': [
+            {
+              'id': 'profile-relative',
+              'display_name': 'Perfil relativo',
+              'profile_type': 'artist',
+              'avatar_url':
+                  '/api/v1/media/account-profiles/profile-relative/avatar?v=7',
+              'cover_url': 'account-profiles/profile-relative/cover?v=8',
+            },
+          ],
+        },
+      ],
+    });
+
+    final linkedProfile = dto.linkedAccountProfiles.single;
+    final groupedProfile = dto.profileGroups.single.profiles.single;
+
+    expect(
+      linkedProfile.avatarUrl,
+      'https://tenant.test/api/v1/media/account-profiles/profile-relative/avatar?v=7',
+    );
+    expect(
+      linkedProfile.coverUrl,
+      'https://tenant.test/account-profiles/profile-relative/cover?v=8',
+    );
+    expect(groupedProfile.avatarUrl, linkedProfile.avatarUrl);
+    expect(groupedProfile.coverUrl, linkedProfile.coverUrl);
+  });
+
+  test(
+      'hydrates grouped profiles from root aggregate media when group payload is shallow',
+      () {
+    final dto = EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439156',
+      'slug': 'evt-shallow-group-linked-media',
+      'type': {
+        'id': 'type-1',
+        'name': 'Feira',
+        'slug': 'feira',
+        'description': '',
+      },
+      'title': 'Evento com grupo shallow',
+      'content': '',
+      'location': 'Guarapari',
+      'date_time_start': '2026-03-03T10:00:00+00:00',
+      'linked_account_profiles': [
+        {
+          'id': 'profile-relative',
+          'display_name': 'Perfil relativo',
+          'profile_type': 'artist',
+          'avatar_url':
+              '/api/v1/media/account-profiles/profile-relative/avatar?v=7',
+          'cover_url': 'account-profiles/profile-relative/cover?v=8',
+        },
+      ],
+      'profile_groups': [
+        {
+          'id': 'artists',
+          'label': 'Artists',
+          'order': 0,
+          'profiles': [
+            {
+              'id': 'profile-relative',
+              'display_name': 'Perfil relativo',
+              'profile_type': 'artist',
+            },
+          ],
+        },
+      ],
+    });
+
+    final linkedProfile = dto.linkedAccountProfiles.single;
+    final groupedProfile = dto.profileGroups.single.profiles.single;
+
+    expect(groupedProfile.id, linkedProfile.id);
+    expect(groupedProfile.avatarUrl, linkedProfile.avatarUrl);
+    expect(groupedProfile.coverUrl, linkedProfile.coverUrl);
+  });
+
+  test(
+      'hydrates grouped profiles from aggregate when snapshot media is stale and membership is partial',
+      () {
+    final dto = EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439157',
+      'slug': 'evt-stale-group-linked-media',
+      'type': {
+        'id': 'type-1',
+        'name': 'Feira',
+        'slug': 'feira',
+        'description': '',
+      },
+      'title': 'Evento com grupo stale',
+      'content': '',
+      'location': 'Guarapari',
+      'date_time_start': '2026-03-03T10:00:00+00:00',
+      'linked_account_profiles': [
+        {
+          'id': 'profile-relative',
+          'display_name': 'Perfil relativo',
+          'profile_type': 'artist',
+          'slug': 'perfil-relativo',
+          'public_detail_path': '/parceiro/perfil-relativo',
+          'avatar_url':
+              '/api/v1/media/account-profiles/profile-relative/avatar?v=7',
+          'cover_url': 'account-profiles/profile-relative/cover?v=8',
+        },
+        {
+          'id': 'profile-secondary',
+          'display_name': 'Perfil secundario',
+          'profile_type': 'artist',
+          'slug': 'perfil-secundario',
+          'public_detail_path': '/parceiro/perfil-secundario',
+          'avatar_url':
+              '/api/v1/media/account-profiles/profile-secondary/avatar?v=17',
+          'cover_url': 'account-profiles/profile-secondary/cover?v=18',
+        },
+      ],
+      'profile_groups': [
+        {
+          'id': 'artists',
+          'label': 'Artists',
+          'order': 0,
+          'account_profile_ids': [
+            'profile-relative',
+            'profile-secondary',
+          ],
+          'profiles': [
+            {
+              'id': 'profile-relative',
+              'display_name': 'Perfil relativo',
+              'profile_type': 'artist',
+              'slug': 'perfil-relativo-stale',
+              'public_detail_path': '/parceiro/perfil-relativo-stale',
+              'avatar_url': 'https://tenant.test/stale-avatar.png',
+              'cover_url': 'https://tenant.test/stale-cover.png',
+            },
+          ],
+        },
+      ],
+    });
+
+    final linkedProfiles = dto.linkedAccountProfiles;
+    final groupedProfiles = dto.profileGroups.single.profiles;
+
+    expect(groupedProfiles, hasLength(2));
+    expect(groupedProfiles.map((profile) => profile.id), [
+      linkedProfiles[0].id,
+      linkedProfiles[1].id,
+    ]);
+    expect(groupedProfiles[0].avatarUrl, linkedProfiles[0].avatarUrl);
+    expect(groupedProfiles[0].coverUrl, linkedProfiles[0].coverUrl);
+    expect(groupedProfiles[0].slug, linkedProfiles[0].slug);
+    expect(
+      groupedProfiles[0].publicDetailPath,
+      linkedProfiles[0].publicDetailPath,
+    );
+    expect(groupedProfiles[1].avatarUrl, linkedProfiles[1].avatarUrl);
+    expect(groupedProfiles[1].coverUrl, linkedProfiles[1].coverUrl);
   });
 
   test('parses venue navigation contract from explicit public detail fields',
@@ -999,4 +1202,32 @@ void main() {
 
     expect(occurrence.tags.map((tag) => tag.value), ['Instrumental']);
   });
+}
+
+AppData _buildAppData() {
+  return buildAppDataFromInitialization(
+    remoteData: {
+      'name': 'Tenant Test',
+      'type': 'tenant',
+      'main_domain': 'https://tenant.test',
+      'profile_types': const [
+        {
+          'type': 'artist',
+          'label': 'Artist',
+          'labels': {'singular': 'Artist', 'plural': 'Artists'},
+          'capabilities': {'has_events': true, 'is_favoritable': true},
+        },
+      ],
+      'theme_data_settings': const {
+        'primary_seed_color': '#FFFFFF',
+        'secondary_seed_color': '#3355FF',
+      },
+    },
+    localInfo: {
+      'platformType': 'mobile',
+      'hostname': 'tenant.test',
+      'href': 'https://tenant.test',
+      'device': 'test-device',
+    },
+  );
 }
