@@ -878,6 +878,38 @@ void main() {
   });
 
   test(
+      'fetchEventAccountProfileCandidatesPage keeps valid candidates when a page includes malformed rows',
+      () async {
+    final adapter = _AccountProfileCandidatesAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final candidates = await repository.fetchEventAccountProfileCandidatesPage(
+      candidateType:
+          TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
+      page: _repoInt(1),
+      pageSize: _repoInt(20),
+      search: _repoText('mixed'),
+    );
+
+    expect(candidates.items, hasLength(1));
+    expect(candidates.items.single.id, 'artist-valid');
+    expect(candidates.items.single.displayName, 'Valid Mixed Artist');
+
+    final candidateRequests = adapter.requests
+        .where((request) => request.path
+            .endsWith('/admin/api/v1/events/account_profile_candidates'))
+        .toList(growable: false);
+
+    expect(candidateRequests, hasLength(1));
+    expect(candidateRequests.single.queryParameters['search'], 'mixed');
+  });
+
+  test(
       'fetchEventAccountProfileCandidatesPage throws when endpoint is unauthorized',
       () async {
     final adapter = _UnauthorizedAdminAccountProfileCandidatesAdapter();
@@ -1680,6 +1712,27 @@ class _AccountProfileCandidatesAdapter implements HttpClientAdapter {
           'slug': 'dj-night',
         },
       ];
+      final mixedRelatedAccountProfileRows = <Map<String, dynamic>>[
+        {
+          'id': 'artist-valid',
+          'account_id': 'account-valid',
+          'profile_type': 'artist',
+          'display_name': 'Valid Mixed Artist',
+          'slug': 'valid-mixed-artist',
+          'avatar_url': 'https://tenant.test/artist-valid-avatar.png',
+        },
+        {
+          'id': 'artist-broken',
+          'account_id': 'account-broken',
+          'profile_type': 'artist',
+          'display_name': 'Broken Mixed Artist',
+          'slug': 'broken-mixed-artist',
+          'avatar_url': {
+            'relative_path':
+                '/api/v1/media/account-profiles/artist-broken/avatar',
+          },
+        },
+      ];
       final pagedRelatedAccountProfileRows =
           List<Map<String, dynamic>>.generate(
         45,
@@ -1713,9 +1766,11 @@ class _AccountProfileCandidatesAdapter implements HttpClientAdapter {
           total = rows.length;
           break;
         case 'related_account_profile':
-          final sourceRows = search == 'paged'
-              ? pagedRelatedAccountProfileRows
-              : relatedAccountProfileRows;
+          final sourceRows = switch (search) {
+            'mixed' => mixedRelatedAccountProfileRows,
+            'paged' => pagedRelatedAccountProfileRows,
+            _ => relatedAccountProfileRows,
+          };
           final filteredRows = sourceRows
               .where((row) =>
                   search.isEmpty ||

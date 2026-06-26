@@ -44,6 +44,11 @@ class TenantAdminNestedProfileGroupsEditor extends StatelessWidget {
     this.selectedCountLabel = 'Account(s) selecionada(s)',
     this.searchLabelText = 'Buscar Account',
     this.emptySearchText = 'Nenhuma Account encontrada.',
+    this.onSearchChanged,
+    this.onLoadMore,
+    this.searchLoadingStreamValue,
+    this.searchPageLoadingStreamValue,
+    this.searchHasMoreStreamValue,
   });
 
   final String keyPrefix;
@@ -63,6 +68,11 @@ class TenantAdminNestedProfileGroupsEditor extends StatelessWidget {
   final String selectedCountLabel;
   final String searchLabelText;
   final String emptySearchText;
+  final ValueChanged<String>? onSearchChanged;
+  final Future<void> Function()? onLoadMore;
+  final StreamValue<bool>? searchLoadingStreamValue;
+  final StreamValue<bool>? searchPageLoadingStreamValue;
+  final StreamValue<bool>? searchHasMoreStreamValue;
 
   @override
   Widget build(BuildContext context) {
@@ -89,6 +99,11 @@ class TenantAdminNestedProfileGroupsEditor extends StatelessWidget {
               selectedCountLabel: selectedCountLabel,
               searchLabelText: searchLabelText,
               emptySearchText: emptySearchText,
+              onSearchChanged: onSearchChanged,
+              onLoadMore: onLoadMore,
+              searchLoadingStreamValue: searchLoadingStreamValue,
+              searchPageLoadingStreamValue: searchPageLoadingStreamValue,
+              searchHasMoreStreamValue: searchHasMoreStreamValue,
             ),
             const SizedBox(height: 12),
           ],
@@ -122,6 +137,11 @@ class _TenantAdminNestedProfileGroupEditor extends StatelessWidget {
     required this.selectedCountLabel,
     required this.searchLabelText,
     required this.emptySearchText,
+    required this.onSearchChanged,
+    required this.onLoadMore,
+    required this.searchLoadingStreamValue,
+    required this.searchPageLoadingStreamValue,
+    required this.searchHasMoreStreamValue,
   });
 
   final String keyPrefix;
@@ -140,6 +160,11 @@ class _TenantAdminNestedProfileGroupEditor extends StatelessWidget {
   final String selectedCountLabel;
   final String searchLabelText;
   final String emptySearchText;
+  final ValueChanged<String>? onSearchChanged;
+  final Future<void> Function()? onLoadMore;
+  final StreamValue<bool>? searchLoadingStreamValue;
+  final StreamValue<bool>? searchPageLoadingStreamValue;
+  final StreamValue<bool>? searchHasMoreStreamValue;
 
   @override
   Widget build(BuildContext context) {
@@ -217,6 +242,12 @@ class _TenantAdminNestedProfileGroupEditor extends StatelessWidget {
                       selectedCountLabel: selectedCountLabel,
                       searchLabelText: searchLabelText,
                       emptySearchText: emptySearchText,
+                      onSearchChanged: onSearchChanged,
+                      onLoadMore: onLoadMore,
+                      searchLoadingStreamValue: searchLoadingStreamValue,
+                      searchPageLoadingStreamValue:
+                          searchPageLoadingStreamValue,
+                      searchHasMoreStreamValue: searchHasMoreStreamValue,
                     );
                   },
                 ),
@@ -241,6 +272,11 @@ class _TenantAdminNestedAccountSelector extends StatefulWidget {
     required this.selectedCountLabel,
     required this.searchLabelText,
     required this.emptySearchText,
+    required this.onSearchChanged,
+    required this.onLoadMore,
+    required this.searchLoadingStreamValue,
+    required this.searchPageLoadingStreamValue,
+    required this.searchHasMoreStreamValue,
   });
 
   final String keyPrefix;
@@ -253,6 +289,11 @@ class _TenantAdminNestedAccountSelector extends StatefulWidget {
   final String selectedCountLabel;
   final String searchLabelText;
   final String emptySearchText;
+  final ValueChanged<String>? onSearchChanged;
+  final Future<void> Function()? onLoadMore;
+  final StreamValue<bool>? searchLoadingStreamValue;
+  final StreamValue<bool>? searchPageLoadingStreamValue;
+  final StreamValue<bool>? searchHasMoreStreamValue;
 
   @override
   State<_TenantAdminNestedAccountSelector> createState() =>
@@ -265,6 +306,7 @@ class _TenantAdminNestedAccountSelectorState
 
   final MenuController _menuController = MenuController();
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _resultsScrollController = ScrollController();
   String _selectedType = _allTypes;
   late Set<String> _selectedIds;
 
@@ -273,6 +315,7 @@ class _TenantAdminNestedAccountSelectorState
     super.initState();
     _selectedIds = _idsFromGroup(widget.group);
     _searchController.addListener(_handleSearchChanged);
+    _resultsScrollController.addListener(_handleResultsScroll);
   }
 
   @override
@@ -288,6 +331,9 @@ class _TenantAdminNestedAccountSelectorState
 
   @override
   void dispose() {
+    _resultsScrollController
+      ..removeListener(_handleResultsScroll)
+      ..dispose();
     _searchController
       ..removeListener(_handleSearchChanged)
       ..dispose();
@@ -299,7 +345,33 @@ class _TenantAdminNestedAccountSelectorState
   }
 
   void _handleSearchChanged() {
+    widget.onSearchChanged?.call(_searchController.text);
     setState(() {});
+  }
+
+  void _handleResultsScroll() {
+    final onLoadMore = widget.onLoadMore;
+    final hasMoreStreamValue = widget.searchHasMoreStreamValue;
+    final pageLoadingStreamValue = widget.searchPageLoadingStreamValue;
+    if (onLoadMore == null ||
+        hasMoreStreamValue == null ||
+        pageLoadingStreamValue == null ||
+        !_resultsScrollController.hasClients) {
+      return;
+    }
+
+    final position = _resultsScrollController.position;
+    if (position.pixels < position.maxScrollExtent - 96) {
+      return;
+    }
+
+    final isSearchLoading = widget.searchLoadingStreamValue?.value ?? false;
+    final isPageLoading = pageLoadingStreamValue.value;
+    if (isSearchLoading || isPageLoading || !hasMoreStreamValue.value) {
+      return;
+    }
+
+    onLoadMore();
   }
 
   void _toggleProfile(TenantAdminAccountProfile profile, bool selected) {
@@ -495,6 +567,7 @@ class _TenantAdminNestedAccountSelectorState
                       child: Text(widget.emptySearchText),
                     )
                   : SingleChildScrollView(
+                      controller: _resultsScrollController,
                       primary: false,
                       child: Column(
                         mainAxisSize: MainAxisSize.min,

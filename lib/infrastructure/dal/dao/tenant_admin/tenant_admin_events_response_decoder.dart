@@ -12,6 +12,7 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_accou
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/infrastructure/dal/dao/http/raw_json_envelope_decoder.dart';
+import 'package:value_object_pattern/domain/exceptions/value_exceptions.dart';
 
 class TenantAdminEventsResponseDecoder {
   const TenantAdminEventsResponseDecoder({
@@ -660,10 +661,19 @@ class TenantAdminEventsResponseDecoder {
   }
 
   List<TenantAdminAccountProfile> _decodeAccountProfiles(Object? raw) {
-    return _asList(raw)
-        .whereType<Map>()
-        .map((row) => _mapAccountProfile(Map<String, dynamic>.from(row)))
-        .toList(growable: false);
+    final profiles = <TenantAdminAccountProfile>[];
+
+    for (final row in _asList(raw).whereType<Map>()) {
+      try {
+        profiles.add(_mapAccountProfile(Map<String, dynamic>.from(row)));
+      } on FormatException {
+        continue;
+      } on ValueException {
+        continue;
+      }
+    }
+
+    return List<TenantAdminAccountProfile>.unmodifiable(profiles);
   }
 
   List<TenantAdminAccountProfile> _decodeRelatedAccountProfiles(Object? raw) {
