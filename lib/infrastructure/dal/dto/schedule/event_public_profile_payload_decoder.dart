@@ -9,6 +9,7 @@ import 'package:belluga_now/domain/schedule/value_objects/event_profile_group_or
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
+import 'package:belluga_now/infrastructure/dal/dto/schedule/support/public_media_url_normalizer.dart';
 
 final class EventPublicProfilePayloadDecoder {
   EventPublicProfilePayloadDecoder._();
@@ -139,12 +140,25 @@ final class EventPublicProfilePayloadDecoder {
       final accountProfileIds = _resolveAccountProfileIds(
         group['account_profile_ids'] ?? group['profile_ids'],
       );
-      final resolvedProfiles = profiles.isNotEmpty
-          ? profiles
-          : accountProfileIds
-              .map((id) => profilesById[id.trim()])
-              .whereType<EventLinkedAccountProfile>()
+      final snapshotProfilesById = <String, EventLinkedAccountProfile>{
+        for (final profile in profiles)
+          if (profile.id.trim().isNotEmpty) profile.id.trim(): profile,
+      };
+      final authoritativeIds = accountProfileIds.isNotEmpty
+          ? accountProfileIds
+          : profiles
+              .map((profile) => profile.id.trim())
+              .where((id) => id.isNotEmpty)
               .toList(growable: false);
+      final resolvedProfiles = authoritativeIds
+          .map(
+            (id) => _materializeGroupedProfile(
+              aggregate: profilesById[id.trim()],
+              snapshot: snapshotProfilesById[id.trim()],
+            ),
+          )
+          .whereType<EventLinkedAccountProfile>()
+          .toList(growable: false);
       if (resolvedProfiles.isEmpty && accountProfileIds.isEmpty) {
         continue;
       }
@@ -264,6 +278,85 @@ final class EventPublicProfilePayloadDecoder {
       ),
       taxonomyTerms: taxonomyTerms,
     );
+  }
+
+  static EventLinkedAccountProfile _mergeLinkedAccountProfileWithAggregate(
+    EventLinkedAccountProfile primary,
+    EventLinkedAccountProfile? aggregate,
+  ) {
+    if (aggregate == null) {
+      return primary;
+    }
+
+    return EventLinkedAccountProfile(
+      idValue: primary.idValue,
+      displayNameValue: primary.displayNameValue,
+      profileTypeValue: primary.profileTypeValue,
+      slugValue: primary.slugValue ?? aggregate.slugValue,
+      avatarUrlValue: primary.avatarUrlValue ?? aggregate.avatarUrlValue,
+      coverUrlValue: primary.coverUrlValue ?? aggregate.coverUrlValue,
+      partyTypeValue: primary.partyTypeValue ?? aggregate.partyTypeValue,
+      locationAddressValue:
+          primary.locationAddressValue ?? aggregate.locationAddressValue,
+      locationLatitudeValue:
+          primary.locationLatitudeValue ?? aggregate.locationLatitudeValue,
+      locationLongitudeValue:
+          primary.locationLongitudeValue ?? aggregate.locationLongitudeValue,
+      canOpenPublicDetailValue: primary.canOpenPublicDetail
+          ? primary.canOpenPublicDetailValue
+          : aggregate.canOpenPublicDetailValue,
+      publicDetailPathValue:
+          primary.publicDetailPathValue ?? aggregate.publicDetailPathValue,
+      taxonomyTerms: _mergeDomainTaxonomyTerms(
+        primary.taxonomyTerms,
+        aggregate.taxonomyTerms,
+      ),
+    );
+  }
+
+  static EventLinkedAccountProfile? _materializeGroupedProfile({
+    EventLinkedAccountProfile? aggregate,
+    EventLinkedAccountProfile? snapshot,
+  }) {
+    if (aggregate != null && snapshot != null) {
+      return _mergeLinkedAccountProfileWithAggregate(aggregate, snapshot);
+    }
+    return aggregate ?? snapshot;
+  }
+
+  static EventLinkedAccountProfileTaxonomyTerms _mergeDomainTaxonomyTerms(
+    EventLinkedAccountProfileTaxonomyTerms primary,
+    EventLinkedAccountProfileTaxonomyTerms aggregate,
+  ) {
+    if (primary.isEmpty) {
+      return aggregate;
+    }
+    if (aggregate.isEmpty) {
+      return primary;
+    }
+
+    final merged = EventLinkedAccountProfileTaxonomyTerms();
+    final seen = <String>{};
+
+    void ingest(EventLinkedAccountProfileTaxonomyTerms source) {
+      for (final term in source) {
+        final key = '${term.typeValue.value}:${term.valueValue.value}';
+        if (!seen.add(key)) {
+          continue;
+        }
+        merged.addTerm(
+          typeValue: term.typeValue,
+          valueValue: term.valueValue,
+          nameValue: term.nameValue,
+          taxonomyNameValue: term.taxonomyNameValue,
+          labelValue: term.compatibilityLabelValue,
+        );
+      }
+    }
+
+    ingest(primary);
+    ingest(aggregate);
+    return merged;
   }
 
   static dynamic _preferNonEmptyString(dynamic current, dynamic candidate) {
@@ -386,7 +479,7 @@ final class EventPublicProfilePayloadDecoder {
   }
 
   static ThumbUriValue? _thumbUriValueOrNull(String? rawUrl) {
-    final normalized = rawUrl?.trim();
+    final normalized = normalizeTenantPublicMediaUrl(rawUrl);
     if (normalized == null || normalized.isEmpty) {
       return null;
     }

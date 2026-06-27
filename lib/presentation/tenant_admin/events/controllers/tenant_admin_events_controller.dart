@@ -7,6 +7,7 @@ import 'dart:typed_data';
 
 import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/application/tenant_admin/discovery_filters/tenant_admin_taxonomies_sequential_batch_terms_repository.dart';
+import 'package:belluga_now/application/tenant_admin/events/tenant_admin_event_account_profile_candidates_page_loader.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
@@ -21,6 +22,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_grou
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
@@ -122,13 +124,6 @@ class TenantAdminEventsController implements Disposable {
       StreamValue<Set<TenantAdminEventTemporalBucket>>(
     defaultValue: TenantAdminEventTemporalBucket.defaultSelection,
   );
-
-  final StreamValue<TenantAdminEvent?> eventDetailStreamValue =
-      StreamValue<TenantAdminEvent?>();
-  final StreamValue<bool> eventDetailLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
-  final StreamValue<String?> eventDetailErrorStreamValue =
-      StreamValue<String?>();
 
   final StreamValue<bool> submitLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
@@ -284,6 +279,7 @@ class TenantAdminEventsController implements Disposable {
       _bootstrapVenueCandidatesPage;
   TenantAdminPagedResult<TenantAdminAccountProfile>?
       _bootstrapRelatedAccountProfileCandidatesPage;
+  TenantAdminAccountProfile? _bootstrapSelectedVenueCandidate;
   int _accountProfilePickerCurrentPage = 0;
   int _accountProfilePickerRequestToken = 0;
   int _eventFormLocalIdSerial = 0;
@@ -499,7 +495,6 @@ class TenantAdminEventsController implements Disposable {
   void initEventForm({
     TenantAdminEvent? existingEvent,
   }) {
-    final firstOccurrence = existingEvent?.occurrences.firstOrNull;
     _eventFormLocalIdSerial = 0;
     final selectedTaxonomyTerms = <String, Set<String>>{};
     for (final term in existingEvent?.taxonomyTerms ??
@@ -533,6 +528,7 @@ class TenantAdminEventsController implements Disposable {
       programmingItemLocalIdsByOccurrenceKey[occurrenceLocalIds[index]] =
           _newProgrammingItemKeys(localOccurrences[index].programmingItems);
     }
+    final firstOccurrence = localOccurrences.firstOrNull;
     final profileGroups =
         existingEvent?.profileGroups ?? const <TenantAdminNestedProfileGroup>[];
     final selectedRelatedAccountProfileIds = profileGroups.isNotEmpty
@@ -558,8 +554,8 @@ class TenantAdminEventsController implements Disposable {
       selectedTypeSlug: existingEvent?.type.slug.trim(),
       selectedRelatedAccountProfileIds: selectedRelatedAccountProfileIds,
       profileGroups: profileGroups,
-      occurrences: localOccurrences,
-      occurrenceLocalIds: occurrenceLocalIds,
+      occurrences: List<TenantAdminEventOccurrence>.unmodifiable(localOccurrences),
+      occurrenceLocalIds: List<String>.unmodifiable(occurrenceLocalIds),
       programmingItemLocalIdsByOccurrenceKey:
           Map.unmodifiable(programmingItemLocalIdsByOccurrenceKey),
       selectedTaxonomyTerms: selectedTaxonomyTerms,
@@ -574,6 +570,8 @@ class TenantAdminEventsController implements Disposable {
     eventCoverFileStreamValue.addValue(null);
     eventCoverBusyStreamValue.addValue(false);
     eventCoverRemoveStreamValue.addValue(false);
+    _bootstrapSelectedVenueCandidate =
+        _selectedVenueCandidateFromEvent(existingEvent);
     relatedAccountProfileCandidatesStreamValue.addValue(
       List.unmodifiable(
         _knownRelatedProfilesFromEvent(existingEvent),
@@ -1411,8 +1409,8 @@ class TenantAdminEventsController implements Disposable {
     if (current.hasHydratedDefaultVenue) {
       return;
     }
-    if (current.selectedVenueId != null &&
-        venues.any((venue) => venue.id == current.selectedVenueId)) {
+    final selectedVenueId = current.selectedVenueId?.trim();
+    if (selectedVenueId != null && selectedVenueId.isNotEmpty) {
       _replaceEventFormState(
         current.copyWith(hasHydratedDefaultVenue: true),
       );
@@ -1825,29 +1823,6 @@ class TenantAdminEventsController implements Disposable {
     await _loadEventTypeCatalog();
   }
 
-  Future<void> loadEventDetail(String eventIdOrSlug) async {
-    eventDetailLoadingStreamValue.addValue(true);
-    eventDetailErrorStreamValue.addValue(null);
-    try {
-      final event = await _eventsRepository.fetchEvent(
-        _toEventsText(eventIdOrSlug),
-      );
-      if (_isDisposed) {
-        return;
-      }
-      eventDetailStreamValue.addValue(event);
-    } catch (error) {
-      if (_isDisposed) {
-        return;
-      }
-      eventDetailErrorStreamValue.addValue(error.toString());
-    } finally {
-      if (!_isDisposed) {
-        eventDetailLoadingStreamValue.addValue(false);
-      }
-    }
-  }
-
   Future<void> loadFormDependencies({
     String? accountSlug,
   }) async {
@@ -2233,11 +2208,15 @@ class TenantAdminEventsController implements Disposable {
           results[0] as TenantAdminPagedResult<TenantAdminAccountProfile>;
       final relatedAccountProfilesPage =
           results[1] as TenantAdminPagedResult<TenantAdminAccountProfile>;
-      _bootstrapVenueCandidatesPage = venuePage;
+      final mergedVenueItems = _mergeBootstrapVenueCandidates(venuePage.items);
+      _bootstrapVenueCandidatesPage = tenantAdminPagedResultFromRaw(
+        items: mergedVenueItems,
+        hasMore: venuePage.hasMore,
+      );
       _bootstrapRelatedAccountProfileCandidatesPage =
           relatedAccountProfilesPage;
 
-      final venues = venuePage.items;
+      final venues = _bootstrapVenueCandidatesPage!.items;
       final relatedAccountProfiles = relatedAccountProfilesPage.items;
 
       venueCandidatesStreamValue.addValue(List.unmodifiable(venues));
@@ -2266,17 +2245,27 @@ class TenantAdminEventsController implements Disposable {
     required TenantAdminEventAccountProfileCandidateType candidateType,
     String? accountSlug,
   }) async {
-    final pageSize = switch (candidateType) {
-      TenantAdminEventAccountProfileCandidateType.relatedAccountProfile => 20,
-      TenantAdminEventAccountProfileCandidateType.physicalHost => 50,
-    };
-    return _eventsRepository.fetchEventAccountProfileCandidatesPage(
+    return _fetchAccountProfileCandidatesPage(
       candidateType: candidateType,
-      page: TenantAdminEventsRepoInt.fromRaw(1, defaultValue: 1),
-      pageSize: TenantAdminEventsRepoInt.fromRaw(
-        pageSize,
-        defaultValue: pageSize,
-      ),
+      pageNumber: 1,
+      accountSlug: accountSlug,
+    );
+  }
+
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+      _fetchAccountProfileCandidatesPage({
+    required TenantAdminEventAccountProfileCandidateType candidateType,
+    required int pageNumber,
+    String? accountSlug,
+    String query = '',
+  }) async {
+    final normalizedQuery = query.trim();
+    return TenantAdminEventAccountProfileCandidatesPageLoader(
+      eventsRepository: _eventsRepository,
+    ).loadPage(
+      candidateType: candidateType,
+      pageNumber: pageNumber,
+      search: normalizedQuery.isEmpty ? null : _toEventsText(normalizedQuery),
       accountSlug: _toNullableEventsText(accountSlug),
     );
   }
@@ -2317,19 +2306,11 @@ class TenantAdminEventsController implements Disposable {
     required String query,
     String? accountSlug,
   }) {
-    final normalizedQuery = query.trim();
-    if (isInitial) {
-      return _eventsRepository.loadEventAccountProfileCandidates(
-        candidateType: candidateType,
-        search: normalizedQuery.isEmpty ? null : _toEventsText(normalizedQuery),
-        accountSlug: _toNullableEventsText(accountSlug),
-      );
-    }
-
-    return _eventsRepository.loadNextEventAccountProfileCandidates(
+    return _fetchAccountProfileCandidatesPage(
       candidateType: candidateType,
-      search: normalizedQuery.isEmpty ? null : _toEventsText(normalizedQuery),
-      accountSlug: _toNullableEventsText(accountSlug),
+      pageNumber: isInitial ? 1 : _accountProfilePickerCurrentPage + 1,
+      accountSlug: accountSlug,
+      query: query,
     );
   }
 
@@ -2518,6 +2499,54 @@ class TenantAdminEventsController implements Disposable {
     return orderedIds.map((id) => byId[id]!).toList(growable: false);
   }
 
+  List<TenantAdminAccountProfile> _mergeBootstrapVenueCandidates(
+    Iterable<TenantAdminAccountProfile> bootstrapCandidates,
+  ) {
+    final selectedVenueCandidate = _bootstrapSelectedVenueCandidate;
+    if (selectedVenueCandidate == null) {
+      return List<TenantAdminAccountProfile>.unmodifiable(
+        bootstrapCandidates.toList(growable: false),
+      );
+    }
+
+    return _mergeAccountProfiles(
+      [selectedVenueCandidate],
+      bootstrapCandidates,
+    );
+  }
+
+  TenantAdminAccountProfile? _selectedVenueCandidateFromEvent(
+    TenantAdminEvent? event,
+  ) {
+    if (event == null) {
+      return null;
+    }
+
+    final selectedVenueId = event.placeRef?.id.trim();
+    if (selectedVenueId == null || selectedVenueId.isEmpty) {
+      return null;
+    }
+
+    final displayName =
+        _normalizeOptionalText(event.venueDisplayName) ?? selectedVenueId;
+    final latitude = event.location?.latitude;
+    final longitude = event.location?.longitude;
+    final location = latitude == null || longitude == null
+        ? null
+        : tenantAdminLocationFromRaw(
+            latitude: latitude,
+            longitude: longitude,
+          );
+
+    return tenantAdminAccountProfileFromRaw(
+      id: selectedVenueId,
+      accountId: selectedVenueId,
+      profileType: 'venue',
+      displayName: displayName,
+      location: location,
+    );
+  }
+
   Future<TenantAdminEvent?> submitCreate(
     TenantAdminEventDraft draft, {
     String? accountSlug,
@@ -2585,7 +2614,6 @@ class TenantAdminEventsController implements Disposable {
           .addValue('Evento atualizado com sucesso.');
       markEventFormClean();
       await loadEvents();
-      eventDetailStreamValue.addValue(updated);
       return updated;
     } catch (error) {
       if (_isDisposed) {
@@ -2641,6 +2669,7 @@ class TenantAdminEventsController implements Disposable {
     _formAccountProfileCandidatesAccountSlug = null;
     _bootstrapVenueCandidatesPage = null;
     _bootstrapRelatedAccountProfileCandidatesPage = null;
+    _bootstrapSelectedVenueCandidate = null;
     _accountProfilePickerCurrentPage = 0;
     _accountProfilePickerRequestToken = 0;
     _accountProfilePickerType = null;
@@ -2652,9 +2681,6 @@ class TenantAdminEventsController implements Disposable {
     relatedAccountProfileFilterStreamValue.addValue(null);
     temporalFilterStreamValue
         .addValue(TenantAdminEventTemporalBucket.defaultSelection);
-    eventDetailStreamValue.addValue(null);
-    eventDetailLoadingStreamValue.addValue(false);
-    eventDetailErrorStreamValue.addValue(null);
     taxonomiesStreamValue.addValue(const []);
     taxonomyTermsBySlugStreamValue.addValue(const {});
     _taxonomyTermsCacheBySlug.clear();
@@ -3507,9 +3533,6 @@ class TenantAdminEventsController implements Disposable {
     venueFilterStreamValue.dispose();
     relatedAccountProfileFilterStreamValue.dispose();
     temporalFilterStreamValue.dispose();
-    eventDetailStreamValue.dispose();
-    eventDetailLoadingStreamValue.dispose();
-    eventDetailErrorStreamValue.dispose();
     submitLoadingStreamValue.dispose();
     submitErrorMessageStreamValue.dispose();
     submitSuccessMessageStreamValue.dispose();

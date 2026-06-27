@@ -1506,12 +1506,19 @@ class TenantAdminEventCreateRoute extends _i69.PageRouteInfo<void> {
 class TenantAdminEventEditRoute
     extends _i69.PageRouteInfo<TenantAdminEventEditRouteArgs> {
   TenantAdminEventEditRoute({
-    _i75.TenantAdminEvent? event,
     _i70.Key? key,
+    required String eventId,
+    String? occurrenceId,
     List<_i69.PageRouteInfo>? children,
   }) : super(
           TenantAdminEventEditRoute.name,
-          args: TenantAdminEventEditRouteArgs(event: event, key: key),
+          args: TenantAdminEventEditRouteArgs(
+            key: key,
+            eventId: eventId,
+            occurrenceId: occurrenceId,
+          ),
+          rawPathParams: {'eventId': eventId},
+          rawQueryParams: {'occurrence': occurrenceId},
           initialChildren: children,
         );
 
@@ -1520,38 +1527,54 @@ class TenantAdminEventEditRoute
   static _i69.PageInfo page = _i69.PageInfo(
     name,
     builder: (data) {
+      final pathParams = data.inheritedPathParams;
+      final queryParams = data.queryParams;
       final args = data.argsAs<TenantAdminEventEditRouteArgs>(
-        orElse: () => const TenantAdminEventEditRouteArgs(),
+        orElse: () => TenantAdminEventEditRouteArgs(
+          eventId: pathParams.getString('eventId'),
+          occurrenceId: queryParams.optString('occurrence'),
+        ),
       );
-      return _i32.TenantAdminEventEditRoutePage(
-        event: args.event,
-        key: args.key,
+      return _i69.WrappedRoute(
+        child: _i32.TenantAdminEventEditRoutePage(
+          key: args.key,
+          eventId: args.eventId,
+          occurrenceId: args.occurrenceId,
+        ),
       );
     },
   );
 }
 
 class TenantAdminEventEditRouteArgs {
-  const TenantAdminEventEditRouteArgs({this.event, this.key});
-
-  final _i75.TenantAdminEvent? event;
+  const TenantAdminEventEditRouteArgs({
+    this.key,
+    required this.eventId,
+    this.occurrenceId,
+  });
 
   final _i70.Key? key;
 
+  final String eventId;
+
+  final String? occurrenceId;
+
   @override
   String toString() {
-    return 'TenantAdminEventEditRouteArgs{event: $event, key: $key}';
+    return 'TenantAdminEventEditRouteArgs{key: $key, eventId: $eventId, occurrenceId: $occurrenceId}';
   }
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     if (other is! TenantAdminEventEditRouteArgs) return false;
-    return event == other.event && key == other.key;
+    return key == other.key &&
+        eventId == other.eventId &&
+        occurrenceId == other.occurrenceId;
   }
 
   @override
-  int get hashCode => event.hashCode ^ key.hashCode;
+  int get hashCode => key.hashCode ^ eventId.hashCode ^ occurrenceId.hashCode;
 }
 
 /// generated route for

@@ -39,6 +39,7 @@ import 'package:belluga_now/infrastructure/dal/dto/schedule/event_artist_dto.dar
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_public_profile_payload_decoder.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_type_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/schedule/support/public_media_url_normalizer.dart';
 import 'package:belluga_now/infrastructure/dal/dto/thumb_dto.dart';
 import 'package:flutter/material.dart';
 import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
@@ -719,7 +720,7 @@ class EventDTO {
   }
 
   static ThumbUriValue? _thumbUriValueOrNull(String? rawUrl) {
-    final normalized = rawUrl?.trim();
+    final normalized = normalizeTenantPublicMediaUrl(rawUrl);
     if (normalized == null || normalized.isEmpty) {
       return null;
     }
@@ -848,7 +849,9 @@ class EventDTO {
     final displayName =
         (dto['display_name'] as String?) ?? (dto['name'] as String?) ?? '';
     final avatarUrlValue = UserAvatarValue();
-    final normalizedAvatarUrl = (dto['avatar_url'] as String?)?.trim();
+    final normalizedAvatarUrl = normalizeTenantPublicMediaUrl(
+      dto['avatar_url'] as String?,
+    );
     if (normalizedAvatarUrl != null && normalizedAvatarUrl.isNotEmpty) {
       avatarUrlValue.parse(normalizedAvatarUrl);
     }
@@ -908,13 +911,15 @@ class EventDTO {
     }
 
     InvitePartnerLogoImageValue? logoImageValue;
-    final logoUrl = dto['logo_url']?.toString();
+    final logoUrl = normalizeTenantPublicMediaUrl(dto['logo_url']?.toString());
     if (logoUrl != null && logoUrl.isNotEmpty) {
       logoImageValue = InvitePartnerLogoImageValue()..parse(logoUrl);
     }
 
     InvitePartnerHeroImageValue? heroImageValue;
-    final heroUrl = dto['hero_image_url']?.toString();
+    final heroUrl = normalizeTenantPublicMediaUrl(
+      dto['hero_image_url']?.toString(),
+    );
     if (heroUrl != null && heroUrl.isNotEmpty) {
       heroImageValue = InvitePartnerHeroImageValue()..parse(heroUrl);
     }

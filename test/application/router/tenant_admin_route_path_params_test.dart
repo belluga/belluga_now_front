@@ -3,6 +3,17 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('Tenant admin routes path params', () {
+    test('event edit route encodes eventId path param and occurrence query', () {
+      final eventEdit = TenantAdminEventEditRoute(
+        eventId: 'evt-123',
+        occurrenceId: 'occ-7',
+      );
+
+      expect(eventEdit.rawPathParams, {'eventId': 'evt-123'});
+      expect(eventEdit.rawQueryParams['occurrence'], 'occ-7');
+      _expectResolvedRawParams(eventEdit.rawPathParams);
+    });
+
     test('account detail/create/edit routes encode required path params', () {
       final detail = TenantAdminAccountDetailRoute(accountSlug: 'john-doe');
       final create = TenantAdminAccountProfileCreateRoute(
