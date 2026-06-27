@@ -9,6 +9,9 @@ void main() {
     final debugConfig = File('ios/Flutter/Debug.xcconfig').readAsStringSync();
     final releaseConfig =
         File('ios/Flutter/Release.xcconfig').readAsStringSync();
+    final scheme = File(
+      'ios/Runner.xcodeproj/xcshareddata/xcschemes/guarappari.xcscheme',
+    ).readAsStringSync();
     final project = File('ios/Runner.xcodeproj/project.pbxproj')
         .readAsStringSync();
     final plist = File('ios/Runner/Info.plist').readAsStringSync();
@@ -17,8 +20,14 @@ void main() {
     expect(xcconfig, contains('BELLUGA_IOS_BUNDLE_IDENTIFIER=com.guarappari.app'));
     expect(debugConfig, contains('#include "BellugaRelease.xcconfig"'));
     expect(releaseConfig, contains('#include "BellugaRelease.xcconfig"'));
+    expect(scheme, contains('buildConfiguration = "Debug-guarappari"'));
+    expect(scheme, contains('buildConfiguration = "Profile-guarappari"'));
+    expect(scheme, contains('buildConfiguration = "Release-guarappari"'));
 
     expect(project, contains(r'PRODUCT_BUNDLE_IDENTIFIER = "$(BELLUGA_IOS_BUNDLE_IDENTIFIER)"'));
+    expect(project, contains('name = "Debug-guarappari";'));
+    expect(project, contains('name = "Profile-guarappari";'));
+    expect(project, contains('name = "Release-guarappari";'));
     expect(
       project,
       contains(
@@ -74,7 +83,8 @@ void main() {
     expect(project, isNot(contains('BELLUGA_IOS_APS_ENVIRONMENT = development')));
     expect(project, contains('BELLUGA_IOS_APS_ENVIRONMENT = production'));
 
-    expect(podfile, contains("platform :ios, '12.0'"));
+    expect(podfile, contains("minimum_ios_version = '15.0'"));
+    expect(podfile, contains("platform :ios, minimum_ios_version"));
     for (final macro in const [
       'PERMISSION_CONTACTS=1',
       'PERMISSION_CAMERA=1',
