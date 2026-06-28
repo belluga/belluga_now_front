@@ -19,22 +19,25 @@ final class AppStartupPlanResolver {
     AuthRepositoryContract? authRepository,
     DeferredLinkRepositoryContract? deferredLinkRepository,
     TelemetryRepositoryContract? telemetryRepository,
-  })  : _invitesRepository =
-            invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
-        _appDataRepository =
-            appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
-        _authRepository = authRepository ??
-            (GetIt.I.isRegistered<AuthRepositoryContract>()
-                ? GetIt.I.get<AuthRepositoryContract>()
-                : null),
-        _deferredLinkRepository = deferredLinkRepository ??
-            (GetIt.I.isRegistered<DeferredLinkRepositoryContract>()
-                ? GetIt.I.get<DeferredLinkRepositoryContract>()
-                : null),
-        _telemetryRepository = telemetryRepository ??
-            (GetIt.I.isRegistered<TelemetryRepositoryContract>()
-                ? GetIt.I.get<TelemetryRepositoryContract>()
-                : null);
+  }) : _invitesRepository =
+           invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
+       _appDataRepository =
+           appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
+       _authRepository =
+           authRepository ??
+           (GetIt.I.isRegistered<AuthRepositoryContract>()
+               ? GetIt.I.get<AuthRepositoryContract>()
+               : null),
+       _deferredLinkRepository =
+           deferredLinkRepository ??
+           (GetIt.I.isRegistered<DeferredLinkRepositoryContract>()
+               ? GetIt.I.get<DeferredLinkRepositoryContract>()
+               : null),
+       _telemetryRepository =
+           telemetryRepository ??
+           (GetIt.I.isRegistered<TelemetryRepositoryContract>()
+               ? GetIt.I.get<TelemetryRepositoryContract>()
+               : null);
 
   final InvitesRepositoryContract _invitesRepository;
   final AppDataRepositoryContract _appDataRepository;
@@ -62,12 +65,10 @@ final class AppStartupPlanResolver {
     }
 
     if (_invitesRepository.hasPendingInvites.value) {
-      return AppStartupNavigationPlan.routes(
-        const <PageRouteInfo<dynamic>>[
-          TenantHomeRoute(),
-          InviteFlowRoute(),
-        ],
-      );
+      return AppStartupNavigationPlan.routes(const <PageRouteInfo<dynamic>>[
+        TenantHomeRoute(),
+        InviteFlowRoute(),
+      ]);
     }
 
     return const AppStartupNavigationPlan.none();
@@ -84,6 +85,7 @@ final class AppStartupPlanResolver {
     }
 
     final result = await deferred.captureFirstOpenInviteCode();
+    final platform = result.platform ?? 'unknown';
     if (result.isCaptured) {
       final storeChannel = result.storeChannel ?? 'unknown';
       final path = result.targetPath!;
@@ -93,7 +95,7 @@ final class AppStartupPlanResolver {
         properties: telemetryRepoMap(<String, dynamic>{
           if (result.code != null) 'code': result.code,
           'target_path': path,
-          'platform': 'android',
+          'platform': platform,
           'store_channel': storeChannel,
         }),
       );
@@ -109,7 +111,7 @@ final class AppStartupPlanResolver {
       EventTrackerEvents.buttonClick,
       eventName: telemetryRepoString('app_deferred_deep_link_capture_failed'),
       properties: telemetryRepoMap(<String, dynamic>{
-        'platform': 'android',
+        'platform': platform,
         'failure_reason': result.failureReason,
         'store_channel': storeChannel,
       }),

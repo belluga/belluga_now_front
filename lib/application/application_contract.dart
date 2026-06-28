@@ -47,22 +47,23 @@ import 'package:belluga_now/domain/repositories/value_objects/telemetry_reposito
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:intl/intl.dart';
 
-typedef PushHandlerRepositoryFactory = PushHandlerRepositoryContract Function({
-  required PushTransportConfig transportConfig,
-  required BuildContext? Function() contextProvider,
-  required PushNavigationResolver navigationResolver,
-  required Future<void> Function(RemoteMessage) onBackgroundMessage,
-  Future<void> Function()? presentationGate,
-  required Stream<dynamic>? authChangeStream,
-  required String Function() platformResolver,
-  PushMessagePresenter? presenterOverride,
-  Future<bool> Function(StepData step)? gatekeeper,
-  Future<List<OptionItem>> Function(OptionSource source)? optionsBuilder,
-  Future<void> Function(AnswerPayload answer, StepData step)? onStepSubmit,
-  String? Function(StepData step, String? value)? stepValidator,
-  Future<void> Function(ButtonData button, StepData step)? onCustomAction,
-  void Function(PushEvent event)? onPushEvent,
-});
+typedef PushHandlerRepositoryFactory =
+    PushHandlerRepositoryContract Function({
+      required PushTransportConfig transportConfig,
+      required BuildContext? Function() contextProvider,
+      required PushNavigationResolver navigationResolver,
+      required Future<void> Function(RemoteMessage) onBackgroundMessage,
+      Future<void> Function()? presentationGate,
+      required Stream<dynamic>? authChangeStream,
+      required String Function() platformResolver,
+      PushMessagePresenter? presenterOverride,
+      Future<bool> Function(StepData step)? gatekeeper,
+      Future<List<OptionItem>> Function(OptionSource source)? optionsBuilder,
+      Future<void> Function(AnswerPayload answer, StepData step)? onStepSubmit,
+      String? Function(StepData step, String? value)? stepValidator,
+      Future<void> Function(ButtonData button, StepData step)? onCustomAction,
+      void Function(PushEvent event)? onPushEvent,
+    });
 
 abstract class ApplicationContract extends ModularAppContract {
   ApplicationContract({super.key}) : _appRouter = AppRouter();
@@ -70,14 +71,17 @@ abstract class ApplicationContract extends ModularAppContract {
   final AppRouter _appRouter;
   final _moduleSettings = ModuleSettings();
   late final AppStartupNavigationCoordinator _startupNavigationCoordinator =
-      AppStartupNavigationCoordinator(
-    planLoader: _loadStartupNavigationPlan,
-  );
+      AppStartupNavigationCoordinator(planLoader: _loadStartupNavigationPlan);
   static const Locale appLocale = Locale('pt', 'BR');
   StreamSubscription<RemoteMessage>? _pushMessageSubscription;
   StreamSubscription<RemoteMessage>? _pushTapSubscription;
   StreamSubscription<dynamic>? _telemetryIdentitySubscription;
+  StreamSubscription<dynamic>? _deferredIosPushAuthSubscription;
   PushHandlerRepositoryContract? _pushRepository;
+  AuthRepositoryContract? _deferredIosPushAuthRepository;
+  Future<bool> Function()? _deferredIosPushInitializer;
+  bool _pushPresentationReady = false;
+  bool _deferredIosPushInitializationInFlight = false;
 
   Future<void> initialSettingsPlatform();
 
@@ -106,7 +110,8 @@ abstract class ApplicationContract extends ModularAppContract {
     try {
       final info = await PackageInfo.fromPlatform();
       debugPrint(
-          '[BuildInfo] ${info.appName} ${info.version}+${info.buildNumber} (${info.packageName})');
+        '[BuildInfo] ${info.appName} ${info.version}+${info.buildNumber} (${info.packageName})',
+      );
     } catch (_) {
       // expected_control_flow: package metadata can be unavailable on some platforms.
     }
@@ -127,19 +132,21 @@ abstract class ApplicationContract extends ModularAppContract {
   }
 
   Future<void> _initializePushHandler() async {
-    await _initializePushHandlerInternal();
+    await _initializePushHandlerBootstrap();
   }
 
   @visibleForTesting
   Future<void> initializePushHandlerForTesting({
     bool? isWebOverride,
+    String? platformOverride,
     PushHandlerRepositoryFactory? repositoryFactory,
     AuthRepositoryContract? authRepositoryOverride,
     InvitePushTapSource? invitePushTapSourceOverride,
     InvitePushRuntimeCoordinator? invitePushRuntimeCoordinatorOverride,
   }) async {
-    await _initializePushHandlerInternal(
+    await _initializePushHandlerBootstrap(
       isWebOverride: isWebOverride,
+      platformOverride: platformOverride,
       repositoryFactory: repositoryFactory,
       authRepositoryOverride: authRepositoryOverride,
       invitePushTapSourceOverride:
@@ -149,20 +156,54 @@ abstract class ApplicationContract extends ModularAppContract {
     );
   }
 
-  Future<void> _initializePushHandlerInternal({
+  @visibleForTesting
+  Future<void> handlePushPresentationReady() async {
+    if (_pushPresentationReady) {
+      return;
+    }
+    _pushPresentationReady = true;
+    await _maybeInitializeDeferredIosPush();
+  }
+
+  Future<void> disposeRuntimeResources() async {
+    await _pushMessageSubscription?.cancel();
+    _pushMessageSubscription = null;
+    await _pushTapSubscription?.cancel();
+    _pushTapSubscription = null;
+    await _telemetryIdentitySubscription?.cancel();
+    _telemetryIdentitySubscription = null;
+    await _deferredIosPushAuthSubscription?.cancel();
+    _deferredIosPushAuthSubscription = null;
+    _deferredIosPushAuthRepository = null;
+    _deferredIosPushInitializer = null;
+    _deferredIosPushInitializationInFlight = false;
+    _pushPresentationReady = false;
+    final repository = _pushRepository;
+    _pushRepository = null;
+    if (repository != null) {
+      await repository.dispose();
+    }
+  }
+
+  Future<void> _initializePushHandlerBootstrap({
     bool? isWebOverride,
+    String? platformOverride,
     PushHandlerRepositoryFactory? repositoryFactory,
     AuthRepositoryContract? authRepositoryOverride,
     InvitePushTapSource? invitePushTapSourceOverride,
     InvitePushRuntimeCoordinator? invitePushRuntimeCoordinatorOverride,
   }) async {
-    const disablePush =
-        bool.fromEnvironment('DISABLE_PUSH', defaultValue: false);
+    const disablePush = bool.fromEnvironment(
+      'DISABLE_PUSH',
+      defaultValue: false,
+    );
     if (disablePush) {
       debugPrint('[Push] Disabled via DISABLE_PUSH dart-define.');
       return;
     }
     final isWeb = isWebOverride ?? kIsWeb;
+    final resolvedPlatform =
+        platformOverride ?? BellugaConstants.settings.platform;
     if (isWeb) {
       debugPrint(
         '[Push] Web registration skipped; Firebase web config/VAPID not configured.',
@@ -171,8 +212,116 @@ abstract class ApplicationContract extends ModularAppContract {
     }
     final authRepository =
         authRepositoryOverride ?? GetIt.I.get<AuthRepositoryContract>();
-    final transportConfig =
-        PushTransportConfigurator.build(authRepository: authRepository);
+    final invitePushTapSource =
+        invitePushTapSourceOverride ??
+        (isWeb ? kNoopInvitePushTapSource : kFirebaseInvitePushTapSource);
+    final invitePushRuntimeCoordinator =
+        invitePushRuntimeCoordinatorOverride ??
+        _buildInvitePushRuntimeCoordinator();
+    if (resolvedPlatform == 'ios') {
+      await _initializeInvitePushTapHandling(
+        isWeb: isWeb,
+        tapSource: invitePushTapSource,
+        coordinator: invitePushRuntimeCoordinator,
+      );
+      await _bindDeferredIosPushInitialization(
+        authRepository: authRepository,
+        initializer: () => _initializePushHandlerInternal(
+          isWebOverride: false,
+          platformOverride: resolvedPlatform,
+          repositoryFactory: repositoryFactory,
+          authRepositoryOverride: authRepository,
+          invitePushTapSourceOverride: invitePushTapSource,
+          invitePushRuntimeCoordinatorOverride: invitePushRuntimeCoordinator,
+          initializeInviteTapHandling: false,
+        ),
+      );
+      return;
+    }
+    await _initializePushHandlerInternal(
+      isWebOverride: isWeb,
+      platformOverride: resolvedPlatform,
+      repositoryFactory: repositoryFactory,
+      authRepositoryOverride: authRepository,
+      invitePushTapSourceOverride: invitePushTapSource,
+      invitePushRuntimeCoordinatorOverride: invitePushRuntimeCoordinator,
+    );
+  }
+
+  Future<void> _bindDeferredIosPushInitialization({
+    required AuthRepositoryContract authRepository,
+    required Future<bool> Function() initializer,
+  }) async {
+    await _deferredIosPushAuthSubscription?.cancel();
+    _deferredIosPushAuthRepository = authRepository;
+    _deferredIosPushInitializer = initializer;
+    _deferredIosPushAuthSubscription = authRepository.userStreamValue.stream
+        .listen((_) {
+          unawaited(_maybeInitializeDeferredIosPush());
+        });
+    await _maybeInitializeDeferredIosPush();
+  }
+
+  Future<void> _maybeInitializeDeferredIosPush() async {
+    final authRepository = _deferredIosPushAuthRepository;
+    final initializer = _deferredIosPushInitializer;
+    if (!_pushPresentationReady ||
+        authRepository == null ||
+        initializer == null ||
+        _deferredIosPushInitializationInFlight ||
+        _pushRepository != null ||
+        !authRepository.isAuthorized) {
+      return;
+    }
+    _deferredIosPushInitializationInFlight = true;
+    try {
+      final initialized = await initializer();
+      if (!initialized) {
+        return;
+      }
+      _deferredIosPushInitializer = null;
+      await _deferredIosPushAuthSubscription?.cancel();
+      _deferredIosPushAuthSubscription = null;
+      _deferredIosPushAuthRepository = null;
+    } finally {
+      _deferredIosPushInitializationInFlight = false;
+    }
+  }
+
+  Future<bool> _initializePushHandlerInternal({
+    bool? isWebOverride,
+    String? platformOverride,
+    PushHandlerRepositoryFactory? repositoryFactory,
+    AuthRepositoryContract? authRepositoryOverride,
+    InvitePushTapSource? invitePushTapSourceOverride,
+    InvitePushRuntimeCoordinator? invitePushRuntimeCoordinatorOverride,
+    bool initializeInviteTapHandling = true,
+  }) async {
+    if (_pushRepository != null) {
+      return true;
+    }
+    const disablePush = bool.fromEnvironment(
+      'DISABLE_PUSH',
+      defaultValue: false,
+    );
+    if (disablePush) {
+      debugPrint('[Push] Disabled via DISABLE_PUSH dart-define.');
+      return false;
+    }
+    final isWeb = isWebOverride ?? kIsWeb;
+    if (isWeb) {
+      debugPrint(
+        '[Push] Web registration skipped; Firebase web config/VAPID not configured.',
+      );
+      return false;
+    }
+    final resolvedPlatform =
+        platformOverride ?? BellugaConstants.settings.platform;
+    final authRepository =
+        authRepositoryOverride ?? GetIt.I.get<AuthRepositoryContract>();
+    final transportConfig = PushTransportConfigurator.build(
+      authRepository: authRepository,
+    );
     final navigationResolver = moduleSettings.buildPushNavigationResolver();
     final answerResolver = GetIt.I.isRegistered<PushAnswerResolver>()
         ? GetIt.I.get<PushAnswerResolver>()
@@ -192,7 +341,8 @@ abstract class ApplicationContract extends ModularAppContract {
       onOpenSelector: _openPushOptionSelector,
       onShowToast: _showPushToast,
     );
-    final factory = repositoryFactory ??
+    final factory =
+        repositoryFactory ??
         ({
           required PushTransportConfig transportConfig,
           required BuildContext? Function() contextProvider,
@@ -204,12 +354,12 @@ abstract class ApplicationContract extends ModularAppContract {
           PushMessagePresenter? presenterOverride,
           Future<bool> Function(StepData step)? gatekeeper,
           Future<List<OptionItem>> Function(OptionSource source)?
-              optionsBuilder,
+          optionsBuilder,
           Future<void> Function(AnswerPayload answer, StepData step)?
-              onStepSubmit,
+          onStepSubmit,
           String? Function(StepData step, String? value)? stepValidator,
           Future<void> Function(ButtonData button, StepData step)?
-              onCustomAction,
+          onCustomAction,
           void Function(PushEvent event)? onPushEvent,
         }) {
           return PushHandlerRepositoryDefault(
@@ -245,7 +395,7 @@ abstract class ApplicationContract extends ModularAppContract {
         await gate.waitUntilReady();
       },
       authChangeStream: authRepository.userStreamValue.stream,
-      platformResolver: () => BellugaConstants.settings.platform,
+      platformResolver: () => resolvedPlatform,
       presenterOverride: InviteAwarePushMessagePresenter(
         contextProvider: () => appRouter.navigatorKey.currentContext,
         navigationResolver: navigationResolver,
@@ -253,31 +403,31 @@ abstract class ApplicationContract extends ModularAppContract {
         optionsBuilder: optionsResolver.resolve,
         onStepSubmit: (answer, step) => _handlePushAnswer(answer, step),
         stepValidator: stepValidator.validate,
-        onCustomAction: (button, step) => actionDispatcher.dispatch(
-          button: button,
-          step: step,
-        ),
+        onCustomAction: (button, step) =>
+            actionDispatcher.dispatch(button: button, step: step),
       ),
       gatekeeper: gatekeeper.check,
       optionsBuilder: optionsResolver.resolve,
       onStepSubmit: (answer, step) => _handlePushAnswer(answer, step),
       stepValidator: stepValidator.validate,
-      onCustomAction: (button, step) => actionDispatcher.dispatch(
-        button: button,
-        step: step,
-      ),
+      onCustomAction: (button, step) =>
+          actionDispatcher.dispatch(button: button, step: step),
       onPushEvent: (event) {
         unawaited(telemetryForwarder.forward(event));
       },
     );
-    final invitePushRuntimeCoordinator = invitePushRuntimeCoordinatorOverride ??
+    final invitePushRuntimeCoordinator =
+        invitePushRuntimeCoordinatorOverride ??
         _buildInvitePushRuntimeCoordinator();
-    await _initializeInvitePushTapHandling(
-      isWeb: isWeb,
-      tapSource: invitePushTapSourceOverride ??
-          (isWeb ? kNoopInvitePushTapSource : kFirebaseInvitePushTapSource),
-      coordinator: invitePushRuntimeCoordinator,
-    );
+    if (initializeInviteTapHandling) {
+      await _initializeInvitePushTapHandling(
+        isWeb: isWeb,
+        tapSource:
+            invitePushTapSourceOverride ??
+            (isWeb ? kNoopInvitePushTapSource : kFirebaseInvitePushTapSource),
+        coordinator: invitePushRuntimeCoordinator,
+      );
+    }
     try {
       await repository.init();
     } catch (error, stackTrace) {
@@ -287,13 +437,11 @@ abstract class ApplicationContract extends ModularAppContract {
         stackTrace: stackTrace,
       );
       debugPrint('[Push] Init failed: $error');
-      return;
+      return false;
     }
     _pushRepository = repository;
-    _listenForInvitePushUpdates(
-      repository,
-      invitePushRuntimeCoordinator,
-    );
+    _listenForInvitePushUpdates(repository, invitePushRuntimeCoordinator);
+    return true;
   }
 
   Future<List<dynamic>?> _openPushOptionSelector(
@@ -322,13 +470,11 @@ abstract class ApplicationContract extends ModularAppContract {
       return;
     }
     final context = appRouter.navigatorKey.currentContext;
-    final messenger =
-        context != null ? ScaffoldMessenger.maybeOf(context) : null;
+    final messenger = context != null
+        ? ScaffoldMessenger.maybeOf(context)
+        : null;
     messenger?.showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-      ),
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
     );
   }
 
@@ -364,8 +510,9 @@ abstract class ApplicationContract extends ModularAppContract {
 
     final initialMessage = await tapSource.getInitialMessage();
     if (initialMessage != null) {
-      final initialPath =
-          coordinator.prepareNotificationTapPath(initialMessage);
+      final initialPath = coordinator.prepareNotificationTapPath(
+        initialMessage,
+      );
       if (initialPath != null) {
         _startupNavigationCoordinator.overrideInitialPath(initialPath);
         unawaited(coordinator.refreshNotificationTapData(initialMessage));
@@ -404,25 +551,27 @@ abstract class ApplicationContract extends ModularAppContract {
     final authRepository = GetIt.I.get<AuthRepositoryContract>();
     final telemetryRepository = GetIt.I.get<TelemetryRepositoryContract>();
     _telemetryIdentitySubscription?.cancel();
-    _telemetryIdentitySubscription =
-        authRepository.userStreamValue.stream.listen((user) async {
-      if (user == null) {
-        return;
-      }
-      final storedUserId = await authRepository.getUserId();
-      if (storedUserId == null || storedUserId.isEmpty) {
-        return;
-      }
-      await telemetryRepository.mergeIdentity(
-        previousUserId: telemetryRepoString(storedUserId),
-      );
-    });
+    _telemetryIdentitySubscription = authRepository.userStreamValue.stream
+        .listen((user) async {
+          if (user == null) {
+            return;
+          }
+          final storedUserId = await authRepository.getUserId();
+          if (storedUserId == null || storedUserId.isEmpty) {
+            return;
+          }
+          await telemetryRepository.mergeIdentity(
+            previousUserId: telemetryRepoString(storedUserId),
+          );
+        });
     final currentUser = authRepository.userStreamValue.value;
     if (currentUser != null) {
-      unawaited(_handleTelemetryIdentityMerge(
-        authRepository: authRepository,
-        telemetryRepository: telemetryRepository,
-      ));
+      unawaited(
+        _handleTelemetryIdentityMerge(
+          authRepository: authRepository,
+          telemetryRepository: telemetryRepository,
+        ),
+      );
     }
   }
 
@@ -439,10 +588,7 @@ abstract class ApplicationContract extends ModularAppContract {
     );
   }
 
-  Future<void> _handlePushAnswer(
-    AnswerPayload answer,
-    StepData step,
-  ) async {
+  Future<void> _handlePushAnswer(AnswerPayload answer, StepData step) async {
     if (GetIt.I.isRegistered<PushAnswerHandler>()) {
       final handler = GetIt.I.get<PushAnswerHandler>();
       await handler.handle(answer, step);
@@ -455,8 +601,10 @@ abstract class ApplicationContract extends ModularAppContract {
   }
 
   Future<void> _initializeFirebaseIfAvailable() async {
-    final settings =
-        GetIt.I.get<AppDataRepositoryContract>().appData.firebaseSettings;
+    final settings = GetIt.I
+        .get<AppDataRepositoryContract>()
+        .appData
+        .firebaseSettings;
     if (settings == null) {
       debugPrint('[Push] Firebase settings missing; skipping init.');
       return;
@@ -544,10 +692,10 @@ class _ApplicationContractState extends State<ApplicationContract>
         return;
       }
       _didMarkPushPresentationReady = true;
-      if (!GetIt.I.isRegistered<PushPresentationGateContract>()) {
-        return;
+      if (GetIt.I.isRegistered<PushPresentationGateContract>()) {
+        GetIt.I.get<PushPresentationGateContract>().markReady();
       }
-      GetIt.I.get<PushPresentationGateContract>().markReady();
+      unawaited(widget.handlePushPresentationReady());
     });
   }
 
@@ -566,6 +714,7 @@ class _ApplicationContractState extends State<ApplicationContract>
     _lifecycleDebounceTimer?.cancel();
     _postAuthIdentityHydrationCoordinator?.dispose();
     _postAuthIdentityHydrationCoordinator = null;
+    unawaited(widget.disposeRuntimeResources());
     super.dispose();
   }
 
@@ -597,13 +746,10 @@ class _ApplicationContractState extends State<ApplicationContract>
   }
 
   void _enqueueRouterTrack(RouteData routeData) {
-    _debugWebTelemetry(
-      'enqueue track',
-      {
-        'route': routeData.name,
-        'match': routeData.match,
-      },
-    );
+    _debugWebTelemetry('enqueue track', {
+      'route': routeData.name,
+      'match': routeData.match,
+    });
     _routerTrackPending = _routerTrackPending
         .then((_) => _trackRouterRoute(routeData))
         .catchError((_) {});
@@ -626,17 +772,12 @@ class _ApplicationContractState extends State<ApplicationContract>
     _routerTimedEvent = await telemetry.startTimedEvent(
       EventTrackerEvents.viewContent,
       eventName: telemetryRepoString('screen_view'),
-      properties: telemetryRepoMap({
-        'screen_context': screenContext,
-      }),
+      properties: telemetryRepoMap({'screen_context': screenContext}),
     );
-    _debugWebTelemetry(
-      'timed event started',
-      {
-        'route': routeData.name,
-        'handle': _routerTimedEvent?.id,
-      },
-    );
+    _debugWebTelemetry('timed event started', {
+      'route': routeData.name,
+      'handle': _routerTimedEvent?.id,
+    });
   }
 
   void _finishRouterTimedEvent() {
@@ -669,9 +810,7 @@ class _ApplicationContractState extends State<ApplicationContract>
     };
   }
 
-  Map<String, dynamic>? _sanitizeRouteParams(
-    Map<String, dynamic> params,
-  ) {
+  Map<String, dynamic>? _sanitizeRouteParams(Map<String, dynamic> params) {
     if (params.isEmpty) {
       return null;
     }
@@ -700,8 +839,10 @@ class _ApplicationContractState extends State<ApplicationContract>
       return sanitized.isEmpty ? null : sanitized;
     }
     if (value is Iterable) {
-      final sanitized =
-          value.map(_sanitizeJsonValue).where((item) => item != null).toList();
+      final sanitized = value
+          .map(_sanitizeJsonValue)
+          .where((item) => item != null)
+          .toList();
       return sanitized.isEmpty ? null : sanitized;
     }
     return null;
@@ -762,8 +903,7 @@ class _ApplicationContractState extends State<ApplicationContract>
       success = (await telemetry.logEvent(
         EventTrackerEvents.openApp,
         eventName: telemetryRepoString('app_init'),
-      ))
-          .value;
+      )).value;
     } catch (_) {
       success = false;
     }
@@ -807,10 +947,7 @@ class _ApplicationContractState extends State<ApplicationContract>
     });
   }
 
-  void _trackAppLifecycle(
-    AppLifecycleState finalState,
-    List<String> sequence,
-  ) {
+  void _trackAppLifecycle(AppLifecycleState finalState, List<String> sequence) {
     if (!GetIt.I.isRegistered<TelemetryRepositoryContract>()) {
       return;
     }

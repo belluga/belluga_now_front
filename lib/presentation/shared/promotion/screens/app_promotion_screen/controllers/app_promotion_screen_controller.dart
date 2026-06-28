@@ -1,6 +1,9 @@
 import 'app_promotion_web_store_platform_resolver_stub.dart'
     if (dart.library.html) 'app_promotion_web_store_platform_resolver_web.dart'
     as web_store_platform;
+import 'app_promotion_ios_deferred_payload_seeder_stub.dart'
+    if (dart.library.html) 'app_promotion_ios_deferred_payload_seeder_web.dart'
+    as ios_deferred_payload_seeder;
 
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
 import 'package:belluga_now/application/telemetry/web_promotion_telemetry.dart';
@@ -11,24 +14,40 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-typedef AppPromotionStorePlatformResolver = AppPromotionStorePlatform?
-    Function();
+typedef AppPromotionStorePlatformResolver =
+    AppPromotionStorePlatform? Function();
 typedef AppPromotionExperienceResolver = AppPromotionExperience Function();
+typedef AppPromotionIosDeferredPayloadSeeder =
+    Future<bool> Function(String payload);
+typedef AppPromotionUriSupportChecker = Future<bool> Function(Uri uri);
+typedef AppPromotionUriLauncher = Future<bool> Function(Uri uri);
 
 class AppPromotionScreenController implements Disposable {
   AppPromotionScreenController({
     AppDataRepositoryContract? appDataRepository,
     AppPromotionStorePlatformResolver? preferredStorePlatformResolver,
     AppPromotionExperienceResolver? experienceResolver,
-  })  : _appDataRepository =
-            appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
-        _preferredStorePlatformResolver = preferredStorePlatformResolver ??
-            web_store_platform.resolvePreferredWebPromotionStorePlatform,
-        _experienceResolver =
-            experienceResolver ?? _resolveHardcodedPromotionExperience;
+    AppPromotionIosDeferredPayloadSeeder? iosDeferredPayloadSeeder,
+    AppPromotionUriSupportChecker? uriSupportChecker,
+    AppPromotionUriLauncher? uriLauncher,
+  }) : _appDataRepository =
+           appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
+       _preferredStorePlatformResolver =
+           preferredStorePlatformResolver ??
+           web_store_platform.resolvePreferredWebPromotionStorePlatform,
+       _iosDeferredPayloadSeeder =
+           iosDeferredPayloadSeeder ??
+           ios_deferred_payload_seeder.seedIosDeferredPayloadToClipboard,
+       _uriSupportChecker = uriSupportChecker ?? canLaunchUrl,
+       _uriLauncher = uriLauncher ?? _launchExternalApplication,
+       _experienceResolver =
+           experienceResolver ?? _resolveHardcodedPromotionExperience;
 
   final AppDataRepositoryContract _appDataRepository;
   final AppPromotionStorePlatformResolver _preferredStorePlatformResolver;
+  final AppPromotionIosDeferredPayloadSeeder _iosDeferredPayloadSeeder;
+  final AppPromotionUriSupportChecker _uriSupportChecker;
+  final AppPromotionUriLauncher _uriLauncher;
   final AppPromotionExperienceResolver _experienceResolver;
 
   AppPromotionExperience get currentExperience => _experienceResolver();
@@ -68,9 +87,7 @@ class AppPromotionScreenController implements Disposable {
     ].where(_isStorePlatformActive).toList(growable: false);
   }
 
-  Uri? buildAndroidPromotionUri({
-    required String redirectPath,
-  }) {
+  Uri? buildAndroidPromotionUri({required String redirectPath}) {
     if (!_isStorePlatformActive(AppPromotionStorePlatform.android)) {
       return null;
     }
@@ -81,9 +98,7 @@ class AppPromotionScreenController implements Disposable {
     );
   }
 
-  Uri? buildIosPromotionUri({
-    required String redirectPath,
-  }) {
+  Uri? buildIosPromotionUri({required String redirectPath}) {
     if (!_isStorePlatformActive(AppPromotionStorePlatform.ios)) {
       return null;
     }
@@ -101,9 +116,13 @@ class AppPromotionScreenController implements Disposable {
     await WebPromotionTelemetry.trackOpenAppClick(
       platformTarget: platform.platformTarget,
     );
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!await _uriSupportChecker(uri)) {
+      return;
     }
+    if (platform == AppPromotionStorePlatform.ios) {
+      await _seedIosDeferredPayloadIfPossible(uri);
+    }
+    await _uriLauncher(uri);
   }
 
   @override
@@ -120,9 +139,26 @@ class AppPromotionScreenController implements Disposable {
       AppPromotionStorePlatform.ios => publicationSettings.ios.isPublished,
     };
   }
+
+  Future<void> _seedIosDeferredPayloadIfPossible(Uri uri) async {
+    final payload = buildDeferredResolverPayloadFromPromotionUri(uri);
+    if (payload == null) {
+      return;
+    }
+
+    try {
+      await _iosDeferredPayloadSeeder(payload);
+    } catch (_) {
+      // expected_control_flow: store handoff must continue even when clipboard seeding is unavailable.
+    }
+  }
 }
 
 AppPromotionExperience _resolveHardcodedPromotionExperience() {
   // TODO(vnext-promotion-experience-switch): move the active promotion experience selection to runtime config/backend contracts.
   return AppPromotionExperience.appDownload;
+}
+
+Future<bool> _launchExternalApplication(Uri uri) {
+  return launchUrl(uri, mode: LaunchMode.externalApplication);
 }

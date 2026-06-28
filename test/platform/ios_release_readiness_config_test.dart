@@ -68,6 +68,9 @@ void main() {
       final iosRegistrant = File(
         'ios/Runner/GeneratedPluginRegistrant.m',
       ).readAsStringSync();
+      final appDelegate = File(
+        'ios/Runner/AppDelegate.swift',
+      ).readAsStringSync();
       final macosRegistrant = File(
         'macos/Flutter/GeneratedPluginRegistrant.swift',
       ).readAsStringSync();
@@ -125,6 +128,9 @@ void main() {
       expect(iosRegistrant, isNot(contains('permission_handler_apple')));
       expect(iosRegistrant, isNot(contains('PermissionHandlerPlugin')));
       expect(macosRegistrant, isNot(contains('permission_handler')));
+      expect(appDelegate, contains('getDeferredLinkPasteboardPayload'));
+      expect(appDelegate, contains('UIPasteboard.general'));
+      expect(appDelegate, contains('belluga_now_deferred_link_v1:'));
     },
   );
 }

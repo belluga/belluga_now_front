@@ -1,9 +1,6 @@
 class DeferredLinkNativePayload {
-  const DeferredLinkNativePayload({
-    this.installReferrer,
-    this.storeChannel,
-  });
+  const DeferredLinkNativePayload({this.resolverPayload, this.storeChannel});
 
-  final String? installReferrer;
+  final String? resolverPayload;
   final String? storeChannel;
 }

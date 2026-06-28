@@ -24,11 +24,11 @@ void main() {
   test('captures code when backend resolver returns captured', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
-      expect(call.method, 'getInstallReferrer');
-      return <String, dynamic>{
-        'install_referrer': 'code=ABCD1234&store_channel=play',
-      };
-    });
+          expect(call.method, 'getInstallReferrer');
+          return <String, dynamic>{
+            'install_referrer': 'code=ABCD1234&store_channel=play',
+          };
+        });
 
     final backend = _FakeDeferredLinkBackend(
       response: const DeferredLinkResolutionDto(
@@ -41,7 +41,7 @@ void main() {
 
     final repository = DeferredLinkRepository(
       channel: channel,
-      isAndroid: () => true,
+      platformResolver: () => 'android',
       backend: backend,
     );
 
@@ -51,104 +51,110 @@ void main() {
     expect(result.code, 'ABCD1234');
     expect(result.targetPath, '/invite?code=ABCD1234');
     expect(result.storeChannel, 'play');
+    expect(result.platform, 'android');
     expect(backend.lastPlatform, 'android');
-    expect(backend.lastInstallReferrer, 'code=ABCD1234&store_channel=play');
+    expect(backend.lastResolverPayload, 'code=ABCD1234&store_channel=play');
     expect(backend.lastStoreChannel, 'play');
   });
 
-  test('captures target path when backend resolver returns non-invite path',
-      () async {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, (call) async {
-      return <String, dynamic>{
-        'install_referrer':
-            'target_path=%2Fagenda%2Fevento%2Fforro%3Foccurrence%3Docc-1&store_channel=play',
-      };
-    });
+  test(
+    'captures target path when backend resolver returns non-invite path',
+    () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            return <String, dynamic>{
+              'install_referrer':
+                  'target_path=%2Fagenda%2Fevento%2Fforro%3Foccurrence%3Docc-1&store_channel=play',
+            };
+          });
 
-    final backend = _FakeDeferredLinkBackend(
-      response: const DeferredLinkResolutionDto(
-        status: 'captured',
-        targetPath: '/agenda/evento/forro?occurrence=occ-1',
-        storeChannel: 'play',
-      ),
-    );
+      final backend = _FakeDeferredLinkBackend(
+        response: const DeferredLinkResolutionDto(
+          status: 'captured',
+          targetPath: '/agenda/evento/forro?occurrence=occ-1',
+          storeChannel: 'play',
+        ),
+      );
 
-    final repository = DeferredLinkRepository(
-      channel: channel,
-      isAndroid: () => true,
-      backend: backend,
-    );
+      final repository = DeferredLinkRepository(
+        channel: channel,
+        platformResolver: () => 'android',
+        backend: backend,
+      );
 
-    final result = await repository.captureFirstOpenInviteCode();
+      final result = await repository.captureFirstOpenInviteCode();
 
-    expect(result.status, DeferredLinkCaptureStatus.captured);
-    expect(result.code, isNull);
-    expect(result.targetPath, '/agenda/evento/forro?occurrence=occ-1');
-    expect(result.storeChannel, 'play');
-  });
+      expect(result.status, DeferredLinkCaptureStatus.captured);
+      expect(result.code, isNull);
+      expect(result.targetPath, '/agenda/evento/forro?occurrence=occ-1');
+      expect(result.storeChannel, 'play');
+      expect(result.platform, 'android');
+    },
+  );
 
-  test('returns notCaptured when backend resolver reports missing code',
-      () async {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, (call) async {
-      return <String, dynamic>{
-        'install_referrer': 'utm_source=play',
-      };
-    });
+  test(
+    'returns notCaptured when backend resolver reports missing code',
+    () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            return <String, dynamic>{'install_referrer': 'utm_source=play'};
+          });
 
-    final backend = _FakeDeferredLinkBackend(
-      response: const DeferredLinkResolutionDto(
-        status: 'not_captured',
-        storeChannel: 'play',
-        failureReason: 'code_missing',
-      ),
-    );
+      final backend = _FakeDeferredLinkBackend(
+        response: const DeferredLinkResolutionDto(
+          status: 'not_captured',
+          storeChannel: 'play',
+          failureReason: 'code_missing',
+        ),
+      );
 
-    final repository = DeferredLinkRepository(
-      channel: channel,
-      isAndroid: () => true,
-      backend: backend,
-    );
+      final repository = DeferredLinkRepository(
+        channel: channel,
+        platformResolver: () => 'android',
+        backend: backend,
+      );
 
-    final result = await repository.captureFirstOpenInviteCode();
+      final result = await repository.captureFirstOpenInviteCode();
 
-    expect(result.status, DeferredLinkCaptureStatus.notCaptured);
-    expect(result.failureReason, 'code_missing');
-    expect(result.storeChannel, 'play');
-  });
+      expect(result.status, DeferredLinkCaptureStatus.notCaptured);
+      expect(result.failureReason, 'code_missing');
+      expect(result.storeChannel, 'play');
+      expect(result.platform, 'android');
+    },
+  );
 
-  test('returns notCaptured resolver_unavailable when backend call fails',
-      () async {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, (call) async {
-      return <String, dynamic>{
-        'install_referrer': 'utm_source=play',
-      };
-    });
+  test(
+    'returns notCaptured resolver_unavailable when backend call fails',
+    () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            return <String, dynamic>{'install_referrer': 'utm_source=play'};
+          });
 
-    final backend = _FakeDeferredLinkBackend(
-      response: const DeferredLinkResolutionDto(status: 'not_captured'),
-      throwsOnResolve: true,
-    );
+      final backend = _FakeDeferredLinkBackend(
+        response: const DeferredLinkResolutionDto(status: 'not_captured'),
+        throwsOnResolve: true,
+      );
 
-    final repository = DeferredLinkRepository(
-      channel: channel,
-      isAndroid: () => true,
-      backend: backend,
-    );
+      final repository = DeferredLinkRepository(
+        channel: channel,
+        platformResolver: () => 'android',
+        backend: backend,
+      );
 
-    final result = await repository.captureFirstOpenInviteCode();
+      final result = await repository.captureFirstOpenInviteCode();
 
-    expect(result.status, DeferredLinkCaptureStatus.notCaptured);
-    expect(result.failureReason, 'resolver_unavailable');
-    expect(result.storeChannel, 'play');
-  });
+      expect(result.status, DeferredLinkCaptureStatus.notCaptured);
+      expect(result.failureReason, 'resolver_unavailable');
+      expect(result.storeChannel, 'play');
+      expect(result.platform, 'android');
+    },
+  );
 
   test('skips when capture already attempted', () async {
-    FlutterSecureStorage.setMockInitialValues(
-      <String, String>{'deferred_link_capture_attempted': '1'},
-    );
+    FlutterSecureStorage.setMockInitialValues(<String, String>{
+      'deferred_link_capture_attempted': '1',
+    });
 
     final backend = _FakeDeferredLinkBackend(
       response: const DeferredLinkResolutionDto(status: 'not_captured'),
@@ -156,7 +162,7 @@ void main() {
 
     final repository = DeferredLinkRepository(
       channel: channel,
-      isAndroid: () => true,
+      platformResolver: () => 'android',
       backend: backend,
     );
 
@@ -164,16 +170,17 @@ void main() {
 
     expect(result.status, DeferredLinkCaptureStatus.skipped);
     expect(result.failureReason, 'already_attempted');
+    expect(result.platform, 'android');
     expect(backend.callCount, 0);
   });
 
   test('continues capture when storage markers are unavailable', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
-      return <String, dynamic>{
-        'install_referrer': 'code=ABCD1234&store_channel=play',
-      };
-    });
+          return <String, dynamic>{
+            'install_referrer': 'code=ABCD1234&store_channel=play',
+          };
+        });
 
     final backend = _FakeDeferredLinkBackend(
       response: const DeferredLinkResolutionDto(
@@ -186,7 +193,7 @@ void main() {
 
     final repository = DeferredLinkRepository(
       channel: channel,
-      isAndroid: () => true,
+      platformResolver: () => 'android',
       backend: backend,
       storage: const _ThrowingSecureStorage(),
     );
@@ -195,7 +202,44 @@ void main() {
 
     expect(result.status, DeferredLinkCaptureStatus.captured);
     expect(result.targetPath, '/invite?code=ABCD1234');
+    expect(result.platform, 'android');
     expect(backend.callCount, 1);
+  });
+
+  test('captures iOS deferred payload from pasteboard transport', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          expect(call.method, 'getDeferredLinkPasteboardPayload');
+          return <String, dynamic>{
+            'resolver_payload': 'target_path=%2Fprofile&store_channel=web_gate',
+          };
+        });
+
+    final backend = _FakeDeferredLinkBackend(
+      response: const DeferredLinkResolutionDto(
+        status: 'captured',
+        targetPath: '/profile',
+        storeChannel: 'web_gate',
+      ),
+    );
+
+    final repository = DeferredLinkRepository(
+      channel: channel,
+      platformResolver: () => 'ios',
+      backend: backend,
+    );
+
+    final result = await repository.captureFirstOpenInviteCode();
+
+    expect(result.status, DeferredLinkCaptureStatus.captured);
+    expect(result.targetPath, '/profile');
+    expect(result.storeChannel, 'web_gate');
+    expect(result.platform, 'ios');
+    expect(backend.lastPlatform, 'ios');
+    expect(
+      backend.lastResolverPayload,
+      'target_path=%2Fprofile&store_channel=web_gate',
+    );
   });
 }
 
@@ -210,18 +254,18 @@ class _FakeDeferredLinkBackend implements DeferredLinkBackendContract {
 
   int callCount = 0;
   String? lastPlatform;
-  String? lastInstallReferrer;
+  String? lastResolverPayload;
   String? lastStoreChannel;
 
   @override
   Future<DeferredLinkResolutionDto> resolveDeferredLink({
     required String platform,
-    String? installReferrer,
+    String? resolverPayload,
     String? storeChannel,
   }) async {
     callCount += 1;
     lastPlatform = platform;
-    lastInstallReferrer = installReferrer;
+    lastResolverPayload = resolverPayload;
     lastStoreChannel = storeChannel;
 
     if (throwsOnResolve) {
