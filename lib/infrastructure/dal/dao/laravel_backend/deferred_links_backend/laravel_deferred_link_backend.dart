@@ -16,7 +16,7 @@ class LaravelDeferredLinkBackend implements DeferredLinkBackendContract {
   @override
   Future<DeferredLinkResolutionDto> resolveDeferredLink({
     required String platform,
-    String? installReferrer,
+    String? resolverPayload,
     String? storeChannel,
   }) async {
     try {
@@ -28,8 +28,9 @@ class LaravelDeferredLinkBackend implements DeferredLinkBackendContract {
         '$_apiBaseUrl/v1/deep-links/deferred/resolve',
         data: <String, dynamic>{
           'platform': platform,
-          if (installReferrer != null && installReferrer.trim().isNotEmpty)
-            'install_referrer': installReferrer.trim(),
+          if (resolverPayload != null && resolverPayload.trim().isNotEmpty)
+            (platform == 'android' ? 'install_referrer' : 'deferred_payload'):
+                resolverPayload.trim(),
           if (storeChannel != null && storeChannel.trim().isNotEmpty)
             'store_channel': storeChannel.trim(),
         },

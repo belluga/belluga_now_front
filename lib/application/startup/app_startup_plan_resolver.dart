@@ -10,6 +10,7 @@ import 'package:belluga_now/domain/repositories/invites_repository_contract.dart
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 
 final class AppStartupPlanResolver {
@@ -19,22 +20,25 @@ final class AppStartupPlanResolver {
     AuthRepositoryContract? authRepository,
     DeferredLinkRepositoryContract? deferredLinkRepository,
     TelemetryRepositoryContract? telemetryRepository,
-  })  : _invitesRepository =
-            invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
-        _appDataRepository =
-            appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
-        _authRepository = authRepository ??
-            (GetIt.I.isRegistered<AuthRepositoryContract>()
-                ? GetIt.I.get<AuthRepositoryContract>()
-                : null),
-        _deferredLinkRepository = deferredLinkRepository ??
-            (GetIt.I.isRegistered<DeferredLinkRepositoryContract>()
-                ? GetIt.I.get<DeferredLinkRepositoryContract>()
-                : null),
-        _telemetryRepository = telemetryRepository ??
-            (GetIt.I.isRegistered<TelemetryRepositoryContract>()
-                ? GetIt.I.get<TelemetryRepositoryContract>()
-                : null);
+  }) : _invitesRepository =
+           invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
+       _appDataRepository =
+           appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
+       _authRepository =
+           authRepository ??
+           (GetIt.I.isRegistered<AuthRepositoryContract>()
+               ? GetIt.I.get<AuthRepositoryContract>()
+               : null),
+       _deferredLinkRepository =
+           deferredLinkRepository ??
+           (GetIt.I.isRegistered<DeferredLinkRepositoryContract>()
+               ? GetIt.I.get<DeferredLinkRepositoryContract>()
+               : null),
+       _telemetryRepository =
+           telemetryRepository ??
+           (GetIt.I.isRegistered<TelemetryRepositoryContract>()
+               ? GetIt.I.get<TelemetryRepositoryContract>()
+               : null);
 
   final InvitesRepositoryContract _invitesRepository;
   final AppDataRepositoryContract _appDataRepository;
@@ -62,12 +66,10 @@ final class AppStartupPlanResolver {
     }
 
     if (_invitesRepository.hasPendingInvites.value) {
-      return AppStartupNavigationPlan.routes(
-        const <PageRouteInfo<dynamic>>[
-          TenantHomeRoute(),
-          InviteFlowRoute(),
-        ],
-      );
+      return AppStartupNavigationPlan.routes(const <PageRouteInfo<dynamic>>[
+        TenantHomeRoute(),
+        InviteFlowRoute(),
+      ]);
     }
 
     return const AppStartupNavigationPlan.none();
@@ -83,17 +85,27 @@ final class AppStartupPlanResolver {
       return null;
     }
 
-    final result = await deferred.captureFirstOpenInviteCode();
+    DeferredLinkCaptureResult result;
+    try {
+      result = await deferred.captureFirstOpenInviteCode();
+    } catch (error, stackTrace) {
+      debugPrint(
+        'AppStartupPlanResolver deferred invite capture failed; '
+        'continuing without deferred override: $error\n$stackTrace',
+      );
+      return null;
+    }
+    final platform = result.platform ?? 'unknown';
     if (result.isCaptured) {
       final storeChannel = result.storeChannel ?? 'unknown';
       final path = result.targetPath!;
-      await _telemetryRepository?.logEvent(
+      await _logStartupTelemetryBestEffort(
         EventTrackerEvents.buttonClick,
         eventName: telemetryRepoString('app_deferred_deep_link_captured'),
         properties: telemetryRepoMap(<String, dynamic>{
           if (result.code != null) 'code': result.code,
           'target_path': path,
-          'platform': 'android',
+          'platform': platform,
           'store_channel': storeChannel,
         }),
       );
@@ -105,15 +117,34 @@ final class AppStartupPlanResolver {
     }
 
     final storeChannel = result.storeChannel ?? 'unknown';
-    await _telemetryRepository?.logEvent(
+    await _logStartupTelemetryBestEffort(
       EventTrackerEvents.buttonClick,
       eventName: telemetryRepoString('app_deferred_deep_link_capture_failed'),
       properties: telemetryRepoMap(<String, dynamic>{
-        'platform': 'android',
+        'platform': platform,
         'failure_reason': result.failureReason,
         'store_channel': storeChannel,
       }),
     );
     return null;
+  }
+
+  Future<void> _logStartupTelemetryBestEffort(
+    EventTrackerEvents event, {
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
+  }) async {
+    try {
+      await _telemetryRepository?.logEvent(
+        event,
+        eventName: eventName,
+        properties: properties,
+      );
+    } catch (error, stackTrace) {
+      debugPrint(
+        'AppStartupPlanResolver startup telemetry failed; '
+        'continuing bootstrap: $error\n$stackTrace',
+      );
+    }
   }
 }

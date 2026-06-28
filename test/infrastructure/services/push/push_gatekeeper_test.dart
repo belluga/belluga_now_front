@@ -14,10 +14,7 @@ void main() {
       'slug': 'select-tags',
       'type': 'selector',
       'title': 'Select',
-      'gate': {
-        'type': 'selection_min',
-        'min_selected': 2,
-      },
+      'gate': {'type': 'selection_min', 'min_selected': 2},
       'config': {
         'selection_ui': 'inline',
         'selection_mode': 'multi',
@@ -44,6 +41,29 @@ void main() {
 
     final allowed = await gatekeeper.check(step);
     expect(allowed, isTrue);
+  });
+
+  test('contacts_permission gate uses the injected contacts checker', () async {
+    var contactPermissionChecks = 0;
+    final gatekeeper = PushGatekeeper(
+      contextProvider: () => null,
+      contactsPermissionChecker: () async {
+        contactPermissionChecks += 1;
+        return false;
+      },
+    );
+    final step = StepData.fromMap({
+      'slug': 'contacts',
+      'type': 'cta',
+      'title': 'Contacts',
+      'gate': {'type': 'contacts_permission'},
+      'buttons': [],
+    });
+
+    final allowed = await gatekeeper.check(step);
+
+    expect(allowed, isFalse);
+    expect(contactPermissionChecks, 1);
   });
 }
 

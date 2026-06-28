@@ -23,6 +23,17 @@
 - Rule matrix anti-regression gate:
   - `bash tool/belluga_analysis_plugin/bin/validate_rule_matrix.sh`
 
+## `permission_handler_import_forbidden`
+
+### Rule intent
+`permission_handler` is forbidden in this project because it previously collided with `geolocator_apple` during iOS archive (`ServiceStatus` typedef redefinition). Reintroducing it without a fresh compatibility review can silently break the iOS release lane again.
+
+### Remediation playbook
+1. Use `flutter_contacts` for contacts permission/status/settings flows.
+2. Use `firebase_messaging` for notification authorization/status ownership.
+3. Use `geolocator` for location permission/status/app-settings flows.
+4. If a future exception is unavoidable, reopen approval and verify compatibility across every active native permission plugin before reintroducing `permission_handler`.
+
 ## `domain_primitive_field_forbidden`
 
 ### Canonical remediation (mandatory)

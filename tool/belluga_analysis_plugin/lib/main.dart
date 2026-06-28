@@ -26,6 +26,7 @@ import 'package:belluga_analysis_plugin/src/rules/module_direct_getit_registrati
 import 'package:belluga_analysis_plugin/src/rules/module_scoped_controller_dispose_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/multi_public_class_file_warning_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/multi_widget_file_warning_rule.dart';
+import 'package:belluga_analysis_plugin/src/rules/permission_handler_import_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/repository_inline_dto_to_domain_mapper_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/repository_contract_pagination_controls_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/repository_json_parsing_forbidden_rule.dart';
@@ -77,6 +78,7 @@ class BellugaAnalysisPlugin extends Plugin {
     registry.registerWarningRule(ModuleScopedControllerDisposeForbiddenRule());
     registry.registerWarningRule(UiStreamValueOwnershipForbiddenRule());
     registry.registerWarningRule(UiDtoImportForbiddenRule());
+    registry.registerWarningRule(PermissionHandlerImportForbiddenRule());
     registry.registerWarningRule(DomainDtoDependencyForbiddenRule());
     registry.registerWarningRule(DomainJsonFactoryForbiddenRule());
     registry.registerWarningRule(DomainPagedResultTypeForbiddenRule());
