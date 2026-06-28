@@ -23,12 +23,15 @@ class TenantSelectionGate extends StatelessWidget {
 
     Widget surface({required Widget child}) {
       return Material(
-        color: scheme.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: scheme.outlineVariant),
+        color: Colors.transparent,
+        child: Ink(
+          decoration: BoxDecoration(
+            color: scheme.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: scheme.outlineVariant),
+          ),
+          child: child,
         ),
-        child: child,
       );
     }
 

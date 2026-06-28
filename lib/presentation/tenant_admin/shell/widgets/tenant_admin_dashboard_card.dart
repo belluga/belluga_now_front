@@ -18,17 +18,20 @@ class TenantAdminDashboardCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Material(
-      color: scheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: scheme.outlineVariant),
-      ),
-      child: ListTile(
-        leading: Icon(icon),
-        title: Text(title),
-        subtitle: Text(description),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: onTap,
+      color: Colors.transparent,
+      child: Ink(
+        decoration: BoxDecoration(
+          color: scheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: scheme.outlineVariant),
+        ),
+        child: ListTile(
+          leading: Icon(icon),
+          title: Text(title),
+          subtitle: Text(description),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: onTap,
+        ),
       ),
     );
   }
