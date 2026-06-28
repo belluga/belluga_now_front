@@ -6,6 +6,7 @@ import UIKit
   private static let deferredLinkChannelName = "com.belluga_now/deferred_link"
   // Keep this prefix aligned with the web promotion clipboard seeder.
   private static let deferredLinkClipboardPrefix = "belluga_now_deferred_link_v1:"
+  private var deferredLinkPasteboardPayloadCache: String?
 
   override func application(
     _ application: UIApplication,
@@ -30,6 +31,13 @@ import UIKit
   }
 
   private func handleDeferredLinkPasteboardPayload(result: @escaping FlutterResult) {
+    if let cachedPayload = deferredLinkPasteboardPayloadCache {
+      result([
+        "resolver_payload": cachedPayload
+      ])
+      return
+    }
+
     guard let rawPayload = UIPasteboard.general.string?
       .trimmingCharacters(in: .whitespacesAndNewlines),
       rawPayload.hasPrefix(Self.deferredLinkClipboardPrefix)
@@ -45,6 +53,7 @@ import UIKit
       return
     }
 
+    deferredLinkPasteboardPayloadCache = payload
     UIPasteboard.general.string = nil
     result([
       "resolver_payload": payload

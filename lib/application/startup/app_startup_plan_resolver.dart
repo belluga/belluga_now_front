@@ -99,7 +99,7 @@ final class AppStartupPlanResolver {
     if (result.isCaptured) {
       final storeChannel = result.storeChannel ?? 'unknown';
       final path = result.targetPath!;
-      await _telemetryRepository?.logEvent(
+      await _logStartupTelemetryBestEffort(
         EventTrackerEvents.buttonClick,
         eventName: telemetryRepoString('app_deferred_deep_link_captured'),
         properties: telemetryRepoMap(<String, dynamic>{
@@ -117,7 +117,7 @@ final class AppStartupPlanResolver {
     }
 
     final storeChannel = result.storeChannel ?? 'unknown';
-    await _telemetryRepository?.logEvent(
+    await _logStartupTelemetryBestEffort(
       EventTrackerEvents.buttonClick,
       eventName: telemetryRepoString('app_deferred_deep_link_capture_failed'),
       properties: telemetryRepoMap(<String, dynamic>{
@@ -127,5 +127,24 @@ final class AppStartupPlanResolver {
       }),
     );
     return null;
+  }
+
+  Future<void> _logStartupTelemetryBestEffort(
+    EventTrackerEvents event, {
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
+  }) async {
+    try {
+      await _telemetryRepository?.logEvent(
+        event,
+        eventName: eventName,
+        properties: properties,
+      );
+    } catch (error, stackTrace) {
+      debugPrint(
+        'AppStartupPlanResolver startup telemetry failed; '
+        'continuing bootstrap: $error\n$stackTrace',
+      );
+    }
   }
 }

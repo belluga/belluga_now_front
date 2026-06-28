@@ -106,6 +106,35 @@ void main() {
       expect(authRepository.initCallCount, 1);
     },
   );
+
+  test(
+    'resolvePlan ignores startup telemetry failures after deferred capture',
+    () async {
+      final resolver = AppStartupPlanResolver(
+        authRepository: _FakeAuthRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        appDataRepository: _FakeAppDataRepository(_buildTenantAppData()),
+        deferredLinkRepository: _FakeDeferredLinkRepository(
+          DeferredLinkCaptureResult(
+            status: DeferredLinkCaptureStatus.captured,
+            platformValue: deferredLinkPlatform('ios'),
+            targetPathValue: DeferredLinkTargetPathValue(
+              defaultValue: '/profile',
+            ),
+            storeChannelValue: DeferredLinkStoreChannelValue(
+              defaultValue: 'web_gate',
+            ),
+          ),
+        ),
+        telemetryRepository: _ThrowingTelemetryRepository(),
+      );
+
+      final plan = await resolver.resolvePlan();
+
+      expect(plan.path, '/profile');
+      expect(plan.hasOverride, isTrue);
+    },
+  );
 }
 
 class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
@@ -266,6 +295,51 @@ class _FakeTelemetryRepository extends TelemetryRepositoryContract {
       ),
     );
     return telemetryRepoBool(true, defaultValue: true, isRequired: true);
+  }
+
+  @override
+  Future<EventTrackerTimedEventHandle?> startTimedEvent(
+    EventTrackerEvents event, {
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
+  }) async {
+    return null;
+  }
+
+  @override
+  Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
+    EventTrackerTimedEventHandle handle,
+  ) async {
+    return telemetryRepoBool(true, defaultValue: true, isRequired: true);
+  }
+
+  @override
+  Future<TelemetryRepositoryContractPrimBool> flushTimedEvents() async {
+    return telemetryRepoBool(true, defaultValue: true, isRequired: true);
+  }
+
+  @override
+  void setScreenContext(TelemetryRepositoryContractPrimMap? screenContext) {}
+
+  @override
+  EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
+
+  @override
+  Future<TelemetryRepositoryContractPrimBool> mergeIdentity({
+    required TelemetryRepositoryContractPrimString previousUserId,
+  }) async {
+    return telemetryRepoBool(true, defaultValue: true, isRequired: true);
+  }
+}
+
+class _ThrowingTelemetryRepository extends TelemetryRepositoryContract {
+  @override
+  Future<TelemetryRepositoryContractPrimBool> logEvent(
+    EventTrackerEvents event, {
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
+  }) async {
+    throw StateError('startup telemetry failed');
   }
 
   @override

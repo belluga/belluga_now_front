@@ -341,7 +341,135 @@ void main() {
       expect(secondResult.status, DeferredLinkCaptureStatus.skipped);
       expect(secondResult.failureReason, 'already_attempted');
       expect(backend.callCount, 2);
-      expect(nativeSource.callCount, 2);
+      expect(nativeSource.callCount, 1);
+      expect(
+        localStateStorage.valueFor('deferred_link_ios_pending_payload'),
+        isNull,
+      );
+      expect(
+        localStateStorage.valueFor('deferred_link_ios_capture_finalized'),
+        '1',
+      );
+    },
+  );
+
+  test(
+    'reuses the same iOS payload for resolver retries after pasteboard is cleared',
+    () async {
+      final backend = _FakeDeferredLinkBackend(
+        response: const DeferredLinkResolutionDto(
+          status: 'captured',
+          targetPath: '/profile',
+          storeChannel: 'web_gate',
+        ),
+        throwCountBeforeSuccess: 1,
+      );
+      final nativeSource = _SequenceDeferredLinkNativeSource(
+        responses: const <DeferredLinkNativePayload?>[
+          DeferredLinkNativePayload(
+            resolverPayload: 'target_path=%2Fprofile&store_channel=web_gate',
+            storeChannel: 'web_gate',
+          ),
+          null,
+        ],
+      );
+      final localStateStorage = _InMemoryDeferredLinkLocalStateStorage();
+
+      final repository = DeferredLinkRepository(
+        platformResolver: () => 'ios',
+        backend: backend,
+        iosRetryDelays: const <Duration>[Duration.zero],
+        nativeSource: nativeSource,
+        localStateStorage: localStateStorage,
+      );
+
+      final result = await repository.captureFirstOpenInviteCode();
+
+      expect(result.status, DeferredLinkCaptureStatus.captured);
+      expect(result.targetPath, '/profile');
+      expect(backend.callCount, 2);
+      expect(nativeSource.callCount, 1);
+      expect(
+        localStateStorage.valueFor('deferred_link_ios_pending_payload'),
+        isNull,
+      );
+      expect(
+        localStateStorage.valueFor('deferred_link_ios_capture_finalized'),
+        '1',
+      );
+    },
+  );
+
+  test(
+    'keeps iOS pending payload across launches until a terminal resolver outcome',
+    () async {
+      final localStateStorage = _InMemoryDeferredLinkLocalStateStorage();
+      final firstLaunchBackend = _FakeDeferredLinkBackend(
+        response: const DeferredLinkResolutionDto(
+          status: 'captured',
+          targetPath: '/profile',
+          storeChannel: 'web_gate',
+        ),
+        throwsOnResolve: true,
+      );
+      final firstLaunchRepository = DeferredLinkRepository(
+        platformResolver: () => 'ios',
+        backend: firstLaunchBackend,
+        iosRetryDelays: const <Duration>[Duration.zero],
+        nativeSource: _SequenceDeferredLinkNativeSource(
+          responses: const <DeferredLinkNativePayload?>[
+            DeferredLinkNativePayload(
+              resolverPayload: 'target_path=%2Fprofile&store_channel=web_gate',
+              storeChannel: 'web_gate',
+            ),
+          ],
+        ),
+        localStateStorage: localStateStorage,
+      );
+
+      final firstLaunchResult = await firstLaunchRepository
+          .captureFirstOpenInviteCode();
+
+      expect(firstLaunchResult.status, DeferredLinkCaptureStatus.notCaptured);
+      expect(firstLaunchResult.failureReason, 'resolver_unavailable');
+      expect(
+        localStateStorage.valueFor('deferred_link_ios_pending_payload'),
+        isNotNull,
+      );
+      expect(
+        localStateStorage.valueFor('deferred_link_ios_capture_finalized'),
+        isNull,
+      );
+
+      final secondLaunchBackend = _FakeDeferredLinkBackend(
+        response: const DeferredLinkResolutionDto(
+          status: 'captured',
+          targetPath: '/profile',
+          storeChannel: 'web_gate',
+        ),
+      );
+      final secondLaunchNativeSource = _SequenceDeferredLinkNativeSource(
+        responses: const <DeferredLinkNativePayload?>[null],
+      );
+      final secondLaunchRepository = DeferredLinkRepository(
+        platformResolver: () => 'ios',
+        backend: secondLaunchBackend,
+        iosRetryDelays: const <Duration>[Duration.zero],
+        nativeSource: secondLaunchNativeSource,
+        localStateStorage: localStateStorage,
+      );
+
+      final secondLaunchResult = await secondLaunchRepository
+          .captureFirstOpenInviteCode();
+
+      expect(secondLaunchResult.status, DeferredLinkCaptureStatus.captured);
+      expect(secondLaunchResult.targetPath, '/profile');
+      expect(secondLaunchBackend.callCount, 1);
+      expect(secondLaunchNativeSource.callCount, 0);
+      expect(
+        localStateStorage.valueFor('deferred_link_ios_pending_payload'),
+        isNull,
+      );
       expect(
         localStateStorage.valueFor('deferred_link_ios_capture_finalized'),
         '1',
