@@ -34,13 +34,17 @@ jobs:
     steps:
       - name: Checkout flutter-app
         if: github.event_name == 'pull_request'
+        env:
+          CHECKOUT_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          # Temporary unauthenticated public checkout while Actions' implicit
-          # checkout token is rejected with a false account-suspension error.
+          # Keep the manual checkout path, but authenticate the local repo so
+          # later lane-policy fetches by SHA also work on private repositories.
+          auth_header="$(printf 'x-access-token:%s' "$CHECKOUT_TOKEN" | base64 | tr -d '\n')"
           git init .
           git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git config http.https://github.com/.extraheader "AUTHORIZATION: basic ${auth_header}"
           git fetch --no-tags --prune --depth=1 origin "+${GITHUB_REF}:refs/remotes/origin/ci-ref"
           git checkout --force refs/remotes/origin/ci-ref
 
@@ -127,13 +131,17 @@ jobs:
 
     steps:
       - name: Checkout flutter-app
+        env:
+          CHECKOUT_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          # Temporary unauthenticated public checkout while Actions' implicit
-          # checkout token is rejected with a false account-suspension error.
+          # Keep the manual checkout path, but authenticate the local repo so
+          # private-repo fetches succeed without widening scope beyond flutter-app.
+          auth_header="$(printf 'x-access-token:%s' "$CHECKOUT_TOKEN" | base64 | tr -d '\n')"
           git init .
           git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git config http.https://github.com/.extraheader "AUTHORIZATION: basic ${auth_header}"
           git fetch --no-tags --prune --depth=1 origin "+${GITHUB_REF}:refs/remotes/origin/ci-ref"
           git checkout --force refs/remotes/origin/ci-ref
 

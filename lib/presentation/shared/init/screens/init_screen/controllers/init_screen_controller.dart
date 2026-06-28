@@ -27,25 +27,28 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
     DeferredLinkRepositoryContract? deferredLinkRepository,
     TelemetryRepositoryContract? telemetryRepository,
     List<Duration>? startupRetryDelays,
-  })  : _invitesRepository =
-            invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
-        _appDataRepository =
-            appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
-        _authRepository = authRepository ??
-            (GetIt.I.isRegistered<AuthRepositoryContract>()
-                ? GetIt.I.get<AuthRepositoryContract>()
-                : null),
-        _deferredLinkRepository = deferredLinkRepository ??
-            (GetIt.I.isRegistered<DeferredLinkRepositoryContract>()
-                ? GetIt.I.get<DeferredLinkRepositoryContract>()
-                : null),
-        _telemetryRepository = telemetryRepository ??
-            (GetIt.I.isRegistered<TelemetryRepositoryContract>()
-                ? GetIt.I.get<TelemetryRepositoryContract>()
-                : null),
-        _startupRetryDelays = List<Duration>.unmodifiable(
-          startupRetryDelays ?? _defaultStartupRetryDelays,
-        );
+  }) : _invitesRepository =
+           invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
+       _appDataRepository =
+           appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
+       _authRepository =
+           authRepository ??
+           (GetIt.I.isRegistered<AuthRepositoryContract>()
+               ? GetIt.I.get<AuthRepositoryContract>()
+               : null),
+       _deferredLinkRepository =
+           deferredLinkRepository ??
+           (GetIt.I.isRegistered<DeferredLinkRepositoryContract>()
+               ? GetIt.I.get<DeferredLinkRepositoryContract>()
+               : null),
+       _telemetryRepository =
+           telemetryRepository ??
+           (GetIt.I.isRegistered<TelemetryRepositoryContract>()
+               ? GetIt.I.get<TelemetryRepositoryContract>()
+               : null),
+       _startupRetryDelays = List<Duration>.unmodifiable(
+         startupRetryDelays ?? _defaultStartupRetryDelays,
+       );
 
   final InvitesRepositoryContract _invitesRepository;
   final AppDataRepositoryContract _appDataRepository;
@@ -70,9 +73,7 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
     defaultValue: "Carregando",
   );
   final StreamValue<InitScreenUiState> uiStateStreamValue =
-      StreamValue<InitScreenUiState>(
-    defaultValue: InitScreenUiState.initial(),
-  );
+      StreamValue<InitScreenUiState>(defaultValue: InitScreenUiState.initial());
 
   PageRouteInfo? _determinedRoute;
   String? _initialRoutePath;
@@ -86,10 +87,7 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
   List<PageRouteInfo> get initialRouteStack {
     final route = initialRoute;
     if (route is InviteFlowRoute) {
-      return [
-        _homeRouteForEnvironment(),
-        route,
-      ];
+      return [_homeRouteForEnvironment(), route];
     }
     return [route];
   }
@@ -113,15 +111,11 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
   }
 
   void setRetrying(bool isRetrying) {
-    _updateUiState(
-      uiStateStreamValue.value.copyWith(isRetrying: isRetrying),
-    );
+    _updateUiState(uiStateStreamValue.value.copyWith(isRetrying: isRetrying));
   }
 
   void setErrorMessage(String? message) {
-    _updateUiState(
-      uiStateStreamValue.value.copyWith(errorMessage: message),
-    );
+    _updateUiState(uiStateStreamValue.value.copyWith(errorMessage: message));
   }
 
   @override
@@ -194,6 +188,7 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
       return;
     }
     if (result.isCaptured) {
+      final platform = result.platform ?? 'unknown';
       final storeChannel = result.storeChannel ?? 'unknown';
       _initialRoutePath = result.targetPath;
       await _logStartupTelemetryBestEffort(
@@ -202,7 +197,7 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
         properties: telemetryRepoMap(<String, dynamic>{
           if (result.code != null) 'code': result.code,
           'target_path': result.targetPath,
-          'platform': 'android',
+          'platform': platform,
           'store_channel': storeChannel,
         }),
       );
@@ -214,11 +209,12 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
     }
 
     final storeChannel = result.storeChannel ?? 'unknown';
+    final platform = result.platform ?? 'unknown';
     await _logStartupTelemetryBestEffort(
       EventTrackerEvents.buttonClick,
       eventName: telemetryRepoString('app_deferred_deep_link_capture_failed'),
       properties: telemetryRepoMap(<String, dynamic>{
-        'platform': 'android',
+        'platform': platform,
         'failure_reason': result.failureReason,
         'store_channel': storeChannel,
       }),

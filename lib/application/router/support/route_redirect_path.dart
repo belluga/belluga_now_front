@@ -21,20 +21,18 @@ String buildRedirectPath({
   final normalizedPath = rawPath.isEmpty
       ? '/'
       : rawPath.startsWith('/')
-          ? rawPath
-          : '/$rawPath';
+      ? rawPath
+      : '/$rawPath';
   final normalizedParams = queryParams.isEmpty
       ? null
-      : queryParams.map(
-          (key, value) => MapEntry(key, value?.toString() ?? ''),
-        );
-  return Uri(path: normalizedPath, queryParameters: normalizedParams)
-      .toString();
+      : queryParams.map((key, value) => MapEntry(key, value?.toString() ?? ''));
+  return Uri(
+    path: normalizedPath,
+    queryParameters: normalizedParams,
+  ).toString();
 }
 
-String resolveWebPromotionPath({
-  required String redirectPath,
-}) {
+String resolveWebPromotionPath({required String redirectPath}) {
   final shareCode = resolveWebPromotionShareCode(redirectPath: redirectPath);
   if (shareCode != null) {
     return Uri(
@@ -50,21 +48,15 @@ String resolveWebPromotionPath({
       '/';
 }
 
-String resolveWebPromotionDismissPath({
-  required String redirectPath,
-}) {
+String resolveWebPromotionDismissPath({required String redirectPath}) {
   if (isAuthOwnedPromotionRedirectPath(redirectPath)) {
     return '/';
   }
 
-  return resolveWebPromotionPath(
-    redirectPath: redirectPath,
-  );
+  return resolveWebPromotionPath(redirectPath: redirectPath);
 }
 
-String? resolveWebPromotionShareCode({
-  required String redirectPath,
-}) {
+String? resolveWebPromotionShareCode({required String redirectPath}) {
   final raw = redirectPath.trim();
   if (raw.isEmpty || raw.length > _maxPromotionRedirectPathLength) {
     return null;
@@ -90,17 +82,14 @@ String? resolveWebPromotionShareCode({
   return code;
 }
 
-String buildWebPromotionBoundaryPath({
-  required String redirectPath,
-}) {
+String buildWebPromotionBoundaryPath({required String redirectPath}) {
   final normalizedRedirectPath = redirectPath.trim();
-  final resolvedRedirectPath =
-      normalizedRedirectPath.isEmpty ? '/' : normalizedRedirectPath;
+  final resolvedRedirectPath = normalizedRedirectPath.isEmpty
+      ? '/'
+      : normalizedRedirectPath;
   return Uri(
     path: webPromotionRoutePath,
-    queryParameters: <String, String>{
-      'redirect': resolvedRedirectPath,
-    },
+    queryParameters: <String, String>{'redirect': resolvedRedirectPath},
   ).toString();
 }
 
@@ -139,32 +128,33 @@ Uri? buildTenantPromotionUriFromAppContext({
   final hasRedirectPath =
       normalizedRedirectPath != null && normalizedRedirectPath.isNotEmpty;
   final redirectContextCode = hasRedirectPath
-      ? resolveWebPromotionShareCode(
-          redirectPath: normalizedRedirectPath,
-        )
+      ? resolveWebPromotionShareCode(redirectPath: normalizedRedirectPath)
       : null;
   final trimmedCode = shareCode?.trim();
-  final normalizedShareCode =
-      (trimmedCode == null || trimmedCode.isEmpty) ? null : trimmedCode;
+  final normalizedShareCode = (trimmedCode == null || trimmedCode.isEmpty)
+      ? null
+      : trimmedCode;
   final normalizedCode =
       redirectContextCode ?? (hasRedirectPath ? null : normalizedShareCode);
-  final normalizedPlatformTarget =
-      _normalizePromotionPlatformTarget(platformTarget);
+  final normalizedPlatformTarget = _normalizePromotionPlatformTarget(
+    platformTarget,
+  );
   final targetPath = normalizedCode == null
       ? _resolveAllowedPromotionRedirectPath(
-            redirectPath: normalizedRedirectPath,
-            includeAuthOwnedAppPaths: true,
-          ) ??
-          '/'
+              redirectPath: normalizedRedirectPath,
+              includeAuthOwnedAppPaths: true,
+            ) ??
+            '/'
       : '/invite';
 
-  final resolvedBaseUri = mainDomainUri ??
+  final resolvedBaseUri =
+      mainDomainUri ??
       (GetIt.I.isRegistered<AppDataRepositoryContract>()
           ? GetIt.I
-              .get<AppDataRepositoryContract>()
-              .appData
-              .mainDomainValue
-              .value
+                .get<AppDataRepositoryContract>()
+                .appData
+                .mainDomainValue
+                .value
           : null);
   if (resolvedBaseUri == null || resolvedBaseUri.host.trim().isEmpty) {
     return null;
@@ -179,9 +169,7 @@ Uri? buildTenantPromotionUriFromAppContext({
       'platform_target': normalizedPlatformTarget,
     if (fallbackToPromotionBoundary) 'fallback': 'promotion',
   };
-  return targetUri.replace(
-    queryParameters: query.isEmpty ? null : query,
-  );
+  return targetUri.replace(queryParameters: query.isEmpty ? null : query);
 }
 
 Uri? buildTenantPromotionUriFromCanonicalWebContext({
@@ -202,6 +190,30 @@ Uri? buildTenantPromotionUriFromCanonicalWebContext({
   );
 }
 
+String? buildDeferredResolverPayloadFromPromotionUri(Uri promotionUri) {
+  final targetPath = _resolveDeferredTargetPathFromPromotionUri(promotionUri);
+  if (targetPath == null) {
+    return null;
+  }
+
+  final code = _normalizePromotionQueryValue(
+    promotionUri.queryParameters['code'],
+  );
+  final storeChannel =
+      _normalizePromotionQueryValue(
+        promotionUri.queryParameters['store_channel'],
+      ) ??
+      'web';
+
+  return Uri(
+    queryParameters: <String, String>{
+      'store_channel': storeChannel,
+      'target_path': targetPath,
+      if (code != null) 'code': code,
+    },
+  ).query;
+}
+
 Uri? _resolveCanonicalWebOriginFromAppData() {
   if (!GetIt.I.isRegistered<AppDataRepositoryContract>()) {
     return null;
@@ -209,6 +221,38 @@ Uri? _resolveCanonicalWebOriginFromAppData() {
 
   final appData = GetIt.I.get<AppDataRepositoryContract>().appData;
   return appData.mainDomainValue.value;
+}
+
+String? _resolveDeferredTargetPathFromPromotionUri(Uri promotionUri) {
+  final rawTargetPath = _normalizePromotionQueryValue(
+    promotionUri.queryParameters['path'],
+  );
+  if (rawTargetPath == null) {
+    return null;
+  }
+
+  final normalizedPath = _normalizePath(
+    Uri.tryParse(rawTargetPath)?.path ?? rawTargetPath,
+  );
+  final code = _normalizePromotionQueryValue(
+    promotionUri.queryParameters['code'],
+  );
+  if (normalizedPath == '/invite' || normalizedPath == '/convites') {
+    if (code == null) {
+      return null;
+    }
+
+    return Uri(
+      path: '/invite',
+      queryParameters: <String, String>{'code': code},
+    ).toString();
+  }
+
+  return _resolveAllowedPromotionRedirectPath(
+        redirectPath: rawTargetPath,
+        includeAuthOwnedAppPaths: true,
+      ) ??
+      '/';
 }
 
 String? _resolveAllowedPromotionRedirectPath({
@@ -359,6 +403,14 @@ String _normalizePath(String path) {
   var normalized = raw.startsWith('/') ? raw : '/$raw';
   if (normalized.length > 1 && normalized.endsWith('/')) {
     normalized = normalized.substring(0, normalized.length - 1);
+  }
+  return normalized;
+}
+
+String? _normalizePromotionQueryValue(String? value) {
+  final normalized = value?.trim();
+  if (normalized == null || normalized.isEmpty) {
+    return null;
   }
   return normalized;
 }

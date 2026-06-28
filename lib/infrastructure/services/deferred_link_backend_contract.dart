@@ -3,7 +3,7 @@ import 'package:belluga_now/infrastructure/dal/dto/deferred_link/deferred_link_r
 abstract class DeferredLinkBackendContract {
   Future<DeferredLinkResolutionDto> resolveDeferredLink({
     required String platform,
-    String? installReferrer,
+    String? resolverPayload,
     String? storeChannel,
   });
 }

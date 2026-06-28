@@ -1,19 +1,22 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:belluga_now/infrastructure/services/push/push_answer_resolver.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:push_handler/push_handler.dart';
 
 class PushGatekeeper {
   PushGatekeeper({
     required BuildContext? Function() contextProvider,
     PushAnswerResolver? answerResolver,
-  })  : _contextProvider = contextProvider,
-        _answerResolver = answerResolver;
+    Future<bool> Function()? contactsPermissionChecker,
+  }) : _contextProvider = contextProvider,
+       _answerResolver = answerResolver,
+       _contactsPermissionChecker = contactsPermissionChecker;
 
   final BuildContext? Function() _contextProvider;
   final PushAnswerResolver? _answerResolver;
+  final Future<bool> Function()? _contactsPermissionChecker;
 
   Future<bool> check(StepData step) async {
     final gate = step.gate;
@@ -23,9 +26,10 @@ class PushGatekeeper {
 
     switch (gate.type) {
       case 'notifications_permission':
-        final settings = await FirebaseMessaging.instance.getNotificationSettings();
-        final granted = settings.authorizationStatus ==
-                AuthorizationStatus.authorized ||
+        final settings = await FirebaseMessaging.instance
+            .getNotificationSettings();
+        final granted =
+            settings.authorizationStatus == AuthorizationStatus.authorized ||
             settings.authorizationStatus == AuthorizationStatus.provisional;
         if (!granted) {
           _showToast(gate.onFailToast);
@@ -38,7 +42,8 @@ class PushGatekeeper {
           return false;
         }
         final permission = await Geolocator.checkPermission();
-        final granted = permission == LocationPermission.always ||
+        final granted =
+            permission == LocationPermission.always ||
             permission == LocationPermission.whileInUse;
         if (!granted) {
           _showToast(gate.onFailToast);
@@ -46,8 +51,10 @@ class PushGatekeeper {
         return granted;
       case 'friends_permission':
       case 'contacts_permission':
-        final status = await Permission.contacts.status;
-        final granted = status.isGranted;
+        final contactsPermissionChecker = _contactsPermissionChecker;
+        final granted = contactsPermissionChecker != null
+            ? await contactsPermissionChecker()
+            : await FlutterContacts.permissions.has(PermissionType.read);
         if (!granted) {
           _showToast(gate.onFailToast);
         }
@@ -69,12 +76,11 @@ class PushGatekeeper {
       return;
     }
     final context = _contextProvider();
-    final messenger = context != null ? ScaffoldMessenger.maybeOf(context) : null;
+    final messenger = context != null
+        ? ScaffoldMessenger.maybeOf(context)
+        : null;
     messenger?.showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-      ),
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
     );
   }
 
@@ -85,7 +91,11 @@ class PushGatekeeper {
     }
     final stored = await resolver.resolve(step);
     final value = stored?.value;
-    final count = value is List ? value.length : value == null ? 0 : 1;
+    final count = value is List
+        ? value.length
+        : value == null
+        ? 0
+        : 1;
     final minSelected = step.config?.minSelected ?? 1;
     return count >= minSelected;
   }
