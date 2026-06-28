@@ -9,7 +9,6 @@ import 'package:belluga_now/infrastructure/dal/dao/contacts/contacts_local_cache
 import 'package:belluga_now/infrastructure/dal/dao/contacts/contacts_local_cache_contract.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class ContactsRepository implements ContactsRepositoryContract {
@@ -17,17 +16,18 @@ class ContactsRepository implements ContactsRepositoryContract {
     Future<bool> Function()? permissionRequester,
     Future<List<ContactModel>> Function()? deviceContactsLoader,
     ContactsLocalCacheContract? localCache,
-  })  : _permissionRequester = permissionRequester,
-        _deviceContactsLoader = deviceContactsLoader,
-        _localCache = localCache ?? ContactsLocalCache();
+  }) : _permissionRequester = permissionRequester,
+       _deviceContactsLoader = deviceContactsLoader,
+       _localCache = localCache ?? ContactsLocalCache();
 
   final Future<bool> Function()? _permissionRequester;
   final Future<List<ContactModel>> Function()? _deviceContactsLoader;
   final ContactsLocalCacheContract _localCache;
 
   @override
-  final contactsStreamValue =
-      StreamValue<List<ContactModel>?>(defaultValue: null);
+  final contactsStreamValue = StreamValue<List<ContactModel>?>(
+    defaultValue: null,
+  );
 
   @override
   Future<bool> requestPermission() async {
@@ -41,8 +41,10 @@ class ContactsRepository implements ContactsRepositoryContract {
     }
 
     try {
-      final status = await Permission.contacts.request();
-      return status.isGranted;
+      final status = await FlutterContacts.permissions.request(
+        PermissionType.read,
+      );
+      return _isContactsPermissionGranted(status);
     } catch (error, stackTrace) {
       Error.throwWithStackTrace(
         StateError('Failed to request contacts permission: $error'),
@@ -58,32 +60,34 @@ class ContactsRepository implements ContactsRepositoryContract {
       return deviceContactsLoader();
     }
 
-    if (kIsWeb) {
-      return const [];
-    }
-
     try {
-      if (!await FlutterContacts.requestPermission(readonly: true)) {
+      if (!await requestPermission()) {
         return const [];
       }
 
-      final contacts = await FlutterContacts.getContacts(
-        withProperties: true,
-        withPhoto: false,
+      final contacts = await FlutterContacts.getAll(
+        properties: const <ContactProperty>{
+          ContactProperty.phone,
+          ContactProperty.email,
+        },
       );
 
       return contacts
-          .map((c) => ContactModel(
-                idValue: ContactIdValue(c.id),
-                displayNameValue: ContactDisplayNameValue(c.displayName),
-                phoneValues: c.phones
-                    .map((phone) => ContactPhoneValue(raw: phone.number))
-                    .toList(growable: false),
-                emailValues: c.emails
-                    .map((email) => ContactEmailValue(raw: email.address))
-                    .toList(growable: false),
-                avatarValue: ContactAvatarBytesValue(c.photo),
-              ))
+          .map(
+            (c) => ContactModel(
+              idValue: ContactIdValue(c.id ?? ''),
+              displayNameValue: ContactDisplayNameValue(c.displayName ?? ''),
+              phoneValues: c.phones
+                  .map((phone) => ContactPhoneValue(raw: phone.number))
+                  .toList(growable: false),
+              emailValues: c.emails
+                  .map((email) => ContactEmailValue(raw: email.address))
+                  .toList(growable: false),
+              avatarValue: ContactAvatarBytesValue(
+                c.photo?.thumbnail ?? c.photo?.fullSize,
+              ),
+            ),
+          )
           .toList(growable: false);
     } catch (error, stackTrace) {
       Error.throwWithStackTrace(
@@ -91,6 +95,11 @@ class ContactsRepository implements ContactsRepositoryContract {
         stackTrace,
       );
     }
+  }
+
+  static bool _isContactsPermissionGranted(PermissionStatus status) {
+    return status == PermissionStatus.granted ||
+        status == PermissionStatus.limited;
   }
 
   @override
