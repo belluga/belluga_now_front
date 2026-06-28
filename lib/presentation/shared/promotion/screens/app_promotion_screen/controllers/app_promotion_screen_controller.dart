@@ -121,7 +121,11 @@ class AppPromotionScreenController implements Disposable {
     if (platform == AppPromotionStorePlatform.ios) {
       await _seedIosDeferredPayloadIfPossible(uri);
     }
-    await _telemetryTracker(platform.platformTarget);
+    try {
+      await _telemetryTracker(platform.platformTarget);
+    } catch (_) {
+      // expected_control_flow: telemetry failure must not block store handoff.
+    }
     if (!await _uriSupportChecker(uri)) {
       return;
     }

@@ -45,6 +45,7 @@ import UIKit
       return
     }
 
+    UIPasteboard.general.string = nil
     result([
       "resolver_payload": payload
     ])

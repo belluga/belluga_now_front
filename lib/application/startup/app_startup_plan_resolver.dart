@@ -10,6 +10,7 @@ import 'package:belluga_now/domain/repositories/invites_repository_contract.dart
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 
 final class AppStartupPlanResolver {
@@ -84,7 +85,16 @@ final class AppStartupPlanResolver {
       return null;
     }
 
-    final result = await deferred.captureFirstOpenInviteCode();
+    DeferredLinkCaptureResult result;
+    try {
+      result = await deferred.captureFirstOpenInviteCode();
+    } catch (error, stackTrace) {
+      debugPrint(
+        'AppStartupPlanResolver deferred invite capture failed; '
+        'continuing without deferred override: $error\n$stackTrace',
+      );
+      return null;
+    }
     final platform = result.platform ?? 'unknown';
     if (result.isCaptured) {
       final storeChannel = result.storeChannel ?? 'unknown';

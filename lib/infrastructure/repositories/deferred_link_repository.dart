@@ -103,6 +103,9 @@ class DeferredLinkRepository implements DeferredLinkRepositoryContract {
         );
       }
 
+      // Android install referrer is intentionally one-shot per install. We mark
+      // the attempt before the native read so relaunches cannot keep replaying
+      // a mutable referrer surface after the first bootstrap pass begins.
       await _writeLocalStateBestEffort(_captureAttemptedKey, '1');
     }
 

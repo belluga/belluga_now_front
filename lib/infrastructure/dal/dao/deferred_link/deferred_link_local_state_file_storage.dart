@@ -39,9 +39,6 @@ class DeferredLinkLocalStateFileStorage
     final file = await _resolveFile(key);
     final temporaryFile = File('${file.path}.tmp');
     await temporaryFile.writeAsString(value, flush: true);
-    if (await file.exists()) {
-      await file.delete();
-    }
     await temporaryFile.rename(file.path);
   }
 

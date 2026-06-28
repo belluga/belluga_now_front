@@ -114,6 +114,38 @@ void main() {
     expect(launchedUris, hasLength(1));
     expect(seeded, isFalse);
   });
+
+  test('launchPromotionUri still launches when telemetry throws', () async {
+    final launchedUris = <Uri>[];
+    final controller = AppPromotionScreenController(
+      appDataRepository: _FakeAppDataRepository(
+        publicationSettings: _publicationSettings(
+          androidEnabled: true,
+          iosEnabled: true,
+        ),
+      ),
+      preferredStorePlatformResolver: () => AppPromotionStorePlatform.ios,
+      telemetryTracker: (platformTarget) async {
+        throw StateError('telemetry unavailable');
+      },
+      iosDeferredPayloadSeeder: (payload) async => true,
+      uriSupportChecker: (uri) async => true,
+      uriLauncher: (uri) async {
+        launchedUris.add(uri);
+        return true;
+      },
+    );
+
+    await controller.launchPromotionUri(
+      uri: Uri.parse(
+        'https://tenant.example/open-app'
+        '?path=%2Finvite&code=ABCD1234&store_channel=web&platform_target=ios',
+      ),
+      platform: AppPromotionStorePlatform.ios,
+    );
+
+    expect(launchedUris, hasLength(1));
+  });
 }
 
 AppPublicationSettings _publicationSettings({

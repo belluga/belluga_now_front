@@ -13,7 +13,6 @@ import 'package:belluga_now/domain/repositories/deferred_link_repository_contrac
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
-import 'package:belluga_now/domain/repositories/value_objects/deferred_link_repository_contract_values.dart';
 import 'package:belluga_now/infrastructure/services/telemetry/telemetry_properties_codec.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
@@ -83,6 +82,28 @@ void main() {
         telemetry.loggedEvents.single.properties?['store_channel'],
         'web_gate',
       );
+    },
+  );
+
+  test(
+    'resolvePlan ignores deferred capture exceptions and keeps tenant startup on the public surface',
+    () async {
+      final authRepository = _FakeAuthRepository();
+      final resolver = AppStartupPlanResolver(
+        authRepository: authRepository,
+        invitesRepository: _FakeInvitesRepository(),
+        appDataRepository: _FakeAppDataRepository(_buildTenantAppData()),
+        deferredLinkRepository: const _ThrowingDeferredLinkRepository(),
+        telemetryRepository: null,
+      );
+
+      final plan = await resolver.resolvePlan();
+
+      expect(plan.hasOverride, isFalse);
+      expect(plan.path, isNull);
+      expect(plan.routes, isEmpty);
+      expect(plan.toDeepLink(), isNull);
+      expect(authRepository.initCallCount, 1);
     },
   );
 }
@@ -290,6 +311,16 @@ class _FakeDeferredLinkRepository implements DeferredLinkRepositoryContract {
   @override
   Future<DeferredLinkCaptureResult> captureFirstOpenInviteCode() async =>
       result;
+}
+
+class _ThrowingDeferredLinkRepository
+    implements DeferredLinkRepositoryContract {
+  const _ThrowingDeferredLinkRepository();
+
+  @override
+  Future<DeferredLinkCaptureResult> captureFirstOpenInviteCode() async {
+    throw StateError('deferred link storage failed');
+  }
 }
 
 AppData _buildTenantAppData() {
