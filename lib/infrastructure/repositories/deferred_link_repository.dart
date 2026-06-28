@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:belluga_now/domain/repositories/deferred_link_repository_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/deferred_link/deferred_link_local_state.dart';
+import 'package:belluga_now/infrastructure/dal/dao/deferred_link/deferred_link_local_state_storage_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/deferred_links_backend/laravel_deferred_link_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dto/deferred_link/deferred_link_resolution_dto.dart';
 import 'package:belluga_now/infrastructure/services/deferred_link_backend_contract.dart';
@@ -16,10 +18,17 @@ class DeferredLinkRepository implements DeferredLinkRepositoryContract {
   DeferredLinkRepository({
     MethodChannel? channel,
     FlutterSecureStorage? storage,
+    DeferredLinkLocalStateStorageContract? localStateStorage,
+    List<Duration>? iosRetryDelays,
     String Function()? platformResolver,
     DeferredLinkBackendContract? backend,
     DeferredLinkNativeSourceContract? nativeSource,
-  }) : _storage = storage ?? const FlutterSecureStorage(),
+  }) : _localStateStorage =
+           localStateStorage ??
+           DeferredLinkLocalStateStorage(legacyStorage: storage),
+       _iosRetryDelays = List<Duration>.unmodifiable(
+         iosRetryDelays ?? _defaultIosRetryDelays,
+       ),
        _platformResolver =
            platformResolver ??
            (() {
@@ -47,11 +56,13 @@ class DeferredLinkRepository implements DeferredLinkRepositoryContract {
       'deferred_link_consumed_referrer_hash';
   static const String _iosCaptureFinalizedKey =
       'deferred_link_ios_capture_finalized';
-  static const String _iosTransientAttemptCountKey =
-      'deferred_link_ios_transient_attempt_count';
-  static const int _iosMaxTransientAttempts = 3;
+  static const List<Duration> _defaultIosRetryDelays = <Duration>[
+    Duration(milliseconds: 250),
+    Duration(milliseconds: 500),
+  ];
 
-  final FlutterSecureStorage _storage;
+  final DeferredLinkLocalStateStorageContract _localStateStorage;
+  final List<Duration> _iosRetryDelays;
   final String Function() _platformResolver;
   final DeferredLinkBackendContract _backend;
   final DeferredLinkNativeSourceContract _nativeSource;
@@ -70,7 +81,9 @@ class DeferredLinkRepository implements DeferredLinkRepositoryContract {
 
     final isIosPlatform = supportedPlatform == 'ios';
     if (isIosPlatform) {
-      final finalized = await _readStorageBestEffort(_iosCaptureFinalizedKey);
+      final finalized = await _readLocalStateBestEffort(
+        _iosCaptureFinalizedKey,
+      );
       if (finalized == '1') {
         return DeferredLinkCaptureResult(
           status: DeferredLinkCaptureStatus.skipped,
@@ -81,7 +94,7 @@ class DeferredLinkRepository implements DeferredLinkRepositoryContract {
     }
 
     if (!isIosPlatform) {
-      final attempted = await _readStorageBestEffort(_captureAttemptedKey);
+      final attempted = await _readLocalStateBestEffort(_captureAttemptedKey);
       if (attempted == '1') {
         return DeferredLinkCaptureResult(
           status: DeferredLinkCaptureStatus.skipped,
@@ -90,33 +103,72 @@ class DeferredLinkRepository implements DeferredLinkRepositoryContract {
         );
       }
 
-      await _writeStorageBestEffort(_captureAttemptedKey, '1');
+      await _writeLocalStateBestEffort(_captureAttemptedKey, '1');
     }
 
-    final payload = await _nativeSource.readDeferredPayload(
+    if (isIosPlatform) {
+      final result = await _captureIosWithinCall(platform: supportedPlatform);
+      await _markIosCaptureFinalized();
+      return result;
+    }
+
+    final attempt = await _captureOnce(
       platform: supportedPlatform,
+      allowIosRetry: false,
     );
+    return attempt.result;
+  }
+
+  Future<String?> _readLocalStateBestEffort(String key) async {
+    String? value;
+    try {
+      value = await _localStateStorage.read(key);
+    } catch (error, stackTrace) {
+      debugPrint(
+        'DeferredLinkRepository local-state read failed for $key: '
+        '$error\n$stackTrace',
+      );
+    }
+    return value;
+  }
+
+  Future<void> _writeLocalStateBestEffort(String key, String value) async {
+    try {
+      await _localStateStorage.write(key, value);
+    } catch (error, stackTrace) {
+      debugPrint(
+        'DeferredLinkRepository local-state write failed for $key: '
+        '$error\n$stackTrace',
+      );
+    }
+  }
+
+  Future<_DeferredLinkCaptureAttempt> _captureOnce({
+    required String platform,
+    required bool allowIosRetry,
+  }) async {
+    final payload = await _nativeSource.readDeferredPayload(platform: platform);
     final resolverPayload = _normalizeText(payload?.resolverPayload);
     final fallbackStoreChannel = _normalizeText(payload?.storeChannel);
 
     if (resolverPayload == null && fallbackStoreChannel == null) {
-      final result = DeferredLinkCaptureResult(
-        status: DeferredLinkCaptureStatus.notCaptured,
-        platformValue: deferredLinkPlatform(supportedPlatform),
-        failureReasonValue: deferredLinkFailureReason('referrer_unavailable'),
+      return _DeferredLinkCaptureAttempt(
+        result: DeferredLinkCaptureResult(
+          status: DeferredLinkCaptureStatus.notCaptured,
+          platformValue: deferredLinkPlatform(platform),
+          failureReasonValue: deferredLinkFailureReason('referrer_unavailable'),
+        ),
+        shouldRetry:
+            allowIosRetry &&
+            _isIosRetryableFailure(
+              failureReason: 'referrer_unavailable',
+              hasResolverPayload: false,
+            ),
       );
-      if (isIosPlatform) {
-        return _finalizeIosResult(
-          result: result,
-          failureReason: 'referrer_unavailable',
-          hasResolverPayload: false,
-        );
-      }
-      return result;
     }
 
     final resolverData = await _resolveWithBackend(
-      platform: supportedPlatform,
+      platform: platform,
       resolverPayload: resolverPayload,
       fallbackStoreChannel: fallbackStoreChannel,
     );
@@ -138,119 +190,83 @@ class DeferredLinkRepository implements DeferredLinkRepositoryContract {
     if (status == 'captured' && targetPath != null) {
       if (resolverPayload != null) {
         final hash = sha256.convert(utf8.encode(resolverPayload)).toString();
-        final consumedHash = await _readStorageBestEffort(
+        final consumedHash = await _readLocalStateBestEffort(
           _consumedReferrerHashKey,
         );
         if (consumedHash == hash) {
-          final result = DeferredLinkCaptureResult(
-            status: DeferredLinkCaptureStatus.notCaptured,
-            platformValue: deferredLinkPlatform(supportedPlatform),
-            storeChannelValue: storeChannel == null
-                ? null
-                : deferredLinkStoreChannel(storeChannel),
-            failureReasonValue: deferredLinkFailureReason(
-              'referrer_already_consumed',
+          return _DeferredLinkCaptureAttempt(
+            result: DeferredLinkCaptureResult(
+              status: DeferredLinkCaptureStatus.notCaptured,
+              platformValue: deferredLinkPlatform(platform),
+              storeChannelValue: storeChannel == null
+                  ? null
+                  : deferredLinkStoreChannel(storeChannel),
+              failureReasonValue: deferredLinkFailureReason(
+                'referrer_already_consumed',
+              ),
             ),
           );
-          if (isIosPlatform) {
-            return _finalizeIosResult(
-              result: result,
-              failureReason: 'referrer_already_consumed',
-              hasResolverPayload: true,
-            );
-          }
-          return result;
         }
 
-        await _writeStorageBestEffort(_consumedReferrerHashKey, hash);
+        await _writeLocalStateBestEffort(_consumedReferrerHashKey, hash);
       }
 
-      final result = DeferredLinkCaptureResult(
-        status: DeferredLinkCaptureStatus.captured,
-        platformValue: deferredLinkPlatform(supportedPlatform),
-        codeValue: code == null ? null : deferredLinkCode(code),
-        targetPathValue: deferredLinkTargetPath(targetPath),
+      return _DeferredLinkCaptureAttempt(
+        result: DeferredLinkCaptureResult(
+          status: DeferredLinkCaptureStatus.captured,
+          platformValue: deferredLinkPlatform(platform),
+          codeValue: code == null ? null : deferredLinkCode(code),
+          targetPathValue: deferredLinkTargetPath(targetPath),
+          storeChannelValue: storeChannel == null
+              ? null
+              : deferredLinkStoreChannel(storeChannel),
+        ),
+      );
+    }
+
+    final resolvedFailureReason = failureReason ?? 'resolver_not_captured';
+    return _DeferredLinkCaptureAttempt(
+      result: DeferredLinkCaptureResult(
+        status: DeferredLinkCaptureStatus.notCaptured,
+        platformValue: deferredLinkPlatform(platform),
         storeChannelValue: storeChannel == null
             ? null
             : deferredLinkStoreChannel(storeChannel),
-      );
-      if (isIosPlatform) {
-        await _markIosCaptureFinalized();
-      }
-      return result;
-    }
-
-    final result = DeferredLinkCaptureResult(
-      status: DeferredLinkCaptureStatus.notCaptured,
-      platformValue: deferredLinkPlatform(supportedPlatform),
-      storeChannelValue: storeChannel == null
-          ? null
-          : deferredLinkStoreChannel(storeChannel),
-      failureReasonValue: deferredLinkFailureReason(
-        failureReason ?? 'resolver_not_captured',
+        failureReasonValue: deferredLinkFailureReason(resolvedFailureReason),
       ),
+      shouldRetry:
+          allowIosRetry &&
+          _isIosRetryableFailure(
+            failureReason: resolvedFailureReason,
+            hasResolverPayload: resolverPayload != null,
+          ),
     );
-    if (isIosPlatform) {
-      return _finalizeIosResult(
-        result: result,
-        failureReason: failureReason ?? 'resolver_not_captured',
-        hasResolverPayload: resolverPayload != null,
-      );
-    }
-    return result;
   }
 
-  Future<String?> _readStorageBestEffort(String key) async {
-    String? value;
-    try {
-      value = await _storage.read(key: key);
-    } catch (error, stackTrace) {
-      debugPrint(
-        'DeferredLinkRepository storage read failed for $key: '
-        '$error\n$stackTrace',
-      );
+  Future<DeferredLinkCaptureResult> _captureIosWithinCall({
+    required String platform,
+  }) async {
+    _DeferredLinkCaptureAttempt? lastAttempt;
+    final attempts = 1 + _iosRetryDelays.length;
+    for (var attemptIndex = 0; attemptIndex < attempts; attemptIndex += 1) {
+      lastAttempt = await _captureOnce(platform: platform, allowIosRetry: true);
+      if (!lastAttempt.shouldRetry) {
+        return lastAttempt.result;
+      }
+      if (attemptIndex >= _iosRetryDelays.length) {
+        break;
+      }
+      final delay = _iosRetryDelays[attemptIndex];
+      if (delay > Duration.zero) {
+        await Future<void>.delayed(delay);
+      }
     }
-    return value;
-  }
 
-  Future<void> _writeStorageBestEffort(String key, String value) async {
-    try {
-      await _storage.write(key: key, value: value);
-    } catch (error, stackTrace) {
-      debugPrint(
-        'DeferredLinkRepository storage write failed for $key: '
-        '$error\n$stackTrace',
-      );
-    }
-  }
-
-  Future<void> _deleteStorageBestEffort(String key) async {
-    try {
-      await _storage.delete(key: key);
-    } catch (error, stackTrace) {
-      debugPrint(
-        'DeferredLinkRepository storage delete failed for $key: '
-        '$error\n$stackTrace',
-      );
-    }
-  }
-
-  Future<int> _incrementIosTransientAttemptCount() async {
-    final currentRaw = await _readStorageBestEffort(
-      _iosTransientAttemptCountKey,
-    );
-    final currentCount = int.tryParse(currentRaw ?? '') ?? 0;
-    final nextCount = currentCount + 1;
-    await _writeStorageBestEffort(
-      _iosTransientAttemptCountKey,
-      nextCount.toString(),
-    );
-    return nextCount;
+    return lastAttempt!.result;
   }
 
   Future<void> _markIosCaptureFinalized() async {
-    await _writeStorageBestEffort(_iosCaptureFinalizedKey, '1');
-    await _deleteStorageBestEffort(_iosTransientAttemptCountKey);
+    await _writeLocalStateBestEffort(_iosCaptureFinalizedKey, '1');
   }
 
   bool _isIosRetryableFailure({
@@ -264,25 +280,6 @@ class DeferredLinkRepository implements DeferredLinkRepositoryContract {
       return true;
     }
     return false;
-  }
-
-  Future<DeferredLinkCaptureResult> _finalizeIosResult({
-    required DeferredLinkCaptureResult result,
-    required String failureReason,
-    required bool hasResolverPayload,
-  }) async {
-    if (_isIosRetryableFailure(
-      failureReason: failureReason,
-      hasResolverPayload: hasResolverPayload,
-    )) {
-      final attemptCount = await _incrementIosTransientAttemptCount();
-      if (attemptCount < _iosMaxTransientAttempts) {
-        return result;
-      }
-    }
-
-    await _markIosCaptureFinalized();
-    return result;
   }
 
   Future<DeferredLinkResolutionDto> _resolveWithBackend({
@@ -334,4 +331,14 @@ class DeferredLinkRepository implements DeferredLinkRepositoryContract {
     }
     return uri.toString();
   }
+}
+
+class _DeferredLinkCaptureAttempt {
+  const _DeferredLinkCaptureAttempt({
+    required this.result,
+    this.shouldRetry = false,
+  });
+
+  final DeferredLinkCaptureResult result;
+  final bool shouldRetry;
 }

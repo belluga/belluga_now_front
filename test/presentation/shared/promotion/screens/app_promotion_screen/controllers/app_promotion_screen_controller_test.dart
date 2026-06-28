@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/app_publication_settings.dart';
 import 'package:belluga_now/domain/app_data/value_object/app_publication_store_url_value.dart';
@@ -14,43 +16,70 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 void main() {
-  test('launchPromotionUri seeds iOS deferred payload before launch', () async {
-    final launchedUris = <Uri>[];
-    String? seededPayload;
-    final controller = AppPromotionScreenController(
-      appDataRepository: _FakeAppDataRepository(
-        publicationSettings: _publicationSettings(
-          androidEnabled: true,
-          iosEnabled: true,
+  test(
+    'launchPromotionUri seeds iOS deferred payload before async telemetry and capability checks',
+    () async {
+      final steps = <String>[];
+      final telemetryCompleter = Completer<void>();
+      final supportCompleter = Completer<bool>();
+      final launchedUris = <Uri>[];
+      String? seededPayload;
+      final controller = AppPromotionScreenController(
+        appDataRepository: _FakeAppDataRepository(
+          publicationSettings: _publicationSettings(
+            androidEnabled: true,
+            iosEnabled: true,
+          ),
         ),
-      ),
-      preferredStorePlatformResolver: () => AppPromotionStorePlatform.ios,
-      iosDeferredPayloadSeeder: (payload) async {
-        seededPayload = payload;
-        return true;
-      },
-      uriSupportChecker: (uri) async => true,
-      uriLauncher: (uri) async {
-        launchedUris.add(uri);
-        return true;
-      },
-    );
+        preferredStorePlatformResolver: () => AppPromotionStorePlatform.ios,
+        telemetryTracker: (platformTarget) async {
+          steps.add('telemetry');
+          await telemetryCompleter.future;
+        },
+        iosDeferredPayloadSeeder: (payload) async {
+          steps.add('seed');
+          seededPayload = payload;
+          return true;
+        },
+        uriSupportChecker: (uri) async {
+          steps.add('support');
+          return supportCompleter.future;
+        },
+        uriLauncher: (uri) async {
+          steps.add('launch');
+          launchedUris.add(uri);
+          return true;
+        },
+      );
 
-    await controller.launchPromotionUri(
-      uri: Uri.parse(
-        'https://tenant.example/open-app'
-        '?path=%2Finvite&code=ABCD1234&store_channel=web&platform_target=ios',
-      ),
-      platform: AppPromotionStorePlatform.ios,
-    );
+      final launchFuture = controller.launchPromotionUri(
+        uri: Uri.parse(
+          'https://tenant.example/open-app'
+          '?path=%2Finvite&code=ABCD1234&store_channel=web&platform_target=ios',
+        ),
+        platform: AppPromotionStorePlatform.ios,
+      );
+      await Future<void>.delayed(Duration.zero);
 
-    expect(launchedUris, hasLength(1));
-    expect(seededPayload, isNotNull);
-    final query = Uri.splitQueryString(seededPayload!);
-    expect(query['store_channel'], 'web');
-    expect(query['code'], 'ABCD1234');
-    expect(query['target_path'], '/invite?code=ABCD1234');
-  });
+      expect(steps, <String>['seed', 'telemetry']);
+      expect(seededPayload, isNotNull);
+      final query = Uri.splitQueryString(seededPayload!);
+      expect(query['store_channel'], 'web');
+      expect(query['code'], 'ABCD1234');
+      expect(query['target_path'], '/invite?code=ABCD1234');
+
+      telemetryCompleter.complete();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(steps, <String>['seed', 'telemetry', 'support']);
+
+      supportCompleter.complete(true);
+      await launchFuture;
+
+      expect(steps, <String>['seed', 'telemetry', 'support', 'launch']);
+      expect(launchedUris, hasLength(1));
+    },
+  );
 
   test('launchPromotionUri does not seed clipboard for android', () async {
     var seeded = false;
@@ -173,13 +202,13 @@ class _FakeAppData extends Fake implements AppData {
       _mainIconDarkUrl = IconUrlValue(
         defaultValue: Uri.parse('https://tenant.example/icon-dark.png'),
       ),
-      _publicationSettings = publicationSettings;
+      _settings = publicationSettings;
 
   final DomainValue _mainDomainValue;
   final EnvironmentNameValue _nameValue;
   final IconUrlValue _mainIconLightUrl;
   final IconUrlValue _mainIconDarkUrl;
-  final AppPublicationSettings _publicationSettings;
+  final AppPublicationSettings _settings;
 
   @override
   DomainValue get mainDomainValue => _mainDomainValue;
@@ -194,5 +223,5 @@ class _FakeAppData extends Fake implements AppData {
   IconUrlValue get mainIconDarkUrl => _mainIconDarkUrl;
 
   @override
-  AppPublicationSettings get publicationSettings => _publicationSettings;
+  AppPublicationSettings get publicationSettings => _settings;
 }

@@ -17,6 +17,8 @@ import 'package:url_launcher/url_launcher.dart';
 typedef AppPromotionStorePlatformResolver =
     AppPromotionStorePlatform? Function();
 typedef AppPromotionExperienceResolver = AppPromotionExperience Function();
+typedef AppPromotionTelemetryTracker =
+    Future<void> Function(String platformTarget);
 typedef AppPromotionIosDeferredPayloadSeeder =
     Future<bool> Function(String payload);
 typedef AppPromotionUriSupportChecker = Future<bool> Function(Uri uri);
@@ -27,6 +29,7 @@ class AppPromotionScreenController implements Disposable {
     AppDataRepositoryContract? appDataRepository,
     AppPromotionStorePlatformResolver? preferredStorePlatformResolver,
     AppPromotionExperienceResolver? experienceResolver,
+    AppPromotionTelemetryTracker? telemetryTracker,
     AppPromotionIosDeferredPayloadSeeder? iosDeferredPayloadSeeder,
     AppPromotionUriSupportChecker? uriSupportChecker,
     AppPromotionUriLauncher? uriLauncher,
@@ -35,6 +38,7 @@ class AppPromotionScreenController implements Disposable {
        _preferredStorePlatformResolver =
            preferredStorePlatformResolver ??
            web_store_platform.resolvePreferredWebPromotionStorePlatform,
+       _telemetryTracker = telemetryTracker ?? _trackOpenAppClick,
        _iosDeferredPayloadSeeder =
            iosDeferredPayloadSeeder ??
            ios_deferred_payload_seeder.seedIosDeferredPayloadToClipboard,
@@ -45,6 +49,7 @@ class AppPromotionScreenController implements Disposable {
 
   final AppDataRepositoryContract _appDataRepository;
   final AppPromotionStorePlatformResolver _preferredStorePlatformResolver;
+  final AppPromotionTelemetryTracker _telemetryTracker;
   final AppPromotionIosDeferredPayloadSeeder _iosDeferredPayloadSeeder;
   final AppPromotionUriSupportChecker _uriSupportChecker;
   final AppPromotionUriLauncher _uriLauncher;
@@ -113,14 +118,12 @@ class AppPromotionScreenController implements Disposable {
     required Uri uri,
     required AppPromotionStorePlatform platform,
   }) async {
-    await WebPromotionTelemetry.trackOpenAppClick(
-      platformTarget: platform.platformTarget,
-    );
-    if (!await _uriSupportChecker(uri)) {
-      return;
-    }
     if (platform == AppPromotionStorePlatform.ios) {
       await _seedIosDeferredPayloadIfPossible(uri);
+    }
+    await _telemetryTracker(platform.platformTarget);
+    if (!await _uriSupportChecker(uri)) {
+      return;
     }
     await _uriLauncher(uri);
   }
@@ -161,4 +164,10 @@ AppPromotionExperience _resolveHardcodedPromotionExperience() {
 
 Future<bool> _launchExternalApplication(Uri uri) {
   return launchUrl(uri, mode: LaunchMode.externalApplication);
+}
+
+Future<void> _trackOpenAppClick(String platformTarget) {
+  return WebPromotionTelemetry.trackOpenAppClick(
+    platformTarget: platformTarget,
+  );
 }

@@ -1,7 +1,14 @@
+import 'dart:convert';
+
 import 'package:belluga_now/domain/repositories/deferred_link_repository_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/deferred_link/deferred_link_local_state.dart';
+import 'package:belluga_now/infrastructure/dal/dao/deferred_link/deferred_link_local_state_storage_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/deferred_link_repository.dart';
 import 'package:belluga_now/infrastructure/dal/dto/deferred_link/deferred_link_resolution_dto.dart';
 import 'package:belluga_now/infrastructure/services/deferred_link_backend_contract.dart';
+import 'package:belluga_now/infrastructure/services/deferred_link_native_payload.dart';
+import 'package:belluga_now/infrastructure/services/deferred_link_native_source_contract.dart';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -43,6 +50,7 @@ void main() {
       channel: channel,
       platformResolver: () => 'android',
       backend: backend,
+      localStateStorage: _InMemoryDeferredLinkLocalStateStorage(),
     );
 
     final result = await repository.captureFirstOpenInviteCode();
@@ -80,6 +88,7 @@ void main() {
         channel: channel,
         platformResolver: () => 'android',
         backend: backend,
+        localStateStorage: _InMemoryDeferredLinkLocalStateStorage(),
       );
 
       final result = await repository.captureFirstOpenInviteCode();
@@ -112,6 +121,7 @@ void main() {
         channel: channel,
         platformResolver: () => 'android',
         backend: backend,
+        localStateStorage: _InMemoryDeferredLinkLocalStateStorage(),
       );
 
       final result = await repository.captureFirstOpenInviteCode();
@@ -140,6 +150,7 @@ void main() {
         channel: channel,
         platformResolver: () => 'android',
         backend: backend,
+        localStateStorage: _InMemoryDeferredLinkLocalStateStorage(),
       );
 
       final result = await repository.captureFirstOpenInviteCode();
@@ -151,34 +162,12 @@ void main() {
     },
   );
 
-  test('skips Android capture when already attempted', () async {
-    FlutterSecureStorage.setMockInitialValues(<String, String>{
-      'deferred_link_capture_attempted': '1',
-    });
-
-    final backend = _FakeDeferredLinkBackend(
-      response: const DeferredLinkResolutionDto(status: 'not_captured'),
-    );
-
-    final repository = DeferredLinkRepository(
-      channel: channel,
-      platformResolver: () => 'android',
-      backend: backend,
-    );
-
-    final result = await repository.captureFirstOpenInviteCode();
-
-    expect(result.status, DeferredLinkCaptureStatus.skipped);
-    expect(result.failureReason, 'already_attempted');
-    expect(result.platform, 'android');
-    expect(backend.callCount, 0);
-  });
-
   test(
-    'retries iOS when deferred payload is temporarily unavailable before finalizing',
+    'skips Android capture when install-scoped state already attempted',
     () async {
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(channel, (call) async => null);
+      final localStateStorage = _InMemoryDeferredLinkLocalStateStorage(
+        <String, String>{'deferred_link_capture_attempted': '1'},
+      );
 
       final backend = _FakeDeferredLinkBackend(
         response: const DeferredLinkResolutionDto(status: 'not_captured'),
@@ -186,28 +175,67 @@ void main() {
 
       final repository = DeferredLinkRepository(
         channel: channel,
-        platformResolver: () => 'ios',
+        platformResolver: () => 'android',
         backend: backend,
+        localStateStorage: localStateStorage,
       );
 
-      final firstResult = await repository.captureFirstOpenInviteCode();
-      final secondResult = await repository.captureFirstOpenInviteCode();
-      final thirdResult = await repository.captureFirstOpenInviteCode();
-      final fourthResult = await repository.captureFirstOpenInviteCode();
+      final result = await repository.captureFirstOpenInviteCode();
 
-      expect(firstResult.status, DeferredLinkCaptureStatus.notCaptured);
-      expect(firstResult.failureReason, 'referrer_unavailable');
-      expect(secondResult.status, DeferredLinkCaptureStatus.notCaptured);
-      expect(secondResult.failureReason, 'referrer_unavailable');
-      expect(thirdResult.status, DeferredLinkCaptureStatus.notCaptured);
-      expect(thirdResult.failureReason, 'referrer_unavailable');
-      expect(fourthResult.status, DeferredLinkCaptureStatus.skipped);
-      expect(fourthResult.failureReason, 'already_attempted');
+      expect(result.status, DeferredLinkCaptureStatus.skipped);
+      expect(result.failureReason, 'already_attempted');
+      expect(result.platform, 'android');
       expect(backend.callCount, 0);
     },
   );
 
-  test('continues capture when storage markers are unavailable', () async {
+  test(
+    'retries iOS deferred payload reads inside the same call before finalizing',
+    () async {
+      final backend = _FakeDeferredLinkBackend(
+        response: const DeferredLinkResolutionDto(
+          status: 'captured',
+          targetPath: '/profile',
+          storeChannel: 'web_gate',
+        ),
+      );
+      final nativeSource = _SequenceDeferredLinkNativeSource(
+        responses: <DeferredLinkNativePayload?>[
+          null,
+          null,
+          const DeferredLinkNativePayload(
+            resolverPayload: 'target_path=%2Fprofile&store_channel=web_gate',
+            storeChannel: 'web_gate',
+          ),
+        ],
+      );
+      final localStateStorage = _InMemoryDeferredLinkLocalStateStorage();
+
+      final repository = DeferredLinkRepository(
+        platformResolver: () => 'ios',
+        backend: backend,
+        iosRetryDelays: const <Duration>[Duration.zero, Duration.zero],
+        nativeSource: nativeSource,
+        localStateStorage: localStateStorage,
+      );
+
+      final firstResult = await repository.captureFirstOpenInviteCode();
+      final secondResult = await repository.captureFirstOpenInviteCode();
+
+      expect(firstResult.status, DeferredLinkCaptureStatus.captured);
+      expect(firstResult.targetPath, '/profile');
+      expect(secondResult.status, DeferredLinkCaptureStatus.skipped);
+      expect(secondResult.failureReason, 'already_attempted');
+      expect(nativeSource.callCount, 3);
+      expect(backend.callCount, 1);
+      expect(
+        localStateStorage.valueFor('deferred_link_ios_capture_finalized'),
+        '1',
+      );
+    },
+  );
+
+  test('continues capture when local state markers are unavailable', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
           return <String, dynamic>{
@@ -228,7 +256,7 @@ void main() {
       channel: channel,
       platformResolver: () => 'android',
       backend: backend,
-      storage: const _ThrowingSecureStorage(),
+      localStateStorage: const _ThrowingDeferredLinkLocalStateStorage(),
     );
 
     final result = await repository.captureFirstOpenInviteCode();
@@ -260,6 +288,7 @@ void main() {
       channel: channel,
       platformResolver: () => 'ios',
       backend: backend,
+      localStateStorage: _InMemoryDeferredLinkLocalStateStorage(),
     );
 
     final result = await repository.captureFirstOpenInviteCode();
@@ -276,17 +305,8 @@ void main() {
   });
 
   test(
-    'retries iOS resolver failures before finalizing the deferred capture path',
+    'retries iOS resolver failures inside the same call before finalizing',
     () async {
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(channel, (call) async {
-            expect(call.method, 'getDeferredLinkPasteboardPayload');
-            return <String, dynamic>{
-              'resolver_payload':
-                  'target_path=%2Fprofile&store_channel=web_gate',
-            };
-          });
-
       final backend = _FakeDeferredLinkBackend(
         response: const DeferredLinkResolutionDto(
           status: 'captured',
@@ -295,24 +315,37 @@ void main() {
         ),
         throwCountBeforeSuccess: 1,
       );
+      final nativeSource = _SequenceDeferredLinkNativeSource(
+        responses: <DeferredLinkNativePayload?>[
+          const DeferredLinkNativePayload(
+            resolverPayload: 'target_path=%2Fprofile&store_channel=web_gate',
+            storeChannel: 'web_gate',
+          ),
+        ],
+      );
+      final localStateStorage = _InMemoryDeferredLinkLocalStateStorage();
 
       final repository = DeferredLinkRepository(
-        channel: channel,
         platformResolver: () => 'ios',
         backend: backend,
+        iosRetryDelays: const <Duration>[Duration.zero, Duration.zero],
+        nativeSource: nativeSource,
+        localStateStorage: localStateStorage,
       );
 
       final firstResult = await repository.captureFirstOpenInviteCode();
       final secondResult = await repository.captureFirstOpenInviteCode();
-      final thirdResult = await repository.captureFirstOpenInviteCode();
 
-      expect(firstResult.status, DeferredLinkCaptureStatus.notCaptured);
-      expect(firstResult.failureReason, 'resolver_unavailable');
-      expect(secondResult.status, DeferredLinkCaptureStatus.captured);
-      expect(secondResult.targetPath, '/profile');
-      expect(thirdResult.status, DeferredLinkCaptureStatus.skipped);
-      expect(thirdResult.failureReason, 'already_attempted');
+      expect(firstResult.status, DeferredLinkCaptureStatus.captured);
+      expect(firstResult.targetPath, '/profile');
+      expect(secondResult.status, DeferredLinkCaptureStatus.skipped);
+      expect(secondResult.failureReason, 'already_attempted');
       expect(backend.callCount, 2);
+      expect(nativeSource.callCount, 2);
+      expect(
+        localStateStorage.valueFor('deferred_link_ios_capture_finalized'),
+        '1',
+      );
     },
   );
 
@@ -335,6 +368,7 @@ void main() {
       channel: channel,
       platformResolver: () => 'ios',
       backend: backend,
+      localStateStorage: _InMemoryDeferredLinkLocalStateStorage(),
     );
 
     final firstResult = await repository.captureFirstOpenInviteCode();
@@ -346,6 +380,127 @@ void main() {
     expect(secondResult.failureReason, 'already_attempted');
     expect(backend.callCount, 1);
   });
+
+  test(
+    'migrates Android attempted marker from legacy secure storage into install-scoped state',
+    () async {
+      FlutterSecureStorage.setMockInitialValues(<String, String>{
+        'deferred_link_capture_attempted': '1',
+      });
+      final primaryStorage = _InMemoryDeferredLinkLocalStateStorage();
+
+      final repository = DeferredLinkRepository(
+        platformResolver: () => 'android',
+        backend: _FakeDeferredLinkBackend(
+          response: const DeferredLinkResolutionDto(status: 'not_captured'),
+        ),
+        localStateStorage: DeferredLinkLocalStateStorage(
+          primaryStorage: primaryStorage,
+          legacyStorage: const FlutterSecureStorage(),
+        ),
+      );
+
+      final result = await repository.captureFirstOpenInviteCode();
+
+      expect(result.status, DeferredLinkCaptureStatus.skipped);
+      expect(result.failureReason, 'already_attempted');
+      expect(primaryStorage.valueFor('deferred_link_capture_attempted'), '1');
+      expect(
+        await const FlutterSecureStorage().read(
+          key: 'deferred_link_capture_attempted',
+        ),
+        isNull,
+      );
+    },
+  );
+
+  test(
+    'migrates iOS finalized marker from legacy secure storage into install-scoped state',
+    () async {
+      FlutterSecureStorage.setMockInitialValues(<String, String>{
+        'deferred_link_ios_capture_finalized': '1',
+      });
+      final primaryStorage = _InMemoryDeferredLinkLocalStateStorage();
+
+      final repository = DeferredLinkRepository(
+        platformResolver: () => 'ios',
+        backend: _FakeDeferredLinkBackend(
+          response: const DeferredLinkResolutionDto(status: 'not_captured'),
+        ),
+        localStateStorage: DeferredLinkLocalStateStorage(
+          primaryStorage: primaryStorage,
+          legacyStorage: const FlutterSecureStorage(),
+        ),
+      );
+
+      final result = await repository.captureFirstOpenInviteCode();
+
+      expect(result.status, DeferredLinkCaptureStatus.skipped);
+      expect(result.failureReason, 'already_attempted');
+      expect(
+        primaryStorage.valueFor('deferred_link_ios_capture_finalized'),
+        '1',
+      );
+      expect(
+        await const FlutterSecureStorage().read(
+          key: 'deferred_link_ios_capture_finalized',
+        ),
+        isNull,
+      );
+    },
+  );
+
+  test(
+    'migrates consumed referrer hash from legacy secure storage and preserves dedupe',
+    () async {
+      const resolverPayload = 'target_path=%2Fprofile&store_channel=web_gate';
+      final consumedHash = sha256
+          .convert(utf8.encode(resolverPayload))
+          .toString();
+      FlutterSecureStorage.setMockInitialValues(<String, String>{
+        'deferred_link_consumed_referrer_hash': consumedHash,
+      });
+      final primaryStorage = _InMemoryDeferredLinkLocalStateStorage();
+
+      final repository = DeferredLinkRepository(
+        platformResolver: () => 'ios',
+        backend: _FakeDeferredLinkBackend(
+          response: const DeferredLinkResolutionDto(
+            status: 'captured',
+            targetPath: '/profile',
+            storeChannel: 'web_gate',
+          ),
+        ),
+        nativeSource: _SequenceDeferredLinkNativeSource(
+          responses: const <DeferredLinkNativePayload?>[
+            DeferredLinkNativePayload(
+              resolverPayload: resolverPayload,
+              storeChannel: 'web_gate',
+            ),
+          ],
+        ),
+        localStateStorage: DeferredLinkLocalStateStorage(
+          primaryStorage: primaryStorage,
+          legacyStorage: const FlutterSecureStorage(),
+        ),
+      );
+
+      final result = await repository.captureFirstOpenInviteCode();
+
+      expect(result.status, DeferredLinkCaptureStatus.notCaptured);
+      expect(result.failureReason, 'referrer_already_consumed');
+      expect(
+        primaryStorage.valueFor('deferred_link_consumed_referrer_hash'),
+        consumedHash,
+      );
+      expect(
+        await const FlutterSecureStorage().read(
+          key: 'deferred_link_consumed_referrer_hash',
+        ),
+        isNull,
+      );
+    },
+  );
 }
 
 class _FakeDeferredLinkBackend implements DeferredLinkBackendContract {
@@ -383,33 +538,72 @@ class _FakeDeferredLinkBackend implements DeferredLinkBackendContract {
   }
 }
 
-class _ThrowingSecureStorage extends FlutterSecureStorage {
-  const _ThrowingSecureStorage();
+class _SequenceDeferredLinkNativeSource
+    implements DeferredLinkNativeSourceContract {
+  _SequenceDeferredLinkNativeSource({required this.responses});
+
+  final List<DeferredLinkNativePayload?> responses;
+
+  int callCount = 0;
 
   @override
-  Future<String?> read({
-    required String key,
-    AppleOptions? iOptions,
-    AndroidOptions? aOptions,
-    LinuxOptions? lOptions,
-    WebOptions? webOptions,
-    WindowsOptions? wOptions,
-    AppleOptions? mOptions,
-  }) {
-    throw StateError('secure storage read failed');
+  Future<DeferredLinkNativePayload?> readDeferredPayload({
+    required String platform,
+  }) async {
+    if (responses.isEmpty) {
+      return null;
+    }
+
+    final index = callCount;
+    callCount += 1;
+    if (index >= responses.length) {
+      return responses.last;
+    }
+    return responses[index];
+  }
+}
+
+class _InMemoryDeferredLinkLocalStateStorage
+    implements DeferredLinkLocalStateStorageContract {
+  _InMemoryDeferredLinkLocalStateStorage([Map<String, String>? initialValues])
+    : _values = Map<String, String>.from(
+        initialValues ?? const <String, String>{},
+      );
+
+  final Map<String, String> _values;
+
+  String? valueFor(String key) => _values[key];
+
+  @override
+  Future<String?> read(String key) async => _values[key];
+
+  @override
+  Future<void> write(String key, String value) async {
+    _values[key] = value;
   }
 
   @override
-  Future<void> write({
-    required String key,
-    required String? value,
-    AppleOptions? iOptions,
-    AndroidOptions? aOptions,
-    LinuxOptions? lOptions,
-    WebOptions? webOptions,
-    WindowsOptions? wOptions,
-    AppleOptions? mOptions,
-  }) {
-    throw StateError('secure storage write failed');
+  Future<void> delete(String key) async {
+    _values.remove(key);
+  }
+}
+
+class _ThrowingDeferredLinkLocalStateStorage
+    implements DeferredLinkLocalStateStorageContract {
+  const _ThrowingDeferredLinkLocalStateStorage();
+
+  @override
+  Future<String?> read(String key) {
+    throw StateError('deferred link local state read failed');
+  }
+
+  @override
+  Future<void> write(String key, String value) {
+    throw StateError('deferred link local state write failed');
+  }
+
+  @override
+  Future<void> delete(String key) {
+    throw StateError('deferred link local state delete failed');
   }
 }
