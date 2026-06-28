@@ -151,7 +151,7 @@ void main() {
     },
   );
 
-  test('skips when capture already attempted', () async {
+  test('skips Android capture when already attempted', () async {
     FlutterSecureStorage.setMockInitialValues(<String, String>{
       'deferred_link_capture_attempted': '1',
     });
@@ -173,6 +173,39 @@ void main() {
     expect(result.platform, 'android');
     expect(backend.callCount, 0);
   });
+
+  test(
+    'retries iOS when deferred payload is temporarily unavailable before finalizing',
+    () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async => null);
+
+      final backend = _FakeDeferredLinkBackend(
+        response: const DeferredLinkResolutionDto(status: 'not_captured'),
+      );
+
+      final repository = DeferredLinkRepository(
+        channel: channel,
+        platformResolver: () => 'ios',
+        backend: backend,
+      );
+
+      final firstResult = await repository.captureFirstOpenInviteCode();
+      final secondResult = await repository.captureFirstOpenInviteCode();
+      final thirdResult = await repository.captureFirstOpenInviteCode();
+      final fourthResult = await repository.captureFirstOpenInviteCode();
+
+      expect(firstResult.status, DeferredLinkCaptureStatus.notCaptured);
+      expect(firstResult.failureReason, 'referrer_unavailable');
+      expect(secondResult.status, DeferredLinkCaptureStatus.notCaptured);
+      expect(secondResult.failureReason, 'referrer_unavailable');
+      expect(thirdResult.status, DeferredLinkCaptureStatus.notCaptured);
+      expect(thirdResult.failureReason, 'referrer_unavailable');
+      expect(fourthResult.status, DeferredLinkCaptureStatus.skipped);
+      expect(fourthResult.failureReason, 'already_attempted');
+      expect(backend.callCount, 0);
+    },
+  );
 
   test('continues capture when storage markers are unavailable', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -241,16 +274,90 @@ void main() {
       'target_path=%2Fprofile&store_channel=web_gate',
     );
   });
+
+  test(
+    'retries iOS resolver failures before finalizing the deferred capture path',
+    () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            expect(call.method, 'getDeferredLinkPasteboardPayload');
+            return <String, dynamic>{
+              'resolver_payload':
+                  'target_path=%2Fprofile&store_channel=web_gate',
+            };
+          });
+
+      final backend = _FakeDeferredLinkBackend(
+        response: const DeferredLinkResolutionDto(
+          status: 'captured',
+          targetPath: '/profile',
+          storeChannel: 'web_gate',
+        ),
+        throwCountBeforeSuccess: 1,
+      );
+
+      final repository = DeferredLinkRepository(
+        channel: channel,
+        platformResolver: () => 'ios',
+        backend: backend,
+      );
+
+      final firstResult = await repository.captureFirstOpenInviteCode();
+      final secondResult = await repository.captureFirstOpenInviteCode();
+      final thirdResult = await repository.captureFirstOpenInviteCode();
+
+      expect(firstResult.status, DeferredLinkCaptureStatus.notCaptured);
+      expect(firstResult.failureReason, 'resolver_unavailable');
+      expect(secondResult.status, DeferredLinkCaptureStatus.captured);
+      expect(secondResult.targetPath, '/profile');
+      expect(thirdResult.status, DeferredLinkCaptureStatus.skipped);
+      expect(thirdResult.failureReason, 'already_attempted');
+      expect(backend.callCount, 2);
+    },
+  );
+
+  test('finalizes iOS after terminal resolver outcome', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          expect(call.method, 'getDeferredLinkPasteboardPayload');
+          return <String, dynamic>{'resolver_payload': 'utm_source=web_gate'};
+        });
+
+    final backend = _FakeDeferredLinkBackend(
+      response: const DeferredLinkResolutionDto(
+        status: 'not_captured',
+        storeChannel: 'web_gate',
+        failureReason: 'code_missing',
+      ),
+    );
+
+    final repository = DeferredLinkRepository(
+      channel: channel,
+      platformResolver: () => 'ios',
+      backend: backend,
+    );
+
+    final firstResult = await repository.captureFirstOpenInviteCode();
+    final secondResult = await repository.captureFirstOpenInviteCode();
+
+    expect(firstResult.status, DeferredLinkCaptureStatus.notCaptured);
+    expect(firstResult.failureReason, 'code_missing');
+    expect(secondResult.status, DeferredLinkCaptureStatus.skipped);
+    expect(secondResult.failureReason, 'already_attempted');
+    expect(backend.callCount, 1);
+  });
 }
 
 class _FakeDeferredLinkBackend implements DeferredLinkBackendContract {
   _FakeDeferredLinkBackend({
     required this.response,
     this.throwsOnResolve = false,
+    this.throwCountBeforeSuccess = 0,
   });
 
   final DeferredLinkResolutionDto response;
   final bool throwsOnResolve;
+  final int throwCountBeforeSuccess;
 
   int callCount = 0;
   String? lastPlatform;
@@ -268,7 +375,7 @@ class _FakeDeferredLinkBackend implements DeferredLinkBackendContract {
     lastResolverPayload = resolverPayload;
     lastStoreChannel = storeChannel;
 
-    if (throwsOnResolve) {
+    if (throwsOnResolve || callCount <= throwCountBeforeSuccess) {
       throw Exception('resolver unavailable');
     }
 

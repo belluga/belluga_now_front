@@ -45,6 +45,11 @@ class DeferredLinkRepository implements DeferredLinkRepositoryContract {
   static const String _captureAttemptedKey = 'deferred_link_capture_attempted';
   static const String _consumedReferrerHashKey =
       'deferred_link_consumed_referrer_hash';
+  static const String _iosCaptureFinalizedKey =
+      'deferred_link_ios_capture_finalized';
+  static const String _iosTransientAttemptCountKey =
+      'deferred_link_ios_transient_attempt_count';
+  static const int _iosMaxTransientAttempts = 3;
 
   final FlutterSecureStorage _storage;
   final String Function() _platformResolver;
@@ -63,22 +68,52 @@ class DeferredLinkRepository implements DeferredLinkRepositoryContract {
       );
     }
 
-    final attempted = await _readStorageBestEffort(_captureAttemptedKey);
-    if (attempted == '1') {
-      return DeferredLinkCaptureResult(
-        status: DeferredLinkCaptureStatus.skipped,
-        platformValue: deferredLinkPlatform(supportedPlatform),
-        failureReasonValue: deferredLinkFailureReason('already_attempted'),
-      );
+    final isIosPlatform = supportedPlatform == 'ios';
+    if (isIosPlatform) {
+      final finalized = await _readStorageBestEffort(_iosCaptureFinalizedKey);
+      if (finalized == '1') {
+        return DeferredLinkCaptureResult(
+          status: DeferredLinkCaptureStatus.skipped,
+          platformValue: deferredLinkPlatform(supportedPlatform),
+          failureReasonValue: deferredLinkFailureReason('already_attempted'),
+        );
+      }
     }
 
-    await _writeStorageBestEffort(_captureAttemptedKey, '1');
+    if (!isIosPlatform) {
+      final attempted = await _readStorageBestEffort(_captureAttemptedKey);
+      if (attempted == '1') {
+        return DeferredLinkCaptureResult(
+          status: DeferredLinkCaptureStatus.skipped,
+          platformValue: deferredLinkPlatform(supportedPlatform),
+          failureReasonValue: deferredLinkFailureReason('already_attempted'),
+        );
+      }
+
+      await _writeStorageBestEffort(_captureAttemptedKey, '1');
+    }
 
     final payload = await _nativeSource.readDeferredPayload(
       platform: supportedPlatform,
     );
     final resolverPayload = _normalizeText(payload?.resolverPayload);
     final fallbackStoreChannel = _normalizeText(payload?.storeChannel);
+
+    if (resolverPayload == null && fallbackStoreChannel == null) {
+      final result = DeferredLinkCaptureResult(
+        status: DeferredLinkCaptureStatus.notCaptured,
+        platformValue: deferredLinkPlatform(supportedPlatform),
+        failureReasonValue: deferredLinkFailureReason('referrer_unavailable'),
+      );
+      if (isIosPlatform) {
+        return _finalizeIosResult(
+          result: result,
+          failureReason: 'referrer_unavailable',
+          hasResolverPayload: false,
+        );
+      }
+      return result;
+    }
 
     final resolverData = await _resolveWithBackend(
       platform: supportedPlatform,
@@ -107,7 +142,7 @@ class DeferredLinkRepository implements DeferredLinkRepositoryContract {
           _consumedReferrerHashKey,
         );
         if (consumedHash == hash) {
-          return DeferredLinkCaptureResult(
+          final result = DeferredLinkCaptureResult(
             status: DeferredLinkCaptureStatus.notCaptured,
             platformValue: deferredLinkPlatform(supportedPlatform),
             storeChannelValue: storeChannel == null
@@ -117,12 +152,20 @@ class DeferredLinkRepository implements DeferredLinkRepositoryContract {
               'referrer_already_consumed',
             ),
           );
+          if (isIosPlatform) {
+            return _finalizeIosResult(
+              result: result,
+              failureReason: 'referrer_already_consumed',
+              hasResolverPayload: true,
+            );
+          }
+          return result;
         }
 
         await _writeStorageBestEffort(_consumedReferrerHashKey, hash);
       }
 
-      return DeferredLinkCaptureResult(
+      final result = DeferredLinkCaptureResult(
         status: DeferredLinkCaptureStatus.captured,
         platformValue: deferredLinkPlatform(supportedPlatform),
         codeValue: code == null ? null : deferredLinkCode(code),
@@ -131,9 +174,13 @@ class DeferredLinkRepository implements DeferredLinkRepositoryContract {
             ? null
             : deferredLinkStoreChannel(storeChannel),
       );
+      if (isIosPlatform) {
+        await _markIosCaptureFinalized();
+      }
+      return result;
     }
 
-    return DeferredLinkCaptureResult(
+    final result = DeferredLinkCaptureResult(
       status: DeferredLinkCaptureStatus.notCaptured,
       platformValue: deferredLinkPlatform(supportedPlatform),
       storeChannelValue: storeChannel == null
@@ -143,6 +190,14 @@ class DeferredLinkRepository implements DeferredLinkRepositoryContract {
         failureReason ?? 'resolver_not_captured',
       ),
     );
+    if (isIosPlatform) {
+      return _finalizeIosResult(
+        result: result,
+        failureReason: failureReason ?? 'resolver_not_captured',
+        hasResolverPayload: resolverPayload != null,
+      );
+    }
+    return result;
   }
 
   Future<String?> _readStorageBestEffort(String key) async {
@@ -167,6 +222,67 @@ class DeferredLinkRepository implements DeferredLinkRepositoryContract {
         '$error\n$stackTrace',
       );
     }
+  }
+
+  Future<void> _deleteStorageBestEffort(String key) async {
+    try {
+      await _storage.delete(key: key);
+    } catch (error, stackTrace) {
+      debugPrint(
+        'DeferredLinkRepository storage delete failed for $key: '
+        '$error\n$stackTrace',
+      );
+    }
+  }
+
+  Future<int> _incrementIosTransientAttemptCount() async {
+    final currentRaw = await _readStorageBestEffort(
+      _iosTransientAttemptCountKey,
+    );
+    final currentCount = int.tryParse(currentRaw ?? '') ?? 0;
+    final nextCount = currentCount + 1;
+    await _writeStorageBestEffort(
+      _iosTransientAttemptCountKey,
+      nextCount.toString(),
+    );
+    return nextCount;
+  }
+
+  Future<void> _markIosCaptureFinalized() async {
+    await _writeStorageBestEffort(_iosCaptureFinalizedKey, '1');
+    await _deleteStorageBestEffort(_iosTransientAttemptCountKey);
+  }
+
+  bool _isIosRetryableFailure({
+    required String failureReason,
+    required bool hasResolverPayload,
+  }) {
+    if (failureReason == 'referrer_unavailable') {
+      return true;
+    }
+    if (failureReason == 'resolver_unavailable' && hasResolverPayload) {
+      return true;
+    }
+    return false;
+  }
+
+  Future<DeferredLinkCaptureResult> _finalizeIosResult({
+    required DeferredLinkCaptureResult result,
+    required String failureReason,
+    required bool hasResolverPayload,
+  }) async {
+    if (_isIosRetryableFailure(
+      failureReason: failureReason,
+      hasResolverPayload: hasResolverPayload,
+    )) {
+      final attemptCount = await _incrementIosTransientAttemptCount();
+      if (attemptCount < _iosMaxTransientAttempts) {
+        return result;
+      }
+    }
+
+    await _markIosCaptureFinalized();
+    return result;
   }
 
   Future<DeferredLinkResolutionDto> _resolveWithBackend({
