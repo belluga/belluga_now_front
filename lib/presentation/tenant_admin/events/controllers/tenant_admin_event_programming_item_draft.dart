@@ -6,21 +6,23 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value
 class TenantAdminEventProgrammingItemDraft {
   TenantAdminEventProgrammingItemDraft({
     required TenantAdminEventProgrammingItem? existing,
-  })  : time = existing?.time ?? '',
-        endTime = existing?.endTime ?? '',
-        title = existing?.title ?? '',
-        selectedLocationProfileId = existing?.placeRef?.id,
-        linkedProfileIds = existing?.accountProfileIds.toList(growable: true) ??
-            <TenantAdminAccountProfileIdValue>[],
-        linkedProfiles = existing?.linkedAccountProfiles.toList(
-              growable: true,
-            ) ??
-            <TenantAdminAccountProfile>[];
+  }) : time = existing?.time ?? '',
+       endTime = existing?.endTime ?? '',
+       title = existing?.title ?? '',
+       selectedLocationProfileId = existing?.placeRef?.id,
+       selectedLocationProfile = existing?.locationProfile,
+       linkedProfileIds =
+           existing?.accountProfileIds.toList(growable: true) ??
+           <TenantAdminAccountProfileIdValue>[],
+       linkedProfiles =
+           existing?.linkedAccountProfiles.toList(growable: true) ??
+           <TenantAdminAccountProfile>[];
 
   String time;
   String endTime;
   String title;
   String? selectedLocationProfileId;
+  TenantAdminAccountProfile? selectedLocationProfile;
   final List<TenantAdminAccountProfileIdValue> linkedProfileIds;
   final List<TenantAdminAccountProfile> linkedProfiles;
 
@@ -43,9 +45,8 @@ class TenantAdminEventProgrammingItemDraft {
     return occurrenceRelatedProfiles
         .map((profile) => profile.id)
         .where(
-          (profileId) => !linkedProfileIds.any(
-            (selected) => selected.value == profileId,
-          ),
+          (profileId) =>
+              !linkedProfileIds.any((selected) => selected.value == profileId),
         )
         .toList(growable: false);
   }
@@ -85,12 +86,13 @@ class TenantAdminEventProgrammingItemDraft {
         normalizedTitle.isEmpty ? null : normalizedTitle,
       ),
       accountProfileIdValues:
-          List<TenantAdminAccountProfileIdValue>.unmodifiable(
-        linkedProfileIds,
-      ),
+          List<TenantAdminAccountProfileIdValue>.unmodifiable(linkedProfileIds),
       linkedAccountProfiles: List<TenantAdminAccountProfile>.unmodifiable(
         linkedProfiles,
       ),
+      locationProfile: selectedLocationProfile?.id == selectedLocationProfileId
+          ? selectedLocationProfile
+          : null,
       placeRef: selectedLocationProfileId == null
           ? null
           : TenantAdminEventPlaceRef(

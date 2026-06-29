@@ -31,10 +31,7 @@ class TenantAdminEventsResponseDecoder {
   }
 
   TenantAdminEvent decodeEventItem(Object? rawResponse) {
-    final row = _envelopeDecoder.decodeItemMap(
-      rawResponse,
-      label: 'event',
-    );
+    final row = _envelopeDecoder.decodeItemMap(rawResponse, label: 'event');
     return _mapEvent(row);
   }
 
@@ -107,7 +104,8 @@ class TenantAdminEventsResponseDecoder {
     final venueRow = _asMap(row['venue']);
     final thumbRow = _asMap(row['thumb']);
     final thumbData = _asMap(thumbRow['data']);
-    final thumbUrl = _asString(thumbData['url']) ??
+    final thumbUrl =
+        _asString(thumbData['url']) ??
         _asString(thumbRow['url']) ??
         _asString(thumbRow['uri']);
     final venueDisplayName =
@@ -134,14 +132,16 @@ class TenantAdminEventsResponseDecoder {
     final relatedAccountProfileIds = profileGroups.isNotEmpty
         ? _profileIdsFromGroups(profileGroups)
         : eventPartiesRaw
-            .map(_asMap)
-            .where((party) => (_asString(party['party_type']) ?? '') != 'venue')
-            .map((party) => party['party_ref_id'])
-            .map(_asString)
-            .where((value) => value != null && value.isNotEmpty)
-            .cast<String>()
-            .map(TenantAdminAccountProfileIdValue.new)
-            .toList(growable: false);
+              .map(_asMap)
+              .where(
+                (party) => (_asString(party['party_type']) ?? '') != 'venue',
+              )
+              .map((party) => party['party_ref_id'])
+              .map(_asString)
+              .where((value) => value != null && value.isNotEmpty)
+              .cast<String>()
+              .map(TenantAdminAccountProfileIdValue.new)
+              .toList(growable: false);
 
     final taxonomyTermsRaw = _asList(row['taxonomy_terms']);
     final taxonomyTerms = taxonomyTermsRaw
@@ -149,9 +149,7 @@ class TenantAdminEventsResponseDecoder {
         .where((term) => term.isNotEmpty)
         .map(_mapTaxonomyTerm)
         .where((term) => term.type.isNotEmpty && term.value.isNotEmpty)
-        .toList(
-          growable: false,
-        );
+        .toList(growable: false);
 
     final eventParties = eventPartiesRaw
         .map(_asMap)
@@ -169,11 +167,10 @@ class TenantAdminEventsResponseDecoder {
             canEditValue: tenantAdminFlag(canEdit),
           );
         })
-        .where((party) =>
-            party.partyType.isNotEmpty && party.partyRefId.isNotEmpty)
-        .toList(
-          growable: false,
-        );
+        .where(
+          (party) => party.partyType.isNotEmpty && party.partyRefId.isNotEmpty,
+        )
+        .toList(growable: false);
 
     final onlineRow = _asMap(locationRow['online']);
     final mode = _asString(locationRow['mode']) ?? '';
@@ -222,7 +219,8 @@ class TenantAdminEventsResponseDecoder {
       );
       return TenantAdminEvent(
         eventIdValue: tenantAdminRequiredText(
-            _asString(row['event_id']) ?? _asString(row['id']) ?? ''),
+          _asString(row['event_id']) ?? _asString(row['id']) ?? '',
+        ),
         slugValue: tenantAdminRequiredText(_asString(row['slug']) ?? ''),
         titleValue: tenantAdminRequiredText(_asString(row['title']) ?? ''),
         contentValue: tenantAdminOptionalText(_asString(row['content']) ?? ''),
@@ -244,7 +242,8 @@ class TenantAdminEventsResponseDecoder {
         occurrences: <TenantAdminEventOccurrence>[fallbackOccurrence],
         publication: TenantAdminEventPublication(
           statusValue: tenantAdminRequiredText(
-              _asString(publicationRow['status']) ?? 'draft'),
+            _asString(publicationRow['status']) ?? 'draft',
+          ),
           publishAtValue: tenantAdminOptionalDateTime(
             _parseDate(publicationRow['publish_at']),
           ),
@@ -260,18 +259,22 @@ class TenantAdminEventsResponseDecoder {
           }
           return terms;
         })(),
-        createdAtValue:
-            tenantAdminOptionalDateTime(_parseDate(row['created_at'])),
-        updatedAtValue:
-            tenantAdminOptionalDateTime(_parseDate(row['updated_at'])),
-        deletedAtValue:
-            tenantAdminOptionalDateTime(_parseDate(row['deleted_at'])),
+        createdAtValue: tenantAdminOptionalDateTime(
+          _parseDate(row['created_at']),
+        ),
+        updatedAtValue: tenantAdminOptionalDateTime(
+          _parseDate(row['updated_at']),
+        ),
+        deletedAtValue: tenantAdminOptionalDateTime(
+          _parseDate(row['deleted_at']),
+        ),
       );
     }
 
     return TenantAdminEvent(
       eventIdValue: tenantAdminRequiredText(
-          _asString(row['event_id']) ?? _asString(row['id']) ?? ''),
+        _asString(row['event_id']) ?? _asString(row['id']) ?? '',
+      ),
       slugValue: tenantAdminRequiredText(_asString(row['slug']) ?? ''),
       titleValue: tenantAdminRequiredText(_asString(row['title']) ?? ''),
       contentValue: tenantAdminOptionalText(_asString(row['content']) ?? ''),
@@ -279,8 +282,9 @@ class TenantAdminEventsResponseDecoder {
         idValue: tenantAdminOptionalText(_asString(typeRow['id'])),
         nameValue: tenantAdminRequiredText(_asString(typeRow['name']) ?? ''),
         slugValue: tenantAdminRequiredText(_asString(typeRow['slug']) ?? ''),
-        descriptionValue:
-            tenantAdminOptionalText(_asString(typeRow['description'])),
+        descriptionValue: tenantAdminOptionalText(
+          _asString(typeRow['description']),
+        ),
         iconValue: tenantAdminOptionalText(_asString(typeRow['icon'])),
         colorValue: tenantAdminOptionalText(_asString(typeRow['color'])),
         visual: _decodeEventTypeVisual(typeRow),
@@ -292,7 +296,8 @@ class TenantAdminEventsResponseDecoder {
       occurrences: occurrences,
       publication: TenantAdminEventPublication(
         statusValue: tenantAdminRequiredText(
-            _asString(publicationRow['status']) ?? 'draft'),
+          _asString(publicationRow['status']) ?? 'draft',
+        ),
         publishAtValue: tenantAdminOptionalDateTime(
           _parseDate(publicationRow['publish_at']),
         ),
@@ -308,12 +313,15 @@ class TenantAdminEventsResponseDecoder {
         }
         return terms;
       })(),
-      createdAtValue:
-          tenantAdminOptionalDateTime(_parseDate(row['created_at'])),
-      updatedAtValue:
-          tenantAdminOptionalDateTime(_parseDate(row['updated_at'])),
-      deletedAtValue:
-          tenantAdminOptionalDateTime(_parseDate(row['deleted_at'])),
+      createdAtValue: tenantAdminOptionalDateTime(
+        _parseDate(row['created_at']),
+      ),
+      updatedAtValue: tenantAdminOptionalDateTime(
+        _parseDate(row['updated_at']),
+      ),
+      deletedAtValue: tenantAdminOptionalDateTime(
+        _parseDate(row['deleted_at']),
+      ),
     );
   }
 
@@ -340,25 +348,21 @@ class TenantAdminEventsResponseDecoder {
     final ownProfiles = _decodeRelatedAccountProfiles(
       item['own_linked_account_profiles'] ?? item['linked_account_profiles'],
     );
-    final ownParties =
-        _asList(item['own_event_parties'] ?? item['event_parties'])
-            .map(_asMap)
-            .where((party) => party.isNotEmpty)
-            .toList(growable: false);
+    final ownParties = _asList(
+      item['own_event_parties'] ?? item['event_parties'],
+    ).map(_asMap).where((party) => party.isNotEmpty).toList(growable: false);
     final profileGroups = _decodeProfileGroups(
       item['profile_groups'],
-      allowedProfileIds: {
-        for (final profile in ownProfiles) profile.id,
-      },
+      allowedProfileIds: {for (final profile in ownProfiles) profile.id},
     );
     final ownProfileIds = profileGroups.isNotEmpty
         ? _profileIdsFromGroups(profileGroups)
         : ownParties.isNotEmpty
-            ? _mapPartyProfileIds(ownParties)
-            : ownProfiles
-                .where((profile) => profile.profileType.trim() != 'venue')
-                .map((profile) => TenantAdminAccountProfileIdValue(profile.id))
-                .toList(growable: false);
+        ? _mapPartyProfileIds(ownParties)
+        : ownProfiles
+              .where((profile) => profile.profileType.trim() != 'venue')
+              .map((profile) => TenantAdminAccountProfileIdValue(profile.id))
+              .toList(growable: false);
     final ownTaxonomyTerms = _taxonomyTermsFromRaw(item['own_taxonomy_terms']);
 
     return TenantAdminEventOccurrence(
@@ -382,11 +386,12 @@ class TenantAdminEventsResponseDecoder {
 
   TenantAdminTaxonomyTerms _taxonomyTermsFromRaw(Object? raw) {
     final terms = TenantAdminTaxonomyTerms();
-    for (final taxonomyTerm in _asList(raw)
-        .map(_asMap)
-        .where((term) => term.isNotEmpty)
-        .map(_mapTaxonomyTerm)
-        .where((term) => term.type.isNotEmpty && term.value.isNotEmpty)) {
+    for (final taxonomyTerm
+        in _asList(raw)
+            .map(_asMap)
+            .where((term) => term.isNotEmpty)
+            .map(_mapTaxonomyTerm)
+            .where((term) => term.type.isNotEmpty && term.value.isNotEmpty)) {
       terms.add(taxonomyTerm);
     }
     return terms;
@@ -436,22 +441,19 @@ class TenantAdminEventsResponseDecoder {
           return TenantAdminNestedProfileGroup(
             idValue: TenantAdminNestedProfileGroupTextValue(id),
             labelValue: TenantAdminNestedProfileGroupTextValue(label),
-            orderValue: TenantAdminNestedProfileGroupOrderValue(
-              group['order'],
-            ),
-            accountProfileIdValues: _asList(
-              group['account_profile_ids'] ?? group['profile_ids'],
-            )
-                .map(_asString)
-                .where((value) => value != null && value.isNotEmpty)
-                .where(
-                  (value) =>
-                      allowedProfileIds == null ||
-                      allowedProfileIds.contains(value),
-                )
-                .cast<String>()
-                .map(TenantAdminNestedProfileGroupTextValue.new)
-                .toList(growable: false),
+            orderValue: TenantAdminNestedProfileGroupOrderValue(group['order']),
+            accountProfileIdValues:
+                _asList(group['account_profile_ids'] ?? group['profile_ids'])
+                    .map(_asString)
+                    .where((value) => value != null && value.isNotEmpty)
+                    .where(
+                      (value) =>
+                          allowedProfileIds == null ||
+                          allowedProfileIds.contains(value),
+                    )
+                    .cast<String>()
+                    .map(TenantAdminNestedProfileGroupTextValue.new)
+                    .toList(growable: false),
           );
         })
         .whereType<TenantAdminNestedProfileGroup>()
@@ -466,23 +468,28 @@ class TenantAdminEventsResponseDecoder {
           final linkedProfiles = _decodeRelatedAccountProfiles(
             item['linked_account_profiles'],
           );
+          final locationProfile = _decodeLocationProfile(
+            item['location_profile'] ?? item['locationProfile'],
+          );
           final profileIds = _asList(item['account_profile_ids']).isNotEmpty
               ? _asList(item['account_profile_ids'])
-                  .map(_asString)
-                  .where((value) => value != null && value.isNotEmpty)
-                  .cast<String>()
-                  .map(TenantAdminAccountProfileIdValue.new)
-                  .toList(growable: false)
+                    .map(_asString)
+                    .where((value) => value != null && value.isNotEmpty)
+                    .cast<String>()
+                    .map(TenantAdminAccountProfileIdValue.new)
+                    .toList(growable: false)
               : linkedProfiles
-                  .map(
-                      (profile) => TenantAdminAccountProfileIdValue(profile.id))
-                  .toList(growable: false);
+                    .map(
+                      (profile) => TenantAdminAccountProfileIdValue(profile.id),
+                    )
+                    .toList(growable: false);
           return TenantAdminEventProgrammingItem(
             timeValue: tenantAdminRequiredText(_asString(item['time']) ?? ''),
             endTimeValue: tenantAdminOptionalText(_asString(item['end_time'])),
             titleValue: tenantAdminOptionalText(_asString(item['title'])),
             accountProfileIdValues: profileIds,
             linkedAccountProfiles: linkedProfiles,
+            locationProfile: locationProfile,
             placeRef: _mapProgrammingPlaceRef(item['place_ref']),
           );
         })
@@ -508,8 +515,9 @@ class TenantAdminEventsResponseDecoder {
 
   TenantAdminPoiVisual? _decodeEventTypeVisual(Map<String, dynamic> row) {
     final visualRow = _asMap(row['visual']);
-    final fallbackVisualRow =
-        visualRow.isNotEmpty ? visualRow : _asMap(row['poi_visual']);
+    final fallbackVisualRow = visualRow.isNotEmpty
+        ? visualRow
+        : _asMap(row['poi_visual']);
     if (fallbackVisualRow.isEmpty) {
       final icon = _asString(row['icon']);
       final color = _asString(row['color']);
@@ -554,8 +562,8 @@ class TenantAdminEventsResponseDecoder {
       return null;
     }
 
-    final imageSourceRaw =
-        (_asString(fallbackVisualRow['image_source']) ?? '').trim();
+    final imageSourceRaw = (_asString(fallbackVisualRow['image_source']) ?? '')
+        .trim();
     TenantAdminPoiVisualImageSource? imageSource;
     for (final candidate in TenantAdminPoiVisualImageSource.values) {
       if (candidate.apiValue == imageSourceRaw) {
@@ -569,8 +577,9 @@ class TenantAdminEventsResponseDecoder {
 
     return TenantAdminPoiVisual.image(
       imageSource: imageSource,
-      imageUrlValue:
-          tenantAdminOptionalUrl(_asString(fallbackVisualRow['image_url'])),
+      imageUrlValue: tenantAdminOptionalUrl(
+        _asString(fallbackVisualRow['image_url']),
+      ),
       colorValue: _optionalHexColor(_asString(fallbackVisualRow['color'])),
     );
   }
@@ -639,7 +648,8 @@ class TenantAdminEventsResponseDecoder {
       id: id,
       accountId:
           _asString(row['account_id']) ?? _asString(row['accountId']) ?? id,
-      profileType: _asString(row['profile_type']) ??
+      profileType:
+          _asString(row['profile_type']) ??
           _asString(row['profileType']) ??
           _asString(row['party_type']) ??
           '',
@@ -682,6 +692,20 @@ class TenantAdminEventsResponseDecoder {
         .map((row) => _mapRelatedAccountProfile(Map<String, dynamic>.from(row)))
         .where((profile) => profile.profileType.trim() != 'venue')
         .toList(growable: false);
+  }
+
+  TenantAdminAccountProfile? _decodeLocationProfile(Object? raw) {
+    final row = _asMap(raw);
+    if (row.isEmpty) {
+      return null;
+    }
+    try {
+      return _mapAccountProfile(row);
+    } on FormatException {
+      return null;
+    } on ValueException {
+      return null;
+    }
   }
 
   TenantAdminTaxonomyTerm _mapTaxonomyTerm(Map<String, dynamic> term) {

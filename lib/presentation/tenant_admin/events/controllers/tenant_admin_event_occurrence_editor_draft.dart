@@ -11,9 +11,9 @@ class TenantAdminEventOccurrenceEditorDraft {
     required List<TenantAdminAccountProfileIdValue> relatedProfileIds,
     required List<TenantAdminAccountProfile> relatedProfiles,
     required List<TenantAdminEventProgrammingItem> programmingItems,
-  })  : relatedProfileIds = relatedProfileIds.toList(growable: true),
-        relatedProfiles = relatedProfiles.toList(growable: true),
-        programmingItems = programmingItems.toList(growable: true);
+  }) : relatedProfileIds = relatedProfileIds.toList(growable: true),
+       relatedProfiles = relatedProfiles.toList(growable: true),
+       programmingItems = programmingItems.toList(growable: true);
 
   factory TenantAdminEventOccurrenceEditorDraft.fromOccurrence({
     required TenantAdminEventOccurrence? existing,
@@ -24,11 +24,14 @@ class TenantAdminEventOccurrenceEditorDraft {
       existing: existing,
       startAt: existing?.dateTimeStart ?? fallbackStart,
       endAt: existing?.dateTimeEnd ?? fallbackEnd,
-      relatedProfileIds: existing?.relatedAccountProfileIds ??
+      relatedProfileIds:
+          existing?.relatedAccountProfileIds ??
           const <TenantAdminAccountProfileIdValue>[],
-      relatedProfiles: existing?.relatedAccountProfiles ??
+      relatedProfiles:
+          existing?.relatedAccountProfiles ??
           const <TenantAdminAccountProfile>[],
-      programmingItems: existing?.programmingItems ??
+      programmingItems:
+          existing?.programmingItems ??
           const <TenantAdminEventProgrammingItem>[],
     );
   }
@@ -105,8 +108,8 @@ class TenantAdminEventOccurrenceEditorDraft {
       dateTimeEndValue: tenantAdminOptionalDateTime(endAt),
       relatedAccountProfileIdValues:
           List<TenantAdminAccountProfileIdValue>.unmodifiable(
-        relatedProfileIds,
-      ),
+            relatedProfileIds,
+          ),
       relatedAccountProfiles: List<TenantAdminAccountProfile>.unmodifiable(
         relatedProfiles,
       ),
@@ -133,6 +136,7 @@ class TenantAdminEventOccurrenceEditorDraft {
       linkedAccountProfiles: item.linkedAccountProfiles
           .where((profile) => profile.id != profileId)
           .toList(growable: false),
+      locationProfile: item.locationProfile,
       placeRef: item.placeRef,
     );
   }
@@ -141,10 +145,7 @@ class TenantAdminEventOccurrenceEditorDraft {
     String profileId,
     List<TenantAdminAccountProfile> profiles,
   ) {
-    final profile = _firstWhereOrNull(
-      profiles,
-      (item) => item.id == profileId,
-    );
+    final profile = _firstWhereOrNull(profiles, (item) => item.id == profileId);
     return profile?.displayName ?? 'Perfil relacionado $profileId';
   }
 
@@ -171,6 +172,10 @@ class TenantAdminEventOccurrenceEditorDraft {
     );
     if (venue != null) {
       return venue.displayName;
+    }
+    final locationProfile = item.locationProfile;
+    if (locationProfile != null && locationProfile.id == locationProfileId) {
+      return locationProfile.displayName;
     }
     final linkedProfile = _firstWhereOrNull(
       item.linkedAccountProfiles,
