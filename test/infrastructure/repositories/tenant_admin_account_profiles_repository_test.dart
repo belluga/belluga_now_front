@@ -366,6 +366,29 @@ void main() {
     expect(request.queryParameters['exclude_account_profile_id'], 'profile-1');
   });
 
+  test('fetchAccountProfile adds cache-busting _ts query param', () async {
+    final adapter = _CaptureAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+    await repository.fetchAccountProfile(
+      tenantAdminAccountProfilesRepoString(
+        'profile-1',
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
+
+    final request = adapter.lastRequest;
+    expect(
+      request?.path,
+      contains('https://tenant.test/admin/api/v1/account_profiles/profile-1'),
+    );
+    final cacheBuster = request?.queryParameters['_ts']?.toString() ?? '';
+    expect(cacheBuster, isNotEmpty);
+    expect(int.tryParse(cacheBuster), isNotNull);
+  });
+
   test(
     'updateAccountProfile sends explicit remove avatar/cover flags',
     () async {

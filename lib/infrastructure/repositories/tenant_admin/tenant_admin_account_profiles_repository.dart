@@ -76,6 +76,9 @@ class TenantAdminAccountProfilesRepository
     try {
       final response = await _dio.get(
         '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}',
+        queryParameters: {
+          '_ts': DateTime.now().microsecondsSinceEpoch.toString(),
+        },
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeAccountProfileItem(response.data);
