@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class TenantAdminScopeTheme {
   const TenantAdminScopeTheme._();
@@ -33,7 +32,7 @@ class TenantAdminScopeTheme {
       ),
     );
 
-    final textTheme = GoogleFonts.interTextTheme(baseTheme.textTheme).apply(
+    final textTheme = baseTheme.textTheme.apply(
       bodyColor: scheme.onSurface,
       displayColor: scheme.onSurface,
     );

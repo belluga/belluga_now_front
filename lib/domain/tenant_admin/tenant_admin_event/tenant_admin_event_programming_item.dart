@@ -9,22 +9,24 @@ class TenantAdminEventProgrammingItem {
         const <TenantAdminAccountProfileIdValue>[],
     List<TenantAdminAccountProfile> linkedAccountProfiles =
         const <TenantAdminAccountProfile>[],
+    this.locationProfile,
     this.placeRef,
-  })  : endTimeValue = endTimeValue ?? TenantAdminOptionalTextValue(),
-        titleValue = titleValue ?? TenantAdminOptionalTextValue(),
-        accountProfileIdValues =
-            List<TenantAdminAccountProfileIdValue>.unmodifiable(
-          accountProfileIdValues,
-        ),
-        linkedAccountProfiles = List<TenantAdminAccountProfile>.unmodifiable(
-          linkedAccountProfiles,
-        );
+  }) : endTimeValue = endTimeValue ?? TenantAdminOptionalTextValue(),
+       titleValue = titleValue ?? TenantAdminOptionalTextValue(),
+       accountProfileIdValues =
+           List<TenantAdminAccountProfileIdValue>.unmodifiable(
+             accountProfileIdValues,
+           ),
+       linkedAccountProfiles = List<TenantAdminAccountProfile>.unmodifiable(
+         linkedAccountProfiles,
+       );
 
   final TenantAdminRequiredTextValue timeValue;
   final TenantAdminOptionalTextValue endTimeValue;
   final TenantAdminOptionalTextValue titleValue;
   final List<TenantAdminAccountProfileIdValue> accountProfileIdValues;
   final List<TenantAdminAccountProfile> linkedAccountProfiles;
+  final TenantAdminAccountProfile? locationProfile;
   final TenantAdminEventPlaceRef? placeRef;
 
   String get time => timeValue.value;

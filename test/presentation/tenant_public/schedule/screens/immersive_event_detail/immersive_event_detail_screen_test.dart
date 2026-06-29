@@ -70,6 +70,7 @@ import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/presentation/shared/icons/map_marker_visual_resolver.dart';
+import 'package:belluga_now/presentation/tenant_public/schedule/routes/immersive_event_detail_route.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/controllers/immersive_event_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/immersive_event_detail_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/event_programming_section.dart';
@@ -1840,8 +1841,7 @@ void main() {
             'public_detail_path': '/parceiro/perfil-relativo',
             'avatar_url':
                 '/api/v1/media/account-profiles/artist-relative/avatar?v=11',
-            'cover_url':
-                'account-profiles/artist-relative/cover?v=12',
+            'cover_url': 'account-profiles/artist-relative/cover?v=12',
           },
         ],
         'profile_groups': [
@@ -1858,8 +1858,7 @@ void main() {
                 'public_detail_path': '/parceiro/perfil-relativo',
                 'avatar_url':
                     '/api/v1/media/account-profiles/artist-relative/avatar?v=11',
-                'cover_url':
-                    'account-profiles/artist-relative/cover?v=12',
+                'cover_url': 'account-profiles/artist-relative/cover?v=12',
               },
             ],
           },
@@ -1868,10 +1867,7 @@ void main() {
       final event = dto.toDomain();
       final linkedProfile = event.profileGroups.single.profiles.single;
 
-      expect(
-        linkedProfile.coverUrl,
-        expectedCoverUrl,
-      );
+      expect(linkedProfile.coverUrl, expectedCoverUrl);
 
       final userEventsRepository = _FakeUserEventsRepository();
       final invitesRepository = _FakeInvitesRepository();
@@ -1916,15 +1912,14 @@ void main() {
 
       final avatarImage = tester.widget<BellugaNetworkImage>(
         find.descendant(
-          of: find.byKey(const Key('linkedProfileCardTapTarget_artist-relative')),
+          of: find.byKey(
+            const Key('linkedProfileCardTapTarget_artist-relative'),
+          ),
           matching: find.byType(BellugaNetworkImage),
         ),
       );
 
-      expect(
-        avatarImage.url,
-        expectedAvatarUrl,
-      );
+      expect(avatarImage.url, expectedAvatarUrl);
     },
   );
 
@@ -1959,8 +1954,7 @@ void main() {
             'public_detail_path': '/parceiro/perfil-relativo',
             'avatar_url':
                 '/api/v1/media/account-profiles/artist-relative/avatar?v=21',
-            'cover_url':
-                'account-profiles/artist-relative/cover?v=22',
+            'cover_url': 'account-profiles/artist-relative/cover?v=22',
           },
         ],
         'profile_groups': [
@@ -2025,7 +2019,9 @@ void main() {
 
       final avatarImage = tester.widget<BellugaNetworkImage>(
         find.descendant(
-          of: find.byKey(const Key('linkedProfileCardTapTarget_artist-relative')),
+          of: find.byKey(
+            const Key('linkedProfileCardTapTarget_artist-relative'),
+          ),
           matching: find.byType(BellugaNetworkImage),
         ),
       );
@@ -2065,8 +2061,7 @@ void main() {
             'public_detail_path': '/parceiro/perfil-relativo',
             'avatar_url':
                 '/api/v1/media/account-profiles/artist-relative/avatar?v=31',
-            'cover_url':
-                'account-profiles/artist-relative/cover?v=32',
+            'cover_url': 'account-profiles/artist-relative/cover?v=32',
           },
         ],
         'profile_groups': [
@@ -2133,7 +2128,9 @@ void main() {
 
       final avatarImage = tester.widget<BellugaNetworkImage>(
         find.descendant(
-          of: find.byKey(const Key('linkedProfileCardTapTarget_artist-relative')),
+          of: find.byKey(
+            const Key('linkedProfileCardTapTarget_artist-relative'),
+          ),
           matching: find.byType(BellugaNetworkImage),
         ),
       );
@@ -2836,8 +2833,9 @@ void main() {
       expect(titleText.style?.shadows?.last.offset, const Offset(0, 1));
       expect(titleText.style?.shadows?.last.blurRadius, 24);
 
-      final titleTop =
-          tester.getTopLeft(find.byKey(const Key('eventHeroTitle'))).dy;
+      final titleTop = tester
+          .getTopLeft(find.byKey(const Key('eventHeroTitle')))
+          .dy;
       final categoryChipTop = tester.getTopLeft(categoryChipFinder).dy;
       final firstChipTop = tester
           .getTopLeft(
@@ -3291,8 +3289,9 @@ void main() {
               ],
             ),
           ],
-          programmingItems:
-              selectedFirst ? firstProgrammingItems : secondProgrammingItems,
+          programmingItems: selectedFirst
+              ? firstProgrammingItems
+              : secondProgrammingItems,
         );
       }
 
@@ -4319,10 +4318,11 @@ void main() {
 
       final emittedOccurrenceIds = <String?>[];
       final subscription = invitesRepository
-          .immersiveSelectedEventStreamValue.stream
+          .immersiveSelectedEventStreamValue
+          .stream
           .listen((event) {
-        emittedOccurrenceIds.add(event?.selectedOccurrenceId?.trim());
-      });
+            emittedOccurrenceIds.add(event?.selectedOccurrenceId?.trim());
+          });
       addTearDown(subscription.cancel);
 
       final router = _RecordingStackRouter();
@@ -4395,10 +4395,7 @@ void main() {
       await tester.pump();
       await tester.pumpAndSettle();
 
-      expect(
-        emittedOccurrenceIds.whereType<String>().toSet(),
-        {'occ-5'},
-      );
+      expect(emittedOccurrenceIds.whereType<String>().toSet(), {'occ-5'});
       expect(
         emittedOccurrenceIds.where((occurrenceId) => occurrenceId == 'occ-5'),
         isNotEmpty,
@@ -4806,14 +4803,168 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(selectedOccurrenceId, 'occ-2');
-      expect(
-        find.text('Show atualizado da segunda data'),
-        findsOneWidget,
+      expect(find.text('Show atualizado da segunda data'), findsOneWidget);
+      expect(find.text('Show antigo da segunda data'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'event detail route entry should surface selected-occurrence relative media on counterpart chip when occurrence query is present',
+    (tester) async {
+      GetIt.I.registerSingleton<AppData>(_buildAppData());
+      final tenantOrigin = GetIt.I.get<AppData>().mainDomainValue.value;
+      const staleAvatarUrl = 'https://tenant.test/stale-avatar.png';
+      const relativeOccurrenceAvatarPath =
+          '/api/v1/media/account-profiles/artist-relative/avatar?v=44';
+      final expectedFreshAvatarUrl = tenantOrigin
+          .resolve(relativeOccurrenceAvatarPath)
+          .toString();
+      const routePage = ImmersiveEventDetailRoutePage(
+        eventSlug: 'evento-linked-profile-occurrence-media',
+        occurrenceId: 'occ-2',
       );
-      expect(
-        find.text('Show antigo da segunda data'),
-        findsNothing,
+      final routeEntryEvent = _buildOccurrenceMediaRegressionEvent(
+        selectedOccurrenceId: 'occ-1',
+        rootAvatarUrl: staleAvatarUrl,
+        selectedOccurrenceOwnAvatarUrl: relativeOccurrenceAvatarPath,
       );
+
+      final userEventsRepository = _FakeUserEventsRepository();
+      final invitesRepository = _FakeInvitesRepository();
+      final accountProfilesRepository = _FakeAccountProfilesRepository();
+      GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+        ImmersiveEventDetailController(
+          userEventsRepository: userEventsRepository,
+          invitesRepository: invitesRepository,
+          authRepository: _FakeAuthRepository(authorized: true),
+          appDataRepository: _FakeAppDataRepository(_buildAppData()),
+          accountProfilesRepository: accountProfilesRepository,
+        ),
+      );
+
+      final router = _RecordingStackRouter();
+      final routeData = RouteData(
+        route: _FakeRouteMatch(
+          fullPath:
+              '/agenda/evento/evento-linked-profile-occurrence-media?occurrence=occ-2',
+          queryParams: const {'occurrence': 'occ-2'},
+        ),
+        router: router,
+        stackKey: const ValueKey('stack'),
+        pendingChildren: const [],
+        type: const RouteType.material(),
+      );
+
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: _routeScopedHome(
+              routeData: routeData,
+              child: Builder(
+                builder: (context) =>
+                    routePage.buildScreen(context, routeEntryEvent),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final avatarImage = tester.widget<BellugaNetworkImage>(
+        find.descendant(
+          of: find.byKey(const Key('eventHeroCounterpartChip_artist-relative')),
+          matching: find.byType(BellugaNetworkImage),
+        ),
+      );
+
+      expect(avatarImage.url, expectedFreshAvatarUrl);
+      expect(_takeAllExceptions(tester), isEmpty);
+    },
+  );
+
+  testWidgets(
+    'event detail should keep fresher selected-occurrence counterpart media after a warm occurrence switch even when only media changes',
+    (tester) async {
+      GetIt.I.registerSingleton<AppData>(_buildAppData());
+      final tenantOrigin = GetIt.I.get<AppData>().mainDomainValue.value;
+      const staleAvatarUrl = 'https://tenant.test/stale-avatar.png';
+      const relativeFreshAvatarPath =
+          '/api/v1/media/account-profiles/artist-relative/avatar?v=55';
+      final expectedFreshAvatarUrl = tenantOrigin
+          .resolve(relativeFreshAvatarPath)
+          .toString();
+
+      final userEventsRepository = _FakeUserEventsRepository();
+      final invitesRepository = _FakeInvitesRepository();
+      final accountProfilesRepository = _FakeAccountProfilesRepository();
+      final controller = ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+        appDataRepository: _FakeAppDataRepository(_buildAppData()),
+        accountProfilesRepository: accountProfilesRepository,
+      );
+      GetIt.I.registerSingleton<ImmersiveEventDetailController>(controller);
+
+      final staleWarmEvent = _buildOccurrenceMediaRegressionEvent(
+        selectedOccurrenceId: 'occ-1',
+        rootAvatarUrl: staleAvatarUrl,
+        selectedOccurrenceOwnAvatarUrl: staleAvatarUrl,
+      );
+      controller.init(staleWarmEvent);
+      controller.selectOccurrence(
+        staleWarmEvent,
+        staleWarmEvent.occurrences.singleWhere(
+          (occurrence) => occurrence.occurrenceId == 'occ-2',
+        ),
+      );
+
+      final router = _RecordingStackRouter();
+      final routeData = RouteData(
+        route: _FakeRouteMatch(
+          fullPath: '/agenda/evento/evento-linked-profile-occurrence-media',
+        ),
+        router: router,
+        stackKey: const ValueKey('stack'),
+        pendingChildren: const [],
+        type: const RouteType.material(),
+      );
+      final freshResolvedEvent = _buildOccurrenceMediaRegressionEvent(
+        selectedOccurrenceId: 'occ-2',
+        rootAvatarUrl: relativeFreshAvatarPath,
+        selectedOccurrenceOwnAvatarUrl: relativeFreshAvatarPath,
+      );
+
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: _routeScopedHome(
+              routeData: routeData,
+              child: RouteInstanceScope(
+                child: ImmersiveEventDetailScreen(event: freshResolvedEvent),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      final avatarImage = tester.widget<BellugaNetworkImage>(
+        find.descendant(
+          of: find.byKey(const Key('eventHeroCounterpartChip_artist-relative')),
+          matching: find.byType(BellugaNetworkImage),
+        ),
+      );
+
+      expect(avatarImage.url, expectedFreshAvatarUrl);
     },
   );
 
@@ -5303,7 +5454,7 @@ Future<void> _pumpEventDetailWithAutoRouter(
         meta: canonicalRouteMeta(
           family: CanonicalRouteFamily.immersiveEventDetail,
         ),
-        builder: (_, __) => RouteInstanceScope(
+        builder: (context, routeData) => RouteInstanceScope(
           child: ImmersiveEventDetailScreen(
             event: event,
             directionsAppChooser: directionsChooser,
@@ -5321,15 +5472,10 @@ Future<void> _pumpEventDetailWithAutoRouter(
   );
 }
 
-Widget _routeScopedHome({
-  required RouteData routeData,
-  required Widget child,
-}) {
+Widget _routeScopedHome({required RouteData routeData, required Widget child}) {
   return RouteDataScope(
     routeData: routeData,
-    child: RouteInstanceScope(
-      child: child,
-    ),
+    child: RouteInstanceScope(child: child),
   );
 }
 
@@ -5361,8 +5507,7 @@ class _RecordingDirectionsAppChooser implements DirectionsAppChooserContract {
   @override
   Future<List<DirectionsAppChoice>> loadOptions({
     required DirectionsLaunchTarget target,
-  }) async =>
-      const <DirectionsAppChoice>[];
+  }) async => const <DirectionsAppChoice>[];
 
   @override
   Future<bool> launchDirect({
@@ -5492,13 +5637,14 @@ class _FakeRouteMatch extends Fake implements RouteMatch {
     Map<String, dynamic>? meta,
     PageRouteInfo<dynamic>? pageRouteInfo,
     Map<String, dynamic> queryParams = const {},
-  })  : name = name ?? ImmersiveEventDetailRoute.name,
-        meta = meta ??
-            canonicalRouteMeta(
-              family: CanonicalRouteFamily.immersiveEventDetail,
-            ),
-        pageRouteInfo = pageRouteInfo ?? EventSearchRoute(),
-        _queryParams = Parameters(queryParams);
+  }) : name = name ?? ImmersiveEventDetailRoute.name,
+       meta =
+           meta ??
+           canonicalRouteMeta(
+             family: CanonicalRouteFamily.immersiveEventDetail,
+           ),
+       pageRouteInfo = pageRouteInfo ?? EventSearchRoute(),
+       _queryParams = Parameters(queryParams);
 
   @override
   final String name;
@@ -5523,10 +5669,10 @@ class _FakeRouteMatch extends Fake implements RouteMatch {
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   @override
   final StreamValue<Set<UserEventsRepositoryContractPrimString>>
-      confirmedOccurrenceIdsStream =
+  confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(
-    defaultValue: const <UserEventsRepositoryContractPrimString>{},
-  );
+        defaultValue: const <UserEventsRepositoryContractPrimString>{},
+      );
 
   int confirmCalls = 0;
   final Set<String> confirmedIds = <String>{};
@@ -5563,12 +5709,11 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   @override
   UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
     UserEventsRepositoryContractPrimString eventId,
-  ) =>
-      userEventsRepoBool(
-        confirmedIds.contains(eventId.value),
-        defaultValue: false,
-        isRequired: true,
-      );
+  ) => userEventsRepoBool(
+    confirmedIds.contains(eventId.value),
+    defaultValue: false,
+    isRequired: true,
+  );
 
   @override
   Future<void> refreshConfirmedOccurrenceIds() async {
@@ -5893,10 +6038,12 @@ EventLinkedAccountProfile _buildLinkedAccountProfile({
     locationAddressValue: locationAddress == null
         ? null
         : EventLinkedAccountProfileTextValue(locationAddress),
-    locationLatitudeValue:
-        locationLat == null ? null : (LatitudeValue()..parse('$locationLat')),
-    locationLongitudeValue:
-        locationLng == null ? null : (LongitudeValue()..parse('$locationLng')),
+    locationLatitudeValue: locationLat == null
+        ? null
+        : (LatitudeValue()..parse('$locationLat')),
+    locationLongitudeValue: locationLng == null
+        ? null
+        : (LongitudeValue()..parse('$locationLng')),
     canOpenPublicDetailValue: DomainBooleanValue(
       defaultValue: false,
       isRequired: false,
@@ -5960,6 +6107,85 @@ ThumbUriValue? _thumbUriValueOrNull(String? rawUrl) {
     ..parse(normalized);
 }
 
+EventModel _buildOccurrenceMediaRegressionEvent({
+  required String selectedOccurrenceId,
+  required String rootAvatarUrl,
+  required String selectedOccurrenceOwnAvatarUrl,
+}) {
+  final dto = EventDTO.fromJson({
+    'event_id': '507f1f77bcf86cd799439255',
+    'slug': 'evento-linked-profile-occurrence-media',
+    'type': {
+      'id': 'type-1',
+      'name': 'Feira',
+      'slug': 'feira',
+      'description': '',
+    },
+    'title': 'Evento com mídia por ocorrência',
+    'content': '',
+    'location': 'Guarapari',
+    'date_time_start': '2026-03-03T10:00:00+00:00',
+    'linked_account_profiles': [
+      {
+        'id': 'artist-relative',
+        'display_name': 'Perfil relativo',
+        'profile_type': 'artist',
+        'slug': 'perfil-relativo',
+        'public_detail_path': '/parceiro/perfil-relativo',
+        'avatar_url': rootAvatarUrl,
+      },
+    ],
+    'profile_groups': [
+      {
+        'id': 'artists',
+        'label': 'Artists',
+        'order': 0,
+        'account_profile_ids': ['artist-relative'],
+      },
+    ],
+    'occurrences': [
+      {
+        'occurrence_id': 'occ-1',
+        'date_time_start': '2026-03-03T10:00:00+00:00',
+        'is_selected': selectedOccurrenceId == 'occ-1',
+        'profile_groups': [
+          {
+            'id': 'artists',
+            'label': 'Artists',
+            'order': 0,
+            'account_profile_ids': ['artist-relative'],
+          },
+        ],
+      },
+      {
+        'occurrence_id': 'occ-2',
+        'date_time_start': '2026-03-04T10:00:00+00:00',
+        'is_selected': selectedOccurrenceId == 'occ-2',
+        'own_linked_account_profiles': [
+          {
+            'id': 'artist-relative',
+            'display_name': 'Perfil relativo',
+            'profile_type': 'artist',
+            'slug': 'perfil-relativo',
+            'public_detail_path': '/parceiro/perfil-relativo',
+            'avatar_url': selectedOccurrenceOwnAvatarUrl,
+          },
+        ],
+        'profile_groups': [
+          {
+            'id': 'artists',
+            'label': 'Artists',
+            'order': 0,
+            'account_profile_ids': ['artist-relative'],
+          },
+        ],
+      },
+    ],
+  });
+
+  return dto.toDomain();
+}
+
 EventModel _buildEvent({
   PartnerResume? venue,
   List<EventLinkedAccountProfile> linkedProfiles = const [],
@@ -5999,7 +6225,7 @@ EventModel _buildEvent({
     dateTimeEnd: endDateTime == null
         ? null
         : (DateTimeValue(isRequired: true)
-          ..parse(endDateTime.toIso8601String())),
+            ..parse(endDateTime.toIso8601String())),
     artists: const [],
     linkedAccountProfiles: linkedProfiles,
     profileGroups: profileGroups,
@@ -6064,8 +6290,9 @@ EventProfileGroup _buildProfileGroup({
     labelValue: EventLinkedAccountProfileTextValue(label),
     orderValue: EventProfileGroupOrderValue(order),
     profiles: profiles,
-    accountProfileIdValues:
-        accountProfileIds.map(EventLinkedAccountProfileTextValue.new).toList(),
+    accountProfileIdValues: accountProfileIds
+        .map(EventLinkedAccountProfileTextValue.new)
+        .toList(),
   );
 }
 
@@ -6077,8 +6304,9 @@ EventProgrammingItem _buildProgrammingItem({
 }) {
   return EventProgrammingItem(
     timeValue: EventProgrammingTimeValue(time),
-    titleValue:
-        title == null ? null : EventLinkedAccountProfileTextValue(title),
+    titleValue: title == null
+        ? null
+        : EventLinkedAccountProfileTextValue(title),
     linkedAccountProfiles: linkedProfiles,
     locationProfile: locationProfile,
   );
