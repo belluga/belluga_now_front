@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:belluga_now/application/application_contract.dart';
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:get_it/get_it.dart';
@@ -13,6 +14,7 @@ import 'package:belluga_now/application/application.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  GoogleFonts.config.allowRuntimeFetching = false;
   if (!kIsWeb) {
     ui.DartPluginRegistrant.ensureInitialized();
   }
