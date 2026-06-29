@@ -47,27 +47,33 @@ class TenantAdminEventsController implements Disposable {
     TenantAdminTenantScopeContract? tenantScope,
     LandlordAuthRepositoryContract? landlordAuthRepository,
     TenantAdminImageIngestionService? imageIngestionService,
-  })  : _eventsRepository = eventsRepository ??
-            GetIt.I.get<TenantAdminEventsRepositoryContract>(),
-        _taxonomiesRepository = taxonomiesRepository ??
-            GetIt.I.get<TenantAdminTaxonomiesRepositoryContract>(),
-        _batchTermsRepository = _resolveBatchTermsRepository(
-          taxonomiesRepository: taxonomiesRepository ??
-              GetIt.I.get<TenantAdminTaxonomiesRepositoryContract>(),
-          batchTermsRepository: batchTermsRepository,
-        ),
-        _tenantScope = tenantScope ??
-            (GetIt.I.isRegistered<TenantAdminTenantScopeContract>()
-                ? GetIt.I.get<TenantAdminTenantScopeContract>()
-                : null),
-        _landlordAuthRepository = landlordAuthRepository ??
-            (GetIt.I.isRegistered<LandlordAuthRepositoryContract>()
-                ? GetIt.I.get<LandlordAuthRepositoryContract>()
-                : null),
-        _imageIngestionService = imageIngestionService ??
-            (GetIt.I.isRegistered<TenantAdminImageIngestionService>()
-                ? GetIt.I.get<TenantAdminImageIngestionService>()
-                : TenantAdminImageIngestionService()) {
+  }) : _eventsRepository =
+           eventsRepository ??
+           GetIt.I.get<TenantAdminEventsRepositoryContract>(),
+       _taxonomiesRepository =
+           taxonomiesRepository ??
+           GetIt.I.get<TenantAdminTaxonomiesRepositoryContract>(),
+       _batchTermsRepository = _resolveBatchTermsRepository(
+         taxonomiesRepository:
+             taxonomiesRepository ??
+             GetIt.I.get<TenantAdminTaxonomiesRepositoryContract>(),
+         batchTermsRepository: batchTermsRepository,
+       ),
+       _tenantScope =
+           tenantScope ??
+           (GetIt.I.isRegistered<TenantAdminTenantScopeContract>()
+               ? GetIt.I.get<TenantAdminTenantScopeContract>()
+               : null),
+       _landlordAuthRepository =
+           landlordAuthRepository ??
+           (GetIt.I.isRegistered<LandlordAuthRepositoryContract>()
+               ? GetIt.I.get<LandlordAuthRepositoryContract>()
+               : null),
+       _imageIngestionService =
+           imageIngestionService ??
+           (GetIt.I.isRegistered<TenantAdminImageIngestionService>()
+               ? GetIt.I.get<TenantAdminImageIngestionService>()
+               : TenantAdminImageIngestionService()) {
     _bindTenantScope();
     _bindRepositoryStreams();
     _bindAccountProfilePickerScroll();
@@ -83,7 +89,7 @@ class TenantAdminEventsController implements Disposable {
   final TenantAdminImageIngestionService _imageIngestionService;
 
   static TenantAdminTaxonomiesBatchTermsRepositoryContract
-      _resolveBatchTermsRepository({
+  _resolveBatchTermsRepository({
     required TenantAdminTaxonomiesRepositoryContract taxonomiesRepository,
     TenantAdminTaxonomiesBatchTermsRepositoryContract? batchTermsRepository,
   }) {
@@ -106,10 +112,12 @@ class TenantAdminEventsController implements Disposable {
 
   StreamValue<List<TenantAdminEvent>?> get eventsStreamValue =>
       _eventsRepository.eventsStreamValue;
-  final StreamValue<bool> hasMoreEventsStreamValue =
-      StreamValue<bool>(defaultValue: true);
-  final StreamValue<bool> isEventsPageLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> hasMoreEventsStreamValue = StreamValue<bool>(
+    defaultValue: true,
+  );
+  final StreamValue<bool> isEventsPageLoadingStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
   final StreamValue<String?> eventsErrorStreamValue = StreamValue<String?>();
 
   final StreamValue<DateTime?> specificDateFilterStreamValue =
@@ -117,16 +125,16 @@ class TenantAdminEventsController implements Disposable {
   final StreamValue<TenantAdminAccountProfile?> venueFilterStreamValue =
       StreamValue<TenantAdminAccountProfile?>(defaultValue: null);
   final StreamValue<TenantAdminAccountProfile?>
-      relatedAccountProfileFilterStreamValue =
+  relatedAccountProfileFilterStreamValue =
       StreamValue<TenantAdminAccountProfile?>(defaultValue: null);
   final StreamValue<Set<TenantAdminEventTemporalBucket>>
-      temporalFilterStreamValue =
-      StreamValue<Set<TenantAdminEventTemporalBucket>>(
+  temporalFilterStreamValue = StreamValue<Set<TenantAdminEventTemporalBucket>>(
     defaultValue: TenantAdminEventTemporalBucket.defaultSelection,
   );
 
-  final StreamValue<bool> submitLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> submitLoadingStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
   final StreamValue<String?> submitErrorMessageStreamValue =
       StreamValue<String?>();
   final StreamValue<String?> submitSuccessMessageStreamValue =
@@ -138,16 +146,17 @@ class TenantAdminEventsController implements Disposable {
       StreamValue<List<TenantAdminTaxonomyDefinition>>(defaultValue: const []);
 
   final StreamValue<Map<String, List<TenantAdminTaxonomyTermDefinition>>>
-      taxonomyTermsBySlugStreamValue =
+  taxonomyTermsBySlugStreamValue =
       StreamValue<Map<String, List<TenantAdminTaxonomyTermDefinition>>>(
-    defaultValue: const {},
-  );
+        defaultValue: const {},
+      );
 
-  final StreamValue<bool> taxonomyLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> taxonomyLoadingStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
   final StreamValue<String?> taxonomyErrorStreamValue = StreamValue<String?>();
   final Map<String, List<TenantAdminTaxonomyTermDefinition>>
-      _taxonomyTermsCacheBySlug =
+  _taxonomyTermsCacheBySlug =
       <String, List<TenantAdminTaxonomyTermDefinition>>{};
   String? _loadedTaxonomyTermsKey;
   String? _loadingTaxonomyTermsKey;
@@ -156,13 +165,14 @@ class TenantAdminEventsController implements Disposable {
   Set<String> _eventTypeTaxonomyFallbackAllowedSlugs = const <String>{};
 
   final StreamValue<List<TenantAdminAccountProfile>>
-      venueCandidatesStreamValue =
+  venueCandidatesStreamValue = StreamValue<List<TenantAdminAccountProfile>>(
+    defaultValue: const [],
+  );
+  final StreamValue<List<TenantAdminAccountProfile>>
+  relatedAccountProfileCandidatesStreamValue =
       StreamValue<List<TenantAdminAccountProfile>>(defaultValue: const []);
   final StreamValue<List<TenantAdminAccountProfile>>
-      relatedAccountProfileCandidatesStreamValue =
-      StreamValue<List<TenantAdminAccountProfile>>(defaultValue: const []);
-  final StreamValue<List<TenantAdminAccountProfile>>
-      accountProfilePickerResultsStreamValue =
+  accountProfilePickerResultsStreamValue =
       StreamValue<List<TenantAdminAccountProfile>>(defaultValue: const []);
   final StreamValue<bool> accountProfilePickerLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
@@ -180,8 +190,8 @@ class TenantAdminEventsController implements Disposable {
       StreamValue<String?>();
 
   StreamValue<List<TenantAdminAccountProfile>>
-      get relatedAccountProfileSearchResultsStreamValue =>
-          accountProfilePickerResultsStreamValue;
+  get relatedAccountProfileSearchResultsStreamValue =>
+      accountProfilePickerResultsStreamValue;
   StreamValue<bool> get relatedAccountProfileSearchLoadingStreamValue =>
       accountProfilePickerLoadingStreamValue;
   StreamValue<bool> get relatedAccountProfileSearchPageLoadingStreamValue =>
@@ -214,17 +224,20 @@ class TenantAdminEventsController implements Disposable {
       TextEditingController();
   final TextEditingController eventOnlinePlatformController =
       TextEditingController();
-  final StreamValue<XFile?> eventCoverFileStreamValue =
-      StreamValue<XFile?>(defaultValue: null);
-  final StreamValue<bool> eventCoverBusyStreamValue =
-      StreamValue<bool>(defaultValue: false);
-  final StreamValue<bool> eventCoverRemoveStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  final StreamValue<XFile?> eventCoverFileStreamValue = StreamValue<XFile?>(
+    defaultValue: null,
+  );
+  final StreamValue<bool> eventCoverBusyStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
+  final StreamValue<bool> eventCoverRemoveStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
 
   final StreamValue<TenantAdminEventFormState> eventFormStateStreamValue =
       StreamValue<TenantAdminEventFormState>(
-    defaultValue: TenantAdminEventFormState.initial(),
-  );
+        defaultValue: TenantAdminEventFormState.initial(),
+      );
 
   final GlobalKey<FormState> eventTypeFormKey = GlobalKey<FormState>();
   final TextEditingController eventTypeNameController = TextEditingController();
@@ -232,14 +245,14 @@ class TenantAdminEventsController implements Disposable {
   final TextEditingController eventTypeDescriptionController =
       TextEditingController();
   final StreamValue<TenantAdminPoiVisualMode>
-      eventTypePoiVisualModeStreamValue = StreamValue<TenantAdminPoiVisualMode>(
+  eventTypePoiVisualModeStreamValue = StreamValue<TenantAdminPoiVisualMode>(
     defaultValue: TenantAdminPoiVisualMode.icon,
   );
   final StreamValue<TenantAdminPoiVisualImageSource>
-      eventTypePoiVisualImageSourceStreamValue =
+  eventTypePoiVisualImageSourceStreamValue =
       StreamValue<TenantAdminPoiVisualImageSource>(
-    defaultValue: TenantAdminPoiVisualImageSource.cover,
-  );
+        defaultValue: TenantAdminPoiVisualImageSource.cover,
+      );
   final TextEditingController eventTypePoiVisualIconController =
       TextEditingController();
   final TextEditingController eventTypePoiVisualColorController =
@@ -254,8 +267,7 @@ class TenantAdminEventsController implements Disposable {
       StreamValue<bool>(defaultValue: false);
 
   final StreamValue<TenantAdminEventTypeFormState>
-      eventTypeFormStateStreamValue =
-      StreamValue<TenantAdminEventTypeFormState>(
+  eventTypeFormStateStreamValue = StreamValue<TenantAdminEventTypeFormState>(
     defaultValue: TenantAdminEventTypeFormState.initial(),
   );
   final StreamValue<List<String>> eventTypeAllowedTaxonomiesStreamValue =
@@ -268,7 +280,7 @@ class TenantAdminEventsController implements Disposable {
   StreamSubscription<String?>? _tenantScopeSubscription;
   StreamSubscription<TenantAdminEventsRepoBool>? _hasMoreEventsSubscription;
   StreamSubscription<TenantAdminEventsRepoBool>?
-      _isEventsPageLoadingSubscription;
+  _isEventsPageLoadingSubscription;
   StreamSubscription<TenantAdminEventsRepoString?>? _eventsErrorSubscription;
   String? _lastTenantDomain;
   VoidCallback? _eventTypeNameSyncListener;
@@ -276,9 +288,9 @@ class TenantAdminEventsController implements Disposable {
   String? _accountProfilePickerAccountSlug;
   String? _formAccountProfileCandidatesAccountSlug;
   TenantAdminPagedResult<TenantAdminAccountProfile>?
-      _bootstrapVenueCandidatesPage;
+  _bootstrapVenueCandidatesPage;
   TenantAdminPagedResult<TenantAdminAccountProfile>?
-      _bootstrapRelatedAccountProfileCandidatesPage;
+  _bootstrapRelatedAccountProfileCandidatesPage;
   TenantAdminAccountProfile? _bootstrapSelectedVenueCandidate;
   int _accountProfilePickerCurrentPage = 0;
   int _accountProfilePickerRequestToken = 0;
@@ -286,36 +298,40 @@ class TenantAdminEventsController implements Disposable {
   String? _eventFormInitialFingerprint;
   TenantAdminEventAccountProfileCandidateType? _accountProfilePickerType;
 
-  static const Duration _accountProfilePickerDebounceDuration =
-      Duration(milliseconds: 300);
+  static const Duration _accountProfilePickerDebounceDuration = Duration(
+    milliseconds: 300,
+  );
   void _bindTenantScope() {
     if (_tenantScopeSubscription != null || _tenantScope == null) {
       return;
     }
     final tenantScope = _tenantScope;
-    _lastTenantDomain =
-        _normalizeTenantDomain(tenantScope.selectedTenantDomain);
+    _lastTenantDomain = _normalizeTenantDomain(
+      tenantScope.selectedTenantDomain,
+    );
     _tenantScopeSubscription = tenantScope
-        .selectedTenantDomainStreamValue.stream
+        .selectedTenantDomainStreamValue
+        .stream
         .listen((tenantDomain) {
-      if (_isDisposed) {
-        return;
-      }
-      final normalized = _normalizeTenantDomain(tenantDomain);
-      if (normalized == _lastTenantDomain) {
-        return;
-      }
-      _lastTenantDomain = normalized;
-      _resetTenantScopedState();
-      if (normalized != null) {
-        unawaited(loadEvents());
-      }
-    });
+          if (_isDisposed) {
+            return;
+          }
+          final normalized = _normalizeTenantDomain(tenantDomain);
+          if (normalized == _lastTenantDomain) {
+            return;
+          }
+          _lastTenantDomain = normalized;
+          _resetTenantScopedState();
+          if (normalized != null) {
+            unawaited(loadEvents());
+          }
+        });
   }
 
   void _bindRepositoryStreams() {
-    hasMoreEventsStreamValue
-        .addValue(_eventsRepository.hasMoreEventsStreamValue.value.value);
+    hasMoreEventsStreamValue.addValue(
+      _eventsRepository.hasMoreEventsStreamValue.value.value,
+    );
     isEventsPageLoadingStreamValue.addValue(
       _eventsRepository.isEventsPageLoadingStreamValue.value.value,
     );
@@ -323,36 +339,37 @@ class TenantAdminEventsController implements Disposable {
       _eventsRepository.eventsErrorStreamValue.value?.value,
     );
 
-    _hasMoreEventsSubscription =
-        _eventsRepository.hasMoreEventsStreamValue.stream.listen((value) {
-      if (_isDisposed) {
-        return;
-      }
-      hasMoreEventsStreamValue.addValue(value.value);
-    });
+    _hasMoreEventsSubscription = _eventsRepository
+        .hasMoreEventsStreamValue
+        .stream
+        .listen((value) {
+          if (_isDisposed) {
+            return;
+          }
+          hasMoreEventsStreamValue.addValue(value.value);
+        });
 
-    _isEventsPageLoadingSubscription =
-        _eventsRepository.isEventsPageLoadingStreamValue.stream.listen((value) {
-      if (_isDisposed) {
-        return;
-      }
-      isEventsPageLoadingStreamValue.addValue(value.value);
-    });
+    _isEventsPageLoadingSubscription = _eventsRepository
+        .isEventsPageLoadingStreamValue
+        .stream
+        .listen((value) {
+          if (_isDisposed) {
+            return;
+          }
+          isEventsPageLoadingStreamValue.addValue(value.value);
+        });
 
-    _eventsErrorSubscription =
-        _eventsRepository.eventsErrorStreamValue.stream.listen((value) {
-      if (_isDisposed) {
-        return;
-      }
-      eventsErrorStreamValue.addValue(value?.value);
-    });
+    _eventsErrorSubscription = _eventsRepository.eventsErrorStreamValue.stream
+        .listen((value) {
+          if (_isDisposed) {
+            return;
+          }
+          eventsErrorStreamValue.addValue(value?.value);
+        });
   }
 
   TenantAdminEventsRepoString _toEventsText(String value) {
-    return TenantAdminEventsRepoString.fromRaw(
-      value,
-      defaultValue: value,
-    );
+    return TenantAdminEventsRepoString.fromRaw(value, defaultValue: value);
   }
 
   TenantAdminEventsRepoString? _toNullableEventsText(String? value) {
@@ -492,15 +509,16 @@ class TenantAdminEventsController implements Disposable {
     await loadEvents();
   }
 
-  void initEventForm({
-    TenantAdminEvent? existingEvent,
-  }) {
+  void initEventForm({TenantAdminEvent? existingEvent}) {
     _eventFormLocalIdSerial = 0;
     final selectedTaxonomyTerms = <String, Set<String>>{};
-    for (final term in existingEvent?.taxonomyTerms ??
-        const TenantAdminTaxonomyTerms.empty()) {
-      final bucket =
-          selectedTaxonomyTerms.putIfAbsent(term.type, () => <String>{});
+    for (final term
+        in existingEvent?.taxonomyTerms ??
+            const TenantAdminTaxonomyTerms.empty()) {
+      final bucket = selectedTaxonomyTerms.putIfAbsent(
+        term.type,
+        () => <String>{},
+      );
       bucket.add(term.value);
     }
     final initialEventTypeSlug = existingEvent?.type.slug.trim();
@@ -511,12 +529,13 @@ class TenantAdminEventsController implements Disposable {
     };
     _eventTypeTaxonomyFallbackSlug =
         initialEventTypeSlug == null || initialEventTypeSlug.isEmpty
-            ? null
-            : initialEventTypeSlug;
+        ? null
+        : initialEventTypeSlug;
     _eventTypeTaxonomyFallbackAllowedSlugs = Set<String>.unmodifiable(
       fallbackAllowedSlugs,
     );
-    final localOccurrences = existingEvent?.occurrences
+    final localOccurrences =
+        existingEvent?.occurrences
             .map(_toLocalOccurrence)
             .toList(growable: false) ??
         const <TenantAdminEventOccurrence>[];
@@ -554,10 +573,13 @@ class TenantAdminEventsController implements Disposable {
       selectedTypeSlug: existingEvent?.type.slug.trim(),
       selectedRelatedAccountProfileIds: selectedRelatedAccountProfileIds,
       profileGroups: profileGroups,
-      occurrences: List<TenantAdminEventOccurrence>.unmodifiable(localOccurrences),
+      occurrences: List<TenantAdminEventOccurrence>.unmodifiable(
+        localOccurrences,
+      ),
       occurrenceLocalIds: List<String>.unmodifiable(occurrenceLocalIds),
-      programmingItemLocalIdsByOccurrenceKey:
-          Map.unmodifiable(programmingItemLocalIdsByOccurrenceKey),
+      programmingItemLocalIdsByOccurrenceKey: Map.unmodifiable(
+        programmingItemLocalIdsByOccurrenceKey,
+      ),
       selectedTaxonomyTerms: selectedTaxonomyTerms,
       hasHydratedDefaultVenue: false,
     );
@@ -570,27 +592,22 @@ class TenantAdminEventsController implements Disposable {
     eventCoverFileStreamValue.addValue(null);
     eventCoverBusyStreamValue.addValue(false);
     eventCoverRemoveStreamValue.addValue(false);
-    _bootstrapSelectedVenueCandidate =
-        _selectedVenueCandidateFromEvent(existingEvent);
+    _bootstrapSelectedVenueCandidate = _selectedVenueCandidateFromEvent(
+      existingEvent,
+    );
     relatedAccountProfileCandidatesStreamValue.addValue(
-      List.unmodifiable(
-        _knownRelatedProfilesFromEvent(existingEvent),
-      ),
+      List.unmodifiable(_knownRelatedProfilesFromEvent(existingEvent)),
     );
     _replaceEventFormState(nextState);
     _syncEventDateTimeControllers(nextState);
     markEventFormClean();
   }
 
-  Future<XFile?> pickImageFromDevice({
-    required TenantAdminImageSlot slot,
-  }) {
+  Future<XFile?> pickImageFromDevice({required TenantAdminImageSlot slot}) {
     return _imageIngestionService.pickFromDevice(slot: slot);
   }
 
-  Future<XFile> fetchImageFromUrlForCrop({
-    required String imageUrl,
-  }) {
+  Future<XFile> fetchImageFromUrlForCrop({required String imageUrl}) {
     return _imageIngestionService.fetchFromUrlForCrop(imageUrl: imageUrl);
   }
 
@@ -640,9 +657,7 @@ class TenantAdminEventsController implements Disposable {
     final current = eventFormStateStreamValue.value.copyWith(
       selectedTypeSlug: slug,
     );
-    _replaceEventFormState(
-      _sanitizeEventTaxonomyTermsForSelectedType(current),
-    );
+    _replaceEventFormState(_sanitizeEventTaxonomyTermsForSelectedType(current));
     unawaited(_loadTermsForSelectedEventType());
   }
 
@@ -669,9 +684,7 @@ class TenantAdminEventsController implements Disposable {
       eventOnlineUrlController.clear();
       eventOnlinePlatformController.clear();
     }
-    _replaceEventFormState(
-      current.copyWith(locationMode: mode),
-    );
+    _replaceEventFormState(current.copyWith(locationMode: mode));
   }
 
   void updateEventVenueSelection(String? venueId) {
@@ -787,8 +800,9 @@ class TenantAdminEventsController implements Disposable {
     required int newIndex,
   }) {
     final current = eventFormStateStreamValue.value;
-    final currentIndex =
-        current.selectedRelatedAccountProfileIds.indexOf(profileId);
+    final currentIndex = current.selectedRelatedAccountProfileIds.indexOf(
+      profileId,
+    );
     if (currentIndex < 0) {
       return;
     }
@@ -828,13 +842,11 @@ class TenantAdminEventsController implements Disposable {
         next.remove(taxonomySlug);
       }
     }
-    _replaceEventFormState(
-      current.copyWith(selectedTaxonomyTerms: next),
-    );
+    _replaceEventFormState(current.copyWith(selectedTaxonomyTerms: next));
   }
 
   List<TenantAdminTaxonomyDefinition>
-      allowedTaxonomyDefinitionsForSelectedEventType() {
+  allowedTaxonomyDefinitionsForSelectedEventType() {
     final allowedTaxonomies = _allowedTaxonomiesForEventType(
       eventFormStateStreamValue.value.selectedTypeSlug,
     );
@@ -863,26 +875,22 @@ class TenantAdminEventsController implements Disposable {
     if (!_isTaxonomyAllowedForSelectedEventType(taxonomySlug, current)) {
       return;
     }
-    _replaceOccurrenceByKey(
-      occurrenceKey,
-      (occurrence) {
-        final next = _taxonomyTermsToSelectionMap(occurrence.taxonomyTerms);
-        final bucket = next.putIfAbsent(taxonomySlug, () => <String>{});
-        if (isSelected) {
-          bucket.add(termSlug);
-        } else {
-          bucket.remove(termSlug);
-          if (bucket.isEmpty) {
-            next.remove(taxonomySlug);
-          }
+    _replaceOccurrenceByKey(occurrenceKey, (occurrence) {
+      final next = _taxonomyTermsToSelectionMap(occurrence.taxonomyTerms);
+      final bucket = next.putIfAbsent(taxonomySlug, () => <String>{});
+      if (isSelected) {
+        bucket.add(termSlug);
+      } else {
+        bucket.remove(termSlug);
+        if (bucket.isEmpty) {
+          next.remove(taxonomySlug);
         }
-        return _copyOccurrence(
-          occurrence,
-          taxonomyTerms: _taxonomyTermsFromSelectionMap(next),
-        );
-      },
-      sort: false,
-    );
+      }
+      return _copyOccurrence(
+        occurrence,
+        taxonomyTerms: _taxonomyTermsFromSelectionMap(next),
+      );
+    }, sort: false);
   }
 
   void applyEventStartAt(DateTime value) {
@@ -910,9 +918,7 @@ class TenantAdminEventsController implements Disposable {
       current,
       startAt: current.startAt,
       endAt: value,
-    ).copyWith(
-      endAt: value,
-    );
+    ).copyWith(endAt: value);
     _replaceEventFormState(nextState);
     _syncEventDateTimeControllers(nextState);
   }
@@ -923,9 +929,7 @@ class TenantAdminEventsController implements Disposable {
       current,
       startAt: current.startAt,
       endAt: null,
-    ).copyWith(
-      endAt: null,
-    );
+    ).copyWith(endAt: null);
     _replaceEventFormState(nextState);
     _syncEventDateTimeControllers(nextState);
   }
@@ -1011,8 +1015,9 @@ class TenantAdminEventsController implements Disposable {
       endAt: primary?.dateTimeEnd,
       occurrences: List<TenantAdminEventOccurrence>.unmodifiable(next),
       occurrenceLocalIds: List<String>.unmodifiable(nextKeys),
-      programmingItemLocalIdsByOccurrenceKey:
-          Map.unmodifiable(nextItemKeysByOccurrenceKey),
+      programmingItemLocalIdsByOccurrenceKey: Map.unmodifiable(
+        nextItemKeysByOccurrenceKey,
+      ),
     );
     _replaceEventFormState(nextState);
     _syncEventDateTimeControllers(nextState);
@@ -1054,8 +1059,9 @@ class TenantAdminEventsController implements Disposable {
         occurrenceLocalIds: List<String>.unmodifiable(
           sorted.map((entry) => entry.key),
         ),
-        programmingItemLocalIdsByOccurrenceKey:
-            Map.unmodifiable(itemKeysByOccurrenceKey),
+        programmingItemLocalIdsByOccurrenceKey: Map.unmodifiable(
+          itemKeysByOccurrenceKey,
+        ),
       ),
     );
     _syncEventDateTimeControllers(eventFormStateStreamValue.value);
@@ -1091,9 +1097,7 @@ class TenantAdminEventsController implements Disposable {
         startAt: startAt,
         occurrences: [occurrence],
         occurrenceLocalIds: [key],
-        programmingItemLocalIdsByOccurrenceKey: {
-          key: const <String>[],
-        },
+        programmingItemLocalIdsByOccurrenceKey: {key: const <String>[]},
       ),
     );
     _syncEventDateTimeControllers(eventFormStateStreamValue.value);
@@ -1110,7 +1114,7 @@ class TenantAdminEventsController implements Disposable {
   }
 
   List<MapEntry<String, TenantAdminEventProgrammingItem>>
-      programmingItemsForOccurrenceKey(String occurrenceKey) {
+  programmingItemsForOccurrenceKey(String occurrenceKey) {
     final state = eventFormStateStreamValue.value;
     final occurrence = occurrenceForKey(occurrenceKey);
     if (occurrence == null) {
@@ -1129,15 +1133,12 @@ class TenantAdminEventsController implements Disposable {
 
   void updateOccurrenceStart(String occurrenceKey, DateTime value) {
     _replaceOccurrenceByKey(occurrenceKey, (occurrence) {
-      final nextEnd = occurrence.dateTimeEnd != null &&
+      final nextEnd =
+          occurrence.dateTimeEnd != null &&
               occurrence.dateTimeEnd!.isBefore(value)
           ? value
           : occurrence.dateTimeEnd;
-      return _copyOccurrence(
-        occurrence,
-        startAt: value,
-        endAt: nextEnd,
-      );
+      return _copyOccurrence(occurrence, startAt: value, endAt: nextEnd);
     });
   }
 
@@ -1158,10 +1159,11 @@ class TenantAdminEventsController implements Disposable {
         submitErrorMessageStreamValue.addValue('Grupo da ocorrência inválido.');
         return occurrence;
       }
-      final knownProfiles = occurrence.relatedAccountProfiles
-          .where((entry) => entry.id != profile.id)
-          .toList(growable: true)
-        ..add(profile);
+      final knownProfiles =
+          occurrence.relatedAccountProfiles
+              .where((entry) => entry.id != profile.id)
+              .toList(growable: true)
+            ..add(profile);
       final nextGroups = TenantAdminNestedProfileGroupOperations.toggleMember(
         occurrence.profileGroups,
         groupId: groupId,
@@ -1172,19 +1174,13 @@ class TenantAdminEventsController implements Disposable {
         ),
       );
       return _applyOccurrenceProfileGroups(
-        _copyOccurrence(
-          occurrence,
-          relatedAccountProfiles: knownProfiles,
-        ),
+        _copyOccurrence(occurrence, relatedAccountProfiles: knownProfiles),
         nextGroups,
       );
     }, sort: false);
   }
 
-  void removeOccurrenceRelatedProfile(
-    String occurrenceKey,
-    String profileId,
-  ) {
+  void removeOccurrenceRelatedProfile(String occurrenceKey, String profileId) {
     _replaceOccurrenceByKey(occurrenceKey, (occurrence) {
       final programmingItems = occurrence.programmingItems
           .map((item) => _withoutProgrammingProfile(item, profileId))
@@ -1211,7 +1207,8 @@ class TenantAdminEventsController implements Disposable {
       final appendedGroups = TenantAdminNestedProfileGroupOperations.append(
         occurrence.profileGroups,
       );
-      final seededGroups = occurrence.profileGroups.isEmpty &&
+      final seededGroups =
+          occurrence.profileGroups.isEmpty &&
               occurrence.relatedAccountProfileIds.isNotEmpty &&
               appendedGroups.isNotEmpty
           ? [
@@ -1219,17 +1216,15 @@ class TenantAdminEventsController implements Disposable {
                 accountProfileIdValues: occurrence.relatedAccountProfileIds
                     .map(
                       (profileId) => TenantAdminNestedProfileGroupTextValue(
-                          profileId.value),
+                        profileId.value,
+                      ),
                     )
                     .toList(growable: false),
               ),
               ...appendedGroups.skip(1),
             ]
           : appendedGroups;
-      return _applyOccurrenceProfileGroups(
-        occurrence,
-        seededGroups,
-      );
+      return _applyOccurrenceProfileGroups(occurrence, seededGroups);
     }, sort: false);
   }
 
@@ -1294,22 +1289,18 @@ class TenantAdminEventsController implements Disposable {
     required String profileId,
     required bool selected,
   }) {
-    _replaceOccurrenceByKey(
-      occurrenceKey,
-      (occurrence) {
-        final nextGroups = TenantAdminNestedProfileGroupOperations.toggleMember(
-          occurrence.profileGroups,
-          groupId: groupId,
-          profileId: profileId,
-          selected: selected,
-          onLimit: () => submitErrorMessageStreamValue.addValue(
-            'Limite de perfis no grupo atingido.',
-          ),
-        );
-        return _applyOccurrenceProfileGroups(occurrence, nextGroups);
-      },
-      sort: false,
-    );
+    _replaceOccurrenceByKey(occurrenceKey, (occurrence) {
+      final nextGroups = TenantAdminNestedProfileGroupOperations.toggleMember(
+        occurrence.profileGroups,
+        groupId: groupId,
+        profileId: profileId,
+        selected: selected,
+        onLimit: () => submitErrorMessageStreamValue.addValue(
+          'Limite de perfis no grupo atingido.',
+        ),
+      );
+      return _applyOccurrenceProfileGroups(occurrence, nextGroups);
+    }, sort: false);
   }
 
   void addOccurrenceProgrammingItem(
@@ -1391,8 +1382,9 @@ class TenantAdminEventsController implements Disposable {
   }
 
   void applyEventPublishAt(DateTime value) {
-    final nextState =
-        eventFormStateStreamValue.value.copyWith(publishAt: value);
+    final nextState = eventFormStateStreamValue.value.copyWith(
+      publishAt: value,
+    );
     _replaceEventFormState(nextState);
     _syncEventDateTimeControllers(nextState);
   }
@@ -1411,9 +1403,7 @@ class TenantAdminEventsController implements Disposable {
     }
     final selectedVenueId = current.selectedVenueId?.trim();
     if (selectedVenueId != null && selectedVenueId.isNotEmpty) {
-      _replaceEventFormState(
-        current.copyWith(hasHydratedDefaultVenue: true),
-      );
+      _replaceEventFormState(current.copyWith(hasHydratedDefaultVenue: true));
       return;
     }
     if ((current.locationMode == 'physical' ||
@@ -1427,9 +1417,7 @@ class TenantAdminEventsController implements Disposable {
       );
       return;
     }
-    _replaceEventFormState(
-      current.copyWith(hasHydratedDefaultVenue: true),
-    );
+    _replaceEventFormState(current.copyWith(hasHydratedDefaultVenue: true));
   }
 
   void _hydrateDefaultEventTypeFromCatalog() {
@@ -1465,19 +1453,21 @@ class TenantAdminEventsController implements Disposable {
       state.selectedTaxonomyTerms,
       allowedTaxonomies,
     );
-    final sanitizedOccurrences = state.occurrences.map((occurrence) {
-      final sanitizedTerms = _sanitizeTaxonomyTerms(
-        occurrence.taxonomyTerms,
-        allowedTaxonomies,
-      );
-      if (_taxonomyTermMapsEqual(
-        _taxonomyTermsToSelectionMap(occurrence.taxonomyTerms),
-        _taxonomyTermsToSelectionMap(sanitizedTerms),
-      )) {
-        return occurrence;
-      }
-      return _copyOccurrence(occurrence, taxonomyTerms: sanitizedTerms);
-    }).toList(growable: false);
+    final sanitizedOccurrences = state.occurrences
+        .map((occurrence) {
+          final sanitizedTerms = _sanitizeTaxonomyTerms(
+            occurrence.taxonomyTerms,
+            allowedTaxonomies,
+          );
+          if (_taxonomyTermMapsEqual(
+            _taxonomyTermsToSelectionMap(occurrence.taxonomyTerms),
+            _taxonomyTermsToSelectionMap(sanitizedTerms),
+          )) {
+            return occurrence;
+          }
+          return _copyOccurrence(occurrence, taxonomyTerms: sanitizedTerms);
+        })
+        .toList(growable: false);
 
     final selectedUnchanged = _taxonomyTermMapsEqual(
       state.selectedTaxonomyTerms,
@@ -1548,8 +1538,9 @@ class TenantAdminEventsController implements Disposable {
     if (normalized.isEmpty) {
       return false;
     }
-    return _allowedTaxonomiesForEventType(state.selectedTypeSlug)
-        .contains(normalized);
+    return _allowedTaxonomiesForEventType(
+      state.selectedTypeSlug,
+    ).contains(normalized);
   }
 
   Set<String> _allowedTaxonomiesForEventType(String? typeSlug) {
@@ -1640,19 +1631,14 @@ class TenantAdminEventsController implements Disposable {
         ..sort();
       for (final termSlug in termSlugs) {
         terms.add(
-          tenantAdminTaxonomyTermFromRaw(
-            type: taxonomySlug,
-            value: termSlug,
-          ),
+          tenantAdminTaxonomyTermFromRaw(type: taxonomySlug, value: termSlug),
         );
       }
     }
     return terms;
   }
 
-  void initEventTypeForm({
-    TenantAdminEventType? existingType,
-  }) {
+  void initEventTypeForm({TenantAdminEventType? existingType}) {
     if (_eventTypeNameSyncListener != null) {
       eventTypeNameController.removeListener(_eventTypeNameSyncListener!);
       _eventTypeNameSyncListener = null;
@@ -1715,8 +1701,9 @@ class TenantAdminEventsController implements Disposable {
     if (slug.isEmpty) {
       return;
     }
-    final availableSlugs =
-        taxonomiesStreamValue.value.map((taxonomy) => taxonomy.slug).toSet();
+    final availableSlugs = taxonomiesStreamValue.value
+        .map((taxonomy) => taxonomy.slug)
+        .toSet();
     if (!availableSlugs.contains(slug)) {
       return;
     }
@@ -1750,12 +1737,12 @@ class TenantAdminEventsController implements Disposable {
     final normalizedDescription = description?.trim();
     final descriptionForCreate =
         (normalizedDescription == null || normalizedDescription.isEmpty)
-            ? null
-            : normalizedDescription;
+        ? null
+        : normalizedDescription;
     final descriptionForUpdate =
         (normalizedDescription == null || normalizedDescription.isEmpty)
-            ? null
-            : normalizedDescription;
+        ? null
+        : normalizedDescription;
     final allowedTaxonomyValues = allowedTaxonomies
         .map(
           (entry) => TenantAdminEventsRepoString.fromRaw(
@@ -1771,41 +1758,41 @@ class TenantAdminEventsController implements Disposable {
 
     final saved = isEdit
         ? includeVisual
-            ? await _eventsRepository.updateEventTypeWithVisual(
-                eventTypeId: _toEventsText(eventTypeId),
-                name: _toEventsText(normalizedName),
-                slug: _toEventsText(normalizedSlug),
-                description: _toNullableEventsText(descriptionForUpdate),
-                allowedTaxonomies: allowedTaxonomyValues,
-                visual: visual,
-                typeAssetUpload: typeAssetUpload,
-                removeTypeAsset: TenantAdminEventsRepoBool.fromRaw(
-                  removeTypeAsset,
-                  defaultValue: false,
-                ),
-              )
-            : await _eventsRepository.updateEventType(
-                eventTypeId: _toEventsText(eventTypeId),
-                name: _toEventsText(normalizedName),
-                slug: _toEventsText(normalizedSlug),
-                description: _toNullableEventsText(descriptionForUpdate),
-                allowedTaxonomies: allowedTaxonomyValues,
-              )
+              ? await _eventsRepository.updateEventTypeWithVisual(
+                  eventTypeId: _toEventsText(eventTypeId),
+                  name: _toEventsText(normalizedName),
+                  slug: _toEventsText(normalizedSlug),
+                  description: _toNullableEventsText(descriptionForUpdate),
+                  allowedTaxonomies: allowedTaxonomyValues,
+                  visual: visual,
+                  typeAssetUpload: typeAssetUpload,
+                  removeTypeAsset: TenantAdminEventsRepoBool.fromRaw(
+                    removeTypeAsset,
+                    defaultValue: false,
+                  ),
+                )
+              : await _eventsRepository.updateEventType(
+                  eventTypeId: _toEventsText(eventTypeId),
+                  name: _toEventsText(normalizedName),
+                  slug: _toEventsText(normalizedSlug),
+                  description: _toNullableEventsText(descriptionForUpdate),
+                  allowedTaxonomies: allowedTaxonomyValues,
+                )
         : includeVisual
-            ? await _eventsRepository.createEventTypeWithVisual(
-                name: _toEventsText(normalizedName),
-                slug: _toEventsText(normalizedSlug),
-                description: _toNullableEventsText(descriptionForCreate),
-                allowedTaxonomies: allowedTaxonomyValues,
-                visual: visual,
-                typeAssetUpload: typeAssetUpload,
-              )
-            : await _eventsRepository.createEventType(
-                name: _toEventsText(normalizedName),
-                slug: _toEventsText(normalizedSlug),
-                description: _toNullableEventsText(descriptionForCreate),
-                allowedTaxonomies: allowedTaxonomyValues,
-              );
+        ? await _eventsRepository.createEventTypeWithVisual(
+            name: _toEventsText(normalizedName),
+            slug: _toEventsText(normalizedSlug),
+            description: _toNullableEventsText(descriptionForCreate),
+            allowedTaxonomies: allowedTaxonomyValues,
+            visual: visual,
+            typeAssetUpload: typeAssetUpload,
+          )
+        : await _eventsRepository.createEventType(
+            name: _toEventsText(normalizedName),
+            slug: _toEventsText(normalizedSlug),
+            description: _toNullableEventsText(descriptionForCreate),
+            allowedTaxonomies: allowedTaxonomyValues,
+          );
 
     await _loadEventTypeCatalog();
     return saved;
@@ -1823,9 +1810,7 @@ class TenantAdminEventsController implements Disposable {
     await _loadEventTypeCatalog();
   }
 
-  Future<void> loadFormDependencies({
-    String? accountSlug,
-  }) async {
+  Future<void> loadFormDependencies({String? accountSlug}) async {
     final normalizedAccountSlug = _normalizeOptionalText(accountSlug);
     _formAccountProfileCandidatesAccountSlug = normalizedAccountSlug;
     final cleanBaselineBeforeLoad = _eventFormInitialFingerprint;
@@ -1837,7 +1822,8 @@ class TenantAdminEventsController implements Disposable {
 
     await Future.wait<void>(tasks);
     if (!_isDisposed) {
-      final canRefreshCleanBaseline = cleanBaselineBeforeLoad != null &&
+      final canRefreshCleanBaseline =
+          cleanBaselineBeforeLoad != null &&
           _eventFormFingerprint() == cleanBaselineBeforeLoad;
       _hydrateDefaultEventVenueFromCandidates();
       _hydrateDefaultEventTypeFromCatalog();
@@ -1868,9 +1854,8 @@ class TenantAdminEventsController implements Disposable {
       }
       final sorted = eventTypes.toList(growable: false)
         ..sort(
-          (left, right) => left.name.toLowerCase().compareTo(
-                right.name.toLowerCase(),
-              ),
+          (left, right) =>
+              left.name.toLowerCase().compareTo(right.name.toLowerCase()),
         );
       eventTypeCatalogStreamValue.addValue(List.unmodifiable(sorted));
     } catch (error) {
@@ -1885,7 +1870,8 @@ class TenantAdminEventsController implements Disposable {
     taxonomyLoadingStreamValue.addValue(true);
     try {
       await _taxonomiesRepository.loadAllTaxonomies();
-      final taxonomies = _taxonomiesRepository.taxonomiesStreamValue.value ??
+      final taxonomies =
+          _taxonomiesRepository.taxonomiesStreamValue.value ??
           const <TenantAdminTaxonomyDefinition>[];
       final filtered = taxonomies
           .where((taxonomy) => taxonomy.appliesToEvent())
@@ -1950,7 +1936,7 @@ class TenantAdminEventsController implements Disposable {
 
     final taxonomyBySlug = {
       for (final taxonomy in taxonomiesStreamValue.value)
-        taxonomy.slug: taxonomy
+        taxonomy.slug: taxonomy,
     };
     if (taxonomyBySlug.isEmpty) {
       _publishTaxonomyTermsLoadResult(
@@ -1999,9 +1985,9 @@ class TenantAdminEventsController implements Disposable {
         return;
       }
       for (final taxonomy in missingDefinitions) {
-        final terms = fetchedById.termsForId(tenantAdminRequiredText(
-          taxonomy.id,
-        ));
+        final terms = fetchedById.termsForId(
+          tenantAdminRequiredText(taxonomy.id),
+        );
         _taxonomyTermsCacheBySlug[taxonomy.slug] =
             List<TenantAdminTaxonomyTermDefinition>.unmodifiable(terms);
         scopedTerms[taxonomy.slug] = _taxonomyTermsCacheBySlug[taxonomy.slug]!;
@@ -2058,9 +2044,11 @@ class TenantAdminEventsController implements Disposable {
     final typeChanged = candidateType != _accountProfilePickerType;
     final accountChanged =
         normalizedAccountSlug != _accountProfilePickerAccountSlug;
-    final hasSearch =
-        accountProfilePickerQueryStreamValue.value.trim().isNotEmpty;
-    final needsInitialLoad = _accountProfilePickerCurrentPage <= 0 &&
+    final hasSearch = accountProfilePickerQueryStreamValue.value
+        .trim()
+        .isNotEmpty;
+    final needsInitialLoad =
+        _accountProfilePickerCurrentPage <= 0 &&
         accountProfilePickerResultsStreamValue.value.isEmpty;
 
     _accountProfilePickerType = candidateType;
@@ -2088,13 +2076,20 @@ class TenantAdminEventsController implements Disposable {
     }
   }
 
-  Future<void> prepareRelatedAccountProfilePicker({
-    String? accountSlug,
-  }) {
+  Future<void> prepareRelatedAccountProfilePicker({String? accountSlug}) {
     return prepareAccountProfilePicker(
       candidateType:
           TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
       accountSlug: accountSlug,
+    );
+  }
+
+  Future<void> preparePhysicalHostAccountProfilePicker({String? accountSlug}) {
+    return prepareAccountProfilePicker(
+      candidateType: TenantAdminEventAccountProfileCandidateType.physicalHost,
+      accountSlug:
+          _normalizeOptionalText(accountSlug) ??
+          _formAccountProfileCandidatesAccountSlug,
     );
   }
 
@@ -2113,8 +2108,9 @@ class TenantAdminEventsController implements Disposable {
   }
 
   Future<void> _ensureRelatedAccountProfilePickerReady() async {
-    final normalizedAccountSlug =
-        _normalizeOptionalText(_formAccountProfileCandidatesAccountSlug);
+    final normalizedAccountSlug = _normalizeOptionalText(
+      _formAccountProfileCandidatesAccountSlug,
+    );
     if (_accountProfilePickerType ==
             TenantAdminEventAccountProfileCandidateType.relatedAccountProfile &&
         _accountProfilePickerAccountSlug == normalizedAccountSlug) {
@@ -2122,7 +2118,8 @@ class TenantAdminEventsController implements Disposable {
     }
 
     await prepareRelatedAccountProfilePicker(
-        accountSlug: normalizedAccountSlug);
+      accountSlug: normalizedAccountSlug,
+    );
   }
 
   Future<void> _loadRelatedAccountProfileCandidatePagesUntilQuerySatisfied(
@@ -2138,6 +2135,45 @@ class TenantAdminEventsController implements Disposable {
         !_relatedAccountProfileCandidatesContainQuery(normalizedQuery)) {
       await loadNextRelatedAccountProfileSearchPage();
     }
+  }
+
+  TenantAdminAccountProfile? knownVenueCandidate(String? profileId) {
+    final normalizedProfileId = _normalizeOptionalText(profileId);
+    if (normalizedProfileId == null) {
+      return null;
+    }
+
+    final candidates = <TenantAdminAccountProfile>[
+      ...accountProfilePickerResultsStreamValue.value,
+      ...venueCandidatesStreamValue.value,
+      ..._knownProgrammingLocationProfiles(),
+    ];
+    final bootstrapSelectedVenueCandidate = _bootstrapSelectedVenueCandidate;
+    if (bootstrapSelectedVenueCandidate != null) {
+      candidates.insert(0, bootstrapSelectedVenueCandidate);
+    }
+    for (final candidate in candidates) {
+      if (candidate.id == normalizedProfileId) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+
+  List<TenantAdminAccountProfile> _knownProgrammingLocationProfiles() {
+    final state = eventFormStateStreamValue.value;
+    final profiles = <TenantAdminAccountProfile>[];
+    for (final occurrence in state.occurrences) {
+      for (final item in occurrence.programmingItems) {
+        final locationProfile = item.locationProfile;
+        if (locationProfile != null) {
+          profiles.add(locationProfile);
+        }
+      }
+    }
+    return List<TenantAdminAccountProfile>.unmodifiable(
+      _mergeAccountProfiles(const <TenantAdminAccountProfile>[], profiles),
+    );
   }
 
   bool _relatedAccountProfileCandidatesContainQuery(String query) {
@@ -2179,9 +2215,7 @@ class TenantAdminEventsController implements Disposable {
     await loadNextAccountProfilePickerPage();
   }
 
-  Future<void> _loadAccountProfileCandidates({
-    String? accountSlug,
-  }) async {
+  Future<void> _loadAccountProfileCandidates({String? accountSlug}) async {
     final normalizedAccountSlug = _normalizeOptionalText(accountSlug);
     accountProfileCandidatesLoadingStreamValue.addValue(true);
     accountProfileCandidatesErrorStreamValue.addValue(null);
@@ -2241,7 +2275,7 @@ class TenantAdminEventsController implements Disposable {
   }
 
   Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-      _fetchAccountProfileCandidatesFirstPage({
+  _fetchAccountProfileCandidatesFirstPage({
     required TenantAdminEventAccountProfileCandidateType candidateType,
     String? accountSlug,
   }) async {
@@ -2253,7 +2287,7 @@ class TenantAdminEventsController implements Disposable {
   }
 
   Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-      _fetchAccountProfileCandidatesPage({
+  _fetchAccountProfileCandidatesPage({
     required TenantAdminEventAccountProfileCandidateType candidateType,
     required int pageNumber,
     String? accountSlug,
@@ -2291,8 +2325,9 @@ class TenantAdminEventsController implements Disposable {
       return false;
     }
 
-    accountProfilePickerResultsStreamValue
-        .addValue(List.unmodifiable(pageResult.items));
+    accountProfilePickerResultsStreamValue.addValue(
+      List.unmodifiable(pageResult.items),
+    );
     accountProfilePickerHasMoreStreamValue.addValue(pageResult.hasMore);
     _accountProfilePickerCurrentPage = 1;
 
@@ -2300,7 +2335,7 @@ class TenantAdminEventsController implements Disposable {
   }
 
   Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-      _loadAccountProfilePickerCandidates({
+  _loadAccountProfilePickerCandidates({
     required TenantAdminEventAccountProfileCandidateType candidateType,
     required bool isInitial,
     required String query,
@@ -2320,9 +2355,7 @@ class TenantAdminEventsController implements Disposable {
     }
   }
 
-  void _scheduleAccountProfilePickerReload({
-    required bool immediate,
-  }) {
+  void _scheduleAccountProfilePickerReload({required bool immediate}) {
     _accountProfilePickerDebounce?.cancel();
     final nextRequestToken = _accountProfilePickerRequestToken + 1;
     _accountProfilePickerRequestToken = nextRequestToken;
@@ -2348,9 +2381,7 @@ class TenantAdminEventsController implements Disposable {
     );
   }
 
-  Future<void> _reloadAccountProfilePicker({
-    required bool immediate,
-  }) async {
+  Future<void> _reloadAccountProfilePicker({required bool immediate}) async {
     _scheduleAccountProfilePickerReload(immediate: immediate);
     if (!immediate) {
       return;
@@ -2408,10 +2439,12 @@ class TenantAdminEventsController implements Disposable {
               pageResult.items,
             );
 
-      _accountProfilePickerCurrentPage =
-          isInitial ? 1 : _accountProfilePickerCurrentPage + 1;
-      accountProfilePickerResultsStreamValue
-          .addValue(List.unmodifiable(nextItems));
+      _accountProfilePickerCurrentPage = isInitial
+          ? 1
+          : _accountProfilePickerCurrentPage + 1;
+      accountProfilePickerResultsStreamValue.addValue(
+        List.unmodifiable(nextItems),
+      );
       if (candidateType ==
           TenantAdminEventAccountProfileCandidateType.relatedAccountProfile) {
         _mergeKnownRelatedAccountProfiles(pageResult.items);
@@ -2482,9 +2515,7 @@ class TenantAdminEventsController implements Disposable {
     Iterable<TenantAdminAccountProfile> current,
     Iterable<TenantAdminAccountProfile> incoming,
   ) {
-    final orderedIds = <String>[
-      for (final profile in current) profile.id,
-    ];
+    final orderedIds = <String>[for (final profile in current) profile.id];
     final byId = <String, TenantAdminAccountProfile>{
       for (final profile in current) profile.id: profile,
     };
@@ -2509,10 +2540,7 @@ class TenantAdminEventsController implements Disposable {
       );
     }
 
-    return _mergeAccountProfiles(
-      [selectedVenueCandidate],
-      bootstrapCandidates,
-    );
+    return _mergeAccountProfiles([selectedVenueCandidate], bootstrapCandidates);
   }
 
   TenantAdminAccountProfile? _selectedVenueCandidateFromEvent(
@@ -2533,10 +2561,7 @@ class TenantAdminEventsController implements Disposable {
     final longitude = event.location?.longitude;
     final location = latitude == null || longitude == null
         ? null
-        : tenantAdminLocationFromRaw(
-            latitude: latitude,
-            longitude: longitude,
-          );
+        : tenantAdminLocationFromRaw(latitude: latitude, longitude: longitude);
 
     return tenantAdminAccountProfileFromRaw(
       id: selectedVenueId,
@@ -2610,8 +2635,9 @@ class TenantAdminEventsController implements Disposable {
       if (_isDisposed) {
         return null;
       }
-      submitSuccessMessageStreamValue
-          .addValue('Evento atualizado com sucesso.');
+      submitSuccessMessageStreamValue.addValue(
+        'Evento atualizado com sucesso.',
+      );
       markEventFormClean();
       await loadEvents();
       return updated;
@@ -2646,12 +2672,12 @@ class TenantAdminEventsController implements Disposable {
   }
 
   Future<TenantAdminLegacyEventPartiesSummary>
-      inspectLegacyEventParties() async {
+  inspectLegacyEventParties() async {
     return _eventsRepository.fetchLegacyEventPartiesSummary();
   }
 
   Future<TenantAdminLegacyEventPartiesSummary>
-      repairLegacyEventParties() async {
+  repairLegacyEventParties() async {
     final summary = await _eventsRepository.repairLegacyEventParties();
     await loadEvents();
     return summary;
@@ -2679,8 +2705,9 @@ class TenantAdminEventsController implements Disposable {
     specificDateFilterStreamValue.addValue(null);
     venueFilterStreamValue.addValue(null);
     relatedAccountProfileFilterStreamValue.addValue(null);
-    temporalFilterStreamValue
-        .addValue(TenantAdminEventTemporalBucket.defaultSelection);
+    temporalFilterStreamValue.addValue(
+      TenantAdminEventTemporalBucket.defaultSelection,
+    );
     taxonomiesStreamValue.addValue(const []);
     taxonomyTermsBySlugStreamValue.addValue(const {});
     _taxonomyTermsCacheBySlug.clear();
@@ -2768,8 +2795,9 @@ class TenantAdminEventsController implements Disposable {
     if (startAt == null) {
       return current;
     }
-    final existing =
-        current.occurrences.isEmpty ? null : current.occurrences.first;
+    final existing = current.occurrences.isEmpty
+        ? null
+        : current.occurrences.first;
     final nextPrimary = _copyOccurrence(
       existing ??
           TenantAdminEventOccurrence(
@@ -2790,8 +2818,9 @@ class TenantAdminEventsController implements Disposable {
       final key = _newEventFormLocalId('occurrence');
       next.add(nextPrimary);
       nextKeys.add(key);
-      itemKeysByOccurrenceKey[key] =
-          _newProgrammingItemKeys(nextPrimary.programmingItems);
+      itemKeysByOccurrenceKey[key] = _newProgrammingItemKeys(
+        nextPrimary.programmingItems,
+      );
     } else {
       next[0] = nextPrimary;
       itemKeysByOccurrenceKey[nextKeys[0]] = _reconcileProgrammingItemKeys(
@@ -2802,15 +2831,16 @@ class TenantAdminEventsController implements Disposable {
     return current.copyWith(
       occurrences: List<TenantAdminEventOccurrence>.unmodifiable(next),
       occurrenceLocalIds: List<String>.unmodifiable(nextKeys),
-      programmingItemLocalIdsByOccurrenceKey:
-          Map.unmodifiable(itemKeysByOccurrenceKey),
+      programmingItemLocalIdsByOccurrenceKey: Map.unmodifiable(
+        itemKeysByOccurrenceKey,
+      ),
     );
   }
 
   void _replaceOccurrenceByKey(
     String occurrenceKey,
     TenantAdminEventOccurrence Function(TenantAdminEventOccurrence occurrence)
-        replace, {
+    replace, {
     bool sort = true,
     Map<String, List<String>>? programmingItemLocalIdsByOccurrenceKey,
   }) {
@@ -2822,7 +2852,8 @@ class TenantAdminEventsController implements Disposable {
     final occurrences = current.occurrences.toList(growable: true);
     occurrences[occurrenceIndex] = replace(occurrences[occurrenceIndex]);
     final occurrenceKeys = _normalizedOccurrenceKeys(current);
-    final itemKeysByOccurrenceKey = programmingItemLocalIdsByOccurrenceKey ??
+    final itemKeysByOccurrenceKey =
+        programmingItemLocalIdsByOccurrenceKey ??
         _normalizedProgrammingItemKeysByOccurrenceKey(current);
     itemKeysByOccurrenceKey[occurrenceKey] = _reconcileProgrammingItemKeys(
       currentKeys: itemKeysByOccurrenceKey[occurrenceKey],
@@ -2848,8 +2879,9 @@ class TenantAdminEventsController implements Disposable {
       occurrenceLocalIds: List<String>.unmodifiable(
         entries.map((entry) => entry.key),
       ),
-      programmingItemLocalIdsByOccurrenceKey:
-          Map.unmodifiable(itemKeysByOccurrenceKey),
+      programmingItemLocalIdsByOccurrenceKey: Map.unmodifiable(
+        itemKeysByOccurrenceKey,
+      ),
     );
     _replaceEventFormState(nextState);
     _syncEventDateTimeControllers(nextState);
@@ -2895,8 +2927,9 @@ class TenantAdminEventsController implements Disposable {
     );
     return _copyOccurrence(
       occurrence,
-      relatedAccountProfileIds:
-          profileIds.map(TenantAdminAccountProfileIdValue.new).toList(),
+      relatedAccountProfileIds: profileIds
+          .map(TenantAdminAccountProfileIdValue.new)
+          .toList(),
       relatedAccountProfiles: _knownProfilesForIds(
         profileIds,
         occurrence.relatedAccountProfiles,
@@ -2933,16 +2966,13 @@ class TenantAdminEventsController implements Disposable {
       return const <TenantAdminAccountProfile>[];
     }
 
-    return _mergeAccountProfiles(
-      event.relatedAccountProfiles,
-      [
-        for (final occurrence in event.occurrences)
-          ...occurrence.relatedAccountProfiles,
-        for (final occurrence in event.occurrences)
-          for (final item in occurrence.programmingItems)
-            ...item.linkedAccountProfiles,
-      ],
-    );
+    return _mergeAccountProfiles(event.relatedAccountProfiles, [
+      for (final occurrence in event.occurrences)
+        ...occurrence.relatedAccountProfiles,
+      for (final occurrence in event.occurrences)
+        for (final item in occurrence.programmingItems)
+          ...item.linkedAccountProfiles,
+    ]);
   }
 
   List<TenantAdminEventProgrammingItem> _filterProgrammingItemsByProfileIds(
@@ -2962,6 +2992,7 @@ class TenantAdminEventsController implements Disposable {
             linkedAccountProfiles: item.linkedAccountProfiles
                 .where((profile) => allowed.contains(profile.id))
                 .toList(growable: false),
+            locationProfile: item.locationProfile,
             placeRef: item.placeRef,
           ),
         )
@@ -3036,7 +3067,7 @@ class TenantAdminEventsController implements Disposable {
   }
 
   List<({TenantAdminEventOccurrence occurrence, String key})>
-      _sortOccurrenceEntries({
+  _sortOccurrenceEntries({
     required List<TenantAdminEventOccurrence> occurrences,
     required List<String> occurrenceKeys,
   }) {
@@ -3083,6 +3114,7 @@ class TenantAdminEventsController implements Disposable {
       linkedAccountProfiles: item.linkedAccountProfiles
           .where((profile) => profile.id != profileId)
           .toList(growable: false),
+      locationProfile: item.locationProfile,
       placeRef: item.placeRef,
     );
   }
@@ -3106,10 +3138,7 @@ class TenantAdminEventsController implements Disposable {
     if (file == null) {
       return null;
     }
-    return <String, Object?>{
-      'name': file.name,
-      'path': file.path,
-    };
+    return <String, Object?>{'name': file.name, 'path': file.path};
   }
 
   Map<String, Object?> _eventFormStateFingerprint(
@@ -3253,19 +3282,20 @@ class TenantAdminEventsController implements Disposable {
         .map((entry) => entry.trim())
         .where((entry) => entry.isNotEmpty)
         .fold<List<String>>(<String>[], (current, entry) {
-      if (!current.contains(entry)) {
-        current.add(entry);
-      }
-      return current;
-    });
+          if (!current.contains(entry)) {
+            current.add(entry);
+          }
+          return current;
+        });
     eventTypeAllowedTaxonomiesStreamValue.addValue(
       List<String>.unmodifiable(normalized),
     );
   }
 
   void _sanitizeEventTypeAllowedTaxonomies() {
-    final availableSlugs =
-        taxonomiesStreamValue.value.map((taxonomy) => taxonomy.slug).toSet();
+    final availableSlugs = taxonomiesStreamValue.value
+        .map((taxonomy) => taxonomy.slug)
+        .toSet();
     if (availableSlugs.isEmpty) {
       return;
     }
@@ -3331,11 +3361,12 @@ class TenantAdminEventsController implements Disposable {
     }
 
     try {
-      final isTypeAsset = currentEventTypePoiVisualImageSource ==
+      final isTypeAsset =
+          currentEventTypePoiVisualImageSource ==
           TenantAdminPoiVisualImageSource.typeAsset;
       final colorValue = isTypeAsset
           ? (TenantAdminHexColorValue()
-            ..parse(eventTypePoiVisualColorController.text))
+              ..parse(eventTypePoiVisualColorController.text))
           : null;
       final candidate = TenantAdminPoiVisual.image(
         imageSource: currentEventTypePoiVisualImageSource,
@@ -3369,9 +3400,7 @@ class TenantAdminEventsController implements Disposable {
     );
   }
 
-  Future<XFile> fetchEventTypeImageFromUrlForCrop({
-    required String imageUrl,
-  }) {
+  Future<XFile> fetchEventTypeImageFromUrlForCrop({required String imageUrl}) {
     return _imageIngestionService.fetchFromUrlForCrop(imageUrl: imageUrl);
   }
 
@@ -3443,8 +3472,8 @@ class TenantAdminEventsController implements Disposable {
     eventTypePoiVisualIconColorController.text = '#FFFFFF';
     final imageSource =
         visual.imageSource == TenantAdminPoiVisualImageSource.avatar
-            ? TenantAdminPoiVisualImageSource.cover
-            : (visual.imageSource ?? TenantAdminPoiVisualImageSource.cover);
+        ? TenantAdminPoiVisualImageSource.cover
+        : (visual.imageSource ?? TenantAdminPoiVisualImageSource.cover);
     eventTypePoiVisualImageSourceStreamValue.addValue(imageSource);
     eventTypeTypeAssetUrlStreamValue.addValue(visual.imageUrl ?? '');
   }
@@ -3457,7 +3486,8 @@ class TenantAdminEventsController implements Disposable {
     final builder = StringBuffer();
     var previousWasHyphen = false;
     for (final codeUnit in lower.codeUnits) {
-      final isAlphaNumeric = (codeUnit >= 48 && codeUnit <= 57) ||
+      final isAlphaNumeric =
+          (codeUnit >= 48 && codeUnit <= 57) ||
           (codeUnit >= 97 && codeUnit <= 122);
       if (isAlphaNumeric) {
         builder.writeCharCode(codeUnit);
@@ -3499,8 +3529,9 @@ class TenantAdminEventsController implements Disposable {
     if (trimmed == null || trimmed.isEmpty) {
       return null;
     }
-    final uri =
-        Uri.tryParse(trimmed.contains('://') ? trimmed : 'https://$trimmed');
+    final uri = Uri.tryParse(
+      trimmed.contains('://') ? trimmed : 'https://$trimmed',
+    );
     if (uri != null && uri.host.trim().isNotEmpty) {
       return uri.host.trim();
     }
