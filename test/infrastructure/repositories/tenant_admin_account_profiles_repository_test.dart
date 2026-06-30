@@ -179,12 +179,8 @@ void main() {
           labelValue: TenantAdminNestedProfileGroupTextValue('Parceiros'),
           orderValue: TenantAdminNestedProfileGroupOrderValue(0),
           accountProfileIdValues: <TenantAdminNestedProfileGroupTextValue>[
-            TenantAdminNestedProfileGroupTextValue(
-              '507f1f77bcf86cd799439081',
-            ),
-            TenantAdminNestedProfileGroupTextValue(
-              '507f1f77bcf86cd799439082',
-            ),
+            TenantAdminNestedProfileGroupTextValue('507f1f77bcf86cd799439081'),
+            TenantAdminNestedProfileGroupTextValue('507f1f77bcf86cd799439082'),
           ],
         ),
       ],
@@ -254,7 +250,8 @@ void main() {
       expect(
         adapter.lastRequest?.path,
         contains(
-            'https://tenant.test/admin/api/v1/account_profiles/profile-1/gallery'),
+          'https://tenant.test/admin/api/v1/account_profiles/profile-1/gallery',
+        ),
       );
       expect(adapter.lastRequest?.contentType, contains('multipart/form-data'));
 
@@ -268,11 +265,13 @@ void main() {
         isTrue,
       );
 
-      final encodedGalleryGroups = jsonDecode(
-        formData.fields
-            .firstWhere((entry) => entry.key == 'gallery_groups')
-            .value,
-      ) as List<dynamic>;
+      final encodedGalleryGroups =
+          jsonDecode(
+                formData.fields
+                    .firstWhere((entry) => entry.key == 'gallery_groups')
+                    .value,
+              )
+              as List<dynamic>;
       expect(encodedGalleryGroups, hasLength(1));
 
       final group = encodedGalleryGroups.single as Map<String, dynamic>;
@@ -343,28 +342,72 @@ void main() {
     },
   );
 
-  test('fetchAccountProfiles sends queryable selector filters when requested',
-      () async {
-    final adapter = _ProfileListMediaAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminAccountProfilesRepository(dio: dio);
+  test(
+    'fetchAccountProfiles sends queryable selector filters when requested',
+    () async {
+      final adapter = _ProfileListMediaAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminAccountProfilesRepository(dio: dio);
 
-    await repository.fetchAccountProfiles(
-      queryableOnly: tenantAdminAccountProfilesRepoBool(
-        true,
-        defaultValue: true,
-      ),
-      excludeAccountProfileId: tenantAdminAccountProfilesRepoString(
+      await repository.fetchAccountProfiles(
+        queryableOnly: tenantAdminAccountProfilesRepoBool(
+          true,
+          defaultValue: true,
+        ),
+        excludeAccountProfileId: tenantAdminAccountProfilesRepoString(
+          'profile-1',
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
+
+      final request = adapter.requests.single;
+      expect(request.queryParameters['queryable_only'], isTrue);
+      expect(
+        request.queryParameters['exclude_account_profile_id'],
         'profile-1',
-        defaultValue: '',
-        isRequired: true,
-      ),
-    );
+      );
+    },
+  );
 
-    final request = adapter.requests.single;
-    expect(request.queryParameters['queryable_only'], isTrue);
-    expect(request.queryParameters['exclude_account_profile_id'], 'profile-1');
-  });
+  test(
+    'fetchAccountProfile adds a distinct cache-busting _ts query param per request',
+    () async {
+      final adapter = _CaptureAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+      await repository.fetchAccountProfile(
+        tenantAdminAccountProfilesRepoString(
+          'profile-1',
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
+      await repository.fetchAccountProfile(
+        tenantAdminAccountProfilesRepoString(
+          'profile-1',
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
+
+      expect(adapter.requests, hasLength(2));
+      final firstRequest = adapter.requests.first;
+      final secondRequest = adapter.requests.last;
+      expect(
+        firstRequest.path,
+        contains('https://tenant.test/admin/api/v1/account_profiles/profile-1'),
+      );
+      final firstCacheBuster =
+          firstRequest.queryParameters['_ts']?.toString() ?? '';
+      final secondCacheBuster =
+          secondRequest.queryParameters['_ts']?.toString() ?? '';
+      expect(firstCacheBuster, isNotEmpty);
+      expect(secondCacheBuster, isNotEmpty);
+      expect(secondCacheBuster, isNot(firstCacheBuster));
+    },
+  );
 
   test(
     'updateAccountProfile sends explicit remove avatar/cover flags',
@@ -805,15 +848,15 @@ void main() {
         throwsA(
           isA<FormValidationFailure>()
               .having(
-            (error) => error.message,
-            'message',
-            'The given data was invalid.',
-          )
+                (error) => error.message,
+                'message',
+                'The given data was invalid.',
+              )
               .having(
-            (error) => error.fieldErrors['location.lat'],
-            'location.lat error',
-            <String>['Latitude obrigatoria.'],
-          ),
+                (error) => error.fieldErrors['location.lat'],
+                'location.lat error',
+                <String>['Latitude obrigatoria.'],
+              ),
         ),
       );
     },
@@ -909,6 +952,7 @@ class _StubTenantScope implements TenantAdminTenantScopeContract {
 
 class _CaptureAdapter implements HttpClientAdapter {
   RequestOptions? lastRequest;
+  final List<RequestOptions> requests = <RequestOptions>[];
 
   @override
   void close({bool force = false}) {}
@@ -920,6 +964,7 @@ class _CaptureAdapter implements HttpClientAdapter {
     Future? cancelFuture,
   ) async {
     lastRequest = options;
+    requests.add(options);
     if (options.path.endsWith('/map_poi_projection_impact')) {
       return ResponseBody.fromString(
         jsonEncode({
