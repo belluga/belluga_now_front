@@ -19,9 +19,9 @@ class TenantAdminAccountProfileEditRoutePage
 
   @override
   RouteResolverParams get resolverParams => {
-        'accountSlug': accountSlug,
-        'accountProfileId': accountProfileId,
-      };
+    'accountSlug': accountSlug,
+    'accountProfileId': accountProfileId,
+  };
 
   @override
   Widget buildScreen(BuildContext context, TenantAdminAccountProfile model) {
@@ -31,6 +31,7 @@ class TenantAdminAccountProfileEditRoutePage
       ),
       accountSlug: accountSlug,
       accountProfileId: model.id,
+      initialProfile: model,
     );
   }
 }
