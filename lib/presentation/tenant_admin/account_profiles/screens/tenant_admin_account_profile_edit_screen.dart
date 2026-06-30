@@ -41,10 +41,12 @@ class TenantAdminAccountProfileEditScreen extends StatefulWidget {
     super.key,
     required this.accountSlug,
     required this.accountProfileId,
+    this.initialProfile,
   });
 
   final String accountSlug;
   final String accountProfileId;
+  final TenantAdminAccountProfile? initialProfile;
 
   @override
   State<TenantAdminAccountProfileEditScreen> createState() =>
@@ -53,8 +55,8 @@ class TenantAdminAccountProfileEditScreen extends StatefulWidget {
 
 class _TenantAdminAccountProfileEditScreenState
     extends State<TenantAdminAccountProfileEditScreen> {
-  final TenantAdminAccountProfilesController _controller =
-      GetIt.I.get<TenantAdminAccountProfilesController>();
+  final TenantAdminAccountProfilesController _controller = GetIt.I
+      .get<TenantAdminAccountProfilesController>();
   TenantAdminAccountProfile? _activeProfile;
   String? _syncedProfileId;
   bool _initialTaxonomiesSynced = false;
@@ -66,17 +68,21 @@ class _TenantAdminAccountProfileEditScreenState
 
   static const List<TenantAdminOwnershipState> _editableOwnershipStates =
       <TenantAdminOwnershipState>[
-    TenantAdminOwnershipState.tenantOwned,
-    TenantAdminOwnershipState.unmanaged,
-  ];
+        TenantAdminOwnershipState.tenantOwned,
+        TenantAdminOwnershipState.unmanaged,
+      ];
 
   @override
   void initState() {
     super.initState();
     _controller.bindEditFlow();
     unawaited(_controller.loadAccountForEdit(_currentAccountSlugForRequests()));
-    _controller.loadTaxonomies().whenComplete(() =>
-        _controller.loadEditProfile(_currentAccountProfileIdForRequests()));
+    _controller.loadTaxonomies().whenComplete(
+      () => _controller.loadEditProfile(
+        _currentAccountProfileIdForRequests(),
+        prefetchedProfile: widget.initialProfile,
+      ),
+    );
   }
 
   @override
@@ -160,9 +166,11 @@ class _TenantAdminAccountProfileEditScreenState
   ) {
     final allowed = _allowedTaxonomies(selectedType).toSet();
     return _controller.taxonomiesStreamValue.value
-        .where((taxonomy) =>
-            taxonomy.appliesToAccountProfile() &&
-            allowed.contains(taxonomy.slug))
+        .where(
+          (taxonomy) =>
+              taxonomy.appliesToAccountProfile() &&
+              allowed.contains(taxonomy.slug),
+        )
         .toList(growable: false);
   }
 
@@ -288,15 +296,13 @@ class _TenantAdminAccountProfileEditScreenState
       _controller.longitudeController.clear();
       return;
     }
-    _controller.latitudeController.text =
-        profile.location!.latitude.toStringAsFixed(6);
-    _controller.longitudeController.text =
-        profile.location!.longitude.toStringAsFixed(6);
+    _controller.latitudeController.text = profile.location!.latitude
+        .toStringAsFixed(6);
+    _controller.longitudeController.text = profile.location!.longitude
+        .toStringAsFixed(6);
   }
 
-  void _attemptTaxonomySync({
-    TenantAdminAccountProfile? profile,
-  }) {
+  void _attemptTaxonomySync({TenantAdminAccountProfile? profile}) {
     if (_initialTaxonomiesSynced) return;
     final currentProfile = profile ?? _activeProfile;
     if (currentProfile == null) return;
@@ -346,8 +352,9 @@ class _TenantAdminAccountProfileEditScreenState
     final selections = _controller.taxonomySelectionStreamValue.value;
     for (final entry in selections.entries) {
       for (final value in entry.value) {
-        terms
-            .add(tenantAdminTaxonomyTermFromRaw(type: entry.key, value: value));
+        terms.add(
+          tenantAdminTaxonomyTermFromRaw(type: entry.key, value: value),
+        );
       }
     }
     final taxonomyTerms = TenantAdminTaxonomyTerms();
@@ -400,8 +407,9 @@ class _TenantAdminAccountProfileEditScreenState
     }
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content:
-            Text('Nao foi possivel salvar a taxonomia. Alteracao desfeita.'),
+        content: Text(
+          'Nao foi possivel salvar a taxonomia. Alteracao desfeita.',
+        ),
       ),
     );
   }
@@ -413,13 +421,15 @@ class _TenantAdminAccountProfileEditScreenState
       return 'Latitude inválida.';
     }
     if (_requiresLocation(
-            _controller.editStateStreamValue.value.selectedProfileType) &&
+          _controller.editStateStreamValue.value.selectedProfileType,
+        ) &&
         trimmed.isEmpty &&
         other.isNotEmpty) {
       return 'Latitude é obrigatória.';
     }
     if (_requiresLocation(
-            _controller.editStateStreamValue.value.selectedProfileType) &&
+          _controller.editStateStreamValue.value.selectedProfileType,
+        ) &&
         trimmed.isEmpty &&
         other.isEmpty) {
       return 'Localização é obrigatória para este perfil.';
@@ -434,7 +444,8 @@ class _TenantAdminAccountProfileEditScreenState
       return 'Longitude inválida.';
     }
     if (_requiresLocation(
-            _controller.editStateStreamValue.value.selectedProfileType) &&
+          _controller.editStateStreamValue.value.selectedProfileType,
+        ) &&
         trimmed.isEmpty &&
         other.isNotEmpty) {
       return 'Longitude é obrigatória.';
@@ -523,7 +534,8 @@ class _TenantAdminAccountProfileEditScreenState
           return 'URL obrigatória.';
         }
         final uri = Uri.tryParse(trimmed);
-        final hasScheme = uri != null &&
+        final hasScheme =
+            uri != null &&
             (uri.scheme == 'http' || uri.scheme == 'https') &&
             uri.host.isNotEmpty;
         if (!hasScheme) {
@@ -607,9 +619,7 @@ class _TenantAdminAccountProfileEditScreenState
       return 'Limite de grupos da galeria atingido.';
     }
     final totalItems =
-        TenantAdminAccountProfileGalleryOperations.totalItemCount(
-      groups,
-    );
+        TenantAdminAccountProfileGalleryOperations.totalItemCount(groups);
     if (totalItems > TenantAdminAccountProfileGalleryOperations.maxItems) {
       return 'Limite total de fotos da galeria atingido.';
     }
@@ -625,9 +635,7 @@ class _TenantAdminAccountProfileEditScreenState
   }
 
   Future<List<TenantAdminAccountProfileGalleryUpdateGroup>>
-      _buildGalleryUpdateGroups(
-    TenantAdminAccountProfileEditDraft state,
-  ) async {
+  _buildGalleryUpdateGroups(TenantAdminAccountProfileEditDraft state) async {
     final groups = <TenantAdminAccountProfileGalleryUpdateGroup>[];
     final orderedGroups = [...state.galleryGroups]
       ..sort((left, right) => left.order.compareTo(right.order));
@@ -657,8 +665,9 @@ class _TenantAdminAccountProfileEditScreenState
       groups.add(
         TenantAdminAccountProfileGalleryUpdateGroup(
           groupIdValue: TenantAdminNestedProfileGroupTextValue(group.groupId),
-          subtitleValue:
-              TenantAdminNestedProfileGroupTextValue(group.subtitle.trim()),
+          subtitleValue: TenantAdminNestedProfileGroupTextValue(
+            group.subtitle.trim(),
+          ),
           orderValue: TenantAdminNestedProfileGroupOrderValue(group.order),
           items: items,
         ),
@@ -667,10 +676,7 @@ class _TenantAdminAccountProfileEditScreenState
     return groups;
   }
 
-  void _preloadRemoteImage({
-    required String url,
-    required bool isAvatar,
-  }) {
+  void _preloadRemoteImage({required String url, required bool isAvatar}) {
     final state = _controller.editStateStreamValue.value;
     if (isAvatar) {
       if (state.avatarPreloadUrl == url) return;
@@ -732,28 +738,26 @@ class _TenantAdminAccountProfileEditScreenState
                           streamValue: _controller.accountProfileStreamValue,
                           builder: (context, profile) {
                             return StreamValueBuilder<
-                                TenantAdminAccountProfileEditDraft>(
+                              TenantAdminAccountProfileEditDraft
+                            >(
                               streamValue: _controller.editStateStreamValue,
                               builder: (context, state) {
                                 _handleEditStateChange(state);
                                 _attemptTaxonomySync(profile: profile);
                                 final requiresLocation = _requiresLocation(
-                                    state.selectedProfileType);
-                                final hasMedia =
-                                    _hasAvatar(state.selectedProfileType) ||
-                                        _hasCover(state.selectedProfileType);
-                                final hasContent =
-                                    _hasBio(state.selectedProfileType) ||
-                                        _hasContent(
-                                          state.selectedProfileType,
-                                        ) ||
-                                        _hasTaxonomies(
-                                          state.selectedProfileType,
-                                        );
-                                final hasNestedProfileGroups =
-                                    _hasNestedProfileGroups(
                                   state.selectedProfileType,
                                 );
+                                final hasMedia =
+                                    _hasAvatar(state.selectedProfileType) ||
+                                    _hasCover(state.selectedProfileType);
+                                final hasContent =
+                                    _hasBio(state.selectedProfileType) ||
+                                    _hasContent(state.selectedProfileType) ||
+                                    _hasTaxonomies(state.selectedProfileType);
+                                final hasNestedProfileGroups =
+                                    _hasNestedProfileGroups(
+                                      state.selectedProfileType,
+                                    );
                                 final hasGallery = _hasGallery(
                                   state.selectedProfileType,
                                 );
@@ -762,15 +766,14 @@ class _TenantAdminAccountProfileEditScreenState
                                   return TenantAdminFormScaffold(
                                     closePolicy:
                                         buildTenantAdminCurrentRouteBackPolicy(
-                                      context,
-                                    ),
+                                          context,
+                                        ),
                                     title: 'Editar Perfil',
                                     child: TenantAdminErrorBanner(
                                       rawError: loadError ?? '',
                                       fallbackMessage:
                                           'Não foi possível carregar os dados do perfil.',
-                                      onRetry: () =>
-                                          _controller.loadEditProfile(
+                                      onRetry: () => _controller.loadEditProfile(
                                         _currentAccountProfileIdForRequests(),
                                       ),
                                     ),
@@ -782,8 +785,8 @@ class _TenantAdminAccountProfileEditScreenState
                                   return TenantAdminFormScaffold(
                                     closePolicy:
                                         buildTenantAdminCurrentRouteBackPolicy(
-                                      context,
-                                    ),
+                                          context,
+                                        ),
                                     title: 'Editar Perfil',
                                     child: const Center(
                                       child: CircularProgressIndicator(),
@@ -794,8 +797,8 @@ class _TenantAdminAccountProfileEditScreenState
                                 return TenantAdminFormScaffold(
                                   closePolicy:
                                       buildTenantAdminCurrentRouteBackPolicy(
-                                    context,
-                                  ),
+                                        context,
+                                      ),
                                   title: 'Editar Perfil',
                                   child: SingleChildScrollView(
                                     child: Form(
@@ -809,7 +812,8 @@ class _TenantAdminAccountProfileEditScreenState
                                           if (isLoading)
                                             const SizedBox(height: 12),
                                           StreamValueBuilder<
-                                              TenantAdminAccount?>(
+                                            TenantAdminAccount?
+                                          >(
                                             streamValue:
                                                 _controller.accountStreamValue,
                                             builder: (context, account) {
@@ -834,7 +838,9 @@ class _TenantAdminAccountProfileEditScreenState
                                           ],
                                           if (hasContent) ...[
                                             _buildContentSection(
-                                                context, state),
+                                              context,
+                                              state,
+                                            ),
                                           ],
                                           if (requiresLocation) ...[
                                             const SizedBox(height: 16),
@@ -861,18 +867,19 @@ class _TenantAdminAccountProfileEditScreenState
                                                   .moveEditNestedProfileGroup,
                                               onRemoveGroup: _controller
                                                   .removeEditNestedProfileGroup,
-                                              onSelectionChanged: (
-                                                groupId,
-                                                profileId,
-                                                selected,
-                                              ) {
-                                                _controller
-                                                    .toggleEditNestedProfileGroupMember(
-                                                  groupId: groupId,
-                                                  profileId: profileId,
-                                                  selected: selected,
-                                                );
-                                              },
+                                              onSelectionChanged:
+                                                  (
+                                                    groupId,
+                                                    profileId,
+                                                    selected,
+                                                  ) {
+                                                    _controller
+                                                        .toggleEditNestedProfileGroupMember(
+                                                          groupId: groupId,
+                                                          profileId: profileId,
+                                                          selected: selected,
+                                                        );
+                                                  },
                                             ),
                                           ],
                                           const SizedBox(height: 24),
@@ -894,8 +901,8 @@ class _TenantAdminAccountProfileEditScreenState
                                                     if (selectedType == null) {
                                                       _controller
                                                           .reportEditErrorMessage(
-                                                        'Selecione o tipo de perfil.',
-                                                      );
+                                                            'Selecione o tipo de perfil.',
+                                                          );
                                                       return;
                                                     }
                                                     final account = _controller
@@ -910,11 +917,11 @@ class _TenantAdminAccountProfileEditScreenState
                                                       final updatedAccount =
                                                           await _controller
                                                               .updateAccount(
-                                                        accountSlug:
-                                                            _currentAccountSlugForRequests(),
-                                                        ownershipState:
-                                                            _selectedOwnershipState,
-                                                      );
+                                                                accountSlug:
+                                                                    _currentAccountSlugForRequests(),
+                                                                ownershipState:
+                                                                    _selectedOwnershipState,
+                                                              );
                                                       if (updatedAccount ==
                                                           null) {
                                                         return;
@@ -925,51 +932,52 @@ class _TenantAdminAccountProfileEditScreenState
                                                     }
                                                     final avatarUpload =
                                                         _hasAvatar(selectedType)
-                                                            ? await _controller
-                                                                .buildImageUpload(
+                                                        ? await _controller
+                                                              .buildImageUpload(
                                                                 state
                                                                     .avatarFile,
                                                                 slot:
                                                                     TenantAdminImageSlot
                                                                         .avatar,
                                                               )
-                                                            : null;
+                                                        : null;
                                                     final coverUpload =
                                                         _hasCover(selectedType)
-                                                            ? await _controller
-                                                                .buildImageUpload(
+                                                        ? await _controller
+                                                              .buildImageUpload(
                                                                 state.coverFile,
                                                                 slot:
                                                                     TenantAdminImageSlot
                                                                         .cover,
                                                               )
-                                                            : null;
+                                                        : null;
                                                     final galleryValidationError =
                                                         hasGallery
-                                                            ? _validateGalleryState(
-                                                                state,
-                                                              )
-                                                            : null;
+                                                        ? _validateGalleryState(
+                                                            state,
+                                                          )
+                                                        : null;
                                                     if (galleryValidationError !=
                                                         null) {
                                                       _controller
                                                           .reportEditErrorMessage(
-                                                        galleryValidationError,
-                                                      );
+                                                            galleryValidationError,
+                                                          );
                                                       return;
                                                     }
-                                                    final galleryGroups = hasGallery
+                                                    final galleryGroups =
+                                                        hasGallery
                                                         ? await _buildGalleryUpdateGroups(
                                                             state,
                                                           )
                                                         : null;
-                                                    _controller
-                                                        .submitUpdateProfile(
+                                                    _controller.submitUpdateProfile(
                                                       accountProfileId:
                                                           _currentAccountProfileIdForRequests(),
                                                       profileType: selectedType,
                                                       slug: _controller
-                                                          .slugController.text
+                                                          .slugController
+                                                          .text
                                                           .trim(),
                                                       displayName: _controller
                                                           .displayNameController
@@ -977,19 +985,23 @@ class _TenantAdminAccountProfileEditScreenState
                                                           .trim(),
                                                       bio: _hasBio(selectedType)
                                                           ? _controller
-                                                              .bioController
-                                                              .text
-                                                              .trim()
+                                                                .bioController
+                                                                .text
+                                                                .trim()
                                                           : null,
-                                                      content: _hasContent(
-                                                              selectedType)
+                                                      content:
+                                                          _hasContent(
+                                                            selectedType,
+                                                          )
                                                           ? _controller
-                                                              .contentController
-                                                              .text
-                                                              .trim()
+                                                                .contentController
+                                                                .text
+                                                                .trim()
                                                           : null,
-                                                      taxonomyTerms: _hasTaxonomies(
-                                                              selectedType)
+                                                      taxonomyTerms:
+                                                          _hasTaxonomies(
+                                                            selectedType,
+                                                          )
                                                           ? _buildTaxonomyTerms(
                                                               selectedType,
                                                             )
@@ -1006,11 +1018,11 @@ class _TenantAdminAccountProfileEditScreenState
                                                           galleryGroups,
                                                       nestedProfileGroups:
                                                           _hasNestedProfileGroups(
-                                                        selectedType,
-                                                      )
-                                                              ? state
-                                                                  .nestedProfileGroups
-                                                              : null,
+                                                            selectedType,
+                                                          )
+                                                          ? state
+                                                                .nestedProfileGroups
+                                                          : null,
                                                     );
                                                   },
                                           ),
@@ -1040,9 +1052,9 @@ class _TenantAdminAccountProfileEditScreenState
       return;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
       _controller.clearEditSuccessMessage();
     });
   }
@@ -1052,9 +1064,9 @@ class _TenantAdminAccountProfileEditScreenState
       return;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
       _controller.clearEditErrorMessage();
     });
   }
@@ -1074,15 +1086,15 @@ class _TenantAdminAccountProfileEditScreenState
             builder: (context, types) {
               final uniqueTypes = _uniqueProfileTypes(types);
               final hasSelected = uniqueTypes.any(
-                  (definition) => definition.type == state.selectedProfileType);
-              final effectiveSelected =
-                  hasSelected ? state.selectedProfileType : null;
+                (definition) => definition.type == state.selectedProfileType,
+              );
+              final effectiveSelected = hasSelected
+                  ? state.selectedProfileType
+                  : null;
               return DropdownButtonFormField<String>(
                 key: ValueKey(effectiveSelected),
                 initialValue: effectiveSelected,
-                decoration: const InputDecoration(
-                  labelText: 'Tipo de perfil',
-                ),
+                decoration: const InputDecoration(labelText: 'Tipo de perfil'),
                 items: uniqueTypes
                     .map(
                       (type) => DropdownMenuItem<String>(
@@ -1125,9 +1137,7 @@ class _TenantAdminAccountProfileEditScreenState
           DropdownButtonFormField<TenantAdminOwnershipState>(
             key: ValueKey(_selectedOwnershipState ?? accountOwnership),
             initialValue: _selectedOwnershipState ?? accountOwnership,
-            decoration: const InputDecoration(
-              labelText: 'Gestao da conta',
-            ),
+            decoration: const InputDecoration(labelText: 'Gestao da conta'),
             items: _editableOwnershipStates
                 .map(
                   (state) => DropdownMenuItem<TenantAdminOwnershipState>(
@@ -1157,15 +1167,13 @@ class _TenantAdminAccountProfileEditScreenState
             child: TextButton.icon(
               onPressed: () {
                 context.router
-                    .push(
-                  const TenantAdminProfileTypeCreateRoute(),
-                )
+                    .push(const TenantAdminProfileTypeCreateRoute())
                     .then((_) {
-                  if (!mounted) {
-                    return;
-                  }
-                  _controller.loadProfileTypes();
-                });
+                      if (!mounted) {
+                        return;
+                      }
+                      _controller.loadProfileTypes();
+                    });
               },
               icon: const Icon(Icons.add),
               label: const Text('Criar tipo de perfil'),
@@ -1211,8 +1219,9 @@ class _TenantAdminAccountProfileEditScreenState
   ) {
     final hasBio = _hasBio(state.selectedProfileType);
     final hasContent = _hasContent(state.selectedProfileType);
-    final allowedDefinitions =
-        _allowedTaxonomyDefinitions(state.selectedProfileType);
+    final allowedDefinitions = _allowedTaxonomyDefinitions(
+      state.selectedProfileType,
+    );
     return TenantAdminFormSectionCard(
       title: 'Conteudo do perfil',
       child: Column(
@@ -1241,10 +1250,7 @@ class _TenantAdminAccountProfileEditScreenState
           ],
           if (_hasTaxonomies(state.selectedProfileType)) ...[
             if (hasBio || hasContent) const SizedBox(height: 12),
-            Text(
-              'Taxonomias',
-              style: Theme.of(context).textTheme.labelLarge,
-            ),
+            Text('Taxonomias', style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 8),
             StreamValueBuilder<bool>(
               streamValue: _controller.taxonomyAutosavingStreamValue,
@@ -1283,28 +1289,31 @@ class _TenantAdminAccountProfileEditScreenState
                                           Wrap(
                                             spacing: 8,
                                             runSpacing: 8,
-                                            children: (termsByTaxonomy[
-                                                        taxonomy.slug] ??
-                                                    const [])
-                                                .map(
-                                                  (term) => FilterChip(
-                                                    label: Text(term.name),
-                                                    selected: selections[
-                                                                taxonomy.slug]
-                                                            ?.contains(
-                                                                term.slug) ??
-                                                        false,
-                                                    onSelected: (selected) {
-                                                      _toggleTaxonomyWithAutoSave(
-                                                        taxonomySlug:
-                                                            taxonomy.slug,
-                                                        termSlug: term.slug,
-                                                        selected: selected,
-                                                      );
-                                                    },
-                                                  ),
-                                                )
-                                                .toList(growable: false),
+                                            children:
+                                                (termsByTaxonomy[taxonomy
+                                                            .slug] ??
+                                                        const [])
+                                                    .map(
+                                                      (term) => FilterChip(
+                                                        label: Text(term.name),
+                                                        selected:
+                                                            selections[taxonomy
+                                                                    .slug]
+                                                                ?.contains(
+                                                                  term.slug,
+                                                                ) ??
+                                                            false,
+                                                        onSelected: (selected) {
+                                                          _toggleTaxonomyWithAutoSave(
+                                                            taxonomySlug:
+                                                                taxonomy.slug,
+                                                            termSlug: term.slug,
+                                                            selected: selected,
+                                                          );
+                                                        },
+                                                      ),
+                                                    )
+                                                    .toList(growable: false),
                                           ),
                                       ],
                                     ),
@@ -1361,73 +1370,76 @@ class _TenantAdminAccountProfileEditScreenState
                           Container(
                             margin: const EdgeInsets.all(2),
                             decoration: BoxDecoration(
-                              color:
-                                  Theme.of(context).colorScheme.errorContainer,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.errorContainer,
                               shape: BoxShape.circle,
                             ),
                             padding: const EdgeInsets.all(4),
                             child: Icon(
                               Icons.warning_amber_rounded,
                               size: 16,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onErrorContainer,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onErrorContainer,
                             ),
                           ),
                       ],
                     )
                   : hasAvatarUrl
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(36),
-                          child: Image.network(
-                            avatarUrl,
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(36),
+                      child: Image.network(
+                        avatarUrl,
+                        width: 72,
+                        height: 72,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Container(
                             width: 72,
                             height: 72,
-                            fit: BoxFit.cover,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Container(
-                                width: 72,
-                                height: 72,
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .surfaceContainerHighest,
-                                  borderRadius: BorderRadius.circular(36),
-                                ),
-                                child: const Icon(Icons.person_outline),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) {
-                              if (!state.avatarRemoteError) {
-                                _controller.updateAvatarRemoteError(true);
-                              }
-                              return _buildAvatarError(context);
-                            },
-                          ),
-                        )
-                      : state.avatarRemoteError
-                          ? _buildAvatarError(context)
-                          : Container(
-                              width: 72,
-                              height: 72,
-                              decoration: BoxDecoration(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .surfaceContainerHighest,
-                                borderRadius: BorderRadius.circular(36),
-                              ),
-                              child: const Icon(Icons.person_outline),
+                            decoration: BoxDecoration(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(36),
                             ),
-              selectedLabel: state.avatarFile?.name ??
+                            child: const Icon(Icons.person_outline),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          if (!state.avatarRemoteError) {
+                            _controller.updateAvatarRemoteError(true);
+                          }
+                          return _buildAvatarError(context);
+                        },
+                      ),
+                    )
+                  : state.avatarRemoteError
+                  ? _buildAvatarError(context)
+                  : Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(36),
+                      ),
+                      child: const Icon(Icons.person_outline),
+                    ),
+              selectedLabel:
+                  state.avatarFile?.name ??
                   (hasAvatarUrl ? avatarUrl : 'Nenhuma imagem selecionada'),
               addLabel: 'Adicionar avatar',
               sourceSheetTitle: 'Adicionar avatar',
               urlPromptTitle: 'URL do avatar',
               busy: state.avatarBusy,
               canRemove: state.avatarFile != null || hasAvatarUrl,
-              removeButtonKey:
-                  const ValueKey('accountProfileEditAvatarRemoveButton'),
+              removeButtonKey: const ValueKey(
+                'accountProfileEditAvatarRemoveButton',
+              ),
               onRemove: () => _clearImage(isAvatar: true),
               initialWebUrl: avatarUrl,
               slot: TenantAdminImageSlot.avatar,
@@ -1466,75 +1478,76 @@ class _TenantAdminAccountProfileEditScreenState
                           Container(
                             margin: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color:
-                                  Theme.of(context).colorScheme.errorContainer,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.errorContainer,
                               shape: BoxShape.circle,
                             ),
                             padding: const EdgeInsets.all(6),
                             child: Icon(
                               Icons.warning_amber_rounded,
                               size: 18,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onErrorContainer,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onErrorContainer,
                             ),
                           ),
                       ],
                     )
                   : hasCoverUrl
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.network(
-                            coverUrl,
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        coverUrl,
+                        width: double.infinity,
+                        height: 140,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Container(
                             width: double.infinity,
                             height: 140,
-                            fit: BoxFit.cover,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Container(
-                                width: double.infinity,
-                                height: 140,
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .surfaceContainerHighest,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(Icons.image_outlined),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) {
-                              if (!state.coverRemoteError) {
-                                _controller.updateCoverRemoteError(true);
-                              }
-                              return _buildCoverError(context);
-                            },
-                          ),
-                        )
-                      : state.coverRemoteError
-                          ? _buildCoverError(context)
-                          : Container(
-                              width: double.infinity,
-                              height: 140,
-                              decoration: BoxDecoration(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .surfaceContainerHighest,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Center(
-                                child: Icon(Icons.image_outlined),
-                              ),
+                            decoration: BoxDecoration(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(12),
                             ),
-              selectedLabel: state.coverFile?.name ??
+                            child: const Icon(Icons.image_outlined),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          if (!state.coverRemoteError) {
+                            _controller.updateCoverRemoteError(true);
+                          }
+                          return _buildCoverError(context);
+                        },
+                      ),
+                    )
+                  : state.coverRemoteError
+                  ? _buildCoverError(context)
+                  : Container(
+                      width: double.infinity,
+                      height: 140,
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Center(child: Icon(Icons.image_outlined)),
+                    ),
+              selectedLabel:
+                  state.coverFile?.name ??
                   (hasCoverUrl ? coverUrl : 'Nenhuma imagem selecionada'),
               addLabel: 'Adicionar capa',
               sourceSheetTitle: 'Adicionar capa',
               urlPromptTitle: 'URL da capa',
               busy: state.coverBusy,
               canRemove: state.coverFile != null || hasCoverUrl,
-              removeButtonKey:
-                  const ValueKey('accountProfileEditCoverRemoveButton'),
+              removeButtonKey: const ValueKey(
+                'accountProfileEditCoverRemoveButton',
+              ),
               onRemove: () => _clearImage(isAvatar: false),
               initialWebUrl: coverUrl,
               slot: TenantAdminImageSlot.accountProfileHeroCover,
@@ -1632,7 +1645,9 @@ class _TenantAdminAccountProfileEditScreenState
             controller: _controller.latitudeController,
             decoration: const InputDecoration(labelText: 'Latitude'),
             keyboardType: const TextInputType.numberWithOptions(
-                decimal: true, signed: true),
+              decimal: true,
+              signed: true,
+            ),
             inputFormatters: tenantAdminCoordinateInputFormatters,
             textInputAction: TextInputAction.next,
             validator: _validateLatitude,
@@ -1642,7 +1657,9 @@ class _TenantAdminAccountProfileEditScreenState
             controller: _controller.longitudeController,
             decoration: const InputDecoration(labelText: 'Longitude'),
             keyboardType: const TextInputType.numberWithOptions(
-                decimal: true, signed: true),
+              decimal: true,
+              signed: true,
+            ),
             inputFormatters: tenantAdminCoordinateInputFormatters,
             textInputAction: TextInputAction.done,
             validator: _validateLongitude,
