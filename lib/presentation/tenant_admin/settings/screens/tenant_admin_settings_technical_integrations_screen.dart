@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:belluga_admin_ui/belluga_admin_ui.dart';
 import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/models/tenant_admin_settings_integration_section.dart';
@@ -10,8 +9,9 @@ import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_ad
 import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_outbound_integrations_section.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_phone_otp_review_access_section.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_push_section.dart';
-import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_resend_email_section.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_remote_status_panel.dart';
+import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_resend_email_section.dart';
+import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_section.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_telemetry_section.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_scoped_section_app_bar.dart';
 import 'package:flutter/material.dart';
@@ -32,8 +32,8 @@ class TenantAdminSettingsTechnicalIntegrationsScreen extends StatefulWidget {
 
 class _TenantAdminSettingsTechnicalIntegrationsScreenState
     extends State<TenantAdminSettingsTechnicalIntegrationsScreen> {
-  final TenantAdminSettingsController _controller =
-      GetIt.I.get<TenantAdminSettingsController>();
+  final TenantAdminSettingsController _controller = GetIt.I
+      .get<TenantAdminSettingsController>();
   bool _initialTechnicalIntegrationsLoaded = false;
   bool _initialSectionFocused = false;
 
@@ -121,9 +121,7 @@ class _TenantAdminSettingsTechnicalIntegrationsScreenState
             if (!_initialTechnicalIntegrationsLoaded)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 24),
-                child: Center(
-                  child: CircularProgressIndicator(),
-                ),
+                child: Center(child: CircularProgressIndicator()),
               )
             else ...[
               KeyedSubtree(

@@ -22,20 +22,21 @@ class TenantSelectionGate extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
 
     Widget surface({required Widget child}) {
-      return Container(
-        decoration: BoxDecoration(
-          color: scheme.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: scheme.outlineVariant),
+      return Material(
+        color: Colors.transparent,
+        child: Ink(
+          decoration: BoxDecoration(
+            color: scheme.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: scheme.outlineVariant),
+          ),
+          child: child,
         ),
-        child: child,
       );
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Selecionar tenant'),
-      ),
+      appBar: AppBar(title: const Text('Selecionar tenant')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [

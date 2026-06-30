@@ -52,8 +52,8 @@ class TenantAdminEventFormScreen extends StatefulWidget {
 
 class _TenantAdminEventFormScreenState
     extends State<TenantAdminEventFormScreen> {
-  final TenantAdminEventsController _controller =
-      GetIt.I.get<TenantAdminEventsController>();
+  final TenantAdminEventsController _controller = GetIt.I
+      .get<TenantAdminEventsController>();
   bool _submitInFlight = false;
 
   bool get _isEditing => widget.existingEvent != null;
@@ -82,8 +82,8 @@ class _TenantAdminEventFormScreenState
     _TenantAdminEventFormViewModel viewModel,
   ) {
     final formState = viewModel.formState;
-    final allowedTaxonomies =
-        _controller.allowedTaxonomyDefinitionsForSelectedEventType();
+    final allowedTaxonomies = _controller
+        .allowedTaxonomyDefinitionsForSelectedEventType();
 
     return TenantAdminFormScaffold(
       closePolicy: buildTenantAdminCurrentRouteBackPolicy(
@@ -145,7 +145,11 @@ class _TenantAdminEventFormScreenState
               const SizedBox(height: 16),
               _buildPublicationSection(formState: formState),
               const SizedBox(height: 16),
-              _buildLocationSection(viewModel.venues, formState: formState),
+              _buildLocationSection(
+                viewModel.venues,
+                formState: formState,
+                partyCandidatesLoading: viewModel.partyCandidatesLoading,
+              ),
               const SizedBox(height: 16),
               _buildRelatedAccountProfilesSection(
                 viewModel.relatedAccountProfiles,
@@ -171,15 +175,15 @@ class _TenantAdminEventFormScreenState
                 onPressed: viewModel.isSubmitting
                     ? null
                     : () => _handleSubmit(
-                          relatedAccountProfiles:
-                              viewModel.relatedAccountProfiles,
-                          venues: viewModel.venues,
-                          eventTypes: viewModel.eventTypes,
-                          formState: formState,
-                          selectedCover: viewModel.selectedCover,
-                          isCoverMarkedForRemoval:
-                              viewModel.isCoverMarkedForRemoval,
-                        ),
+                        relatedAccountProfiles:
+                            viewModel.relatedAccountProfiles,
+                        venues: viewModel.venues,
+                        eventTypes: viewModel.eventTypes,
+                        formState: formState,
+                        selectedCover: viewModel.selectedCover,
+                        isCoverMarkedForRemoval:
+                            viewModel.isCoverMarkedForRemoval,
+                      ),
                 isLoading: viewModel.isSubmitting,
               ),
             ],
@@ -231,16 +235,18 @@ class _TenantAdminEventFormScreenState
     final existingCoverUrl = widget.existingEvent?.thumbUrl?.trim();
     final hasExistingCover =
         existingCoverUrl != null && existingCoverUrl.isNotEmpty;
-    final canRemove = selectedCover != null ||
+    final canRemove =
+        selectedCover != null ||
         (hasExistingCover && !isCoverMarkedForRemoval) ||
         isCoverMarkedForRemoval;
 
-    final selectedLabel = selectedCover?.name ??
+    final selectedLabel =
+        selectedCover?.name ??
         (isCoverMarkedForRemoval
             ? 'Capa será removida ao salvar.'
             : hasExistingCover
-                ? existingCoverUrl
-                : 'Nenhuma imagem selecionada');
+            ? existingCoverUrl
+            : 'Nenhuma imagem selecionada');
 
     return TenantAdminFormSectionCard(
       title: 'Capa do evento',
@@ -262,10 +268,10 @@ class _TenantAdminEventFormScreenState
         onRemove: (isSubmitting || isCoverBusy)
             ? null
             : () => _clearCoverSelection(
-                  hasExistingCover: hasExistingCover,
-                  hasSelectedCover: selectedCover != null,
-                  isCoverMarkedForRemoval: isCoverMarkedForRemoval,
-                ),
+                hasExistingCover: hasExistingCover,
+                hasSelectedCover: selectedCover != null,
+                isCoverMarkedForRemoval: isCoverMarkedForRemoval,
+              ),
       ),
     );
   }
@@ -423,7 +429,8 @@ class _TenantAdminEventFormScreenState
             label: 'Início',
             onTap: _pickStartDateTime,
             validator: (_) {
-              final startAt = formState.startAt ??
+              final startAt =
+                  formState.startAt ??
                   _toLocalDateTime(
                     _parseDateTimeFromField(
                       _controller.eventStartController.text,
@@ -440,16 +447,19 @@ class _TenantAdminEventFormScreenState
             controller: _controller.eventEndController,
             label: 'Fim (opcional)',
             onTap: _pickEndDateTime,
-            onClear:
-                formState.endAt == null ? null : _controller.clearEventEndAt,
+            onClear: formState.endAt == null
+                ? null
+                : _controller.clearEventEndAt,
             validator: (_) {
-              final startAt = formState.startAt ??
+              final startAt =
+                  formState.startAt ??
                   _toLocalDateTime(
                     _parseDateTimeFromField(
                       _controller.eventStartController.text,
                     ),
                   );
-              final endAt = formState.endAt ??
+              final endAt =
+                  formState.endAt ??
                   _toLocalDateTime(
                     _parseDateTimeFromField(
                       _controller.eventEndController.text,
@@ -496,7 +506,8 @@ class _TenantAdminEventFormScreenState
     if (currentState.startAt == null && currentState.occurrences.isEmpty) {
       return;
     }
-    final occurrenceKey = _controller.primaryOccurrenceKey() ??
+    final occurrenceKey =
+        _controller.primaryOccurrenceKey() ??
         _controller.ensurePrimaryOccurrenceDraft();
     await showTenantAdminEventOccurrenceEditorSheet(
       context: context,
@@ -520,10 +531,7 @@ class _TenantAdminEventFormScreenState
       heroTag: 'tenantAdminEventAddOccurrenceButton',
       onPressed: isSubmitting
           ? null
-          : () => _openOccurrenceEditor(
-                index: null,
-                venues: venues,
-              ),
+          : () => _openOccurrenceEditor(index: null, venues: venues),
       icon: const Icon(Icons.add),
       label: const Text('Adicionar data'),
     );
@@ -535,10 +543,7 @@ class _TenantAdminEventFormScreenState
   }) {
     return OutlinedButton.icon(
       key: const Key('tenantAdminEventAddOccurrenceInlineButton'),
-      onPressed: () => _openOccurrenceEditor(
-        index: null,
-        venues: venues,
-      ),
+      onPressed: () => _openOccurrenceEditor(index: null, venues: venues),
       icon: const Icon(Icons.add),
       label: const Text('Adicionar data'),
     );
@@ -563,10 +568,7 @@ class _TenantAdminEventFormScreenState
       margin: const EdgeInsets.only(bottom: 10),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () => _openOccurrenceEditor(
-          index: index,
-          venues: venues,
-        ),
+        onTap: () => _openOccurrenceEditor(index: index, venues: venues),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Row(
@@ -666,7 +668,8 @@ class _TenantAdminEventFormScreenState
                 if (formState.publicationStatus != 'publish_scheduled') {
                   return null;
                 }
-                final publishAt = formState.publishAt ??
+                final publishAt =
+                    formState.publishAt ??
                     _toLocalDateTime(
                       _parseDateTimeFromField(
                         _controller.eventPublishAtController.text,
@@ -687,6 +690,7 @@ class _TenantAdminEventFormScreenState
   Widget _buildLocationSection(
     List<TenantAdminAccountProfile> venues, {
     required TenantAdminEventFormState formState,
+    required bool partyCandidatesLoading,
   }) {
     return TenantAdminFormSectionCard(
       title: 'Localização',
@@ -734,39 +738,30 @@ class _TenantAdminEventFormScreenState
                 );
 
                 Future<void> pickVenue() async {
-                  await _controller.ensureVenueCandidatesReady();
-                  if (!context.mounted) {
+                  await _controller.preparePhysicalHostAccountProfilePicker(
+                    accountSlug: widget.accountSlugForOwnCreate,
+                  );
+                  if (!mounted) {
                     return;
                   }
-                  final currentVenues =
-                      _controller.venueCandidatesStreamValue.value;
-                  if (currentVenues.isEmpty) {
+                  final selected =
+                      await showTenantAdminAccountProfileLocationPickerSheet(
+                        context: context,
+                        controller: _controller,
+                        selectedLocationProfileId: formState.selectedVenueId,
+                        title: 'Local do evento',
+                        subtitle:
+                            'Selecione o perfil anfitrião físico deste evento.',
+                        keyPrefix: 'tenantAdminEventLocation',
+                        closeModalSheet: _closeModalSheet,
+                        includeEmptyOption: false,
+                        selectedLocationFallbackLabel: selectedLabel,
+                      );
+                  if (selected == null) {
                     return;
                   }
-
-                  Future<void> openVenuePicker(
-                    List<TenantAdminAccountProfile> venues,
-                  ) async {
-                    final selected =
-                        await showTenantAdminAccountProfileLocationPickerSheet(
-                      context: context,
-                      venues: venues,
-                      selectedLocationProfileId: formState.selectedVenueId,
-                      title: 'Local do evento',
-                      subtitle:
-                          'Selecione o perfil anfitrião físico deste evento.',
-                      keyPrefix: 'tenantAdminEventLocation',
-                      closeModalSheet: _closeModalSheet,
-                      includeEmptyOption: false,
-                    );
-                    if (selected == null) {
-                      return;
-                    }
-                    _controller.updateEventVenueSelection(selected);
-                    state.didChange(selected);
-                  }
-
-                  await openVenuePicker(currentVenues);
+                  _controller.updateEventVenueSelection(selected);
+                  state.didChange(selected);
                 }
 
                 return Column(
@@ -775,8 +770,8 @@ class _TenantAdminEventFormScreenState
                     Text(
                       'Host físico (perfil)',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).hintColor,
-                          ),
+                        color: Theme.of(context).hintColor,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Semantics(
@@ -789,7 +784,7 @@ class _TenantAdminEventFormScreenState
                             key: const Key(
                               'tenantAdminEventLocationProfileDropdown',
                             ),
-                            onPressed: venues.isEmpty ? null : pickVenue,
+                            onPressed: pickVenue,
                             style: OutlinedButton.styleFrom(
                               alignment: Alignment.centerLeft,
                               padding: const EdgeInsets.symmetric(
@@ -811,15 +806,15 @@ class _TenantAdminEventFormScreenState
                       Text(
                         state.errorText!,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.error,
-                            ),
+                          color: Theme.of(context).colorScheme.error,
+                        ),
                       ),
                     ],
                   ],
                 );
               },
             ),
-            if (venues.isEmpty) ...[
+            if (!partyCandidatesLoading && venues.isEmpty) ...[
               const SizedBox(height: 8),
               Text(
                 'Nenhum perfil elegível para host físico.',
@@ -843,7 +838,8 @@ class _TenantAdminEventFormScreenState
                   return 'URL online é obrigatória.';
                 }
                 final uri = Uri.tryParse(trimmed);
-                final valid = uri != null &&
+                final valid =
+                    uri != null &&
                     (uri.scheme == 'http' || uri.scheme == 'https') &&
                     uri.host.isNotEmpty;
                 if (!valid) {
@@ -872,6 +868,10 @@ class _TenantAdminEventFormScreenState
     if (selectedVenueId == null || selectedVenueId.trim().isEmpty) {
       return 'Selecione um local';
     }
+    final knownVenue = _controller.knownVenueCandidate(selectedVenueId);
+    if (knownVenue != null) {
+      return knownVenue.displayName;
+    }
     for (final venue in venues) {
       if (venue.id == selectedVenueId) {
         return venue.displayName;
@@ -897,9 +897,7 @@ class _TenantAdminEventFormScreenState
       candidatesStreamValue:
           _controller.relatedAccountProfileCandidatesStreamValue,
       onSearchChanged: (query) => unawaited(
-        _controller.searchRelatedAccountProfileCandidatesForNestedGroups(
-          query,
-        ),
+        _controller.searchRelatedAccountProfileCandidatesForNestedGroups(query),
       ),
       onLoadMore:
           _controller.loadNextRelatedAccountProfileCandidatesForNestedGroups,
@@ -915,16 +913,12 @@ class _TenantAdminEventFormScreenState
       onRenameGroup: _controller.renameEventProfileGroup,
       onMoveGroup: _controller.moveEventProfileGroup,
       onRemoveGroup: _controller.removeEventProfileGroup,
-      onSelectionChanged: (
-        groupId,
-        profileId,
-        selected,
-      ) =>
+      onSelectionChanged: (groupId, profileId, selected) =>
           _controller.toggleEventProfileGroupMember(
-        groupId: groupId,
-        profileId: profileId,
-        selected: selected,
-      ),
+            groupId: groupId,
+            profileId: profileId,
+            selected: selected,
+          ),
     );
   }
 
@@ -932,8 +926,9 @@ class _TenantAdminEventFormScreenState
     required TenantAdminEventFormState formState,
     required List<TenantAdminAccountProfile> venues,
   }) {
-    final primaryOccurrence =
-        formState.occurrences.isEmpty ? null : formState.occurrences.first;
+    final primaryOccurrence = formState.occurrences.isEmpty
+        ? null
+        : formState.occurrences.first;
     final canEditProgramming =
         formState.startAt != null || primaryOccurrence != null;
     final occurrenceKey = _controller.primaryOccurrenceKey();
@@ -1008,9 +1003,11 @@ class _TenantAdminEventFormScreenState
                 style: Theme.of(context).textTheme.bodySmall,
               )
             else
-              for (var itemIndex = 0;
-                  itemIndex < programmingItems.length;
-                  itemIndex++)
+              for (
+                var itemIndex = 0;
+                itemIndex < programmingItems.length;
+                itemIndex++
+              )
                 ListTile(
                   key: Key(
                     'tenantAdminPrimaryOccurrenceProgrammingItem_$itemIndex',
@@ -1023,8 +1020,7 @@ class _TenantAdminEventFormScreenState
                   leading: Text(programmingItems[itemIndex].value.time),
                   title: Text(
                     programmingItems[itemIndex].value.title ??
-                        TenantAdminEventOccurrenceEditorDraft
-                            .firstProgrammingProfileName(
+                        TenantAdminEventOccurrenceEditorDraft.firstProgrammingProfileName(
                           programmingItems[itemIndex].value,
                         ) ??
                         'Item sem título',
@@ -1035,16 +1031,16 @@ class _TenantAdminEventFormScreenState
                   ),
                   trailing: IconButton(
                     tooltip: 'Remover item de programação',
-                    onPressed: () => removeProgrammingItem(
-                      programmingItems[itemIndex].key,
-                    ),
+                    onPressed: () =>
+                        removeProgrammingItem(programmingItems[itemIndex].key),
                     icon: const Icon(Icons.close),
                   ),
                 ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
-              key:
-                  const Key('tenantAdminPrimaryOccurrenceAddProgrammingButton'),
+              key: const Key(
+                'tenantAdminPrimaryOccurrenceAddProgrammingButton',
+              ),
               onPressed: canEditProgramming ? addProgrammingItem : null,
               icon: const Icon(Icons.add),
               label: const Text('Adicionar item de programação'),
@@ -1076,15 +1072,17 @@ class _TenantAdminEventFormScreenState
             Text(
               'Nao foi possivel carregar os termos das taxonomias.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.error,
-                  ),
+                color: Theme.of(context).colorScheme.error,
+              ),
             ),
             const SizedBox(height: 12),
           ],
           ...taxonomies.map((taxonomy) {
-            final terms = termsBySlug[taxonomy.slug] ??
+            final terms =
+                termsBySlug[taxonomy.slug] ??
                 const <TenantAdminTaxonomyTermDefinition>[];
-            final selected = formState.selectedTaxonomyTerms[taxonomy.slug] ??
+            final selected =
+                formState.selectedTaxonomyTerms[taxonomy.slug] ??
                 const <String>{};
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1112,10 +1110,10 @@ class _TenantAdminEventFormScreenState
                             selected: selected.contains(term.slug),
                             onSelected: (isSelected) =>
                                 _controller.toggleEventTaxonomyTerm(
-                              taxonomySlug: taxonomy.slug,
-                              termSlug: term.slug,
-                              isSelected: isSelected,
-                            ),
+                                  taxonomySlug: taxonomy.slug,
+                                  termSlug: term.slug,
+                                  isSelected: isSelected,
+                                ),
                           ),
                         )
                         .toList(growable: false),
@@ -1196,9 +1194,9 @@ class _TenantAdminEventFormScreenState
   ) {
     final locationLabel =
         TenantAdminEventOccurrenceEditorDraft.programmingLocationDisplayName(
-      item,
-      venues,
-    );
+          item,
+          venues,
+        );
     final lines = <String>[
       '${item.accountProfileIds.length} perfil(is) vinculado(s)',
       if (locationLabel != null) 'Local: $locationLabel',
@@ -1207,12 +1205,7 @@ class _TenantAdminEventFormScreenState
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: lines
-          .map(
-            (line) => Text(
-              line,
-              overflow: TextOverflow.ellipsis,
-            ),
-          )
+          .map((line) => Text(line, overflow: TextOverflow.ellipsis))
           .toList(growable: false),
     );
   }
@@ -1320,8 +1313,7 @@ class _TenantAdminEventFormScreenState
       ),
     );
 
-    final selectedAccountProfile =
-        await showModalBottomSheet<TenantAdminAccountProfile>(
+    final selectedAccountProfile = await showModalBottomSheet<TenantAdminAccountProfile>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -1361,7 +1353,8 @@ class _TenantAdminEventFormScreenState
                                 .accountProfilePickerPageLoadingStreamValue,
                             builder: (context, isSearchPageLoading) {
                               return StreamValueBuilder<
-                                  List<TenantAdminAccountProfile>>(
+                                List<TenantAdminAccountProfile>
+                              >(
                                 streamValue: _controller
                                     .accountProfilePickerResultsStreamValue,
                                 builder: (context, searchResults) {
@@ -1403,7 +1396,8 @@ class _TenantAdminEventFormScreenState
                                     );
                                   }
 
-                                  final itemCount = searchResults.length +
+                                  final itemCount =
+                                      searchResults.length +
                                       (isSearchPageLoading ? 1 : 0);
 
                                   return ListView.separated(
@@ -1413,7 +1407,7 @@ class _TenantAdminEventFormScreenState
                                     controller: _controller
                                         .accountProfilePickerScrollController,
                                     itemCount: itemCount,
-                                    separatorBuilder: (_, __) =>
+                                    separatorBuilder: (_, index) =>
                                         const SizedBox(height: 8),
                                     itemBuilder: (context, index) {
                                       if (index >= searchResults.length) {
@@ -1430,8 +1424,8 @@ class _TenantAdminEventFormScreenState
                                       final profile = searchResults[index];
                                       final isAlreadySelected =
                                           excludedProfileIds.contains(
-                                        profile.id,
-                                      );
+                                            profile.id,
+                                          );
 
                                       return Card(
                                         child: ListTile(
@@ -1451,10 +1445,10 @@ class _TenantAdminEventFormScreenState
                                           onTap: isAlreadySelected
                                               ? null
                                               : () => unawaited(
-                                                    _closeModalSheet<
-                                                            TenantAdminAccountProfile>(
-                                                        context, profile),
-                                                  ),
+                                                  _closeModalSheet<
+                                                    TenantAdminAccountProfile
+                                                  >(context, profile),
+                                                ),
                                         ),
                                       );
                                     },
@@ -1494,7 +1488,8 @@ class _TenantAdminEventFormScreenState
           return 'URL obrigatória.';
         }
         final uri = Uri.tryParse(trimmed);
-        final hasScheme = uri != null &&
+        final hasScheme =
+            uri != null &&
             (uri.scheme == 'http' || uri.scheme == 'https') &&
             uri.host.isNotEmpty;
         if (!hasScheme) {
@@ -1662,8 +1657,8 @@ class _TenantAdminEventFormScreenState
     final normalizedInitial = initialDateTime.isBefore(firstDateOnly)
         ? firstDateOnly
         : initialDateTime.isAfter(lastDateOnly)
-            ? lastDateOnly
-            : initialDateTime;
+        ? lastDateOnly
+        : initialDateTime;
 
     final pickedDate = await showDatePicker(
       context: context,
@@ -1718,7 +1713,8 @@ class _TenantAdminEventFormScreenState
       return;
     }
 
-    final startAt = formState.startAt ??
+    final startAt =
+        formState.startAt ??
         _toLocalDateTime(
           _parseDateTimeFromField(_controller.eventStartController.text),
         );
@@ -1727,7 +1723,8 @@ class _TenantAdminEventFormScreenState
       return;
     }
 
-    final endAt = formState.endAt ??
+    final endAt =
+        formState.endAt ??
         _toLocalDateTime(
           _parseDateTimeFromField(_controller.eventEndController.text),
         );
@@ -1735,7 +1732,8 @@ class _TenantAdminEventFormScreenState
       return;
     }
 
-    final publishAt = formState.publishAt ??
+    final publishAt =
+        formState.publishAt ??
         _toLocalDateTime(
           _parseDateTimeFromField(_controller.eventPublishAtController.text),
         );
@@ -1811,7 +1809,8 @@ class _TenantAdminEventFormScreenState
       );
       final removeCover =
           _isEditing && selectedCover == null && isCoverMarkedForRemoval;
-      final placeRef = (formState.locationMode == 'physical' ||
+      final placeRef =
+          (formState.locationMode == 'physical' ||
                   formState.locationMode == 'hybrid') &&
               selectedVenue != null
           ? TenantAdminEventPlaceRef(
@@ -1845,8 +1844,8 @@ class _TenantAdminEventFormScreenState
           publishAtValue: tenantAdminOptionalDateTime(
             formState.publicationStatus == 'publish_scheduled'
                 ? publishAt == null
-                    ? null
-                    : TimezoneConverter.localToUtc(publishAt)
+                      ? null
+                      : TimezoneConverter.localToUtc(publishAt)
                 : null,
           ),
         ),
@@ -1900,10 +1899,11 @@ class _TenantAdminEventFormScreenState
     required TenantAdminEventFormState formState,
   }) {
     final onlineUrl = _controller.eventOnlineUrlController.text.trim();
-    final onlinePlatform =
-        _controller.eventOnlinePlatformController.text.trim();
+    final onlinePlatform = _controller.eventOnlinePlatformController.text
+        .trim();
 
-    final online = (formState.locationMode == 'online' ||
+    final online =
+        (formState.locationMode == 'online' ||
             formState.locationMode == 'hybrid')
         ? TenantAdminEventOnlineLocation(
             urlValue: tenantAdminRequiredText(onlineUrl),
@@ -1913,12 +1913,15 @@ class _TenantAdminEventFormScreenState
           )
         : null;
 
-    final includesPhysicalVenue = formState.locationMode == 'physical' ||
+    final includesPhysicalVenue =
+        formState.locationMode == 'physical' ||
         formState.locationMode == 'hybrid';
-    final latitude =
-        includesPhysicalVenue ? selectedVenue?.location?.latitude : null;
-    final longitude =
-        includesPhysicalVenue ? selectedVenue?.location?.longitude : null;
+    final latitude = includesPhysicalVenue
+        ? selectedVenue?.location?.latitude
+        : null;
+    final longitude = includesPhysicalVenue
+        ? selectedVenue?.location?.longitude
+        : null;
 
     return TenantAdminEventLocation(
       modeValue: tenantAdminRequiredText(formState.locationMode),
@@ -1933,8 +1936,9 @@ class _TenantAdminEventFormScreenState
     if (trimmed.isEmpty) {
       return null;
     }
-    final normalized =
-        trimmed.contains('T') ? trimmed : trimmed.replaceFirst(' ', 'T');
+    final normalized = trimmed.contains('T')
+        ? trimmed
+        : trimmed.replaceFirst(' ', 'T');
     return DateTime.tryParse(normalized);
   }
 
@@ -1992,7 +1996,8 @@ class _TenantAdminEventFormStateScope extends StatelessWidget {
   final Widget Function(
     BuildContext context,
     _TenantAdminEventFormViewModel viewModel,
-  ) builder;
+  )
+  builder;
 
   @override
   Widget build(BuildContext context) {
@@ -2017,17 +2022,20 @@ class _TenantAdminEventFormStateScope extends StatelessWidget {
                               .accountProfileCandidatesErrorStreamValue,
                           builder: (context, partyCandidatesError) {
                             return StreamValueBuilder<
-                                List<TenantAdminAccountProfile>>(
+                              List<TenantAdminAccountProfile>
+                            >(
                               streamValue: controller
                                   .relatedAccountProfileCandidatesStreamValue,
                               builder: (context, relatedAccountProfiles) {
                                 return StreamValueBuilder<
-                                    List<TenantAdminEventType>>(
+                                  List<TenantAdminEventType>
+                                >(
                                   streamValue:
                                       controller.eventTypeCatalogStreamValue,
                                   builder: (context, eventTypes) {
                                     return StreamValueBuilder<
-                                        List<TenantAdminTaxonomyDefinition>>(
+                                      List<TenantAdminTaxonomyDefinition>
+                                    >(
                                       streamValue:
                                           controller.taxonomiesStreamValue,
                                       builder: (context, taxonomies) {
@@ -2038,78 +2046,77 @@ class _TenantAdminEventFormStateScope extends StatelessWidget {
                                             return StreamValueBuilder<String?>(
                                               streamValue: controller
                                                   .taxonomyErrorStreamValue,
-                                              builder:
-                                                  (context, taxonomyError) {
+                                              builder: (context, taxonomyError) {
                                                 return StreamValueBuilder<
-                                                    Map<
-                                                        String,
-                                                        List<
-                                                            TenantAdminTaxonomyTermDefinition>>>(
+                                                  Map<
+                                                    String,
+                                                    List<
+                                                      TenantAdminTaxonomyTermDefinition
+                                                    >
+                                                  >
+                                                >(
                                                   streamValue: controller
                                                       .taxonomyTermsBySlugStreamValue,
-                                                  builder:
-                                                      (context, termsBySlug) {
+                                                  builder: (context, termsBySlug) {
                                                     return StreamValueBuilder<
-                                                        XFile?>(
+                                                      XFile?
+                                                    >(
                                                       streamValue: controller
                                                           .eventCoverFileStreamValue,
-                                                      builder: (
-                                                        context,
-                                                        selectedCover,
-                                                      ) {
+                                                      builder: (context, selectedCover) {
                                                         return StreamValueBuilder<
-                                                            bool>(
+                                                          bool
+                                                        >(
                                                           streamValue: controller
                                                               .eventCoverBusyStreamValue,
-                                                          builder: (
-                                                            context,
-                                                            isCoverBusy,
-                                                          ) {
+                                                          builder: (context, isCoverBusy) {
                                                             return StreamValueBuilder<
-                                                                bool>(
+                                                              bool
+                                                            >(
                                                               streamValue:
                                                                   controller
                                                                       .eventCoverRemoveStreamValue,
-                                                              builder: (
-                                                                context,
-                                                                isCoverMarkedForRemoval,
-                                                              ) {
-                                                                return builder(
-                                                                  context,
-                                                                  _TenantAdminEventFormViewModel(
-                                                                    formState:
-                                                                        formState,
-                                                                    submitError:
-                                                                        submitError,
-                                                                    isSubmitting:
-                                                                        isSubmitting,
-                                                                    venues:
-                                                                        venues,
-                                                                    partyCandidatesLoading:
-                                                                        partyCandidatesLoading,
-                                                                    partyCandidatesError:
-                                                                        partyCandidatesError,
-                                                                    relatedAccountProfiles:
-                                                                        relatedAccountProfiles,
-                                                                    eventTypes:
-                                                                        eventTypes,
-                                                                    taxonomies:
-                                                                        taxonomies,
-                                                                    termsBySlug:
-                                                                        termsBySlug,
-                                                                    taxonomyLoading:
-                                                                        taxonomyLoading,
-                                                                    taxonomyError:
-                                                                        taxonomyError,
-                                                                    selectedCover:
-                                                                        selectedCover,
-                                                                    isCoverBusy:
-                                                                        isCoverBusy,
-                                                                    isCoverMarkedForRemoval:
-                                                                        isCoverMarkedForRemoval,
-                                                                  ),
-                                                                );
-                                                              },
+                                                              builder:
+                                                                  (
+                                                                    context,
+                                                                    isCoverMarkedForRemoval,
+                                                                  ) {
+                                                                    return builder(
+                                                                      context,
+                                                                      _TenantAdminEventFormViewModel(
+                                                                        formState:
+                                                                            formState,
+                                                                        submitError:
+                                                                            submitError,
+                                                                        isSubmitting:
+                                                                            isSubmitting,
+                                                                        venues:
+                                                                            venues,
+                                                                        partyCandidatesLoading:
+                                                                            partyCandidatesLoading,
+                                                                        partyCandidatesError:
+                                                                            partyCandidatesError,
+                                                                        relatedAccountProfiles:
+                                                                            relatedAccountProfiles,
+                                                                        eventTypes:
+                                                                            eventTypes,
+                                                                        taxonomies:
+                                                                            taxonomies,
+                                                                        termsBySlug:
+                                                                            termsBySlug,
+                                                                        taxonomyLoading:
+                                                                            taxonomyLoading,
+                                                                        taxonomyError:
+                                                                            taxonomyError,
+                                                                        selectedCover:
+                                                                            selectedCover,
+                                                                        isCoverBusy:
+                                                                            isCoverBusy,
+                                                                        isCoverMarkedForRemoval:
+                                                                            isCoverMarkedForRemoval,
+                                                                      ),
+                                                                    );
+                                                                  },
                                                             );
                                                           },
                                                         );

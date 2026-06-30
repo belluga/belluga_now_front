@@ -119,9 +119,7 @@ class EventDTO {
     );
     final legacyLinkedProfiles = linkedProfiles.isNotEmpty
         ? linkedProfiles
-        : _resolveLegacyArtists(
-            json['artists'],
-          );
+        : _resolveLegacyArtists(json['artists']);
     final selectedOccurrenceId = _asNullableString(json['occurrence_id']);
 
     final taxonomyTerms = _resolveCanonicalTaxonomyTerms(
@@ -129,7 +127,8 @@ class EventDTO {
     );
 
     return EventDTO(
-      id: _asString(json['id']) ??
+      id:
+          _asString(json['id']) ??
           _asString(json['event_id']) ??
           _asString(json['occurrence_id']) ??
           '',
@@ -151,11 +150,13 @@ class EventDTO {
       thumb: _asMap(json['thumb']).isNotEmpty
           ? ThumbDTO.fromJson(_asMap(json['thumb']))
           : null,
-      dateTimeStart: _asString(json['date_time_start']) ??
+      dateTimeStart:
+          _asString(json['date_time_start']) ??
           _asString(json['starts_at']) ??
           _asString(json['start_time']) ??
           '',
-      dateTimeEnd: _asNullableString(json['date_time_end']) ??
+      dateTimeEnd:
+          _asNullableString(json['date_time_end']) ??
           _asNullableString(json['ends_at']) ??
           _asNullableString(json['end_time']),
       linkedAccountProfiles: legacyLinkedProfiles,
@@ -167,10 +168,12 @@ class EventDTO {
         occurrencesRaw: json['occurrences'],
         linkedAccountProfiles: legacyLinkedProfiles,
         fallbackOccurrenceId: selectedOccurrenceId,
-        fallbackDateTimeStart: _asNullableString(json['date_time_start']) ??
+        fallbackDateTimeStart:
+            _asNullableString(json['date_time_start']) ??
             _asNullableString(json['starts_at']) ??
             _asNullableString(json['start_time']),
-        fallbackDateTimeEnd: _asNullableString(json['date_time_end']) ??
+        fallbackDateTimeEnd:
+            _asNullableString(json['date_time_end']) ??
             _asNullableString(json['ends_at']) ??
             _asNullableString(json['end_time']),
       ),
@@ -196,19 +199,23 @@ class EventDTO {
     final venueDomain = venue != null ? _mapPartnerResume(venue!) : null;
     final selectedOccurrenceId = _selectedOccurrenceIdForInvites();
 
-    final receivedInvitesDomain = receivedInvites?.map((entry) {
-      final inviteMap = Map<String, dynamic>.from(entry);
-      inviteMap.putIfAbsent('event_id', () => id);
-      if (selectedOccurrenceId != null && selectedOccurrenceId.isNotEmpty) {
-        inviteMap.putIfAbsent('occurrence_id', () => selectedOccurrenceId);
-      }
-      return InviteDto.fromJson(inviteMap).toDomain();
-    }).toList(growable: false);
+    final receivedInvitesDomain = receivedInvites
+        ?.map((entry) {
+          final inviteMap = Map<String, dynamic>.from(entry);
+          inviteMap.putIfAbsent('event_id', () => id);
+          if (selectedOccurrenceId != null && selectedOccurrenceId.isNotEmpty) {
+            inviteMap.putIfAbsent('occurrence_id', () => selectedOccurrenceId);
+          }
+          return InviteDto.fromJson(inviteMap).toDomain();
+        })
+        .toList(growable: false);
 
-    final sentInvitesDomain =
-        sentInvites?.map(_mapSentInviteStatus).toList(growable: false);
-    final friendsGoingDomain =
-        friendsGoing?.map(_mapEventFriendResume).toList(growable: false);
+    final sentInvitesDomain = sentInvites
+        ?.map(_mapSentInviteStatus)
+        .toList(growable: false);
+    final friendsGoingDomain = friendsGoing
+        ?.map(_mapEventFriendResume)
+        .toList(growable: false);
 
     return eventModelFromRaw(
       id: MongoIDValue()..parse(id),
@@ -227,8 +234,9 @@ class EventDTO {
       location: DescriptionValue(minLenght: 1)..parse(location),
       thumb: thumbDomain,
       dateTimeStart: DateTimeValue()..parse(dateTimeStart),
-      dateTimeEnd:
-          dateTimeEnd != null ? (DateTimeValue()..parse(dateTimeEnd!)) : null,
+      dateTimeEnd: dateTimeEnd != null
+          ? (DateTimeValue()..parse(dateTimeEnd!))
+          : null,
       venue: venueDomain,
       linkedAccountProfiles: linkedAccountProfiles,
       profileGroups: profileGroups,
@@ -277,7 +285,8 @@ class EventDTO {
     for (final entry in raw) {
       final artist = _asMap(entry);
       final id = _asString(artist['id'])?.trim() ?? '';
-      final displayName = _asString(artist['display_name'])?.trim() ??
+      final displayName =
+          _asString(artist['display_name'])?.trim() ??
           _asString(artist['name'])?.trim() ??
           '';
       if (id.isEmpty || displayName.isEmpty) {
@@ -303,7 +312,8 @@ class EventDTO {
           idValue: EventLinkedAccountProfileTextValue(id),
           displayNameValue: EventLinkedAccountProfileTextValue(displayName),
           profileTypeValue: AccountProfileTypeValue(
-              _asString(artist['profile_type']) ?? 'artist'),
+            _asString(artist['profile_type']) ?? 'artist',
+          ),
           slugValue: _optionalLinkedAccountProfileSlugValue(profile: artist),
           avatarUrlValue: _thumbUriValueOrNull(
             _asNullableString(artist['avatar_url']),
@@ -372,19 +382,17 @@ class EventDTO {
 
   static List<EventLinkedAccountProfile> _resolveLinkedAccountProfiles({
     required Object? linkedProfilesRaw,
-  }) =>
-      EventPublicProfilePayloadDecoder.resolveLinkedAccountProfiles(
-        linkedProfilesRaw: linkedProfilesRaw,
-      );
+  }) => EventPublicProfilePayloadDecoder.resolveLinkedAccountProfiles(
+    linkedProfilesRaw: linkedProfilesRaw,
+  );
 
   static List<EventProfileGroup> _resolveProfileGroups(
     Object? raw, {
     List<EventLinkedAccountProfile> linkedAccountProfiles = const [],
-  }) =>
-      EventPublicProfilePayloadDecoder.resolveProfileGroups(
-        raw,
-        linkedAccountProfiles: linkedAccountProfiles,
-      );
+  }) => EventPublicProfilePayloadDecoder.resolveProfileGroups(
+    raw,
+    linkedAccountProfiles: linkedAccountProfiles,
+  );
 
   static List<EventOccurrenceOption> _resolveOccurrences({
     required Object? occurrencesRaw,
@@ -425,7 +433,8 @@ class EventDTO {
         continue;
       }
 
-      final isSelected = _asBool(row['is_selected']) ||
+      final isSelected =
+          _asBool(row['is_selected']) ||
           (fallbackOccurrenceId != null &&
               fallbackOccurrenceId.trim().isNotEmpty &&
               occurrenceId == fallbackOccurrenceId.trim());
@@ -434,7 +443,8 @@ class EventDTO {
       final occurrenceLinkedAccountProfiles = _mergeLinkedAccountProfiles(
         linkedAccountProfiles,
         _resolveLinkedAccountProfiles(
-          linkedProfilesRaw: row['linked_account_profiles'] ??
+          linkedProfilesRaw:
+              row['linked_account_profiles'] ??
               row['own_linked_account_profiles'],
         ),
       );
@@ -456,6 +466,7 @@ class EventDTO {
             ..parse(_asBool(row['has_location_override']).toString()),
           programmingCountValue: EventProgrammingCountValue()
             ..parse(_asInt(row['programming_count']).toString()),
+          linkedAccountProfiles: occurrenceLinkedAccountProfiles,
           programmingItems: _resolveProgrammingItems(row['programming_items']),
           profileGroups: _resolveProfileGroups(
             row['profile_groups'],
@@ -479,20 +490,121 @@ class EventDTO {
       return primary;
     }
 
-    final knownIds = <String>{
-      for (final profile in primary)
-        if (profile.id.trim().isNotEmpty) profile.id.trim(),
+    final secondaryById = <String, EventLinkedAccountProfile>{
+      for (final profile in secondary)
+        if (profile.id.trim().isNotEmpty) profile.id.trim(): profile,
     };
-    final merged = <EventLinkedAccountProfile>[...primary];
-    for (final profile in secondary) {
+    final seenIds = <String>{};
+    final merged = <EventLinkedAccountProfile>[];
+
+    for (final profile in primary) {
       final profileId = profile.id.trim();
-      if (profileId.isEmpty || knownIds.contains(profileId)) {
+      if (profileId.isEmpty || !seenIds.add(profileId)) {
         continue;
       }
-      knownIds.add(profileId);
+      final override = secondaryById.remove(profileId);
+      merged.add(
+        override == null
+            ? profile
+            : _mergeLinkedAccountProfile(
+                aggregate: profile,
+                selectedOccurrence: override,
+              ),
+      );
+    }
+
+    for (final profile in secondary) {
+      final profileId = profile.id.trim();
+      if (profileId.isEmpty || !seenIds.add(profileId)) {
+        continue;
+      }
       merged.add(profile);
     }
+
     return List<EventLinkedAccountProfile>.unmodifiable(merged);
+  }
+
+  static EventLinkedAccountProfile _mergeLinkedAccountProfile({
+    required EventLinkedAccountProfile aggregate,
+    required EventLinkedAccountProfile selectedOccurrence,
+  }) {
+    return EventLinkedAccountProfile(
+      idValue: aggregate.idValue,
+      displayNameValue: selectedOccurrence.displayName.trim().isNotEmpty
+          ? selectedOccurrence.displayNameValue
+          : aggregate.displayNameValue,
+      profileTypeValue: selectedOccurrence.profileType.trim().isNotEmpty
+          ? selectedOccurrence.profileTypeValue
+          : aggregate.profileTypeValue,
+      slugValue: selectedOccurrence.slug.trim().isNotEmpty
+          ? selectedOccurrence.slugValue
+          : aggregate.slugValue,
+      avatarUrlValue: (selectedOccurrence.avatarUrl?.trim().isNotEmpty ?? false)
+          ? selectedOccurrence.avatarUrlValue
+          : aggregate.avatarUrlValue,
+      coverUrlValue: (selectedOccurrence.coverUrl?.trim().isNotEmpty ?? false)
+          ? selectedOccurrence.coverUrlValue
+          : aggregate.coverUrlValue,
+      partyTypeValue: (selectedOccurrence.partyType?.trim().isNotEmpty ?? false)
+          ? selectedOccurrence.partyTypeValue
+          : aggregate.partyTypeValue,
+      locationAddressValue:
+          (selectedOccurrence.locationAddress?.trim().isNotEmpty ?? false)
+          ? selectedOccurrence.locationAddressValue
+          : aggregate.locationAddressValue,
+      locationLatitudeValue:
+          selectedOccurrence.locationLatitudeValue ??
+          aggregate.locationLatitudeValue,
+      locationLongitudeValue:
+          selectedOccurrence.locationLongitudeValue ??
+          aggregate.locationLongitudeValue,
+      canOpenPublicDetailValue: selectedOccurrence.canOpenPublicDetail
+          ? selectedOccurrence.canOpenPublicDetailValue
+          : aggregate.canOpenPublicDetailValue,
+      publicDetailPathValue:
+          (selectedOccurrence.publicDetailPath?.trim().isNotEmpty ?? false)
+          ? selectedOccurrence.publicDetailPathValue
+          : aggregate.publicDetailPathValue,
+      taxonomyTerms: _mergeTaxonomyTerms(
+        primary: selectedOccurrence.taxonomyTerms,
+        secondary: aggregate.taxonomyTerms,
+      ),
+    );
+  }
+
+  static EventLinkedAccountProfileTaxonomyTerms _mergeTaxonomyTerms({
+    required EventLinkedAccountProfileTaxonomyTerms primary,
+    required EventLinkedAccountProfileTaxonomyTerms secondary,
+  }) {
+    if (primary.isEmpty) {
+      return secondary;
+    }
+    if (secondary.isEmpty) {
+      return primary;
+    }
+
+    final merged = EventLinkedAccountProfileTaxonomyTerms();
+    final seen = <String>{};
+
+    void ingest(EventLinkedAccountProfileTaxonomyTerms source) {
+      for (final term in source) {
+        final key = '${term.typeValue.value}:${term.valueValue.value}';
+        if (!seen.add(key)) {
+          continue;
+        }
+        merged.addTerm(
+          typeValue: term.typeValue,
+          valueValue: term.valueValue,
+          nameValue: term.nameValue,
+          taxonomyNameValue: term.taxonomyNameValue,
+          labelValue: term.compatibilityLabelValue,
+        );
+      }
+    }
+
+    ingest(primary);
+    ingest(secondary);
+    return merged;
   }
 
   static List<EventProgrammingItem> _resolveProgrammingItems(Object? raw) {
@@ -520,10 +632,12 @@ class EventDTO {
       resolved.add(
         EventProgrammingItem(
           timeValue: EventProgrammingTimeValue(time),
-          endTimeValue:
-              endTime.isEmpty ? null : EventProgrammingTimeValue(endTime),
-          titleValue:
-              title.isEmpty ? null : EventLinkedAccountProfileTextValue(title),
+          endTimeValue: endTime.isEmpty
+              ? null
+              : EventProgrammingTimeValue(endTime),
+          titleValue: title.isEmpty
+              ? null
+              : EventLinkedAccountProfileTextValue(title),
           linkedAccountProfiles: _resolveLinkedAccountProfiles(
             linkedProfilesRaw: item['linked_account_profiles'],
           ),
@@ -543,7 +657,8 @@ class EventDTO {
       return null;
     }
 
-    final displayName = _asString(profile['display_name'])?.trim() ??
+    final displayName =
+        _asString(profile['display_name'])?.trim() ??
         _asString(profile['name'])?.trim() ??
         '';
     if (displayName.isEmpty) {
@@ -580,8 +695,8 @@ class EventDTO {
 
     final profileType =
         _asString(profile['profile_type'])?.trim().isNotEmpty == true
-            ? _asString(profile['profile_type'])!.trim()
-            : (_asString(profile['party_type'])?.trim() ?? '');
+        ? _asString(profile['profile_type'])!.trim()
+        : (_asString(profile['party_type'])?.trim() ?? '');
     final locationCoordinates = _resolveProfileCoordinates(profile);
 
     return EventLinkedAccountProfile(
@@ -595,14 +710,13 @@ class EventDTO {
       coverUrlValue: _thumbUriValueOrNull(
         _asNullableString(profile['cover_url'] ?? profile['hero_image_url']),
       ),
-      partyTypeValue:
-          _textValueOrNull(_asNullableString(profile['party_type'])),
+      partyTypeValue: _textValueOrNull(
+        _asNullableString(profile['party_type']),
+      ),
       locationAddressValue: _textValueOrNull(
         _resolveProfileLocationAddress(profile),
       ),
-      locationLatitudeValue: _latitudeValueOrNull(
-        locationCoordinates.latitude,
-      ),
+      locationLatitudeValue: _latitudeValueOrNull(locationCoordinates.latitude),
       locationLongitudeValue: _longitudeValueOrNull(
         locationCoordinates.longitude,
       ),
@@ -633,8 +747,9 @@ class EventDTO {
 
     final location = _asMap(profile['location']);
     final locationLatitude = _asDouble(location['latitude'] ?? location['lat']);
-    final locationLongitude =
-        _asDouble(location['longitude'] ?? location['lng']);
+    final locationLongitude = _asDouble(
+      location['longitude'] ?? location['lng'],
+    );
     if (locationLatitude != null && locationLongitude != null) {
       return (latitude: locationLatitude, longitude: locationLongitude);
     }
@@ -793,7 +908,8 @@ class EventDTO {
     }
 
     final locationMap = _asMap(rawLocation);
-    final locationFromMap = _asString(locationMap['display_name']) ??
+    final locationFromMap =
+        _asString(locationMap['display_name']) ??
         _asString(locationMap['name']) ??
         _asString(locationMap['label']) ??
         _asString(locationMap['address']) ??
@@ -803,7 +919,8 @@ class EventDTO {
     }
 
     final onlinePayload = _asMap(locationMap['online']);
-    final onlineLocation = _asString(onlinePayload['label']) ??
+    final onlineLocation =
+        _asString(onlinePayload['label']) ??
         _asString(onlinePayload['name']) ??
         _asString(onlinePayload['title']) ??
         _asString(onlinePayload['url']);
@@ -932,12 +1049,11 @@ class EventDTO {
       slugValue: slugValue,
       type: InviteAccountProfileType.mercadoProducer,
       canOpenPublicDetailValue:
-          DomainBooleanValue(defaultValue: false, isRequired: false)
-            ..parse(
-              (_asBool(dto['can_open_public_detail']) &&
-                      publicDetailPath.isNotEmpty)
-                  .toString(),
-            ),
+          DomainBooleanValue(defaultValue: false, isRequired: false)..parse(
+            (_asBool(dto['can_open_public_detail']) &&
+                    publicDetailPath.isNotEmpty)
+                .toString(),
+          ),
       publicDetailPathValue: AccountProfilePublicDetailPathValue(
         publicDetailPath,
       ),
@@ -966,10 +1082,7 @@ class EventDTO {
       'latitude': latitude,
       'longitude': longitude,
       'thumb': thumb != null
-          ? {
-              'type': thumb!.type,
-              'data': thumb!.data,
-            }
+          ? {'type': thumb!.type, 'data': thumb!.data}
           : null,
       'date_time_start': dateTimeStart,
       'date_time_end': dateTimeEnd,
@@ -985,7 +1098,8 @@ class EventDTO {
   }
 
   static List<Map<String, dynamic>> _resolveCanonicalTaxonomyTerms(
-      Object? raw) {
+    Object? raw,
+  ) {
     if (raw is! List) {
       return const <Map<String, dynamic>>[];
     }
@@ -1010,7 +1124,8 @@ class EventDTO {
     final labels = <String>{};
     for (final entry in raw) {
       final term = _asMap(entry);
-      final label = _asString(term['name'])?.trim() ??
+      final label =
+          _asString(term['name'])?.trim() ??
           _asString(term['label'])?.trim() ??
           _asString(term['value'])?.trim() ??
           '';

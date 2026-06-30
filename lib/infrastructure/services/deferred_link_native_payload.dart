@@ -1,9 +1,10 @@
 class DeferredLinkNativePayload {
-  const DeferredLinkNativePayload({
-    this.installReferrer,
-    this.storeChannel,
-  });
+  const DeferredLinkNativePayload({this.resolverPayload, this.storeChannel});
 
-  final String? installReferrer;
+  final String? resolverPayload;
   final String? storeChannel;
+
+  bool get hasAnyValue =>
+      (resolverPayload != null && resolverPayload!.trim().isNotEmpty) ||
+      (storeChannel != null && storeChannel!.trim().isNotEmpty);
 }

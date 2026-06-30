@@ -22,6 +22,7 @@ import 'package:belluga_now/domain/repositories/user_location_repository_contrac
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_bool_value.dart';
 import 'package:belluga_now/domain/tenant/tenant.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
+import 'package:belluga_now/domain/user/user_profile_contract.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
@@ -52,6 +53,7 @@ import 'package:get_it/get_it.dart';
 import 'package:push_handler/push_handler.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -77,19 +79,26 @@ void main() {
 
   tearDown(() async {
     SentryErrorReporter.resetForTesting();
+    if (GetIt.I.isRegistered<ApplicationContract>()) {
+      await GetIt.I.get<ApplicationContract>().disposeRuntimeResources();
+    }
     await GetIt.I.reset();
   });
 
   test('PushTransportConfigurator builds expected config', () async {
-    final authRepository =
-        _FakeAuthRepository(userTokenValue: 'token-123', deviceId: 'device-1');
+    final authRepository = _FakeAuthRepository(
+      userTokenValue: 'token-123',
+      deviceId: 'device-1',
+    );
 
-    final config =
-        PushTransportConfigurator.build(authRepository: authRepository);
+    final config = PushTransportConfigurator.build(
+      authRepository: authRepository,
+    );
 
     final baseUrl = BellugaConstants.api.baseUrl;
-    final expectedBaseUrl =
-        baseUrl.endsWith('/') ? '${baseUrl}v1/' : '$baseUrl/v1/';
+    final expectedBaseUrl = baseUrl.endsWith('/')
+        ? '${baseUrl}v1/'
+        : '$baseUrl/v1/';
     expect(config.resolvedBaseUrl, expectedBaseUrl);
     expect(await config.tokenProvider?.call(), 'token-123');
     expect(await config.deviceIdProvider?.call(), 'device-1');
@@ -97,56 +106,69 @@ void main() {
   });
 
   test('PushTransportConfigurator returns null token when empty', () async {
-    final authRepository =
-        _FakeAuthRepository(userTokenValue: '', deviceId: 'device-1');
+    final authRepository = _FakeAuthRepository(
+      userTokenValue: '',
+      deviceId: 'device-1',
+    );
 
-    final config =
-        PushTransportConfigurator.build(authRepository: authRepository);
+    final config = PushTransportConfigurator.build(
+      authRepository: authRepository,
+    );
 
     expect(await config.tokenProvider?.call(), isNull);
   });
 
-  test('BackendContext uses canonical main domain instead of current href',
-      () async {
-    final appData = _buildTestAppData(
-      platform: PlatformType.web,
-      mainDomain: 'https://guarappari.belluga.space',
-      domains: ['https://guarappari.belluga.space'],
-      localHostname: 'belluga.space',
-      localHref: 'https://belluga.space/admin',
-    );
+  test(
+    'BackendContext uses canonical main domain instead of current href',
+    () async {
+      final appData = _buildTestAppData(
+        platform: PlatformType.web,
+        mainDomain: 'https://guarappari.belluga.space',
+        domains: ['https://guarappari.belluga.space'],
+        localHostname: 'belluga.space',
+        localHref: 'https://belluga.space/admin',
+      );
 
-    final context = BackendContext.fromAppData(appData);
+      final context = BackendContext.fromAppData(appData);
 
-    expect(context.baseUrl, 'https://guarappari.belluga.space/api');
-    expect(context.adminUrl, 'https://guarappari.belluga.space/admin/api');
-  });
+      expect(context.baseUrl, 'https://guarappari.belluga.space/api');
+      expect(context.adminUrl, 'https://guarappari.belluga.space/admin/api');
+    },
+  );
 
-  test('ApplicationContract initializes push repository on non-web path',
-      () async {
-    final authRepository =
-        _FakeAuthRepository(userTokenValue: 'token-123', deviceId: 'device-1');
-    GetIt.I.registerSingleton<AuthRepositoryContract>(authRepository);
+  test(
+    'ApplicationContract initializes push repository on non-web path',
+    () async {
+      final authRepository = _FakeAuthRepository(
+        userTokenValue: 'token-123',
+        deviceId: 'device-1',
+      );
+      GetIt.I.registerSingleton<AuthRepositoryContract>(authRepository);
 
-    final app = _TestApplication();
-    GetIt.I.registerSingleton<ApplicationContract>(app);
+      final app = _TestApplication();
+      GetIt.I.registerSingleton<ApplicationContract>(app);
 
-    final capture = _RepositoryCapture();
-    await app.initializePushHandlerForTesting(
-      isWebOverride: false,
-      repositoryFactory: capture.factory,
-    );
+      final capture = _RepositoryCapture();
+      await app.initializePushHandlerForTesting(
+        isWebOverride: false,
+        repositoryFactory: capture.factory,
+      );
 
-    expect(capture.factoryCalled, isTrue);
-    expect(capture.initCalled, isTrue);
-    expect(await capture.transportConfig?.tokenProvider?.call(), 'token-123');
-    expect(
-        capture.platformResolver?.call(), BellugaConstants.settings.platform);
-  });
+      expect(capture.factoryCalled, isTrue);
+      expect(capture.initCalled, isTrue);
+      expect(await capture.transportConfig?.tokenProvider?.call(), 'token-123');
+      expect(
+        capture.platformResolver?.call(),
+        BellugaConstants.settings.platform,
+      );
+    },
+  );
 
   test('ApplicationContract skips push init on web override', () async {
-    final authRepository =
-        _FakeAuthRepository(userTokenValue: 'token-123', deviceId: 'device-1');
+    final authRepository = _FakeAuthRepository(
+      userTokenValue: 'token-123',
+      deviceId: 'device-1',
+    );
     GetIt.I.registerSingleton<AuthRepositoryContract>(authRepository);
 
     final app = _TestApplication();
@@ -162,11 +184,17 @@ void main() {
     expect(capture.initCalled, isFalse);
   });
 
-  test('ApplicationContract reports recoverable push init failures to Sentry',
-      () async {
-    final sentryCaptures = <_SentryCapture>[];
-    SentryErrorReporter.overrideCaptureExceptionForTesting(
-      (throwable, {stackTrace, hint, message, withScope}) async {
+  test(
+    'ApplicationContract reports recoverable push init failures to Sentry',
+    () async {
+      final sentryCaptures = <_SentryCapture>[];
+      SentryErrorReporter.overrideCaptureExceptionForTesting((
+        throwable, {
+        stackTrace,
+        hint,
+        message,
+        withScope,
+      }) async {
         sentryCaptures.add(
           _SentryCapture(
             throwable: throwable,
@@ -175,33 +203,97 @@ void main() {
           ),
         );
         return SentryId.empty();
-      },
-    );
-    final authRepository =
-        _FakeAuthRepository(userTokenValue: 'token-123', deviceId: 'device-1');
-    GetIt.I.registerSingleton<AuthRepositoryContract>(authRepository);
+      });
+      final authRepository = _FakeAuthRepository(
+        userTokenValue: 'token-123',
+        deviceId: 'device-1',
+      );
+      GetIt.I.registerSingleton<AuthRepositoryContract>(authRepository);
 
-    final app = _TestApplication();
-    GetIt.I.registerSingleton<ApplicationContract>(app);
+      final app = _TestApplication();
+      GetIt.I.registerSingleton<ApplicationContract>(app);
 
-    final capture = _RepositoryCapture(throwOnInit: true);
-    await app.initializePushHandlerForTesting(
-      isWebOverride: false,
-      repositoryFactory: capture.factory,
-    );
+      final capture = _RepositoryCapture(throwOnInit: true);
+      await app.initializePushHandlerForTesting(
+        isWebOverride: false,
+        repositoryFactory: capture.factory,
+      );
 
-    expect(capture.factoryCalled, isTrue);
-    expect(capture.initCalled, isTrue);
-    expect(sentryCaptures, hasLength(1));
-    expect(sentryCaptures.single.throwable, isA<StateError>());
-    expect(sentryCaptures.single.stackTrace, isA<StackTrace>());
-  });
+      expect(capture.factoryCalled, isTrue);
+      expect(capture.initCalled, isTrue);
+      expect(sentryCaptures, hasLength(1));
+      expect(sentryCaptures.single.throwable, isA<StateError>());
+      expect(sentryCaptures.single.stackTrace, isA<StackTrace>());
+    },
+  );
+
+  test(
+    'ApplicationContract defers iOS push repository init until presentation ready',
+    () async {
+      final authRepository = _FakeAuthRepository(
+        userTokenValue: 'token-123',
+        deviceId: 'device-1',
+      );
+      GetIt.I.registerSingleton<AuthRepositoryContract>(authRepository);
+
+      final app = _TestApplication();
+      GetIt.I.registerSingleton<ApplicationContract>(app);
+
+      final capture = _RepositoryCapture();
+      await app.initializePushHandlerForTesting(
+        isWebOverride: false,
+        platformOverride: 'ios',
+        repositoryFactory: capture.factory,
+      );
+
+      expect(capture.factoryCalled, isFalse);
+      expect(capture.initCalled, isFalse);
+
+      await app.handlePushPresentationReady();
+
+      expect(capture.factoryCalled, isTrue);
+      expect(capture.initCalled, isTrue);
+    },
+  );
+
+  test(
+    'ApplicationContract waits for authorization before deferred iOS push init',
+    () async {
+      final authRepository = _FakeAuthRepository(
+        userTokenValue: '',
+        deviceId: 'device-1',
+      );
+      GetIt.I.registerSingleton<AuthRepositoryContract>(authRepository);
+
+      final app = _TestApplication();
+      GetIt.I.registerSingleton<ApplicationContract>(app);
+
+      final capture = _RepositoryCapture();
+      await app.initializePushHandlerForTesting(
+        isWebOverride: false,
+        platformOverride: 'ios',
+        repositoryFactory: capture.factory,
+      );
+      await app.handlePushPresentationReady();
+
+      expect(capture.factoryCalled, isFalse);
+      expect(capture.initCalled, isFalse);
+
+      authRepository.authorize(userToken: 'token-123');
+      await _flushAsyncWork();
+
+      expect(capture.factoryCalled, isTrue);
+      expect(capture.initCalled, isTrue);
+    },
+  );
 
   testWidgets(
     'ApplicationContract seeds startup override from initial invite push tap',
     (tester) async {
       final authRepository = _FakeAuthRepository(
-          userTokenValue: 'token-123', deviceId: 'device-1');
+        userTokenValue: 'token-123',
+        deviceId: 'device-1',
+      );
       GetIt.I.registerSingleton<AuthRepositoryContract>(authRepository);
 
       final app = _TestApplication();
@@ -215,15 +307,13 @@ void main() {
         isWebOverride: false,
         repositoryFactory: capture.factory,
         invitePushTapSourceOverride: _FakeInvitePushTapSource(
-          initialMessage: RemoteMessage.fromMap(
-            const <String, dynamic>{
-              'messageId': 'push-message-1',
-              'data': <String, dynamic>{
-                'push_type': 'invite_received',
-                'invite_id': '507f1f77bcf86cd799439011',
-              },
+          initialMessage: RemoteMessage.fromMap(const <String, dynamic>{
+            'messageId': 'push-message-1',
+            'data': <String, dynamic>{
+              'push_type': 'invite_received',
+              'invite_id': '507f1f77bcf86cd799439011',
             },
-          ),
+          }),
         ),
         invitePushRuntimeCoordinatorOverride: runtimeCoordinator,
       );
@@ -246,11 +336,55 @@ void main() {
     },
   );
 
+  test(
+    'ApplicationContract handles iOS initial invite tap before deferred push init runs',
+    () async {
+      final authRepository = _FakeAuthRepository(
+        userTokenValue: 'token-123',
+        deviceId: 'device-1',
+      );
+      GetIt.I.registerSingleton<AuthRepositoryContract>(authRepository);
+
+      final app = _TestApplication();
+      GetIt.I.registerSingleton<ApplicationContract>(app);
+
+      final capture = _RepositoryCapture();
+      final runtimeCoordinator = _FakeInvitePushRuntimeCoordinator(
+        preparedPath: '/invite?code=ABCD1234',
+      );
+      await app.initializePushHandlerForTesting(
+        isWebOverride: false,
+        platformOverride: 'ios',
+        repositoryFactory: capture.factory,
+        invitePushTapSourceOverride: _FakeInvitePushTapSource(
+          initialMessage: RemoteMessage.fromMap(const <String, dynamic>{
+            'messageId': 'push-message-1',
+            'data': <String, dynamic>{
+              'push_type': 'invite_received',
+              'invite_id': '507f1f77bcf86cd799439011',
+            },
+          }),
+        ),
+        invitePushRuntimeCoordinatorOverride: runtimeCoordinator,
+      );
+
+      expect(capture.initCalled, isFalse);
+      expect(runtimeCoordinator.prepareNotificationTapPathCalls, 1);
+      expect(runtimeCoordinator.refreshNotificationTapDataCalls, 1);
+
+      await app.handlePushPresentationReady();
+
+      expect(capture.initCalled, isTrue);
+    },
+  );
+
   testWidgets(
     'ApplicationContract seeds startup override before push repository init completes',
     (tester) async {
       final authRepository = _FakeAuthRepository(
-          userTokenValue: 'token-123', deviceId: 'device-1');
+        userTokenValue: 'token-123',
+        deviceId: 'device-1',
+      );
       GetIt.I.registerSingleton<AuthRepositoryContract>(authRepository);
 
       final app = _TestApplication();
@@ -266,15 +400,13 @@ void main() {
         isWebOverride: false,
         repositoryFactory: capture.factory,
         invitePushTapSourceOverride: _FakeInvitePushTapSource(
-          initialMessage: RemoteMessage.fromMap(
-            const <String, dynamic>{
-              'messageId': 'push-message-1',
-              'data': <String, dynamic>{
-                'push_type': 'invite_received',
-                'invite_id': '507f1f77bcf86cd799439011',
-              },
+          initialMessage: RemoteMessage.fromMap(const <String, dynamic>{
+            'messageId': 'push-message-1',
+            'data': <String, dynamic>{
+              'push_type': 'invite_received',
+              'invite_id': '507f1f77bcf86cd799439011',
             },
-          ),
+          }),
         ),
         invitePushRuntimeCoordinatorOverride: runtimeCoordinator,
       );
@@ -311,9 +443,7 @@ class _TestApplication extends ApplicationContract {
 }
 
 class _FakeInvitePushTapSource extends InvitePushTapSource {
-  const _FakeInvitePushTapSource({
-    this.initialMessage,
-  });
+  const _FakeInvitePushTapSource({this.initialMessage});
 
   final RemoteMessage? initialMessage;
 
@@ -326,11 +456,8 @@ class _FakeInvitePushTapSource extends InvitePushTapSource {
 }
 
 class _FakeInvitePushRuntimeCoordinator extends InvitePushRuntimeCoordinator {
-  _FakeInvitePushRuntimeCoordinator({
-    required this.preparedPath,
-  }) : super(
-          navigatePath: (_) async {},
-        );
+  _FakeInvitePushRuntimeCoordinator({required this.preparedPath})
+    : super(navigatePath: (_) async {});
 
   final String preparedPath;
   int prepareNotificationTapPathCalls = 0;
@@ -349,10 +476,7 @@ class _FakeInvitePushRuntimeCoordinator extends InvitePushRuntimeCoordinator {
 }
 
 class _RepositoryCapture {
-  _RepositoryCapture({
-    this.throwOnInit = false,
-    this.initCompleter,
-  });
+  _RepositoryCapture({this.throwOnInit = false, this.initCompleter});
 
   final bool throwOnInit;
   final Completer<void>? initCompleter;
@@ -409,29 +533,21 @@ class _RepositoryCapture {
 RootStackRouter _buildStartupTestRouter() {
   return RootStackRouter.build(
     routes: <AutoRoute>[
-      AutoRoute(
-        path: '/',
-        page: TenantHomeRoute.page,
-      ),
-      AutoRoute(
-        path: '/invite',
-        page: InviteFlowRoute.page,
-      ),
+      AutoRoute(path: '/', page: TenantHomeRoute.page),
+      AutoRoute(path: '/invite', page: InviteFlowRoute.page),
     ],
   );
 }
 
-Future<UrlState> _parseStartupTestRoute(
-  RootStackRouter router,
-  String path,
-) {
+Future<UrlState> _parseStartupTestRoute(RootStackRouter router, String path) {
   return router
-      .defaultRouteParser(
-        includePrefixMatches: false,
-      )
-      .parseRouteInformation(
-        RouteInformation(uri: Uri.parse(path)),
-      );
+      .defaultRouteParser(includePrefixMatches: false)
+      .parseRouteInformation(RouteInformation(uri: Uri.parse(path)));
+}
+
+Future<void> _flushAsyncWork() async {
+  await Future<void>.delayed(Duration.zero);
+  await Future<void>.delayed(Duration.zero);
 }
 
 class _SentryCapture {
@@ -444,6 +560,18 @@ class _SentryCapture {
   final dynamic throwable;
   final dynamic stackTrace;
   final ScopeCallback? withScope;
+}
+
+class _FakeUser extends UserContract {
+  _FakeUser({required super.uuidValue, required super.profile});
+}
+
+_FakeUser _buildUser(String id) {
+  final normalized = id.padRight(24, '0').substring(0, 24);
+  return _FakeUser(
+    uuidValue: MongoIDValue(defaultValue: normalized)..parse(normalized),
+    profile: UserProfileContract(),
+  );
 }
 
 class _FakePushHandlerRepository extends PushHandlerRepositoryContract {
@@ -494,12 +622,13 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
       StreamValue<double?>(defaultValue: null);
 
   @override
-  final StreamValue<String?> lastKnownAddressStreamValue =
-      StreamValue<String?>(defaultValue: null);
+  final StreamValue<String?> lastKnownAddressStreamValue = StreamValue<String?>(
+    defaultValue: null,
+  );
 
   @override
   final StreamValue<LocationResolutionPhase>
-      locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
+  locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
     defaultValue: LocationResolutionPhase.unknown,
   );
 
@@ -521,14 +650,12 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   Future<String?> resolveUserLocation({
     Object? timeout,
     UserLocationRepositoryContractBoolValue? requestPermissionIfNeededValue,
-  }) async =>
-      null;
+  }) async => null;
 
   @override
-  Future<bool> startTracking(
-          {LocationTrackingMode mode =
-              LocationTrackingMode.mapForeground}) async =>
-      false;
+  Future<bool> startTracking({
+    LocationTrackingMode mode = LocationTrackingMode.mapForeground,
+  }) async => false;
 
   @override
   Future<void> stopTracking() async {}
@@ -536,8 +663,9 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
 
 class _FakeContactsRepository implements ContactsRepositoryContract {
   @override
-  final contactsStreamValue =
-      StreamValue<List<ContactModel>?>(defaultValue: null);
+  final contactsStreamValue = StreamValue<List<ContactModel>?>(
+    defaultValue: null,
+  );
 
   @override
   Future<bool> requestPermission() async => false;
@@ -567,12 +695,10 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
 }
 
 class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
-  _FakeAuthRepository({
-    required this.userTokenValue,
-    required this.deviceId,
-  });
+  _FakeAuthRepository({required String userTokenValue, required this.deviceId})
+    : _userTokenValue = userTokenValue;
 
-  final String userTokenValue;
+  String _userTokenValue;
   final String deviceId;
   final _backend = _NoopBackend();
 
@@ -580,7 +706,12 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   BackendContract get backend => _backend;
 
   @override
-  String get userToken => userTokenValue;
+  String get userToken => _userTokenValue;
+
+  void authorize({required String userToken, UserContract? user}) {
+    _userTokenValue = userToken;
+    userStreamValue.addValue(user ?? _buildUser('507f1f77bcf86cd799439011'));
+  }
 
   @override
   void setUserToken(AuthRepositoryContractParamString? token) {}
@@ -592,10 +723,10 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<String?> getUserId() async => null;
 
   @override
-  bool get isUserLoggedIn => userTokenValue.isNotEmpty;
+  bool get isUserLoggedIn => _userTokenValue.isNotEmpty;
 
   @override
-  bool get isAuthorized => userTokenValue.isNotEmpty;
+  bool get isAuthorized => _userTokenValue.isNotEmpty;
 
   @override
   Future<void> init() async {}
@@ -604,36 +735,37 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<void> autoLogin() => throw UnimplementedError();
 
   @override
-  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
-          AuthRepositoryContractParamString password) =>
-      throw UnimplementedError();
+  Future<void> loginWithEmailPassword(
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
+  ) => throw UnimplementedError();
 
   @override
   Future<void> signUpWithEmailPassword(
     AuthRepositoryContractParamString name,
     AuthRepositoryContractParamString email,
     AuthRepositoryContractParamString password,
-  ) =>
-      throw UnimplementedError();
+  ) => throw UnimplementedError();
 
   @override
   Future<void> sendTokenRecoveryPassword(
-          AuthRepositoryContractParamString email,
-          AuthRepositoryContractParamString codigoEnviado) =>
-      throw UnimplementedError();
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString codigoEnviado,
+  ) => throw UnimplementedError();
 
   @override
   Future<void> logout() => throw UnimplementedError();
 
   @override
-  Future<void> createNewPassword(AuthRepositoryContractParamString newPassword,
-          AuthRepositoryContractParamString confirmPassword) =>
-      throw UnimplementedError();
+  Future<void> createNewPassword(
+    AuthRepositoryContractParamString newPassword,
+    AuthRepositoryContractParamString confirmPassword,
+  ) => throw UnimplementedError();
 
   @override
   Future<void> sendPasswordResetEmail(
-          AuthRepositoryContractParamString email) =>
-      throw UnimplementedError();
+    AuthRepositoryContractParamString email,
+  ) => throw UnimplementedError();
 
   @override
   Future<void> updateUser(UserCustomData data) => throw UnimplementedError();
@@ -660,7 +792,8 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
 
   @override
   Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
-      EventTrackerTimedEventHandle handle) async {
+    EventTrackerTimedEventHandle handle,
+  ) async {
     return telemetryRepoBool(true);
   }
 
@@ -676,8 +809,9 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
   EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
 
   @override
-  Future<TelemetryRepositoryContractPrimBool> mergeIdentity(
-      {required TelemetryRepositoryContractPrimString previousUserId}) async {
+  Future<TelemetryRepositoryContractPrimBool> mergeIdentity({
+    required TelemetryRepositoryContractPrimString previousUserId,
+  }) async {
     return telemetryRepoBool(true);
   }
 }
@@ -731,8 +865,7 @@ class _NoopAccountProfilesBackend implements AccountProfilesBackendContract {
     List<String>? typeFilters,
     List<dynamic>? taxonomyFilters,
     List<String>? allowedTypes,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
   Future<AccountProfileModel?> fetchAccountProfileBySlug(String slug) =>
@@ -743,8 +876,7 @@ class _NoopAccountProfilesBackend implements AccountProfilesBackendContract {
     int pageSize = 10,
     List<String>? typeFilters,
     List<dynamic>? taxonomyFilters,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 }
 
 class _NoopAuthBackend extends AuthBackendContract {
@@ -779,8 +911,7 @@ class _NoopAuthBackend extends AuthBackendContract {
     required String email,
     required String password,
     List<String>? anonymousUserIds,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 }
 
 class _NoopTenantBackend extends TenantBackendContract {
@@ -817,8 +948,7 @@ class _NoopScheduleBackend extends ScheduleBackendContract {
   Future<EventDTO?> fetchEventDetail({
     required String eventIdOrSlug,
     String? occurrenceId,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
   Future<EventPageDTO> fetchEventsPage({
@@ -834,8 +964,7 @@ class _NoopScheduleBackend extends ScheduleBackendContract {
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
   Stream<EventDeltaDTO> watchEventsStream({
@@ -849,8 +978,7 @@ class _NoopScheduleBackend extends ScheduleBackendContract {
     double? maxDistanceMeters,
     String? lastEventId,
     bool showPastOnly = false,
-  }) =>
-      const Stream.empty();
+  }) => const Stream.empty();
 }
 
 AppData _buildTestAppData({

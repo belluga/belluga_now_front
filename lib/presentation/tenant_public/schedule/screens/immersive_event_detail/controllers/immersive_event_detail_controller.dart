@@ -21,6 +21,7 @@ import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
+import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
 import 'package:belluga_now/domain/schedule/event_programming_item.dart';
@@ -314,6 +315,8 @@ class ImmersiveEventDetailController implements Disposable {
             _dateTimeSignature(right.dateTimeStart) &&
         _dateTimeSignature(left.dateTimeEnd) ==
             _dateTimeSignature(right.dateTimeEnd) &&
+        _linkedAccountProfileSignature(left.linkedAccountProfiles) ==
+            _linkedAccountProfileSignature(right.linkedAccountProfiles) &&
         _profileGroupSignature(left.profileGroups) ==
             _profileGroupSignature(right.profileGroups) &&
         _occurrenceSignature(left.occurrences) ==
@@ -337,10 +340,6 @@ class ImmersiveEventDetailController implements Disposable {
 
   String _profileGroupSignature(List<EventProfileGroup> groups) {
     return groups.map((group) {
-      final profileIds = group.profiles
-          .map((profile) => profile.id.trim())
-          .where((id) => id.isNotEmpty)
-          .join(',');
       final memberIds = group.accountProfileIdValues
           .map((profileId) => profileId.value)
           .join(',');
@@ -348,8 +347,8 @@ class ImmersiveEventDetailController implements Disposable {
         group.id,
         group.label,
         group.order,
-        profileIds,
         memberIds,
+        _linkedAccountProfileSignature(group.profiles),
       ].join(':');
     }).join('|');
   }
@@ -368,9 +367,41 @@ class ImmersiveEventDetailController implements Disposable {
                 ..parse(occurrence.dateTimeEnd!.toIso8601String())),
         ),
         occurrence.programmingCount,
+        _linkedAccountProfileSignature(occurrence.linkedAccountProfiles),
         _profileGroupSignature(occurrence.profileGroups),
         _tagSignature(occurrence.tags),
         _programmingSignature(occurrence.programmingItems),
+      ].join(':');
+    }).join('|');
+  }
+
+  String _linkedAccountProfileSignature(List<EventLinkedAccountProfile> profiles) {
+    return profiles.map((profile) {
+      final taxonomySignature = profile.taxonomyTerms
+          .map(
+            (term) => [
+              term.typeValue.value,
+              term.valueValue.value,
+              term.nameValue.value,
+              term.taxonomyNameValue.value,
+              term.compatibilityLabelValue.value,
+            ].join('~'),
+          )
+          .join(',');
+      return [
+        profile.id.trim(),
+        profile.displayName.trim(),
+        profile.profileType.trim(),
+        profile.slug.trim(),
+        profile.avatarUrl?.trim() ?? '',
+        profile.coverUrl?.trim() ?? '',
+        profile.partyType?.trim() ?? '',
+        profile.locationAddress?.trim() ?? '',
+        profile.locationLat?.toString() ?? '',
+        profile.locationLng?.toString() ?? '',
+        profile.canOpenPublicDetail.toString(),
+        profile.publicDetailPath?.trim() ?? '',
+        taxonomySignature,
       ].join(':');
     }).join('|');
   }

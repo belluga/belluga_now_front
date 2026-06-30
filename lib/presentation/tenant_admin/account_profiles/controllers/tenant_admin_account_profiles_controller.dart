@@ -33,18 +33,23 @@ class TenantAdminAccountProfilesController implements Disposable {
     TenantAdminTaxonomiesRepositoryContract? taxonomiesRepository,
     TenantAdminLocationSelectionContract? locationSelectionService,
     TenantAdminImageIngestionService? imageIngestionService,
-  })  : _profilesRepository = profilesRepository ??
-            GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>(),
-        _accountsRepository = accountsRepository ??
-            GetIt.I.get<TenantAdminAccountsRepositoryContract>(),
-        _taxonomiesRepository = taxonomiesRepository ??
-            GetIt.I.get<TenantAdminTaxonomiesRepositoryContract>(),
-        _locationSelectionService = locationSelectionService ??
-            GetIt.I.get<TenantAdminLocationSelectionContract>(),
-        _imageIngestionService = imageIngestionService ??
-            (GetIt.I.isRegistered<TenantAdminImageIngestionService>()
-                ? GetIt.I.get<TenantAdminImageIngestionService>()
-                : TenantAdminImageIngestionService());
+  }) : _profilesRepository =
+           profilesRepository ??
+           GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>(),
+       _accountsRepository =
+           accountsRepository ??
+           GetIt.I.get<TenantAdminAccountsRepositoryContract>(),
+       _taxonomiesRepository =
+           taxonomiesRepository ??
+           GetIt.I.get<TenantAdminTaxonomiesRepositoryContract>(),
+       _locationSelectionService =
+           locationSelectionService ??
+           GetIt.I.get<TenantAdminLocationSelectionContract>(),
+       _imageIngestionService =
+           imageIngestionService ??
+           (GetIt.I.isRegistered<TenantAdminImageIngestionService>()
+               ? GetIt.I.get<TenantAdminImageIngestionService>()
+               : TenantAdminImageIngestionService());
 
   final TenantAdminAccountProfilesRepositoryContract _profilesRepository;
   final TenantAdminAccountsRepositoryContract _accountsRepository;
@@ -55,60 +60,68 @@ class TenantAdminAccountProfilesController implements Disposable {
   final StreamValue<List<TenantAdminAccountProfile>> profilesStreamValue =
       StreamValue<List<TenantAdminAccountProfile>>(defaultValue: const []);
   final StreamValue<List<TenantAdminAccountProfile>>
-      nestedProfileCandidatesStreamValue =
+  nestedProfileCandidatesStreamValue =
       StreamValue<List<TenantAdminAccountProfile>>(defaultValue: const []);
   final StreamValue<List<TenantAdminProfileTypeDefinition>>
-      profileTypesStreamValue =
-      StreamValue<List<TenantAdminProfileTypeDefinition>>(
-          defaultValue: const []);
+  profileTypesStreamValue = StreamValue<List<TenantAdminProfileTypeDefinition>>(
+    defaultValue: const [],
+  );
   final StreamValue<List<TenantAdminTaxonomyDefinition>> taxonomiesStreamValue =
       StreamValue<List<TenantAdminTaxonomyDefinition>>(defaultValue: const []);
   final StreamValue<Map<String, List<TenantAdminTaxonomyTermDefinition>>>
-      taxonomyTermsStreamValue =
+  taxonomyTermsStreamValue =
       StreamValue<Map<String, List<TenantAdminTaxonomyTermDefinition>>>(
-    defaultValue: const {},
-  );
+        defaultValue: const {},
+      );
   final StreamValue<Map<String, Set<String>>> taxonomySelectionStreamValue =
       StreamValue<Map<String, Set<String>>>(defaultValue: const {});
-  final StreamValue<bool> isLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> isLoadingStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
   final StreamValue<String?> errorStreamValue = StreamValue<String?>();
   final StreamValue<TenantAdminAccount?> _accountDetailStreamValue =
       StreamValue<TenantAdminAccount?>();
   final StreamValue<TenantAdminAccountProfile?> accountProfileStreamValue =
       StreamValue<TenantAdminAccountProfile?>();
-  final StreamValue<bool> accountDetailLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> accountDetailLoadingStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
   final StreamValue<String?> accountDetailErrorStreamValue =
       StreamValue<String?>();
-  final StreamValue<bool> accountUpdatingStreamValue =
-      StreamValue<bool>(defaultValue: false);
-  final StreamValue<bool> accountDeletingStreamValue =
-      StreamValue<bool>(defaultValue: false);
-  final StreamValue<bool> accountDeletedStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> accountUpdatingStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
+  final StreamValue<bool> accountDeletingStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
+  final StreamValue<bool> accountDeletedStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
   final StreamValue<TenantAdminAccountProfileEditDraft> editStateStreamValue =
       StreamValue<TenantAdminAccountProfileEditDraft>(
-    defaultValue: TenantAdminAccountProfileEditDraft.initial(),
+        defaultValue: TenantAdminAccountProfileEditDraft.initial(),
+      );
+  final StreamValue<bool> editLoadingStreamValue = StreamValue<bool>(
+    defaultValue: false,
   );
-  final StreamValue<bool> editLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
   final StreamValue<String?> editLoadErrorStreamValue = StreamValue<String?>();
-  final StreamValue<bool> editSubmittingStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> editSubmittingStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
   final StreamValue<String?> editSuccessMessageStreamValue =
       StreamValue<String?>();
   final StreamValue<String?> editErrorMessageStreamValue =
       StreamValue<String?>();
-  final StreamValue<bool> taxonomyAutosavingStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> taxonomyAutosavingStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
   final StreamValue<TenantAdminAccountProfileCreateDraft>
-      createStateStreamValue =
-      StreamValue<TenantAdminAccountProfileCreateDraft>(
+  createStateStreamValue = StreamValue<TenantAdminAccountProfileCreateDraft>(
     defaultValue: TenantAdminAccountProfileCreateDraft.initial(),
   );
-  final StreamValue<bool> createSubmittingStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> createSubmittingStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
   final StreamValue<String?> createSuccessMessageStreamValue =
       StreamValue<String?>();
   final StreamValue<String?> createErrorMessageStreamValue =
@@ -149,15 +162,15 @@ class TenantAdminAccountProfilesController implements Disposable {
 
   void _bindLocationSelection() {
     if (_locationSelectionSubscription != null) return;
-    _locationSelectionSubscription =
-        _locationSelectionService.confirmedLocationStreamValue.stream.listen(
-      (location) {
-        if (_isDisposed || location == null) return;
-        latitudeController.text = location.latitude.toStringAsFixed(6);
-        longitudeController.text = location.longitude.toStringAsFixed(6);
-        _locationSelectionService.clearConfirmedLocation();
-      },
-    );
+    _locationSelectionSubscription = _locationSelectionService
+        .confirmedLocationStreamValue
+        .stream
+        .listen((location) {
+          if (_isDisposed || location == null) return;
+          latitudeController.text = location.latitude.toStringAsFixed(6);
+          longitudeController.text = location.longitude.toStringAsFixed(6);
+          _locationSelectionService.clearConfirmedLocation();
+        });
   }
 
   void bindCreateFlow() {
@@ -168,15 +181,11 @@ class TenantAdminAccountProfilesController implements Disposable {
     _bindLocationSelection();
   }
 
-  Future<XFile?> pickImageFromDevice({
-    required TenantAdminImageSlot slot,
-  }) {
+  Future<XFile?> pickImageFromDevice({required TenantAdminImageSlot slot}) {
     return _imageIngestionService.pickFromDevice(slot: slot);
   }
 
-  Future<XFile> fetchImageFromUrlForCrop({
-    required String imageUrl,
-  }) {
+  Future<XFile> fetchImageFromUrlForCrop({required String imageUrl}) {
     return _imageIngestionService.fetchFromUrlForCrop(imageUrl: imageUrl);
   }
 
@@ -203,7 +212,8 @@ class TenantAdminAccountProfilesController implements Disposable {
   }
 
   Future<TenantAdminAccountProfile> fetchProfile(
-      String accountProfileId) async {
+    String accountProfileId,
+  ) async {
     return _profilesRepository.fetchAccountProfile(
       tenantAdminAccountProfilesRepoString(
         accountProfileId,
@@ -262,12 +272,12 @@ class TenantAdminAccountProfilesController implements Disposable {
         ),
         excludeAccountProfileId:
             normalizedExclude == null || normalizedExclude.isEmpty
-                ? null
-                : tenantAdminAccountProfilesRepoString(
-                    normalizedExclude,
-                    defaultValue: '',
-                    isRequired: true,
-                  ),
+            ? null
+            : tenantAdminAccountProfilesRepoString(
+                normalizedExclude,
+                defaultValue: '',
+                isRequired: true,
+              ),
       );
       if (_isDisposed) return;
       nestedProfileCandidatesStreamValue.addValue(
@@ -283,7 +293,8 @@ class TenantAdminAccountProfilesController implements Disposable {
     isLoadingStreamValue.addValue(true);
     try {
       await _profilesRepository.loadAllProfileTypes();
-      final types = _profilesRepository.profileTypesStreamValue.value ??
+      final types =
+          _profilesRepository.profileTypesStreamValue.value ??
           const <TenantAdminProfileTypeDefinition>[];
       if (_isDisposed) return;
       profileTypesStreamValue.addValue(types);
@@ -302,7 +313,8 @@ class TenantAdminAccountProfilesController implements Disposable {
     isLoadingStreamValue.addValue(true);
     try {
       await _taxonomiesRepository.loadAllTaxonomies();
-      final taxonomies = _taxonomiesRepository.taxonomiesStreamValue.value ??
+      final taxonomies =
+          _taxonomiesRepository.taxonomiesStreamValue.value ??
           const <TenantAdminTaxonomyDefinition>[];
       if (_isDisposed) return;
       taxonomiesStreamValue.addValue(taxonomies);
@@ -339,9 +351,14 @@ class TenantAdminAccountProfilesController implements Disposable {
       if (taxonomy.id.isEmpty) continue;
       try {
         await _taxonomiesRepository.loadAllTerms(
-            taxonomyId: TenantAdminTaxRepoString.fromRaw(taxonomy.id,
-                defaultValue: '', isRequired: true));
-        final terms = _taxonomiesRepository.termsStreamValue.value ??
+          taxonomyId: TenantAdminTaxRepoString.fromRaw(
+            taxonomy.id,
+            defaultValue: '',
+            isRequired: true,
+          ),
+        );
+        final terms =
+            _taxonomiesRepository.termsStreamValue.value ??
             const <TenantAdminTaxonomyTermDefinition>[];
         map[slug] = terms;
       } on Object {
@@ -356,10 +373,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     try {
       final account = await resolveAccountBySlug(slug);
       if (_isDisposed) return;
-      _bindAccountWatch(
-        accountId: account.id,
-        accountSlug: account.slug,
-      );
+      _bindAccountWatch(accountId: account.id, accountSlug: account.slug);
       createAccountIdStreamValue.addValue(account.id);
     } catch (error) {
       if (_isDisposed) return;
@@ -371,10 +385,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     try {
       final account = await resolveAccountBySlug(accountSlug);
       if (_isDisposed) return;
-      _bindAccountWatch(
-        accountId: account.id,
-        accountSlug: account.slug,
-      );
+      _bindAccountWatch(accountId: account.id, accountSlug: account.slug);
       accountDetailErrorStreamValue.addValue(null);
     } catch (error) {
       if (_isDisposed) return;
@@ -392,10 +403,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     try {
       await loadProfileTypes();
       final account = await resolveAccountBySlug(accountSlug);
-      _bindAccountWatch(
-        accountId: account.id,
-        accountSlug: account.slug,
-      );
+      _bindAccountWatch(accountId: account.id, accountSlug: account.slug);
       final profile = await fetchProfileForAccount(account.id);
       if (_isDisposed) return;
       accountProfileStreamValue.addValue(profile);
@@ -441,10 +449,7 @@ class TenantAdminAccountProfilesController implements Disposable {
       if (_isDisposed) {
         return null;
       }
-      _bindAccountWatch(
-        accountId: updated.id,
-        accountSlug: updated.slug,
-      );
+      _bindAccountWatch(accountId: updated.id, accountSlug: updated.slug);
       accountDetailErrorStreamValue.addValue(null);
       return updated;
     } catch (error) {
@@ -460,9 +465,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     }
   }
 
-  Future<bool> deleteAccount({
-    required String accountSlug,
-  }) async {
+  Future<bool> deleteAccount({required String accountSlug}) async {
     accountDeletingStreamValue.addValue(true);
     try {
       await _accountsRepository.deleteAccount(
@@ -496,13 +499,23 @@ class TenantAdminAccountProfilesController implements Disposable {
     }
   }
 
-  Future<void> loadEditProfile(String accountProfileId) async {
+  Future<void> loadEditProfile(
+    String accountProfileId, {
+    TenantAdminAccountProfile? prefetchedProfile,
+  }) async {
     editLoadingStreamValue.addValue(true);
     editLoadErrorStreamValue.addValue(null);
     _loadedEditProfileSnapshot = null;
     try {
       await loadProfileTypes();
-      final profile = await fetchProfile(accountProfileId);
+      final normalizedAccountProfileId = accountProfileId.trim();
+      final TenantAdminAccountProfile profile;
+      if (prefetchedProfile != null &&
+          prefetchedProfile.id.trim() == normalizedAccountProfileId) {
+        profile = prefetchedProfile;
+      } else {
+        profile = await fetchProfile(normalizedAccountProfileId);
+      }
       if (_isDisposed) return;
       _loadedEditProfileSnapshot = profile;
       accountProfileStreamValue.addValue(profile);
@@ -529,9 +542,7 @@ class TenantAdminAccountProfilesController implements Disposable {
 
   void updateSelectedProfileType(String? profileType) {
     _updateEditState(
-      editStateStreamValue.value.copyWith(
-        selectedProfileType: profileType,
-      ),
+      editStateStreamValue.value.copyWith(selectedProfileType: profileType),
     );
   }
 
@@ -553,8 +564,9 @@ class TenantAdminAccountProfilesController implements Disposable {
     _updateEditState(
       editStateStreamValue.value.copyWith(
         avatarFile: file,
-        avatarRemoteUrl:
-            file == null ? editStateStreamValue.value.avatarRemoteUrl : null,
+        avatarRemoteUrl: file == null
+            ? editStateStreamValue.value.avatarRemoteUrl
+            : null,
         avatarRemoteReady: false,
         avatarRemoteError: false,
         avatarPreloadUrl: null,
@@ -569,8 +581,9 @@ class TenantAdminAccountProfilesController implements Disposable {
     _updateEditState(
       editStateStreamValue.value.copyWith(
         coverFile: file,
-        coverRemoteUrl:
-            file == null ? editStateStreamValue.value.coverRemoteUrl : null,
+        coverRemoteUrl: file == null
+            ? editStateStreamValue.value.coverRemoteUrl
+            : null,
         coverRemoteReady: false,
         coverRemoteError: false,
         coverPreloadUrl: null,
@@ -709,8 +722,9 @@ class TenantAdminAccountProfilesController implements Disposable {
     _updateEditState(
       editStateStreamValue.value.copyWith(
         avatarRemoteReady: ready,
-        avatarRemoteError:
-            ready ? false : editStateStreamValue.value.avatarRemoteError,
+        avatarRemoteError: ready
+            ? false
+            : editStateStreamValue.value.avatarRemoteError,
         avatarFile: ready ? null : editStateStreamValue.value.avatarFile,
       ),
     );
@@ -720,8 +734,9 @@ class TenantAdminAccountProfilesController implements Disposable {
     _updateEditState(
       editStateStreamValue.value.copyWith(
         coverRemoteReady: ready,
-        coverRemoteError:
-            ready ? false : editStateStreamValue.value.coverRemoteError,
+        coverRemoteError: ready
+            ? false
+            : editStateStreamValue.value.coverRemoteError,
         coverFile: ready ? null : editStateStreamValue.value.coverFile,
       ),
     );
@@ -729,17 +744,13 @@ class TenantAdminAccountProfilesController implements Disposable {
 
   void updateAvatarRemoteError(bool hasError) {
     _updateEditState(
-      editStateStreamValue.value.copyWith(
-        avatarRemoteError: hasError,
-      ),
+      editStateStreamValue.value.copyWith(avatarRemoteError: hasError),
     );
   }
 
   void updateCoverRemoteError(bool hasError) {
     _updateEditState(
-      editStateStreamValue.value.copyWith(
-        coverRemoteError: hasError,
-      ),
+      editStateStreamValue.value.copyWith(coverRemoteError: hasError),
     );
   }
 
@@ -780,10 +791,11 @@ class TenantAdminAccountProfilesController implements Disposable {
         removeCover: removeCover ?? _removeCoverOnSubmit,
         nestedProfileGroups: nestedProfileGroups,
       );
-      final finalProfile = _shouldSkipGalleryUpdate(
-        accountProfileId: accountProfileId,
-        galleryGroups: galleryGroups,
-      )
+      final finalProfile =
+          _shouldSkipGalleryUpdate(
+            accountProfileId: accountProfileId,
+            galleryGroups: galleryGroups,
+          )
           ? updated
           : galleryGroups == null
           ? updated
@@ -843,9 +855,7 @@ class TenantAdminAccountProfilesController implements Disposable {
       editSuccessMessageStreamValue.addValue('Imagem atualizada.');
     } catch (error) {
       if (_isDisposed) return;
-      editErrorMessageStreamValue.addValue(
-        'Falha ao salvar imagem: $error',
-      );
+      editErrorMessageStreamValue.addValue('Falha ao salvar imagem: $error');
     } finally {
       if (!_isDisposed) {
         updateEditLoading(false);
@@ -864,16 +874,17 @@ class TenantAdminAccountProfilesController implements Disposable {
     editSubmittingStreamValue.addValue(true);
     try {
       final currentProfile = accountProfileStreamValue.value;
-      final resolvedProfileType =
-          (profileType ?? currentProfile?.profileType)?.trim();
+      final resolvedProfileType = (profileType ?? currentProfile?.profileType)
+          ?.trim();
       if (resolvedProfileType == null || resolvedProfileType.isEmpty) {
         editErrorMessageStreamValue.addValue(
           'Nao foi possivel identificar o tipo do perfil para salvar taxonomias.',
         );
         return false;
       }
-      final capabilities =
-          _resolveProfileType(resolvedProfileType)?.capabilities;
+      final capabilities = _resolveProfileType(
+        resolvedProfileType,
+      )?.capabilities;
       final resolvedBio = capabilities?.hasBio == true
           ? (bio ?? currentProfile?.bio ?? '')
           : null;
@@ -922,9 +933,7 @@ class TenantAdminAccountProfilesController implements Disposable {
   }
 
   void updateCoverPreloadUrl(String? url) {
-    _updateEditState(
-      editStateStreamValue.value.copyWith(coverPreloadUrl: url),
-    );
+    _updateEditState(editStateStreamValue.value.copyWith(coverPreloadUrl: url));
   }
 
   void resetEditState() {
@@ -954,10 +963,7 @@ class TenantAdminAccountProfilesController implements Disposable {
 
   void updateCreateCoverFile(XFile? file) {
     _updateCreateState(
-      createStateStreamValue.value.copyWith(
-        coverFile: file,
-        coverWebUrl: null,
-      ),
+      createStateStreamValue.value.copyWith(coverFile: file, coverWebUrl: null),
     );
   }
 
@@ -1031,8 +1037,9 @@ class TenantAdminAccountProfilesController implements Disposable {
     }
     _updateEditState(
       editStateStreamValue.value.copyWith(
-        galleryGroups:
-            TenantAdminAccountProfileGalleryOperations.appendGroup(groups),
+        galleryGroups: TenantAdminAccountProfileGalleryOperations.appendGroup(
+          groups,
+        ),
       ),
     );
   }
@@ -1098,11 +1105,11 @@ class TenantAdminAccountProfilesController implements Disposable {
       editStateStreamValue.value.copyWith(
         galleryGroups:
             TenantAdminAccountProfileGalleryOperations.replaceItemUpload(
-          editStateStreamValue.value.galleryGroups,
-          groupId: groupId,
-          itemId: itemId,
-          uploadFile: uploadFile,
-        ),
+              editStateStreamValue.value.galleryGroups,
+              groupId: groupId,
+              itemId: itemId,
+              uploadFile: uploadFile,
+            ),
       ),
     );
   }
@@ -1116,11 +1123,11 @@ class TenantAdminAccountProfilesController implements Disposable {
       editStateStreamValue.value.copyWith(
         galleryGroups:
             TenantAdminAccountProfileGalleryOperations.updateItemDescription(
-          editStateStreamValue.value.galleryGroups,
-          groupId: groupId,
-          itemId: itemId,
-          description: description,
-        ),
+              editStateStreamValue.value.galleryGroups,
+              groupId: groupId,
+              itemId: itemId,
+              description: description,
+            ),
       ),
     );
   }
@@ -1382,7 +1389,8 @@ class TenantAdminAccountProfilesController implements Disposable {
   }) {
     final normalizedId = accountId?.trim();
     final normalizedSlug = accountSlug?.trim();
-    final isSameBinding = _accountWatch != null &&
+    final isSameBinding =
+        _accountWatch != null &&
         _watchedAccountId == normalizedId &&
         _watchedAccountSlug == normalizedSlug;
     if (isSameBinding) {
@@ -1405,14 +1413,14 @@ class TenantAdminAccountProfilesController implements Disposable {
             ),
     );
     _accountDetailStreamValue.addValue(_accountWatch!.streamValue.value);
-    _accountWatchSubscription = _accountWatch!.streamValue.stream.listen(
-      (account) {
-        if (_isDisposed) {
-          return;
-        }
-        _accountDetailStreamValue.addValue(account);
-      },
-    );
+    _accountWatchSubscription = _accountWatch!.streamValue.stream.listen((
+      account,
+    ) {
+      if (_isDisposed) {
+        return;
+      }
+      _accountDetailStreamValue.addValue(account);
+    });
   }
 
   void _clearAccountWatch() {
@@ -1575,9 +1583,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     return profile;
   }
 
-  TenantAdminProfileTypeDefinition? _resolveProfileType(
-    String profileType,
-  ) {
+  TenantAdminProfileTypeDefinition? _resolveProfileType(String profileType) {
     for (final definition in profileTypesStreamValue.value) {
       if (definition.type == profileType) {
         return definition;

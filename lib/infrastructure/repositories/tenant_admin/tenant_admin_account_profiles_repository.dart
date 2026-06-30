@@ -21,8 +21,8 @@ class TenantAdminAccountProfilesRepository
   TenantAdminAccountProfilesRepository({
     Dio? dio,
     TenantAdminTenantScopeContract? tenantScope,
-  })  : _dio = dio ?? Dio(),
-        _tenantScope = tenantScope;
+  }) : _dio = dio ?? Dio(),
+       _tenantScope = tenantScope;
 
   final Dio _dio;
   final TenantAdminTenantScopeContract? _tenantScope;
@@ -32,6 +32,7 @@ class TenantAdminAccountProfilesRepository
       const TenantAdminAccountProfilesRequestEncoder();
   final TenantAdminMediaFormDataBuilder _mediaFormDataBuilder =
       const TenantAdminMediaFormDataBuilder();
+  int _accountProfileCacheBustSequence = 0;
 
   String get _apiBaseUrl =>
       (_tenantScope ?? GetIt.I.get<TenantAdminTenantScopeContract>())
@@ -39,10 +40,13 @@ class TenantAdminAccountProfilesRepository
 
   Map<String, String> _buildHeaders() {
     final token = GetIt.I.get<LandlordAuthRepositoryContract>().token;
-    return {
-      'Authorization': 'Bearer $token',
-      'Accept': 'application/json',
-    };
+    return {'Authorization': 'Bearer $token', 'Accept': 'application/json'};
+  }
+
+  String _nextAccountProfileCacheBuster() {
+    _accountProfileCacheBustSequence += 1;
+    return '${DateTime.now().microsecondsSinceEpoch}'
+        '-$_accountProfileCacheBustSequence';
   }
 
   @override
@@ -76,6 +80,7 @@ class TenantAdminAccountProfilesRepository
     try {
       final response = await _dio.get(
         '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}',
+        queryParameters: {'_ts': _nextAccountProfileCacheBuster()},
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeAccountProfileItem(response.data);
@@ -280,10 +285,7 @@ class TenantAdminAccountProfilesRepository
 
     while (hasMore) {
       final result = await fetchProfileTypesPage(
-        page: tenantAdminAccountProfilesRepoInt(
-          page,
-          defaultValue: 1,
-        ),
+        page: tenantAdminAccountProfilesRepoInt(page, defaultValue: 1),
         pageSize: tenantAdminAccountProfilesRepoInt(
           pageSize,
           defaultValue: pageSize,
@@ -325,17 +327,14 @@ class TenantAdminAccountProfilesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminProfileTypeDefinition>>
-      fetchProfileTypesPage({
+  fetchProfileTypesPage({
     required TenantAdminAccountProfilesRepoInt page,
     required TenantAdminAccountProfilesRepoInt pageSize,
   }) async {
     try {
       final response = await _dio.get(
         '$_apiBaseUrl/v1/account_profile_types',
-        queryParameters: {
-          'page': page.value,
-          'page_size': pageSize.value,
-        },
+        queryParameters: {'page': page.value, 'page_size': pageSize.value},
         options: Options(headers: _buildHeaders()),
       );
       final dtos = _responseDecoder.decodeProfileTypeList(response.data);
@@ -509,7 +508,7 @@ class TenantAdminAccountProfilesRepository
 
   @override
   Future<TenantAdminAccountProfilesRepoInt>
-      fetchProfileTypeMapPoiProjectionImpact({
+  fetchProfileTypeMapPoiProjectionImpact({
     required TenantAdminAccountProfilesRepoString type,
   }) async {
     try {
@@ -529,7 +528,8 @@ class TenantAdminAccountProfilesRepository
 
   @override
   Future<void> deleteProfileType(
-      TenantAdminAccountProfilesRepoString type) async {
+    TenantAdminAccountProfilesRepoString type,
+  ) async {
     try {
       final encodedType = Uri.encodeComponent(type.value);
       await _dio.delete(

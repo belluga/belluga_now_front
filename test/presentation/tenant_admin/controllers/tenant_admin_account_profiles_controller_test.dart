@@ -31,25 +31,27 @@ class _FakeAccountsRepository
 
   @override
   final StreamValue<TenantAdminAccountsRepositoryContractPrimBool>
-      hasMoreAccountsStreamValue =
+  hasMoreAccountsStreamValue =
       StreamValue<TenantAdminAccountsRepositoryContractPrimBool>(
-          defaultValue: TenantAdminAccountsRepositoryContractPrimBool.fromRaw(
-    false,
-    defaultValue: false,
-  ));
+        defaultValue: TenantAdminAccountsRepositoryContractPrimBool.fromRaw(
+          false,
+          defaultValue: false,
+        ),
+      );
 
   @override
   final StreamValue<TenantAdminAccountsRepositoryContractPrimBool>
-      isAccountsPageLoadingStreamValue =
+  isAccountsPageLoadingStreamValue =
       StreamValue<TenantAdminAccountsRepositoryContractPrimBool>(
-          defaultValue: TenantAdminAccountsRepositoryContractPrimBool.fromRaw(
-    false,
-    defaultValue: false,
-  ));
+        defaultValue: TenantAdminAccountsRepositoryContractPrimBool.fromRaw(
+          false,
+          defaultValue: false,
+        ),
+      );
 
   @override
   final StreamValue<TenantAdminAccountsRepositoryContractPrimString?>
-      accountsErrorStreamValue =
+  accountsErrorStreamValue =
       StreamValue<TenantAdminAccountsRepositoryContractPrimString?>();
   TenantAdminOwnershipState? lastUpdatedOwnershipState;
 
@@ -192,7 +194,8 @@ class _FakeAccountsRepository
 
   @override
   Future<void> deleteAccount(
-      TenantAdminAccountsRepositoryContractPrimString accountSlug) async {}
+    TenantAdminAccountsRepositoryContractPrimString accountSlug,
+  ) async {}
 
   @override
   Future<TenantAdminAccount> restoreAccount(
@@ -203,7 +206,8 @@ class _FakeAccountsRepository
 
   @override
   Future<void> forceDeleteAccount(
-      TenantAdminAccountsRepositoryContractPrimString accountSlug) async {}
+    TenantAdminAccountsRepositoryContractPrimString accountSlug,
+  ) async {}
 }
 
 class _FakeAccountProfilesRepository
@@ -219,6 +223,8 @@ class _FakeAccountProfilesRepository
   String? lastUpdateDisplayName;
   String? lastUpdateBio;
   String? lastUpdateContent;
+  int fetchAccountProfileCalls = 0;
+  String? lastFetchedProfileId;
   bool? lastFetchQueryableOnly;
   String? lastFetchExcludeAccountProfileId;
   List<TenantAdminNestedProfileGroup>? lastCreateNestedProfileGroups;
@@ -230,12 +236,11 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? accountId,
     TenantAdminAccountProfilesRepoBool? queryableOnly,
     TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
-  }) async =>
-      () {
-        lastFetchQueryableOnly = queryableOnly?.value;
-        lastFetchExcludeAccountProfileId = excludeAccountProfileId?.value;
-        return _profiles;
-      }();
+  }) async => () {
+    lastFetchQueryableOnly = queryableOnly?.value;
+    lastFetchExcludeAccountProfileId = excludeAccountProfileId?.value;
+    return _profiles;
+  }();
 
   @override
   Future<TenantAdminAccountProfile> createAccountProfile({
@@ -283,7 +288,7 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminProfileTypeDefinition>>
-      fetchProfileTypesPage({
+  fetchProfileTypesPage({
     required TenantAdminAccountProfilesRepoInt page,
     required TenantAdminAccountProfilesRepoInt pageSize,
   }) async {
@@ -308,6 +313,8 @@ class _FakeAccountProfilesRepository
   Future<TenantAdminAccountProfile> fetchAccountProfile(
     TenantAdminAccountProfilesRepoString accountProfileId,
   ) async {
+    fetchAccountProfileCalls += 1;
+    lastFetchedProfileId = accountProfileId.value;
     return _profiles.first;
   }
 
@@ -350,7 +357,8 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<void> deleteAccountProfile(
-      TenantAdminAccountProfilesRepoString accountProfileId) async {}
+    TenantAdminAccountProfilesRepoString accountProfileId,
+  ) async {}
 
   @override
   Future<TenantAdminAccountProfile> restoreAccountProfile(
@@ -361,7 +369,8 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<void> forceDeleteAccountProfile(
-      TenantAdminAccountProfilesRepoString accountProfileId) async {}
+    TenantAdminAccountProfilesRepoString accountProfileId,
+  ) async {}
 
   @override
   Future<TenantAdminProfileTypeDefinition> createProfileType({
@@ -393,7 +402,8 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<void> deleteProfileType(
-      TenantAdminAccountProfilesRepoString type) async {}
+    TenantAdminAccountProfilesRepoString type,
+  ) async {}
 }
 
 class _FakeTaxonomiesRepository
@@ -404,7 +414,7 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
-      fetchTaxonomiesPage({
+  fetchTaxonomiesPage({
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
   }) async {
@@ -468,12 +478,11 @@ class _FakeTaxonomiesRepository
   @override
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
     required TenantAdminTaxRepoString taxonomyId,
-  }) async =>
-      [];
+  }) async => [];
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
-      fetchTermsPage({
+  fetchTermsPage({
     required TenantAdminTaxRepoString taxonomyId,
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
@@ -580,26 +589,23 @@ void main() {
   });
 
   test('createProfile refreshes list', () async {
-    final profilesRepository = _FakeAccountProfilesRepository(
-      [],
-      [
-        tenantAdminProfileTypeDefinitionFromRaw(
-          type: 'venue',
-          label: 'Venue',
-          allowedTaxonomies: [],
-          capabilities: TenantAdminProfileTypeCapabilities(
-            isFavoritable: TenantAdminFlagValue(true),
-            isPoiEnabled: TenantAdminFlagValue(true),
-            hasBio: TenantAdminFlagValue(false),
-            hasContent: TenantAdminFlagValue(false),
-            hasTaxonomies: TenantAdminFlagValue(false),
-            hasAvatar: TenantAdminFlagValue(false),
-            hasCover: TenantAdminFlagValue(false),
-            hasEvents: TenantAdminFlagValue(false),
-          ),
+    final profilesRepository = _FakeAccountProfilesRepository([], [
+      tenantAdminProfileTypeDefinitionFromRaw(
+        type: 'venue',
+        label: 'Venue',
+        allowedTaxonomies: [],
+        capabilities: TenantAdminProfileTypeCapabilities(
+          isFavoritable: TenantAdminFlagValue(true),
+          isPoiEnabled: TenantAdminFlagValue(true),
+          hasBio: TenantAdminFlagValue(false),
+          hasContent: TenantAdminFlagValue(false),
+          hasTaxonomies: TenantAdminFlagValue(false),
+          hasAvatar: TenantAdminFlagValue(false),
+          hasCover: TenantAdminFlagValue(false),
+          hasEvents: TenantAdminFlagValue(false),
         ),
-      ],
-    );
+      ),
+    ]);
     final accountsRepository = _FakeAccountsRepository();
     final TenantAdminLocationSelectionContract locationSelectionService =
         TenantAdminLocationSelectionService();
@@ -683,265 +689,329 @@ void main() {
   });
 
   test(
-      'submitUpdateProfile forwards nested profile groups to repository update',
-      () async {
-    final profilesRepository = _FakeAccountProfilesRepository(
-      [
-        tenantAdminAccountProfileFromRaw(
-          id: 'profile-1',
-          accountId: 'acc-1',
-          profileType: 'venue',
-          displayName: 'Perfil',
-          slug: 'perfil-original',
-        ),
-      ],
-      [
-        tenantAdminProfileTypeDefinitionFromRaw(
-          type: 'venue',
-          label: 'Venue',
-          allowedTaxonomies: [],
-          capabilities: TenantAdminProfileTypeCapabilities(
-            isFavoritable: TenantAdminFlagValue(true),
-            isPoiEnabled: TenantAdminFlagValue(true),
-            hasBio: TenantAdminFlagValue(false),
-            hasContent: TenantAdminFlagValue(false),
-            hasTaxonomies: TenantAdminFlagValue(false),
-            hasAvatar: TenantAdminFlagValue(false),
-            hasCover: TenantAdminFlagValue(false),
-            hasEvents: TenantAdminFlagValue(false),
+    'submitUpdateProfile forwards nested profile groups to repository update',
+    () async {
+      final profilesRepository = _FakeAccountProfilesRepository(
+        [
+          tenantAdminAccountProfileFromRaw(
+            id: 'profile-1',
+            accountId: 'acc-1',
+            profileType: 'venue',
+            displayName: 'Perfil',
+            slug: 'perfil-original',
           ),
-        ),
-      ],
-    );
-    final accountsRepository = _FakeAccountsRepository();
-    final TenantAdminLocationSelectionContract locationSelectionService =
-        TenantAdminLocationSelectionService();
-    final taxonomiesRepository = _FakeTaxonomiesRepository();
-
-    final controller = TenantAdminAccountProfilesController(
-      profilesRepository: profilesRepository,
-      accountsRepository: accountsRepository,
-      taxonomiesRepository: taxonomiesRepository,
-      locationSelectionService: locationSelectionService,
-    );
-
-    final groups = <TenantAdminNestedProfileGroup>[
-      TenantAdminNestedProfileGroup(
-        idValue: TenantAdminNestedProfileGroupTextValue('parceiros'),
-        labelValue: TenantAdminNestedProfileGroupTextValue('Parceiros'),
-        orderValue: TenantAdminNestedProfileGroupOrderValue(0),
-        accountProfileIdValues: <TenantAdminNestedProfileGroupTextValue>[
-          TenantAdminNestedProfileGroupTextValue('profile-2'),
         ],
-      ),
-    ];
-
-    await controller.submitUpdateProfile(
-      accountProfileId: 'profile-1',
-      profileType: 'venue',
-      displayName: 'Perfil atualizado',
-      slug: 'perfil-atualizado',
-      location: null,
-      bio: null,
-      content: null,
-      taxonomyTerms: const TenantAdminTaxonomyTerms.empty(),
-      avatarUpload: null,
-      coverUpload: null,
-      nestedProfileGroups: groups,
-    );
-
-    expect(profilesRepository.lastUpdateNestedProfileGroups, groups);
-  });
-
-  test('submitUpdateProfile forwards gallery groups to gallery update',
-      () async {
-    final profilesRepository = _FakeAccountProfilesRepository(
-      [
-        tenantAdminAccountProfileFromRaw(
-          id: 'profile-1',
-          accountId: 'acc-1',
-          profileType: 'venue',
-          displayName: 'Perfil',
-        ),
-      ],
-      [
-        tenantAdminProfileTypeDefinitionFromRaw(
-          type: 'venue',
-          label: 'Venue',
-          allowedTaxonomies: [],
-          capabilities: TenantAdminProfileTypeCapabilities(
-            isFavoritable: TenantAdminFlagValue(true),
-            isPoiEnabled: TenantAdminFlagValue(true),
-            hasBio: TenantAdminFlagValue(false),
-            hasContent: TenantAdminFlagValue(false),
-            hasTaxonomies: TenantAdminFlagValue(false),
-            hasAvatar: TenantAdminFlagValue(false),
-            hasCover: TenantAdminFlagValue(false),
-            hasEvents: TenantAdminFlagValue(false),
-          ),
-        ),
-      ],
-    );
-    final controller = TenantAdminAccountProfilesController(
-      profilesRepository: profilesRepository,
-      accountsRepository: _FakeAccountsRepository(),
-      taxonomiesRepository: _FakeTaxonomiesRepository(),
-      locationSelectionService: TenantAdminLocationSelectionService(),
-    );
-
-    await controller.submitUpdateProfile(
-      accountProfileId: 'profile-1',
-      profileType: 'venue',
-      displayName: 'Perfil atualizado',
-      location: null,
-      bio: null,
-      content: null,
-      taxonomyTerms: const TenantAdminTaxonomyTerms.empty(),
-      avatarUpload: null,
-      coverUpload: null,
-      galleryGroups: <TenantAdminAccountProfileGalleryUpdateGroup>[
-        TenantAdminAccountProfileGalleryUpdateGroup(
-          groupIdValue: TenantAdminNestedProfileGroupTextValue('group-1'),
-          subtitleValue: TenantAdminNestedProfileGroupTextValue('Ambiente'),
-          orderValue: TenantAdminNestedProfileGroupOrderValue(0),
-          items: <TenantAdminAccountProfileGalleryUpdateItem>[
-            TenantAdminAccountProfileGalleryUpdateItem(
-              itemIdValue:
-                  TenantAdminNestedProfileGroupTextValue('gallery-item-1'),
-              descriptionValue: TenantAdminOptionalTextValue()
-                ..parse('Vista para o palco'),
-              orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+        [
+          tenantAdminProfileTypeDefinitionFromRaw(
+            type: 'venue',
+            label: 'Venue',
+            allowedTaxonomies: [],
+            capabilities: TenantAdminProfileTypeCapabilities(
+              isFavoritable: TenantAdminFlagValue(true),
+              isPoiEnabled: TenantAdminFlagValue(true),
+              hasBio: TenantAdminFlagValue(false),
+              hasContent: TenantAdminFlagValue(false),
+              hasTaxonomies: TenantAdminFlagValue(false),
+              hasAvatar: TenantAdminFlagValue(false),
+              hasCover: TenantAdminFlagValue(false),
+              hasEvents: TenantAdminFlagValue(false),
             ),
+          ),
+        ],
+      );
+      final accountsRepository = _FakeAccountsRepository();
+      final TenantAdminLocationSelectionContract locationSelectionService =
+          TenantAdminLocationSelectionService();
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: accountsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+        locationSelectionService: locationSelectionService,
+      );
+
+      final groups = <TenantAdminNestedProfileGroup>[
+        TenantAdminNestedProfileGroup(
+          idValue: TenantAdminNestedProfileGroupTextValue('parceiros'),
+          labelValue: TenantAdminNestedProfileGroupTextValue('Parceiros'),
+          orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+          accountProfileIdValues: <TenantAdminNestedProfileGroupTextValue>[
+            TenantAdminNestedProfileGroupTextValue('profile-2'),
           ],
         ),
-      ],
-    );
+      ];
 
-    expect(profilesRepository.lastGalleryGroups, hasLength(1));
-    expect(profilesRepository.lastGalleryGroups!.first.subtitle, 'Ambiente');
-    expect(
-      profilesRepository.lastGalleryGroups!.first.items.first.description,
-      'Vista para o palco',
-    );
-  });
+      await controller.submitUpdateProfile(
+        accountProfileId: 'profile-1',
+        profileType: 'venue',
+        displayName: 'Perfil atualizado',
+        slug: 'perfil-atualizado',
+        location: null,
+        bio: null,
+        content: null,
+        taxonomyTerms: const TenantAdminTaxonomyTerms.empty(),
+        avatarUpload: null,
+        coverUpload: null,
+        nestedProfileGroups: groups,
+      );
+
+      expect(profilesRepository.lastUpdateNestedProfileGroups, groups);
+    },
+  );
 
   test(
-      'submitUpdateProfile skips gallery update when loaded persisted gallery is already empty',
-      () async {
-    final profilesRepository = _FakeAccountProfilesRepository(
-      [
-        tenantAdminAccountProfileFromRaw(
-          id: 'profile-1',
-          accountId: 'acc-1',
-          profileType: 'venue',
-          displayName: 'Perfil',
-          galleryGroups: const <TenantAdminAccountProfileGalleryGroup>[],
-        ),
-      ],
-      [
-        tenantAdminProfileTypeDefinitionFromRaw(
-          type: 'venue',
-          label: 'Venue',
-          allowedTaxonomies: [],
-          capabilities: TenantAdminProfileTypeCapabilities(
-            isFavoritable: TenantAdminFlagValue(true),
-            isPoiEnabled: TenantAdminFlagValue(true),
-            hasBio: TenantAdminFlagValue(false),
-            hasContent: TenantAdminFlagValue(false),
-            hasTaxonomies: TenantAdminFlagValue(false),
-            hasAvatar: TenantAdminFlagValue(false),
-            hasCover: TenantAdminFlagValue(false),
-            hasEvents: TenantAdminFlagValue(false),
+    'submitUpdateProfile forwards gallery groups to gallery update',
+    () async {
+      final profilesRepository = _FakeAccountProfilesRepository(
+        [
+          tenantAdminAccountProfileFromRaw(
+            id: 'profile-1',
+            accountId: 'acc-1',
+            profileType: 'venue',
+            displayName: 'Perfil',
           ),
-        ),
-      ],
-    );
-    final controller = TenantAdminAccountProfilesController(
-      profilesRepository: profilesRepository,
-      accountsRepository: _FakeAccountsRepository(),
-      taxonomiesRepository: _FakeTaxonomiesRepository(),
-      locationSelectionService: TenantAdminLocationSelectionService(),
-    );
-
-    await controller.loadEditProfile('profile-1');
-    await controller.submitUpdateProfile(
-      accountProfileId: 'profile-1',
-      profileType: 'venue',
-      displayName: 'Perfil atualizado',
-      location: null,
-      bio: null,
-      content: null,
-      taxonomyTerms: const TenantAdminTaxonomyTerms.empty(),
-      avatarUpload: null,
-      coverUpload: null,
-      galleryGroups: const <TenantAdminAccountProfileGalleryUpdateGroup>[],
-    );
-
-    expect(profilesRepository.lastGalleryGroups, isNull);
-  });
-
-  test(
-      'submitUpdateProfile still forwards empty gallery groups when loaded persisted gallery had content',
-      () async {
-    final profilesRepository = _FakeAccountProfilesRepository(
-      [
-        tenantAdminAccountProfileFromRaw(
-          id: 'profile-1',
-          accountId: 'acc-1',
-          profileType: 'venue',
-          displayName: 'Perfil',
-          galleryGroups: <TenantAdminAccountProfileGalleryGroup>[
-            _galleryGroup(),
-          ],
-        ),
-      ],
-      [
-        tenantAdminProfileTypeDefinitionFromRaw(
-          type: 'venue',
-          label: 'Venue',
-          allowedTaxonomies: [],
-          capabilities: TenantAdminProfileTypeCapabilities(
-            isFavoritable: TenantAdminFlagValue(true),
-            isPoiEnabled: TenantAdminFlagValue(true),
-            hasBio: TenantAdminFlagValue(false),
-            hasContent: TenantAdminFlagValue(false),
-            hasTaxonomies: TenantAdminFlagValue(false),
-            hasAvatar: TenantAdminFlagValue(false),
-            hasCover: TenantAdminFlagValue(false),
-            hasEvents: TenantAdminFlagValue(false),
+        ],
+        [
+          tenantAdminProfileTypeDefinitionFromRaw(
+            type: 'venue',
+            label: 'Venue',
+            allowedTaxonomies: [],
+            capabilities: TenantAdminProfileTypeCapabilities(
+              isFavoritable: TenantAdminFlagValue(true),
+              isPoiEnabled: TenantAdminFlagValue(true),
+              hasBio: TenantAdminFlagValue(false),
+              hasContent: TenantAdminFlagValue(false),
+              hasTaxonomies: TenantAdminFlagValue(false),
+              hasAvatar: TenantAdminFlagValue(false),
+              hasCover: TenantAdminFlagValue(false),
+              hasEvents: TenantAdminFlagValue(false),
+            ),
           ),
-        ),
-      ],
-    );
-    final controller = TenantAdminAccountProfilesController(
-      profilesRepository: profilesRepository,
-      accountsRepository: _FakeAccountsRepository(),
-      taxonomiesRepository: _FakeTaxonomiesRepository(),
-      locationSelectionService: TenantAdminLocationSelectionService(),
-    );
+        ],
+      );
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
 
-    await controller.loadEditProfile('profile-1');
-    await controller.submitUpdateProfile(
-      accountProfileId: 'profile-1',
-      profileType: 'venue',
-      displayName: 'Perfil atualizado',
-      location: null,
-      bio: null,
-      content: null,
-      taxonomyTerms: const TenantAdminTaxonomyTerms.empty(),
-      avatarUpload: null,
-      coverUpload: null,
-      galleryGroups: const <TenantAdminAccountProfileGalleryUpdateGroup>[],
-    );
+      await controller.submitUpdateProfile(
+        accountProfileId: 'profile-1',
+        profileType: 'venue',
+        displayName: 'Perfil atualizado',
+        location: null,
+        bio: null,
+        content: null,
+        taxonomyTerms: const TenantAdminTaxonomyTerms.empty(),
+        avatarUpload: null,
+        coverUpload: null,
+        galleryGroups: <TenantAdminAccountProfileGalleryUpdateGroup>[
+          TenantAdminAccountProfileGalleryUpdateGroup(
+            groupIdValue: TenantAdminNestedProfileGroupTextValue('group-1'),
+            subtitleValue: TenantAdminNestedProfileGroupTextValue('Ambiente'),
+            orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+            items: <TenantAdminAccountProfileGalleryUpdateItem>[
+              TenantAdminAccountProfileGalleryUpdateItem(
+                itemIdValue: TenantAdminNestedProfileGroupTextValue(
+                  'gallery-item-1',
+                ),
+                descriptionValue: TenantAdminOptionalTextValue()
+                  ..parse('Vista para o palco'),
+                orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+              ),
+            ],
+          ),
+        ],
+      );
 
-    expect(profilesRepository.lastGalleryGroups, isEmpty);
-  });
+      expect(profilesRepository.lastGalleryGroups, hasLength(1));
+      expect(profilesRepository.lastGalleryGroups!.first.subtitle, 'Ambiente');
+      expect(
+        profilesRepository.lastGalleryGroups!.first.items.first.description,
+        'Vista para o palco',
+      );
+    },
+  );
 
   test(
-      'loadNestedProfileCandidates requests backend queryable-only candidates and excludes current profile',
-      () async {
-    final profilesRepository = _FakeAccountProfilesRepository(
-      [
+    'submitUpdateProfile skips gallery update when loaded persisted gallery is already empty',
+    () async {
+      final profilesRepository = _FakeAccountProfilesRepository(
+        [
+          tenantAdminAccountProfileFromRaw(
+            id: 'profile-1',
+            accountId: 'acc-1',
+            profileType: 'venue',
+            displayName: 'Perfil',
+            galleryGroups: const <TenantAdminAccountProfileGalleryGroup>[],
+          ),
+        ],
+        [
+          tenantAdminProfileTypeDefinitionFromRaw(
+            type: 'venue',
+            label: 'Venue',
+            allowedTaxonomies: [],
+            capabilities: TenantAdminProfileTypeCapabilities(
+              isFavoritable: TenantAdminFlagValue(true),
+              isPoiEnabled: TenantAdminFlagValue(true),
+              hasBio: TenantAdminFlagValue(false),
+              hasContent: TenantAdminFlagValue(false),
+              hasTaxonomies: TenantAdminFlagValue(false),
+              hasAvatar: TenantAdminFlagValue(false),
+              hasCover: TenantAdminFlagValue(false),
+              hasEvents: TenantAdminFlagValue(false),
+            ),
+          ),
+        ],
+      );
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+
+      await controller.loadEditProfile('profile-1');
+      await controller.submitUpdateProfile(
+        accountProfileId: 'profile-1',
+        profileType: 'venue',
+        displayName: 'Perfil atualizado',
+        location: null,
+        bio: null,
+        content: null,
+        taxonomyTerms: const TenantAdminTaxonomyTerms.empty(),
+        avatarUpload: null,
+        coverUpload: null,
+        galleryGroups: const <TenantAdminAccountProfileGalleryUpdateGroup>[],
+      );
+
+      expect(profilesRepository.lastGalleryGroups, isNull);
+    },
+  );
+
+  test(
+    'submitUpdateProfile still forwards empty gallery groups when loaded persisted gallery had content',
+    () async {
+      final profilesRepository = _FakeAccountProfilesRepository(
+        [
+          tenantAdminAccountProfileFromRaw(
+            id: 'profile-1',
+            accountId: 'acc-1',
+            profileType: 'venue',
+            displayName: 'Perfil',
+            galleryGroups: <TenantAdminAccountProfileGalleryGroup>[
+              _galleryGroup(),
+            ],
+          ),
+        ],
+        [
+          tenantAdminProfileTypeDefinitionFromRaw(
+            type: 'venue',
+            label: 'Venue',
+            allowedTaxonomies: [],
+            capabilities: TenantAdminProfileTypeCapabilities(
+              isFavoritable: TenantAdminFlagValue(true),
+              isPoiEnabled: TenantAdminFlagValue(true),
+              hasBio: TenantAdminFlagValue(false),
+              hasContent: TenantAdminFlagValue(false),
+              hasTaxonomies: TenantAdminFlagValue(false),
+              hasAvatar: TenantAdminFlagValue(false),
+              hasCover: TenantAdminFlagValue(false),
+              hasEvents: TenantAdminFlagValue(false),
+            ),
+          ),
+        ],
+      );
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+
+      await controller.loadEditProfile('profile-1');
+      await controller.submitUpdateProfile(
+        accountProfileId: 'profile-1',
+        profileType: 'venue',
+        displayName: 'Perfil atualizado',
+        location: null,
+        bio: null,
+        content: null,
+        taxonomyTerms: const TenantAdminTaxonomyTerms.empty(),
+        avatarUpload: null,
+        coverUpload: null,
+        galleryGroups: const <TenantAdminAccountProfileGalleryUpdateGroup>[],
+      );
+
+      expect(profilesRepository.lastGalleryGroups, isEmpty);
+    },
+  );
+
+  test(
+    'loadEditProfile reuses the route-resolved profile when provided',
+    () async {
+      final prefetchedProfile = tenantAdminAccountProfileFromRaw(
+        id: 'profile-1',
+        accountId: 'acc-1',
+        profileType: 'venue',
+        displayName: 'Perfil resolvido',
+        galleryGroups: <TenantAdminAccountProfileGalleryGroup>[_galleryGroup()],
+      );
+      final profilesRepository = _FakeAccountProfilesRepository(
+        [
+          tenantAdminAccountProfileFromRaw(
+            id: 'profile-1',
+            accountId: 'acc-1',
+            profileType: 'venue',
+            displayName: 'Perfil remoto',
+          ),
+        ],
+        [
+          tenantAdminProfileTypeDefinitionFromRaw(
+            type: 'venue',
+            label: 'Venue',
+            allowedTaxonomies: [],
+            capabilities: TenantAdminProfileTypeCapabilities(
+              isFavoritable: TenantAdminFlagValue(true),
+              isPoiEnabled: TenantAdminFlagValue(true),
+              hasBio: TenantAdminFlagValue(false),
+              hasContent: TenantAdminFlagValue(false),
+              hasTaxonomies: TenantAdminFlagValue(false),
+              hasAvatar: TenantAdminFlagValue(false),
+              hasCover: TenantAdminFlagValue(false),
+              hasEvents: TenantAdminFlagValue(false),
+              hasGallery: TenantAdminFlagValue(true),
+            ),
+          ),
+        ],
+      );
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+
+      await controller.loadEditProfile(
+        'profile-1',
+        prefetchedProfile: prefetchedProfile,
+      );
+
+      expect(profilesRepository.fetchAccountProfileCalls, 0);
+      expect(
+        controller.accountProfileStreamValue.value?.displayName,
+        'Perfil resolvido',
+      );
+      expect(controller.editStateStreamValue.value.galleryGroups, hasLength(1));
+    },
+  );
+
+  test(
+    'loadNestedProfileCandidates requests backend queryable-only candidates and excludes current profile',
+    () async {
+      final profilesRepository = _FakeAccountProfilesRepository([
         tenantAdminAccountProfileFromRaw(
           id: 'profile-1',
           accountId: 'acc-1',
@@ -956,38 +1026,77 @@ void main() {
           displayName: 'Perfil candidato',
           slug: 'perfil-candidato',
         ),
-      ],
-      const [],
-    );
-    final controller = TenantAdminAccountProfilesController(
-      profilesRepository: profilesRepository,
-      accountsRepository: _FakeAccountsRepository(),
-      taxonomiesRepository: _FakeTaxonomiesRepository(),
-      locationSelectionService: TenantAdminLocationSelectionService(),
-    );
+      ], const []);
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
 
-    await controller.loadNestedProfileCandidates(excludeProfileId: 'profile-1');
+      await controller.loadNestedProfileCandidates(
+        excludeProfileId: 'profile-1',
+      );
 
-    expect(profilesRepository.lastFetchQueryableOnly, isTrue);
-    expect(profilesRepository.lastFetchExcludeAccountProfileId, 'profile-1');
-  });
+      expect(profilesRepository.lastFetchQueryableOnly, isTrue);
+      expect(profilesRepository.lastFetchExcludeAccountProfileId, 'profile-1');
+    },
+  );
 
   test(
-      'submitTaxonomySelectionUpdate resolves profileType and sends string bio/content',
-      () async {
-    final profilesRepository = _FakeAccountProfilesRepository(
-      [
+    'submitTaxonomySelectionUpdate resolves profileType and sends string bio/content',
+    () async {
+      final profilesRepository = _FakeAccountProfilesRepository(
+        [
+          tenantAdminAccountProfileFromRaw(
+            id: 'profile-1',
+            accountId: 'acc-1',
+            profileType: 'artist',
+            displayName: 'Perfil',
+            slug: 'perfil',
+            bio: null,
+            content: null,
+          ),
+        ],
+        [
+          tenantAdminProfileTypeDefinitionFromRaw(
+            type: 'artist',
+            label: 'Artist',
+            allowedTaxonomies: ['music-style'],
+            capabilities: TenantAdminProfileTypeCapabilities(
+              isFavoritable: TenantAdminFlagValue(true),
+              isPoiEnabled: TenantAdminFlagValue(false),
+              hasBio: TenantAdminFlagValue(true),
+              hasContent: TenantAdminFlagValue(true),
+              hasTaxonomies: TenantAdminFlagValue(true),
+              hasAvatar: TenantAdminFlagValue(true),
+              hasCover: TenantAdminFlagValue(true),
+              hasEvents: TenantAdminFlagValue(true),
+            ),
+          ),
+        ],
+      );
+      final accountsRepository = _FakeAccountsRepository();
+      final TenantAdminLocationSelectionContract locationSelectionService =
+          TenantAdminLocationSelectionService();
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: accountsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+        locationSelectionService: locationSelectionService,
+      );
+
+      controller.accountProfileStreamValue.addValue(
         tenantAdminAccountProfileFromRaw(
           id: 'profile-1',
           accountId: 'acc-1',
           profileType: 'artist',
           displayName: 'Perfil',
-          slug: 'perfil',
-          bio: null,
-          content: null,
         ),
-      ],
-      [
+      );
+      controller.profileTypesStreamValue.addValue([
         tenantAdminProfileTypeDefinitionFromRaw(
           type: 'artist',
           label: 'Artist',
@@ -1003,73 +1112,31 @@ void main() {
             hasEvents: TenantAdminFlagValue(true),
           ),
         ),
-      ],
-    );
-    final accountsRepository = _FakeAccountsRepository();
-    final TenantAdminLocationSelectionContract locationSelectionService =
-        TenantAdminLocationSelectionService();
-    final taxonomiesRepository = _FakeTaxonomiesRepository();
+      ]);
 
-    final controller = TenantAdminAccountProfilesController(
-      profilesRepository: profilesRepository,
-      accountsRepository: accountsRepository,
-      taxonomiesRepository: taxonomiesRepository,
-      locationSelectionService: locationSelectionService,
-    );
+      final saved = await controller.submitTaxonomySelectionUpdate(
+        accountProfileId: 'profile-1',
+        profileType: null,
+        taxonomyTerms: (() {
+          final terms = TenantAdminTaxonomyTerms();
+          terms.add(
+            tenantAdminTaxonomyTermFromRaw(type: 'music-style', value: 'rock'),
+          );
+          return terms;
+        })(),
+        bio: null,
+        content: null,
+      );
 
-    controller.accountProfileStreamValue.addValue(
-      tenantAdminAccountProfileFromRaw(
-        id: 'profile-1',
-        accountId: 'acc-1',
-        profileType: 'artist',
-        displayName: 'Perfil',
-      ),
-    );
-    controller.profileTypesStreamValue.addValue(
-      [
-        tenantAdminProfileTypeDefinitionFromRaw(
-          type: 'artist',
-          label: 'Artist',
-          allowedTaxonomies: ['music-style'],
-          capabilities: TenantAdminProfileTypeCapabilities(
-            isFavoritable: TenantAdminFlagValue(true),
-            isPoiEnabled: TenantAdminFlagValue(false),
-            hasBio: TenantAdminFlagValue(true),
-            hasContent: TenantAdminFlagValue(true),
-            hasTaxonomies: TenantAdminFlagValue(true),
-            hasAvatar: TenantAdminFlagValue(true),
-            hasCover: TenantAdminFlagValue(true),
-            hasEvents: TenantAdminFlagValue(true),
-          ),
-        ),
-      ],
-    );
-
-    final saved = await controller.submitTaxonomySelectionUpdate(
-      accountProfileId: 'profile-1',
-      profileType: null,
-      taxonomyTerms: (() {
-        final terms = TenantAdminTaxonomyTerms();
-        terms.add(
-          tenantAdminTaxonomyTermFromRaw(type: 'music-style', value: 'rock'),
-        );
-        return terms;
-      })(),
-      bio: null,
-      content: null,
-    );
-
-    expect(saved, isTrue);
-    expect(profilesRepository.lastUpdateProfileType, 'artist');
-    expect(profilesRepository.lastUpdateBio, '');
-    expect(profilesRepository.lastUpdateContent, '');
-  });
+      expect(saved, isTrue);
+      expect(profilesRepository.lastUpdateProfileType, 'artist');
+      expect(profilesRepository.lastUpdateBio, '');
+      expect(profilesRepository.lastUpdateContent, '');
+    },
+  );
 
   test('loadAccountForCreate stores resolved account slug in stream', () async {
-    final profilesRepository = _FakeAccountProfilesRepository(
-      [],
-      [],
-    );
+    final profilesRepository = _FakeAccountProfilesRepository([], []);
     final accountsRepository = _FakeAccountsRepository();
     final TenantAdminLocationSelectionContract locationSelectionService =
         TenantAdminLocationSelectionService();
@@ -1089,45 +1156,44 @@ void main() {
     expect(controller.createAccountIdStreamValue.value, 'acc-1');
   });
 
-  test('updateAccount syncs canonical account stream without manual reload',
-      () async {
-    final profilesRepository = _FakeAccountProfilesRepository(
-      [],
-      [],
-    );
-    final accountsRepository = _FakeAccountsRepository();
-    final TenantAdminLocationSelectionContract locationSelectionService =
-        TenantAdminLocationSelectionService();
-    final taxonomiesRepository = _FakeTaxonomiesRepository();
+  test(
+    'updateAccount syncs canonical account stream without manual reload',
+    () async {
+      final profilesRepository = _FakeAccountProfilesRepository([], []);
+      final accountsRepository = _FakeAccountsRepository();
+      final TenantAdminLocationSelectionContract locationSelectionService =
+          TenantAdminLocationSelectionService();
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
 
-    final controller = TenantAdminAccountProfilesController(
-      profilesRepository: profilesRepository,
-      accountsRepository: accountsRepository,
-      taxonomiesRepository: taxonomiesRepository,
-      locationSelectionService: locationSelectionService,
-    );
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: accountsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+        locationSelectionService: locationSelectionService,
+      );
 
-    await controller.loadAccountDetail('yuri-dias');
-    final updated = await controller.updateAccount(
-      accountSlug: 'yuri-dias',
-      name: 'Conta atualizada',
-      slug: 'yuri-atualizado',
-      ownershipState: TenantAdminOwnershipState.unmanaged,
-    );
+      await controller.loadAccountDetail('yuri-dias');
+      final updated = await controller.updateAccount(
+        accountSlug: 'yuri-dias',
+        name: 'Conta atualizada',
+        slug: 'yuri-atualizado',
+        ownershipState: TenantAdminOwnershipState.unmanaged,
+      );
 
-    expect(updated, isNotNull);
-    expect(controller.accountStreamValue.value, isNotNull);
-    expect(controller.accountStreamValue.value!.name, 'Conta atualizada');
-    expect(controller.accountStreamValue.value!.slug, 'yuri-atualizado');
-    expect(
-      controller.accountStreamValue.value!.ownershipState,
-      TenantAdminOwnershipState.unmanaged,
-    );
-    expect(
-      accountsRepository.lastUpdatedOwnershipState,
-      TenantAdminOwnershipState.unmanaged,
-    );
-  });
+      expect(updated, isNotNull);
+      expect(controller.accountStreamValue.value, isNotNull);
+      expect(controller.accountStreamValue.value!.name, 'Conta atualizada');
+      expect(controller.accountStreamValue.value!.slug, 'yuri-atualizado');
+      expect(
+        controller.accountStreamValue.value!.ownershipState,
+        TenantAdminOwnershipState.unmanaged,
+      );
+      expect(
+        accountsRepository.lastUpdatedOwnershipState,
+        TenantAdminOwnershipState.unmanaged,
+      );
+    },
+  );
 }
 
 TenantAdminAccountProfileGalleryGroup _galleryGroup() {

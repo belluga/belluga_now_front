@@ -93,63 +93,92 @@ void main() {
   });
 
   testWidgets(
-      'prefers route profile id over cached controller profile id on init',
-      (tester) async {
-    final profilesRepository =
-        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
-            as _FakeAccountProfilesRepository;
+    'prefers route profile id over cached controller profile id on init',
+    (tester) async {
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
 
-    await _pumpScreen(
-      tester,
-      TenantAdminAccountProfileEditScreen(
-        accountSlug: 'route-account',
-        accountProfileId: 'route-profile',
-      ),
-    );
+      await _pumpScreen(
+        tester,
+        TenantAdminAccountProfileEditScreen(
+          accountSlug: 'route-account',
+          accountProfileId: 'route-profile',
+        ),
+      );
 
-    expect(profilesRepository.fetchAccountProfileCalls, 1);
-    expect(profilesRepository.lastFetchedProfileId, 'route-profile');
-  });
+      expect(profilesRepository.fetchAccountProfileCalls, 1);
+      expect(profilesRepository.lastFetchedProfileId, 'route-profile');
+    },
+  );
 
   testWidgets(
-      'renders persisted avatar and cover URLs as network images in edit form',
-      (tester) async {
-    const avatarUrl = 'https://tenant-a.test/media/account-profiles/avatar.png';
-    const coverUrl = 'https://tenant-a.test/media/account-profiles/cover.png';
-    final profilesRepository =
-        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
-            as _FakeAccountProfilesRepository;
-    profilesRepository.profileToReturn = _profile(
-      id: 'route-profile',
-      avatarUrl: avatarUrl,
-      coverUrl: coverUrl,
-    );
+    'hydrates from the route-resolved profile without a duplicate fetch',
+    (tester) async {
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+      final resolvedProfile = _profile(
+        id: 'route-profile',
+        displayName: 'Perfil resolvido',
+      );
 
-    await _pumpScreen(
-      tester,
-      TenantAdminAccountProfileEditScreen(
-        accountSlug: 'route-account',
-        accountProfileId: 'route-profile',
-      ),
-    );
+      await _pumpScreen(
+        tester,
+        TenantAdminAccountProfileEditScreen(
+          accountSlug: 'route-account',
+          accountProfileId: 'route-profile',
+          initialProfile: resolvedProfile,
+        ),
+      );
 
-    final avatarImageFinder = find.byWidgetPredicate((widget) {
-      if (widget is! Image) return false;
-      final provider = widget.image;
-      return provider is NetworkImage && provider.url == avatarUrl;
-    });
-    final coverImageFinder = find.byWidgetPredicate((widget) {
-      if (widget is! Image) return false;
-      final provider = widget.image;
-      return provider is NetworkImage && provider.url == coverUrl;
-    });
+      expect(profilesRepository.fetchAccountProfileCalls, 0);
+      expect(find.text('Perfil resolvido'), findsOneWidget);
+    },
+  );
 
-    expect(avatarImageFinder, findsOneWidget);
-    expect(coverImageFinder, findsOneWidget);
-  });
+  testWidgets(
+    'renders persisted avatar and cover URLs as network images in edit form',
+    (tester) async {
+      const avatarUrl =
+          'https://tenant-a.test/media/account-profiles/avatar.png';
+      const coverUrl = 'https://tenant-a.test/media/account-profiles/cover.png';
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+      profilesRepository.profileToReturn = _profile(
+        id: 'route-profile',
+        avatarUrl: avatarUrl,
+        coverUrl: coverUrl,
+      );
 
-  testWidgets('renders ownership management selector in edit form',
-      (tester) async {
+      await _pumpScreen(
+        tester,
+        TenantAdminAccountProfileEditScreen(
+          accountSlug: 'route-account',
+          accountProfileId: 'route-profile',
+        ),
+      );
+
+      final avatarImageFinder = find.byWidgetPredicate((widget) {
+        if (widget is! Image) return false;
+        final provider = widget.image;
+        return provider is NetworkImage && provider.url == avatarUrl;
+      });
+      final coverImageFinder = find.byWidgetPredicate((widget) {
+        if (widget is! Image) return false;
+        final provider = widget.image;
+        return provider is NetworkImage && provider.url == coverUrl;
+      });
+
+      expect(avatarImageFinder, findsOneWidget);
+      expect(coverImageFinder, findsOneWidget);
+    },
+  );
+
+  testWidgets('renders ownership management selector in edit form', (
+    tester,
+  ) async {
     await _pumpScreen(
       tester,
       TenantAdminAccountProfileEditScreen(
@@ -190,16 +219,14 @@ void main() {
     expect(find.text('Conta Parceira'), findsOneWidget);
   });
 
-  testWidgets('renders persisted gallery groups and descriptions',
-      (tester) async {
+  testWidgets('renders persisted gallery groups and descriptions', (
+    tester,
+  ) async {
     final profilesRepository =
         GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
             as _FakeAccountProfilesRepository;
     profilesRepository.profileTypesToReturn = [
-      _profileType(
-        hasGallery: true,
-        hasNestedProfileGroups: false,
-      ),
+      _profileType(hasGallery: true, hasNestedProfileGroups: false),
     ];
     profilesRepository.profileToReturn = _profile(
       id: 'route-profile',
@@ -231,99 +258,95 @@ void main() {
   });
 
   testWidgets(
-      'hides gallery editor and omits gallery payload when capability is disabled',
-      (tester) async {
-    final profilesRepository =
-        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
-            as _FakeAccountProfilesRepository;
-    profilesRepository.profileTypesToReturn = [
-      _profileType(
-        hasGallery: false,
-        hasNestedProfileGroups: false,
-      ),
-    ];
-    profilesRepository.profileToReturn = _profile(
-      id: 'route-profile',
-      galleryGroups: [_galleryGroup()],
-    );
+    'hides gallery editor and omits gallery payload when capability is disabled',
+    (tester) async {
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+      profilesRepository.profileTypesToReturn = [
+        _profileType(hasGallery: false, hasNestedProfileGroups: false),
+      ];
+      profilesRepository.profileToReturn = _profile(
+        id: 'route-profile',
+        galleryGroups: [_galleryGroup()],
+      );
 
-    await _pumpScreen(
-      tester,
-      TenantAdminAccountProfileEditScreen(
-        accountSlug: 'route-account',
-        accountProfileId: 'route-profile',
-      ),
-    );
+      await _pumpScreen(
+        tester,
+        TenantAdminAccountProfileEditScreen(
+          accountSlug: 'route-account',
+          accountProfileId: 'route-profile',
+        ),
+      );
 
-    expect(find.text('Galerias de fotos'), findsNothing);
-    expect(
-        find.byKey(const Key('tenantAdminGalleryGroup_group-1')), findsNothing);
+      expect(find.text('Galerias de fotos'), findsNothing);
+      expect(
+        find.byKey(const Key('tenantAdminGalleryGroup_group-1')),
+        findsNothing,
+      );
 
-    final scrollable = find.byType(Scrollable).first;
-    await tester.scrollUntilVisible(
-      find.text('Salvar alteracoes'),
-      200,
-      scrollable: scrollable,
-    );
-    await tester.tap(find.text('Salvar alteracoes'));
-    await tester.pumpAndSettle();
+      final scrollable = find.byType(Scrollable).first;
+      await tester.scrollUntilVisible(
+        find.text('Salvar alteracoes'),
+        200,
+        scrollable: scrollable,
+      );
+      await tester.tap(find.text('Salvar alteracoes'));
+      await tester.pumpAndSettle();
 
-    expect(profilesRepository.lastGalleryGroups, isNull);
-  });
+      expect(profilesRepository.lastGalleryGroups, isNull);
+    },
+  );
 
   testWidgets(
-      'hides nested group editor and omits nested payload when capability is disabled',
-      (tester) async {
+    'hides nested group editor and omits nested payload when capability is disabled',
+    (tester) async {
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+      profilesRepository.profileTypesToReturn = [
+        _profileType(hasGallery: false, hasNestedProfileGroups: false),
+      ];
+      profilesRepository.profileToReturn = _profile(
+        id: 'route-profile',
+        nestedProfileGroups: [_nestedGroup()],
+      );
+
+      await _pumpScreen(
+        tester,
+        TenantAdminAccountProfileEditScreen(
+          accountSlug: 'route-account',
+          accountProfileId: 'route-profile',
+        ),
+      );
+
+      expect(find.text('Abas de contas vinculadas'), findsNothing);
+      expect(
+        find.byKey(const Key('tenantAdminEditAddNestedGroupButton')),
+        findsNothing,
+      );
+
+      final scrollable = find.byType(Scrollable).first;
+      await tester.scrollUntilVisible(
+        find.text('Salvar alteracoes'),
+        200,
+        scrollable: scrollable,
+      );
+      await tester.tap(find.text('Salvar alteracoes'));
+      await tester.pumpAndSettle();
+
+      expect(profilesRepository.lastNestedProfileGroups, isNull);
+    },
+  );
+
+  testWidgets('renders nested group selector when capability is enabled', (
+    tester,
+  ) async {
     final profilesRepository =
         GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
             as _FakeAccountProfilesRepository;
     profilesRepository.profileTypesToReturn = [
-      _profileType(
-        hasGallery: false,
-        hasNestedProfileGroups: false,
-      ),
-    ];
-    profilesRepository.profileToReturn = _profile(
-      id: 'route-profile',
-      nestedProfileGroups: [_nestedGroup()],
-    );
-
-    await _pumpScreen(
-      tester,
-      TenantAdminAccountProfileEditScreen(
-        accountSlug: 'route-account',
-        accountProfileId: 'route-profile',
-      ),
-    );
-
-    expect(find.text('Abas de contas vinculadas'), findsNothing);
-    expect(
-      find.byKey(const Key('tenantAdminEditAddNestedGroupButton')),
-      findsNothing,
-    );
-
-    final scrollable = find.byType(Scrollable).first;
-    await tester.scrollUntilVisible(
-      find.text('Salvar alteracoes'),
-      200,
-      scrollable: scrollable,
-    );
-    await tester.tap(find.text('Salvar alteracoes'));
-    await tester.pumpAndSettle();
-
-    expect(profilesRepository.lastNestedProfileGroups, isNull);
-  });
-
-  testWidgets('renders nested group selector when capability is enabled',
-      (tester) async {
-    final profilesRepository =
-        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
-            as _FakeAccountProfilesRepository;
-    profilesRepository.profileTypesToReturn = [
-      _profileType(
-        hasGallery: false,
-        hasNestedProfileGroups: true,
-      ),
+      _profileType(hasGallery: false, hasNestedProfileGroups: true),
     ];
     profilesRepository.profileToReturn = _profile(
       id: 'route-profile',
@@ -357,47 +380,50 @@ void main() {
     expect(find.text('1 Account(s) selecionada(s)'), findsOneWidget);
   });
 
-  testWidgets('sends explicit remove avatar flag when clearing persisted media',
-      (tester) async {
-    final profilesRepository =
-        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
-            as _FakeAccountProfilesRepository;
-    profilesRepository.profileToReturn = _profile(
-      id: 'route-profile',
-      avatarUrl: 'https://tenant-a.test/media/account-profiles/avatar.png',
-      coverUrl: 'https://tenant-a.test/media/account-profiles/cover.png',
-    );
+  testWidgets(
+    'sends explicit remove avatar flag when clearing persisted media',
+    (tester) async {
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+      profilesRepository.profileToReturn = _profile(
+        id: 'route-profile',
+        avatarUrl: 'https://tenant-a.test/media/account-profiles/avatar.png',
+        coverUrl: 'https://tenant-a.test/media/account-profiles/cover.png',
+      );
 
-    await _pumpScreen(
-      tester,
-      TenantAdminAccountProfileEditScreen(
-        accountSlug: 'route-account',
-        accountProfileId: 'route-profile',
-      ),
-    );
+      await _pumpScreen(
+        tester,
+        TenantAdminAccountProfileEditScreen(
+          accountSlug: 'route-account',
+          accountProfileId: 'route-profile',
+        ),
+      );
 
-    final scrollable = find.byType(Scrollable).first;
-    await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('accountProfileEditAvatarRemoveButton')),
-      200,
-      scrollable: scrollable,
-    );
-    await tester.tap(
-        find.byKey(const ValueKey('accountProfileEditAvatarRemoveButton')));
-    await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.text('Salvar alteracoes'),
-      200,
-      scrollable: scrollable,
-    );
-    await tester.tap(find.text('Salvar alteracoes'));
-    await tester.pumpAndSettle();
+      final scrollable = find.byType(Scrollable).first;
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('accountProfileEditAvatarRemoveButton')),
+        200,
+        scrollable: scrollable,
+      );
+      await tester.tap(
+        find.byKey(const ValueKey('accountProfileEditAvatarRemoveButton')),
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('Salvar alteracoes'),
+        200,
+        scrollable: scrollable,
+      );
+      await tester.tap(find.text('Salvar alteracoes'));
+      await tester.pumpAndSettle();
 
-    expect(profilesRepository.lastRemoveAvatar, isTrue);
-    expect(profilesRepository.lastRemoveCover, isNot(true));
-    expect(profilesRepository.profileToReturn.avatarUrl, isNull);
-    expect(profilesRepository.profileToReturn.coverUrl, isNotNull);
-  });
+      expect(profilesRepository.lastRemoveAvatar, isTrue);
+      expect(profilesRepository.lastRemoveCover, isNot(true));
+      expect(profilesRepository.profileToReturn.avatarUrl, isNull);
+      expect(profilesRepository.profileToReturn.coverUrl, isNotNull);
+    },
+  );
 }
 
 Future<void> _pumpScreen(WidgetTester tester, Widget child) async {
@@ -486,19 +512,22 @@ class _FakeAccountsRepository extends TenantAdminAccountsRepositoryContract {
 
   @override
   Future<void> deleteAccount(
-      TenantAdminAccountsRepositoryContractPrimString accountSlug) {
+    TenantAdminAccountsRepositoryContractPrimString accountSlug,
+  ) {
     throw UnimplementedError();
   }
 
   @override
   Future<TenantAdminAccount> restoreAccount(
-      TenantAdminAccountsRepositoryContractPrimString accountSlug) {
+    TenantAdminAccountsRepositoryContractPrimString accountSlug,
+  ) {
     throw UnimplementedError();
   }
 
   @override
   Future<void> forceDeleteAccount(
-      TenantAdminAccountsRepositoryContractPrimString accountSlug) {
+    TenantAdminAccountsRepositoryContractPrimString accountSlug,
+  ) {
     throw UnimplementedError();
   }
 }
@@ -511,10 +540,7 @@ class _FakeAccountProfilesRepository
   bool? lastRemoveAvatar;
   bool? lastRemoveCover;
   List<TenantAdminProfileTypeDefinition> profileTypesToReturn = [
-    _profileType(
-      hasGallery: true,
-      hasNestedProfileGroups: false,
-    ),
+    _profileType(hasGallery: true, hasNestedProfileGroups: false),
   ];
   List<TenantAdminAccountProfile> profilesToReturn = [];
   List<TenantAdminAccountProfileGalleryUpdateGroup>? lastGalleryGroups;
@@ -637,7 +663,8 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<void> deleteAccountProfile(
-      TenantAdminAccountProfilesRepoString accountProfileId) {
+    TenantAdminAccountProfilesRepoString accountProfileId,
+  ) {
     throw UnimplementedError();
   }
 
@@ -650,7 +677,8 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<void> forceDeleteAccountProfile(
-      TenantAdminAccountProfilesRepoString accountProfileId) {
+    TenantAdminAccountProfilesRepoString accountProfileId,
+  ) {
     throw UnimplementedError();
   }
 

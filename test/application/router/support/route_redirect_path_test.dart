@@ -35,9 +35,7 @@ void main() {
   });
 
   test('resolveWebPromotionPath falls back to home when code is missing', () {
-    final result = resolveWebPromotionPath(
-      redirectPath: '/invite',
-    );
+    final result = resolveWebPromotionPath(redirectPath: '/invite');
 
     expect(result, '/');
   });
@@ -48,12 +46,14 @@ void main() {
     expect(result, '/');
   });
 
-  test('resolveWebPromotionPath falls back for blocked non-detail agenda path',
-      () {
-    final result = resolveWebPromotionPath(redirectPath: '/agenda');
+  test(
+    'resolveWebPromotionPath falls back for blocked non-detail agenda path',
+    () {
+      final result = resolveWebPromotionPath(redirectPath: '/agenda');
 
-    expect(result, '/');
-  });
+      expect(result, '/');
+    },
+  );
 
   test('resolveWebPromotionPath falls back for external absolute URL', () {
     final result = resolveWebPromotionPath(
@@ -87,24 +87,25 @@ void main() {
     expect(result, '/');
   });
 
-  test('resolveWebPromotionDismissPath falls back to home for auth-owned paths',
-      () {
-    final result = resolveWebPromotionDismissPath(
-      redirectPath: '/profile',
-    );
+  test(
+    'resolveWebPromotionDismissPath falls back to home for auth-owned paths',
+    () {
+      final result = resolveWebPromotionDismissPath(redirectPath: '/profile');
 
-    expect(result, '/');
-  });
+      expect(result, '/');
+    },
+  );
 
   test(
-      'resolveWebPromotionDismissPath preserves invite preview redirect when code exists',
-      () {
-    final result = resolveWebPromotionDismissPath(
-      redirectPath: '/invite?code=ABCD1234',
-    );
+    'resolveWebPromotionDismissPath preserves invite preview redirect when code exists',
+    () {
+      final result = resolveWebPromotionDismissPath(
+        redirectPath: '/invite?code=ABCD1234',
+      );
 
-    expect(result, '/invite?code=ABCD1234');
-  });
+      expect(result, '/invite?code=ABCD1234');
+    },
+  );
 
   test('resolveWebPromotionDismissPath preserves public detail redirect', () {
     final result = resolveWebPromotionDismissPath(
@@ -151,11 +152,54 @@ void main() {
       redirectPath: '/profile?tab=settings',
     );
 
-    expect(
-      result,
-      '/baixe-o-app?redirect=%2Fprofile%3Ftab%3Dsettings',
-    );
+    expect(result, '/baixe-o-app?redirect=%2Fprofile%3Ftab%3Dsettings');
   });
+
+  test('buildDeferredResolverPayloadFromPromotionUri keeps invite context', () {
+    final payload = buildDeferredResolverPayloadFromPromotionUri(
+      Uri.parse(
+        'https://tenant.example/open-app'
+        '?path=%2Finvite&code=ABCD1234&store_channel=web&platform_target=ios',
+      ),
+    );
+
+    expect(payload, isNotNull);
+    final query = Uri.splitQueryString(payload!);
+    expect(query['store_channel'], 'web');
+    expect(query['code'], 'ABCD1234');
+    expect(query['target_path'], '/invite?code=ABCD1234');
+  });
+
+  test(
+    'buildDeferredResolverPayloadFromPromotionUri preserves auth-owned path',
+    () {
+      final payload = buildDeferredResolverPayloadFromPromotionUri(
+        Uri.parse(
+          'https://tenant.example/open-app'
+          '?path=%2Fprofile&store_channel=web_gate&platform_target=ios',
+        ),
+      );
+
+      expect(payload, isNotNull);
+      final query = Uri.splitQueryString(payload!);
+      expect(query['store_channel'], 'web_gate');
+      expect(query['target_path'], '/profile');
+      expect(query.containsKey('code'), isFalse);
+    },
+  );
+
+  test(
+    'buildDeferredResolverPayloadFromPromotionUri rejects invite payload without code',
+    () {
+      final payload = buildDeferredResolverPayloadFromPromotionUri(
+        Uri.parse(
+          'https://tenant.example/open-app?path=%2Finvite&store_channel=web',
+        ),
+      );
+
+      expect(payload, isNull);
+    },
+  );
 
   test('resolveWebPromotionPath falls back for over-nested auth redirect', () {
     final result = resolveWebPromotionPath(
@@ -165,20 +209,25 @@ void main() {
     expect(result, '/');
   });
 
-  test('isAuthOwnedPromotionRedirectPath matches auth-owned redirect family',
-      () {
-    expect(isAuthOwnedPromotionRedirectPath('/profile'), isTrue);
-    expect(isAuthOwnedPromotionRedirectPath('/workspace/tenant-a'), isTrue);
-    expect(isAuthOwnedPromotionRedirectPath('/auth/login'), isTrue);
-    expect(isAuthOwnedPromotionRedirectPath('/convites/compartilhar'), isTrue);
-    expect(isAuthOwnedPromotionRedirectPath('/agenda/evento/show-1'), isFalse);
-  });
+  test(
+    'isAuthOwnedPromotionRedirectPath matches auth-owned redirect family',
+    () {
+      expect(isAuthOwnedPromotionRedirectPath('/profile'), isTrue);
+      expect(isAuthOwnedPromotionRedirectPath('/workspace/tenant-a'), isTrue);
+      expect(isAuthOwnedPromotionRedirectPath('/auth/login'), isTrue);
+      expect(
+        isAuthOwnedPromotionRedirectPath('/convites/compartilhar'),
+        isTrue,
+      );
+      expect(
+        isAuthOwnedPromotionRedirectPath('/agenda/evento/show-1'),
+        isFalse,
+      );
+    },
+  );
 }
 
-String _nestedAuthRedirect({
-  required int depth,
-  required String terminal,
-}) {
+String _nestedAuthRedirect({required int depth, required String terminal}) {
   var value = terminal;
   for (var index = 0; index < depth; index += 1) {
     value = Uri(

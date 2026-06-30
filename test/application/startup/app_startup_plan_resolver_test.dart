@@ -9,9 +9,14 @@ import 'package:belluga_now/domain/invites/value_objects/invite_rate_limits_valu
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/deferred_link_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
+import 'package:belluga_now/infrastructure/services/telemetry/telemetry_properties_codec.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
+import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -20,25 +25,116 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test(
-      'resolvePlan keeps anonymous tenant home startup on the public surface when there is no deferred or pending invite override',
-      () async {
-    final authRepository = _FakeAuthRepository();
-    final resolver = AppStartupPlanResolver(
-      authRepository: authRepository,
-      invitesRepository: _FakeInvitesRepository(),
-      appDataRepository: _FakeAppDataRepository(_buildTenantAppData()),
-      deferredLinkRepository: null,
-      telemetryRepository: null,
-    );
+    'resolvePlan keeps anonymous tenant home startup on the public surface when there is no deferred or pending invite override',
+    () async {
+      final authRepository = _FakeAuthRepository();
+      final resolver = AppStartupPlanResolver(
+        authRepository: authRepository,
+        invitesRepository: _FakeInvitesRepository(),
+        appDataRepository: _FakeAppDataRepository(_buildTenantAppData()),
+        deferredLinkRepository: null,
+        telemetryRepository: null,
+      );
 
-    final plan = await resolver.resolvePlan();
+      final plan = await resolver.resolvePlan();
 
-    expect(plan.hasOverride, isFalse);
-    expect(plan.path, isNull);
-    expect(plan.routes, isEmpty);
-    expect(plan.toDeepLink(), isNull);
-    expect(authRepository.initCallCount, 1);
-  });
+      expect(plan.hasOverride, isFalse);
+      expect(plan.path, isNull);
+      expect(plan.routes, isEmpty);
+      expect(plan.toDeepLink(), isNull);
+      expect(authRepository.initCallCount, 1);
+    },
+  );
+
+  test(
+    'resolvePlan records iOS deferred capture platform in telemetry',
+    () async {
+      final telemetry = _FakeTelemetryRepository();
+      final resolver = AppStartupPlanResolver(
+        authRepository: _FakeAuthRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        appDataRepository: _FakeAppDataRepository(_buildTenantAppData()),
+        deferredLinkRepository: _FakeDeferredLinkRepository(
+          DeferredLinkCaptureResult(
+            status: DeferredLinkCaptureStatus.captured,
+            platformValue: deferredLinkPlatform('ios'),
+            targetPathValue: DeferredLinkTargetPathValue(
+              defaultValue: '/profile',
+            ),
+            storeChannelValue: DeferredLinkStoreChannelValue(
+              defaultValue: 'web_gate',
+            ),
+          ),
+        ),
+        telemetryRepository: telemetry,
+      );
+
+      final plan = await resolver.resolvePlan();
+
+      expect(plan.path, '/profile');
+      expect(telemetry.loggedEvents, hasLength(1));
+      expect(
+        telemetry.loggedEvents.single.eventName,
+        'app_deferred_deep_link_captured',
+      );
+      expect(telemetry.loggedEvents.single.properties?['platform'], 'ios');
+      expect(
+        telemetry.loggedEvents.single.properties?['store_channel'],
+        'web_gate',
+      );
+    },
+  );
+
+  test(
+    'resolvePlan ignores deferred capture exceptions and keeps tenant startup on the public surface',
+    () async {
+      final authRepository = _FakeAuthRepository();
+      final resolver = AppStartupPlanResolver(
+        authRepository: authRepository,
+        invitesRepository: _FakeInvitesRepository(),
+        appDataRepository: _FakeAppDataRepository(_buildTenantAppData()),
+        deferredLinkRepository: const _ThrowingDeferredLinkRepository(),
+        telemetryRepository: null,
+      );
+
+      final plan = await resolver.resolvePlan();
+
+      expect(plan.hasOverride, isFalse);
+      expect(plan.path, isNull);
+      expect(plan.routes, isEmpty);
+      expect(plan.toDeepLink(), isNull);
+      expect(authRepository.initCallCount, 1);
+    },
+  );
+
+  test(
+    'resolvePlan ignores startup telemetry failures after deferred capture',
+    () async {
+      final resolver = AppStartupPlanResolver(
+        authRepository: _FakeAuthRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        appDataRepository: _FakeAppDataRepository(_buildTenantAppData()),
+        deferredLinkRepository: _FakeDeferredLinkRepository(
+          DeferredLinkCaptureResult(
+            status: DeferredLinkCaptureStatus.captured,
+            platformValue: deferredLinkPlatform('ios'),
+            targetPathValue: DeferredLinkTargetPathValue(
+              defaultValue: '/profile',
+            ),
+            storeChannelValue: DeferredLinkStoreChannelValue(
+              defaultValue: 'web_gate',
+            ),
+          ),
+        ),
+        telemetryRepository: _ThrowingTelemetryRepository(),
+      );
+
+      final plan = await resolver.resolvePlan();
+
+      expect(plan.path, '/profile');
+      expect(plan.hasOverride, isTrue);
+    },
+  );
 }
 
 class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
@@ -136,9 +232,9 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
 
   final AppData _appData;
   final _themeMode = StreamValue<ThemeMode?>(defaultValue: ThemeMode.light);
-  final _maxRadius =
-      StreamValue<DistanceInMetersValue>(defaultValue: DistanceInMetersValue()
-        ..set(50000));
+  final _maxRadius = StreamValue<DistanceInMetersValue>(
+    defaultValue: DistanceInMetersValue()..set(50000),
+  );
 
   @override
   AppData get appData => _appData;
@@ -165,6 +261,139 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
   @override
   Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {
     _maxRadius.addValue(meters);
+  }
+}
+
+class _LoggedTelemetryEvent {
+  const _LoggedTelemetryEvent({
+    required this.event,
+    required this.eventName,
+    required this.properties,
+  });
+
+  final EventTrackerEvents event;
+  final String? eventName;
+  final Map<String, dynamic>? properties;
+}
+
+class _FakeTelemetryRepository extends TelemetryRepositoryContract {
+  final loggedEvents = <_LoggedTelemetryEvent>[];
+
+  @override
+  Future<TelemetryRepositoryContractPrimBool> logEvent(
+    EventTrackerEvents event, {
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
+  }) async {
+    loggedEvents.add(
+      _LoggedTelemetryEvent(
+        event: event,
+        eventName: eventName?.value,
+        properties: properties == null
+            ? null
+            : TelemetryPropertiesCodec.toRawMap(properties),
+      ),
+    );
+    return telemetryRepoBool(true, defaultValue: true, isRequired: true);
+  }
+
+  @override
+  Future<EventTrackerTimedEventHandle?> startTimedEvent(
+    EventTrackerEvents event, {
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
+  }) async {
+    return null;
+  }
+
+  @override
+  Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
+    EventTrackerTimedEventHandle handle,
+  ) async {
+    return telemetryRepoBool(true, defaultValue: true, isRequired: true);
+  }
+
+  @override
+  Future<TelemetryRepositoryContractPrimBool> flushTimedEvents() async {
+    return telemetryRepoBool(true, defaultValue: true, isRequired: true);
+  }
+
+  @override
+  void setScreenContext(TelemetryRepositoryContractPrimMap? screenContext) {}
+
+  @override
+  EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
+
+  @override
+  Future<TelemetryRepositoryContractPrimBool> mergeIdentity({
+    required TelemetryRepositoryContractPrimString previousUserId,
+  }) async {
+    return telemetryRepoBool(true, defaultValue: true, isRequired: true);
+  }
+}
+
+class _ThrowingTelemetryRepository extends TelemetryRepositoryContract {
+  @override
+  Future<TelemetryRepositoryContractPrimBool> logEvent(
+    EventTrackerEvents event, {
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
+  }) async {
+    throw StateError('startup telemetry failed');
+  }
+
+  @override
+  Future<EventTrackerTimedEventHandle?> startTimedEvent(
+    EventTrackerEvents event, {
+    TelemetryRepositoryContractPrimString? eventName,
+    TelemetryRepositoryContractPrimMap? properties,
+  }) async {
+    return null;
+  }
+
+  @override
+  Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
+    EventTrackerTimedEventHandle handle,
+  ) async {
+    return telemetryRepoBool(true, defaultValue: true, isRequired: true);
+  }
+
+  @override
+  Future<TelemetryRepositoryContractPrimBool> flushTimedEvents() async {
+    return telemetryRepoBool(true, defaultValue: true, isRequired: true);
+  }
+
+  @override
+  void setScreenContext(TelemetryRepositoryContractPrimMap? screenContext) {}
+
+  @override
+  EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
+
+  @override
+  Future<TelemetryRepositoryContractPrimBool> mergeIdentity({
+    required TelemetryRepositoryContractPrimString previousUserId,
+  }) async {
+    return telemetryRepoBool(true, defaultValue: true, isRequired: true);
+  }
+}
+
+class _FakeDeferredLinkRepository implements DeferredLinkRepositoryContract {
+  const _FakeDeferredLinkRepository(this.result);
+
+  final DeferredLinkCaptureResult result;
+
+  @override
+  Future<DeferredLinkCaptureResult> captureFirstOpenInviteCode() async =>
+      result;
+}
+
+class _ThrowingDeferredLinkRepository
+    implements DeferredLinkRepositoryContract {
+  const _ThrowingDeferredLinkRepository();
+
+  @override
+  Future<DeferredLinkCaptureResult> captureFirstOpenInviteCode() async {
+    throw StateError('deferred link storage failed');
   }
 }
 

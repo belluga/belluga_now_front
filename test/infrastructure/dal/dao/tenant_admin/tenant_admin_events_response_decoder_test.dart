@@ -38,108 +38,118 @@ void main() {
   });
 
   test(
-      'decodeAccountProfileCandidates skips malformed rows and keeps valid candidates',
-      () {
-    final candidates = decoder.decodeAccountProfileCandidates({
-      'data': [
-        {
-          'id': 'artist-1',
-          'account_id': 'account-1',
-          'profile_type': 'artist',
-          'display_name': 'Valid Artist',
-          'slug': 'valid-artist',
-          'avatar_url': 'https://tenant.test/artist-avatar.png',
-          'cover_url': 'https://tenant.test/artist-cover.png',
-        },
-        {
-          'id': 'artist-broken',
-          'account_id': 'account-broken',
-          'profile_type': 'artist',
-          'display_name': 'Broken Artist',
-          'avatar_url': {
-            'relative_path': '/api/v1/media/account-profiles/artist-broken/avatar',
-          },
-        },
-      ],
-    });
-
-    expect(candidates, hasLength(1));
-    expect(candidates.single.id, 'artist-1');
-    expect(candidates.single.displayName, 'Valid Artist');
-    expect(candidates.single.avatarUrl, 'https://tenant.test/artist-avatar.png');
-    expect(candidates.single.coverUrl, 'https://tenant.test/artist-cover.png');
-  });
-
-  test('prefers related account profile ids from event_parties when available',
-      () {
-    final event = decoder.decodeEventItem({
-      'data': {
-        'event_id': 'evt-1',
-        'slug': 'evento',
-        'title': 'Evento',
-        'content': 'Conteudo',
-        'type': {
-          'id': 'type-1',
-          'name': 'Show',
-          'slug': 'show',
-          'description': '',
-        },
-        'venue': {
-          'id': 'venue-1',
-          'display_name': 'Casa Solar',
-          'profile_type': 'venue',
-        },
-        'date_time_start': '2026-04-05T20:00:00+00:00',
-        'publication': {'status': 'draft'},
-        'event_parties': [
-          {
-            'party_type': 'artist',
-            'party_ref_id': 'artist-1',
-            'permissions': {'can_edit': true},
-          },
-          {
-            'party_type': 'producer',
-            'party_ref_id': 'producer-1',
-            'permissions': {'can_edit': false},
-          },
-        ],
-        'linked_account_profiles': [
+    'decodeAccountProfileCandidates skips malformed rows and keeps valid candidates',
+    () {
+      final candidates = decoder.decodeAccountProfileCandidates({
+        'data': [
           {
             'id': 'artist-1',
-            'account_id': 'artist-1',
-            'display_name': 'DJ One',
+            'account_id': 'account-1',
             'profile_type': 'artist',
+            'display_name': 'Valid Artist',
+            'slug': 'valid-artist',
+            'avatar_url': 'https://tenant.test/artist-avatar.png',
+            'cover_url': 'https://tenant.test/artist-cover.png',
           },
           {
-            'id': 'producer-1',
-            'account_id': 'producer-1',
-            'display_name': 'Producer One',
-            'profile_type': 'producer',
+            'id': 'artist-broken',
+            'account_id': 'account-broken',
+            'profile_type': 'artist',
+            'display_name': 'Broken Artist',
+            'avatar_url': {
+              'relative_path':
+                  '/api/v1/media/account-profiles/artist-broken/avatar',
+            },
           },
         ],
-      },
-    });
+      });
 
-    expect(
-      event.relatedAccountProfileIds
-          .map((entry) => entry.value)
-          .toList(growable: false),
-      ['artist-1', 'producer-1'],
-    );
-    expect(
-      event.eventParties
-          .map((entry) => entry.partyRefId)
-          .toList(growable: false),
-      ['artist-1', 'producer-1'],
-    );
-    expect(
-      event.relatedAccountProfiles
-          .map((entry) => entry.displayName)
-          .toList(growable: false),
-      ['DJ One', 'Producer One'],
-    );
-    expect(event.venueDisplayName, 'Casa Solar');
-  });
+      expect(candidates, hasLength(1));
+      expect(candidates.single.id, 'artist-1');
+      expect(candidates.single.displayName, 'Valid Artist');
+      expect(
+        candidates.single.avatarUrl,
+        'https://tenant.test/artist-avatar.png',
+      );
+      expect(
+        candidates.single.coverUrl,
+        'https://tenant.test/artist-cover.png',
+      );
+    },
+  );
+
+  test(
+    'prefers related account profile ids from event_parties when available',
+    () {
+      final event = decoder.decodeEventItem({
+        'data': {
+          'event_id': 'evt-1',
+          'slug': 'evento',
+          'title': 'Evento',
+          'content': 'Conteudo',
+          'type': {
+            'id': 'type-1',
+            'name': 'Show',
+            'slug': 'show',
+            'description': '',
+          },
+          'venue': {
+            'id': 'venue-1',
+            'display_name': 'Casa Solar',
+            'profile_type': 'venue',
+          },
+          'date_time_start': '2026-04-05T20:00:00+00:00',
+          'publication': {'status': 'draft'},
+          'event_parties': [
+            {
+              'party_type': 'artist',
+              'party_ref_id': 'artist-1',
+              'permissions': {'can_edit': true},
+            },
+            {
+              'party_type': 'producer',
+              'party_ref_id': 'producer-1',
+              'permissions': {'can_edit': false},
+            },
+          ],
+          'linked_account_profiles': [
+            {
+              'id': 'artist-1',
+              'account_id': 'artist-1',
+              'display_name': 'DJ One',
+              'profile_type': 'artist',
+            },
+            {
+              'id': 'producer-1',
+              'account_id': 'producer-1',
+              'display_name': 'Producer One',
+              'profile_type': 'producer',
+            },
+          ],
+        },
+      });
+
+      expect(
+        event.relatedAccountProfileIds
+            .map((entry) => entry.value)
+            .toList(growable: false),
+        ['artist-1', 'producer-1'],
+      );
+      expect(
+        event.eventParties
+            .map((entry) => entry.partyRefId)
+            .toList(growable: false),
+        ['artist-1', 'producer-1'],
+      );
+      expect(
+        event.relatedAccountProfiles
+            .map((entry) => entry.displayName)
+            .toList(growable: false),
+        ['DJ One', 'Producer One'],
+      );
+      expect(event.venueDisplayName, 'Casa Solar');
+    },
+  );
 
   test('filters venue from admin related account profile payloads', () {
     final event = decoder.decodeEventItem({
@@ -206,63 +216,131 @@ void main() {
     );
   });
 
-  test('preserves taxonomy display snapshots on event and related profiles',
-      () {
-    final event = decoder.decodeEventItem({
-      'data': {
-        'event_id': 'evt-taxonomy-snapshot',
-        'slug': 'evento-taxonomia',
-        'title': 'Evento com taxonomia',
-        'content': 'Conteudo',
-        'type': {
-          'id': 'type-1',
-          'name': 'Show',
-          'slug': 'show',
-          'description': '',
+  test(
+    'decodes programming location_profile without mixing it into participants',
+    () {
+      final event = decoder.decodeEventItem({
+        'data': {
+          'event_id': 'evt-programming-location-profile',
+          'slug': 'evento-programming-location-profile',
+          'title': 'Evento',
+          'content': 'Conteudo',
+          'type': {
+            'id': 'type-1',
+            'name': 'Show',
+            'slug': 'show',
+            'description': '',
+          },
+          'date_time_start': '2026-04-05T20:00:00+00:00',
+          'publication': {'status': 'draft'},
+          'occurrences': [
+            {
+              'date_time_start': '2026-04-05T20:00:00+00:00',
+              'programming_items': [
+                {
+                  'time': '19:00',
+                  'title': 'Abertura',
+                  'account_profile_ids': ['artist-1'],
+                  'linked_account_profiles': [
+                    {
+                      'id': 'artist-1',
+                      'account_id': 'artist-1',
+                      'display_name': 'Artist One',
+                      'profile_type': 'artist',
+                    },
+                  ],
+                  'place_ref': {
+                    'type': 'account_profile',
+                    'id': 'venue-jazz-1',
+                  },
+                  'location_profile': {
+                    'id': 'venue-jazz-1',
+                    'account_id': 'venue-jazz-1',
+                    'display_name': 'Casa do Jazz',
+                    'profile_type': 'venue',
+                    'location': {
+                      'type': 'Point',
+                      'coordinates': [-40.498917, -20.612121],
+                    },
+                  },
+                },
+              ],
+            },
+          ],
         },
-        'date_time_start': '2026-04-05T20:00:00+00:00',
-        'publication': {'status': 'draft'},
-        'taxonomy_terms': [
-          {
-            'type': 'genre',
-            'value': 'samba',
-            'name': 'Samba',
-            'taxonomy_name': 'Genero musical',
-            'label': 'Legacy Samba',
-          },
-        ],
-        'linked_account_profiles': [
-          {
-            'id': 'artist-1',
-            'account_id': 'artist-1',
-            'display_name': 'DJ One',
-            'profile_type': 'artist',
-            'taxonomy_terms': [
-              {
-                'type': 'genre',
-                'value': 'rock',
-                'name': 'Rock',
-                'taxonomy_name': 'Genero musical',
-                'label': 'Legacy Rock',
-              },
-            ],
-          },
-        ],
-      },
-    });
+      });
 
-    final eventTerm = event.taxonomyTerms.first;
-    final profileTerm = event.relatedAccountProfiles.first.taxonomyTerms.first;
+      final item = event.occurrences.single.programmingItems.single;
+      expect(item.accountProfileIds.map((entry) => entry.value), ['artist-1']);
+      expect(item.linkedAccountProfiles.map((entry) => entry.profileType), [
+        'artist',
+      ]);
+      expect(item.placeRef?.id, 'venue-jazz-1');
+      expect(item.locationProfile?.id, 'venue-jazz-1');
+      expect(item.locationProfile?.displayName, 'Casa do Jazz');
+    },
+  );
 
-    expect(eventTerm.type, 'genre');
-    expect(eventTerm.value, 'samba');
-    expect(eventTerm.name, 'Samba');
-    expect(eventTerm.taxonomyName, 'Genero musical');
-    expect(eventTerm.label, 'Legacy Samba');
-    expect(eventTerm.displayLabel, 'Samba');
-    expect(profileTerm.value, 'rock');
-    expect(profileTerm.displayLabel, 'Rock');
-  });
+  test(
+    'preserves taxonomy display snapshots on event and related profiles',
+    () {
+      final event = decoder.decodeEventItem({
+        'data': {
+          'event_id': 'evt-taxonomy-snapshot',
+          'slug': 'evento-taxonomia',
+          'title': 'Evento com taxonomia',
+          'content': 'Conteudo',
+          'type': {
+            'id': 'type-1',
+            'name': 'Show',
+            'slug': 'show',
+            'description': '',
+          },
+          'date_time_start': '2026-04-05T20:00:00+00:00',
+          'publication': {'status': 'draft'},
+          'taxonomy_terms': [
+            {
+              'type': 'genre',
+              'value': 'samba',
+              'name': 'Samba',
+              'taxonomy_name': 'Genero musical',
+              'label': 'Legacy Samba',
+            },
+          ],
+          'linked_account_profiles': [
+            {
+              'id': 'artist-1',
+              'account_id': 'artist-1',
+              'display_name': 'DJ One',
+              'profile_type': 'artist',
+              'taxonomy_terms': [
+                {
+                  'type': 'genre',
+                  'value': 'rock',
+                  'name': 'Rock',
+                  'taxonomy_name': 'Genero musical',
+                  'label': 'Legacy Rock',
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+      final eventTerm = event.taxonomyTerms.first;
+      final profileTerm =
+          event.relatedAccountProfiles.first.taxonomyTerms.first;
+
+      expect(eventTerm.type, 'genre');
+      expect(eventTerm.value, 'samba');
+      expect(eventTerm.name, 'Samba');
+      expect(eventTerm.taxonomyName, 'Genero musical');
+      expect(eventTerm.label, 'Legacy Samba');
+      expect(eventTerm.displayLabel, 'Samba');
+      expect(profileTerm.value, 'rock');
+      expect(profileTerm.displayLabel, 'Rock');
+    },
+  );
 
   test('does not synthesize related profiles from legacy artists payload', () {
     final event = decoder.decodeEventItem({
@@ -320,11 +398,7 @@ void main() {
         'slug': 'evento-legado',
         'title': 'Evento legado',
         'content': 'Conteudo',
-        'type': {
-          'id': 'type-1',
-          'name': 'Show',
-          'slug': 'show',
-        },
+        'type': {'id': 'type-1', 'name': 'Show', 'slug': 'show'},
         'place_ref': {
           'type': 'account_profile',
           '_id': '507f1f77bcf86cd799439011',
@@ -332,9 +406,7 @@ void main() {
         'date_time_start': '2026-04-05T20:00:00+00:00',
         'publication': {'status': 'draft'},
         'occurrences': [
-          {
-            'date_time_start': '2026-04-05T20:00:00+00:00',
-          },
+          {'date_time_start': '2026-04-05T20:00:00+00:00'},
         ],
       },
     });
@@ -344,40 +416,34 @@ void main() {
     expect(event.placeRef!.id, '507f1f77bcf86cd799439011');
   });
 
-  test('rejects structured title payload instead of stringifying object values',
-      () {
-    expect(
-      () => decoder.decodeEventItem({
-        'data': {
-          'event_id': 'evt-bad-title',
-          'slug': 'evento-legado',
-          'title': {
-            'raw': 'Evento legado',
+  test(
+    'rejects structured title payload instead of stringifying object values',
+    () {
+      expect(
+        () => decoder.decodeEventItem({
+          'data': {
+            'event_id': 'evt-bad-title',
+            'slug': 'evento-legado',
+            'title': {'raw': 'Evento legado'},
+            'content': 'Conteudo',
+            'type': {'id': 'type-1', 'name': 'Show', 'slug': 'show'},
+            'date_time_start': '2026-04-05T20:00:00+00:00',
+            'publication': {'status': 'draft'},
+            'occurrences': [
+              {'date_time_start': '2026-04-05T20:00:00+00:00'},
+            ],
           },
-          'content': 'Conteudo',
-          'type': {
-            'id': 'type-1',
-            'name': 'Show',
-            'slug': 'show',
-          },
-          'date_time_start': '2026-04-05T20:00:00+00:00',
-          'publication': {'status': 'draft'},
-          'occurrences': [
-            {
-              'date_time_start': '2026-04-05T20:00:00+00:00',
-            },
-          ],
-        },
-      }),
-      throwsA(
-        isA<FormatException>().having(
-          (error) => error.message,
-          'message',
-          contains('Invalid scalar text value'),
+        }),
+        throwsA(
+          isA<FormatException>().having(
+            (error) => error.message,
+            'message',
+            contains('Invalid scalar text value'),
+          ),
         ),
-      ),
-    );
-  });
+      );
+    },
+  );
 
   test('accepts wrapped legacy date leaves inside nested dto payloads', () {
     final event = decoder.decodeEventItem({
@@ -386,16 +452,10 @@ void main() {
         'slug': 'evento-legado-datas',
         'title': 'Evento legado datas',
         'content': 'Conteudo',
-        'type': {
-          'id': 'type-1',
-          'name': 'Show',
-          'slug': 'show',
-        },
+        'type': {'id': 'type-1', 'name': 'Show', 'slug': 'show'},
         'thumb': {
           'type': 'image',
-          'data': {
-            'url': 'https://cdn.example.com/thumb.png',
-          },
+          'data': {'url': 'https://cdn.example.com/thumb.png'},
         },
         'date_time_start': {r'$date': '2026-04-05T20:00:00Z'},
         'date_time_end': {r'$date': '2026-04-05T22:00:00Z'},
@@ -428,11 +488,7 @@ void main() {
         'slug': 'evento-occurrence-owned',
         'title': 'Evento occurrence owned',
         'content': 'Conteudo',
-        'type': {
-          'id': 'type-1',
-          'name': 'Show',
-          'slug': 'show',
-        },
+        'type': {'id': 'type-1', 'name': 'Show', 'slug': 'show'},
         'date_time_start': '2026-04-05T20:00:00+00:00',
         'publication': {'status': 'draft'},
         'occurrences': [
@@ -448,11 +504,7 @@ void main() {
               },
             ],
             'own_taxonomy_terms': [
-              {
-                'type': 'sport',
-                'value': 'football',
-                'name': 'Futebol',
-              },
+              {'type': 'sport', 'value': 'football', 'name': 'Futebol'},
             ],
             'location_override': {
               'location': {
@@ -469,10 +521,7 @@ void main() {
                 'end_time': '18:30',
                 'title': 'Abertura',
                 'account_profile_ids': ['artist-1'],
-                'place_ref': {
-                  'type': 'account_profile',
-                  'id': 'venue-1',
-                },
+                'place_ref': {'type': 'account_profile', 'id': 'venue-1'},
                 'linked_account_profiles': [
                   {
                     'id': 'artist-1',
@@ -506,182 +555,179 @@ void main() {
     expect(occurrence.programmingItems.first.placeRef?.id, 'venue-1');
   });
 
-  test('excludes venue profile ids when occurrence own parties are missing',
-      () {
-    final event = decoder.decodeEventItem({
-      'data': {
-        'event_id': 'evt-occurrence-legacy-linked',
-        'slug': 'evento-occurrence-legacy-linked',
-        'title': 'Evento occurrence legacy linked',
-        'content': 'Conteudo',
-        'type': {
-          'id': 'type-1',
-          'name': 'Show',
-          'slug': 'show',
+  test(
+    'excludes venue profile ids when occurrence own parties are missing',
+    () {
+      final event = decoder.decodeEventItem({
+        'data': {
+          'event_id': 'evt-occurrence-legacy-linked',
+          'slug': 'evento-occurrence-legacy-linked',
+          'title': 'Evento occurrence legacy linked',
+          'content': 'Conteudo',
+          'type': {'id': 'type-1', 'name': 'Show', 'slug': 'show'},
+          'date_time_start': '2026-04-05T20:00:00+00:00',
+          'publication': {'status': 'draft'},
+          'occurrences': [
+            {
+              'occurrence_id': 'occ-1',
+              'date_time_start': '2026-04-05T20:00:00+00:00',
+              'own_linked_account_profiles': [
+                {
+                  'id': 'venue-1',
+                  'account_id': 'venue-1',
+                  'display_name': 'Casa Solar',
+                  'profile_type': 'venue',
+                },
+                {
+                  'id': 'artist-1',
+                  'account_id': 'artist-1',
+                  'display_name': 'Coral XYZ',
+                  'profile_type': 'artist',
+                },
+              ],
+            },
+          ],
         },
-        'date_time_start': '2026-04-05T20:00:00+00:00',
-        'publication': {'status': 'draft'},
-        'occurrences': [
-          {
-            'occurrence_id': 'occ-1',
-            'date_time_start': '2026-04-05T20:00:00+00:00',
-            'own_linked_account_profiles': [
-              {
-                'id': 'venue-1',
-                'account_id': 'venue-1',
-                'display_name': 'Casa Solar',
-                'profile_type': 'venue',
-              },
-              {
-                'id': 'artist-1',
-                'account_id': 'artist-1',
-                'display_name': 'Coral XYZ',
-                'profile_type': 'artist',
-              },
-            ],
-          },
-        ],
-      },
-    });
+      });
 
-    expect(
-      event.occurrences.single.relatedAccountProfileIds
-          .map((value) => value.value),
-      ['artist-1'],
-    );
-    expect(
-      event.occurrences.single.relatedAccountProfiles
-          .map((profile) => profile.id),
-      ['artist-1'],
-    );
-  });
+      expect(
+        event.occurrences.single.relatedAccountProfileIds.map(
+          (value) => value.value,
+        ),
+        ['artist-1'],
+      );
+      expect(
+        event.occurrences.single.relatedAccountProfiles.map(
+          (profile) => profile.id,
+        ),
+        ['artist-1'],
+      );
+    },
+  );
 
   test(
-      'prefers visible profile_groups members over stale event_parties counts in admin event readback',
-      () {
-    final event = decoder.decodeEventItem({
-      'data': {
-        'event_id': 'evt-stale-group-readback',
-        'slug': 'evento-stale-group-readback',
-        'title': 'Evento stale group readback',
-        'content': 'Conteudo',
-        'type': {
-          'id': 'type-1',
-          'name': 'Show',
-          'slug': 'show',
+    'prefers visible profile_groups members over stale event_parties counts in admin event readback',
+    () {
+      final event = decoder.decodeEventItem({
+        'data': {
+          'event_id': 'evt-stale-group-readback',
+          'slug': 'evento-stale-group-readback',
+          'title': 'Evento stale group readback',
+          'content': 'Conteudo',
+          'type': {'id': 'type-1', 'name': 'Show', 'slug': 'show'},
+          'date_time_start': '2026-04-05T20:00:00+00:00',
+          'publication': {'status': 'draft'},
+          'event_parties': [
+            {
+              'party_type': 'artist',
+              'party_ref_id': 'artist-1',
+              'permissions': {'can_edit': true},
+            },
+            {
+              'party_type': 'delegate',
+              'party_ref_id': 'delegate-1',
+              'permissions': {'can_edit': false},
+            },
+            {
+              'party_type': 'hidden_guest',
+              'party_ref_id': 'hidden-1',
+              'permissions': {'can_edit': false},
+            },
+          ],
+          'linked_account_profiles': [
+            {
+              'id': 'artist-1',
+              'account_id': 'artist-1',
+              'display_name': 'Artist One',
+              'profile_type': 'artist',
+            },
+            {
+              'id': 'delegate-1',
+              'account_id': 'delegate-1',
+              'display_name': 'Delegate One',
+              'profile_type': 'delegate',
+            },
+          ],
+          'profile_groups': [
+            {
+              'id': 'outro-grupo',
+              'label': 'Outro Grupo',
+              'order': 0,
+              'account_profile_ids': ['artist-1', 'delegate-1', 'hidden-1'],
+            },
+          ],
+          'occurrences': [
+            {
+              'occurrence_id': 'occ-1',
+              'date_time_start': '2026-04-05T20:00:00+00:00',
+              'own_event_parties': [
+                {
+                  'party_type': 'artist',
+                  'party_ref_id': 'artist-1',
+                  'permissions': {'can_edit': true},
+                },
+                {
+                  'party_type': 'delegate',
+                  'party_ref_id': 'delegate-1',
+                  'permissions': {'can_edit': false},
+                },
+                {
+                  'party_type': 'hidden_guest',
+                  'party_ref_id': 'hidden-1',
+                  'permissions': {'can_edit': false},
+                },
+              ],
+              'own_linked_account_profiles': [
+                {
+                  'id': 'artist-1',
+                  'account_id': 'artist-1',
+                  'display_name': 'Artist One',
+                  'profile_type': 'artist',
+                },
+                {
+                  'id': 'delegate-1',
+                  'account_id': 'delegate-1',
+                  'display_name': 'Delegate One',
+                  'profile_type': 'delegate',
+                },
+              ],
+              'profile_groups': [
+                {
+                  'id': 'outro-grupo',
+                  'label': 'Outro Grupo',
+                  'order': 0,
+                  'account_profile_ids': ['artist-1', 'delegate-1', 'hidden-1'],
+                },
+              ],
+            },
+          ],
         },
-        'date_time_start': '2026-04-05T20:00:00+00:00',
-        'publication': {'status': 'draft'},
-        'event_parties': [
-          {
-            'party_type': 'artist',
-            'party_ref_id': 'artist-1',
-            'permissions': {'can_edit': true},
-          },
-          {
-            'party_type': 'delegate',
-            'party_ref_id': 'delegate-1',
-            'permissions': {'can_edit': false},
-          },
-          {
-            'party_type': 'hidden_guest',
-            'party_ref_id': 'hidden-1',
-            'permissions': {'can_edit': false},
-          },
-        ],
-        'linked_account_profiles': [
-          {
-            'id': 'artist-1',
-            'account_id': 'artist-1',
-            'display_name': 'Artist One',
-            'profile_type': 'artist',
-          },
-          {
-            'id': 'delegate-1',
-            'account_id': 'delegate-1',
-            'display_name': 'Delegate One',
-            'profile_type': 'delegate',
-          },
-        ],
-        'profile_groups': [
-          {
-            'id': 'outro-grupo',
-            'label': 'Outro Grupo',
-            'order': 0,
-            'account_profile_ids': ['artist-1', 'delegate-1', 'hidden-1'],
-          },
-        ],
-        'occurrences': [
-          {
-            'occurrence_id': 'occ-1',
-            'date_time_start': '2026-04-05T20:00:00+00:00',
-            'own_event_parties': [
-              {
-                'party_type': 'artist',
-                'party_ref_id': 'artist-1',
-                'permissions': {'can_edit': true},
-              },
-              {
-                'party_type': 'delegate',
-                'party_ref_id': 'delegate-1',
-                'permissions': {'can_edit': false},
-              },
-              {
-                'party_type': 'hidden_guest',
-                'party_ref_id': 'hidden-1',
-                'permissions': {'can_edit': false},
-              },
-            ],
-            'own_linked_account_profiles': [
-              {
-                'id': 'artist-1',
-                'account_id': 'artist-1',
-                'display_name': 'Artist One',
-                'profile_type': 'artist',
-              },
-              {
-                'id': 'delegate-1',
-                'account_id': 'delegate-1',
-                'display_name': 'Delegate One',
-                'profile_type': 'delegate',
-              },
-            ],
-            'profile_groups': [
-              {
-                'id': 'outro-grupo',
-                'label': 'Outro Grupo',
-                'order': 0,
-                'account_profile_ids': ['artist-1', 'delegate-1', 'hidden-1'],
-              },
-            ],
-          },
-        ],
-      },
-    });
+      });
 
-    expect(
-      event.profileGroups.single.accountProfileIdValues
-          .map((value) => value.value)
-          .toList(growable: false),
-      ['artist-1', 'delegate-1'],
-    );
-    expect(
-      event.relatedAccountProfileIds.map((value) => value.value).toList(
-            growable: false,
-          ),
-      ['artist-1', 'delegate-1'],
-    );
-    expect(
-      event.occurrences.single.profileGroups.single.accountProfileIdValues
-          .map((value) => value.value)
-          .toList(growable: false),
-      ['artist-1', 'delegate-1'],
-    );
-    expect(
-      event.occurrences.single.relatedAccountProfileIds
-          .map((value) => value.value)
-          .toList(growable: false),
-      ['artist-1', 'delegate-1'],
-    );
-  });
+      expect(
+        event.profileGroups.single.accountProfileIdValues
+            .map((value) => value.value)
+            .toList(growable: false),
+        ['artist-1', 'delegate-1'],
+      );
+      expect(
+        event.relatedAccountProfileIds
+            .map((value) => value.value)
+            .toList(growable: false),
+        ['artist-1', 'delegate-1'],
+      );
+      expect(
+        event.occurrences.single.profileGroups.single.accountProfileIdValues
+            .map((value) => value.value)
+            .toList(growable: false),
+        ['artist-1', 'delegate-1'],
+      );
+      expect(
+        event.occurrences.single.relatedAccountProfileIds
+            .map((value) => value.value)
+            .toList(growable: false),
+        ['artist-1', 'delegate-1'],
+      );
+    },
+  );
 }

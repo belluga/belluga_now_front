@@ -4,17 +4,27 @@ import 'package:flutter/services.dart';
 
 class MethodChannelDeferredLinkNativeSource
     implements DeferredLinkNativeSourceContract {
-  MethodChannelDeferredLinkNativeSource({
-    required MethodChannel channel,
-  }) : _channel = channel;
+  MethodChannelDeferredLinkNativeSource({required MethodChannel channel})
+    : _channel = channel;
 
   final MethodChannel _channel;
 
   @override
-  Future<DeferredLinkNativePayload?> readInstallReferrerPayload() async {
+  Future<DeferredLinkNativePayload?> readDeferredPayload({
+    required String platform,
+  }) async {
+    final methodName = switch (platform) {
+      'android' => 'getInstallReferrer',
+      'ios' => 'getDeferredLinkPasteboardPayload',
+      _ => null,
+    };
+    if (methodName == null) {
+      return null;
+    }
+
     DeferredLinkNativePayload? payload;
     try {
-      final raw = await _channel.invokeMethod<Object?>('getInstallReferrer');
+      final raw = await _channel.invokeMethod<Object?>(methodName);
       payload = _normalizePayload(raw);
     } on PlatformException {
       payload = null;
@@ -29,37 +39,40 @@ class MethodChannelDeferredLinkNativeSource
       return null;
     }
 
-    final installReferrer = _normalizeText(
-      raw['install_referrer'] ?? raw['referrer'],
+    final resolverPayload = _normalizeText(
+      raw['resolver_payload'] ??
+          raw['payload'] ??
+          raw['install_referrer'] ??
+          raw['referrer'],
     );
-    final storeChannel = _resolveStoreChannel(raw, installReferrer);
-    if (installReferrer == null && storeChannel == null) {
+    final storeChannel = _resolveStoreChannel(raw, resolverPayload);
+    if (resolverPayload == null && storeChannel == null) {
       return null;
     }
     return DeferredLinkNativePayload(
-      installReferrer: installReferrer,
+      resolverPayload: resolverPayload,
       storeChannel: storeChannel,
     );
   }
 
   String? _resolveStoreChannel(
     Map<Object?, Object?> rawPayload,
-    String? installReferrer,
+    String? resolverPayload,
   ) {
     final directChannel = _normalizeText(rawPayload['store_channel']);
     if (directChannel != null) {
       return directChannel;
     }
-    if (installReferrer == null) {
+    if (resolverPayload == null) {
       return null;
     }
 
-    final normalizedReferrer = installReferrer.startsWith('?')
-        ? installReferrer.substring(1)
-        : installReferrer;
+    final normalizedPayload = resolverPayload.startsWith('?')
+        ? resolverPayload.substring(1)
+        : resolverPayload;
     String? resolvedChannel;
     try {
-      final query = Uri.splitQueryString(normalizedReferrer);
+      final query = Uri.splitQueryString(normalizedPayload);
       resolvedChannel = _normalizeText(
         query['store_channel'] ?? query['utm_source'] ?? query['channel'],
       );

@@ -3,8 +3,9 @@ export 'push_option_selector_payload.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_bool_value.dart';
 import 'package:belluga_now/infrastructure/services/push/push_option_selector_payload.dart';
+import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:get_it/get_it.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:push_handler/push_handler.dart';
 
 class PushActionDispatcher {
@@ -13,22 +14,35 @@ class PushActionDispatcher {
     Future<List<OptionItem>> Function(OptionSource source)? optionsBuilder,
     Future<void> Function(AnswerPayload answer, StepData step)? onStepSubmit,
     Future<List<dynamic>?> Function(PushOptionSelectorPayload payload)?
-        onOpenSelector,
+    onOpenSelector,
     void Function(String message)? onShowToast,
-  })  : _userLocationRepository = userLocationRepository ??
-            GetIt.I.get<UserLocationRepositoryContract>(),
-        _optionsBuilder = optionsBuilder,
-        _onStepSubmit = onStepSubmit,
-        _onOpenSelector = onOpenSelector,
-        _onShowToast = onShowToast;
+    Future<PermissionStatus> Function()? contactsPermissionRequester,
+    Future<void> Function()? contactsSettingsOpener,
+    Future<LocationPermission> Function()? locationPermissionChecker,
+    Future<void> Function()? appSettingsOpener,
+  }) : _userLocationRepository =
+           userLocationRepository ??
+           GetIt.I.get<UserLocationRepositoryContract>(),
+       _optionsBuilder = optionsBuilder,
+       _onStepSubmit = onStepSubmit,
+       _onOpenSelector = onOpenSelector,
+       _onShowToast = onShowToast,
+       _contactsPermissionRequester = contactsPermissionRequester,
+       _contactsSettingsOpener = contactsSettingsOpener,
+       _locationPermissionChecker = locationPermissionChecker,
+       _appSettingsOpener = appSettingsOpener;
 
   final UserLocationRepositoryContract _userLocationRepository;
   final Future<List<OptionItem>> Function(OptionSource source)? _optionsBuilder;
   final Future<void> Function(AnswerPayload answer, StepData step)?
-      _onStepSubmit;
+  _onStepSubmit;
   final Future<List<dynamic>?> Function(PushOptionSelectorPayload payload)?
-      _onOpenSelector;
+  _onOpenSelector;
   final void Function(String message)? _onShowToast;
+  final Future<PermissionStatus> Function()? _contactsPermissionRequester;
+  final Future<void> Function()? _contactsSettingsOpener;
+  final Future<LocationPermission> Function()? _locationPermissionChecker;
+  final Future<void> Function()? _appSettingsOpener;
 
   Future<void> dispatch({
     required ButtonData button,
@@ -45,9 +59,9 @@ class PushActionDispatcher {
         await _userLocationRepository.resolveUserLocation(
           requestPermissionIfNeededValue:
               UserLocationRepositoryContractBoolValue.fromRaw(
-            true,
-            defaultValue: true,
-          ),
+                true,
+                defaultValue: true,
+              ),
         );
         await _handleLocationPermissionFeedback(step);
         return;
@@ -60,38 +74,67 @@ class PushActionDispatcher {
         await _openFavoritesSelector(step);
         return;
       case 'open_app_settings':
-        await openAppSettings();
+        await _openAppSettings();
         return;
       default:
-        _showToast(
-          'Ação indisponível. Atualize o app ou tente novamente.',
-        );
+        _showToast('Ação indisponível. Atualize o app ou tente novamente.');
         return;
     }
   }
 
   Future<void> _handleContactsPermission(StepData step) async {
-    final status = await Permission.contacts.request();
-    if (status.isGranted) {
+    final contactsPermissionRequester = _contactsPermissionRequester;
+    final status = contactsPermissionRequester != null
+        ? await contactsPermissionRequester()
+        : await FlutterContacts.permissions.request(PermissionType.read);
+    if (_isContactsPermissionGranted(status)) {
       return;
     }
-    if (status.isPermanentlyDenied) {
-      await openAppSettings();
+    if (status == PermissionStatus.permanentlyDenied ||
+        status == PermissionStatus.restricted) {
+      final contactsSettingsOpener = _contactsSettingsOpener;
+      if (contactsSettingsOpener != null) {
+        await contactsSettingsOpener();
+      } else {
+        await FlutterContacts.permissions.openSettings();
+      }
       return;
     }
     _showToast(step.gate?.onFailToast);
   }
 
   Future<void> _handleLocationPermissionFeedback(StepData step) async {
-    final status = await Permission.locationWhenInUse.status;
-    if (status.isGranted) {
+    final locationPermissionChecker = _locationPermissionChecker;
+    final status = locationPermissionChecker != null
+        ? await locationPermissionChecker()
+        : await Geolocator.checkPermission();
+    if (_isLocationPermissionGranted(status)) {
       return;
     }
-    if (status.isPermanentlyDenied) {
-      await openAppSettings();
+    if (status == LocationPermission.deniedForever) {
+      await _openAppSettings();
       return;
     }
     _showToast(step.gate?.onFailToast);
+  }
+
+  Future<void> _openAppSettings() async {
+    final appSettingsOpener = _appSettingsOpener;
+    if (appSettingsOpener != null) {
+      await appSettingsOpener();
+      return;
+    }
+    await Geolocator.openAppSettings();
+  }
+
+  static bool _isContactsPermissionGranted(PermissionStatus status) {
+    return status == PermissionStatus.granted ||
+        status == PermissionStatus.limited;
+  }
+
+  static bool _isLocationPermissionGranted(LocationPermission status) {
+    return status == LocationPermission.always ||
+        status == LocationPermission.whileInUse;
   }
 
   Future<void> _openFavoritesSelector(StepData step) async {
@@ -110,8 +153,9 @@ class PushActionDispatcher {
     }
 
     final selectionMode = config.selectionMode ?? 'single';
-    final maxSelected =
-        selectionMode == 'single' ? 1 : (config.maxSelected ?? 0);
+    final maxSelected = selectionMode == 'single'
+        ? 1
+        : (config.maxSelected ?? 0);
     final initialSelected = _selectedFromOptions(
       options,
       maxSelected: maxSelected,
