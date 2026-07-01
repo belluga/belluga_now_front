@@ -30,8 +30,10 @@ class DiscoveryLiveNowSection extends StatelessWidget {
     for (final event in items) {
       for (final counterpart in event.counterpartProfiles) {
         if (!uniqueCounterparts.containsKey(counterpart.id)) {
-          uniqueCounterparts[counterpart.id] =
-              _LiveCounterpartItem(counterpart, event);
+          uniqueCounterparts[counterpart.id] = _LiveCounterpartItem(
+            counterpart,
+            event,
+          );
         }
       }
     }
@@ -83,10 +85,10 @@ class _LiveNowHeader extends StatelessWidget {
       children: [
         Expanded(
           child: Text(
-            'Tocando agora',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+            'Rolando agora',
+            style: Theme.of(
+              context,
+            ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
         ),
         DecoratedBox(
@@ -98,19 +100,15 @@ class _LiveNowHeader extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             child: Row(
               children: [
-                Icon(
-                  Icons.circle,
-                  size: 8,
-                  color: colorScheme.error,
-                ),
+                Icon(Icons.circle, size: 8, color: colorScheme.error),
                 const SizedBox(width: 6),
                 Text(
                   'AO VIVO',
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: colorScheme.primary,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.8,
-                      ),
+                    color: colorScheme.primary,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.8,
+                  ),
                 ),
               ],
             ),
@@ -122,10 +120,7 @@ class _LiveNowHeader extends StatelessWidget {
 }
 
 class _LiveArtistCard extends StatelessWidget {
-  const _LiveArtistCard({
-    required this.item,
-    required this.onTap,
-  });
+  const _LiveArtistCard({required this.item, required this.onTap});
 
   final _LiveCounterpartItem item;
   final VoidCallback onTap;
@@ -185,10 +180,10 @@ class _LiveArtistCard extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          height: 1.15,
-                        ),
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      height: 1.15,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Row(
@@ -204,12 +199,12 @@ class _LiveArtistCard extends StatelessWidget {
                           venueLabel,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style:
-                              Theme.of(context).textTheme.labelSmall?.copyWith(
-                                    color: Colors.white.withValues(alpha: 0.95),
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.5,
-                                  ),
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: Colors.white.withValues(alpha: 0.95),
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                              ),
                         ),
                       ),
                     ],

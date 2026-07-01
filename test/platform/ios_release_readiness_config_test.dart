@@ -61,10 +61,12 @@ void main() {
       final pubspec = File('pubspec.yaml').readAsStringSync();
       final pubspecLock = File('pubspec.lock').readAsStringSync();
       final plist = File('ios/Runner/Info.plist').readAsStringSync();
+      final workspace = File(
+        'ios/Runner.xcworkspace/contents.xcworkspacedata',
+      ).readAsStringSync();
       final entitlements = File(
         'ios/Runner/Runner.entitlements',
       ).readAsStringSync();
-      final podfile = File('ios/Podfile').readAsStringSync();
       final iosRegistrant = File(
         'ios/Runner/GeneratedPluginRegistrant.m',
       ).readAsStringSync();
@@ -80,6 +82,7 @@ void main() {
 
       expect(plist, contains('NSContactsUsageDescription'));
       expect(plist, contains('NSLocationWhenInUseUsageDescription'));
+      expect(plist, contains('NSLocationAlwaysAndWhenInUseUsageDescription'));
       expect(plist, contains('NSCameraUsageDescription'));
       expect(plist, contains('NSPhotoLibraryUsageDescription'));
 
@@ -117,14 +120,13 @@ void main() {
         isNot(contains('BELLUGA_IOS_APS_ENVIRONMENT = development')),
       );
       expect(project, contains('BELLUGA_IOS_APS_ENVIRONMENT = production'));
-
-      expect(podfile, contains("minimum_ios_version = '15.0'"));
-      expect(podfile, contains("platform :ios, minimum_ios_version"));
+      expect(File('ios/Podfile').existsSync(), isFalse);
+      expect(workspace, isNot(contains('Pods.xcodeproj')));
+      expect(project, isNot(contains('Check Pods Manifest.lock')));
+      expect(project, isNot(contains('Pods-Runner')));
       expect(pubspec, isNot(contains('permission_handler:')));
       expect(pubspecLock, isNot(contains('permission_handler:')));
       expect(pubspecLock, isNot(contains('permission_handler_apple')));
-      expect(podfile, isNot(contains('permission_handler')));
-      expect(podfile, isNot(contains('PERMISSION_')));
       expect(iosRegistrant, isNot(contains('permission_handler_apple')));
       expect(iosRegistrant, isNot(contains('PermissionHandlerPlugin')));
       expect(macosRegistrant, isNot(contains('permission_handler')));
