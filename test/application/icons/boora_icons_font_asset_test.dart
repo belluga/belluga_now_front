@@ -30,8 +30,9 @@ void main() {
       File(config.runtimeTtf).readAsBytesSync(),
       equals(File(config.sourceTtf).readAsBytesSync()),
     );
-    final runtimeHash =
-        sha256.convert(File(config.runtimeTtf).readAsBytesSync()).toString();
+    final runtimeHash = sha256
+        .convert(File(config.runtimeTtf).readAsBytesSync())
+        .toString();
     expect(config.runtimeTtf, contains(runtimeHash.substring(0, 8)));
     expect(
       config.names,
@@ -42,6 +43,10 @@ void main() {
         'appointment',
         'invitation',
         'invitation_outlined',
+        'hot-air-balloon',
+        'shopping-cart',
+        'location',
+        'delivery',
       }),
     );
     expect(config.names.length, BooraIcons.fontIconCount);
@@ -50,8 +55,9 @@ void main() {
     expect(generatedDart.fontFamily, config.fontFamily);
     expect(generatedDart.codePoints, config.codePoints);
 
-    final declaredCodePoints =
-        BooraIcons.fontIcons.map((icon) => icon.codePoint).toSet();
+    final declaredCodePoints = BooraIcons.fontIcons
+        .map((icon) => icon.codePoint)
+        .toSet();
     expect(declaredCodePoints, config.codePoints);
     expect(runtimeFont.supportsAll(declaredCodePoints), isTrue);
   });
@@ -97,8 +103,8 @@ class _BooraIconConfig {
 
   static _BooraIconConfig load(File file) {
     final json = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
-    final glyphs =
-        (json['glyphs'] as List<dynamic>).cast<Map<String, dynamic>>();
+    final glyphs = (json['glyphs'] as List<dynamic>)
+        .cast<Map<String, dynamic>>();
     final codePointByName = <String, int>{
       for (final glyph in glyphs)
         _nameForGlyph(glyph): _codePointForGlyph(glyph),
@@ -106,8 +112,9 @@ class _BooraIconConfig {
 
     return _BooraIconConfig(
       fontFamily: json['fontFamily'] as String,
-      legacyFontFamilies:
-          (json['legacyFontFamilies'] as List<dynamic>).cast<String>().toSet(),
+      legacyFontFamilies: (json['legacyFontFamilies'] as List<dynamic>)
+          .cast<String>()
+          .toSet(),
       sourceIcomoonConfig: json['sourceIcomoonConfig'] as String,
       sourceGeneratedDart: json['sourceGeneratedDart'] as String,
       sourceTtf: json['sourceTtf'] as String,
@@ -145,18 +152,16 @@ class _IcoMoonConfig {
 
   static _IcoMoonConfig load(File file) {
     final json = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
-    final formats =
-        (json['formats'] as List<dynamic>).cast<Map<String, dynamic>>();
-    final fontFormat = formats.firstWhere(
-      (format) {
-        final item = format['item'];
-        return item is Map<String, dynamic> && item['tag'] == 'ItemFont';
-      },
-    );
+    final formats = (json['formats'] as List<dynamic>)
+        .cast<Map<String, dynamic>>();
+    final fontFormat = formats.firstWhere((format) {
+      final item = format['item'];
+      return item is Map<String, dynamic> && item['tag'] == 'ItemFont';
+    });
     final item = fontFormat['item'] as Map<String, dynamic>;
     final args = (item['args'] as List<dynamic>).first as Map<String, dynamic>;
-    final glyphs =
-        (json['glyphs'] as List<dynamic>).cast<Map<String, dynamic>>();
+    final glyphs = (json['glyphs'] as List<dynamic>)
+        .cast<Map<String, dynamic>>();
 
     return _IcoMoonConfig(
       fontFamily:
@@ -224,9 +229,8 @@ class _TrueTypeFont {
 
   bool supportsAll(Set<int> codePoints) {
     return codePoints.every(
-      (codePoint) => supportedCodePointRanges.any(
-        (range) => range.contains(codePoint),
-      ),
+      (codePoint) =>
+          supportedCodePointRanges.any((range) => range.contains(codePoint)),
     );
   }
 
@@ -236,14 +240,9 @@ class _TrueTypeFont {
     for (var i = 0; i < count; i += 1) {
       final offset = 12 + (i * 16);
       final tag = String.fromCharCodes(
-        List<int>.generate(
-          4,
-          (index) => data.getUint8(offset + index),
-        ),
+        List<int>.generate(4, (index) => data.getUint8(offset + index)),
       );
-      tables[tag] = _TableRecord(
-        offset: data.getUint32(offset + 8),
-      );
+      tables[tag] = _TableRecord(offset: data.getUint32(offset + 8));
     }
     return tables;
   }
@@ -300,9 +299,7 @@ class _TrueTypeFont {
     for (var i = 0; i < count; i += 1) {
       final recordOffset = tableOffset + 4 + (i * 8);
       subtables.add(
-        _CmapSubtable(
-          offset: tableOffset + data.getUint32(recordOffset + 4),
-        ),
+        _CmapSubtable(offset: tableOffset + data.getUint32(recordOffset + 4)),
       );
     }
 
@@ -365,26 +362,19 @@ class _TrueTypeFont {
 }
 
 class _TableRecord {
-  const _TableRecord({
-    required this.offset,
-  });
+  const _TableRecord({required this.offset});
 
   final int offset;
 }
 
 class _CmapSubtable {
-  const _CmapSubtable({
-    required this.offset,
-  });
+  const _CmapSubtable({required this.offset});
 
   final int offset;
 }
 
 class _CodePointRange {
-  const _CodePointRange({
-    required this.start,
-    required this.end,
-  });
+  const _CodePointRange({required this.start, required this.end});
 
   final int start;
   final int end;

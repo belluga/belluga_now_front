@@ -18,10 +18,10 @@ class FavoritesSectionController implements Disposable {
   FavoritesSectionController({
     FavoriteRepositoryContract? favoriteRepository,
     AppDataRepositoryContract? appDataRepository,
-  })  : _favoriteRepository =
-            favoriteRepository ?? GetIt.I.get<FavoriteRepositoryContract>(),
-        _appDataRepository =
-            appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>();
+  }) : _favoriteRepository =
+           favoriteRepository ?? GetIt.I.get<FavoriteRepositoryContract>(),
+       _appDataRepository =
+           appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>();
 
   final FavoriteRepositoryContract _favoriteRepository;
   final AppDataRepositoryContract _appDataRepository;
@@ -46,10 +46,8 @@ class FavoritesSectionController implements Disposable {
     final primaryColor = _parseHexColor(appData.mainColor.value);
     final isPrimaryValue = FavoritePrimaryFlagValue()..parse('true');
     final iconImageUriValue = mainIconUri != null
-        ? (ThumbUriValue(
-            defaultValue: mainIconUri,
-            isRequired: true,
-          )..parse(mainIconUri.toString()))
+        ? (ThumbUriValue(defaultValue: mainIconUri, isRequired: true)
+            ..parse(mainIconUri.toString()))
         : null;
 
     return favoriteResumeFromRaw(
@@ -68,19 +66,20 @@ class FavoritesSectionController implements Disposable {
       return const FavoriteNavigationPrimary();
     }
 
-    if (favorite.haloState != FavoriteChipHaloState.none) {
-      final eventTargetPath = favorite.eventTargetPath?.trim();
-      if (eventTargetPath != null && eventTargetPath.isNotEmpty) {
-        return FavoriteNavigationPath(path: eventTargetPath);
-      }
-
-      return const FavoriteNavigationUnavailable();
+    final eventTargetPath = favorite.eventTargetPath?.trim();
+    if (favorite.haloState != FavoriteChipHaloState.none &&
+        eventTargetPath != null &&
+        eventTargetPath.isNotEmpty) {
+      return FavoriteNavigationPath(path: eventTargetPath);
     }
 
     final publicDetailPath = favorite.publicDetailPath?.trim();
     if (favorite.canOpenPublicDetail &&
         publicDetailPath != null &&
         publicDetailPath.isNotEmpty) {
+      if (favorite.haloState == FavoriteChipHaloState.liveNow) {
+        return const FavoriteNavigationUnavailable();
+      }
       return FavoriteNavigationPath(path: publicDetailPath);
     }
 
