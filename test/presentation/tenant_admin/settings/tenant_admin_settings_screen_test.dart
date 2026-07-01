@@ -199,9 +199,7 @@ TenantAdminDomainEntry _domainEntry({
 }
 
 TenantAdminResendEmailRecipients _resendRecipients(Iterable<String> values) {
-  return TenantAdminResendEmailRecipients(
-    values.map(_emailAddressValue),
-  );
+  return TenantAdminResendEmailRecipients(values.map(_emailAddressValue));
 }
 
 List<String> _recipientStrings(TenantAdminResendEmailRecipients values) {
@@ -258,10 +256,7 @@ void main() {
       find.byKey(TenantAdminSettingsKeys.hubCardVisualIdentity),
       findsOneWidget,
     );
-    expect(
-      find.byKey(TenantAdminSettingsKeys.hubCardDomains),
-      findsOneWidget,
-    );
+    expect(find.byKey(TenantAdminSettingsKeys.hubCardDomains), findsOneWidget);
     expect(
       find.byKey(TenantAdminSettingsKeys.hubCardDiscoveryFilters),
       findsOneWidget,
@@ -274,10 +269,7 @@ void main() {
       find.byKey(TenantAdminSettingsKeys.hubActionVisualIdentity),
       findsNothing,
     );
-    expect(
-      find.byKey(TenantAdminSettingsKeys.hubActionDomains),
-      findsNothing,
-    );
+    expect(find.byKey(TenantAdminSettingsKeys.hubActionDomains), findsNothing);
     expect(
       find.byKey(TenantAdminSettingsKeys.hubActionDiscoveryFilters),
       findsNothing,
@@ -356,8 +348,9 @@ void main() {
     expect(find.text('Configurar'), findsNothing);
   });
 
-  testWidgets('settings hub opens the canonical map filters editor',
-      (tester) async {
+  testWidgets('settings hub opens the canonical map filters editor', (
+    tester,
+  ) async {
     final repository = _FakeAppDataRepository(_buildAppData());
     final settingsRepository = _FakeTenantAdminSettingsRepository();
     GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
@@ -451,286 +444,296 @@ void main() {
   });
 
   testWidgets(
-      'loads phone OTP review access readback without restoring cleartext helper input',
-      (tester) async {
-    final repository = _FakeAppDataRepository(_buildAppData());
-    final settingsRepository = _FakeTenantAdminSettingsRepository();
-    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
-    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
-      settingsRepository,
-    );
-    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
-      TenantAdminImageIngestionService(
-        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
-      ),
-    );
-    final controller = TenantAdminSettingsController();
-    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
-
-    await _pumpWithAutoRoute(
-      tester,
-      const Scaffold(
-        body: TenantAdminSettingsTechnicalIntegrationsScreen(
-          initialSection:
-              TenantAdminSettingsIntegrationSection.phoneOtpReviewAccess,
+    'loads phone OTP review access readback without restoring cleartext helper input',
+    (tester) async {
+      final repository = _FakeAppDataRepository(_buildAppData());
+      final settingsRepository = _FakeTenantAdminSettingsRepository();
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+      GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+        settingsRepository,
+      );
+      GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+        TenantAdminImageIngestionService(
+          externalImageProxy: _FakeTenantAdminExternalImageProxy(),
         ),
-      ),
-    );
+      );
+      final controller = TenantAdminSettingsController();
+      GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
 
-    final phoneRow = find.byKey(
-      TenantAdminSettingsKeys.technicalIntegrationsPhoneOtpReviewPhoneEdit,
-      skipOffstage: false,
-    );
-    final helperRow = find.byKey(
-      TenantAdminSettingsKeys.technicalIntegrationsPhoneOtpReviewCodeEdit,
-      skipOffstage: false,
-    );
-    final hashRow = find.byKey(
-      TenantAdminSettingsKeys.technicalIntegrationsPhoneOtpReviewCodeHash,
-      skipOffstage: false,
-    );
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(
+          body: TenantAdminSettingsTechnicalIntegrationsScreen(
+            initialSection:
+                TenantAdminSettingsIntegrationSection.phoneOtpReviewAccess,
+          ),
+        ),
+      );
 
-    await tester.scrollUntilVisible(
-      phoneRow,
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
+      final phoneRow = find.byKey(
+        TenantAdminSettingsKeys.technicalIntegrationsPhoneOtpReviewPhoneEdit,
+        skipOffstage: false,
+      );
+      final helperRow = find.byKey(
+        TenantAdminSettingsKeys.technicalIntegrationsPhoneOtpReviewCodeEdit,
+        skipOffstage: false,
+      );
+      final hashRow = find.byKey(
+        TenantAdminSettingsKeys.technicalIntegrationsPhoneOtpReviewCodeHash,
+        skipOffstage: false,
+      );
 
-    expect(
-      find.descendant(of: phoneRow, matching: find.text('+15551234567')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: helperRow, matching: find.text('-')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(
-        of: hashRow,
-        matching: find.text(r'$2y$12$fixture-review-code-hash'),
-      ),
-      findsOneWidget,
-    );
-  });
+      await tester.scrollUntilVisible(
+        phoneRow,
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.descendant(of: phoneRow, matching: find.text('+15551234567')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: helperRow, matching: find.text('-')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: hashRow,
+          matching: find.text(r'$2y$12$fixture-review-code-hash'),
+        ),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets(
-      'generates and saves phone OTP review access settings without persisting cleartext helper input',
-      (tester) async {
-    final repository = _FakeAppDataRepository(_buildAppData());
-    final settingsRepository = _FakeTenantAdminSettingsRepository();
-    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
-    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
-      settingsRepository,
-    );
-    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
-      TenantAdminImageIngestionService(
-        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
-      ),
-    );
-    final controller = TenantAdminSettingsController();
-    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
-
-    await _pumpWithAutoRoute(
-      tester,
-      const Scaffold(
-        body: TenantAdminSettingsTechnicalIntegrationsScreen(
-          initialSection:
-              TenantAdminSettingsIntegrationSection.phoneOtpReviewAccess,
+    'generates and saves phone OTP review access settings without persisting cleartext helper input',
+    (tester) async {
+      final repository = _FakeAppDataRepository(_buildAppData());
+      final settingsRepository = _FakeTenantAdminSettingsRepository();
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+      GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+        settingsRepository,
+      );
+      GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+        TenantAdminImageIngestionService(
+          externalImageProxy: _FakeTenantAdminExternalImageProxy(),
         ),
-      ),
-    );
+      );
+      final controller = TenantAdminSettingsController();
+      GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
 
-    final phoneRow = find.byKey(
-      TenantAdminSettingsKeys.technicalIntegrationsPhoneOtpReviewPhoneEdit,
-      skipOffstage: false,
-    );
-    final helperRow = find.byKey(
-      TenantAdminSettingsKeys.technicalIntegrationsPhoneOtpReviewCodeEdit,
-      skipOffstage: false,
-    );
-    final hashRow = find.byKey(
-      TenantAdminSettingsKeys.technicalIntegrationsPhoneOtpReviewCodeHash,
-      skipOffstage: false,
-    );
-    final generateButton = find.byKey(
-      TenantAdminSettingsKeys.technicalIntegrationsPhoneOtpReviewGenerateHash,
-      skipOffstage: false,
-    );
-    final saveButton = find.byKey(
-      TenantAdminSettingsKeys.technicalIntegrationsSavePhoneOtpReviewAccess,
-      skipOffstage: false,
-    );
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(
+          body: TenantAdminSettingsTechnicalIntegrationsScreen(
+            initialSection:
+                TenantAdminSettingsIntegrationSection.phoneOtpReviewAccess,
+          ),
+        ),
+      );
 
-    await tester.scrollUntilVisible(
-      phoneRow,
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
+      final phoneRow = find.byKey(
+        TenantAdminSettingsKeys.technicalIntegrationsPhoneOtpReviewPhoneEdit,
+        skipOffstage: false,
+      );
+      final helperRow = find.byKey(
+        TenantAdminSettingsKeys.technicalIntegrationsPhoneOtpReviewCodeEdit,
+        skipOffstage: false,
+      );
+      final hashRow = find.byKey(
+        TenantAdminSettingsKeys.technicalIntegrationsPhoneOtpReviewCodeHash,
+        skipOffstage: false,
+      );
+      final generateButton = find.byKey(
+        TenantAdminSettingsKeys.technicalIntegrationsPhoneOtpReviewGenerateHash,
+        skipOffstage: false,
+      );
+      final saveButton = find.byKey(
+        TenantAdminSettingsKeys.technicalIntegrationsSavePhoneOtpReviewAccess,
+        skipOffstage: false,
+      );
 
-    await tester.tap(
-      find.descendant(
-        of: phoneRow,
-        matching: find.byIcon(Icons.edit_outlined),
-      ),
-    );
-    await tester.pumpAndSettle();
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Telefone E.164'),
-      '+15559876543',
-    );
-    await tester.tap(find.text('Aplicar'));
-    await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        phoneRow,
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
 
-    await tester.tap(
-      find.descendant(
-        of: helperRow,
-        matching: find.byIcon(Icons.edit_outlined),
-      ),
-    );
-    await tester.pumpAndSettle();
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Código de revisão'),
-      '654321',
-    );
-    await tester.tap(find.text('Aplicar'));
-    await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: phoneRow,
+          matching: find.byIcon(Icons.edit_outlined),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Telefone E.164'),
+        '+15559876543',
+      );
+      await tester.tap(find.text('Aplicar'));
+      await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(
-      generateButton,
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(generateButton);
-    await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: helperRow,
+          matching: find.byIcon(Icons.edit_outlined),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Código de revisão'),
+        '654321',
+      );
+      await tester.tap(find.text('Aplicar'));
+      await tester.pumpAndSettle();
 
-    expect(settingsRepository.generatedPhoneOtpReviewAccessCode, '654321');
-    expect(
-      find.descendant(
-        of: hashRow,
-        matching: find.text(r'$2y$12$generated-review-code-hash'),
-      ),
-      findsOneWidget,
-    );
+      await tester.scrollUntilVisible(
+        generateButton,
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(generateButton);
+      await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(
-      saveButton,
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(saveButton);
-    await tester.pumpAndSettle();
+      expect(settingsRepository.generatedPhoneOtpReviewAccessCode, '654321');
+      expect(
+        find.descendant(
+          of: hashRow,
+          matching: find.text(r'$2y$12$generated-review-code-hash'),
+        ),
+        findsOneWidget,
+      );
 
-    expect(settingsRepository.updatedPhoneOtpReviewAccessSettings, isNotNull);
-    expect(
-      settingsRepository.updatedPhoneOtpReviewAccessSettings!.phoneE164,
-      '+15559876543',
-    );
-    expect(
-      settingsRepository.updatedPhoneOtpReviewAccessSettings!.codeHash,
-      r'$2y$12$generated-review-code-hash',
-    );
-    expect(
-      settingsRepository
-          .updatedPhoneOtpReviewAccessSettings!.rawPhoneOtpReviewAccess.value
-          .containsKey('code'),
-      isFalse,
-    );
-    expect(controller.phoneOtpReviewAccessHelperCodeController.text, isEmpty);
-  });
+      await tester.scrollUntilVisible(
+        saveButton,
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(saveButton);
+      await tester.pumpAndSettle();
+
+      expect(settingsRepository.updatedPhoneOtpReviewAccessSettings, isNotNull);
+      expect(
+        settingsRepository.updatedPhoneOtpReviewAccessSettings!.phoneE164,
+        '+15559876543',
+      );
+      expect(
+        settingsRepository.updatedPhoneOtpReviewAccessSettings!.codeHash,
+        r'$2y$12$generated-review-code-hash',
+      );
+      expect(
+        settingsRepository
+            .updatedPhoneOtpReviewAccessSettings!
+            .rawPhoneOtpReviewAccess
+            .value
+            .containsKey('code'),
+        isFalse,
+      );
+      expect(controller.phoneOtpReviewAccessHelperCodeController.text, isEmpty);
+    },
+  );
 
   testWidgets(
-      'clearing the review phone disables phone OTP review access and clears the stored hash',
-      (tester) async {
-    final repository = _FakeAppDataRepository(_buildAppData());
-    final settingsRepository = _FakeTenantAdminSettingsRepository();
-    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
-    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
-      settingsRepository,
-    );
-    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
-      TenantAdminImageIngestionService(
-        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
-      ),
-    );
-    final controller = TenantAdminSettingsController();
-    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
-
-    await _pumpWithAutoRoute(
-      tester,
-      const Scaffold(
-        body: TenantAdminSettingsTechnicalIntegrationsScreen(
-          initialSection:
-              TenantAdminSettingsIntegrationSection.phoneOtpReviewAccess,
+    'clearing the review phone disables phone OTP review access and clears the stored hash',
+    (tester) async {
+      final repository = _FakeAppDataRepository(_buildAppData());
+      final settingsRepository = _FakeTenantAdminSettingsRepository();
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+      GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+        settingsRepository,
+      );
+      GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+        TenantAdminImageIngestionService(
+          externalImageProxy: _FakeTenantAdminExternalImageProxy(),
         ),
-      ),
-    );
+      );
+      final controller = TenantAdminSettingsController();
+      GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
 
-    final phoneRow = find.byKey(
-      TenantAdminSettingsKeys.technicalIntegrationsPhoneOtpReviewPhoneEdit,
-      skipOffstage: false,
-    );
-    final saveButton = find.byKey(
-      TenantAdminSettingsKeys.technicalIntegrationsSavePhoneOtpReviewAccess,
-      skipOffstage: false,
-    );
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(
+          body: TenantAdminSettingsTechnicalIntegrationsScreen(
+            initialSection:
+                TenantAdminSettingsIntegrationSection.phoneOtpReviewAccess,
+          ),
+        ),
+      );
 
-    await tester.scrollUntilVisible(
-      phoneRow,
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
+      final phoneRow = find.byKey(
+        TenantAdminSettingsKeys.technicalIntegrationsPhoneOtpReviewPhoneEdit,
+        skipOffstage: false,
+      );
+      final saveButton = find.byKey(
+        TenantAdminSettingsKeys.technicalIntegrationsSavePhoneOtpReviewAccess,
+        skipOffstage: false,
+      );
 
-    await tester.tap(
-      find.descendant(
-        of: phoneRow,
-        matching: find.byIcon(Icons.edit_outlined),
-      ),
-    );
-    await tester.pumpAndSettle();
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Telefone E.164'),
-      '',
-    );
-    await tester.tap(find.text('Aplicar'));
-    await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        phoneRow,
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(
-      saveButton,
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(saveButton);
-    await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: phoneRow,
+          matching: find.byIcon(Icons.edit_outlined),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Telefone E.164'),
+        '',
+      );
+      await tester.tap(find.text('Aplicar'));
+      await tester.pumpAndSettle();
 
-    expect(settingsRepository.updatedPhoneOtpReviewAccessSettings, isNotNull);
-    expect(
-      settingsRepository.updatedPhoneOtpReviewAccessSettings!.phoneE164,
-      isNull,
-    );
-    expect(
-      settingsRepository.updatedPhoneOtpReviewAccessSettings!.codeHash,
-      isNull,
-    );
-    expect(
-      settingsRepository
-          .updatedPhoneOtpReviewAccessSettings!.rawPhoneOtpReviewAccess.value,
-      containsPair('phone_e164', null),
-    );
-    expect(
-      settingsRepository
-          .updatedPhoneOtpReviewAccessSettings!.rawPhoneOtpReviewAccess.value,
-      containsPair('code_hash', null),
-    );
-  });
+      await tester.scrollUntilVisible(
+        saveButton,
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(saveButton);
+      await tester.pumpAndSettle();
 
-  testWidgets('renders domains screen with active-domain actions',
-      (tester) async {
+      expect(settingsRepository.updatedPhoneOtpReviewAccessSettings, isNotNull);
+      expect(
+        settingsRepository.updatedPhoneOtpReviewAccessSettings!.phoneE164,
+        isNull,
+      );
+      expect(
+        settingsRepository.updatedPhoneOtpReviewAccessSettings!.codeHash,
+        isNull,
+      );
+      expect(
+        settingsRepository
+            .updatedPhoneOtpReviewAccessSettings!
+            .rawPhoneOtpReviewAccess
+            .value,
+        containsPair('phone_e164', null),
+      );
+      expect(
+        settingsRepository
+            .updatedPhoneOtpReviewAccessSettings!
+            .rawPhoneOtpReviewAccess
+            .value,
+        containsPair('code_hash', null),
+      );
+    },
+  );
+
+  testWidgets('renders domains screen with active-domain actions', (
+    tester,
+  ) async {
     final repository = _FakeAppDataRepository(
       _buildAppData(mainDomain: 'https://current.example.com'),
     );
@@ -781,105 +784,110 @@ void main() {
   });
 
   testWidgets(
-      'domains screen adds and deletes active domains through widget actions',
-      (tester) async {
-    final repository = _FakeAppDataRepository(
-      _buildAppData(mainDomain: 'https://current.example.com'),
-    );
-    final settingsRepository = _FakeTenantAdminSettingsRepository(
-      initialDomains: [
-        _domainEntry(id: 'domain-current', path: 'current.example.com'),
-        _domainEntry(id: 'domain-extra', path: 'extra.example.com'),
-      ],
-    );
-    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
-    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
-      settingsRepository,
-    );
-    GetIt.I.registerSingleton<TenantAdminTenantScopeContract>(
-      _FakeTenantScope('current.example.com'),
-    );
-    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
-      TenantAdminImageIngestionService(
-        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
-      ),
-    );
-    final controller = TenantAdminSettingsController();
-    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+    'domains screen adds and deletes active domains through widget actions',
+    (tester) async {
+      final repository = _FakeAppDataRepository(
+        _buildAppData(mainDomain: 'https://current.example.com'),
+      );
+      final settingsRepository = _FakeTenantAdminSettingsRepository(
+        initialDomains: [
+          _domainEntry(id: 'domain-current', path: 'current.example.com'),
+          _domainEntry(id: 'domain-extra', path: 'extra.example.com'),
+        ],
+      );
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+      GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+        settingsRepository,
+      );
+      GetIt.I.registerSingleton<TenantAdminTenantScopeContract>(
+        _FakeTenantScope('current.example.com'),
+      );
+      GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+        TenantAdminImageIngestionService(
+          externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+        ),
+      );
+      final controller = TenantAdminSettingsController();
+      GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
 
-    await _pumpWithAutoRoute(
-      tester,
-      const Scaffold(body: TenantAdminSettingsDomainsScreen()),
-    );
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(body: TenantAdminSettingsDomainsScreen()),
+      );
 
-    await tester.enterText(
-      find.byKey(TenantAdminSettingsKeys.domainsPathField),
-      'NEW-DOMAIN.EXAMPLE.COM',
-    );
-    await tester.tap(find.byKey(TenantAdminSettingsKeys.domainsAddButton));
-    await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(TenantAdminSettingsKeys.domainsPathField),
+        'NEW-DOMAIN.EXAMPLE.COM',
+      );
+      await tester.tap(find.byKey(TenantAdminSettingsKeys.domainsAddButton));
+      await tester.pumpAndSettle();
 
-    expect(settingsRepository.createdDomainPaths, ['new-domain.example.com']);
-    expect(find.text('new-domain.example.com'), findsOneWidget);
+      expect(settingsRepository.createdDomainPaths, ['new-domain.example.com']);
+      expect(find.text('new-domain.example.com'), findsOneWidget);
 
-    await tester
-        .tap(find.byKey(TenantAdminSettingsKeys.domainsDeleteButton(0)));
-    await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Remover'));
-    await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(TenantAdminSettingsKeys.domainsDeleteButton(0)),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Remover'));
+      await tester.pumpAndSettle();
 
-    expect(settingsRepository.deletedDomainIds, ['domain-created-1']);
-    expect(find.text('new-domain.example.com'), findsNothing);
-  });
+      expect(settingsRepository.deletedDomainIds, ['domain-created-1']);
+      expect(find.text('new-domain.example.com'), findsNothing);
+    },
+  );
 
   testWidgets(
-      'domains screen surfaces duplicate-domain errors through widget flow',
-      (tester) async {
-    final repository = _FakeAppDataRepository(
-      _buildAppData(mainDomain: 'https://current.example.com'),
-    );
-    final settingsRepository = _FakeTenantAdminSettingsRepository(
-      createDomainError: StateError('Another tenant already uses this domain.'),
-      initialDomains: [
-        _domainEntry(id: 'domain-current', path: 'current.example.com'),
-      ],
-    );
-    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
-    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
-      settingsRepository,
-    );
-    GetIt.I.registerSingleton<TenantAdminTenantScopeContract>(
-      _FakeTenantScope('current.example.com'),
-    );
-    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
-      TenantAdminImageIngestionService(
-        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
-      ),
-    );
-    final controller = TenantAdminSettingsController();
-    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+    'domains screen surfaces duplicate-domain errors through widget flow',
+    (tester) async {
+      final repository = _FakeAppDataRepository(
+        _buildAppData(mainDomain: 'https://current.example.com'),
+      );
+      final settingsRepository = _FakeTenantAdminSettingsRepository(
+        createDomainError: StateError(
+          'Another tenant already uses this domain.',
+        ),
+        initialDomains: [
+          _domainEntry(id: 'domain-current', path: 'current.example.com'),
+        ],
+      );
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+      GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+        settingsRepository,
+      );
+      GetIt.I.registerSingleton<TenantAdminTenantScopeContract>(
+        _FakeTenantScope('current.example.com'),
+      );
+      GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+        TenantAdminImageIngestionService(
+          externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+        ),
+      );
+      final controller = TenantAdminSettingsController();
+      GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
 
-    await _pumpWithAutoRoute(
-      tester,
-      const Scaffold(body: TenantAdminSettingsDomainsScreen()),
-    );
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(body: TenantAdminSettingsDomainsScreen()),
+      );
 
-    await tester.enterText(
-      find.byKey(TenantAdminSettingsKeys.domainsPathField),
-      'shared.example.com',
-    );
-    await tester.tap(find.byKey(TenantAdminSettingsKeys.domainsAddButton));
-    await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(TenantAdminSettingsKeys.domainsPathField),
+        'shared.example.com',
+      );
+      await tester.tap(find.byKey(TenantAdminSettingsKeys.domainsAddButton));
+      await tester.pumpAndSettle();
 
-    expect(settingsRepository.createdDomainPaths, ['shared.example.com']);
-    expect(
-      find.textContaining('Another tenant already uses this domain.'),
-      findsOneWidget,
-    );
-    expect(find.text('current.example.com'), findsOneWidget);
-    expect(find.byKey(TenantAdminSettingsKeys.domainsRow(0)), findsOneWidget);
-    expect(find.byKey(TenantAdminSettingsKeys.domainsRow(1)), findsNothing);
-  });
+      expect(settingsRepository.createdDomainPaths, ['shared.example.com']);
+      expect(
+        find.textContaining('Another tenant already uses this domain.'),
+        findsOneWidget,
+      );
+      expect(find.text('current.example.com'), findsOneWidget);
+      expect(find.byKey(TenantAdminSettingsKeys.domainsRow(0)), findsOneWidget);
+      expect(find.byKey(TenantAdminSettingsKeys.domainsRow(1)), findsNothing);
+    },
+  );
 
   test('controller paginates and mutates active domains list', () async {
     final repository = _FakeAppDataRepository(
@@ -890,8 +898,9 @@ void main() {
         16,
         (index) => _domainEntry(
           id: 'domain-$index',
-          path:
-              index == 0 ? 'current.example.com' : 'domain-$index.example.com',
+          path: index == 0
+              ? 'current.example.com'
+              : 'domain-$index.example.com',
         ),
       ),
     );
@@ -938,9 +947,7 @@ void main() {
       _buildAppData(mainDomain: 'https://current.example.com'),
     );
     final settingsRepository = _FakeTenantAdminSettingsRepository(
-      createDomainError: StateError(
-        'Another tenant already uses this domain.',
-      ),
+      createDomainError: StateError('Another tenant already uses this domain.'),
       initialDomains: [
         _domainEntry(id: 'domain-current', path: 'current.example.com'),
       ],
@@ -1011,8 +1018,9 @@ void main() {
     expect(repository.themeMode, ThemeMode.dark);
   });
 
-  testWidgets('saves default origin via local preferences map_ui flow',
-      (tester) async {
+  testWidgets('saves default origin via local preferences map_ui flow', (
+    tester,
+  ) async {
     final repository = _FakeAppDataRepository(_buildAppData());
     final settingsRepository = _FakeTenantAdminSettingsRepository();
     GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
@@ -1058,10 +1066,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(settingsRepository.updatedMapUiSettings, isNotNull);
-    expect(
-      settingsRepository.updatedMapUiSettings!.defaultOrigin,
-      isNotNull,
-    );
+    expect(settingsRepository.updatedMapUiSettings!.defaultOrigin, isNotNull);
     expect(
       settingsRepository.updatedMapUiSettings!.defaultOrigin!.lat,
       closeTo(-20.6736, 0.000001),
@@ -1077,8 +1082,9 @@ void main() {
     expect(repository.initCallCount, 1);
   });
 
-  testWidgets('local preferences does not expose legacy map filter editor',
-      (tester) async {
+  testWidgets('local preferences does not expose legacy map filter editor', (
+    tester,
+  ) async {
     final repository = _FakeAppDataRepository(_buildAppData());
     final settingsRepository = _FakeTenantAdminSettingsRepository();
     GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
@@ -1107,8 +1113,10 @@ void main() {
       find.byKey(TenantAdminSettingsKeys.localPreferencesAddMapFilterButton),
       findsNothing,
     );
-    expect(find.widgetWithText(FilledButton, 'Salvar filtros do mapa'),
-        findsNothing);
+    expect(
+      find.widgetWithText(FilledButton, 'Salvar filtros do mapa'),
+      findsNothing,
+    );
   });
 
   test(
@@ -1135,49 +1143,51 @@ void main() {
     },
   );
 
-  test('discovery filters controller init keeps already loaded settings',
-      () async {
-    final fetchCompleter = Completer<TenantAdminDiscoveryFiltersSettingsValue>()
-      ..complete(
-        TenantAdminDiscoveryFiltersSettingsValue(
-          TenantAdminDynamicMapValue({
-            'surfaces': {
-              'public_map.primary': {
-                'target': 'map_poi',
-                'filters': [
-                  {
-                    'key': 'assets',
-                    'label': 'Assets',
-                    'image_uri': 'https://tenant.test/filter.png',
+  test(
+    'discovery filters controller init keeps already loaded settings',
+    () async {
+      final fetchCompleter =
+          Completer<TenantAdminDiscoveryFiltersSettingsValue>()..complete(
+            TenantAdminDiscoveryFiltersSettingsValue(
+              TenantAdminDynamicMapValue({
+                'surfaces': {
+                  'public_map.primary': {
+                    'target': 'map_poi',
+                    'filters': [
+                      {
+                        'key': 'assets',
+                        'label': 'Assets',
+                        'image_uri': 'https://tenant.test/filter.png',
+                      },
+                    ],
                   },
-                ],
-              },
-            },
-          }),
-        ),
+                },
+              }),
+            ),
+          );
+      final settingsRepository = _SlowDiscoveryFiltersSettingsRepository(
+        fetchCompleter: fetchCompleter,
       );
-    final settingsRepository = _SlowDiscoveryFiltersSettingsRepository(
-      fetchCompleter: fetchCompleter,
-    );
-    final controller = TenantAdminDiscoveryFiltersController(
-      settingsRepository: settingsRepository,
-      ruleCatalogRepository: _EmptyDiscoveryFilterRuleCatalogRepository(),
-    );
+      final controller = TenantAdminDiscoveryFiltersController(
+        settingsRepository: settingsRepository,
+        ruleCatalogRepository: _EmptyDiscoveryFilterRuleCatalogRepository(),
+      );
 
-    await controller.init();
-    await controller.init();
+      await controller.init();
+      await controller.init();
 
-    expect(settingsRepository.fetchCount, 1);
-    expect(
-      controller
-          .filtersForSurface(TenantAdminDiscoveryFilterSurfaceDefinition.map)
-          .single
-          .imageUri,
-      'https://tenant.test/filter.png',
-    );
+      expect(settingsRepository.fetchCount, 1);
+      expect(
+        controller
+            .filtersForSurface(TenantAdminDiscoveryFilterSurfaceDefinition.map)
+            .single
+            .imageUri,
+        'https://tenant.test/filter.png',
+      );
 
-    await controller.onDispose();
-  });
+      await controller.onDispose();
+    },
+  );
 
   test(
     'discovery filters rule catalog fetches taxonomy terms in one batch',
@@ -1255,8 +1265,9 @@ void main() {
     },
   );
 
-  testWidgets('canonical map filter row exposes rule and visual actions',
-      (tester) async {
+  testWidgets('canonical map filter row exposes rule and visual actions', (
+    tester,
+  ) async {
     final settingsRepository = _FakeTenantAdminSettingsRepository();
     GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
       settingsRepository,
@@ -1323,30 +1334,31 @@ void main() {
     (tester) async {
       final initialDiscoveryFilters =
           TenantAdminDiscoveryFiltersSettings.empty().applyFilters(
-        surface: TenantAdminDiscoveryFilterSurfaceDefinition.map,
-        filters: TenantAdminDiscoveryFilterCatalogItems([
-          TenantAdminDiscoveryFilterCatalogItem(
-            keyValue: _token('events'),
-            labelValue: _requiredText('Eventos'),
-            imageUriValue:
-                _optionalUrl('https://tenant.test/legacy-events.png'),
-            overrideMarkerValue: TenantAdminFlagValue(true),
-            markerOverride: TenantAdminMapFilterMarkerOverride.icon(
-              iconValue: _requiredText('music'),
-              colorValue: _hexColor('#C6141F'),
-              iconColorValue: _hexColor('#FFFFFF'),
-            ),
-            query: TenantAdminDiscoveryFilterQuery(
-              entityValues: [_token('event')],
-            ),
-          ),
-        ]),
-      );
+            surface: TenantAdminDiscoveryFilterSurfaceDefinition.map,
+            filters: TenantAdminDiscoveryFilterCatalogItems([
+              TenantAdminDiscoveryFilterCatalogItem(
+                keyValue: _token('events'),
+                labelValue: _requiredText('Eventos'),
+                imageUriValue: _optionalUrl(
+                  'https://tenant.test/legacy-events.png',
+                ),
+                overrideMarkerValue: TenantAdminFlagValue(true),
+                markerOverride: TenantAdminMapFilterMarkerOverride.icon(
+                  iconValue: _requiredText('music'),
+                  colorValue: _hexColor('#C6141F'),
+                  iconColorValue: _hexColor('#FFFFFF'),
+                ),
+                query: TenantAdminDiscoveryFilterQuery(
+                  entityValues: [_token('event')],
+                ),
+              ),
+            ]),
+          );
       final settingsRepository = _FakeTenantAdminSettingsRepository(
         initialDiscoveryFiltersSettings:
             TenantAdminDiscoveryFiltersSettingsValue(
-          initialDiscoveryFilters.rawDiscoveryFilters,
-        ),
+              initialDiscoveryFilters.rawDiscoveryFilters,
+            ),
       );
       GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
         settingsRepository,
@@ -1397,23 +1409,24 @@ void main() {
     },
   );
 
-  testWidgets('canonical map filter row exposes image preview by URL key',
-      (tester) async {
+  testWidgets('canonical map filter row exposes image preview by URL key', (
+    tester,
+  ) async {
     const imageUri = 'https://tenant.test/filter-image.png';
-    final initialDiscoveryFilters =
-        TenantAdminDiscoveryFiltersSettings.empty().applyFilters(
-      surface: TenantAdminDiscoveryFilterSurfaceDefinition.map,
-      filters: TenantAdminDiscoveryFilterCatalogItems([
-        TenantAdminDiscoveryFilterCatalogItem(
-          keyValue: _token('assets'),
-          labelValue: _requiredText('Assets'),
-          imageUriValue: _optionalUrl(imageUri),
-          query: TenantAdminDiscoveryFilterQuery(
-            entityValues: [_token('static_asset')],
-          ),
-        ),
-      ]),
-    );
+    final initialDiscoveryFilters = TenantAdminDiscoveryFiltersSettings.empty()
+        .applyFilters(
+          surface: TenantAdminDiscoveryFilterSurfaceDefinition.map,
+          filters: TenantAdminDiscoveryFilterCatalogItems([
+            TenantAdminDiscoveryFilterCatalogItem(
+              keyValue: _token('assets'),
+              labelValue: _requiredText('Assets'),
+              imageUriValue: _optionalUrl(imageUri),
+              query: TenantAdminDiscoveryFilterQuery(
+                entityValues: [_token('static_asset')],
+              ),
+            ),
+          ]),
+        );
     final settingsRepository = _FakeTenantAdminSettingsRepository(
       initialDiscoveryFiltersSettings: TenantAdminDiscoveryFiltersSettingsValue(
         initialDiscoveryFilters.rawDiscoveryFilters,
@@ -1453,13 +1466,15 @@ void main() {
     expect(find.byKey(const ValueKey<String>(imageUri)), findsOneWidget);
   });
 
-  testWidgets('map filter rule sheet is query-only (without visual fields)',
-      (tester) async {
+  testWidgets('map filter rule sheet is query-only (without visual fields)', (
+    tester,
+  ) async {
     final filter = TenantAdminMapFilterCatalogItem(
       keyValue: _token('events'),
       labelValue: _requiredText('Eventos'),
-      query:
-          TenantAdminMapFilterQuery(source: TenantAdminMapFilterSource.event),
+      query: TenantAdminMapFilterQuery(
+        source: TenantAdminMapFilterSource.event,
+      ),
     );
     final catalog = TenantAdminMapFilterRuleCatalog(
       typesBySource: TenantAdminMapFilterTypeOptionsBySourceValue({
@@ -1485,10 +1500,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: TenantAdminMapFilterRuleSheet(
-            filter: filter,
-            catalog: catalog,
-          ),
+          body: TenantAdminMapFilterRuleSheet(filter: filter, catalog: catalog),
         ),
       ),
     );
@@ -1503,8 +1515,9 @@ void main() {
     expect(find.text('Visual do filtro'), findsNothing);
   });
 
-  testWidgets('Visual sheet saves filter visual while marker override is off',
-      (tester) async {
+  testWidgets('Visual sheet saves filter visual while marker override is off', (
+    tester,
+  ) async {
     final settingsRepository = _FakeTenantAdminSettingsRepository();
     GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
       settingsRepository,
@@ -1597,8 +1610,9 @@ void main() {
     );
   });
 
-  testWidgets('Visual sheet validates icon inputs before allowing apply',
-      (tester) async {
+  testWidgets('Visual sheet validates icon inputs before allowing apply', (
+    tester,
+  ) async {
     String latestSnackMessage() {
       final snackBars = tester.widgetList<SnackBar>(find.byType(SnackBar));
       expect(snackBars, isNotEmpty);
@@ -1616,11 +1630,7 @@ void main() {
 
     await _pumpWithAutoRoute(
       tester,
-      Scaffold(
-        body: TenantAdminMapFilterVisualSheet(
-          filter: filter,
-        ),
-      ),
+      Scaffold(body: TenantAdminMapFilterVisualSheet(filter: filter)),
     );
     await tester.pumpAndSettle();
     final visualSheetFinder = find
@@ -1635,22 +1645,17 @@ void main() {
     );
 
     await tester.tap(
-      find.descendant(
-        of: visualSheetFinder,
-        matching: find.byType(Checkbox),
-      ),
+      find.descendant(of: visualSheetFinder, matching: find.byType(Checkbox)),
     );
     await tester.pumpAndSettle();
     await tester.tap(applyButtonFinder);
     await tester.pumpAndSettle();
-    expect(
-      latestSnackMessage(),
-      contains('Visual inválido: em modo ícone'),
-    );
+    expect(latestSnackMessage(), contains('Visual inválido: em modo ícone'));
   });
 
-  testWidgets('Visual sheet validates image url when override mode is image',
-      (tester) async {
+  testWidgets('Visual sheet validates image url when override mode is image', (
+    tester,
+  ) async {
     final filter = TenantAdminMapFilterCatalogItem(
       keyValue: _token('events'),
       labelValue: _requiredText('Eventos'),
@@ -1659,15 +1664,14 @@ void main() {
       markerOverride: TenantAdminMapFilterMarkerOverride.image(
         imageUriValue: _optionalUrl('https://tenant.test/filter.png'),
       ),
-      query:
-          TenantAdminMapFilterQuery(source: TenantAdminMapFilterSource.event),
+      query: TenantAdminMapFilterQuery(
+        source: TenantAdminMapFilterSource.event,
+      ),
     );
 
     await _pumpWithAutoRoute(
       tester,
-      Scaffold(
-        body: TenantAdminMapFilterVisualSheet(filter: filter),
-      ),
+      Scaffold(body: TenantAdminMapFilterVisualSheet(filter: filter)),
     );
 
     expect(find.text('Visual do filtro'), findsOneWidget);
@@ -1686,47 +1690,49 @@ void main() {
     final snackBars = tester.widgetList<SnackBar>(find.byType(SnackBar));
     expect(snackBars, isNotEmpty);
     final latest = snackBars.last.content;
-    final message =
-        latest is Text ? (latest.data ?? '') : latest.toStringShort();
+    final message = latest is Text
+        ? (latest.data ?? '')
+        : latest.toStringShort();
     expect(message, contains('URL válida (http/https)'));
   });
 
   testWidgets(
-      'map marker icon picker writes storage key when user selects icon',
-      (tester) async {
-    final controller = TextEditingController();
-    addTearDown(controller.dispose);
+    'map marker icon picker writes storage key when user selects icon',
+    (tester) async {
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
 
-    await _pumpWithAutoRoute(
-      tester,
-      Scaffold(
-        body: Padding(
-          padding: const EdgeInsets.all(16),
-          child: TenantAdminMapMarkerIconPickerField(
-            controller: controller,
-            labelText: 'Ícone',
+      await _pumpWithAutoRoute(
+        tester,
+        Scaffold(
+          body: Padding(
+            padding: const EdgeInsets.all(16),
+            child: TenantAdminMapMarkerIconPickerField(
+              controller: controller,
+              labelText: 'Ícone',
+            ),
           ),
         ),
-      ),
-    );
+      );
 
-    expect(controller.text, isEmpty);
-    expect(find.text('Selecionar ícone'), findsOneWidget);
+      expect(controller.text, isEmpty);
+      expect(find.text('Selecionar ícone'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Selecionar ícone'));
-    await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.text('Museu').first,
-      200,
-      scrollable: find.byType(Scrollable).last,
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Museu').first);
-    await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Selecionar ícone'));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('Museu').first,
+        200,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Museu').first);
+      await tester.pumpAndSettle();
 
-    expect(controller.text, MapMarkerIconToken.museum.storageKey);
-    expect(find.text('Museu'), findsOneWidget);
-  });
+      expect(controller.text, MapMarkerIconToken.museum.storageKey);
+      expect(find.text('Museu'), findsOneWidget);
+    },
+  );
 
   testWidgets('saves firebase settings via remote repository', (tester) async {
     final repository = _FakeAppDataRepository(_buildAppData());
@@ -1794,130 +1800,130 @@ void main() {
     expect(settingsRepository.updatedFirebaseProjectId, 'project-updated');
   });
 
-  testWidgets('push section toggles enable state and saves throttling settings',
-      (tester) async {
-    final repository = _FakeAppDataRepository(_buildAppData());
-    final settingsRepository = _FakeTenantAdminSettingsRepository();
-    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
-    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
-      settingsRepository,
-    );
-    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
-      TenantAdminImageIngestionService(
-        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
-      ),
-    );
-    final controller = TenantAdminSettingsController();
-    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
-
-    await _pumpWithAutoRoute(
-      tester,
-      const Scaffold(
-        body: TenantAdminSettingsTechnicalIntegrationsScreen(
-          initialSection: TenantAdminSettingsIntegrationSection.push,
+  testWidgets(
+    'push section toggles enable state and saves throttling settings',
+    (tester) async {
+      final repository = _FakeAppDataRepository(_buildAppData());
+      final settingsRepository = _FakeTenantAdminSettingsRepository();
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+      GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+        settingsRepository,
+      );
+      GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+        TenantAdminImageIngestionService(
+          externalImageProxy: _FakeTenantAdminExternalImageProxy(),
         ),
-      ),
-    );
+      );
+      final controller = TenantAdminSettingsController();
+      GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
 
-    final section = find.byKey(
-      TenantAdminSettingsKeys.technicalIntegrationsPushSection,
-      skipOffstage: false,
-    );
-    final ttlRow = find.byKey(
-      const ValueKey('tenant_admin_settings_push_ttl_edit'),
-      skipOffstage: false,
-    );
-    final savePushButton = find.byKey(
-      TenantAdminSettingsKeys.technicalIntegrationsSavePush,
-      skipOffstage: false,
-    );
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(
+          body: TenantAdminSettingsTechnicalIntegrationsScreen(
+            initialSection: TenantAdminSettingsIntegrationSection.push,
+          ),
+        ),
+      );
 
-    await tester.scrollUntilVisible(
-      section,
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
+      final section = find.byKey(
+        TenantAdminSettingsKeys.technicalIntegrationsPushSection,
+        skipOffstage: false,
+      );
+      final ttlRow = find.byKey(
+        const ValueKey('tenant_admin_settings_push_ttl_edit'),
+        skipOffstage: false,
+      );
+      final savePushButton = find.byKey(
+        TenantAdminSettingsKeys.technicalIntegrationsSavePush,
+        skipOffstage: false,
+      );
 
-    expect(
-      find.descendant(
-        of: find.byKey(
-          TenantAdminSettingsKeys.technicalIntegrationsPushEnabledRow,
+      await tester.scrollUntilVisible(
+        section,
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.descendant(
+          of: find.byKey(
+            TenantAdminSettingsKeys.technicalIntegrationsPushEnabledRow,
+            skipOffstage: false,
+          ),
+          matching: find.text('Nao'),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(
+        find.byKey(
+          TenantAdminSettingsKeys.technicalIntegrationsPushEnable,
           skipOffstage: false,
         ),
-        matching: find.text('Nao'),
-      ),
-      findsOneWidget,
-    );
+      );
+      await tester.pumpAndSettle();
 
-    await tester.tap(
-      find.byKey(
-        TenantAdminSettingsKeys.technicalIntegrationsPushEnable,
-        skipOffstage: false,
-      ),
-    );
-    await tester.pumpAndSettle();
+      expect(settingsRepository.enablePushCallCount, 1);
+      expect(
+        find.descendant(
+          of: find.byKey(
+            TenantAdminSettingsKeys.technicalIntegrationsPushEnabledRow,
+            skipOffstage: false,
+          ),
+          matching: find.text('Sim'),
+        ),
+        findsOneWidget,
+      );
 
-    expect(settingsRepository.enablePushCallCount, 1);
-    expect(
-      find.descendant(
-        of: find.byKey(
-          TenantAdminSettingsKeys.technicalIntegrationsPushEnabledRow,
+      await tester.tap(
+        find.byKey(
+          TenantAdminSettingsKeys.technicalIntegrationsPushDisable,
           skipOffstage: false,
         ),
-        matching: find.text('Sim'),
-      ),
-      findsOneWidget,
-    );
+      );
+      await tester.pumpAndSettle();
 
-    await tester.tap(
-      find.byKey(
-        TenantAdminSettingsKeys.technicalIntegrationsPushDisable,
-        skipOffstage: false,
-      ),
-    );
-    await tester.pumpAndSettle();
+      expect(settingsRepository.disablePushCallCount, 1);
 
-    expect(settingsRepository.disablePushCallCount, 1);
+      await tester.scrollUntilVisible(
+        ttlRow,
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(
-      ttlRow,
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(of: ttlRow, matching: find.byIcon(Icons.edit_outlined)),
+      );
+      await tester.pumpAndSettle();
 
-    await tester.tap(
-      find.descendant(
-        of: ttlRow,
-        matching: find.byIcon(Icons.edit_outlined),
-      ),
-    );
-    await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Max TTL (dias)'),
+        '14',
+      );
+      await tester.tap(find.text('Aplicar'));
+      await tester.pumpAndSettle();
 
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Max TTL (dias)'),
-      '14',
-    );
-    await tester.tap(find.text('Aplicar'));
-    await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        savePushButton,
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(
-      savePushButton,
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
+      await tester.tap(savePushButton);
+      await tester.pumpAndSettle();
 
-    await tester.tap(savePushButton);
-    await tester.pumpAndSettle();
+      expect(settingsRepository.updatedPushSettings, isNotNull);
+      expect(settingsRepository.updatedPushSettings!.maxTtlDays, 14);
+    },
+  );
 
-    expect(settingsRepository.updatedPushSettings, isNotNull);
-    expect(settingsRepository.updatedPushSettings!.maxTtlDays, 14);
-  });
-
-  testWidgets('push section saves FCM credentials via remote repository',
-      (tester) async {
+  testWidgets('push section saves FCM credentials via remote repository', (
+    tester,
+  ) async {
     final repository = _FakeAppDataRepository(_buildAppData());
     final settingsRepository = _FakeTenantAdminSettingsRepository();
     GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
@@ -2020,8 +2026,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(settingsRepository.updatedPushCredentials, isNotNull);
-    expect(settingsRepository.updatedPushCredentials!.projectId,
-        'project-updated');
+    expect(
+      settingsRepository.updatedPushCredentials!.projectId,
+      'project-updated',
+    );
     expect(
       settingsRepository.updatedPushCredentials!.clientEmail,
       'push-updated@tenant-a.test',
@@ -2032,8 +2040,9 @@ void main() {
     );
   });
 
-  testWidgets('saves resend email settings via remote repository',
-      (tester) async {
+  testWidgets('saves resend email settings via remote repository', (
+    tester,
+  ) async {
     final repository = _FakeAppDataRepository(_buildAppData());
     final settingsRepository = _FakeTenantAdminSettingsRepository();
     GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
@@ -2082,10 +2091,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(
-      find.descendant(
-        of: tokenRow,
-        matching: find.byIcon(Icons.edit_outlined),
-      ),
+      find.descendant(of: tokenRow, matching: find.byIcon(Icons.edit_outlined)),
     );
     await tester.pumpAndSettle();
     await tester.enterText(
@@ -2096,10 +2102,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(
-      find.descendant(
-        of: fromRow,
-        matching: find.byIcon(Icons.edit_outlined),
-      ),
+      find.descendant(of: fromRow, matching: find.byIcon(Icons.edit_outlined)),
     );
     await tester.pumpAndSettle();
     await tester.enterText(
@@ -2110,10 +2113,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(
-      find.descendant(
-        of: toRow,
-        matching: find.byIcon(Icons.edit_outlined),
-      ),
+      find.descendant(of: toRow, matching: find.byIcon(Icons.edit_outlined)),
     );
     await tester.pumpAndSettle();
     await tester.enterText(
@@ -2147,8 +2147,9 @@ void main() {
     );
   });
 
-  testWidgets('saves outbound webhook settings via remote repository',
-      (tester) async {
+  testWidgets('saves outbound webhook settings via remote repository', (
+    tester,
+  ) async {
     final repository = _FakeAppDataRepository(_buildAppData());
     final settingsRepository = _FakeTenantAdminSettingsRepository();
     GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
@@ -2218,10 +2219,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(
-      find.descendant(
-        of: otpRow,
-        matching: find.byIcon(Icons.edit_outlined),
-      ),
+      find.descendant(of: otpRow, matching: find.byIcon(Icons.edit_outlined)),
     );
     await tester.pumpAndSettle();
     await tester.enterText(
@@ -2232,10 +2230,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(
-      find.descendant(
-        of: ttlRow,
-        matching: find.byIcon(Icons.edit_outlined),
-      ),
+      find.descendant(of: ttlRow, matching: find.byIcon(Icons.edit_outlined)),
     );
     await tester.pumpAndSettle();
     await tester.enterText(
@@ -2257,7 +2252,8 @@ void main() {
     expect(settingsRepository.updatedOutboundIntegrationsSettings, isNotNull);
     expect(
       settingsRepository
-          .updatedOutboundIntegrationsSettings!.whatsappWebhookUrl,
+          .updatedOutboundIntegrationsSettings!
+          .whatsappWebhookUrl,
       'https://integrations.example/whatsapp-updated',
     );
     expect(
@@ -2266,12 +2262,14 @@ void main() {
     );
     expect(
       settingsRepository
-          .updatedOutboundIntegrationsSettings!.otpUseWhatsappWebhook,
+          .updatedOutboundIntegrationsSettings!
+          .otpUseWhatsappWebhook,
       isTrue,
     );
     expect(
       settingsRepository
-          .updatedOutboundIntegrationsSettings!.otpDeliveryChannel,
+          .updatedOutboundIntegrationsSettings!
+          .otpDeliveryChannel,
       'whatsapp',
     );
     expect(
@@ -2280,13 +2278,15 @@ void main() {
     );
   });
 
-  testWidgets('shows SMS URL only when secondary OTP SMS channel is enabled',
-      (tester) async {
+  testWidgets('shows SMS URL only when secondary OTP SMS channel is enabled', (
+    tester,
+  ) async {
     final repository = _FakeAppDataRepository(_buildAppData());
     final settingsRepository = _FakeTenantAdminSettingsRepository()
       .._outboundIntegrationsSettings = TenantAdminOutboundIntegrationsSettings(
-        whatsappWebhookUrlValue:
-            _optionalUrl('https://integrations.example/whatsapp'),
+        whatsappWebhookUrlValue: _optionalUrl(
+          'https://integrations.example/whatsapp',
+        ),
         otpUseWhatsappWebhookValue: _booleanValue(true),
         otpDeliveryChannelValue: _token('whatsapp'),
         otpTtlMinutesValue: _positiveInt(10),
@@ -2336,220 +2336,228 @@ void main() {
   });
 
   testWidgets(
-      'waits for remote technical integrations load before exposing outbound edits',
-      (tester) async {
-    final repository = _FakeAppDataRepository(_buildAppData());
-    final settingsRepository = _FakeTenantAdminSettingsRepository()
-      ..outboundIntegrationsFetchBlocker = Completer<void>();
-    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
-    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
-      settingsRepository,
-    );
-    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
-      TenantAdminImageIngestionService(
-        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
-      ),
-    );
-    final controller = TenantAdminSettingsController();
-    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
-
-    const child = Scaffold(
-      body: TenantAdminSettingsTechnicalIntegrationsScreen(
-        initialSection: TenantAdminSettingsIntegrationSection.outbound,
-      ),
-    );
-    final router = RootStackRouter.build(
-      routes: [
-        NamedRouteDef(
-          name: _settingsTestRouteNameForChild(child),
-          path: '/',
-          meta: _settingsTestMetaForChild(child),
-          builder: (_, __) => child,
+    'waits for remote technical integrations load before exposing outbound edits',
+    (tester) async {
+      final repository = _FakeAppDataRepository(_buildAppData());
+      final settingsRepository = _FakeTenantAdminSettingsRepository()
+        ..outboundIntegrationsFetchBlocker = Completer<void>();
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+      GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+        settingsRepository,
+      );
+      GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+        TenantAdminImageIngestionService(
+          externalImageProxy: _FakeTenantAdminExternalImageProxy(),
         ),
-      ],
-    )..ignorePopCompleters = true;
+      );
+      final controller = TenantAdminSettingsController();
+      GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
 
-    await tester.pumpWidget(
-      MaterialApp.router(
-        routeInformationParser: router.defaultRouteParser(),
-        routerDelegate: router.delegate(),
-      ),
-    );
-    await tester.pump();
+      const child = Scaffold(
+        body: TenantAdminSettingsTechnicalIntegrationsScreen(
+          initialSection: TenantAdminSettingsIntegrationSection.outbound,
+        ),
+      );
+      final router = RootStackRouter.build(
+        routes: [
+          NamedRouteDef(
+            name: _settingsTestRouteNameForChild(child),
+            path: '/',
+            meta: _settingsTestMetaForChild(child),
+            builder: (_, __) => child,
+          ),
+        ],
+      )..ignorePopCompleters = true;
 
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    expect(
-      find.byKey(
-        TenantAdminSettingsKeys.technicalIntegrationsOutboundSection,
-        skipOffstage: false,
-      ),
-      findsNothing,
-    );
+      await tester.pumpWidget(
+        MaterialApp.router(
+          routeInformationParser: router.defaultRouteParser(),
+          routerDelegate: router.delegate(),
+        ),
+      );
+      await tester.pump();
 
-    settingsRepository.outboundIntegrationsFetchBlocker?.complete();
-    await tester.pumpAndSettle();
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(
+        find.byKey(
+          TenantAdminSettingsKeys.technicalIntegrationsOutboundSection,
+          skipOffstage: false,
+        ),
+        findsNothing,
+      );
 
-    expect(
-      find.byKey(
-        TenantAdminSettingsKeys.technicalIntegrationsOutboundSection,
-        skipOffstage: false,
-      ),
-      findsOneWidget,
-    );
-    expect(find.text('https://integrations.example/whatsapp'), findsOneWidget);
-  });
+      settingsRepository.outboundIntegrationsFetchBlocker?.complete();
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(
+          TenantAdminSettingsKeys.technicalIntegrationsOutboundSection,
+          skipOffstage: false,
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text('https://integrations.example/whatsapp'),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets(
-      'retries initialSection focus after async technical integrations mount',
-      (tester) async {
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(430, 640);
-    addTearDown(() {
-      tester.view.resetDevicePixelRatio();
-      tester.view.resetPhysicalSize();
-    });
+    'retries initialSection focus after async technical integrations mount',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(430, 640);
+      addTearDown(() {
+        tester.view.resetDevicePixelRatio();
+        tester.view.resetPhysicalSize();
+      });
 
-    final repository = _FakeAppDataRepository(_buildAppData());
-    final settingsRepository = _FakeTenantAdminSettingsRepository()
-      ..outboundIntegrationsFetchBlocker = Completer<void>();
-    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
-    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
-      settingsRepository,
-    );
-    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
-      TenantAdminImageIngestionService(
-        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
-      ),
-    );
-    final controller = TenantAdminSettingsController();
-    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
-
-    const child = Scaffold(
-      body: TenantAdminSettingsTechnicalIntegrationsScreen(
-        initialSection: TenantAdminSettingsIntegrationSection.push,
-      ),
-    );
-    final router = RootStackRouter.build(
-      routes: [
-        NamedRouteDef(
-          name: _settingsTestRouteNameForChild(child),
-          path: '/',
-          meta: _settingsTestMetaForChild(child),
-          builder: (_, __) => child,
+      final repository = _FakeAppDataRepository(_buildAppData());
+      final settingsRepository = _FakeTenantAdminSettingsRepository()
+        ..outboundIntegrationsFetchBlocker = Completer<void>();
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+      GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+        settingsRepository,
+      );
+      GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+        TenantAdminImageIngestionService(
+          externalImageProxy: _FakeTenantAdminExternalImageProxy(),
         ),
-      ],
-    )..ignorePopCompleters = true;
+      );
+      final controller = TenantAdminSettingsController();
+      GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
 
-    await tester.pumpWidget(
-      MaterialApp.router(
-        routeInformationParser: router.defaultRouteParser(),
-        routerDelegate: router.delegate(),
-      ),
-    );
-    await tester.pump();
-
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    expect(
-      find.byKey(
-        TenantAdminSettingsKeys.technicalIntegrationsPushSection,
-        skipOffstage: false,
-      ),
-      findsNothing,
-    );
-
-    settingsRepository.outboundIntegrationsFetchBlocker?.complete();
-    await tester.pumpAndSettle();
-
-    expect(find.byType(CircularProgressIndicator), findsNothing);
-    final viewportRect = tester.getRect(
-      find.byKey(TenantAdminSettingsKeys.technicalIntegrationsScreen),
-    );
-    final pushSectionRect = tester.getRect(
-      find.byKey(
-        TenantAdminSettingsKeys.technicalIntegrationsPushSection,
-        skipOffstage: false,
-      ),
-    );
-    final scrollableState = tester.state<ScrollableState>(
-      find.byType(Scrollable).first,
-    );
-
-    expect(scrollableState.position.pixels, greaterThan(0));
-    expect(pushSectionRect.bottom, greaterThan(viewportRect.top));
-    expect(pushSectionRect.top, lessThan(viewportRect.bottom));
-  });
-
-  testWidgets('saves and deletes telemetry integrations via remote repository',
-      (tester) async {
-    final repository = _FakeAppDataRepository(_buildAppData());
-    final settingsRepository = _FakeTenantAdminSettingsRepository();
-    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
-    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
-      settingsRepository,
-    );
-    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
-      TenantAdminImageIngestionService(
-        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
-      ),
-    );
-    final controller = TenantAdminSettingsController();
-    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
-
-    await _pumpWithAutoRoute(
-      tester,
-      const Scaffold(
+      const child = Scaffold(
         body: TenantAdminSettingsTechnicalIntegrationsScreen(
-          initialSection: TenantAdminSettingsIntegrationSection.telemetry,
+          initialSection: TenantAdminSettingsIntegrationSection.push,
         ),
-      ),
-    );
+      );
+      final router = RootStackRouter.build(
+        routes: [
+          NamedRouteDef(
+            name: _settingsTestRouteNameForChild(child),
+            path: '/',
+            meta: _settingsTestMetaForChild(child),
+            builder: (_, __) => child,
+          ),
+        ],
+      )..ignorePopCompleters = true;
 
-    await tester.scrollUntilVisible(
-      find.text('Telemetry'),
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        MaterialApp.router(
+          routeInformationParser: router.defaultRouteParser(),
+          routerDelegate: router.delegate(),
+        ),
+      );
+      await tester.pump();
 
-    expect(find.text('firebase'), findsNothing);
-    expect(find.text('mixpanel'), findsOneWidget);
-    expect(find.widgetWithText(TextField, 'Token'), findsOneWidget);
-    expect(find.widgetWithText(TextField, 'URL webhook'), findsNothing);
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(
+        find.byKey(
+          TenantAdminSettingsKeys.technicalIntegrationsPushSection,
+          skipOffstage: false,
+        ),
+        findsNothing,
+      );
 
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Token'),
-      'mixpanel-token-123',
-    );
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Eventos (separados por vírgula)'),
-      'app_opened',
-    );
-    await tester.tap(find.widgetWithText(FilledButton, 'Salvar integração'));
-    await tester.pumpAndSettle();
+      settingsRepository.outboundIntegrationsFetchBlocker?.complete();
+      await tester.pumpAndSettle();
 
-    expect(settingsRepository.lastTelemetryIntegration, isNotNull);
-    expect(settingsRepository.lastTelemetryIntegration!.type, 'mixpanel');
-    expect(
-      settingsRepository.lastTelemetryIntegration!.token,
-      'mixpanel-token-123',
-    );
-    expect(
-      settingsRepository.lastTelemetryIntegration!.events,
-      equals(['app_opened']),
-    );
-    expect(find.text('track_all=true'), findsNothing);
-    expect(find.text('mixpanel'), findsNWidgets(2));
-    expect(find.text('app_opened'), findsWidgets);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      final viewportRect = tester.getRect(
+        find.byKey(TenantAdminSettingsKeys.technicalIntegrationsScreen),
+      );
+      final pushSectionRect = tester.getRect(
+        find.byKey(
+          TenantAdminSettingsKeys.technicalIntegrationsPushSection,
+          skipOffstage: false,
+        ),
+      );
+      final scrollableState = tester.state<ScrollableState>(
+        find.byType(Scrollable).first,
+      );
 
-    await tester.tap(find.byIcon(Icons.delete_outline).first);
-    await tester.pumpAndSettle();
+      expect(scrollableState.position.pixels, greaterThan(0));
+      expect(pushSectionRect.bottom, greaterThan(viewportRect.top));
+      expect(pushSectionRect.top, lessThan(viewportRect.bottom));
+    },
+  );
 
-    expect(settingsRepository.deletedTelemetryTypes, equals(['mixpanel']));
-    expect(find.byIcon(Icons.delete_outline), findsNothing);
-  });
+  testWidgets(
+    'saves and deletes telemetry integrations via remote repository',
+    (tester) async {
+      final repository = _FakeAppDataRepository(_buildAppData());
+      final settingsRepository = _FakeTenantAdminSettingsRepository();
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+      GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+        settingsRepository,
+      );
+      GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+        TenantAdminImageIngestionService(
+          externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+        ),
+      );
+      final controller = TenantAdminSettingsController();
+      GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
 
-  testWidgets('telemetry webhook mode shows URL field instead of token',
-      (tester) async {
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(
+          body: TenantAdminSettingsTechnicalIntegrationsScreen(
+            initialSection: TenantAdminSettingsIntegrationSection.telemetry,
+          ),
+        ),
+      );
+
+      await tester.scrollUntilVisible(
+        find.text('Telemetry'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('firebase'), findsNothing);
+      expect(find.text('mixpanel'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Token'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'URL webhook'), findsNothing);
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Token'),
+        'mixpanel-token-123',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Eventos (separados por vírgula)'),
+        'app_opened',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Salvar integração'));
+      await tester.pumpAndSettle();
+
+      expect(settingsRepository.lastTelemetryIntegration, isNotNull);
+      expect(settingsRepository.lastTelemetryIntegration!.type, 'mixpanel');
+      expect(
+        settingsRepository.lastTelemetryIntegration!.token,
+        'mixpanel-token-123',
+      );
+      expect(
+        settingsRepository.lastTelemetryIntegration!.events,
+        equals(['app_opened']),
+      );
+      expect(find.text('track_all=true'), findsNothing);
+      expect(find.text('mixpanel'), findsNWidgets(2));
+      expect(find.text('app_opened'), findsWidgets);
+
+      await tester.tap(find.byIcon(Icons.delete_outline).first);
+      await tester.pumpAndSettle();
+
+      expect(settingsRepository.deletedTelemetryTypes, equals(['mixpanel']));
+      expect(find.byIcon(Icons.delete_outline), findsNothing);
+    },
+  );
+
+  testWidgets('telemetry webhook mode shows URL field instead of token', (
+    tester,
+  ) async {
     final repository = _FakeAppDataRepository(_buildAppData());
     final settingsRepository = _FakeTenantAdminSettingsRepository();
     GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
@@ -2674,7 +2682,9 @@ void main() {
 
     await tester.tap(
       find.descendant(
-          of: packageRow, matching: find.byIcon(Icons.edit_outlined)),
+        of: packageRow,
+        matching: find.byIcon(Icons.edit_outlined),
+      ),
     );
     await tester.pumpAndSettle();
     await tester.enterText(
@@ -2720,11 +2730,9 @@ void main() {
     );
     expect(
       settingsRepository.updatedAppLinksSettings!.androidSha256CertFingerprints,
-      equals(
-        [
-          '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:AA:23:11:22:33:44:55:66:77:88:99',
-        ],
-      ),
+      equals([
+        '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:AA:23:11:22:33:44:55:66:77:88:99',
+      ]),
     );
     expect(
       settingsRepository.updatedAppLinksSettings!.androidPublicationEnabled,
@@ -2737,87 +2745,88 @@ void main() {
   });
 
   testWidgets(
-      'updates iOS paths via canonical checklist before saving app links',
-      (tester) async {
-    final repository = _FakeAppDataRepository(_buildAppData());
-    final settingsRepository = _FakeTenantAdminSettingsRepository();
-    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
-    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
-      settingsRepository,
-    );
-    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
-      TenantAdminImageIngestionService(
-        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
-      ),
-    );
-    final controller = TenantAdminSettingsController();
-    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
-
-    await _pumpWithAutoRoute(
-      tester,
-      const Scaffold(
-        body: TenantAdminSettingsTechnicalIntegrationsScreen(
-          initialSection: TenantAdminSettingsIntegrationSection.appLinks,
+    'updates iOS paths via canonical checklist before saving app links',
+    (tester) async {
+      final repository = _FakeAppDataRepository(_buildAppData());
+      final settingsRepository = _FakeTenantAdminSettingsRepository();
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+      GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+        settingsRepository,
+      );
+      GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+        TenantAdminImageIngestionService(
+          externalImageProxy: _FakeTenantAdminExternalImageProxy(),
         ),
-      ),
-    );
+      );
+      final controller = TenantAdminSettingsController();
+      GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
 
-    final iosPathsRow = find.byKey(
-      TenantAdminSettingsKeys.technicalIntegrationsAppLinksIosPathsEdit,
-      skipOffstage: false,
-    );
-    final saveButton = find.byKey(
-      TenantAdminSettingsKeys.technicalIntegrationsSaveAppLinks,
-      skipOffstage: false,
-    );
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(
+          body: TenantAdminSettingsTechnicalIntegrationsScreen(
+            initialSection: TenantAdminSettingsIntegrationSection.appLinks,
+          ),
+        ),
+      );
 
-    await tester.scrollUntilVisible(
-      iosPathsRow,
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
+      final iosPathsRow = find.byKey(
+        TenantAdminSettingsKeys.technicalIntegrationsAppLinksIosPathsEdit,
+        skipOffstage: false,
+      );
+      final saveButton = find.byKey(
+        TenantAdminSettingsKeys.technicalIntegrationsSaveAppLinks,
+        skipOffstage: false,
+      );
 
-    await tester.tap(
-      find.descendant(
-        of: iosPathsRow,
-        matching: find.byIcon(Icons.edit_outlined),
-      ),
-    );
-    await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        iosPathsRow,
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.text('Selecionar iOS paths'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.widgetWithText(CheckboxListTile, '/home'),
-      200,
-      scrollable: find.byType(Scrollable).last,
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(CheckboxListTile, '/home'));
-    await tester.pumpAndSettle();
-    await tester.tap(
-      find.descendant(
-        of: find.byType(AlertDialog),
-        matching: find.widgetWithText(FilledButton, 'Aplicar'),
-      ),
-    );
-    await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: iosPathsRow,
+          matching: find.byIcon(Icons.edit_outlined),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(
-      saveButton,
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(saveButton);
-    await tester.pumpAndSettle();
+      expect(find.text('Selecionar iOS paths'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.widgetWithText(CheckboxListTile, '/home'),
+        200,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(CheckboxListTile, '/home'));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.widgetWithText(FilledButton, 'Aplicar'),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    expect(settingsRepository.updatedAppLinksSettings, isNotNull);
-    expect(
-      settingsRepository.updatedAppLinksSettings!.iosPaths,
-      equals(['/invite*', '/convites*', '/home']),
-    );
-  });
+      await tester.scrollUntilVisible(
+        saveButton,
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(saveButton);
+      await tester.pumpAndSettle();
+
+      expect(settingsRepository.updatedAppLinksSettings, isNotNull);
+      expect(
+        settingsRepository.updatedAppLinksSettings!.iosPaths,
+        equals(['/invite*', '/convites*', '/home']),
+      );
+    },
+  );
 
   testWidgets('saves branding settings via remote repository', (tester) async {
     final repository = _FakeAppDataRepository(_buildAppData());
@@ -2846,10 +2855,14 @@ void main() {
       find.byKey(TenantAdminSettingsKeys.visualIdentityBackButton),
       findsOneWidget,
     );
-    expect(find.byKey(TenantAdminSettingsKeys.brandingPrimaryField),
-        findsOneWidget);
-    expect(find.byKey(TenantAdminSettingsKeys.brandingSecondaryField),
-        findsOneWidget);
+    expect(
+      find.byKey(TenantAdminSettingsKeys.brandingPrimaryField),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(TenantAdminSettingsKeys.brandingSecondaryField),
+      findsOneWidget,
+    );
     expect(
       find.byKey(TenantAdminSettingsKeys.brandingPrimaryPickerButton),
       findsOneWidget,
@@ -2941,14 +2954,8 @@ void main() {
 
     expect(settingsRepository.lastBrandingInput, isNotNull);
     expect(settingsRepository.lastBrandingInput!.tenantName, 'Tenant Test');
-    expect(
-      settingsRepository.lastBrandingInput!.primarySeedColor,
-      '#A36CE3',
-    );
-    expect(
-      settingsRepository.lastBrandingInput!.secondarySeedColor,
-      '#673AB7',
-    );
+    expect(settingsRepository.lastBrandingInput!.primarySeedColor, '#A36CE3');
+    expect(settingsRepository.lastBrandingInput!.secondarySeedColor, '#673AB7');
     expect(
       settingsRepository.lastBrandingInput!.publicWebDefaultTitle,
       'Guarappari Home',
@@ -2959,8 +2966,9 @@ void main() {
     );
   });
 
-  testWidgets('renders dedicated favicon preview status when ico exists',
-      (tester) async {
+  testWidgets('renders dedicated favicon preview status when ico exists', (
+    tester,
+  ) async {
     final repository = _FakeAppDataRepository(_buildAppData());
     final settingsRepository = _FakeTenantAdminSettingsRepository(
       initialHasDedicatedFavicon: true,
@@ -2995,213 +3003,229 @@ void main() {
   });
 
   testWidgets(
-      'disables apply in branding color picker when typed hex is invalid',
-      (tester) async {
-    final repository = _FakeAppDataRepository(_buildAppData());
-    final settingsRepository = _FakeTenantAdminSettingsRepository();
-    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
-    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
-      settingsRepository,
-    );
-    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
-      TenantAdminImageIngestionService(
+    'disables apply in branding color picker when typed hex is invalid',
+    (tester) async {
+      final repository = _FakeAppDataRepository(_buildAppData());
+      final settingsRepository = _FakeTenantAdminSettingsRepository();
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+      GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+        settingsRepository,
+      );
+      GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+        TenantAdminImageIngestionService(
+          externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+        ),
+      );
+      final controller = TenantAdminSettingsController();
+      GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(body: TenantAdminSettingsVisualIdentityScreen()),
+      );
+
+      final primaryPickerButton = find.byKey(
+        TenantAdminSettingsKeys.brandingPrimaryPickerButton,
+      );
+      await tester.scrollUntilVisible(
+        primaryPickerButton,
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(primaryPickerButton);
+      await tester.pumpAndSettle();
+
+      final pickerDialog = find.byType(AlertDialog);
+      final hexInputField = find.descendant(
+        of: pickerDialog,
+        matching: find.byType(TextFormField),
+      );
+      final applyButtonFinder = find.widgetWithText(
+        FilledButton,
+        'Aplicar cor',
+      );
+
+      expect(hexInputField, findsOneWidget);
+      expect(applyButtonFinder, findsOneWidget);
+
+      await tester.enterText(hexInputField, '#12345');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Formato inválido. Use #RRGGBB.'), findsOneWidget);
+      expect(tester.widget<FilledButton>(applyButtonFinder).onPressed, isNull);
+
+      await tester.tap(find.widgetWithText(TextButton, 'Cancelar'));
+      await tester.pumpAndSettle();
+
+      final saveBrandingButton = find.byKey(
+        const ValueKey('tenant_admin_settings_save_branding'),
+      );
+      await tester.scrollUntilVisible(
+        saveBrandingButton,
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(saveBrandingButton);
+      await tester.pumpAndSettle();
+
+      expect(settingsRepository.lastBrandingInput, isNotNull);
+      expect(settingsRepository.lastBrandingInput!.primarySeedColor, '#009688');
+    },
+  );
+
+  test(
+    'controller saves branding light logo upload using project asset bytes',
+    () async {
+      final repository = _FakeAppDataRepository(_buildAppData());
+      final settingsRepository = _FakeTenantAdminSettingsRepository();
+      final controller = TenantAdminSettingsController(
+        appDataRepository: repository,
+        settingsRepository: settingsRepository,
+      );
+      final ingestionService = TenantAdminImageIngestionService(
         externalImageProxy: _FakeTenantAdminExternalImageProxy(),
-      ),
-    );
-    final controller = TenantAdminSettingsController();
-    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+      );
+      await controller.init();
 
-    await _pumpWithAutoRoute(
-      tester,
-      const Scaffold(body: TenantAdminSettingsVisualIdentityScreen()),
-    );
+      final logoFile = File('assets/images/logo_horizontal.png');
+      expect(logoFile.existsSync(), isTrue);
+      final logoBytes = await logoFile.readAsBytes();
+      expect(logoBytes, isNotEmpty);
+      final upload = await ingestionService.buildUpload(
+        XFile.fromData(
+          logoBytes,
+          mimeType: 'image/png',
+          name: 'logo_horizontal.png',
+        ),
+        slot: TenantAdminImageSlot.lightLogo,
+      );
+      expect(upload, isNotNull);
+      expect(upload!.bytes, isNotEmpty);
+      expect(upload.mimeType, 'image/png');
+      expect(upload.fileName, endsWith('.png'));
+      expect(
+        upload.bytes.take(8).toList(),
+        equals([137, 80, 78, 71, 13, 10, 26, 10]),
+      );
 
-    final primaryPickerButton = find.byKey(
-      TenantAdminSettingsKeys.brandingPrimaryPickerButton,
-    );
-    await tester.scrollUntilVisible(
-      primaryPickerButton,
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
+      await controller.saveBranding(
+        lightLogoUpload: upload,
+        darkLogoUpload: null,
+        lightIconUpload: null,
+        darkIconUpload: null,
+        faviconUpload: null,
+        pwaIconUpload: null,
+        publicWebDefaultImageUpload: null,
+      );
 
-    await tester.tap(primaryPickerButton);
-    await tester.pumpAndSettle();
+      final savedUpload = settingsRepository.lastBrandingInput?.lightLogoUpload;
+      expect(savedUpload, isNotNull);
+      expect(savedUpload!.bytes, isNotEmpty);
+      expect(savedUpload.mimeType, 'image/png');
+      expect(savedUpload.fileName, endsWith('.png'));
+      expect(
+        savedUpload.bytes.take(8).toList(),
+        equals([137, 80, 78, 71, 13, 10, 26, 10]),
+      );
+      expect(
+        controller.brandingLightLogoUrlStreamValue.value,
+        allOf(
+          contains('https://guarappari.test/storage/light-logo.png'),
+          contains('v='),
+        ),
+      );
 
-    final pickerDialog = find.byType(AlertDialog);
-    final hexInputField = find.descendant(
-      of: pickerDialog,
-      matching: find.byType(TextFormField),
-    );
-    final applyButtonFinder = find.widgetWithText(FilledButton, 'Aplicar cor');
-
-    expect(hexInputField, findsOneWidget);
-    expect(applyButtonFinder, findsOneWidget);
-
-    await tester.enterText(hexInputField, '#12345');
-    await tester.pumpAndSettle();
-
-    expect(find.text('Formato inválido. Use #RRGGBB.'), findsOneWidget);
-    expect(
-      tester.widget<FilledButton>(applyButtonFinder).onPressed,
-      isNull,
-    );
-
-    await tester.tap(find.widgetWithText(TextButton, 'Cancelar'));
-    await tester.pumpAndSettle();
-
-    final saveBrandingButton = find.byKey(
-      const ValueKey('tenant_admin_settings_save_branding'),
-    );
-    await tester.scrollUntilVisible(
-      saveBrandingButton,
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(saveBrandingButton);
-    await tester.pumpAndSettle();
-
-    expect(settingsRepository.lastBrandingInput, isNotNull);
-    expect(settingsRepository.lastBrandingInput!.primarySeedColor, '#009688');
-  });
-
-  test('controller saves branding light logo upload using project asset bytes',
-      () async {
-    final repository = _FakeAppDataRepository(_buildAppData());
-    final settingsRepository = _FakeTenantAdminSettingsRepository();
-    final controller = TenantAdminSettingsController(
-      appDataRepository: repository,
-      settingsRepository: settingsRepository,
-    );
-    final ingestionService = TenantAdminImageIngestionService(
-      externalImageProxy: _FakeTenantAdminExternalImageProxy(),
-    );
-    await controller.init();
-
-    final logoFile = File('assets/images/logo_horizontal.png');
-    expect(logoFile.existsSync(), isTrue);
-    final logoBytes = await logoFile.readAsBytes();
-    expect(logoBytes, isNotEmpty);
-    final upload = await ingestionService.buildUpload(
-      XFile.fromData(
-        logoBytes,
-        mimeType: 'image/png',
-        name: 'logo_horizontal.png',
-      ),
-      slot: TenantAdminImageSlot.lightLogo,
-    );
-    expect(upload, isNotNull);
-    expect(upload!.bytes, isNotEmpty);
-    expect(upload.mimeType, 'image/png');
-    expect(upload.fileName, endsWith('.png'));
-    expect(upload.bytes.take(8).toList(),
-        equals([137, 80, 78, 71, 13, 10, 26, 10]));
-
-    await controller.saveBranding(
-      lightLogoUpload: upload,
-      darkLogoUpload: null,
-      lightIconUpload: null,
-      darkIconUpload: null,
-      faviconUpload: null,
-      pwaIconUpload: null,
-      publicWebDefaultImageUpload: null,
-    );
-
-    final savedUpload = settingsRepository.lastBrandingInput?.lightLogoUpload;
-    expect(savedUpload, isNotNull);
-    expect(savedUpload!.bytes, isNotEmpty);
-    expect(savedUpload.mimeType, 'image/png');
-    expect(savedUpload.fileName, endsWith('.png'));
-    expect(savedUpload.bytes.take(8).toList(),
-        equals([137, 80, 78, 71, 13, 10, 26, 10]));
-    expect(
-      controller.brandingLightLogoUrlStreamValue.value,
-      allOf(
-        contains('https://guarappari.test/storage/light-logo.png'),
-        contains('v='),
-      ),
-    );
-
-    controller.onDispose();
-  });
+      controller.onDispose();
+    },
+  );
 
   test(
-      'controller uses selected tenant domain for branding preview url in landlord mode',
-      () async {
-    final repository = _FakeAppDataRepository(
-      _buildAppData(mainDomain: 'https://belluga.app'),
-    );
-    final settingsRepository = _FakeTenantAdminSettingsRepository();
-    final tenantScope = _FakeTenantScope('guarappari.test');
-    final controller = TenantAdminSettingsController(
-      appDataRepository: repository,
-      settingsRepository: settingsRepository,
-      tenantScope: tenantScope,
-    );
+    'controller uses selected tenant domain for branding preview url in landlord mode',
+    () async {
+      final repository = _FakeAppDataRepository(
+        _buildAppData(mainDomain: 'https://belluga.app'),
+      );
+      final settingsRepository = _FakeTenantAdminSettingsRepository();
+      final tenantScope = _FakeTenantScope('guarappari.test');
+      final controller = TenantAdminSettingsController(
+        appDataRepository: repository,
+        settingsRepository: settingsRepository,
+        tenantScope: tenantScope,
+      );
 
-    await controller.init();
-    expect(
-      controller.brandingLightLogoUrlStreamValue.value,
-      allOf(
-        contains('https://guarappari.test/logo-light.png'),
-        contains('v='),
-      ),
-    );
+      await controller.init();
+      expect(
+        controller.brandingLightLogoUrlStreamValue.value,
+        allOf(
+          contains('https://guarappari.test/logo-light.png'),
+          contains('v='),
+        ),
+      );
 
-    await controller.saveBranding(
-      lightLogoUpload: null,
-      darkLogoUpload: null,
-      lightIconUpload: null,
-      darkIconUpload: null,
-      faviconUpload: null,
-      pwaIconUpload: null,
-      publicWebDefaultImageUpload: null,
-    );
+      await controller.saveBranding(
+        lightLogoUpload: null,
+        darkLogoUpload: null,
+        lightIconUpload: null,
+        darkIconUpload: null,
+        faviconUpload: null,
+        pwaIconUpload: null,
+        publicWebDefaultImageUpload: null,
+      );
 
-    expect(
-      controller.brandingLightLogoUrlStreamValue.value,
-      allOf(
-        contains('https://guarappari.test/logo-light.png'),
-        contains('v='),
-      ),
-    );
-    controller.onDispose();
-  });
+      expect(
+        controller.brandingLightLogoUrlStreamValue.value,
+        allOf(
+          contains('https://guarappari.test/logo-light.png'),
+          contains('v='),
+        ),
+      );
+      controller.onDispose();
+    },
+  );
 
   test(
-      'controller falls back to canonical tenant pwa icon endpoint when repository pwa url is missing',
-      () async {
-    final repository = _FakeAppDataRepository(
-      _buildAppData(mainDomain: 'https://belluga.app'),
-    );
-    final settingsRepository =
-        _FakeTenantAdminSettingsRepository(initialPwaIconUrl: null);
-    final tenantScope = _FakeTenantScope('guarappari.test');
-    final controller = TenantAdminSettingsController(
-      appDataRepository: repository,
-      settingsRepository: settingsRepository,
-      tenantScope: tenantScope,
-    );
+    'controller falls back to canonical tenant pwa icon endpoint when repository pwa url is missing',
+    () async {
+      final repository = _FakeAppDataRepository(
+        _buildAppData(mainDomain: 'https://belluga.app'),
+      );
+      final settingsRepository = _FakeTenantAdminSettingsRepository(
+        initialPwaIconUrl: null,
+      );
+      final tenantScope = _FakeTenantScope('guarappari.test');
+      final controller = TenantAdminSettingsController(
+        appDataRepository: repository,
+        settingsRepository: settingsRepository,
+        tenantScope: tenantScope,
+      );
 
-    await controller.init();
+      await controller.init();
 
-    expect(
-      controller.brandingPwaIconUrlStreamValue.value,
-      allOf(
-        contains('https://guarappari.test/icon/icon-512x512.png'),
-        contains('v='),
-      ),
-    );
-    controller.onDispose();
-  });
+      expect(
+        controller.brandingPwaIconUrlStreamValue.value,
+        allOf(
+          contains('https://guarappari.test/icon/icon-512x512.png'),
+          contains('v='),
+        ),
+      );
+      controller.onDispose();
+    },
+  );
 
-  test('controller reports recoverable app data refresh failures to Sentry',
-      () async {
-    final sentryCaptures = <_SentryCapture>[];
-    SentryErrorReporter.overrideCaptureExceptionForTesting(
-      (throwable, {stackTrace, hint, message, withScope}) async {
+  test(
+    'controller reports recoverable app data refresh failures to Sentry',
+    () async {
+      final sentryCaptures = <_SentryCapture>[];
+      SentryErrorReporter.overrideCaptureExceptionForTesting((
+        throwable, {
+        stackTrace,
+        hint,
+        message,
+        withScope,
+      }) async {
         sentryCaptures.add(
           _SentryCapture(
             throwable: throwable,
@@ -3210,202 +3234,197 @@ void main() {
           ),
         );
         return SentryId.empty();
-      },
-    );
-    final repository = _FakeAppDataRepository(
-      _buildAppData(),
-      failInitOnCall: 1,
-    );
-    final settingsRepository = _FakeTenantAdminSettingsRepository();
-    final controller = TenantAdminSettingsController(
-      appDataRepository: repository,
-      settingsRepository: settingsRepository,
-    );
-    controller.domainPathController.text = 'novo.guarappari.test';
+      });
+      final repository = _FakeAppDataRepository(
+        _buildAppData(),
+        failInitOnCall: 1,
+      );
+      final settingsRepository = _FakeTenantAdminSettingsRepository();
+      final controller = TenantAdminSettingsController(
+        appDataRepository: repository,
+        settingsRepository: settingsRepository,
+      );
+      controller.domainPathController.text = 'novo.guarappari.test';
 
-    await controller.createDomain();
+      await controller.createDomain();
 
-    expect(sentryCaptures, hasLength(1));
-    expect(sentryCaptures.single.throwable, isA<StateError>());
-    expect(sentryCaptures.single.stackTrace, isA<StackTrace>());
-    controller.onDispose();
-  });
-
-  test('controller rehydrates branding colors from repository after save',
-      () async {
-    final repository = _FakeAppDataRepository(_buildAppData());
-    final settingsRepository = _FakeTenantAdminSettingsRepository();
-    final controller = TenantAdminSettingsController(
-      appDataRepository: repository,
-      settingsRepository: settingsRepository,
-    );
-
-    await controller.init();
-    controller.brandingPrimarySeedColorController.text = '#A36CE3';
-    controller.brandingSecondarySeedColorController.text = '#03DAC6';
-
-    await controller.saveBranding(
-      lightLogoUpload: null,
-      darkLogoUpload: null,
-      lightIconUpload: null,
-      darkIconUpload: null,
-      faviconUpload: null,
-      pwaIconUpload: null,
-      publicWebDefaultImageUpload: null,
-    );
-
-    final reloadedController = TenantAdminSettingsController(
-      appDataRepository: repository,
-      settingsRepository: settingsRepository,
-    );
-    await reloadedController.init();
-
-    expect(
-      reloadedController.brandingPrimarySeedColorController.text,
-      '#A36CE3',
-    );
-    expect(
-      reloadedController.brandingSecondarySeedColorController.text,
-      '#03DAC6',
-    );
-
-    controller.onDispose();
-    reloadedController.onDispose();
-  });
-
-  test('controller forwards favicon upload and refreshes favicon preview url',
-      () async {
-    final repository = _FakeAppDataRepository(_buildAppData());
-    final settingsRepository = _FakeTenantAdminSettingsRepository();
-    final controller = TenantAdminSettingsController(
-      appDataRepository: repository,
-      settingsRepository: settingsRepository,
-    );
-
-    await controller.init();
-
-    final faviconUpload = tenantAdminMediaUploadFromRaw(
-      bytes: Uint8List.fromList([0, 0, 1, 0, 1, 0, 16, 16]),
-      fileName: 'favicon.ico',
-      mimeType: 'image/x-icon',
-    );
-
-    await controller.saveBranding(
-      lightLogoUpload: null,
-      darkLogoUpload: null,
-      lightIconUpload: null,
-      darkIconUpload: null,
-      faviconUpload: faviconUpload,
-      pwaIconUpload: null,
-      publicWebDefaultImageUpload: null,
-    );
-
-    expect(settingsRepository.lastBrandingInput?.faviconUpload, isNotNull);
-    expect(
-      settingsRepository.lastBrandingInput?.faviconUpload?.fileName,
-      'favicon.ico',
-    );
-    expect(
-      controller.brandingFaviconUrlStreamValue.value,
-      allOf(
-        contains('https://guarappari.test/favicon.ico'),
-        contains('v='),
-      ),
-    );
-
-    controller.onDispose();
-  });
-
-  test('controller restores remote favicon preview after clearing local upload',
-      () async {
-    final repository = _FakeAppDataRepository(_buildAppData());
-    final settingsRepository = _FakeTenantAdminSettingsRepository();
-    final controller = TenantAdminSettingsController(
-      appDataRepository: repository,
-      settingsRepository: settingsRepository,
-    );
-
-    await controller.init();
-
-    final initialPreviewUrl = controller.brandingFaviconUrlStreamValue.value;
-    expect(initialPreviewUrl, isNotNull);
-
-    final faviconUpload = tenantAdminMediaUploadFromRaw(
-      bytes: Uint8List.fromList([0, 0, 1, 0, 1, 0, 16, 16]),
-      fileName: 'favicon.ico',
-      mimeType: 'image/x-icon',
-    );
-
-    controller.updateBrandingFaviconUpload(faviconUpload);
-    expect(controller.brandingFaviconUrlStreamValue.value, isNull);
-
-    controller.clearBrandingFaviconUpload();
-
-    expect(controller.brandingFaviconUploadStreamValue.value, isNull);
-    expect(
-      controller.brandingFaviconUrlStreamValue.value,
-      initialPreviewUrl,
-    );
-
-    controller.onDispose();
-  });
+      expect(sentryCaptures, hasLength(1));
+      expect(sentryCaptures.single.throwable, isA<StateError>());
+      expect(sentryCaptures.single.stackTrace, isA<StackTrace>());
+      controller.onDispose();
+    },
+  );
 
   test(
-      'controller keeps branding draft empty and reports error when branding fetch fails',
-      () async {
-    final repository = _FakeAppDataRepository(_buildAppData());
-    final settingsRepository =
-        _FakeTenantAdminSettingsRepository(throwOnBrandingFetch: true);
-    final controller = TenantAdminSettingsController(
-      appDataRepository: repository,
-      settingsRepository: settingsRepository,
-    );
+    'controller rehydrates branding colors from repository after save',
+    () async {
+      final repository = _FakeAppDataRepository(_buildAppData());
+      final settingsRepository = _FakeTenantAdminSettingsRepository();
+      final controller = TenantAdminSettingsController(
+        appDataRepository: repository,
+        settingsRepository: settingsRepository,
+      );
 
-    await controller.init();
+      await controller.init();
+      controller.brandingPrimarySeedColorController.text = '#A36CE3';
+      controller.brandingSecondarySeedColorController.text = '#03DAC6';
 
-    expect(
-      controller.remoteErrorStreamValue.value,
-      contains('branding unavailable'),
-    );
-    expect(controller.brandingTenantNameController.text, isEmpty);
-    expect(controller.brandingPrimarySeedColorController.text, isEmpty);
-    expect(controller.brandingSecondarySeedColorController.text, isEmpty);
-    expect(controller.brandingLightLogoUrlStreamValue.value, isNull);
+      await controller.saveBranding(
+        lightLogoUpload: null,
+        darkLogoUpload: null,
+        lightIconUpload: null,
+        darkIconUpload: null,
+        faviconUpload: null,
+        pwaIconUpload: null,
+        publicWebDefaultImageUpload: null,
+      );
 
-    controller.onDispose();
-  });
+      final reloadedController = TenantAdminSettingsController(
+        appDataRepository: repository,
+        settingsRepository: settingsRepository,
+      );
+      await reloadedController.init();
 
-  test('controller consumes shared location picker confirmation stream',
-      () async {
-    final repository = _FakeAppDataRepository(_buildAppData());
-    final settingsRepository = _FakeTenantAdminSettingsRepository();
-    final locationSelection = TenantAdminLocationSelectionService();
-    final controller = TenantAdminSettingsController(
-      appDataRepository: repository,
-      settingsRepository: settingsRepository,
-      locationSelectionService: locationSelection,
-    );
+      expect(
+        reloadedController.brandingPrimarySeedColorController.text,
+        '#A36CE3',
+      );
+      expect(
+        reloadedController.brandingSecondarySeedColorController.text,
+        '#03DAC6',
+      );
 
-    controller.bindLocalPreferencesFlow();
-    locationSelection.setInitialLocation(
-      tenantAdminLocationFromRaw(
-        latitude: -20.612345,
-        longitude: -40.487654,
-      ),
-    );
-    locationSelection.confirmSelection();
-    await Future<void>.delayed(Duration.zero);
+      controller.onDispose();
+      reloadedController.onDispose();
+    },
+  );
 
-    expect(
-      controller.mapDefaultOriginLatitudeController.text,
-      '-20.612345',
-    );
-    expect(
-      controller.mapDefaultOriginLongitudeController.text,
-      '-40.487654',
-    );
-    controller.onDispose();
-  });
+  test(
+    'controller forwards favicon upload and refreshes favicon preview url',
+    () async {
+      final repository = _FakeAppDataRepository(_buildAppData());
+      final settingsRepository = _FakeTenantAdminSettingsRepository();
+      final controller = TenantAdminSettingsController(
+        appDataRepository: repository,
+        settingsRepository: settingsRepository,
+      );
+
+      await controller.init();
+
+      final faviconUpload = tenantAdminMediaUploadFromRaw(
+        bytes: Uint8List.fromList([0, 0, 1, 0, 1, 0, 16, 16]),
+        fileName: 'favicon.ico',
+        mimeType: 'image/x-icon',
+      );
+
+      await controller.saveBranding(
+        lightLogoUpload: null,
+        darkLogoUpload: null,
+        lightIconUpload: null,
+        darkIconUpload: null,
+        faviconUpload: faviconUpload,
+        pwaIconUpload: null,
+        publicWebDefaultImageUpload: null,
+      );
+
+      expect(settingsRepository.lastBrandingInput?.faviconUpload, isNotNull);
+      expect(
+        settingsRepository.lastBrandingInput?.faviconUpload?.fileName,
+        'favicon.ico',
+      );
+      expect(
+        controller.brandingFaviconUrlStreamValue.value,
+        allOf(contains('https://guarappari.test/favicon.ico'), contains('v=')),
+      );
+
+      controller.onDispose();
+    },
+  );
+
+  test(
+    'controller restores remote favicon preview after clearing local upload',
+    () async {
+      final repository = _FakeAppDataRepository(_buildAppData());
+      final settingsRepository = _FakeTenantAdminSettingsRepository();
+      final controller = TenantAdminSettingsController(
+        appDataRepository: repository,
+        settingsRepository: settingsRepository,
+      );
+
+      await controller.init();
+
+      final initialPreviewUrl = controller.brandingFaviconUrlStreamValue.value;
+      expect(initialPreviewUrl, isNotNull);
+
+      final faviconUpload = tenantAdminMediaUploadFromRaw(
+        bytes: Uint8List.fromList([0, 0, 1, 0, 1, 0, 16, 16]),
+        fileName: 'favicon.ico',
+        mimeType: 'image/x-icon',
+      );
+
+      controller.updateBrandingFaviconUpload(faviconUpload);
+      expect(controller.brandingFaviconUrlStreamValue.value, isNull);
+
+      controller.clearBrandingFaviconUpload();
+
+      expect(controller.brandingFaviconUploadStreamValue.value, isNull);
+      expect(controller.brandingFaviconUrlStreamValue.value, initialPreviewUrl);
+
+      controller.onDispose();
+    },
+  );
+
+  test(
+    'controller keeps branding draft empty and reports error when branding fetch fails',
+    () async {
+      final repository = _FakeAppDataRepository(_buildAppData());
+      final settingsRepository = _FakeTenantAdminSettingsRepository(
+        throwOnBrandingFetch: true,
+      );
+      final controller = TenantAdminSettingsController(
+        appDataRepository: repository,
+        settingsRepository: settingsRepository,
+      );
+
+      await controller.init();
+
+      expect(
+        controller.remoteErrorStreamValue.value,
+        contains('branding unavailable'),
+      );
+      expect(controller.brandingTenantNameController.text, isEmpty);
+      expect(controller.brandingPrimarySeedColorController.text, isEmpty);
+      expect(controller.brandingSecondarySeedColorController.text, isEmpty);
+      expect(controller.brandingLightLogoUrlStreamValue.value, isNull);
+
+      controller.onDispose();
+    },
+  );
+
+  test(
+    'controller consumes shared location picker confirmation stream',
+    () async {
+      final repository = _FakeAppDataRepository(_buildAppData());
+      final settingsRepository = _FakeTenantAdminSettingsRepository();
+      final locationSelection = TenantAdminLocationSelectionService();
+      final controller = TenantAdminSettingsController(
+        appDataRepository: repository,
+        settingsRepository: settingsRepository,
+        locationSelectionService: locationSelection,
+      );
+
+      controller.bindLocalPreferencesFlow();
+      locationSelection.setInitialLocation(
+        tenantAdminLocationFromRaw(latitude: -20.612345, longitude: -40.487654),
+      );
+      locationSelection.confirmSelection();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(controller.mapDefaultOriginLatitudeController.text, '-20.612345');
+      expect(controller.mapDefaultOriginLongitudeController.text, '-40.487654');
+      controller.onDispose();
+    },
+  );
 }
 
 Future<void> _pumpSettingsHubWithDiscoveryFiltersRoutes(
@@ -3419,9 +3438,7 @@ Future<void> _pumpSettingsHubWithDiscoveryFiltersRoutes(
         meta: canonicalRouteMeta(
           family: CanonicalRouteFamily.tenantAdminSettingsRoot,
         ),
-        builder: (_, __) => const Scaffold(
-          body: TenantAdminSettingsScreen(),
-        ),
+        builder: (_, __) => const Scaffold(body: TenantAdminSettingsScreen()),
       ),
       NamedRouteDef(
         name: TenantAdminDiscoveryFiltersRoute.name,
@@ -3429,9 +3446,8 @@ Future<void> _pumpSettingsHubWithDiscoveryFiltersRoutes(
         meta: canonicalRouteMeta(
           family: CanonicalRouteFamily.tenantAdminFiltersRoot,
         ),
-        builder: (_, __) => const Scaffold(
-          body: TenantAdminDiscoveryFiltersScreen(),
-        ),
+        builder: (_, __) =>
+            const Scaffold(body: TenantAdminDiscoveryFiltersScreen()),
       ),
       NamedRouteDef(
         name: TenantAdminDiscoveryFilterSurfaceRoute.name,
@@ -3446,7 +3462,8 @@ Future<void> _pumpSettingsHubWithDiscoveryFiltersRoutes(
               surfaceKey: data.queryParams.optString('surface'),
             ),
           );
-          final surface = TenantAdminDiscoveryFilterSurfaceDefinition.byKey(
+          final surface =
+              TenantAdminDiscoveryFilterSurfaceDefinition.byKey(
                 args.surfaceKey ?? '',
               ) ??
               TenantAdminDiscoveryFilterSurfaceDefinition.map;
@@ -3467,10 +3484,7 @@ Future<void> _pumpSettingsHubWithDiscoveryFiltersRoutes(
   await tester.pumpAndSettle();
 }
 
-Future<void> _pumpWithAutoRoute(
-  WidgetTester tester,
-  Widget child,
-) async {
+Future<void> _pumpWithAutoRoute(WidgetTester tester, Widget child) async {
   final router = RootStackRouter.build(
     routes: [
       NamedRouteDef(
@@ -3506,7 +3520,8 @@ Map<String, dynamic> _settingsTestMetaForChild(Widget child) {
 
 String _settingsTestRouteNameForChild(Widget child) {
   if (_isScaffoldWithBody<TenantAdminSettingsEnvironmentSnapshotScreen>(
-      child)) {
+    child,
+  )) {
     return 'settings-environment-snapshot-test';
   }
   if (_isScaffoldWithBody<TenantAdminSettingsDomainsScreen>(child)) {
@@ -3571,7 +3586,7 @@ class _FakeDiscoveryFilterStaticAssetsRepository
 
   @override
   Future<List<TenantAdminStaticProfileTypeDefinition>>
-      fetchStaticProfileTypes() async {
+  fetchStaticProfileTypes() async {
     return _staticTypes;
   }
 
@@ -3614,33 +3629,32 @@ class _FakeDiscoveryFilterEventsRepository
 class _FakeDiscoveryFilterTaxonomiesRepository
     extends TenantAdminTaxonomiesRepositoryContract
     implements TenantAdminTaxonomiesBatchTermsRepositoryContract {
-  _FakeDiscoveryFilterTaxonomiesRepository({
-    int generatedTaxonomyCount = 0,
-  })  : _generatedTaxonomyCount = generatedTaxonomyCount,
-        _taxonomies = generatedTaxonomyCount > 0
-            ? List<TenantAdminTaxonomyDefinition>.generate(
-                generatedTaxonomyCount,
-                (index) => _taxonomyDefinition(
-                  id: 'generated-${index.toString().padLeft(3, '0')}',
-                  slug: 'generated_${index.toString().padLeft(3, '0')}',
-                  name: 'Generated ${index.toString().padLeft(3, '0')}',
-                  appliesTo: ['event'],
-                ),
-              )
-            : [
-                _taxonomyDefinition(
-                  id: 'genre-id',
-                  slug: 'genre',
-                  name: 'Gênero Musical',
-                  appliesTo: ['event'],
-                ),
-                _taxonomyDefinition(
-                  id: 'cuisine-id',
-                  slug: 'cuisine',
-                  name: 'Cozinha',
-                  appliesTo: ['event'],
-                ),
-              ];
+  _FakeDiscoveryFilterTaxonomiesRepository({int generatedTaxonomyCount = 0})
+    : _generatedTaxonomyCount = generatedTaxonomyCount,
+      _taxonomies = generatedTaxonomyCount > 0
+          ? List<TenantAdminTaxonomyDefinition>.generate(
+              generatedTaxonomyCount,
+              (index) => _taxonomyDefinition(
+                id: 'generated-${index.toString().padLeft(3, '0')}',
+                slug: 'generated_${index.toString().padLeft(3, '0')}',
+                name: 'Generated ${index.toString().padLeft(3, '0')}',
+                appliesTo: ['event'],
+              ),
+            )
+          : [
+              _taxonomyDefinition(
+                id: 'genre-id',
+                slug: 'genre',
+                name: 'Gênero Musical',
+                appliesTo: ['event'],
+              ),
+              _taxonomyDefinition(
+                id: 'cuisine-id',
+                slug: 'cuisine',
+                name: 'Cozinha',
+                appliesTo: ['event'],
+              ),
+            ];
 
   final int _generatedTaxonomyCount;
   final List<TenantAdminTaxonomyDefinition> _taxonomies;
@@ -3698,14 +3712,8 @@ class _FakeDiscoveryFilterTaxonomiesRepository
   }) async {
     batchTermsCallCount += 1;
     lastBatchTaxonomyIds = taxonomyIds.map((entry) => entry.value).toList();
-    batchTaxonomyIdGroups = [
-      ...batchTaxonomyIdGroups,
-      lastBatchTaxonomyIds,
-    ];
-    batchTermLimits = [
-      ...batchTermLimits,
-      termLimit?.value ?? 200,
-    ];
+    batchTaxonomyIdGroups = [...batchTaxonomyIdGroups, lastBatchTaxonomyIds];
+    batchTermLimits = [...batchTermLimits, termLimit?.value ?? 200];
 
     return TenantAdminTaxonomyTermsByTaxonomyId(
       entries: [
@@ -3722,7 +3730,7 @@ class _FakeDiscoveryFilterTaxonomiesRepository
                     ),
                   ]
                 : _termsById[taxonomyId.value] ??
-                    const <TenantAdminTaxonomyTermDefinition>[],
+                      const <TenantAdminTaxonomyTermDefinition>[],
           ),
       ],
     );
@@ -3747,8 +3755,8 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
       _maxRadiusMetersStreamValue;
   final StreamValue<DistanceInMetersValue> _maxRadiusMetersStreamValue =
       StreamValue<DistanceInMetersValue>(
-          defaultValue:
-              DistanceInMetersValue.fromRaw(1000, defaultValue: 1000));
+        defaultValue: DistanceInMetersValue.fromRaw(1000, defaultValue: 1000),
+      );
 
   @override
   DistanceInMetersValue get maxRadiusMeters => maxRadiusMetersStreamValue.value;
@@ -3758,8 +3766,9 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
 
   @override
   StreamValue<ThemeMode?> get themeModeStreamValue => _themeModeStreamValue;
-  final StreamValue<ThemeMode?> _themeModeStreamValue =
-      StreamValue<ThemeMode?>(defaultValue: ThemeMode.light);
+  final StreamValue<ThemeMode?> _themeModeStreamValue = StreamValue<ThemeMode?>(
+    defaultValue: ThemeMode.light,
+  );
 
   @override
   ThemeMode get themeMode => themeModeStreamValue.value ?? ThemeMode.system;
@@ -3806,40 +3815,47 @@ class _FakeTenantAdminSettingsRepository
     TenantAdminMapUiSettings? initialMapUiSettings,
     TenantAdminDiscoveryFiltersSettingsValue? initialDiscoveryFiltersSettings,
     List<TenantAdminDomainEntry>? initialDomains,
-  })  : _brandingSettings = TenantAdminBrandingSettings(
-          tenantName: _requiredText('Tenant Test'),
-          brightnessDefault: TenantAdminBrandingBrightness.light,
-          primarySeedColor: _hexColor('#009688'),
-          secondarySeedColor: _hexColor('#673AB7'),
-          publicWebDefaultTitle: _optionalText('Tenant Home'),
-          publicWebDefaultDescription:
-              _optionalText('Fallback institucional inicial.'),
-          publicWebDefaultImageUrl:
-              _optionalUrl('https://guarappari.test/storage/public-web.jpg'),
-          lightLogoUrl:
-              _optionalUrl('https://guarappari.test/storage/light-logo.png'),
-          darkLogoUrl:
-              _optionalUrl('https://guarappari.test/storage/dark-logo.png'),
-          lightIconUrl:
-              _optionalUrl('https://guarappari.test/storage/light-icon.png'),
-          darkIconUrl:
-              _optionalUrl('https://guarappari.test/storage/dark-icon.png'),
-          faviconUrl: _optionalUrl('https://guarappari.test/favicon.ico'),
-          pwaIconUrl: initialPwaIconUrl == null
-              ? null
-              : _optionalUrl(initialPwaIconUrl),
-          hasDedicatedFaviconValue: _booleanValue(initialHasDedicatedFavicon),
-          usesPwaFaviconFallbackValue:
-              _booleanValue(initialUsesPwaFaviconFallback),
-        ),
-        _domains = List<TenantAdminDomainEntry>.from(
-          initialDomains ??
-              [
-                _domainEntry(id: 'domain-1', path: 'guarappari.test'),
-                _domainEntry(id: 'domain-2', path: 'legacy.guarappari.test'),
-              ],
-          growable: true,
-        ) {
+  }) : _brandingSettings = TenantAdminBrandingSettings(
+         tenantName: _requiredText('Tenant Test'),
+         brightnessDefault: TenantAdminBrandingBrightness.light,
+         primarySeedColor: _hexColor('#009688'),
+         secondarySeedColor: _hexColor('#673AB7'),
+         publicWebDefaultTitle: _optionalText('Tenant Home'),
+         publicWebDefaultDescription: _optionalText(
+           'Fallback institucional inicial.',
+         ),
+         publicWebDefaultImageUrl: _optionalUrl(
+           'https://guarappari.test/storage/public-web.jpg',
+         ),
+         lightLogoUrl: _optionalUrl(
+           'https://guarappari.test/storage/light-logo.png',
+         ),
+         darkLogoUrl: _optionalUrl(
+           'https://guarappari.test/storage/dark-logo.png',
+         ),
+         lightIconUrl: _optionalUrl(
+           'https://guarappari.test/storage/light-icon.png',
+         ),
+         darkIconUrl: _optionalUrl(
+           'https://guarappari.test/storage/dark-icon.png',
+         ),
+         faviconUrl: _optionalUrl('https://guarappari.test/favicon.ico'),
+         pwaIconUrl: initialPwaIconUrl == null
+             ? null
+             : _optionalUrl(initialPwaIconUrl),
+         hasDedicatedFaviconValue: _booleanValue(initialHasDedicatedFavicon),
+         usesPwaFaviconFallbackValue: _booleanValue(
+           initialUsesPwaFaviconFallback,
+         ),
+       ),
+       _domains = List<TenantAdminDomainEntry>.from(
+         initialDomains ??
+             [
+               _domainEntry(id: 'domain-1', path: 'guarappari.test'),
+               _domainEntry(id: 'domain-2', path: 'legacy.guarappari.test'),
+             ],
+         growable: true,
+       ) {
     if (initialMapUiSettings != null) {
       _mapUiSettings = initialMapUiSettings;
     }
@@ -3876,11 +3892,7 @@ class _FakeTenantAdminSettingsRepository
   TenantAdminMapUiSettings _mapUiSettings = TenantAdminMapUiSettings(
     rawMapUiValue: TenantAdminDynamicMapValue({
       'radius': 15000,
-      'default_origin': {
-        'lat': -20.6736,
-        'lng': -40.4976,
-        'label': 'Centro',
-      },
+      'default_origin': {'lat': -20.6736, 'lng': -40.4976, 'label': 'Centro'},
     }),
     defaultOrigin: TenantAdminMapDefaultOrigin(
       lat: _lat(-20.6736),
@@ -3892,8 +3904,8 @@ class _FakeTenantAdminSettingsRepository
   TenantAdminDiscoveryFiltersSettingsValue _discoveryFiltersSettings =
       TenantAdminDiscoveryFiltersSettingsValue();
   TenantAdminBrandingSettings _brandingSettings;
-  TenantAdminAppLinksSettings _appLinksSettings =
-      buildTenantAdminAppLinksSettings(
+  TenantAdminAppLinksSettings
+  _appLinksSettings = buildTenantAdminAppLinksSettings(
     rawAppLinks: {
       'android': {
         'sha256_cert_fingerprints': [
@@ -3915,38 +3927,39 @@ class _FakeTenantAdminSettingsRepository
   );
   TenantAdminResendEmailSettings _resendEmailSettings =
       TenantAdminResendEmailSettings(
-    token: _optionalText('re_fixture_token'),
-    from: _optionalText('Belluga <noreply@belluga.space>'),
-    toRecipients: _resendRecipients(['admin@belluga.space']),
-    ccRecipients: _resendRecipients(['ops@belluga.space']),
-    bccRecipients: TenantAdminResendEmailRecipients(),
-    replyToRecipients: _resendRecipients(['reply@belluga.space']),
-  );
+        token: _optionalText('re_fixture_token'),
+        from: _optionalText('Belluga <noreply@belluga.space>'),
+        toRecipients: _resendRecipients(['admin@belluga.space']),
+        ccRecipients: _resendRecipients(['ops@belluga.space']),
+        bccRecipients: TenantAdminResendEmailRecipients(),
+        replyToRecipients: _resendRecipients(['reply@belluga.space']),
+      );
   TenantAdminPhoneOtpReviewAccessSettings _phoneOtpReviewAccessSettings =
       TenantAdminPhoneOtpReviewAccessSettings(
-    rawPhoneOtpReviewAccessValue: TenantAdminDynamicMapValue({
-      'phone_e164': '+15551234567',
-      'code_hash': r'$2y$12$fixture-review-code-hash',
-    }),
-    phoneE164Value: _optionalText('+15551234567'),
-    codeHashValue: _optionalText(r'$2y$12$fixture-review-code-hash'),
-  );
+        rawPhoneOtpReviewAccessValue: TenantAdminDynamicMapValue({
+          'phone_e164': '+15551234567',
+          'code_hash': r'$2y$12$fixture-review-code-hash',
+        }),
+        phoneE164Value: _optionalText('+15551234567'),
+        codeHashValue: _optionalText(r'$2y$12$fixture-review-code-hash'),
+      );
   TenantAdminOutboundIntegrationsSettings _outboundIntegrationsSettings =
       TenantAdminOutboundIntegrationsSettings(
-    whatsappWebhookUrlValue:
-        _optionalUrl('https://integrations.example/whatsapp'),
-    otpWebhookUrlValue: _optionalUrl('https://integrations.example/otp'),
-    otpUseWhatsappWebhookValue: _booleanValue(true),
-    otpDeliveryChannelValue: _token('whatsapp'),
-    otpTtlMinutesValue: _positiveInt(10),
-    otpResendCooldownSecondsValue: _positiveInt(60),
-    otpMaxAttemptsValue: _positiveInt(5),
-  );
+        whatsappWebhookUrlValue: _optionalUrl(
+          'https://integrations.example/whatsapp',
+        ),
+        otpWebhookUrlValue: _optionalUrl('https://integrations.example/otp'),
+        otpUseWhatsappWebhookValue: _booleanValue(true),
+        otpDeliveryChannelValue: _token('whatsapp'),
+        otpTtlMinutesValue: _positiveInt(10),
+        otpResendCooldownSecondsValue: _positiveInt(60),
+        otpMaxAttemptsValue: _positiveInt(5),
+      );
   TenantAdminTelemetrySettingsSnapshot _telemetrySnapshot =
       TenantAdminTelemetrySettingsSnapshot(
-    integrations: const [],
-    availableEventValues: TenantAdminTrimmedStringListValue(['app_opened']),
-  );
+        integrations: const [],
+        availableEventValues: TenantAdminTrimmedStringListValue(['app_opened']),
+      );
   TenantAdminPushSettings _pushSettings = TenantAdminPushSettings(
     maxTtlDaysValue: _positiveInt(30),
     maxPerMinuteValue: _positiveInt(60),
@@ -3978,13 +3991,13 @@ class _FakeTenantAdminSettingsRepository
 
   @override
   Future<TenantAdminDiscoveryFiltersSettingsValue>
-      fetchDiscoveryFiltersSettings() async {
+  fetchDiscoveryFiltersSettings() async {
     return _discoveryFiltersSettings;
   }
 
   @override
   Future<TenantAdminDiscoveryFiltersSettingsValue>
-      updateDiscoveryFiltersSettings({
+  updateDiscoveryFiltersSettings({
     required TenantAdminDiscoveryFiltersSettingsValue settings,
   }) async {
     updatedDiscoveryFiltersSettings = settings;
@@ -4047,8 +4060,9 @@ class _FakeTenantAdminSettingsRepository
   Future<TenantAdminTelemetrySettingsSnapshot> deleteTelemetryIntegration({
     required Object type,
   }) async {
-    final resolvedType =
-        type is String ? type : (type as dynamic).value as String;
+    final resolvedType = type is String
+        ? type
+        : (type as dynamic).value as String;
     deletedTelemetryTypes.add(resolvedType);
     _telemetrySnapshot = TenantAdminTelemetrySettingsSnapshot(
       integrations: _telemetrySnapshot.integrations
@@ -4151,13 +4165,13 @@ class _FakeTenantAdminSettingsRepository
 
   @override
   Future<TenantAdminPhoneOtpReviewAccessSettings>
-      fetchPhoneOtpReviewAccessSettings() async {
+  fetchPhoneOtpReviewAccessSettings() async {
     return _phoneOtpReviewAccessSettings;
   }
 
   @override
   Future<TenantAdminOutboundIntegrationsSettings>
-      fetchOutboundIntegrationsSettings() async {
+  fetchOutboundIntegrationsSettings() async {
     if (outboundIntegrationsFetchBlocker != null) {
       await outboundIntegrationsFetchBlocker!.future;
     }
@@ -4201,8 +4215,9 @@ class _FakeTenantAdminSettingsRepository
     required Object key,
     required TenantAdminMediaUpload upload,
   }) async {
-    uploadedMapFilterKey =
-        key is String ? key : (key as dynamic).value as String;
+    uploadedMapFilterKey = key is String
+        ? key
+        : (key as dynamic).value as String;
     uploadedMapFilterPayload = upload;
     return 'https://guarappari.test/api/v1/media/map-filters/$uploadedMapFilterKey?v=1';
   }
@@ -4238,7 +4253,7 @@ class _FakeTenantAdminSettingsRepository
 
   @override
   Future<TenantAdminPhoneOtpReviewAccessSettings>
-      updatePhoneOtpReviewAccessSettings({
+  updatePhoneOtpReviewAccessSettings({
     required TenantAdminPhoneOtpReviewAccessSettings settings,
   }) async {
     updatedPhoneOtpReviewAccessSettings = settings;
@@ -4256,7 +4271,7 @@ class _FakeTenantAdminSettingsRepository
 
   @override
   Future<TenantAdminOutboundIntegrationsSettings>
-      updateOutboundIntegrationsSettings({
+  updateOutboundIntegrationsSettings({
     required TenantAdminOutboundIntegrationsSettings settings,
   }) async {
     updatedOutboundIntegrationsSettings = settings;
@@ -4275,21 +4290,26 @@ class _FakeTenantAdminSettingsRepository
       primarySeedColor: _hexColor(input.primarySeedColor),
       secondarySeedColor: _hexColor(input.secondarySeedColor),
       publicWebDefaultTitle: _optionalText(input.publicWebDefaultTitle ?? ''),
-      publicWebDefaultDescription:
-          _optionalText(input.publicWebDefaultDescription ?? ''),
+      publicWebDefaultDescription: _optionalText(
+        input.publicWebDefaultDescription ?? '',
+      ),
       publicWebDefaultImageUrl: _optionalUrl(
         input.publicWebDefaultImageUpload == null
             ? 'https://guarappari.test/storage/public-web.jpg'
             : 'https://guarappari.test/storage/public-web-updated.jpg',
       ),
-      lightLogoUrl:
-          _optionalUrl('https://guarappari.test/storage/light-logo.png'),
-      darkLogoUrl:
-          _optionalUrl('https://guarappari.test/storage/dark-logo.png'),
-      lightIconUrl:
-          _optionalUrl('https://guarappari.test/storage/light-icon.png'),
-      darkIconUrl:
-          _optionalUrl('https://guarappari.test/storage/dark-icon.png'),
+      lightLogoUrl: _optionalUrl(
+        'https://guarappari.test/storage/light-logo.png',
+      ),
+      darkLogoUrl: _optionalUrl(
+        'https://guarappari.test/storage/dark-logo.png',
+      ),
+      lightIconUrl: _optionalUrl(
+        'https://guarappari.test/storage/light-icon.png',
+      ),
+      darkIconUrl: _optionalUrl(
+        'https://guarappari.test/storage/dark-icon.png',
+      ),
       faviconUrl: _optionalUrl('https://guarappari.test/favicon.ico'),
       pwaIconUrl: _optionalUrl('https://guarappari.test/storage/pwa-icon.png'),
       hasDedicatedFaviconValue: _booleanValue(input.faviconUpload != null),
@@ -4302,16 +4322,14 @@ class _FakeTenantAdminSettingsRepository
 
 class _SlowDiscoveryFiltersSettingsRepository
     extends _FakeTenantAdminSettingsRepository {
-  _SlowDiscoveryFiltersSettingsRepository({
-    required this.fetchCompleter,
-  });
+  _SlowDiscoveryFiltersSettingsRepository({required this.fetchCompleter});
 
   final Completer<TenantAdminDiscoveryFiltersSettingsValue> fetchCompleter;
   int fetchCount = 0;
 
   @override
   Future<TenantAdminDiscoveryFiltersSettingsValue>
-      fetchDiscoveryFiltersSettings() {
+  fetchDiscoveryFiltersSettings() {
     fetchCount += 1;
     return fetchCompleter.future;
   }
@@ -4328,9 +4346,7 @@ class _EmptyDiscoveryFilterRuleCatalogRepository
 class _FakeTenantAdminExternalImageProxy
     implements TenantAdminExternalImageProxyContract {
   @override
-  Future<Uint8List> fetchExternalImageBytes({
-    required Object imageUrl,
-  }) async {
+  Future<Uint8List> fetchExternalImageBytes({required Object imageUrl}) async {
     return Uint8List(0);
   }
 }
@@ -4360,16 +4376,16 @@ class _FakeTenantScope implements TenantAdminTenantScopeContract {
 
   @override
   void selectTenantDomain(Object tenantDomain) {
-    _selectedTenantDomainStreamValue.addValue((tenantDomain is String
-            ? tenantDomain
-            : (tenantDomain as dynamic).value as String)
-        .trim());
+    _selectedTenantDomainStreamValue.addValue(
+      (tenantDomain is String
+              ? tenantDomain
+              : (tenantDomain as dynamic).value as String)
+          .trim(),
+    );
   }
 }
 
-AppData _buildAppData({
-  String mainDomain = 'https://guarappari.test',
-}) {
+AppData _buildAppData({String mainDomain = 'https://guarappari.test'}) {
   const remoteData = {
     'name': 'Tenant Test',
     'type': 'tenant',
@@ -4383,9 +4399,7 @@ AppData _buildAppData({
     },
     'main_color': '#009688',
     'tenant_id': 'tenant-1',
-    'telemetry': {
-      'trackers': [],
-    },
+    'telemetry': {'trackers': []},
     'telemetry_context': {'location_freshness_minutes': 5},
     'firebase': {
       'apiKey': 'apikey',
@@ -4401,10 +4415,7 @@ AppData _buildAppData({
     },
   };
 
-  final fullRemoteData = {
-    ...remoteData,
-    'main_domain': mainDomain,
-  };
+  final fullRemoteData = {...remoteData, 'main_domain': mainDomain};
 
   final localInfo = {
     'platformType': PlatformTypeValue()..parse('mobile'),

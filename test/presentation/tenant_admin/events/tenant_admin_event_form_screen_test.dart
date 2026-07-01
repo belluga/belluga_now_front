@@ -3792,6 +3792,85 @@ void main() {
   );
 
   testWidgets(
+    'submits physical venue selected from remote search beyond the bootstrap venue slice',
+    (tester) async {
+      final eventsRepository =
+          _SearchDrivenPhysicalHostCandidatesEventsRepository();
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+
+      eventsRepository.eventTypes = [
+        TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439016'),
+          nameValue: tenantAdminRequiredText('Live'),
+          slugValue: tenantAdminRequiredText('live'),
+          descriptionValue: tenantAdminOptionalText('Tipo de evento: Live'),
+        ),
+      ];
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(body: TenantAdminEventFormScreen()),
+      );
+
+      await _fillRequiredFields(tester, controller: controller);
+
+      await tester.scrollUntilVisible(
+        find.text('Online'),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Online').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Physical').last);
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(
+        find.byKey(const Key('tenantAdminEventLocationProfileDropdown')),
+      );
+      await tester.tap(
+        find.byKey(const Key('tenantAdminEventLocationProfileDropdown')),
+        warnIfMissed: false,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('tenantAdminEventLocationSearchField')),
+        'Jazz',
+      );
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byKey(const Key('tenantAdminEventLocationOption_venue-jazz-1')),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.widgetWithText(FilledButton, 'Criar evento'),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Criar evento'));
+      await tester.pumpAndSettle();
+
+      final draft = eventsRepository.lastCreateDraft;
+      expect(draft, isNotNull);
+      expect(draft!.location?.mode, 'physical');
+      expect(draft.location?.latitude, -20.612121);
+      expect(draft.location?.longitude, -40.498917);
+      expect(draft.placeRef?.id, 'venue-jazz-1');
+    },
+  );
+
+  testWidgets(
     'physical mode venue picker remains tappable when bootstrap venues are empty and search loads remote candidates',
     (tester) async {
       final eventsRepository =

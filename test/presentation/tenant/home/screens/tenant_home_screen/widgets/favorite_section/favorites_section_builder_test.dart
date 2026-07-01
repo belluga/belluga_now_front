@@ -64,20 +64,19 @@ class _FakeAppData extends Fake implements AppData {
   MainColorValue get mainColor => MainColorValue()..parse('#000000');
 
   @override
-  ProfileTypeRegistry get profileTypeRegistry => ProfileTypeRegistry(
-        types: ProfileTypeDefinitions(),
-      );
+  ProfileTypeRegistry get profileTypeRegistry =>
+      ProfileTypeRegistry(types: ProfileTypeDefinitions());
 }
 
 class _FakeAppDataRepository extends AppDataRepositoryContract {
   _FakeAppDataRepository()
-      : _appData = _FakeAppData(),
-        themeModeStreamValue = StreamValue<ThemeMode?>(
-          defaultValue: ThemeMode.light,
-        ),
-        maxRadiusMetersStreamValue = StreamValue<DistanceInMetersValue>(
-          defaultValue: DistanceInMetersValue.fromRaw(5000, defaultValue: 5000),
-        );
+    : _appData = _FakeAppData(),
+      themeModeStreamValue = StreamValue<ThemeMode?>(
+        defaultValue: ThemeMode.light,
+      ),
+      maxRadiusMetersStreamValue = StreamValue<DistanceInMetersValue>(
+        defaultValue: DistanceInMetersValue.fromRaw(5000, defaultValue: 5000),
+      );
 
   final AppData _appData;
 
@@ -152,12 +151,12 @@ class _RecordingStackRouter extends Mock implements StackRouter {
 const double _avatarFrameSize = 72;
 
 ThemeData _testTheme() => ThemeData(
-      useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF006D77),
-        brightness: Brightness.light,
-      ),
-    );
+  useMaterial3: true,
+  colorScheme: ColorScheme.fromSeed(
+    seedColor: const Color(0xFF006D77),
+    brightness: Brightness.light,
+  ),
+);
 
 Widget _favoritesHarness({
   required FavoritesSectionController controller,
@@ -168,9 +167,7 @@ Widget _favoritesHarness({
     stateHash: 0,
     child: MaterialApp(
       theme: _testTheme(),
-      home: Scaffold(
-        body: FavoritesSectionView(controller: controller),
-      ),
+      home: Scaffold(body: FavoritesSectionView(controller: controller)),
     ),
   );
 }
@@ -189,294 +186,356 @@ void main() {
   });
 
   testWidgets(
-      'full favorite chip tap pushes canonical event path when active event exists',
-      (tester) async {
-    final favoriteItem = FavoriteResume(
-      titleValue: TitleValue()..parse('Pizza Place'),
-      assetPathValue: AssetPathValue()
-        ..parse('assets/images/placeholder_avatar.png'),
-      eventTargetPathValue: FavoriteEventTargetPathValue(
+    'full favorite chip tap pushes canonical event path when active event exists',
+    (tester) async {
+      final favoriteItem = FavoriteResume(
+        titleValue: TitleValue()..parse('Pizza Place'),
+        assetPathValue: AssetPathValue()
+          ..parse('assets/images/placeholder_avatar.png'),
+        eventTargetPathValue: FavoriteEventTargetPathValue(
+          '/agenda/evento/pizza-place?occurrence=occ-live',
+        ),
+        liveNowEventOccurrenceIdValue: FavoriteEventOccurrenceIdValue(
+          'occ-live',
+        ),
+      );
+
+      final controller = FavoritesSectionController(
+        favoriteRepository: _FakeFavoriteRepository(
+          favoriteResumes: [favoriteItem],
+        ),
+        appDataRepository: _FakeAppDataRepository(),
+      );
+      await controller.init();
+
+      final router = _RecordingStackRouter();
+
+      await tester.pumpWidget(
+        _favoritesHarness(controller: controller, router: router),
+      );
+      await tester.pump();
+
+      final chipFinder = find
+          .bySemanticsLabel('Pizza Place, TOCANDO AGORA')
+          .first;
+      final chipRect = tester.getRect(chipFinder);
+      await tester.tapAt(Offset(chipRect.center.dx, chipRect.top + 18));
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(router.replaceAllCalled, isFalse);
+      expect(router.pushCalls, 0);
+      expect(router.lastPushedRoute, isNull);
+      expect(
+        router.lastPushedPath,
         '/agenda/evento/pizza-place?occurrence=occ-live',
-      ),
-      liveNowEventOccurrenceIdValue: FavoriteEventOccurrenceIdValue('occ-live'),
-    );
-
-    final controller = FavoritesSectionController(
-      favoriteRepository: _FakeFavoriteRepository(
-        favoriteResumes: [favoriteItem],
-      ),
-      appDataRepository: _FakeAppDataRepository(),
-    );
-    await controller.init();
-
-    final router = _RecordingStackRouter();
-
-    await tester.pumpWidget(
-      _favoritesHarness(controller: controller, router: router),
-    );
-    await tester.pump();
-
-    final chipFinder =
-        find.bySemanticsLabel('Pizza Place, TOCANDO AGORA').first;
-    final chipRect = tester.getRect(chipFinder);
-    await tester.tapAt(Offset(chipRect.center.dx, chipRect.top + 18));
-    await tester.pump();
-    await tester.pumpAndSettle();
-
-    expect(router.replaceAllCalled, isFalse);
-    expect(router.pushCalls, 0);
-    expect(router.lastPushedRoute, isNull);
-    expect(
-      router.lastPushedPath,
-      '/agenda/evento/pizza-place?occurrence=occ-live',
-    );
-  });
+      );
+    },
+  );
 
   testWidgets(
-      'path-based favorite tap preserves stack and pushes canonical path',
-      (tester) async {
-    final favoriteItem = FavoriteResume(
-      titleValue: TitleValue()..parse('Du Jorge'),
-      assetPathValue: AssetPathValue()
-        ..parse('assets/images/placeholder_avatar.png'),
-      targetTypeValue: FavoriteTargetTypeValue()..parse('account_profile'),
-      canOpenPublicDetailValue: DomainBooleanValue(
-        defaultValue: true,
-        isRequired: false,
-      )..parse('true'),
-      publicDetailPathValue: FavoritePublicDetailPathValue(
-        '/parceiro/du-jorge',
-      ),
-    );
+    'path-based favorite tap preserves stack and pushes canonical path',
+    (tester) async {
+      final favoriteItem = FavoriteResume(
+        titleValue: TitleValue()..parse('Du Jorge'),
+        assetPathValue: AssetPathValue()
+          ..parse('assets/images/placeholder_avatar.png'),
+        targetTypeValue: FavoriteTargetTypeValue()..parse('account_profile'),
+        canOpenPublicDetailValue: DomainBooleanValue(
+          defaultValue: true,
+          isRequired: false,
+        )..parse('true'),
+        publicDetailPathValue: FavoritePublicDetailPathValue(
+          '/parceiro/du-jorge',
+        ),
+      );
 
-    final controller = FavoritesSectionController(
-      favoriteRepository: _FakeFavoriteRepository(
-        favoriteResumes: [favoriteItem],
-      ),
-      appDataRepository: _FakeAppDataRepository(),
-    );
-    await controller.init();
+      final controller = FavoritesSectionController(
+        favoriteRepository: _FakeFavoriteRepository(
+          favoriteResumes: [favoriteItem],
+        ),
+        appDataRepository: _FakeAppDataRepository(),
+      );
+      await controller.init();
 
-    final router = _RecordingStackRouter();
+      final router = _RecordingStackRouter();
 
-    await tester.pumpWidget(
-      _favoritesHarness(controller: controller, router: router),
-    );
-    await tester.pump();
+      await tester.pumpWidget(
+        _favoritesHarness(controller: controller, router: router),
+      );
+      await tester.pump();
 
-    await tester.tap(find.text('Du Jorge').first);
-    await tester.pump();
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('Du Jorge').first);
+      await tester.pump();
+      await tester.pumpAndSettle();
 
-    expect(router.replaceAllCalled, isFalse);
-    expect(router.pushCalls, 0);
-    expect(router.lastPushedRoute, isNull);
-    expect(router.lastPushedPath, '/parceiro/du-jorge');
-  });
-
-  testWidgets(
-      'favorites view leaves spinner after bounded initial retry exhaustion',
-      (tester) async {
-    final controller = FavoritesSectionController(
-      favoriteRepository: _FakeFavoriteRepository(failuresBeforeSuccess: 3),
-      appDataRepository: _FakeAppDataRepository(),
-    );
-    final router = _RecordingStackRouter();
-    final initFuture = controller.init();
-
-    await tester.pumpWidget(
-      _favoritesHarness(controller: controller, router: router),
-    );
-    await tester.pump();
-
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
-
-    await tester.pump(const Duration(milliseconds: 900));
-    await initFuture;
-    await tester.pumpAndSettle();
-
-    expect(find.byType(CircularProgressIndicator), findsNothing);
-  });
+      expect(router.replaceAllCalled, isFalse);
+      expect(router.pushCalls, 0);
+      expect(router.lastPushedRoute, isNull);
+      expect(router.lastPushedPath, '/parceiro/du-jorge');
+    },
+  );
 
   testWidgets(
-      'favorites view preserves backend order and renders distinct event halos',
-      (tester) async {
-    final controller = FavoritesSectionController(
-      favoriteRepository: _FakeFavoriteRepository(
-        favoriteResumes: [
-          _favoriteResume(
-            title: 'Ao Vivo',
-            liveNowEventOccurrenceId: 'occ-live',
-          ),
-          _favoriteResume(
-            title: 'Tem Evento',
-            nextEventOccurrenceAt: DateTime(2026, 4, 4, 20),
-          ),
-          _favoriteResume(title: 'Sem Evento'),
-        ],
-      ),
-      appDataRepository: _FakeAppDataRepository(),
-    );
-    await controller.init();
+    'first true favorite with a stale upcoming timestamp still pushes its canonical profile path',
+    (tester) async {
+      final controller = FavoritesSectionController(
+        favoriteRepository: _FakeFavoriteRepository(
+          favoriteResumes: [
+            FavoriteResume(
+              titleValue: TitleValue()..parse('Yuri Dias'),
+              assetPathValue: AssetPathValue()
+                ..parse('assets/images/placeholder_avatar.png'),
+              targetTypeValue: FavoriteTargetTypeValue()
+                ..parse('account_profile'),
+              canOpenPublicDetailValue: DomainBooleanValue(
+                defaultValue: true,
+                isRequired: false,
+              )..parse('true'),
+              publicDetailPathValue: FavoritePublicDetailPathValue(
+                '/parceiro/yuri-dias',
+              ),
+              nextEventOccurrenceAtValue: DomainOptionalDateTimeValue(
+                defaultValue: DateTime.utc(2026, 6, 21, 16),
+              )..parse(DateTime.utc(2026, 6, 21, 16).toIso8601String()),
+            ),
+            FavoriteResume(
+              titleValue: TitleValue()..parse('Later Favorite'),
+              assetPathValue: AssetPathValue()
+                ..parse('assets/images/placeholder_avatar.png'),
+              targetTypeValue: FavoriteTargetTypeValue()
+                ..parse('account_profile'),
+              canOpenPublicDetailValue: DomainBooleanValue(
+                defaultValue: true,
+                isRequired: false,
+              )..parse('true'),
+              publicDetailPathValue: FavoritePublicDetailPathValue(
+                '/parceiro/later-favorite',
+              ),
+            ),
+          ],
+        ),
+        appDataRepository: _FakeAppDataRepository(),
+      );
+      await controller.init();
 
-    final router = _RecordingStackRouter();
+      final router = _RecordingStackRouter();
 
-    await tester.pumpWidget(
-      _favoritesHarness(controller: controller, router: router),
-    );
-    await tester.pump();
+      await tester.pumpWidget(
+        _favoritesHarness(controller: controller, router: router),
+      );
+      await tester.pump();
 
-    final chips =
-        tester.widgetList<FavoriteChip>(find.byType(FavoriteChip)).toList();
+      await tester.tap(find.text('Yuri Dias').first);
+      await tester.pump();
+      await tester.pumpAndSettle();
 
-    expect(
-      chips.map((chip) => chip.title).toList(),
-      ['Test App', 'Ao Vivo', 'Tem Evento', 'Sem Evento', 'Procurar'],
-    );
-    expect(chips[1].haloState, FavoriteChipHaloState.liveNow);
-    expect(chips[2].haloState, FavoriteChipHaloState.upcoming);
-    expect(chips[3].haloState, FavoriteChipHaloState.none);
-    expect(find.bySemanticsLabel('Ao Vivo, TOCANDO AGORA'), findsOneWidget);
-    expect(find.bySemanticsLabel('Tem Evento, TEM EVENTO'), findsOneWidget);
-    expect(find.bySemanticsLabel('Sem Evento'), findsOneWidget);
-  });
-
-  testWidgets(
-      'favorites view uses accent-family upcoming halo and stronger live halo',
-      (tester) async {
-    final controller = FavoritesSectionController(
-      favoriteRepository: _FakeFavoriteRepository(
-        favoriteResumes: [
-          _favoriteResume(
-            title: 'Ao Vivo',
-            liveNowEventOccurrenceId: 'occ-live',
-          ),
-          _favoriteResume(
-            title: 'Tem Evento',
-            nextEventOccurrenceAt: DateTime(2026, 4, 4, 20),
-          ),
-        ],
-      ),
-      appDataRepository: _FakeAppDataRepository(),
-    );
-    await controller.init();
-
-    final router = _RecordingStackRouter();
-    final colorScheme = _testTheme().colorScheme;
-
-    await tester.pumpWidget(
-      _favoritesHarness(controller: controller, router: router),
-    );
-    await tester.pump();
-
-    final liveDecoration = _haloDecorationFor(
-      tester,
-      'Ao Vivo, TOCANDO AGORA',
-    );
-    final upcomingDecoration = _haloDecorationFor(
-      tester,
-      'Tem Evento, TEM EVENTO',
-    );
-    final liveBorder = liveDecoration.border! as Border;
-    final upcomingBorder = upcomingDecoration.border! as Border;
-    final liveShadow = liveDecoration.boxShadow!.single;
-    final upcomingShadow = upcomingDecoration.boxShadow!.single;
-
-    expect(
-      liveDecoration.color,
-      colorScheme.primary.withValues(alpha: 0.12),
-    );
-    expect(
-      upcomingDecoration.color,
-      colorScheme.secondary.withValues(alpha: 0.10),
-    );
-    expect(
-      liveBorder.top.color,
-      colorScheme.primary.withValues(alpha: 0.95),
-    );
-    expect(
-      upcomingBorder.top.color,
-      colorScheme.secondary.withValues(alpha: 0.88),
-    );
-    expect(liveBorder.top.width, 2.2);
-    expect(upcomingBorder.top.width, 1.5);
-    expect(
-      liveShadow.color,
-      colorScheme.primary.withValues(alpha: 0.30),
-    );
-    expect(
-      upcomingShadow.color,
-      colorScheme.secondary.withValues(alpha: 0.18),
-    );
-    expect(liveShadow.blurRadius, 16);
-    expect(upcomingShadow.blurRadius, 10);
-    expect(liveShadow.spreadRadius, 1.5);
-    expect(upcomingShadow.spreadRadius, 0.4);
-    expect(liveBorder.top.width, greaterThan(upcomingBorder.top.width));
-    expect(liveShadow.blurRadius, greaterThan(upcomingShadow.blurRadius));
-    expect(liveShadow.spreadRadius, greaterThan(upcomingShadow.spreadRadius));
-  });
+      expect(router.replaceAllCalled, isFalse);
+      expect(router.pushCalls, 0);
+      expect(router.lastPushedRoute, isNull);
+      expect(router.lastPushedPath, '/parceiro/yuri-dias');
+    },
+  );
 
   testWidgets(
-      'favorites view keeps mixed-row frames and label baselines aligned across live upcoming and no-halo chips',
-      (tester) async {
-    final controller = FavoritesSectionController(
-      favoriteRepository: _FakeFavoriteRepository(
-        favoriteResumes: [
-          _favoriteResume(
-            title: 'Ao Vivo',
-            liveNowEventOccurrenceId: 'occ-live',
-          ),
-          _favoriteResume(
-            title: 'Tem Evento',
-            nextEventOccurrenceAt: DateTime(2026, 4, 4, 20),
-          ),
-          _favoriteResume(title: 'Sem Evento'),
-        ],
-      ),
-      appDataRepository: _FakeAppDataRepository(),
-    );
-    await controller.init();
+    'favorites view leaves spinner after bounded initial retry exhaustion',
+    (tester) async {
+      final controller = FavoritesSectionController(
+        favoriteRepository: _FakeFavoriteRepository(failuresBeforeSuccess: 3),
+        appDataRepository: _FakeAppDataRepository(),
+      );
+      final router = _RecordingStackRouter();
+      final initFuture = controller.init();
 
-    final router = _RecordingStackRouter();
+      await tester.pumpWidget(
+        _favoritesHarness(controller: controller, router: router),
+      );
+      await tester.pump();
 
-    await tester.pumpWidget(
-      _favoritesHarness(controller: controller, router: router),
-    );
-    await tester.pump();
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
-    final liveFrameRect = _avatarFrameRectFor(
-      tester,
-      'Ao Vivo, TOCANDO AGORA',
-    );
-    final upcomingFrameRect = _avatarFrameRectFor(
-      tester,
-      'Tem Evento, TEM EVENTO',
-    );
-    final noEventFrameRect = _avatarFrameRectFor(tester, 'Sem Evento');
-    final liveLabelTop = tester.getTopLeft(find.text('Ao Vivo')).dy;
-    final upcomingLabelTop = tester.getTopLeft(find.text('Tem Evento')).dy;
-    final noEventLabelTop = tester.getTopLeft(find.text('Sem Evento')).dy;
+      await tester.pump(const Duration(milliseconds: 900));
+      await initFuture;
+      await tester.pumpAndSettle();
 
-    expect(liveFrameRect.size, noEventFrameRect.size);
-    expect(upcomingFrameRect.size, noEventFrameRect.size);
-    expect(
-      (liveFrameRect.center.dy - noEventFrameRect.center.dy).abs(),
-      lessThan(0.1),
-    );
-    expect(
-      (upcomingFrameRect.center.dy - noEventFrameRect.center.dy).abs(),
-      lessThan(0.1),
-    );
-    expect((liveLabelTop - noEventLabelTop).abs(), lessThan(0.1));
-    expect((upcomingLabelTop - noEventLabelTop).abs(), lessThan(0.1));
-  });
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'favorites view preserves backend order and renders distinct event halos',
+    (tester) async {
+      final controller = FavoritesSectionController(
+        favoriteRepository: _FakeFavoriteRepository(
+          favoriteResumes: [
+            _favoriteResume(
+              title: 'Ao Vivo',
+              liveNowEventOccurrenceId: 'occ-live',
+            ),
+            _favoriteResume(
+              title: 'Tem Evento',
+              nextEventOccurrenceAt: DateTime(2026, 4, 4, 20),
+            ),
+            _favoriteResume(title: 'Sem Evento'),
+          ],
+        ),
+        appDataRepository: _FakeAppDataRepository(),
+      );
+      await controller.init();
+
+      final router = _RecordingStackRouter();
+
+      await tester.pumpWidget(
+        _favoritesHarness(controller: controller, router: router),
+      );
+      await tester.pump();
+
+      final chips = tester
+          .widgetList<FavoriteChip>(find.byType(FavoriteChip))
+          .toList();
+
+      expect(chips.map((chip) => chip.title).toList(), [
+        'Test App',
+        'Ao Vivo',
+        'Tem Evento',
+        'Sem Evento',
+        'Procurar',
+      ]);
+      expect(chips[1].haloState, FavoriteChipHaloState.liveNow);
+      expect(chips[2].haloState, FavoriteChipHaloState.upcoming);
+      expect(chips[3].haloState, FavoriteChipHaloState.none);
+      expect(find.bySemanticsLabel('Ao Vivo, TOCANDO AGORA'), findsOneWidget);
+      expect(find.bySemanticsLabel('Tem Evento, TEM EVENTO'), findsOneWidget);
+      expect(find.bySemanticsLabel('Sem Evento'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'favorites view uses accent-family upcoming halo and stronger live halo',
+    (tester) async {
+      final controller = FavoritesSectionController(
+        favoriteRepository: _FakeFavoriteRepository(
+          favoriteResumes: [
+            _favoriteResume(
+              title: 'Ao Vivo',
+              liveNowEventOccurrenceId: 'occ-live',
+            ),
+            _favoriteResume(
+              title: 'Tem Evento',
+              nextEventOccurrenceAt: DateTime(2026, 4, 4, 20),
+            ),
+          ],
+        ),
+        appDataRepository: _FakeAppDataRepository(),
+      );
+      await controller.init();
+
+      final router = _RecordingStackRouter();
+      final colorScheme = _testTheme().colorScheme;
+
+      await tester.pumpWidget(
+        _favoritesHarness(controller: controller, router: router),
+      );
+      await tester.pump();
+
+      final liveDecoration = _haloDecorationFor(
+        tester,
+        'Ao Vivo, TOCANDO AGORA',
+      );
+      final upcomingDecoration = _haloDecorationFor(
+        tester,
+        'Tem Evento, TEM EVENTO',
+      );
+      final liveBorder = liveDecoration.border! as Border;
+      final upcomingBorder = upcomingDecoration.border! as Border;
+      final liveShadow = liveDecoration.boxShadow!.single;
+      final upcomingShadow = upcomingDecoration.boxShadow!.single;
+
+      expect(liveDecoration.color, colorScheme.primary.withValues(alpha: 0.12));
+      expect(
+        upcomingDecoration.color,
+        colorScheme.secondary.withValues(alpha: 0.10),
+      );
+      expect(liveBorder.top.color, colorScheme.primary.withValues(alpha: 0.95));
+      expect(
+        upcomingBorder.top.color,
+        colorScheme.secondary.withValues(alpha: 0.88),
+      );
+      expect(liveBorder.top.width, 2.2);
+      expect(upcomingBorder.top.width, 1.5);
+      expect(liveShadow.color, colorScheme.primary.withValues(alpha: 0.30));
+      expect(
+        upcomingShadow.color,
+        colorScheme.secondary.withValues(alpha: 0.18),
+      );
+      expect(liveShadow.blurRadius, 16);
+      expect(upcomingShadow.blurRadius, 10);
+      expect(liveShadow.spreadRadius, 1.5);
+      expect(upcomingShadow.spreadRadius, 0.4);
+      expect(liveBorder.top.width, greaterThan(upcomingBorder.top.width));
+      expect(liveShadow.blurRadius, greaterThan(upcomingShadow.blurRadius));
+      expect(liveShadow.spreadRadius, greaterThan(upcomingShadow.spreadRadius));
+    },
+  );
+
+  testWidgets(
+    'favorites view keeps mixed-row frames and label baselines aligned across live upcoming and no-halo chips',
+    (tester) async {
+      final controller = FavoritesSectionController(
+        favoriteRepository: _FakeFavoriteRepository(
+          favoriteResumes: [
+            _favoriteResume(
+              title: 'Ao Vivo',
+              liveNowEventOccurrenceId: 'occ-live',
+            ),
+            _favoriteResume(
+              title: 'Tem Evento',
+              nextEventOccurrenceAt: DateTime(2026, 4, 4, 20),
+            ),
+            _favoriteResume(title: 'Sem Evento'),
+          ],
+        ),
+        appDataRepository: _FakeAppDataRepository(),
+      );
+      await controller.init();
+
+      final router = _RecordingStackRouter();
+
+      await tester.pumpWidget(
+        _favoritesHarness(controller: controller, router: router),
+      );
+      await tester.pump();
+
+      final liveFrameRect = _avatarFrameRectFor(
+        tester,
+        'Ao Vivo, TOCANDO AGORA',
+      );
+      final upcomingFrameRect = _avatarFrameRectFor(
+        tester,
+        'Tem Evento, TEM EVENTO',
+      );
+      final noEventFrameRect = _avatarFrameRectFor(tester, 'Sem Evento');
+      final liveLabelTop = tester.getTopLeft(find.text('Ao Vivo')).dy;
+      final upcomingLabelTop = tester.getTopLeft(find.text('Tem Evento')).dy;
+      final noEventLabelTop = tester.getTopLeft(find.text('Sem Evento')).dy;
+
+      expect(liveFrameRect.size, noEventFrameRect.size);
+      expect(upcomingFrameRect.size, noEventFrameRect.size);
+      expect(
+        (liveFrameRect.center.dy - noEventFrameRect.center.dy).abs(),
+        lessThan(0.1),
+      );
+      expect(
+        (upcomingFrameRect.center.dy - noEventFrameRect.center.dy).abs(),
+        lessThan(0.1),
+      );
+      expect((liveLabelTop - noEventLabelTop).abs(), lessThan(0.1));
+      expect((upcomingLabelTop - noEventLabelTop).abs(), lessThan(0.1));
+    },
+  );
 }
 
-BoxDecoration _haloDecorationFor(
-  WidgetTester tester,
-  String semanticsLabel,
-) {
+BoxDecoration _haloDecorationFor(WidgetTester tester, String semanticsLabel) {
   final chipFinder = find.ancestor(
     of: find.bySemanticsLabel(semanticsLabel),
     matching: find.byType(FavoriteChip),
@@ -491,10 +550,7 @@ BoxDecoration _haloDecorationFor(
       as BoxDecoration;
 }
 
-Rect _avatarFrameRectFor(
-  WidgetTester tester,
-  String semanticsLabel,
-) {
+Rect _avatarFrameRectFor(WidgetTester tester, String semanticsLabel) {
   final chipFinder = find.ancestor(
     of: find.bySemanticsLabel(semanticsLabel),
     matching: find.byType(FavoriteChip),

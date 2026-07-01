@@ -74,6 +74,8 @@
 		<string>Permita usar a câmera para tirar a foto do seu perfil e enviar imagens quando necessário.</string>
 		<key>NSLocationWhenInUseUsageDescription</key>
 		<string>Permita acesso à sua localização para mostrar eventos, lugares e distâncias perto de você.</string>
+		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+		<string>Permita acesso à sua localização para mostrar eventos, lugares e distâncias perto de você, inclusive quando o sistema exigir acesso contínuo para recursos baseados em proximidade.</string>
 		<key>NSContactsUsageDescription</key>
 		<string>Permita acesso aos seus contatos para encontrar pessoas conhecidas no app e enviar convites.</string>
 		<key>NSPhotoLibraryUsageDescription</key>
