@@ -496,6 +496,12 @@ enum MapMarkerIconToken {
     iconData: BooraIcons.discount1,
     group: MapMarkerIconGroup.partner,
   ),
+  fire(
+    storageKey: 'fire',
+    label: 'Fogo',
+    iconData: BooraIcons.fire,
+    group: MapMarkerIconGroup.partner,
+  ),
   pray(
     storageKey: 'pray',
     label: 'Oração',
@@ -591,12 +597,6 @@ enum MapMarkerIconToken {
     label: 'Marketing alternativo',
     iconData: BooraIcons.marketing1,
     group: MapMarkerIconGroup.services,
-  ),
-  fire(
-    storageKey: 'fire',
-    label: 'Fogo',
-    iconData: BooraIcons.fire,
-    group: MapMarkerIconGroup.tourism,
   ),
   whale(
     storageKey: 'whale',

@@ -89,6 +89,16 @@ void main() {
       isTrue,
     );
   });
+
+  test('fire is grouped under partner after discount1', () {
+    final partnerItems = MapMarkerIconToken.byGroup(MapMarkerIconGroup.partner);
+    expect(partnerItems, contains(MapMarkerIconToken.discount1));
+    expect(partnerItems, contains(MapMarkerIconToken.fire));
+    expect(
+      partnerItems.indexOf(MapMarkerIconToken.fire),
+      partnerItems.indexOf(MapMarkerIconToken.discount1) + 1,
+    );
+  });
 }
 
 Set<String> _uploadedBooraIconNames() {
