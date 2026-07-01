@@ -865,19 +865,27 @@ class _TenantAdminEventFormScreenState
     List<TenantAdminAccountProfile> venues,
     String? selectedVenueId,
   ) {
-    if (selectedVenueId == null || selectedVenueId.trim().isEmpty) {
+    final selectedVenue = _resolveSelectedVenue(venues, selectedVenueId);
+    if (selectedVenue == null) {
       return 'Selecione um local';
     }
-    final knownVenue = _controller.knownVenueCandidate(selectedVenueId);
-    if (knownVenue != null) {
-      return knownVenue.displayName;
+    return selectedVenue.displayName;
+  }
+
+  TenantAdminAccountProfile? _resolveSelectedVenue(
+    List<TenantAdminAccountProfile> venues,
+    String? selectedVenueId,
+  ) {
+    final normalizedSelectedVenueId = selectedVenueId?.trim();
+    if (normalizedSelectedVenueId == null ||
+        normalizedSelectedVenueId.isEmpty) {
+      return null;
     }
-    for (final venue in venues) {
-      if (venue.id == selectedVenueId) {
-        return venue.displayName;
-      }
-    }
-    return 'Selecione um local';
+
+    return _controller.knownVenueCandidate(normalizedSelectedVenueId) ??
+        venues.firstWhereOrNull(
+          (venue) => venue.id == normalizedSelectedVenueId,
+        );
   }
 
   Widget _buildRelatedAccountProfilesSection(
@@ -1767,8 +1775,9 @@ class _TenantAdminEventFormScreenState
       return;
     }
 
-    final selectedVenue = venues.firstWhereOrNull(
-      (venue) => venue.id == formState.selectedVenueId,
+    final selectedVenue = _resolveSelectedVenue(
+      venues,
+      formState.selectedVenueId,
     );
     final knownRelatedAccountProfilesById = <String, TenantAdminAccountProfile>{
       for (final profile

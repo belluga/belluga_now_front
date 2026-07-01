@@ -22,8 +22,10 @@ void main() {
     await tester.tap(find.byTooltip('Selecionar ícone'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(FilterChip),
-        findsNWidgets(MapMarkerIconToken.values.length));
+    expect(
+      find.byType(FilterChip),
+      findsNWidgets(MapMarkerIconToken.values.length),
+    );
     expect(find.text('Local'), findsWidgets);
     expect(find.text('Cinema'), findsOneWidget);
     expect(find.text('Promoção'), findsOneWidget);
@@ -34,6 +36,10 @@ void main() {
     expect(find.text('Convite'), findsOneWidget);
     expect(find.text('Convite alternativo'), findsOneWidget);
     expect(find.text('Confirmado'), findsOneWidget);
+    expect(find.text('Balão'), findsOneWidget);
+    expect(find.text('Camarão'), findsOneWidget);
+    expect(find.text('Localização'), findsOneWidget);
+    expect(find.text('Delivery'), findsOneWidget);
 
     for (final token in MapMarkerIconToken.values) {
       final chip = tester.widget<FilterChip>(

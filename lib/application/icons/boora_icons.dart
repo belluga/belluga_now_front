@@ -91,6 +91,11 @@ class BooraIcons {
     fontFamily: fontFamily,
     fontPackage: _fontPackage,
   );
+  static const IconData kiosk = IconData(
+    0xf037,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
   static const IconData fireworks = IconData(
     0xf010,
     fontFamily: fontFamily,
@@ -163,6 +168,11 @@ class BooraIcons {
   );
   static const IconData lunch = IconData(
     0xf01e,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData iceCream = IconData(
+    0xf038,
     fontFamily: fontFamily,
     fontPackage: _fontPackage,
   );
@@ -286,21 +296,6 @@ class BooraIcons {
     fontFamily: fontFamily,
     fontPackage: _fontPackage,
   );
-  static const IconData kiosk = IconData(
-    0xf037,
-    fontFamily: fontFamily,
-    fontPackage: _fontPackage,
-  );
-  static const IconData iceCream = IconData(
-    0xf038,
-    fontFamily: fontFamily,
-    fontPackage: _fontPackage,
-  );
-  static const IconData appointment = IconData(
-    0xf03b,
-    fontFamily: fontFamily,
-    fontPackage: _fontPackage,
-  );
   static const IconData invitation = IconData(
     0xf03a,
     fontFamily: fontFamily,
@@ -311,8 +306,303 @@ class BooraIcons {
     fontFamily: fontFamily,
     fontPackage: _fontPackage,
   );
+  static const IconData appointment = IconData(
+    0xf03b,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData hotAirBalloon = IconData(
+    0xf000,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData airBalloon = IconData(
+    0xf001,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData mountain1 = IconData(
+    0xf03f,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData mountain2 = IconData(
+    0xf040,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData mountain3 = IconData(
+    0xf041,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData mountains1 = IconData(
+    0xf042,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData mountains2 = IconData(
+    0xf043,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData beach = IconData(
+    0xf044,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData badminton = IconData(
+    0xf045,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData surfing = IconData(
+    0xf046,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData kiosk1 = IconData(
+    0xf047,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData loungeChair = IconData(
+    0xf048,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData food = IconData(
+    0xf049,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData shrimp = IconData(
+    0xf04a,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData microphone1 = IconData(
+    0xf04b,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData event1 = IconData(
+    0xf04c,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData ribbonCutting = IconData(
+    0xf04d,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData promo1 = IconData(
+    0xf04e,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData discount1 = IconData(
+    0xf04f,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData pray = IconData(
+    0xf050,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData islam = IconData(
+    0xf051,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData cross = IconData(
+    0xf052,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData hinduist = IconData(
+    0xf053,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData therapy = IconData(
+    0xf054,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData massageTherapist = IconData(
+    0xf055,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData exercise = IconData(
+    0xf056,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData podcast = IconData(
+    0xf057,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData adventureGame = IconData(
+    0xf058,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData signPost = IconData(
+    0xf059,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData motorbike = IconData(
+    0xf05a,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData takeAway = IconData(
+    0xf05b,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData martini = IconData(
+    0xf05c,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData hotCoffee = IconData(
+    0xf05d,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData marketing = IconData(
+    0xf05e,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData marketing1 = IconData(
+    0xf05f,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData fire = IconData(
+    0xf060,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData whale = IconData(
+    0xf061,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData whale1 = IconData(
+    0xf062,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData dolphin = IconData(
+    0xf063,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData bus = IconData(
+    0xf064,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData bin = IconData(
+    0xf065,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData drug1 = IconData(
+    0xf066,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData medicalCross = IconData(
+    0xf067,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData gasStation = IconData(
+    0xf068,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData shoppingCart = IconData(
+    0xf069,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData coffeeCup = IconData(
+    0xf06a,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData dj = IconData(
+    0xf06b,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData destination1 = IconData(
+    0xf06c,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData airplane1 = IconData(
+    0xf06d,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData maps = IconData(
+    0xf06e,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData location = IconData(
+    0xf06f,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData destination2 = IconData(
+    0xf070,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData hiker = IconData(
+    0xf071,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData hiking = IconData(
+    0xf072,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData map = IconData(
+    0xf073,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData delivery = IconData(
+    0xf074,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData travel = IconData(
+    0xf075,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
+  static const IconData mountain = IconData(
+    0xf076,
+    fontFamily: fontFamily,
+    fontPackage: _fontPackage,
+  );
 
-  static const int fontIconCount = 61;
+  static const int fontIconCount = 119;
 
   static const List<IconData> fontIcons = <IconData>[
     clapperboard,
@@ -332,6 +622,7 @@ class BooraIcons {
     stage,
     busStation,
     market,
+    kiosk,
     fireworks,
     mountains,
     destination,
@@ -347,6 +638,7 @@ class BooraIcons {
     promo,
     discount,
     lunch,
+    iceCream,
     restaurant,
     museum,
     bank,
@@ -371,11 +663,67 @@ class BooraIcons {
     local,
     ticket,
     ticket1,
-    kiosk,
-    iceCream,
-    appointment,
     invitation,
     invitationOutlined,
+    appointment,
+    hotAirBalloon,
+    airBalloon,
+    mountain1,
+    mountain2,
+    mountain3,
+    mountains1,
+    mountains2,
+    beach,
+    badminton,
+    surfing,
+    kiosk1,
+    loungeChair,
+    food,
+    shrimp,
+    microphone1,
+    event1,
+    ribbonCutting,
+    promo1,
+    discount1,
+    pray,
+    islam,
+    cross,
+    hinduist,
+    therapy,
+    massageTherapist,
+    exercise,
+    podcast,
+    adventureGame,
+    signPost,
+    motorbike,
+    takeAway,
+    martini,
+    hotCoffee,
+    marketing,
+    marketing1,
+    fire,
+    whale,
+    whale1,
+    dolphin,
+    bus,
+    bin,
+    drug1,
+    medicalCross,
+    gasStation,
+    shoppingCart,
+    coffeeCup,
+    dj,
+    destination1,
+    airplane1,
+    maps,
+    location,
+    destination2,
+    hiker,
+    hiking,
+    map,
+    delivery,
+    travel,
+    mountain,
   ];
 
   static const IconData inviteSolid = invitation;

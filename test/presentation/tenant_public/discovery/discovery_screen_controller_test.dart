@@ -57,31 +57,32 @@ void main() {
   });
 
   test(
-      'available discovery types include only publicly discoverable profile types',
-      () async {
-    final repository = _FakeAccountProfilesRepository(
-      pages: {
-        1: pagedAccountProfilesResultFromRaw(
-          profiles: [
-            _profile(id: _mongoId('a'), type: 'artist', name: 'Artist'),
-            _profile(id: _mongoId('b'), type: 'curator', name: 'Curator'),
-          ],
-          hasMore: false,
-        ),
-      },
-    );
-    final controller = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-    );
+    'available discovery types include only publicly discoverable profile types',
+    () async {
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: [
+              _profile(id: _mongoId('a'), type: 'artist', name: 'Artist'),
+              _profile(id: _mongoId('b'), type: 'curator', name: 'Curator'),
+            ],
+            hasMore: false,
+          ),
+        },
+      );
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+      );
 
-    await controller.init();
+      await controller.init();
 
-    expect(controller.availableTypesStreamValue.value, ['artist']);
-    expect(controller.filteredPartnersStreamValue.value, hasLength(1));
-    expect(controller.filteredPartnersStreamValue.value.first.type, 'artist');
-    expect(repository.allAccountProfilesStreamValue.value, hasLength(2));
-    controller.onDispose();
-  });
+      expect(controller.availableTypesStreamValue.value, ['artist']);
+      expect(controller.filteredPartnersStreamValue.value, hasLength(1));
+      expect(controller.filteredPartnersStreamValue.value.first.type, 'artist');
+      expect(repository.allAccountProfilesStreamValue.value, hasLength(2));
+      controller.onDispose();
+    },
+  );
 
   test('toggle favorite requires authentication for anonymous users', () async {
     final artist = _profile(id: _mongoId('c'), type: 'artist', name: 'Artist');
@@ -138,210 +139,223 @@ void main() {
   });
 
   test(
-      'discovery stops automatic pagination when a subsequent page request fails',
-      () async {
-    final repository = _FakeAccountProfilesRepository(
-      pages: {
-        1: pagedAccountProfilesResultFromRaw(
-          profiles: [
-            _profile(
-                id: _mongoId('page-fail-1'), type: 'artist', name: 'First'),
-          ],
-          hasMore: true,
-        ),
-      },
-      failingPages: const <int>{2},
-    );
-    final controller = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-    );
+    'discovery stops automatic pagination when a subsequent page request fails',
+    () async {
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: [
+              _profile(
+                id: _mongoId('page-fail-1'),
+                type: 'artist',
+                name: 'First',
+              ),
+            ],
+            hasMore: true,
+          ),
+        },
+        failingPages: const <int>{2},
+      );
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+      );
 
-    await controller.init();
-    expect(controller.filteredPartnersStreamValue.value, hasLength(1));
-    expect(controller.hasMoreStreamValue.value, isTrue);
+      await controller.init();
+      expect(controller.filteredPartnersStreamValue.value, hasLength(1));
+      expect(controller.hasMoreStreamValue.value, isTrue);
 
-    await controller.loadNextPage();
+      await controller.loadNextPage();
 
-    expect(controller.isPageLoadingStreamValue.value, isFalse);
-    expect(controller.hasMoreStreamValue.value, isFalse);
-    expect(repository.pageRequests.map((request) => request.page), [1, 2]);
+      expect(controller.isPageLoadingStreamValue.value, isFalse);
+      expect(controller.hasMoreStreamValue.value, isFalse);
+      expect(repository.pageRequests.map((request) => request.page), [1, 2]);
 
-    await controller.loadNextPage();
+      await controller.loadNextPage();
 
-    expect(repository.pageRequests.map((request) => request.page), [1, 2]);
-    controller.onDispose();
-  });
-
-  test(
-      'discovery re-entry keeps shared schedule stream alive and pagination healthy',
-      () async {
-    final repository = _FakeAccountProfilesRepository(
-      pages: {
-        1: pagedAccountProfilesResultFromRaw(
-          profiles: [
-            _profile(id: _mongoId('re1'), type: 'artist', name: 'First'),
-          ],
-          hasMore: true,
-        ),
-        2: pagedAccountProfilesResultFromRaw(
-          profiles: [
-            _profile(id: _mongoId('re2'), type: 'artist', name: 'Second'),
-          ],
-          hasMore: false,
-        ),
-      },
-    );
-    final scheduleRepository = _FakeDiscoveryScheduleRepository(
-      liveNowEvents: [
-        _event(
-          id: _mongoId('re-live'),
-          slug: 're-live',
-          title: 'Reentry Live',
-          artistName: 'Reentry Artist',
-        ),
-      ],
-    );
-
-    final firstController = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-      scheduleRepository: scheduleRepository,
-    );
-    await firstController.init();
-    firstController.onDispose();
-
-    final secondController = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-      scheduleRepository: scheduleRepository,
-    );
-    await secondController.init();
-    expect(secondController.filteredPartnersStreamValue.value, hasLength(1));
-
-    await secondController.loadNextPage();
-
-    expect(secondController.filteredPartnersStreamValue.value, hasLength(2));
-    expect(secondController.isPageLoadingStreamValue.value, isFalse);
-    secondController.onDispose();
-  });
+      expect(repository.pageRequests.map((request) => request.page), [1, 2]);
+      controller.onDispose();
+    },
+  );
 
   test(
-      'discovery re-entry with cached page does not raise fullscreen loading again',
-      () async {
-    final repository = _FakeAccountProfilesRepository(
-      pages: {
-        1: pagedAccountProfilesResultFromRaw(
-          profiles: [
-            _profile(id: _mongoId('re-cache-1'), type: 'artist', name: 'First'),
-          ],
-          hasMore: false,
-        ),
-      },
-    );
+    'discovery re-entry keeps shared schedule stream alive and pagination healthy',
+    () async {
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: [
+              _profile(id: _mongoId('re1'), type: 'artist', name: 'First'),
+            ],
+            hasMore: true,
+          ),
+          2: pagedAccountProfilesResultFromRaw(
+            profiles: [
+              _profile(id: _mongoId('re2'), type: 'artist', name: 'Second'),
+            ],
+            hasMore: false,
+          ),
+        },
+      );
+      final scheduleRepository = _FakeDiscoveryScheduleRepository(
+        liveNowEvents: [
+          _event(
+            id: _mongoId('re-live'),
+            slug: 're-live',
+            title: 'Reentry Live',
+            artistName: 'Reentry Artist',
+          ),
+        ],
+      );
 
-    final firstController = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-    );
-    await firstController.init();
-    firstController.onDispose();
+      final firstController = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+        scheduleRepository: scheduleRepository,
+      );
+      await firstController.init();
+      firstController.onDispose();
 
-    final secondController = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-    );
-    final loadingTransitions = <bool>[];
-    final subscription = secondController.isLoadingStreamValue.stream.listen(
-      loadingTransitions.add,
-    );
+      final secondController = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+        scheduleRepository: scheduleRepository,
+      );
+      await secondController.init();
+      expect(secondController.filteredPartnersStreamValue.value, hasLength(1));
 
-    await secondController.init();
+      await secondController.loadNextPage();
 
-    expect(secondController.filteredPartnersStreamValue.value, hasLength(1));
-    expect(loadingTransitions, isNot(contains(true)));
-
-    await subscription.cancel();
-    secondController.onDispose();
-  });
+      expect(secondController.filteredPartnersStreamValue.value, hasLength(2));
+      expect(secondController.isPageLoadingStreamValue.value, isFalse);
+      secondController.onDispose();
+    },
+  );
 
   test(
-      'discovery nearby section uses dedicated near source and preserves backend order',
-      () async {
-    final repository = _FakeAccountProfilesRepository(
-      pages: {
-        1: pagedAccountProfilesResultFromRaw(
-          profiles: [
-            _profile(
-              id: _mongoId('re-nearby-cache-1'),
-              type: 'artist',
-              name: 'First',
-            ),
-            _profile(
-              id: _mongoId('re-nearby-cache-2'),
-              type: 'curator',
-              name: 'Curator',
-            ),
-          ],
-          hasMore: false,
-        ),
-      },
-      nearbyProfiles: [
-        buildAccountProfileModelFromPrimitives(
-          id: _mongoId('re-nearby-remote-1'),
-          name: 'Nearest Nearby',
-          slug: 'nearest-nearby',
-          type: 'artist',
-          distanceMeters: 120,
-        ),
-        buildAccountProfileModelFromPrimitives(
-          id: _mongoId('re-nearby-remote-2'),
-          name: 'Second Nearby',
-          slug: 'second-nearby',
-          type: 'artist',
-          distanceMeters: 480,
-        ),
-      ],
-    );
+    'discovery re-entry with cached page does not raise fullscreen loading again',
+    () async {
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: [
+              _profile(
+                id: _mongoId('re-cache-1'),
+                type: 'artist',
+                name: 'First',
+              ),
+            ],
+            hasMore: false,
+          ),
+        },
+      );
 
-    final controller = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-    );
+      final firstController = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+      );
+      await firstController.init();
+      firstController.onDispose();
 
-    await controller.init();
+      final secondController = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+      );
+      final loadingTransitions = <bool>[];
+      final subscription = secondController.isLoadingStreamValue.stream.listen(
+        loadingTransitions.add,
+      );
 
-    expect(repository.nearbyFetchCalls, 1);
-    expect(controller.nearbyStreamValue.value, hasLength(2));
-    expect(
-      controller.nearbyStreamValue.value
-          .map((profile) => profile.name)
-          .toList(),
-      ['Nearest Nearby', 'Second Nearby'],
-    );
-    controller.onDispose();
-  });
+      await secondController.init();
 
-  test('discovery nearby section falls back to independent repository request',
-      () async {
-    final repository = _FakeAccountProfilesRepository(
-      pages: const <int, PagedAccountProfilesResult>{},
-      nearbyProfiles: [
-        buildAccountProfileModelFromPrimitives(
-          id: _mongoId('d2'),
-          name: 'Nearby Venue',
-          slug: 'nearby-venue',
-          type: 'artist',
-          distanceMeters: 320,
-        ),
-      ],
-    );
-    final controller = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-    );
+      expect(secondController.filteredPartnersStreamValue.value, hasLength(1));
+      expect(loadingTransitions, isNot(contains(true)));
 
-    await repository.syncDiscoveryNearbyAccountProfiles();
+      await subscription.cancel();
+      secondController.onDispose();
+    },
+  );
 
-    expect(repository.nearbyFetchCalls, 1);
-    expect(controller.nearbyStreamValue.value, hasLength(1));
-    expect(controller.nearbyStreamValue.value.first.name, 'Nearby Venue');
-    expect(controller.nearbyStreamValue.value.first.distanceMeters, 320);
-    controller.onDispose();
-  });
+  test(
+    'discovery nearby section uses dedicated near source and preserves backend order',
+    () async {
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: [
+              _profile(
+                id: _mongoId('re-nearby-cache-1'),
+                type: 'artist',
+                name: 'First',
+              ),
+              _profile(
+                id: _mongoId('re-nearby-cache-2'),
+                type: 'curator',
+                name: 'Curator',
+              ),
+            ],
+            hasMore: false,
+          ),
+        },
+        nearbyProfiles: [
+          buildAccountProfileModelFromPrimitives(
+            id: _mongoId('re-nearby-remote-1'),
+            name: 'Nearest Nearby',
+            slug: 'nearest-nearby',
+            type: 'artist',
+            distanceMeters: 120,
+          ),
+          buildAccountProfileModelFromPrimitives(
+            id: _mongoId('re-nearby-remote-2'),
+            name: 'Second Nearby',
+            slug: 'second-nearby',
+            type: 'artist',
+            distanceMeters: 480,
+          ),
+        ],
+      );
+
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+      );
+
+      await controller.init();
+
+      expect(repository.nearbyFetchCalls, 1);
+      expect(controller.nearbyStreamValue.value, hasLength(2));
+      expect(
+        controller.nearbyStreamValue.value
+            .map((profile) => profile.name)
+            .toList(),
+        ['Nearest Nearby', 'Second Nearby'],
+      );
+      controller.onDispose();
+    },
+  );
+
+  test(
+    'discovery nearby section falls back to independent repository request',
+    () async {
+      final repository = _FakeAccountProfilesRepository(
+        pages: const <int, PagedAccountProfilesResult>{},
+        nearbyProfiles: [
+          buildAccountProfileModelFromPrimitives(
+            id: _mongoId('d2'),
+            name: 'Nearby Venue',
+            slug: 'nearby-venue',
+            type: 'artist',
+            distanceMeters: 320,
+          ),
+        ],
+      );
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+      );
+
+      await repository.syncDiscoveryNearbyAccountProfiles();
+
+      expect(repository.nearbyFetchCalls, 1);
+      expect(controller.nearbyStreamValue.value, hasLength(1));
+      expect(controller.nearbyStreamValue.value.first.name, 'Nearby Venue');
+      expect(controller.nearbyStreamValue.value.first.distanceMeters, 320);
+      controller.onDispose();
+    },
+  );
 
   test('back consumption resets active filter state only', () async {
     final repository = _FakeAccountProfilesRepository(
@@ -373,477 +387,502 @@ void main() {
     controller.onDispose();
   });
 
-  test('back consumption returns false when no filter state is active',
-      () async {
-    final repository = _FakeAccountProfilesRepository(
-      pages: {
-        1: pagedAccountProfilesResultFromRaw(
-          profiles: [
-            _profile(id: _mongoId('back-2'), type: 'artist', name: 'Artist'),
-          ],
-          hasMore: false,
-        ),
-      },
-    );
-    final controller = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-    );
+  test(
+    'back consumption returns false when no filter state is active',
+    () async {
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: [
+              _profile(id: _mongoId('back-2'), type: 'artist', name: 'Artist'),
+            ],
+            hasMore: false,
+          ),
+        },
+      );
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+      );
 
-    await controller.init();
-    controller.toggleSearch();
-    await Future<void>.delayed(const Duration(milliseconds: 20));
+      await controller.init();
+      controller.toggleSearch();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
 
-    final consumed = controller.consumeBackNavigationIfNeeded();
+      final consumed = controller.consumeBackNavigationIfNeeded();
 
-    expect(consumed, isFalse);
-    expect(controller.isSearchingStreamValue.value, isTrue);
-    controller.onDispose();
-  });
-
-  test('back consumption resets selected category filter without popping',
-      () async {
-    final repository = _FakeAccountProfilesRepository(
-      pages: {
-        1: pagedAccountProfilesResultFromRaw(
-          profiles: [
-            _profile(id: _mongoId('back-3'), type: 'artist', name: 'Artist'),
-            _profile(id: _mongoId('back-4'), type: 'venue', name: 'Venue'),
-          ],
-          hasMore: false,
-        ),
-      },
-    );
-    final controller = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-    );
-
-    await controller.init();
-    controller.setTypeFilter('artist');
-    await Future<void>.delayed(const Duration(milliseconds: 20));
-
-    final consumed = controller.consumeBackNavigationIfNeeded();
-    await Future<void>.delayed(const Duration(milliseconds: 20));
-
-    expect(consumed, isTrue);
-    expect(controller.selectedTypeFilterStreamValue.value, isNull);
-    expect(controller.isSearchingStreamValue.value, isFalse);
-    controller.onDispose();
-  });
-
-  test('discovery live-now section loads real event page with live_now_only',
-      () async {
-    final preferredRadiusMeters = 9200.0;
-    final locationRepository = _FakeUserLocationRepository(
-      userCoordinate: _coordinate(
-        latitude: -20.671339,
-        longitude: -40.495395,
-      ),
-    );
-    final appDataRepository = _FakeAppDataRepository(
-      appData: _buildAppData(),
-      maxRadiusMeters: preferredRadiusMeters,
-    );
-    GetIt.I.registerSingleton<UserLocationRepositoryContract>(
-      locationRepository,
-    );
-    GetIt.I.registerSingleton<AppDataRepositoryContract>(
-      appDataRepository,
-    );
-
-    final repository = _FakeAccountProfilesRepository(
-      pages: {
-        1: pagedAccountProfilesResultFromRaw(
-          profiles: [
-            _profile(id: _mongoId('l1'), type: 'artist', name: 'Grid Artist'),
-          ],
-          hasMore: false,
-        ),
-      },
-    );
-    final scheduleRepository = _FakeDiscoveryScheduleRepository(
-      liveNowEvents: [
-        _event(
-          id: _mongoId('evt-live'),
-          slug: 'evento-live',
-          title: 'Evento ao vivo',
-          artistName: 'Artista Live',
-        ),
-      ],
-    );
-    final controller = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-      scheduleRepository: scheduleRepository,
-    );
-
-    await controller.init();
-    await Future<void>.delayed(const Duration(milliseconds: 20));
-
-    expect(scheduleRepository.liveNowFetchCalls, 1);
-    expect(scheduleRepository.lastLiveNowRequest, isNotNull);
-    expect(scheduleRepository.lastLiveNowRequest!.originLat,
-        closeTo(-20.671339, 0.000001));
-    expect(scheduleRepository.lastLiveNowRequest!.originLng,
-        closeTo(-40.495395, 0.000001));
-    expect(scheduleRepository.lastLiveNowRequest!.maxDistanceMeters,
-        closeTo(preferredRadiusMeters, 0.000001));
-    expect(controller.liveNowEventsStreamValue.value, hasLength(1));
-    expect(
-        controller.liveNowEventsStreamValue.value!.first.slug, 'evento-live');
-    expect(
-      controller.liveNowEventsStreamValue.value!.first.counterpartProfiles.first
-          .displayName,
-      'Artista Live',
-    );
-    controller.onDispose();
-  });
+      expect(consumed, isFalse);
+      expect(controller.isSearchingStreamValue.value, isTrue);
+      controller.onDispose();
+    },
+  );
 
   test(
-      'discovery live-now reloads when user location arrives during first live-now fetch',
-      () async {
-    final locationRepository = _FakeUserLocationRepository();
-    final appDataRepository = _FakeAppDataRepository(
-      appData: _buildAppData(),
-      maxRadiusMeters: 9200.0,
-    );
-    GetIt.I.registerSingleton<UserLocationRepositoryContract>(
-      locationRepository,
-    );
-    GetIt.I.registerSingleton<AppDataRepositoryContract>(
-      appDataRepository,
-    );
+    'back consumption resets selected category filter without popping',
+    () async {
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: [
+              _profile(id: _mongoId('back-3'), type: 'artist', name: 'Artist'),
+              _profile(id: _mongoId('back-4'), type: 'venue', name: 'Venue'),
+            ],
+            hasMore: false,
+          ),
+        },
+      );
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+      );
 
-    final repository = _FakeAccountProfilesRepository(
-      pages: {
-        1: pagedAccountProfilesResultFromRaw(
-          profiles: [
-            _profile(id: _mongoId('lr1'), type: 'artist', name: 'Grid Artist'),
-          ],
-          hasMore: false,
-        ),
-      },
-    );
-    final scheduleRepository = _FakeDiscoveryScheduleRepository(
-      liveNowEvents: [
-        _event(
-          id: _mongoId('evt-live-race'),
-          slug: 'evento-live-race',
-          title: 'Evento ao vivo corrida',
-          artistName: 'Artista Corrida',
-        ),
-      ],
-      requireOriginForLiveNow: true,
-      liveNowFetchDelay: const Duration(milliseconds: 80),
-    );
-    final controller = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-      scheduleRepository: scheduleRepository,
-    );
+      await controller.init();
+      controller.setTypeFilter('artist');
+      await Future<void>.delayed(const Duration(milliseconds: 20));
 
-    await controller.init();
-    await scheduleRepository.waitUntilFirstLiveNowFetchStarts();
+      final consumed = controller.consumeBackNavigationIfNeeded();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
 
-    locationRepository.userLocationStreamValue.addValue(
-      _coordinate(
-        latitude: -20.671339,
-        longitude: -40.495395,
-      ),
-    );
-
-    await Future<void>.delayed(const Duration(milliseconds: 220));
-
-    expect(scheduleRepository.liveNowFetchCalls, 2);
-    expect(scheduleRepository.lastLiveNowRequest, isNotNull);
-    expect(
-      scheduleRepository.lastLiveNowRequest!.originLat,
-      closeTo(-20.671339, 0.000001),
-    );
-    expect(
-      scheduleRepository.lastLiveNowRequest!.originLng,
-      closeTo(-40.495395, 0.000001),
-    );
-    expect(controller.liveNowEventsStreamValue.value, hasLength(1));
-    expect(controller.liveNowEventsStreamValue.value!.first.slug,
-        'evento-live-race');
-    controller.onDispose();
-  });
+      expect(consumed, isTrue);
+      expect(controller.selectedTypeFilterStreamValue.value, isNull);
+      expect(controller.isSearchingStreamValue.value, isFalse);
+      controller.onDispose();
+    },
+  );
 
   test(
-      'discovery live-now resolves ScheduleRepositoryContract registered after controller construction',
-      () async {
-    final locationRepository = _FakeUserLocationRepository(
-      userCoordinate: _coordinate(
-        latitude: -20.671339,
-        longitude: -40.495395,
-      ),
-    );
-    final appDataRepository = _FakeAppDataRepository(
-      appData: _buildAppData(),
-      maxRadiusMeters: 9200.0,
-    );
-    GetIt.I.registerSingleton<UserLocationRepositoryContract>(
-      locationRepository,
-    );
-    GetIt.I.registerSingleton<AppDataRepositoryContract>(
-      appDataRepository,
-    );
-
-    final repository = _FakeAccountProfilesRepository(
-      pages: {
-        1: pagedAccountProfilesResultFromRaw(
-          profiles: <AccountProfileModel>[],
-          hasMore: false,
+    'discovery live-now section loads real event page with live_now_only',
+    () async {
+      final preferredRadiusMeters = 9200.0;
+      final locationRepository = _FakeUserLocationRepository(
+        userCoordinate: _coordinate(
+          latitude: -20.671339,
+          longitude: -40.495395,
         ),
-      },
-    );
+      );
+      final appDataRepository = _FakeAppDataRepository(
+        appData: _buildAppData(),
+        maxRadiusMeters: preferredRadiusMeters,
+      );
+      GetIt.I.registerSingleton<UserLocationRepositoryContract>(
+        locationRepository,
+      );
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
 
-    final controller = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-    );
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: [
+              _profile(id: _mongoId('l1'), type: 'artist', name: 'Grid Artist'),
+            ],
+            hasMore: false,
+          ),
+        },
+      );
+      final scheduleRepository = _FakeDiscoveryScheduleRepository(
+        liveNowEvents: [
+          _event(
+            id: _mongoId('evt-live'),
+            slug: 'evento-live',
+            title: 'Evento ao vivo',
+            artistName: 'Artista Live',
+          ),
+        ],
+      );
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+        scheduleRepository: scheduleRepository,
+      );
 
-    final scheduleRepository = _FakeDiscoveryScheduleRepository(
-      liveNowEvents: [
-        _event(
-          id: _mongoId('evt-live-late'),
-          slug: 'evento-live-late',
-          title: 'Evento ao vivo tardio',
-          artistName: 'Artista Tardio',
-          thumbUrl: null,
-        ),
-      ],
-    );
-    GetIt.I.registerSingleton<ScheduleRepositoryContract>(
-      scheduleRepository,
-    );
+      await controller.init();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
 
-    await controller.init();
-    await Future<void>.delayed(const Duration(milliseconds: 20));
-
-    expect(scheduleRepository.liveNowFetchCalls, 1);
-    expect(controller.liveNowEventsStreamValue.value, hasLength(1));
-    expect(controller.liveNowEventsStreamValue.value!.first.slug,
-        'evento-live-late');
-    controller.onDispose();
-  });
+      expect(scheduleRepository.liveNowFetchCalls, 1);
+      expect(scheduleRepository.lastLiveNowRequest, isNotNull);
+      expect(
+        scheduleRepository.lastLiveNowRequest!.originLat,
+        closeTo(-20.671339, 0.000001),
+      );
+      expect(
+        scheduleRepository.lastLiveNowRequest!.originLng,
+        closeTo(-40.495395, 0.000001),
+      );
+      expect(
+        scheduleRepository.lastLiveNowRequest!.maxDistanceMeters,
+        closeTo(preferredRadiusMeters, 0.000001),
+      );
+      expect(controller.liveNowEventsStreamValue.value, hasLength(1));
+      expect(
+        controller.liveNowEventsStreamValue.value!.first.slug,
+        'evento-live',
+      );
+      expect(
+        controller
+            .liveNowEventsStreamValue
+            .value!
+            .first
+            .counterpartProfiles
+            .first
+            .displayName,
+        'Artista Live',
+      );
+      controller.onDispose();
+    },
+  );
 
   test(
-      'discovery live-now fallback stream remains stable without a schedule repository',
-      () async {
-    final repository = _FakeAccountProfilesRepository(
-      pages: {
-        1: pagedAccountProfilesResultFromRaw(
-          profiles: <AccountProfileModel>[],
-          hasMore: false,
+    'discovery live-now reloads when user location arrives during first live-now fetch',
+    () async {
+      final locationRepository = _FakeUserLocationRepository();
+      final appDataRepository = _FakeAppDataRepository(
+        appData: _buildAppData(),
+        maxRadiusMeters: 9200.0,
+      );
+      GetIt.I.registerSingleton<UserLocationRepositoryContract>(
+        locationRepository,
+      );
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
+
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: [
+              _profile(
+                id: _mongoId('lr1'),
+                type: 'artist',
+                name: 'Grid Artist',
+              ),
+            ],
+            hasMore: false,
+          ),
+        },
+      );
+      final scheduleRepository = _FakeDiscoveryScheduleRepository(
+        liveNowEvents: [
+          _event(
+            id: _mongoId('evt-live-race'),
+            slug: 'evento-live-race',
+            title: 'Evento ao vivo corrida',
+            artistName: 'Artista Corrida',
+          ),
+        ],
+        requireOriginForLiveNow: true,
+        liveNowFetchDelay: const Duration(milliseconds: 80),
+      );
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+        scheduleRepository: scheduleRepository,
+      );
+
+      await controller.init();
+      await scheduleRepository.waitUntilFirstLiveNowFetchStarts();
+
+      locationRepository.userLocationStreamValue.addValue(
+        _coordinate(latitude: -20.671339, longitude: -40.495395),
+      );
+
+      await Future<void>.delayed(const Duration(milliseconds: 220));
+
+      expect(scheduleRepository.liveNowFetchCalls, 2);
+      expect(scheduleRepository.lastLiveNowRequest, isNotNull);
+      expect(
+        scheduleRepository.lastLiveNowRequest!.originLat,
+        closeTo(-20.671339, 0.000001),
+      );
+      expect(
+        scheduleRepository.lastLiveNowRequest!.originLng,
+        closeTo(-40.495395, 0.000001),
+      );
+      expect(controller.liveNowEventsStreamValue.value, hasLength(1));
+      expect(
+        controller.liveNowEventsStreamValue.value!.first.slug,
+        'evento-live-race',
+      );
+      controller.onDispose();
+    },
+  );
+
+  test(
+    'discovery live-now resolves ScheduleRepositoryContract registered after controller construction',
+    () async {
+      final locationRepository = _FakeUserLocationRepository(
+        userCoordinate: _coordinate(
+          latitude: -20.671339,
+          longitude: -40.495395,
         ),
-      },
-    );
-    final controller = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-    );
+      );
+      final appDataRepository = _FakeAppDataRepository(
+        appData: _buildAppData(),
+        maxRadiusMeters: 9200.0,
+      );
+      GetIt.I.registerSingleton<UserLocationRepositoryContract>(
+        locationRepository,
+      );
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
 
-    final firstStream = controller.liveNowEventsStreamValue;
-    final secondStream = controller.liveNowEventsStreamValue;
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: <AccountProfileModel>[],
+            hasMore: false,
+          ),
+        },
+      );
 
-    expect(identical(firstStream, secondStream), isTrue);
-    expect(firstStream.value, isNull);
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+      );
 
-    await controller.init();
+      final scheduleRepository = _FakeDiscoveryScheduleRepository(
+        liveNowEvents: [
+          _event(
+            id: _mongoId('evt-live-late'),
+            slug: 'evento-live-late',
+            title: 'Evento ao vivo tardio',
+            artistName: 'Artista Tardio',
+            thumbUrl: null,
+          ),
+        ],
+      );
+      GetIt.I.registerSingleton<ScheduleRepositoryContract>(scheduleRepository);
 
-    expect(identical(firstStream, controller.liveNowEventsStreamValue), isTrue);
-    expect(controller.liveNowEventsStreamValue.value, isNull);
-    controller.onDispose();
-  });
+      await controller.init();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(scheduleRepository.liveNowFetchCalls, 1);
+      expect(controller.liveNowEventsStreamValue.value, hasLength(1));
+      expect(
+        controller.liveNowEventsStreamValue.value!.first.slug,
+        'evento-live-late',
+      );
+      controller.onDispose();
+    },
+  );
+
+  test(
+    'discovery live-now fallback stream remains stable without a schedule repository',
+    () async {
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: <AccountProfileModel>[],
+            hasMore: false,
+          ),
+        },
+      );
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+      );
+
+      final firstStream = controller.liveNowEventsStreamValue;
+      final secondStream = controller.liveNowEventsStreamValue;
+
+      expect(identical(firstStream, secondStream), isTrue);
+      expect(firstStream.value, isNull);
+
+      await controller.init();
+
+      expect(
+        identical(firstStream, controller.liveNowEventsStreamValue),
+        isTrue,
+      );
+      expect(controller.liveNowEventsStreamValue.value, isNull);
+      controller.onDispose();
+    },
+  );
 
   testWidgets(
-      'DiscoveryScreen renders "Tocando agora" when live-now stream contains events',
-      (tester) async {
-    final locationRepository = _FakeUserLocationRepository(
-      userCoordinate: _coordinate(
-        latitude: -20.671339,
-        longitude: -40.495395,
-      ),
-    );
-    final appDataRepository = _FakeAppDataRepository(
-      appData: _buildAppData(),
-      maxRadiusMeters: 9200.0,
-    );
-    GetIt.I.registerSingleton<UserLocationRepositoryContract>(
-      locationRepository,
-    );
-    GetIt.I.registerSingleton<AppDataRepositoryContract>(
-      appDataRepository,
-    );
-
-    final repository = _FakeAccountProfilesRepository(
-      pages: {
-        1: pagedAccountProfilesResultFromRaw(
-          profiles: <AccountProfileModel>[],
-          hasMore: false,
+    'DiscoveryScreen renders "Rolando agora" when live-now stream contains events',
+    (tester) async {
+      final locationRepository = _FakeUserLocationRepository(
+        userCoordinate: _coordinate(
+          latitude: -20.671339,
+          longitude: -40.495395,
         ),
-      },
-    );
-    final scheduleRepository = _FakeDiscoveryScheduleRepository(
-      liveNowEvents: [
-        _event(
-          id: _mongoId('evt-live-ui'),
-          slug: 'evento-live-ui',
-          title: 'Evento ao vivo UI',
-          artistName: 'Artista UI',
-          thumbUrl: null,
-        ),
-      ],
-    );
-    final controller = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-      scheduleRepository: scheduleRepository,
-    );
-    GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
+      );
+      final appDataRepository = _FakeAppDataRepository(
+        appData: _buildAppData(),
+        maxRadiusMeters: 9200.0,
+      );
+      GetIt.I.registerSingleton<UserLocationRepositoryContract>(
+        locationRepository,
+      );
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
 
-    final router = _RecordingStackRouter();
-    final routeData = RouteData(
-      route: _FakeRouteMatch(fullPath: '/descobrir'),
-      router: router,
-      stackKey: const ValueKey('stack'),
-      pendingChildren: const [],
-      type: const RouteType.material(),
-    );
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: <AccountProfileModel>[],
+            hasMore: false,
+          ),
+        },
+      );
+      final scheduleRepository = _FakeDiscoveryScheduleRepository(
+        liveNowEvents: [
+          _event(
+            id: _mongoId('evt-live-ui'),
+            slug: 'evento-live-ui',
+            title: 'Evento ao vivo UI',
+            artistName: 'Artista UI',
+            thumbUrl: null,
+          ),
+        ],
+      );
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+        scheduleRepository: scheduleRepository,
+      );
+      GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
 
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: RouteDataScope(
-            routeData: routeData,
-            child: const DiscoveryScreen(),
+      final router = _RecordingStackRouter();
+      final routeData = RouteData(
+        route: _FakeRouteMatch(fullPath: '/descobrir'),
+        router: router,
+        stackKey: const ValueKey('stack'),
+        pendingChildren: const [],
+        type: const RouteType.material(),
+      );
+
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: RouteDataScope(
+              routeData: routeData,
+              child: const DiscoveryScreen(),
+            ),
           ),
         ),
-      ),
-    );
+      );
 
-    await tester.pump(const Duration(milliseconds: 120));
+      await tester.pump(const Duration(milliseconds: 120));
 
-    expect(find.text('Tocando agora'), findsOneWidget);
-    expect(find.text('Artista UI'), findsOneWidget);
+      expect(find.text('Rolando agora'), findsOneWidget);
+      expect(find.text('Artista UI'), findsOneWidget);
 
-    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
-  });
+      await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+    },
+  );
 
   testWidgets(
-      'DiscoveryScreen web anonymous favorite promotes app instead of phone login',
-      (tester) async {
-    final artist = _profile(
-      id: _mongoId('fav-web'),
-      type: 'artist',
-      name: 'Artista Favoritavel',
-    );
-    final repository = _FakeAccountProfilesRepository(
-      pages: {
-        1: pagedAccountProfilesResultFromRaw(
-          profiles: [artist],
-          hasMore: false,
-        ),
-      },
-    );
-    final authRepository = _FakeAuthRepository(authorized: false);
-    final controller = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-      authRepository: authRepository,
-    );
-    GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
+    'DiscoveryScreen web anonymous favorite promotes app instead of phone login',
+    (tester) async {
+      final artist = _profile(
+        id: _mongoId('fav-web'),
+        type: 'artist',
+        name: 'Artista Favoritavel',
+      );
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: [artist],
+            hasMore: false,
+          ),
+        },
+      );
+      final authRepository = _FakeAuthRepository(authorized: false);
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+        authRepository: authRepository,
+      );
+      GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
 
-    final router = _RecordingStackRouter();
-    final routeData = RouteData(
-      route: _FakeRouteMatch(fullPath: '/descobrir'),
-      router: router,
-      stackKey: const ValueKey('stack'),
-      pendingChildren: const [],
-      type: const RouteType.material(),
-    );
+      final router = _RecordingStackRouter();
+      final routeData = RouteData(
+        route: _FakeRouteMatch(fullPath: '/descobrir'),
+        router: router,
+        stackKey: const ValueKey('stack'),
+        pendingChildren: const [],
+        type: const RouteType.material(),
+      );
 
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: RouteDataScope(
-            routeData: routeData,
-            child: const DiscoveryScreen(isWebRuntime: true),
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            theme: ThemeData(splashFactory: NoSplash.splashFactory),
+            home: RouteDataScope(
+              routeData: routeData,
+              child: const DiscoveryScreen(isWebRuntime: true),
+            ),
           ),
         ),
-      ),
-    );
-    await tester.pump(const Duration(milliseconds: 120));
+      );
+      await tester.pump(const Duration(milliseconds: 120));
 
-    await tester.tap(find.byKey(Key('discoveryFavoriteButton_${artist.id}')));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byKey(Key('discoveryFavoriteButton_${artist.id}')));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Entrar para favoritar'), findsNothing);
-    expect(find.byKey(const Key('app_promotion_modal')), findsOneWidget);
-    expect(
-      find.byKey(const Key('app_promotion_store_badge_android')),
-      findsOneWidget,
-    );
-    expect(repository.toggleCalls, isEmpty);
-    expect(router.lastPushedPath, isNull);
-    expect(router.lastReplacedPath, isNull);
+      expect(find.text('Entrar para favoritar'), findsNothing);
+      expect(find.byKey(const Key('app_promotion_modal')), findsOneWidget);
+      expect(
+        find.byKey(const Key('app_promotion_store_badge_android')),
+        findsOneWidget,
+      );
+      expect(repository.toggleCalls, isEmpty);
+      expect(router.lastPushedPath, isNull);
+      expect(router.lastReplacedPath, isNull);
 
-    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
-  });
+      await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+    },
+  );
 
   testWidgets(
-      'DiscoveryScreen partner taps prefer canonical public detail path over slug route',
-      (tester) async {
-    final profile = buildAccountProfileModelFromPrimitives(
-      id: _mongoId('path-pref'),
-      name: 'Perfil Path',
-      slug: 'perfil-path',
-      type: 'artist',
-      publicDetailPath: '/perfil-customizado/perfil-path',
-    );
-    final repository = _FakeAccountProfilesRepository(
-      pages: {
-        1: pagedAccountProfilesResultFromRaw(
-          profiles: [profile],
-          hasMore: false,
-        ),
-      },
-    );
-    final controller = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-    );
-    GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
+    'DiscoveryScreen partner taps prefer canonical public detail path over slug route',
+    (tester) async {
+      final profile = buildAccountProfileModelFromPrimitives(
+        id: _mongoId('path-pref'),
+        name: 'Perfil Path',
+        slug: 'perfil-path',
+        type: 'artist',
+        publicDetailPath: '/perfil-customizado/perfil-path',
+      );
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: [profile],
+            hasMore: false,
+          ),
+        },
+      );
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+      );
+      GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
 
-    final router = _RecordingStackRouter();
-    final routeData = RouteData(
-      route: _FakeRouteMatch(fullPath: '/descobrir'),
-      router: router,
-      stackKey: const ValueKey('stack'),
-      pendingChildren: const [],
-      type: const RouteType.material(),
-    );
+      final router = _RecordingStackRouter();
+      final routeData = RouteData(
+        route: _FakeRouteMatch(fullPath: '/descobrir'),
+        router: router,
+        stackKey: const ValueKey('stack'),
+        pendingChildren: const [],
+        type: const RouteType.material(),
+      );
 
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: RouteDataScope(
-            routeData: routeData,
-            child: const DiscoveryScreen(),
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: RouteDataScope(
+              routeData: routeData,
+              child: const DiscoveryScreen(),
+            ),
           ),
         ),
-      ),
-    );
-    await tester.pump(const Duration(milliseconds: 120));
+      );
+      await tester.pump(const Duration(milliseconds: 120));
 
-    await tester.tap(find.text('Perfil Path').first);
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('Perfil Path').first);
+      await tester.pumpAndSettle();
 
-    expect(router.lastPushedPath, '/perfil-customizado/perfil-path');
-  });
+      expect(router.lastPushedPath, '/perfil-customizado/perfil-path');
+    },
+  );
 
-  testWidgets('DiscoveryFilterChips uses the shared bordered chip styling',
-      (tester) async {
+  testWidgets('DiscoveryFilterChips uses the shared bordered chip styling', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -875,824 +914,834 @@ void main() {
   });
 
   testWidgets(
-      'DiscoveryScreen shows search action in Descubra header only in idle state',
-      (tester) async {
-    final repository = _FakeAccountProfilesRepository(
-      pages: {
-        1: pagedAccountProfilesResultFromRaw(
-          profiles: [
-            _profile(
-                id: _mongoId('ui-search-1'), type: 'artist', name: 'Artist'),
-          ],
-          hasMore: false,
-        ),
-      },
-    );
-    final controller = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-    );
-    GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
-
-    final router = _RecordingStackRouter();
-    final routeData = RouteData(
-      route: _FakeRouteMatch(fullPath: '/descobrir'),
-      router: router,
-      stackKey: const ValueKey('stack'),
-      pendingChildren: const [],
-      type: const RouteType.material(),
-    );
-
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: RouteDataScope(
-            routeData: routeData,
-            child: const DiscoveryScreen(),
+    'DiscoveryScreen shows search action in Descubra header only in idle state',
+    (tester) async {
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: [
+              _profile(
+                id: _mongoId('ui-search-1'),
+                type: 'artist',
+                name: 'Artist',
+              ),
+            ],
+            hasMore: false,
           ),
-        ),
-      ),
-    );
+        },
+      );
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+      );
+      GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
 
-    await tester.pump(const Duration(milliseconds: 120));
+      final router = _RecordingStackRouter();
+      final routeData = RouteData(
+        route: _FakeRouteMatch(fullPath: '/descobrir'),
+        router: router,
+        stackKey: const ValueKey('stack'),
+        pendingChildren: const [],
+        type: const RouteType.material(),
+      );
 
-    expect(
-      find.descendant(
-        of: find.byType(AppBar),
-        matching: find.byIcon(Icons.search),
-      ),
-      findsNothing,
-    );
-    expect(find.text('Descubra'), findsOneWidget);
-    expect(find.byIcon(Icons.search), findsOneWidget);
-
-    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
-  });
-
-  testWidgets(
-      'DiscoveryScreen stops repeated bottom-scroll pagination after next page failure',
-      (tester) async {
-    final repository = _FakeAccountProfilesRepository(
-      pages: {
-        1: pagedAccountProfilesResultFromRaw(
-          profiles: List<AccountProfileModel>.generate(
-            40,
-            (index) => _profile(
-              id: _mongoId('ui-page-fail-$index'),
-              type: 'artist',
-              name: 'Perfil Scroll $index',
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: RouteDataScope(
+              routeData: routeData,
+              child: const DiscoveryScreen(),
             ),
           ),
-          hasMore: true,
         ),
-      },
-      failingPages: const <int>{2},
-    );
-    final controller = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-    );
-    GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
+      );
 
-    final router = _RecordingStackRouter();
-    final routeData = RouteData(
-      route: _FakeRouteMatch(fullPath: '/descobrir'),
-      router: router,
-      stackKey: const ValueKey('stack'),
-      pendingChildren: const [],
-      type: const RouteType.material(),
-    );
+      await tester.pump(const Duration(milliseconds: 120));
 
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: RouteDataScope(
-            routeData: routeData,
-            child: const DiscoveryScreen(),
-          ),
+      expect(
+        find.descendant(
+          of: find.byType(AppBar),
+          matching: find.byIcon(Icons.search),
         ),
-      ),
-    );
-    await tester.pump(const Duration(milliseconds: 120));
+        findsNothing,
+      );
+      expect(find.text('Descubra'), findsOneWidget);
+      expect(find.byIcon(Icons.search), findsOneWidget);
 
-    expect(repository.pageRequests.map((request) => request.page), [1]);
-
-    expect(controller.scrollController.hasClients, isTrue);
-    expect(
-        controller.scrollController.position.maxScrollExtent, greaterThan(0));
-    controller.scrollController.jumpTo(
-      controller.scrollController.position.maxScrollExtent,
-    );
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 120));
-
-    expect(repository.pageRequests.map((request) => request.page), [1, 2]);
-    expect(controller.hasMoreStreamValue.value, isFalse);
-    expect(controller.isPageLoadingStreamValue.value, isFalse);
-
-    controller.scrollController.jumpTo(
-      controller.scrollController.position.maxScrollExtent,
-    );
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 120));
-
-    expect(repository.pageRequests.map((request) => request.page), [1, 2]);
-
-    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
-  });
+      await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+    },
+  );
 
   testWidgets(
-      'DiscoveryScreen renders canonical filters by default without a toggle button',
-      (tester) async {
-    final profiles = List<AccountProfileModel>.generate(
-      24,
-      (index) => _profile(
-        id: _mongoId('sticky-$index'),
-        type: 'venue',
-        name: 'Perfil Sticky $index',
-      ),
-    );
-    final repository = _FakeAccountProfilesRepository(
-      pages: {
-        1: pagedAccountProfilesResultFromRaw(
-          profiles: profiles,
-          hasMore: false,
-        ),
-      },
-    );
-    final catalog = _accountProfileDiscoveryFilterCatalogWithMultipleTypes();
-    final primaryFilter = catalog.filters.first;
-    final taxonomyGroup = catalog.taxonomyOptionsByKey.values.single;
-    final controller = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-      discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-        catalog: catalog,
-      ),
-    );
-    GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
-
-    final router = _RecordingStackRouter();
-    final routeData = RouteData(
-      route: _FakeRouteMatch(fullPath: '/descobrir'),
-      router: router,
-      stackKey: const ValueKey('stack'),
-      pendingChildren: const [],
-      type: const RouteType.material(),
-    );
-
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: RouteDataScope(
-            routeData: routeData,
-            child: const DiscoveryScreen(),
-          ),
-        ),
-      ),
-    );
-    await tester.pump(const Duration(milliseconds: 120));
-
-    final pinnedHeaders = tester
-        .widgetList<SliverPersistentHeader>(find.byType(SliverPersistentHeader))
-        .where((header) => header.pinned)
-        .toList(growable: false);
-    expect(pinnedHeaders, hasLength(2));
-    expect(find.text('Descubra'), findsOneWidget);
-    expect(
-      find.byKey(_primaryFilterKey(primaryFilter)),
-      findsOneWidget,
-    );
-    expect(
-      find.bySemanticsLabel('Painel de filtros de perfis'),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const ValueKey<String>('discovery-filter-button')),
-      findsNothing,
-    );
-    expect(find.text(primaryFilter.label), findsOneWidget);
-    expect(find.text(taxonomyGroup.label), findsNothing);
-
-    await tester.tap(
-      find.byKey(_primaryFilterKey(primaryFilter)),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text(taxonomyGroup.label), findsNothing);
-    expect(
-      find.byKey(_selectedPrimaryFilterKey(primaryFilter)),
-      findsOneWidget,
-    );
-    controller.scrollController.jumpTo(
-      controller.scrollController.position.maxScrollExtent / 2,
-    );
-    await tester.pumpAndSettle();
-
-    final pinnedFilterTop = tester.getTopLeft(
-      find.byKey(_selectedPrimaryFilterKey(primaryFilter)),
-    );
-    controller.scrollController.jumpTo(
-      controller.scrollController.position.maxScrollExtent,
-    );
-    await tester.pumpAndSettle();
-
-    final stillPinnedFilterTop = tester.getTopLeft(
-      find.byKey(_selectedPrimaryFilterKey(primaryFilter)),
-    );
-    expect((stillPinnedFilterTop.dy - pinnedFilterTop.dy).abs(), lessThan(4));
-
-    controller.scrollController.jumpTo(0);
-    await tester.pumpAndSettle();
-
-    expect(
-      find.byKey(_selectedPrimaryFilterKey(primaryFilter)),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const ValueKey<String>('discovery-filter-button')),
-      findsNothing,
-    );
-    expect(
-      find.bySemanticsLabel('Painel de filtros de perfis'),
-      findsOneWidget,
-    );
-
-    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
-  });
-
-  testWidgets(
-      'DiscoveryScreen keeps top discovery chrome hidden while search mode is active',
-      (tester) async {
-    final repository = _FakeAccountProfilesRepository(
-      pages: {
-        1: pagedAccountProfilesResultFromRaw(
-          profiles: [
-            _profile(
-              id: _mongoId('search-mode-filter-1'),
-              type: 'venue',
-              name: 'Perfil Busca',
+    'DiscoveryScreen stops repeated bottom-scroll pagination after next page failure',
+    (tester) async {
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: List<AccountProfileModel>.generate(
+              40,
+              (index) => _profile(
+                id: _mongoId('ui-page-fail-$index'),
+                type: 'artist',
+                name: 'Perfil Scroll $index',
+              ),
             ),
-          ],
-          hasMore: false,
-        ),
-      },
-    );
-    final catalog = _accountProfileDiscoveryFilterCatalogWithMultipleTypes();
-    final primaryFilter = catalog.filters.first;
-    final controller = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-      discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-        catalog: catalog,
-      ),
-    );
-    GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
+            hasMore: true,
+          ),
+        },
+        failingPages: const <int>{2},
+      );
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+      );
+      GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
 
-    final router = _RecordingStackRouter();
-    final routeData = RouteData(
-      route: _FakeRouteMatch(fullPath: '/descobrir'),
-      router: router,
-      stackKey: const ValueKey('stack'),
-      pendingChildren: const [],
-      type: const RouteType.material(),
-    );
+      final router = _RecordingStackRouter();
+      final routeData = RouteData(
+        route: _FakeRouteMatch(fullPath: '/descobrir'),
+        router: router,
+        stackKey: const ValueKey('stack'),
+        pendingChildren: const [],
+        type: const RouteType.material(),
+      );
 
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: RouteDataScope(
-            routeData: routeData,
-            child: const DiscoveryScreen(),
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: RouteDataScope(
+              routeData: routeData,
+              child: const DiscoveryScreen(),
+            ),
           ),
         ),
-      ),
-    );
-    await tester.pump(const Duration(milliseconds: 120));
+      );
+      await tester.pump(const Duration(milliseconds: 120));
 
-    expect(find.text('Descubra'), findsOneWidget);
-    expect(find.byKey(_primaryFilterKey(primaryFilter)), findsOneWidget);
+      expect(repository.pageRequests.map((request) => request.page), [1]);
 
-    await tester.tap(find.byIcon(Icons.search));
-    await tester.pumpAndSettle();
+      expect(controller.scrollController.hasClients, isTrue);
+      expect(
+        controller.scrollController.position.maxScrollExtent,
+        greaterThan(0),
+      );
+      controller.scrollController.jumpTo(
+        controller.scrollController.position.maxScrollExtent,
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 120));
 
-    expect(find.byType(TextField), findsOneWidget);
-    expect(find.text('Descubra'), findsNothing);
-    expect(find.byKey(_primaryFilterKey(primaryFilter)), findsNothing);
-    expect(
-      find.bySemanticsLabel('Painel de filtros de perfis'),
-      findsNothing,
-    );
+      expect(repository.pageRequests.map((request) => request.page), [1, 2]);
+      expect(controller.hasMoreStreamValue.value, isFalse);
+      expect(controller.isPageLoadingStreamValue.value, isFalse);
 
-    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
-  });
+      controller.scrollController.jumpTo(
+        controller.scrollController.position.maxScrollExtent,
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 120));
+
+      expect(repository.pageRequests.map((request) => request.page), [1, 2]);
+
+      await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+    },
+  );
 
   testWidgets(
-      'DiscoveryScreen replaces the baseline catalog with the canonical runtime catalog from the paged query',
-      (tester) async {
-    const baselineCatalog = DiscoveryFilterCatalog(
-      surface: 'discovery.account_profiles',
-      filters: <DiscoveryFilterCatalogItem>[
-        DiscoveryFilterCatalogItem(
-          key: 'artist',
-          label: 'Artistas',
-          entities: <String>{'account_profile'},
-          types: <String>{'artist'},
-          typesByEntity: <String, Set<String>>{
-            'account_profile': <String>{'artist'},
-          },
+    'DiscoveryScreen renders canonical filters by default without a toggle button',
+    (tester) async {
+      final profiles = List<AccountProfileModel>.generate(
+        24,
+        (index) => _profile(
+          id: _mongoId('sticky-$index'),
+          type: 'venue',
+          name: 'Perfil Sticky $index',
         ),
-        DiscoveryFilterCatalogItem(
-          key: 'empty-type',
-          label: 'Tipo Vazio',
-          entities: <String>{'account_profile'},
-          types: <String>{'empty-type'},
-          typesByEntity: <String, Set<String>>{
-            'account_profile': <String>{'empty-type'},
-          },
+      );
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: profiles,
+            hasMore: false,
+          ),
+        },
+      );
+      final catalog = _accountProfileDiscoveryFilterCatalogWithMultipleTypes();
+      final primaryFilter = catalog.filters.first;
+      final taxonomyGroup = catalog.taxonomyOptionsByKey.values.single;
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+        discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+          catalog: catalog,
         ),
-      ],
-      typeOptionsByEntity: <String, List<DiscoveryFilterTypeOption>>{
-        'account_profile': <DiscoveryFilterTypeOption>[
-          DiscoveryFilterTypeOption(
-            value: 'artist',
+      );
+      GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
+
+      final router = _RecordingStackRouter();
+      final routeData = RouteData(
+        route: _FakeRouteMatch(fullPath: '/descobrir'),
+        router: router,
+        stackKey: const ValueKey('stack'),
+        pendingChildren: const [],
+        type: const RouteType.material(),
+      );
+
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: RouteDataScope(
+              routeData: routeData,
+              child: const DiscoveryScreen(),
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 120));
+
+      final pinnedHeaders = tester
+          .widgetList<SliverPersistentHeader>(
+            find.byType(SliverPersistentHeader),
+          )
+          .where((header) => header.pinned)
+          .toList(growable: false);
+      expect(pinnedHeaders, hasLength(2));
+      expect(find.text('Descubra'), findsOneWidget);
+      expect(find.byKey(_primaryFilterKey(primaryFilter)), findsOneWidget);
+      expect(
+        find.bySemanticsLabel('Painel de filtros de perfis'),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey<String>('discovery-filter-button')),
+        findsNothing,
+      );
+      expect(find.text(primaryFilter.label), findsOneWidget);
+      expect(find.text(taxonomyGroup.label), findsNothing);
+
+      await tester.tap(find.byKey(_primaryFilterKey(primaryFilter)));
+      await tester.pumpAndSettle();
+
+      expect(find.text(taxonomyGroup.label), findsNothing);
+      expect(
+        find.byKey(_selectedPrimaryFilterKey(primaryFilter)),
+        findsOneWidget,
+      );
+      controller.scrollController.jumpTo(
+        controller.scrollController.position.maxScrollExtent / 2,
+      );
+      await tester.pumpAndSettle();
+
+      final pinnedFilterTop = tester.getTopLeft(
+        find.byKey(_selectedPrimaryFilterKey(primaryFilter)),
+      );
+      controller.scrollController.jumpTo(
+        controller.scrollController.position.maxScrollExtent,
+      );
+      await tester.pumpAndSettle();
+
+      final stillPinnedFilterTop = tester.getTopLeft(
+        find.byKey(_selectedPrimaryFilterKey(primaryFilter)),
+      );
+      expect((stillPinnedFilterTop.dy - pinnedFilterTop.dy).abs(), lessThan(4));
+
+      controller.scrollController.jumpTo(0);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(_selectedPrimaryFilterKey(primaryFilter)),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey<String>('discovery-filter-button')),
+        findsNothing,
+      );
+      expect(
+        find.bySemanticsLabel('Painel de filtros de perfis'),
+        findsOneWidget,
+      );
+
+      await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+    },
+  );
+
+  testWidgets(
+    'DiscoveryScreen keeps top discovery chrome hidden while search mode is active',
+    (tester) async {
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: [
+              _profile(
+                id: _mongoId('search-mode-filter-1'),
+                type: 'venue',
+                name: 'Perfil Busca',
+              ),
+            ],
+            hasMore: false,
+          ),
+        },
+      );
+      final catalog = _accountProfileDiscoveryFilterCatalogWithMultipleTypes();
+      final primaryFilter = catalog.filters.first;
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+        discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+          catalog: catalog,
+        ),
+      );
+      GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
+
+      final router = _RecordingStackRouter();
+      final routeData = RouteData(
+        route: _FakeRouteMatch(fullPath: '/descobrir'),
+        router: router,
+        stackKey: const ValueKey('stack'),
+        pendingChildren: const [],
+        type: const RouteType.material(),
+      );
+
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: RouteDataScope(
+              routeData: routeData,
+              child: const DiscoveryScreen(),
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 120));
+
+      expect(find.text('Descubra'), findsOneWidget);
+      expect(find.byKey(_primaryFilterKey(primaryFilter)), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.search));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TextField), findsOneWidget);
+      expect(find.text('Descubra'), findsNothing);
+      expect(find.byKey(_primaryFilterKey(primaryFilter)), findsNothing);
+      expect(
+        find.bySemanticsLabel('Painel de filtros de perfis'),
+        findsNothing,
+      );
+
+      await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+    },
+  );
+
+  testWidgets(
+    'DiscoveryScreen replaces the baseline catalog with the canonical runtime catalog from the paged query',
+    (tester) async {
+      const baselineCatalog = DiscoveryFilterCatalog(
+        surface: 'discovery.account_profiles',
+        filters: <DiscoveryFilterCatalogItem>[
+          DiscoveryFilterCatalogItem(
+            key: 'artist',
             label: 'Artistas',
+            entities: <String>{'account_profile'},
+            types: <String>{'artist'},
+            typesByEntity: <String, Set<String>>{
+              'account_profile': <String>{'artist'},
+            },
           ),
-          DiscoveryFilterTypeOption(
-            value: 'empty-type',
+          DiscoveryFilterCatalogItem(
+            key: 'empty-type',
             label: 'Tipo Vazio',
+            entities: <String>{'account_profile'},
+            types: <String>{'empty-type'},
+            typesByEntity: <String, Set<String>>{
+              'account_profile': <String>{'empty-type'},
+            },
           ),
         ],
-      },
-    );
-    const runtimeCatalog = DiscoveryFilterCatalog(
-      surface: 'discovery.account_profiles',
-      filters: <DiscoveryFilterCatalogItem>[
-        DiscoveryFilterCatalogItem(
-          key: 'artist',
-          label: 'Artistas',
-          entities: <String>{'account_profile'},
-          types: <String>{'artist'},
-          typesByEntity: <String, Set<String>>{
-            'account_profile': <String>{'artist'},
-          },
-        ),
-      ],
-      typeOptionsByEntity: <String, List<DiscoveryFilterTypeOption>>{
-        'account_profile': <DiscoveryFilterTypeOption>[
-          DiscoveryFilterTypeOption(
-            value: 'artist',
+        typeOptionsByEntity: <String, List<DiscoveryFilterTypeOption>>{
+          'account_profile': <DiscoveryFilterTypeOption>[
+            DiscoveryFilterTypeOption(value: 'artist', label: 'Artistas'),
+            DiscoveryFilterTypeOption(value: 'empty-type', label: 'Tipo Vazio'),
+          ],
+        },
+      );
+      const runtimeCatalog = DiscoveryFilterCatalog(
+        surface: 'discovery.account_profiles',
+        filters: <DiscoveryFilterCatalogItem>[
+          DiscoveryFilterCatalogItem(
+            key: 'artist',
             label: 'Artistas',
+            entities: <String>{'account_profile'},
+            types: <String>{'artist'},
+            typesByEntity: <String, Set<String>>{
+              'account_profile': <String>{'artist'},
+            },
           ),
         ],
-      },
-    );
-    final repository = _FakeAccountProfilesRepository(
-      pages: {
-        1: pagedAccountProfilesResultFromRaw(
-          profiles: [
-            _profile(
-              id: _mongoId('runtime-catalog-1'),
-              type: 'artist',
-              name: 'Perfil Runtime',
-            ),
+        typeOptionsByEntity: <String, List<DiscoveryFilterTypeOption>>{
+          'account_profile': <DiscoveryFilterTypeOption>[
+            DiscoveryFilterTypeOption(value: 'artist', label: 'Artistas'),
           ],
-          hasMore: false,
-          discoveryFilterCatalog: runtimeCatalog,
-        ),
-      },
-    );
-    final controller = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-      discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-        catalog: baselineCatalog,
-      ),
-    );
-    GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
-
-    final router = _RecordingStackRouter();
-    final routeData = RouteData(
-      route: _FakeRouteMatch(fullPath: '/descobrir'),
-      router: router,
-      stackKey: const ValueKey('stack'),
-      pendingChildren: const [],
-      type: const RouteType.material(),
-    );
-
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: RouteDataScope(
-            routeData: routeData,
-            child: const DiscoveryScreen(),
+        },
+      );
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: [
+              _profile(
+                id: _mongoId('runtime-catalog-1'),
+                type: 'artist',
+                name: 'Perfil Runtime',
+              ),
+            ],
+            hasMore: false,
+            discoveryFilterCatalog: runtimeCatalog,
           ),
+        },
+      );
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+        discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+          catalog: baselineCatalog,
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
 
-    expect(find.text('Artistas'), findsOneWidget);
-    expect(find.text('Tipo Vazio'), findsNothing);
-    expect(
-      controller.discoveryFilterCatalogStreamValue.value.filters
-          .map((entry) => entry.key)
-          .toList(),
-      <String>['artist'],
-    );
+      final router = _RecordingStackRouter();
+      final routeData = RouteData(
+        route: _FakeRouteMatch(fullPath: '/descobrir'),
+        router: router,
+        stackKey: const ValueKey('stack'),
+        pendingChildren: const [],
+        type: const RouteType.material(),
+      );
 
-    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
-  });
-
-  testWidgets(
-      'DiscoveryScreen renders secondary taxonomy filters after primary selection without overflow',
-      (tester) async {
-    final repository = _FakeAccountProfilesRepository(
-      pages: {
-        1: pagedAccountProfilesResultFromRaw(
-          profiles: List<AccountProfileModel>.generate(
-            12,
-            (index) => _profile(
-              id: _mongoId('taxonomy-ui-$index'),
-              type: 'venue',
-              name: 'Perfil Taxonomia $index',
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: RouteDataScope(
+              routeData: routeData,
+              child: const DiscoveryScreen(),
             ),
           ),
-          hasMore: false,
         ),
-      },
-    );
-    final catalog =
-        _accountProfileDiscoveryFilterCatalogWithTwoTaxonomyGroups();
-    final primaryFilter = catalog.filters.single;
-    final taxonomyGroups = catalog.taxonomyOptionsByKey.values.toList();
-    final firstTaxonomyGroup = taxonomyGroups.first;
-    final secondTaxonomyGroup = taxonomyGroups.last;
-    final firstTaxonomyTerm = firstTaxonomyGroup.terms.single;
-    final secondTaxonomyTerm = secondTaxonomyGroup.terms.single;
-    final controller = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-      discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-        catalog: catalog,
-      ),
-    );
-    GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
+      );
+      await tester.pumpAndSettle();
 
-    final router = _RecordingStackRouter();
-    final routeData = RouteData(
-      route: _FakeRouteMatch(fullPath: '/descobrir'),
-      router: router,
-      stackKey: const ValueKey('stack'),
-      pendingChildren: const [],
-      type: const RouteType.material(),
-    );
+      expect(find.text('Artistas'), findsOneWidget);
+      expect(find.text('Tipo Vazio'), findsNothing);
+      expect(
+        controller.discoveryFilterCatalogStreamValue.value.filters
+            .map((entry) => entry.key)
+            .toList(),
+        <String>['artist'],
+      );
 
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: RouteDataScope(
-            routeData: routeData,
-            child: const DiscoveryScreen(),
-          ),
-        ),
-      ),
-    );
-    await tester.pump(const Duration(milliseconds: 120));
-
-    await tester.tap(
-      find.byKey(_primaryFilterKey(primaryFilter)),
-    );
-    await tester.pumpAndSettle();
-
-    expect(tester.takeException(), isNull);
-    expect(find.text(firstTaxonomyGroup.label), findsOneWidget);
-    expect(find.text(secondTaxonomyGroup.label), findsOneWidget);
-    expect(
-      find.byKey(_taxonomyChipKey(firstTaxonomyGroup, firstTaxonomyTerm)),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(_taxonomyChipKey(secondTaxonomyGroup, secondTaxonomyTerm)),
-      findsOneWidget,
-    );
-
-    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
-  });
+      await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+    },
+  );
 
   testWidgets(
-      'DiscoveryScreen back clears active filters before removing the route',
-      (tester) async {
-    final repository = _FakeAccountProfilesRepository(
-      pages: {
-        1: pagedAccountProfilesResultFromRaw(
-          profiles: [
-            _profile(id: _mongoId('ui-back-1'), type: 'artist', name: 'Artist'),
-          ],
-          hasMore: false,
-        ),
-      },
-    );
-    final controller = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-    );
-    GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
-
-    final router = _RecordingStackRouter();
-    router.canPopResult = true;
-    final routeData = RouteData(
-      route: _FakeRouteMatch(fullPath: '/descobrir'),
-      router: router,
-      stackKey: const ValueKey('stack'),
-      pendingChildren: const [],
-      type: const RouteType.material(),
-    );
-
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: RouteDataScope(
-            routeData: routeData,
-            child: const DiscoveryScreen(),
-          ),
-        ),
-      ),
-    );
-    await tester.pump(const Duration(milliseconds: 120));
-
-    await tester.tap(find.byIcon(Icons.search));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'artist');
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(DiscoveryScreen), findsOneWidget);
-    expect(find.byType(TextField), findsOneWidget);
-
-    final popScope = tester.widget<PopScope<dynamic>>(
-      find.byWidgetPredicate((widget) => widget is PopScope),
-    );
-    popScope.onPopInvokedWithResult?.call(false, null);
-    await tester.pumpAndSettle();
-
-    expect(find.byType(DiscoveryScreen), findsOneWidget);
-    expect(find.byType(TextField), findsNothing);
-    expect(find.text('Descubra'), findsOneWidget);
-    expect(router.canPopCallCount, 0);
-    expect(router.popCallCount, 0);
-    expect(router.replaceAllRoutes, isEmpty);
-
-    popScope.onPopInvokedWithResult?.call(false, null);
-    await tester.pumpAndSettle();
-
-    expect(router.canPopCallCount, 1);
-    expect(router.popCallCount, 1);
-    expect(router.replaceAllRoutes, isEmpty);
-  });
-
-  testWidgets(
-      'DiscoveryScreen back falls back to TenantHomeRoute when there is no prior stack entry',
-      (tester) async {
-    final repository = _FakeAccountProfilesRepository(
-      pages: {
-        1: pagedAccountProfilesResultFromRaw(
-          profiles: [
-            _profile(
-              id: _mongoId('ui-back-fallback-1'),
-              type: 'artist',
-              name: 'Artist',
+    'DiscoveryScreen renders secondary taxonomy filters after primary selection without overflow',
+    (tester) async {
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: List<AccountProfileModel>.generate(
+              12,
+              (index) => _profile(
+                id: _mongoId('taxonomy-ui-$index'),
+                type: 'venue',
+                name: 'Perfil Taxonomia $index',
+              ),
             ),
-          ],
-          hasMore: false,
+            hasMore: false,
+          ),
+        },
+      );
+      final catalog =
+          _accountProfileDiscoveryFilterCatalogWithTwoTaxonomyGroups();
+      final primaryFilter = catalog.filters.single;
+      final taxonomyGroups = catalog.taxonomyOptionsByKey.values.toList();
+      final firstTaxonomyGroup = taxonomyGroups.first;
+      final secondTaxonomyGroup = taxonomyGroups.last;
+      final firstTaxonomyTerm = firstTaxonomyGroup.terms.single;
+      final secondTaxonomyTerm = secondTaxonomyGroup.terms.single;
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+        discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+          catalog: catalog,
         ),
-      },
-    );
-    final controller = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-    );
-    GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
+      );
+      GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
 
-    final router = _RecordingStackRouter();
-    router.canPopResult = false;
-    final routeData = RouteData(
-      route: _FakeRouteMatch(fullPath: '/descobrir'),
-      router: router,
-      stackKey: const ValueKey('stack'),
-      pendingChildren: const [],
-      type: const RouteType.material(),
-    );
+      final router = _RecordingStackRouter();
+      final routeData = RouteData(
+        route: _FakeRouteMatch(fullPath: '/descobrir'),
+        router: router,
+        stackKey: const ValueKey('stack'),
+        pendingChildren: const [],
+        type: const RouteType.material(),
+      );
 
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: RouteDataScope(
-            routeData: routeData,
-            child: const DiscoveryScreen(),
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: RouteDataScope(
+              routeData: routeData,
+              child: const DiscoveryScreen(),
+            ),
           ),
         ),
-      ),
-    );
-    await tester.pump(const Duration(milliseconds: 120));
+      );
+      await tester.pump(const Duration(milliseconds: 120));
 
-    final popScope = tester.widget<PopScope<dynamic>>(
-      find.byWidgetPredicate((widget) => widget is PopScope),
-    );
-    popScope.onPopInvokedWithResult?.call(false, null);
-    await tester.pumpAndSettle();
+      await tester.tap(find.byKey(_primaryFilterKey(primaryFilter)));
+      await tester.pumpAndSettle();
 
-    expect(router.canPopCallCount, 1);
-    expect(router.popCallCount, 0);
-    expect(router.replaceAllRoutes, hasLength(1));
-    expect(router.replaceAllRoutes.single, hasLength(1));
-    expect(
-        router.replaceAllRoutes.single.single.routeName, TenantHomeRoute.name);
-  });
+      expect(tester.takeException(), isNull);
+      expect(find.text(firstTaxonomyGroup.label), findsOneWidget);
+      expect(find.text(secondTaxonomyGroup.label), findsOneWidget);
+      expect(
+        find.byKey(_taxonomyChipKey(firstTaxonomyGroup, firstTaxonomyTerm)),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(_taxonomyChipKey(secondTaxonomyGroup, secondTaxonomyTerm)),
+        findsOneWidget,
+      );
+
+      await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+    },
+  );
 
   testWidgets(
-      'DiscoveryScreen visible back button clears active search before removing the route',
-      (tester) async {
-    final repository = _FakeAccountProfilesRepository(
-      pages: {
-        1: pagedAccountProfilesResultFromRaw(
-          profiles: [
-            _profile(
-              id: _mongoId('ui-back-button-1'),
-              type: 'artist',
-              name: 'Artist',
+    'DiscoveryScreen back clears active filters before removing the route',
+    (tester) async {
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: [
+              _profile(
+                id: _mongoId('ui-back-1'),
+                type: 'artist',
+                name: 'Artist',
+              ),
+            ],
+            hasMore: false,
+          ),
+        },
+      );
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+      );
+      GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
+
+      final router = _RecordingStackRouter();
+      router.canPopResult = true;
+      final routeData = RouteData(
+        route: _FakeRouteMatch(fullPath: '/descobrir'),
+        router: router,
+        stackKey: const ValueKey('stack'),
+        pendingChildren: const [],
+        type: const RouteType.material(),
+      );
+
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: RouteDataScope(
+              routeData: routeData,
+              child: const DiscoveryScreen(),
             ),
-          ],
-          hasMore: false,
-        ),
-      },
-    );
-    final controller = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-    );
-    GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
-
-    final router = _RecordingStackRouter()..canPopResult = true;
-    final routeData = RouteData(
-      route: _FakeRouteMatch(fullPath: '/descobrir'),
-      router: router,
-      stackKey: const ValueKey('stack'),
-      pendingChildren: const [],
-      type: const RouteType.material(),
-    );
-
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: RouteDataScope(
-            routeData: routeData,
-            child: const DiscoveryScreen(),
           ),
         ),
-      ),
-    );
-    await tester.pump(const Duration(milliseconds: 120));
+      );
+      await tester.pump(const Duration(milliseconds: 120));
 
-    await tester.tap(find.byIcon(Icons.search));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'artist');
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.search));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'artist');
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
 
-    await tester.tap(
-      find.byKey(const ValueKey<String>('discovery-safe-back-button')),
-    );
-    await tester.pumpAndSettle();
+      expect(find.byType(DiscoveryScreen), findsOneWidget);
+      expect(find.byType(TextField), findsOneWidget);
 
-    expect(find.byType(TextField), findsNothing);
-    expect(find.text('Descubra'), findsOneWidget);
-    expect(router.canPopCallCount, 0);
-    expect(router.popCallCount, 0);
-    expect(router.replaceAllRoutes, isEmpty);
+      final popScope = tester.widget<PopScope<dynamic>>(
+        find.byWidgetPredicate((widget) => widget is PopScope),
+      );
+      popScope.onPopInvokedWithResult?.call(false, null);
+      await tester.pumpAndSettle();
 
-    await tester.tap(
-      find.byKey(const ValueKey<String>('discovery-safe-back-button')),
-    );
-    await tester.pumpAndSettle();
+      expect(find.byType(DiscoveryScreen), findsOneWidget);
+      expect(find.byType(TextField), findsNothing);
+      expect(find.text('Descubra'), findsOneWidget);
+      expect(router.canPopCallCount, 0);
+      expect(router.popCallCount, 0);
+      expect(router.replaceAllRoutes, isEmpty);
 
-    expect(router.canPopCallCount, 1);
-    expect(router.popCallCount, 1);
-    expect(router.replaceAllRoutes, isEmpty);
-  });
+      popScope.onPopInvokedWithResult?.call(false, null);
+      await tester.pumpAndSettle();
+
+      expect(router.canPopCallCount, 1);
+      expect(router.popCallCount, 1);
+      expect(router.replaceAllRoutes, isEmpty);
+    },
+  );
 
   testWidgets(
-      'DiscoveryScreen visible back button falls back to TenantHomeRoute when root-opened',
-      (tester) async {
-    final repository = _FakeAccountProfilesRepository(
-      pages: {
-        1: pagedAccountProfilesResultFromRaw(
-          profiles: [
-            _profile(
-              id: _mongoId('ui-back-button-fallback-1'),
-              type: 'artist',
-              name: 'Artist',
+    'DiscoveryScreen back falls back to TenantHomeRoute when there is no prior stack entry',
+    (tester) async {
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: [
+              _profile(
+                id: _mongoId('ui-back-fallback-1'),
+                type: 'artist',
+                name: 'Artist',
+              ),
+            ],
+            hasMore: false,
+          ),
+        },
+      );
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+      );
+      GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
+
+      final router = _RecordingStackRouter();
+      router.canPopResult = false;
+      final routeData = RouteData(
+        route: _FakeRouteMatch(fullPath: '/descobrir'),
+        router: router,
+        stackKey: const ValueKey('stack'),
+        pendingChildren: const [],
+        type: const RouteType.material(),
+      );
+
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: RouteDataScope(
+              routeData: routeData,
+              child: const DiscoveryScreen(),
             ),
-          ],
-          hasMore: false,
-        ),
-      },
-    );
-    final controller = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-    );
-    GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
-
-    final router = _RecordingStackRouter()..canPopResult = false;
-    final routeData = RouteData(
-      route: _FakeRouteMatch(fullPath: '/descobrir'),
-      router: router,
-      stackKey: const ValueKey('stack'),
-      pendingChildren: const [],
-      type: const RouteType.material(),
-    );
-
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: RouteDataScope(
-            routeData: routeData,
-            child: const DiscoveryScreen(),
           ),
         ),
-      ),
-    );
-    await tester.pump(const Duration(milliseconds: 120));
+      );
+      await tester.pump(const Duration(milliseconds: 120));
 
-    await tester.tap(
-      find.byKey(const ValueKey<String>('discovery-safe-back-button')),
-    );
-    await tester.pumpAndSettle();
+      final popScope = tester.widget<PopScope<dynamic>>(
+        find.byWidgetPredicate((widget) => widget is PopScope),
+      );
+      popScope.onPopInvokedWithResult?.call(false, null);
+      await tester.pumpAndSettle();
 
-    expect(router.canPopCallCount, 1);
-    expect(router.popCallCount, 0);
-    expect(router.replaceAllRoutes, hasLength(1));
-    expect(router.replaceAllRoutes.single, hasLength(1));
-    expect(
-      router.replaceAllRoutes.single.single.routeName,
-      TenantHomeRoute.name,
-    );
-  });
+      expect(router.canPopCallCount, 1);
+      expect(router.popCallCount, 0);
+      expect(router.replaceAllRoutes, hasLength(1));
+      expect(router.replaceAllRoutes.single, hasLength(1));
+      expect(
+        router.replaceAllRoutes.single.single.routeName,
+        TenantHomeRoute.name,
+      );
+    },
+  );
+
+  testWidgets(
+    'DiscoveryScreen visible back button clears active search before removing the route',
+    (tester) async {
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: [
+              _profile(
+                id: _mongoId('ui-back-button-1'),
+                type: 'artist',
+                name: 'Artist',
+              ),
+            ],
+            hasMore: false,
+          ),
+        },
+      );
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+      );
+      GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
+
+      final router = _RecordingStackRouter()..canPopResult = true;
+      final routeData = RouteData(
+        route: _FakeRouteMatch(fullPath: '/descobrir'),
+        router: router,
+        stackKey: const ValueKey('stack'),
+        pendingChildren: const [],
+        type: const RouteType.material(),
+      );
+
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: RouteDataScope(
+              routeData: routeData,
+              child: const DiscoveryScreen(),
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 120));
+
+      await tester.tap(find.byIcon(Icons.search));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'artist');
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byKey(const ValueKey<String>('discovery-safe-back-button')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TextField), findsNothing);
+      expect(find.text('Descubra'), findsOneWidget);
+      expect(router.canPopCallCount, 0);
+      expect(router.popCallCount, 0);
+      expect(router.replaceAllRoutes, isEmpty);
+
+      await tester.tap(
+        find.byKey(const ValueKey<String>('discovery-safe-back-button')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(router.canPopCallCount, 1);
+      expect(router.popCallCount, 1);
+      expect(router.replaceAllRoutes, isEmpty);
+    },
+  );
+
+  testWidgets(
+    'DiscoveryScreen visible back button falls back to TenantHomeRoute when root-opened',
+    (tester) async {
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: [
+              _profile(
+                id: _mongoId('ui-back-button-fallback-1'),
+                type: 'artist',
+                name: 'Artist',
+              ),
+            ],
+            hasMore: false,
+          ),
+        },
+      );
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+      );
+      GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
+
+      final router = _RecordingStackRouter()..canPopResult = false;
+      final routeData = RouteData(
+        route: _FakeRouteMatch(fullPath: '/descobrir'),
+        router: router,
+        stackKey: const ValueKey('stack'),
+        pendingChildren: const [],
+        type: const RouteType.material(),
+      );
+
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: RouteDataScope(
+              routeData: routeData,
+              child: const DiscoveryScreen(),
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 120));
+
+      await tester.tap(
+        find.byKey(const ValueKey<String>('discovery-safe-back-button')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(router.canPopCallCount, 1);
+      expect(router.popCallCount, 0);
+      expect(router.replaceAllRoutes, hasLength(1));
+      expect(router.replaceAllRoutes.single, hasLength(1));
+      expect(
+        router.replaceAllRoutes.single.single.routeName,
+        TenantHomeRoute.name,
+      );
+    },
+  );
 
   test(
-      'discovery search keeps backend matches even when local name/tags do not match',
-      () async {
-    final repository = _FakeAccountProfilesRepository(
-      pages: {
-        1: pagedAccountProfilesResultFromRaw(
-          profiles: [
-            buildAccountProfileModelFromPrimitives(
-              id: _mongoId('f'),
-              name: 'Resultado remoto',
-              slug: 'slug-exato-remoto',
-              type: 'artist',
-              tags: const <String>[],
-            ),
-          ],
-          hasMore: false,
-        ),
-      },
-    );
-    final controller = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-    );
+    'discovery search keeps backend matches even when local name/tags do not match',
+    () async {
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: [
+              buildAccountProfileModelFromPrimitives(
+                id: _mongoId('f'),
+                name: 'Resultado remoto',
+                slug: 'slug-exato-remoto',
+                type: 'artist',
+                tags: const <String>[],
+              ),
+            ],
+            hasMore: false,
+          ),
+        },
+      );
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+      );
 
-    await controller.init();
-    controller.setSearchQuery('slug-exato-remoto');
-    final deadline = DateTime.now().add(const Duration(seconds: 2));
-    while (DateTime.now().isBefore(deadline)) {
-      final latestQuery = repository.pageRequests.isEmpty
-          ? null
-          : repository.pageRequests.last.query;
-      final partners = controller.filteredPartnersStreamValue.value;
-      if (latestQuery == 'slug-exato-remoto' && partners.length == 1) {
-        break;
+      await controller.init();
+      controller.setSearchQuery('slug-exato-remoto');
+      final deadline = DateTime.now().add(const Duration(seconds: 2));
+      while (DateTime.now().isBefore(deadline)) {
+        final latestQuery = repository.pageRequests.isEmpty
+            ? null
+            : repository.pageRequests.last.query;
+        final partners = controller.filteredPartnersStreamValue.value;
+        if (latestQuery == 'slug-exato-remoto' && partners.length == 1) {
+          break;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 80));
       }
-      await Future<void>.delayed(const Duration(milliseconds: 80));
-    }
 
-    expect(controller.filteredPartnersStreamValue.value, hasLength(1));
-    expect(controller.filteredPartnersStreamValue.value.first.slug,
-        'slug-exato-remoto');
-    expect(repository.pageRequests.last.query, 'slug-exato-remoto');
-    controller.onDispose();
-  });
+      expect(controller.filteredPartnersStreamValue.value, hasLength(1));
+      expect(
+        controller.filteredPartnersStreamValue.value.first.slug,
+        'slug-exato-remoto',
+      );
+      expect(repository.pageRequests.last.query, 'slug-exato-remoto');
+      controller.onDispose();
+    },
+  );
 
   test('discovery selecting "Todos" resets to unfiltered list', () async {
     final repository = _FakeAccountProfilesRepository(
@@ -1726,174 +1775,191 @@ void main() {
   });
 
   test(
-      'discovery canonical filter selection sends type and taxonomy filters to backend',
-      () async {
-    final repository = _FakeAccountProfilesRepository(
-      pages: {
-        1: pagedAccountProfilesResultFromRaw(
-          profiles: [
-            _profile(id: _mongoId('cf1'), type: 'artist', name: 'Artist One'),
-            _profile(id: _mongoId('cf2'), type: 'venue', name: 'Venue One'),
-          ],
-          hasMore: false,
-        ),
-      },
-    );
-    final catalog =
-        _accountProfileDiscoveryFilterCatalogWithTwoTaxonomyGroups();
-    final primaryFilter = catalog.filters.single;
-    final taxonomyGroup = catalog.taxonomyOptionsByKey.values.first;
-    final taxonomyTerm = taxonomyGroup.terms.single;
-    final filtersRepository = _FakeDiscoveryFiltersRepository(
-      catalog: catalog,
-    );
-    final controller = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-      discoveryFiltersRepository: filtersRepository,
-    );
-
-    await controller.init();
-    controller.setDiscoveryFilterSelection(
-      DiscoveryFilterSelection(
-        primaryKeys: <String>{primaryFilter.key},
-        taxonomyTermKeys: <String, Set<String>>{
-          taxonomyGroup.key: <String>{taxonomyTerm.value},
-        },
-      ),
-    );
-    await Future<void>.delayed(const Duration(milliseconds: 20));
-
-    expect(filtersRepository.requestedSurfaces, ['discovery.account_profiles']);
-    expect(repository.pageRequests.last.typeFilters,
-        primaryFilter.typesByEntity['account_profile']!.toList());
-    expect(repository.pageRequests.last.taxonomyFilters,
-        [_encodedTaxonomyFilter(taxonomyGroup, taxonomyTerm)]);
-    controller.onDispose();
-  });
-
-  test(
-      'discovery canonical filters keep one primary type and drop taxonomy-only selection without a primary',
-      () async {
-    final repository = _FakeAccountProfilesRepository(
-      pages: {
-        1: pagedAccountProfilesResultFromRaw(
-          profiles: [
-            _profile(id: _mongoId('cf3'), type: 'artist', name: 'Artist One'),
-            _profile(id: _mongoId('cf4'), type: 'venue', name: 'Venue One'),
-          ],
-          hasMore: false,
-        ),
-      },
-    );
-    final catalog = _accountProfileDiscoveryFilterCatalogWithMultipleTypes();
-    final primaryFilter = catalog.filters.first;
-    final secondaryFilter = catalog.filters.last;
-    final taxonomyGroup = catalog.taxonomyOptionsByKey.values.single;
-    final taxonomyTerm = taxonomyGroup.terms.single;
-    final controller = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-      discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-        catalog: catalog,
-      ),
-    );
-
-    await controller.init();
-
-    controller.setDiscoveryFilterSelection(
-      DiscoveryFilterSelection(
-        primaryKeys: <String>{primaryFilter.key, secondaryFilter.key},
-        taxonomyTermKeys: <String, Set<String>>{
-          taxonomyGroup.key: <String>{taxonomyTerm.value},
-        },
-      ),
-    );
-    await Future<void>.delayed(const Duration(milliseconds: 20));
-
-    expect(controller.discoveryFilterPolicy.primarySelectionMode,
-        DiscoveryFilterSelectionMode.single);
-    expect(controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
-        <String>{primaryFilter.key});
-    expect(repository.pageRequests.last.typeFilters,
-        primaryFilter.typesByEntity['account_profile']!.toList());
-    expect(repository.pageRequests.last.taxonomyFilters, isEmpty);
-
-    controller.setDiscoveryFilterSelection(
-      DiscoveryFilterSelection(
-        taxonomyTermKeys: <String, Set<String>>{
-          taxonomyGroup.key: <String>{taxonomyTerm.value},
-        },
-      ),
-    );
-    await Future<void>.delayed(const Duration(milliseconds: 20));
-
-    expect(controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
-        isEmpty);
-    expect(repository.pageRequests.last.typeFilters, isEmpty);
-    expect(repository.pageRequests.last.taxonomyFilters, isEmpty);
-    controller.onDispose();
-  });
-
-  test(
-      'discovery runtime facets use backend universe instead of current page items',
-      () async {
-    final catalog = _accountProfileDiscoveryFilterCatalogWithMultipleTypes();
-    final firstFilter = catalog.filters.first;
-    final secondFilter = catalog.filters.last;
-    final runtimeFacets = DiscoveryFilterRuntimeFacets.fromJson(
-      <String, Object?>{
-        'surface': 'discovery.account_profiles',
-        'filter_keys': <String>[firstFilter.key, secondFilter.key],
-        'taxonomy_options': <String, Object?>{
-          _fixtureTaxonomyKey(1): <String, Object?>{
-            'key': _fixtureTaxonomyKey(1),
-            'label': 'Runtime Taxonomy',
-            'terms': <Object?>[
-              <String, Object?>{
-                'value': _fixtureTaxonomyTermValue(1),
-                'label': _fixtureTaxonomyTermLabel(1),
-              },
+    'discovery canonical filter selection sends type and taxonomy filters to backend',
+    () async {
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: [
+              _profile(id: _mongoId('cf1'), type: 'artist', name: 'Artist One'),
+              _profile(id: _mongoId('cf2'), type: 'venue', name: 'Venue One'),
             ],
+            hasMore: false,
+          ),
+        },
+      );
+      final catalog =
+          _accountProfileDiscoveryFilterCatalogWithTwoTaxonomyGroups();
+      final primaryFilter = catalog.filters.single;
+      final taxonomyGroup = catalog.taxonomyOptionsByKey.values.first;
+      final taxonomyTerm = taxonomyGroup.terms.single;
+      final filtersRepository = _FakeDiscoveryFiltersRepository(
+        catalog: catalog,
+      );
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+        discoveryFiltersRepository: filtersRepository,
+      );
+
+      await controller.init();
+      controller.setDiscoveryFilterSelection(
+        DiscoveryFilterSelection(
+          primaryKeys: <String>{primaryFilter.key},
+          taxonomyTermKeys: <String, Set<String>>{
+            taxonomyGroup.key: <String>{taxonomyTerm.value},
+          },
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(filtersRepository.requestedSurfaces, [
+        'discovery.account_profiles',
+      ]);
+      expect(
+        repository.pageRequests.last.typeFilters,
+        primaryFilter.typesByEntity['account_profile']!.toList(),
+      );
+      expect(repository.pageRequests.last.taxonomyFilters, [
+        _encodedTaxonomyFilter(taxonomyGroup, taxonomyTerm),
+      ]);
+      controller.onDispose();
+    },
+  );
+
+  test(
+    'discovery canonical filters keep one primary type and drop taxonomy-only selection without a primary',
+    () async {
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: [
+              _profile(id: _mongoId('cf3'), type: 'artist', name: 'Artist One'),
+              _profile(id: _mongoId('cf4'), type: 'venue', name: 'Venue One'),
+            ],
+            hasMore: false,
+          ),
+        },
+      );
+      final catalog = _accountProfileDiscoveryFilterCatalogWithMultipleTypes();
+      final primaryFilter = catalog.filters.first;
+      final secondaryFilter = catalog.filters.last;
+      final taxonomyGroup = catalog.taxonomyOptionsByKey.values.single;
+      final taxonomyTerm = taxonomyGroup.terms.single;
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+        discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+          catalog: catalog,
+        ),
+      );
+
+      await controller.init();
+
+      controller.setDiscoveryFilterSelection(
+        DiscoveryFilterSelection(
+          primaryKeys: <String>{primaryFilter.key, secondaryFilter.key},
+          taxonomyTermKeys: <String, Set<String>>{
+            taxonomyGroup.key: <String>{taxonomyTerm.value},
+          },
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(
+        controller.discoveryFilterPolicy.primarySelectionMode,
+        DiscoveryFilterSelectionMode.single,
+      );
+      expect(
+        controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
+        <String>{primaryFilter.key},
+      );
+      expect(
+        repository.pageRequests.last.typeFilters,
+        primaryFilter.typesByEntity['account_profile']!.toList(),
+      );
+      expect(repository.pageRequests.last.taxonomyFilters, isEmpty);
+
+      controller.setDiscoveryFilterSelection(
+        DiscoveryFilterSelection(
+          taxonomyTermKeys: <String, Set<String>>{
+            taxonomyGroup.key: <String>{taxonomyTerm.value},
+          },
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(
+        controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
+        isEmpty,
+      );
+      expect(repository.pageRequests.last.typeFilters, isEmpty);
+      expect(repository.pageRequests.last.taxonomyFilters, isEmpty);
+      controller.onDispose();
+    },
+  );
+
+  test(
+    'discovery runtime facets use backend universe instead of current page items',
+    () async {
+      final catalog = _accountProfileDiscoveryFilterCatalogWithMultipleTypes();
+      final firstFilter = catalog.filters.first;
+      final secondFilter = catalog.filters.last;
+      final runtimeFacets = DiscoveryFilterRuntimeFacets.fromJson(
+        <String, Object?>{
+          'surface': 'discovery.account_profiles',
+          'filter_keys': <String>[firstFilter.key, secondFilter.key],
+          'taxonomy_options': <String, Object?>{
+            _fixtureTaxonomyKey(1): <String, Object?>{
+              'key': _fixtureTaxonomyKey(1),
+              'label': 'Runtime Taxonomy',
+              'terms': <Object?>[
+                <String, Object?>{
+                  'value': _fixtureTaxonomyTermValue(1),
+                  'label': _fixtureTaxonomyTermLabel(1),
+                },
+              ],
+            },
           },
         },
-      },
-    );
-    final repository = _FakeAccountProfilesRepository(
-      pages: {
-        1: pagedAccountProfilesResultFromRaw(
-          profiles: [
-            _profile(
-              id: _mongoId('rt1'),
-              type: 'venue',
-              name: 'Only Current Page Venue',
-            ),
-          ],
-          hasMore: false,
-          discoveryFilterFacets: runtimeFacets,
+      );
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: [
+              _profile(
+                id: _mongoId('rt1'),
+                type: 'venue',
+                name: 'Only Current Page Venue',
+              ),
+            ],
+            hasMore: false,
+            discoveryFilterFacets: runtimeFacets,
+          ),
+        },
+      );
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+        discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+          catalog: catalog,
         ),
-      },
-    );
-    final controller = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-      discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-        catalog: catalog,
-      ),
-    );
+      );
 
-    await controller.init();
+      await controller.init();
 
-    expect(
-      controller.filteredPartnersStreamValue.value
-          .map((profile) => profile.type),
-      <String>['venue'],
-    );
-    expect(
-      controller.discoveryFilterCatalogStreamValue.value.filters
-          .map((filter) => filter.key)
-          .toList(),
-      <String>[firstFilter.key, secondFilter.key],
-    );
-    controller.onDispose();
-  });
+      expect(
+        controller.filteredPartnersStreamValue.value.map(
+          (profile) => profile.type,
+        ),
+        <String>['venue'],
+      );
+      expect(
+        controller.discoveryFilterCatalogStreamValue.value.filters
+            .map((filter) => filter.key)
+            .toList(),
+        <String>[firstFilter.key, secondFilter.key],
+      );
+      controller.onDispose();
+    },
+  );
 
   test('discovery no longer hides filter state on scroll', () async {
     final repository = _FakeAccountProfilesRepository(
@@ -1924,81 +1990,90 @@ void main() {
     controller.updateDiscoveryFilterPanelVisibilityFromScroll(24);
 
     expect(controller.isDiscoveryFilterPanelVisibleStreamValue.value, isTrue);
-    expect(controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
-        <String>{primaryFilter.key});
+    expect(
+      controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
+      <String>{primaryFilter.key},
+    );
     controller.onDispose();
   });
 
   test(
-      'discovery restores persisted canonical filter selection before first fetch',
-      () async {
-    final catalog =
-        _accountProfileDiscoveryFilterCatalogWithTwoTaxonomyGroups();
-    final primaryFilter = catalog.filters.single;
-    final taxonomyGroup = catalog.taxonomyOptionsByKey.values.first;
-    final taxonomyTerm = taxonomyGroup.terms.single;
-    final appDataRepository = _FakeAppDataRepository(
-      appData: _buildAppData(),
-      maxRadiusMeters: _buildAppData().mapRadiusDefaultMeters,
-      discoveryFilterSelections: <String,
-          AppDataDiscoveryFilterSelectionSnapshot>{
-        'discovery.account_profiles': _appDataSelectionSnapshot(
-          DiscoveryFilterSelection(
-            primaryKeys: <String>{primaryFilter.key},
-            taxonomyTermKeys: <String, Set<String>>{
-              taxonomyGroup.key: <String>{taxonomyTerm.value},
+    'discovery restores persisted canonical filter selection before first fetch',
+    () async {
+      final catalog =
+          _accountProfileDiscoveryFilterCatalogWithTwoTaxonomyGroups();
+      final primaryFilter = catalog.filters.single;
+      final taxonomyGroup = catalog.taxonomyOptionsByKey.values.first;
+      final taxonomyTerm = taxonomyGroup.terms.single;
+      final appDataRepository = _FakeAppDataRepository(
+        appData: _buildAppData(),
+        maxRadiusMeters: _buildAppData().mapRadiusDefaultMeters,
+        discoveryFilterSelections:
+            <String, AppDataDiscoveryFilterSelectionSnapshot>{
+              'discovery.account_profiles': _appDataSelectionSnapshot(
+                DiscoveryFilterSelection(
+                  primaryKeys: <String>{primaryFilter.key},
+                  taxonomyTermKeys: <String, Set<String>>{
+                    taxonomyGroup.key: <String>{taxonomyTerm.value},
+                  },
+                ),
+              ),
             },
+      );
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
+
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: [
+              _profile(id: _mongoId('pf1'), type: 'artist', name: 'Artist One'),
+              _profile(id: _mongoId('pf2'), type: 'venue', name: 'Venue One'),
+            ],
+            hasMore: false,
           ),
+        },
+      );
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+        discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+          catalog: catalog,
         ),
-      },
-    );
-    GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
+      );
 
-    final repository = _FakeAccountProfilesRepository(
-      pages: {
-        1: pagedAccountProfilesResultFromRaw(
-          profiles: [
-            _profile(id: _mongoId('pf1'), type: 'artist', name: 'Artist One'),
-            _profile(id: _mongoId('pf2'), type: 'venue', name: 'Venue One'),
-          ],
-          hasMore: false,
-        ),
-      },
-    );
-    final controller = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-      discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-        catalog: catalog,
-      ),
-    );
+      await controller.init();
 
-    await controller.init();
-
-    expect(controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
-        <String>{primaryFilter.key});
-    expect(repository.pageRequests.last.typeFilters,
-        primaryFilter.typesByEntity['account_profile']!.toList());
-    expect(repository.pageRequests.last.taxonomyFilters,
-        [_encodedTaxonomyFilter(taxonomyGroup, taxonomyTerm)]);
-    controller.onDispose();
-  });
+      expect(
+        controller.discoveryFilterSelectionStreamValue.value.primaryKeys,
+        <String>{primaryFilter.key},
+      );
+      expect(
+        repository.pageRequests.last.typeFilters,
+        primaryFilter.typesByEntity['account_profile']!.toList(),
+      );
+      expect(repository.pageRequests.last.taxonomyFilters, [
+        _encodedTaxonomyFilter(taxonomyGroup, taxonomyTerm),
+      ]);
+      controller.onDispose();
+    },
+  );
 
   test(
-      'discovery stops loading and keeps favoritable chips when first page fails',
-      () async {
-    final repository = _FailingAccountProfilesRepository();
-    final controller = _buildDiscoveryController(
-      accountProfilesRepository: repository,
-    );
+    'discovery stops loading and keeps favoritable chips when first page fails',
+    () async {
+      final repository = _FailingAccountProfilesRepository();
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+      );
 
-    await controller.init();
+      await controller.init();
 
-    expect(controller.isLoadingStreamValue.value, isFalse);
-    expect(controller.hasLoadedStreamValue.value, isTrue);
-    expect(controller.availableTypesStreamValue.value, ['artist']);
-    expect(controller.filteredPartnersStreamValue.value, isEmpty);
-    controller.onDispose();
-  });
+      expect(controller.isLoadingStreamValue.value, isFalse);
+      expect(controller.hasLoadedStreamValue.value, isTrue);
+      expect(controller.availableTypesStreamValue.value, ['artist']);
+      expect(controller.filteredPartnersStreamValue.value, isEmpty);
+      controller.onDispose();
+    },
+  );
 
   test('discovery still loads first page when repository init fails', () async {
     final repository = _InitFailingAccountProfilesRepository(
@@ -2020,7 +2095,9 @@ void main() {
     expect(controller.availableTypesStreamValue.value, ['artist']);
     expect(controller.filteredPartnersStreamValue.value, hasLength(1));
     expect(
-        controller.filteredPartnersStreamValue.value.first.name, 'Recovered');
+      controller.filteredPartnersStreamValue.value.first.name,
+      'Recovered',
+    );
     expect(repository.fetchPageCalls, 1);
     controller.onDispose();
   });
@@ -2052,7 +2129,7 @@ void main() {
 }
 
 DiscoveryFilterCatalog
-    _accountProfileDiscoveryFilterCatalogWithMultipleTypes() {
+_accountProfileDiscoveryFilterCatalogWithMultipleTypes() {
   final firstFilterKey = _fixtureFilterKey(1);
   final secondFilterKey = _fixtureFilterKey(2);
   final taxonomyKey = _fixtureTaxonomyKey(1);
@@ -2095,7 +2172,7 @@ DiscoveryFilterCatalog
 }
 
 DiscoveryFilterCatalog
-    _accountProfileDiscoveryFilterCatalogWithTwoTaxonomyGroups() {
+_accountProfileDiscoveryFilterCatalogWithTwoTaxonomyGroups() {
   final filterKey = _fixtureFilterKey(1);
   final firstTaxonomyKey = _fixtureTaxonomyKey(1);
   final secondTaxonomyKey = _fixtureTaxonomyKey(2);
@@ -2172,7 +2249,8 @@ ValueKey<String> _taxonomyChipKey(
   DiscoveryFilterTaxonomyTermOption term,
 ) {
   return ValueKey<String>(
-      'discoveryFilterTaxonomyChip_${group.key}_${term.value}');
+    'discoveryFilterTaxonomyChip_${group.key}_${term.value}',
+  );
 }
 
 DiscoveryScreenController _buildDiscoveryController({
@@ -2203,8 +2281,8 @@ DiscoveryScreenController _buildDiscoveryController({
         appDataRepository: GetIt.I.get<AppDataRepositoryContract>(),
         userLocationRepository:
             GetIt.I.isRegistered<UserLocationRepositoryContract>()
-                ? GetIt.I.get<UserLocationRepositoryContract>()
-                : null,
+            ? GetIt.I.get<UserLocationRepositoryContract>()
+            : null,
       ),
     );
   }
@@ -2219,9 +2297,7 @@ DiscoveryScreenController _buildDiscoveryController({
 
 class _FakeDiscoveryFiltersRepository
     implements DiscoveryFiltersRepositoryContract {
-  _FakeDiscoveryFiltersRepository({
-    required this.catalog,
-  });
+  _FakeDiscoveryFiltersRepository({required this.catalog});
 
   final DiscoveryFilterCatalog catalog;
   final List<String> requestedSurfaces = <String>[];
@@ -2322,13 +2398,12 @@ class _FakeRouteMatch extends Fake implements RouteMatch {
     Map<String, dynamic>? meta,
     PageRouteInfo<dynamic>? pageRouteInfo,
     Map<String, dynamic> queryParams = const {},
-  })  : name = name ?? DiscoveryRoute.name,
-        meta = meta ??
-            canonicalRouteMeta(
-              family: CanonicalRouteFamily.discoveryRoot,
-            ),
-        pageRouteInfo = pageRouteInfo ?? const DiscoveryRoute(),
-        _queryParams = Parameters(queryParams);
+  }) : name = name ?? DiscoveryRoute.name,
+       meta =
+           meta ??
+           canonicalRouteMeta(family: CanonicalRouteFamily.discoveryRoot),
+       pageRouteInfo = pageRouteInfo ?? const DiscoveryRoute(),
+       _queryParams = Parameters(queryParams);
 
   @override
   final String name;
@@ -2368,8 +2443,9 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
 
   @override
   Future<void> init() async {
-    favoriteAccountProfileIdsStreamValue
-        .addValue(<AccountProfilesRepositoryContractPrimString>{});
+    favoriteAccountProfileIdsStreamValue.addValue(
+      <AccountProfilesRepositoryContractPrimString>{},
+    );
     final all = _allProfiles();
     allAccountProfilesStreamValue.addValue(all);
     for (final profile in all) {
@@ -2394,8 +2470,9 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
         .map((filter) => filter.value.trim())
         .where((filter) => filter.isNotEmpty)
         .toList(growable: false);
-    final normalizedTaxonomyFilters =
-        _normalizeTaxonomyFilterLabels(taxonomyFilters);
+    final normalizedTaxonomyFilters = _normalizeTaxonomyFilterLabels(
+      taxonomyFilters,
+    );
     pageRequests.add(
       _PageRequest(
         page: pageValue,
@@ -2409,7 +2486,8 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
     if (failingPages.contains(pageValue)) {
       throw Exception('forced discovery page $pageValue failure');
     }
-    var result = pages[pageValue] ??
+    var result =
+        pages[pageValue] ??
         pagedAccountProfilesResultFromRaw(
           profiles: const <AccountProfileModel>[],
           hasMore: false,
@@ -2430,13 +2508,15 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
 
     final normalizedQuery = normalizedQueryInput?.trim().toLowerCase();
     if (normalizedQuery != null && normalizedQuery.isNotEmpty) {
-      profiles = profiles.where((profile) {
-        return profile.name.toLowerCase().contains(normalizedQuery) ||
-            profile.slug.toLowerCase().contains(normalizedQuery) ||
-            profile.tags.any(
-              (tag) => tag.value.toLowerCase().contains(normalizedQuery),
-            );
-      }).toList(growable: false);
+      profiles = profiles
+          .where((profile) {
+            return profile.name.toLowerCase().contains(normalizedQuery) ||
+                profile.slug.toLowerCase().contains(normalizedQuery) ||
+                profile.tags.any(
+                  (tag) => tag.value.toLowerCase().contains(normalizedQuery),
+                );
+          })
+          .toList(growable: false);
     }
 
     result = pagedAccountProfilesResultFromRaw(
@@ -2476,8 +2556,9 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
       favoriteAccountProfileIdsStreamValue.value,
     );
     current.removeWhere((id) => id.value == accountProfileId.value);
-    final wasPresent = favoriteAccountProfileIdsStreamValue.value
-        .any((id) => id.value == accountProfileId.value);
+    final wasPresent = favoriteAccountProfileIdsStreamValue.value.any(
+      (id) => id.value == accountProfileId.value,
+    );
     if (!wasPresent) {
       current.add(
         AccountProfilesRepositoryContractPrimString.fromRaw(
@@ -2495,8 +2576,9 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
     AccountProfilesRepositoryContractPrimString accountProfileId,
   ) {
     return AccountProfilesRepositoryContractPrimBool.fromRaw(
-      favoriteAccountProfileIdsStreamValue.value
-          .any((id) => id.value == accountProfileId.value),
+      favoriteAccountProfileIdsStreamValue.value.any(
+        (id) => id.value == accountProfileId.value,
+      ),
       defaultValue: false,
       isRequired: true,
     );
@@ -2536,8 +2618,9 @@ class _FailingAccountProfilesRepository
   @override
   Future<void> init() async {
     allAccountProfilesStreamValue.addValue(const <AccountProfileModel>[]);
-    favoriteAccountProfileIdsStreamValue
-        .addValue(<AccountProfilesRepositoryContractPrimString>{});
+    favoriteAccountProfileIdsStreamValue.addValue(
+      <AccountProfilesRepositoryContractPrimString>{},
+    );
   }
 
   @override
@@ -2592,9 +2675,7 @@ class _FailingAccountProfilesRepository
 
 class _InitFailingAccountProfilesRepository
     extends AccountProfilesRepositoryContract {
-  _InitFailingAccountProfilesRepository({
-    required this.firstPage,
-  });
+  _InitFailingAccountProfilesRepository({required this.firstPage});
 
   final PagedAccountProfilesResult firstPage;
   int fetchPageCalls = 0;
@@ -2796,8 +2877,7 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
-  }) async =>
-      const <EventModel>[];
+  }) async => const <EventModel>[];
 
   @override
   Future<List<EventModel>> loadMoreEventSearch({
@@ -2808,14 +2888,12 @@ class _FakeDiscoveryScheduleRepository extends ScheduleRepositoryContract {
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
-  }) async =>
-      const <EventModel>[];
+  }) async => const <EventModel>[];
 
   @override
   Future<List<EventModel>> loadConfirmedEvents({
     required ScheduleRepoBool showPastOnly,
-  }) async =>
-      const <EventModel>[];
+  }) async => const <EventModel>[];
 
   @override
   Future<void> refreshDiscoveryLiveNowEvents({
@@ -2921,14 +2999,14 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
     required AppData appData,
     required double maxRadiusMeters,
     Map<String, AppDataDiscoveryFilterSelectionSnapshot>?
-        discoveryFilterSelections,
-  })  : _appData = appData,
-        _maxRadiusMeters = maxRadiusMeters,
-        _discoveryFilterSelections =
-            Map<String, AppDataDiscoveryFilterSelectionSnapshot>.from(
-          discoveryFilterSelections ??
-              const <String, AppDataDiscoveryFilterSelectionSnapshot>{},
-        ) {
+    discoveryFilterSelections,
+  }) : _appData = appData,
+       _maxRadiusMeters = maxRadiusMeters,
+       _discoveryFilterSelections =
+           Map<String, AppDataDiscoveryFilterSelectionSnapshot>.from(
+             discoveryFilterSelections ??
+                 const <String, AppDataDiscoveryFilterSelectionSnapshot>{},
+           ) {
     maxRadiusMetersStreamValue.addValue(
       DistanceInMetersValue.fromRaw(
         maxRadiusMeters,
@@ -2940,7 +3018,7 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
   final AppData _appData;
   double _maxRadiusMeters;
   final Map<String, AppDataDiscoveryFilterSelectionSnapshot>
-      _discoveryFilterSelections;
+  _discoveryFilterSelections;
 
   @override
   AppData get appData => _appData;
@@ -2949,8 +3027,9 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
   Future<void> init() async {}
 
   @override
-  final StreamValue<ThemeMode?> themeModeStreamValue =
-      StreamValue<ThemeMode?>(defaultValue: ThemeMode.system);
+  final StreamValue<ThemeMode?> themeModeStreamValue = StreamValue<ThemeMode?>(
+    defaultValue: ThemeMode.system,
+  );
 
   @override
   ThemeMode get themeMode => themeModeStreamValue.value ?? ThemeMode.system;
@@ -2963,14 +3042,14 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
   @override
   final StreamValue<DistanceInMetersValue> maxRadiusMetersStreamValue =
       StreamValue<DistanceInMetersValue>(
-    defaultValue: DistanceInMetersValue.fromRaw(0, defaultValue: 0),
-  );
+        defaultValue: DistanceInMetersValue.fromRaw(0, defaultValue: 0),
+      );
 
   @override
   DistanceInMetersValue get maxRadiusMeters => DistanceInMetersValue.fromRaw(
-        _maxRadiusMeters,
-        defaultValue: _maxRadiusMeters,
-      );
+    _maxRadiusMeters,
+    defaultValue: _maxRadiusMeters,
+  );
 
   @override
   bool get hasPersistedMaxRadiusPreference => true;
@@ -3048,7 +3127,7 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
 
   @override
   final StreamValue<LocationResolutionPhase>
-      locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
+  locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
     defaultValue: LocationResolutionPhase.unknown,
   );
 
@@ -3193,8 +3272,9 @@ EventModel _event({
     'content': 'Conteudo',
     'location': 'Local',
     'date_time_start': DateTime.now().toIso8601String(),
-    'date_time_end':
-        DateTime.now().add(const Duration(hours: 1)).toIso8601String(),
+    'date_time_end': DateTime.now()
+        .add(const Duration(hours: 1))
+        .toIso8601String(),
     'linked_account_profiles': [
       {
         'id': _mongoId('artist-live'),
@@ -3215,8 +3295,9 @@ EventModel _event({
 }
 
 String _mongoId(String seed) {
-  final base =
-      seed.codeUnits.fold<int>(0, (acc, item) => acc + item).toRadixString(16);
+  final base = seed.codeUnits
+      .fold<int>(0, (acc, item) => acc + item)
+      .toRadixString(16);
   final repeated = List<String>.filled(24, base).join().substring(0, 24);
   return repeated;
 }
