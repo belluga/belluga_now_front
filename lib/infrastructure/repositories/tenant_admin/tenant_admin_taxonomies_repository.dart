@@ -17,12 +17,13 @@ class TenantAdminTaxonomiesRepository
     with TenantAdminTaxonomiesPaginationMixin
     implements
         TenantAdminTaxonomiesRepositoryContract,
+        TenantAdminTaxonomiesScopedLookupRepositoryContract,
         TenantAdminTaxonomiesBatchTermsRepositoryContract {
   TenantAdminTaxonomiesRepository({
     Dio? dio,
     TenantAdminTenantScopeContract? tenantScope,
-  })  : _dio = dio ?? Dio(),
-        _tenantScope = tenantScope;
+  }) : _dio = dio ?? Dio(),
+       _tenantScope = tenantScope;
 
   final Dio _dio;
   final TenantAdminTenantScopeContract? _tenantScope;
@@ -37,10 +38,7 @@ class TenantAdminTaxonomiesRepository
 
   Map<String, String> _buildHeaders() {
     final token = GetIt.I.get<LandlordAuthRepositoryContract>().token;
-    return {
-      'Authorization': 'Bearer $token',
-      'Accept': 'application/json',
-    };
+    return {'Authorization': 'Bearer $token', 'Accept': 'application/json'};
   }
 
   @override
@@ -51,19 +49,13 @@ class TenantAdminTaxonomiesRepository
     final taxonomies = <TenantAdminTaxonomyDefinition>[];
 
     while (hasMore.value) {
-      final result = await fetchTaxonomiesPage(
-        page: page,
-        pageSize: pageSize,
-      );
+      final result = await fetchTaxonomiesPage(page: page, pageSize: pageSize);
       taxonomies.addAll(result.items);
       hasMore = TenantAdminTaxRepoBool.fromRaw(
         result.hasMore,
         defaultValue: true,
       );
-      page = TenantAdminTaxRepoInt.fromRaw(
-        page.value + 1,
-        defaultValue: 1,
-      );
+      page = TenantAdminTaxRepoInt.fromRaw(page.value + 1, defaultValue: 1);
     }
 
     return List<TenantAdminTaxonomyDefinition>.unmodifiable(taxonomies);
@@ -71,17 +63,14 @@ class TenantAdminTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
-      fetchTaxonomiesPage({
+  fetchTaxonomiesPage({
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
   }) async {
     try {
       final response = await _dio.get(
         '$_apiBaseUrl/v1/taxonomies',
-        queryParameters: {
-          'page': page.value,
-          'page_size': pageSize.value,
-        },
+        queryParameters: {'page': page.value, 'page_size': pageSize.value},
         options: Options(headers: _buildHeaders()),
       );
       final dtos = _responseDecoder.decodeTaxonomyList(response.data);
@@ -94,6 +83,44 @@ class TenantAdminTaxonomiesRepository
       );
     } on DioException catch (error) {
       throw _wrapError(error, 'load taxonomies page');
+    }
+  }
+
+  @override
+  Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomiesBySlugs({
+    required List<TenantAdminTaxRepoString> slugs,
+    TenantAdminTaxRepoString? appliesTo,
+  }) async {
+    final normalizedSlugs = slugs
+        .map((entry) => entry.value.trim())
+        .where((entry) => entry.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+    if (normalizedSlugs.isEmpty) {
+      return const <TenantAdminTaxonomyDefinition>[];
+    }
+
+    final normalizedAppliesTo = appliesTo?.value.trim();
+
+    try {
+      final response = await _dio.get(
+        '$_apiBaseUrl/v1/taxonomies',
+        queryParameters: {
+          'slugs': normalizedSlugs,
+          if (normalizedAppliesTo != null && normalizedAppliesTo.isNotEmpty)
+            'applies_to': normalizedAppliesTo,
+        },
+        options: Options(
+          headers: _buildHeaders(),
+          listFormat: ListFormat.multiCompatible,
+        ),
+      );
+      final dtos = _responseDecoder.decodeTaxonomyList(response.data);
+      return List<TenantAdminTaxonomyDefinition>.unmodifiable(
+        dtos.map((dto) => dto.toDomain()).toList(growable: false),
+      );
+    } on DioException catch (error) {
+      throw _wrapError(error, 'load taxonomies by slug');
     }
   }
 
@@ -111,8 +138,9 @@ class TenantAdminTaxonomiesRepository
         data: {
           'slug': slug.value,
           'name': name.value,
-          'applies_to':
-              appliesTo.map((value) => value.value).toList(growable: false),
+          'applies_to': appliesTo
+              .map((value) => value.value)
+              .toList(growable: false),
           if (icon != null && icon.value.trim().isNotEmpty)
             'icon': icon.value.trim(),
           if (color != null && color.value.trim().isNotEmpty)
@@ -140,8 +168,9 @@ class TenantAdminTaxonomiesRepository
       final payload = _requestEncoder.encodeTaxonomyUpdate(
         slug: slug?.value,
         name: name?.value,
-        appliesTo:
-            appliesTo?.map((value) => value.value).toList(growable: false),
+        appliesTo: appliesTo
+            ?.map((value) => value.value)
+            .toList(growable: false),
         icon: icon?.value,
         color: color?.value,
       );
@@ -189,10 +218,7 @@ class TenantAdminTaxonomiesRepository
         result.hasMore,
         defaultValue: true,
       );
-      page = TenantAdminTaxRepoInt.fromRaw(
-        page.value + 1,
-        defaultValue: 1,
-      );
+      page = TenantAdminTaxRepoInt.fromRaw(page.value + 1, defaultValue: 1);
     }
 
     return List<TenantAdminTaxonomyTermDefinition>.unmodifiable(terms);
@@ -244,7 +270,7 @@ class TenantAdminTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
-      fetchTermsPage({
+  fetchTermsPage({
     required TenantAdminTaxRepoString taxonomyId,
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
@@ -252,10 +278,7 @@ class TenantAdminTaxonomiesRepository
     try {
       final response = await _dio.get(
         '$_apiBaseUrl/v1/taxonomies/${taxonomyId.value}/terms',
-        queryParameters: {
-          'page': page.value,
-          'page_size': pageSize.value,
-        },
+        queryParameters: {'page': page.value, 'page_size': pageSize.value},
         options: Options(headers: _buildHeaders()),
       );
       final dtos = _responseDecoder.decodeTermList(response.data);
@@ -280,10 +303,7 @@ class TenantAdminTaxonomiesRepository
     try {
       final response = await _dio.post(
         '$_apiBaseUrl/v1/taxonomies/${taxonomyId.value}/terms',
-        data: {
-          'slug': slug.value,
-          'name': name.value,
-        },
+        data: {'slug': slug.value, 'name': name.value},
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeTermItem(response.data);

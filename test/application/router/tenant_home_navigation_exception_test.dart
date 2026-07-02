@@ -65,25 +65,29 @@ import 'package:belluga_now/testing/invite_model_factory.dart';
 
 class _TestTenantHomeAgendaController extends MockTenantHomeAgendaController {
   _TestTenantHomeAgendaController()
-      : _authUserStreamValue = StreamValue<UserContract?>(defaultValue: null),
-        _isRadiusActionCompactStreamValue =
-            StreamValue<bool>(defaultValue: false),
-        _isRadiusRefreshLoadingStreamValue =
-            StreamValue<bool>(defaultValue: false),
-        _hasCanonicalDiscoveryFilterCatalogStreamValue =
-            StreamValue<bool>(defaultValue: true),
-        _discoveryFilterCatalogStreamValue =
-            StreamValue<DiscoveryFilterCatalog>(
-          defaultValue: const DiscoveryFilterCatalog(surface: 'home.events'),
-        ),
-        _discoveryFilterSelectionStreamValue =
-            StreamValue<DiscoveryFilterSelection>(
-          defaultValue: const DiscoveryFilterSelection(),
-        ),
-        _isDiscoveryFilterCatalogLoadingStreamValue =
-            StreamValue<bool>(defaultValue: false),
-        _isDiscoveryFilterPanelVisibleStreamValue =
-            StreamValue<bool>(defaultValue: false);
+    : _authUserStreamValue = StreamValue<UserContract?>(defaultValue: null),
+      _isRadiusActionCompactStreamValue = StreamValue<bool>(
+        defaultValue: false,
+      ),
+      _isRadiusRefreshLoadingStreamValue = StreamValue<bool>(
+        defaultValue: false,
+      ),
+      _hasCanonicalDiscoveryFilterCatalogStreamValue = StreamValue<bool>(
+        defaultValue: true,
+      ),
+      _discoveryFilterCatalogStreamValue = StreamValue<DiscoveryFilterCatalog>(
+        defaultValue: const DiscoveryFilterCatalog(surface: 'home.events'),
+      ),
+      _discoveryFilterSelectionStreamValue =
+          StreamValue<DiscoveryFilterSelection>(
+            defaultValue: const DiscoveryFilterSelection(),
+          ),
+      _isDiscoveryFilterCatalogLoadingStreamValue = StreamValue<bool>(
+        defaultValue: false,
+      ),
+      _isDiscoveryFilterPanelVisibleStreamValue = StreamValue<bool>(
+        defaultValue: false,
+      );
 
   final StreamValue<UserContract?> _authUserStreamValue;
   final StreamValue<bool> _isRadiusActionCompactStreamValue;
@@ -91,7 +95,7 @@ class _TestTenantHomeAgendaController extends MockTenantHomeAgendaController {
   final StreamValue<bool> _hasCanonicalDiscoveryFilterCatalogStreamValue;
   final StreamValue<DiscoveryFilterCatalog> _discoveryFilterCatalogStreamValue;
   final StreamValue<DiscoveryFilterSelection>
-      _discoveryFilterSelectionStreamValue;
+  _discoveryFilterSelectionStreamValue;
   final StreamValue<bool> _isDiscoveryFilterCatalogLoadingStreamValue;
   final StreamValue<bool> _isDiscoveryFilterPanelVisibleStreamValue;
 
@@ -116,8 +120,8 @@ class _TestTenantHomeAgendaController extends MockTenantHomeAgendaController {
 
   @override
   StreamValue<DiscoveryFilterSelection>
-      get discoveryFilterSelectionStreamValue =>
-          _discoveryFilterSelectionStreamValue;
+  get discoveryFilterSelectionStreamValue =>
+      _discoveryFilterSelectionStreamValue;
 
   @override
   StreamValue<bool> get isDiscoveryFilterCatalogLoadingStreamValue =>
@@ -140,6 +144,25 @@ class _TestTenantHomeAgendaController extends MockTenantHomeAgendaController {
   bool get shouldShowInviteFilterAction => true;
 }
 
+class _TestFavoritesSectionController extends MockFavoritesSectionController {
+  _TestFavoritesSectionController()
+    : _hasMoreFavoritesStreamValue = StreamValue<bool>(defaultValue: false),
+      _isPageLoadingStreamValue = StreamValue<bool>(defaultValue: false);
+
+  final StreamValue<bool> _hasMoreFavoritesStreamValue;
+  final StreamValue<bool> _isPageLoadingStreamValue;
+
+  @override
+  StreamValue<bool> get hasMoreFavoritesStreamValue =>
+      _hasMoreFavoritesStreamValue;
+
+  @override
+  StreamValue<bool> get isPageLoadingStreamValue => _isPageLoadingStreamValue;
+
+  @override
+  Future<void> loadNextPage() async {}
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -156,8 +179,9 @@ void main() {
     await GetIt.I.reset(dispose: false);
   });
 
-  testWidgets('tenant bootstrap reaches home without framework exceptions',
-      (tester) async {
+  testWidgets('tenant bootstrap reaches home without framework exceptions', (
+    tester,
+  ) async {
     _takeAllExceptions(tester);
     _registerTenantBootstrapDependencies();
 
@@ -166,16 +190,9 @@ void main() {
     GetIt.I.registerSingleton<InitializationModule>(initializationModule);
     GetIt.I.registerSingleton<HomeModule>(homeModule);
     final router = AppRouter()
-      ..setChildModules([
-        initializationModule,
-        homeModule,
-      ]);
+      ..setChildModules([initializationModule, homeModule]);
 
-    await tester.pumpWidget(
-      MaterialApp.router(
-        routerConfig: router.config(),
-      ),
-    );
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router.config()));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
     await _pumpFrames(tester);
@@ -192,119 +209,107 @@ void main() {
   });
 
   testWidgets(
-      'tenant privacy policy route resolves without framework exceptions',
-      (tester) async {
-    _takeAllExceptions(tester);
-    _registerTenantBootstrapDependencies();
+    'tenant privacy policy route resolves without framework exceptions',
+    (tester) async {
+      _takeAllExceptions(tester);
+      _registerTenantBootstrapDependencies();
 
-    final homeModule = HomeModule();
-    GetIt.I.registerSingleton<HomeModule>(homeModule);
-    final router = AppRouter()
-      ..setChildModules([
-        homeModule,
-      ]);
+      final homeModule = HomeModule();
+      GetIt.I.registerSingleton<HomeModule>(homeModule);
+      final router = AppRouter()..setChildModules([homeModule]);
 
-    await tester.pumpWidget(
-      MaterialApp.router(
-        routerConfig: router.config(),
-      ),
-    );
-    await tester.pump();
-    await _pumpFrames(tester);
+      await tester.pumpWidget(
+        MaterialApp.router(routerConfig: router.config()),
+      );
+      await tester.pump();
+      await _pumpFrames(tester);
 
-    unawaited(router.pushPath('/privacy-policy'));
-    await tester.pump();
-    await _pumpFrames(tester);
+      unawaited(router.pushPath('/privacy-policy'));
+      await tester.pump();
+      await _pumpFrames(tester);
 
-    final asyncExceptions = _takeAllExceptions(tester);
+      final asyncExceptions = _takeAllExceptions(tester);
 
-    expect(
-      asyncExceptions,
-      isEmpty,
-      reason: _formatAsyncExceptions(asyncExceptions),
-    );
-    expect(router.current.name, TenantPrivacyPolicyRoute.name);
-    expect(find.text('Política de privacidade'), findsWidgets);
-  });
-
-  testWidgets('tenant privacy policy legacy path redirects to canonical route',
-      (tester) async {
-    _takeAllExceptions(tester);
-    _registerTenantBootstrapDependencies();
-
-    final homeModule = HomeModule();
-    GetIt.I.registerSingleton<HomeModule>(homeModule);
-    final router = AppRouter()
-      ..setChildModules([
-        homeModule,
-      ]);
-
-    await tester.pumpWidget(
-      MaterialApp.router(
-        routerConfig: router.config(),
-      ),
-    );
-    await tester.pump();
-    await _pumpFrames(tester);
-
-    unawaited(router.pushPath('/politica-de-privacidade'));
-    await tester.pump();
-    await _pumpFrames(tester);
-
-    final asyncExceptions = _takeAllExceptions(tester);
-
-    expect(
-      asyncExceptions,
-      isEmpty,
-      reason: _formatAsyncExceptions(asyncExceptions),
-    );
-    expect(router.current.name, TenantPrivacyPolicyRoute.name);
-  });
+      expect(
+        asyncExceptions,
+        isEmpty,
+        reason: _formatAsyncExceptions(asyncExceptions),
+      );
+      expect(router.current.name, TenantPrivacyPolicyRoute.name);
+      expect(find.text('Política de privacidade'), findsWidgets);
+    },
+  );
 
   testWidgets(
-      'invite fallback navigation reaches tenant home without framework exceptions',
-      (tester) async {
-    _takeAllExceptions(tester);
-    _registerTenantBootstrapDependencies(
-      invitesRepository: _FakeInvitesRepository(
-        hasPendingInvites: false,
-        previewInvite: null,
-      ),
-      authRepository: _FakeAuthRepository(authorized: false),
-    );
+    'tenant privacy policy legacy path redirects to canonical route',
+    (tester) async {
+      _takeAllExceptions(tester);
+      _registerTenantBootstrapDependencies();
 
-    final homeModule = HomeModule();
-    final invitesModule = InvitesModule();
-    GetIt.I.registerSingleton<HomeModule>(homeModule);
-    GetIt.I.registerSingleton<InvitesModule>(invitesModule);
-    final router = AppRouter()
-      ..setChildModules([
-        homeModule,
-        invitesModule,
-      ]);
+      final homeModule = HomeModule();
+      GetIt.I.registerSingleton<HomeModule>(homeModule);
+      final router = AppRouter()..setChildModules([homeModule]);
 
-    await tester.pumpWidget(
-      MaterialApp.router(
-        routerConfig: router.config(),
-      ),
-    );
-    await tester.pump();
-    await _pumpFrames(tester);
+      await tester.pumpWidget(
+        MaterialApp.router(routerConfig: router.config()),
+      );
+      await tester.pump();
+      await _pumpFrames(tester);
 
-    unawaited(router.pushPath('/invite?code=INVALID'));
-    await tester.pump();
-    await _pumpFrames(tester, count: 40);
+      unawaited(router.pushPath('/politica-de-privacidade'));
+      await tester.pump();
+      await _pumpFrames(tester);
 
-    final asyncExceptions = _takeAllExceptions(tester);
+      final asyncExceptions = _takeAllExceptions(tester);
 
-    expect(
-      asyncExceptions,
-      isEmpty,
-      reason: _formatAsyncExceptions(asyncExceptions),
-    );
-    expect(router.current.name, TenantHomeRoute.name);
-    expect(find.text('Seus Favoritos'), findsOneWidget);
-  });
+      expect(
+        asyncExceptions,
+        isEmpty,
+        reason: _formatAsyncExceptions(asyncExceptions),
+      );
+      expect(router.current.name, TenantPrivacyPolicyRoute.name);
+    },
+  );
+
+  testWidgets(
+    'invite fallback navigation reaches tenant home without framework exceptions',
+    (tester) async {
+      _takeAllExceptions(tester);
+      _registerTenantBootstrapDependencies(
+        invitesRepository: _FakeInvitesRepository(
+          hasPendingInvites: false,
+          previewInvite: null,
+        ),
+        authRepository: _FakeAuthRepository(authorized: false),
+      );
+
+      final homeModule = HomeModule();
+      final invitesModule = InvitesModule();
+      GetIt.I.registerSingleton<HomeModule>(homeModule);
+      GetIt.I.registerSingleton<InvitesModule>(invitesModule);
+      final router = AppRouter()..setChildModules([homeModule, invitesModule]);
+
+      await tester.pumpWidget(
+        MaterialApp.router(routerConfig: router.config()),
+      );
+      await tester.pump();
+      await _pumpFrames(tester);
+
+      unawaited(router.pushPath('/invite?code=INVALID'));
+      await tester.pump();
+      await _pumpFrames(tester, count: 40);
+
+      final asyncExceptions = _takeAllExceptions(tester);
+
+      expect(
+        asyncExceptions,
+        isEmpty,
+        reason: _formatAsyncExceptions(asyncExceptions),
+      );
+      expect(router.current.name, TenantHomeRoute.name);
+      expect(find.text('Seus Favoritos'), findsOneWidget);
+    },
+  );
 }
 
 Future<void> _pumpFrames(WidgetTester tester, {int count = 20}) async {
@@ -343,15 +348,16 @@ void _registerTenantBootstrapDependencies({
 
   final mockController = MockTenantHomeController();
   final mockAgendaController = _TestTenantHomeAgendaController();
-  final mockFavoritesController = MockFavoritesSectionController();
+  final mockFavoritesController = _TestFavoritesSectionController();
   final mockInvitesBannerController = MockInvitesBannerBuilderController();
   final mockAppData = MockAppData();
   final testScrollController = ScrollController();
 
   GetIt.I.registerSingleton<AppData>(appData);
   GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
-  GetIt.I
-      .registerSingleton<InvitesRepositoryContract>(resolvedInvitesRepository);
+  GetIt.I.registerSingleton<InvitesRepositoryContract>(
+    resolvedInvitesRepository,
+  );
   GetIt.I.registerSingleton<FriendsRepositoryContract>(friendsRepository);
   GetIt.I.registerSingleton<UserEventsRepositoryContract>(userEventsRepository);
   GetIt.I.registerSingleton<TelemetryRepositoryContract>(telemetryRepository);
@@ -375,25 +381,23 @@ void _registerTenantBootstrapDependencies({
   );
   GetIt.I.registerSingleton<MockAppData>(mockAppData);
 
-  when(mockAppData.nameValue).thenReturn(
-    EnvironmentNameValue()..parse('Test App'),
-  );
-  when(mockAppData.mainColor).thenReturn(
-    MainColorValue()..parse('#000000'),
-  );
-  when(mockAppData.mainIconLightUrl).thenReturn(
-    IconUrlValue()..parse('http://example.com/icon.png'),
-  );
-  when(mockAppData.mainLogoLightUrl).thenReturn(
-    MainLogoUrlValue()..parse('http://example.com/logo-light.png'),
-  );
-  when(mockAppData.mainLogoDarkUrl).thenReturn(
-    MainLogoUrlValue()..parse('http://example.com/logo-dark.png'),
-  );
+  when(
+    mockAppData.nameValue,
+  ).thenReturn(EnvironmentNameValue()..parse('Test App'));
+  when(mockAppData.mainColor).thenReturn(MainColorValue()..parse('#000000'));
+  when(
+    mockAppData.mainIconLightUrl,
+  ).thenReturn(IconUrlValue()..parse('http://example.com/icon.png'));
+  when(
+    mockAppData.mainLogoLightUrl,
+  ).thenReturn(MainLogoUrlValue()..parse('http://example.com/logo-light.png'));
+  when(
+    mockAppData.mainLogoDarkUrl,
+  ).thenReturn(MainLogoUrlValue()..parse('http://example.com/logo-dark.png'));
 
-  when(mockFavoritesController.favoritesStreamValue).thenReturn(
-    StreamValue<List<FavoriteResume>?>(defaultValue: const []),
-  );
+  when(
+    mockFavoritesController.favoritesStreamValue,
+  ).thenReturn(StreamValue<List<FavoriteResume>?>(defaultValue: const []));
   when(mockFavoritesController.init()).thenAnswer((_) async {});
   when(mockFavoritesController.buildPinnedFavorite()).thenReturn(
     FavoriteResume(
@@ -403,13 +407,12 @@ void _registerTenantBootstrapDependencies({
       isPrimaryValue: FavoritePrimaryFlagValue()..parse('true'),
     ),
   );
-  when(mockInvitesBannerController.pendingInvitesStreamValue).thenReturn(
-    StreamValue<List<InviteModel>>(defaultValue: const []),
-  );
-  when(mockInvitesBannerController.isPendingInvitesDisplayReadyStreamValue)
-      .thenReturn(
-    StreamValue<bool>(defaultValue: false),
-  );
+  when(
+    mockInvitesBannerController.pendingInvitesStreamValue,
+  ).thenReturn(StreamValue<List<InviteModel>>(defaultValue: const []));
+  when(
+    mockInvitesBannerController.isPendingInvitesDisplayReadyStreamValue,
+  ).thenReturn(StreamValue<bool>(defaultValue: false));
 
   when(mockController.appData).thenReturn(appData);
   when(mockController.init()).thenAnswer((_) async {});
@@ -422,46 +425,46 @@ void _registerTenantBootstrapDependencies({
       ),
     ),
   );
-  when(mockController.myEventsFilteredStreamValue).thenReturn(
-    StreamValue<List<VenueEventResume>>(defaultValue: const []),
-  );
+  when(
+    mockController.myEventsFilteredStreamValue,
+  ).thenReturn(StreamValue<List<VenueEventResume>>(defaultValue: const []));
   when(mockController.scrollController).thenReturn(testScrollController);
 
-  when(mockAgendaController.isInitialLoadingStreamValue).thenReturn(
-    StreamValue<bool>(defaultValue: false),
-  );
-  when(mockAgendaController.initialLoadingLabelStreamValue).thenReturn(
-    StreamValue<String>(defaultValue: ''),
-  );
-  when(mockAgendaController.isPageLoadingStreamValue).thenReturn(
-    StreamValue<bool>(defaultValue: false),
-  );
-  when(mockAgendaController.showHistoryStreamValue).thenReturn(
-    StreamValue<bool>(defaultValue: false),
-  );
-  when(mockAgendaController.searchActiveStreamValue).thenReturn(
-    StreamValue<bool>(defaultValue: false),
-  );
-  when(mockAgendaController.inviteFilterStreamValue).thenReturn(
-    StreamValue<InviteFilter>(defaultValue: InviteFilter.none),
-  );
-  when(mockAgendaController.radiusMetersStreamValue).thenReturn(
-    StreamValue<double>(defaultValue: 1000),
-  );
-  when(mockAgendaController.maxRadiusMetersStreamValue).thenReturn(
-    StreamValue<double>(defaultValue: 5000),
-  );
-  when(mockAgendaController.hasMoreStreamValue).thenReturn(
-    StreamValue<bool>(defaultValue: false),
-  );
+  when(
+    mockAgendaController.isInitialLoadingStreamValue,
+  ).thenReturn(StreamValue<bool>(defaultValue: false));
+  when(
+    mockAgendaController.initialLoadingLabelStreamValue,
+  ).thenReturn(StreamValue<String>(defaultValue: ''));
+  when(
+    mockAgendaController.isPageLoadingStreamValue,
+  ).thenReturn(StreamValue<bool>(defaultValue: false));
+  when(
+    mockAgendaController.showHistoryStreamValue,
+  ).thenReturn(StreamValue<bool>(defaultValue: false));
+  when(
+    mockAgendaController.searchActiveStreamValue,
+  ).thenReturn(StreamValue<bool>(defaultValue: false));
+  when(
+    mockAgendaController.inviteFilterStreamValue,
+  ).thenReturn(StreamValue<InviteFilter>(defaultValue: InviteFilter.none));
+  when(
+    mockAgendaController.radiusMetersStreamValue,
+  ).thenReturn(StreamValue<double>(defaultValue: 1000));
+  when(
+    mockAgendaController.maxRadiusMetersStreamValue,
+  ).thenReturn(StreamValue<double>(defaultValue: 5000));
+  when(
+    mockAgendaController.hasMoreStreamValue,
+  ).thenReturn(StreamValue<bool>(defaultValue: false));
   when(mockAgendaController.displayStateStreamValue).thenReturn(
     StreamValue<TenantHomeAgendaDisplayState?>(
       defaultValue: TenantHomeAgendaDisplayState(events: []),
     ),
   );
-  when(mockAgendaController.searchController).thenReturn(
-    TextEditingController(),
-  );
+  when(
+    mockAgendaController.searchController,
+  ).thenReturn(TextEditingController());
   when(mockAgendaController.focusNode).thenReturn(FocusNode());
   when(
     mockAgendaController.init(startWithHistory: false),
@@ -472,10 +475,8 @@ void _registerTenantBootstrapDependencies({
 }
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
-  _FakeInvitesRepository({
-    required bool hasPendingInvites,
-    this.previewInvite,
-  }) : _hasPendingInvites = hasPendingInvites;
+  _FakeInvitesRepository({required bool hasPendingInvites, this.previewInvite})
+    : _hasPendingInvites = hasPendingInvites;
 
   @override
   InvitesRepositoryContractPrimBool get hasPendingInvites =>
@@ -495,9 +496,10 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   }
 
   @override
-  Future<List<InviteModel>> fetchInvites(
-      {InvitesRepositoryContractPrimInt? page,
-      InvitesRepositoryContractPrimInt? pageSize}) async {
+  Future<List<InviteModel>> fetchInvites({
+    InvitesRepositoryContractPrimInt? page,
+    InvitesRepositoryContractPrimInt? pageSize,
+  }) async {
     return _hasPendingInvites ? [_buildInvite()] : const [];
   }
 
@@ -513,7 +515,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteAcceptResult> acceptInvite(
-      InvitesRepositoryContractPrimString inviteId) async {
+    InvitesRepositoryContractPrimString inviteId,
+  ) async {
     return buildInviteAcceptResult(
       inviteId: inviteId.value,
       status: 'accepted',
@@ -526,7 +529,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteAcceptResult> acceptInviteByCode(
-      InvitesRepositoryContractPrimString code) async {
+    InvitesRepositoryContractPrimString code,
+  ) async {
     return buildInviteAcceptResult(
       inviteId: 'mock-${code.value}',
       status: 'accepted',
@@ -539,7 +543,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteDeclineResult> declineInvite(
-      InvitesRepositoryContractPrimString inviteId) async {
+    InvitesRepositoryContractPrimString inviteId,
+  ) async {
     return buildInviteDeclineResult(
       inviteId: inviteId.value,
       status: 'declined',
@@ -549,7 +554,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteMaterializeResult> materializeShareCode(
-      InvitesRepositoryContractPrimString code) async {
+    InvitesRepositoryContractPrimString code,
+  ) async {
     return buildInviteMaterializeResult(
       inviteId: _hasPendingInvites ? _buildInvite().id : '',
       status: _hasPendingInvites ? 'pending' : 'expired',
@@ -560,7 +566,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteModel?> previewShareCode(
-      InvitesRepositoryContractPrimString code) async {
+    InvitesRepositoryContractPrimString code,
+  ) async {
     return previewInvite;
   }
 
@@ -580,19 +587,20 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   @override
   Future<List<InviteContactMatch>> importContacts(
     InviteContacts contacts,
-  ) async =>
-      const [];
+  ) async => const [];
 
   @override
   Future<void> sendInvites(
-      InvitesRepositoryContractPrimString eventId, InviteRecipients recipients,
-      {InvitesRepositoryContractPrimString? occurrenceId,
-      InvitesRepositoryContractPrimString? message}) async {}
+    InvitesRepositoryContractPrimString eventId,
+    InviteRecipients recipients, {
+    InvitesRepositoryContractPrimString? occurrenceId,
+    InvitesRepositoryContractPrimString? message,
+  }) async {}
 
   @override
   Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
-          InvitesRepositoryContractPrimString eventId) async =>
-      const [];
+    InvitesRepositoryContractPrimString eventId,
+  ) async => const [];
 }
 
 class _FakeFriendsRepository implements FriendsRepositoryContract {
@@ -610,9 +618,10 @@ class _FakeFriendsRepository implements FriendsRepositoryContract {
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   @override
   final StreamValue<Set<UserEventsRepositoryContractPrimString>>
-      confirmedOccurrenceIdsStream =
+  confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(
-          defaultValue: const {});
+        defaultValue: const {},
+      );
 
   @override
   Future<void> confirmEventAttendance(
@@ -628,8 +637,8 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
 
   @override
   UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
-          UserEventsRepositoryContractPrimString eventId) =>
-      userEventsRepoBool(false, defaultValue: false, isRequired: true);
+    UserEventsRepositoryContractPrimString eventId,
+  ) => userEventsRepoBool(false, defaultValue: false, isRequired: true);
 
   @override
   Future<void> refreshConfirmedOccurrenceIds() async {}
@@ -647,21 +656,19 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
     EventTrackerEvents event, {
     TelemetryRepositoryContractPrimString? eventName,
     TelemetryRepositoryContractPrimMap? properties,
-  }) async =>
-      telemetryRepoBool(true);
+  }) async => telemetryRepoBool(true);
 
   @override
   Future<EventTrackerTimedEventHandle?> startTimedEvent(
     EventTrackerEvents event, {
     TelemetryRepositoryContractPrimString? eventName,
     TelemetryRepositoryContractPrimMap? properties,
-  }) async =>
-      const EventTrackerTimedEventHandle('handle');
+  }) async => const EventTrackerTimedEventHandle('handle');
 
   @override
   Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
-          EventTrackerTimedEventHandle handle) async =>
-      telemetryRepoBool(true);
+    EventTrackerTimedEventHandle handle,
+  ) async => telemetryRepoBool(true);
 
   @override
   Future<TelemetryRepositoryContractPrimBool> flushTimedEvents() async =>
@@ -674,10 +681,9 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
   EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
 
   @override
-  Future<TelemetryRepositoryContractPrimBool> mergeIdentity(
-          {required TelemetryRepositoryContractPrimString
-              previousUserId}) async =>
-      telemetryRepoBool(true);
+  Future<TelemetryRepositoryContractPrimBool> mergeIdentity({
+    required TelemetryRepositoryContractPrimString previousUserId,
+  }) async => telemetryRepoBool(true);
 }
 
 class _FakeAppDataRepository extends AppDataRepositoryContract {
@@ -689,8 +695,8 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
   @override
   StreamValue<DistanceInMetersValue> get maxRadiusMetersStreamValue =>
       StreamValue<DistanceInMetersValue>(
-          defaultValue:
-              DistanceInMetersValue.fromRaw(1000, defaultValue: 1000));
+        defaultValue: DistanceInMetersValue.fromRaw(1000, defaultValue: 1000),
+      );
 
   @override
   DistanceInMetersValue get maxRadiusMeters =>
@@ -749,8 +755,10 @@ class _FakeAuthRepository extends AuthRepositoryContract {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
-      AuthRepositoryContractParamString password) async {}
+  Future<void> loginWithEmailPassword(
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
+  ) async {}
 
   @override
   Future<void> signUpWithEmailPassword(
@@ -761,8 +769,9 @@ class _FakeAuthRepository extends AuthRepositoryContract {
 
   @override
   Future<void> sendTokenRecoveryPassword(
-      AuthRepositoryContractParamString email,
-      AuthRepositoryContractParamString codigoEnviado) async {}
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString codigoEnviado,
+  ) async {}
 
   @override
   Future<void> logout() async {}
@@ -775,7 +784,8 @@ class _FakeAuthRepository extends AuthRepositoryContract {
 
   @override
   Future<void> sendPasswordResetEmail(
-      AuthRepositoryContractParamString email) async {}
+    AuthRepositoryContractParamString email,
+  ) async {}
 
   @override
   Future<void> updateUser(UserCustomData data) async {}
@@ -796,9 +806,7 @@ InviteModel _buildInvite() {
   );
 }
 
-AppData _buildAppData({
-  required EnvironmentType environmentType,
-}) {
+AppData _buildAppData({required EnvironmentType environmentType}) {
   final platformType = PlatformTypeValue()..parse(AppType.web.name);
   final hostname = environmentType == EnvironmentType.landlord
       ? 'landlord.belluga.space'

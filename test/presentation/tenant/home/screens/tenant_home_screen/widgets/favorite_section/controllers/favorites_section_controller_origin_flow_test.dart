@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/value_object/environment_name_value.dart';
 import 'package:belluga_now/domain/favorite/favorite.dart';
+import 'package:belluga_now/domain/favorite/paged_favorite_resumes_result.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_resume_values.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
@@ -22,6 +25,7 @@ import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
+import 'package:belluga_now/infrastructure/repositories/favorite_repository_paging_mixin.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorites_section_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -145,6 +149,318 @@ void main() {
   );
 
   test(
+    'favorites section loads only the first page on init and exposes has-more state',
+    () async {
+      final favoriteRepository = _FakeFavoriteRepository(
+        pagedResultsByPage: {
+          1: PagedFavoriteResumesResult(
+            items: [
+              _favoriteResume(title: 'Primeiro', slug: 'primeiro'),
+              _favoriteResume(title: 'Segundo', slug: 'segundo'),
+            ],
+            hasMore: true,
+          ),
+          2: PagedFavoriteResumesResult(
+            items: [_favoriteResume(title: 'Terceiro', slug: 'terceiro')],
+            hasMore: false,
+          ),
+        },
+      );
+
+      final controller = FavoritesSectionController(
+        favoriteRepository: favoriteRepository,
+        appDataRepository: _FakeAppDataRepository(),
+      );
+
+      await controller.init();
+
+      expect(
+        controller.favoritesStreamValue.value
+            ?.map((item) => item.title)
+            .toList(),
+        ['Primeiro', 'Segundo'],
+      );
+      expect(controller.hasMoreFavoritesStreamValue.value, isTrue);
+      expect(controller.isPageLoadingStreamValue.value, isFalse);
+      expect(favoriteRepository.requestedPageNumbers, [1]);
+
+      controller.onDispose();
+    },
+  );
+
+  test('favorites section appends the next page when requested', () async {
+    final favoriteRepository = _FakeFavoriteRepository(
+      pagedResultsByPage: {
+        1: PagedFavoriteResumesResult(
+          items: [
+            _favoriteResume(title: 'Primeiro', slug: 'primeiro'),
+            _favoriteResume(title: 'Segundo', slug: 'segundo'),
+          ],
+          hasMore: true,
+        ),
+        2: PagedFavoriteResumesResult(
+          items: [_favoriteResume(title: 'Terceiro', slug: 'terceiro')],
+          hasMore: false,
+        ),
+      },
+    );
+
+    final controller = FavoritesSectionController(
+      favoriteRepository: favoriteRepository,
+      appDataRepository: _FakeAppDataRepository(),
+    );
+
+    await controller.init();
+    await controller.loadNextPage();
+
+    expect(
+      controller.favoritesStreamValue.value?.map((item) => item.title).toList(),
+      ['Primeiro', 'Segundo', 'Terceiro'],
+    );
+    expect(controller.hasMoreFavoritesStreamValue.value, isFalse);
+    expect(favoriteRepository.requestedPageNumbers, [1, 2]);
+
+    controller.onDispose();
+  });
+
+  test(
+    'favorites section preserves loaded pages when home re-enters and refreshes cached data',
+    () async {
+      final pagedResultsByPage = <int, PagedFavoriteResumesResult>{
+        1: PagedFavoriteResumesResult(
+          items: [
+            _favoriteResume(title: 'Primeiro', slug: 'primeiro'),
+            _favoriteResume(title: 'Segundo', slug: 'segundo'),
+          ],
+          hasMore: true,
+        ),
+        2: PagedFavoriteResumesResult(
+          items: [_favoriteResume(title: 'Terceiro', slug: 'terceiro')],
+          hasMore: false,
+        ),
+      };
+      final favoriteRepository = _FakeFavoriteRepository(
+        pagedResultsByPage: pagedResultsByPage,
+      );
+      final firstController = FavoritesSectionController(
+        favoriteRepository: favoriteRepository,
+        appDataRepository: _FakeAppDataRepository(),
+      );
+
+      await firstController.init();
+      await firstController.loadNextPage();
+      expect(
+        firstController.favoritesStreamValue.value
+            ?.map((item) => item.title)
+            .toList(),
+        ['Primeiro', 'Segundo', 'Terceiro'],
+      );
+
+      pagedResultsByPage[1] = PagedFavoriteResumesResult(
+        items: [
+          _favoriteResume(title: 'Primeiro Atualizado', slug: 'primeiro'),
+          _favoriteResume(title: 'Segundo Atualizado', slug: 'segundo'),
+        ],
+        hasMore: true,
+      );
+      pagedResultsByPage[2] = PagedFavoriteResumesResult(
+        items: [
+          _favoriteResume(title: 'Terceiro Atualizado', slug: 'terceiro'),
+        ],
+        hasMore: false,
+      );
+
+      final secondController = FavoritesSectionController(
+        favoriteRepository: favoriteRepository,
+        appDataRepository: _FakeAppDataRepository(),
+      );
+      await secondController.init();
+
+      expect(
+        secondController.favoritesStreamValue.value
+            ?.map((item) => item.title)
+            .toList(),
+        ['Primeiro Atualizado', 'Segundo Atualizado', 'Terceiro Atualizado'],
+      );
+      expect(secondController.hasMoreFavoritesStreamValue.value, isFalse);
+      expect(favoriteRepository.requestedPageNumbers, [1, 2, 1, 2]);
+
+      firstController.onDispose();
+      secondController.onDispose();
+    },
+  );
+
+  test(
+    'favorites section does not request another page when has_more is false',
+    () async {
+      final favoriteRepository = _FakeFavoriteRepository(
+        pagedResultsByPage: {
+          1: PagedFavoriteResumesResult(
+            items: [_favoriteResume(title: 'Primeiro', slug: 'primeiro')],
+            hasMore: false,
+          ),
+        },
+      );
+
+      final controller = FavoritesSectionController(
+        favoriteRepository: favoriteRepository,
+        appDataRepository: _FakeAppDataRepository(),
+      );
+
+      await controller.init();
+      await controller.loadNextPage();
+
+      expect(favoriteRepository.requestedPageNumbers, [1]);
+
+      controller.onDispose();
+    },
+  );
+
+  test('favorites section deduplicates in-flight next page requests', () async {
+    final pageTwoCompleter = Completer<PagedFavoriteResumesResult>();
+    final favoriteRepository = _FakeFavoriteRepository(
+      pagedResultsByPage: {
+        1: PagedFavoriteResumesResult(
+          items: [_favoriteResume(title: 'Primeiro', slug: 'primeiro')],
+          hasMore: true,
+        ),
+      },
+      pagedResultCompletersByPage: {2: pageTwoCompleter},
+    );
+
+    final controller = FavoritesSectionController(
+      favoriteRepository: favoriteRepository,
+      appDataRepository: _FakeAppDataRepository(),
+    );
+
+    await controller.init();
+
+    final firstLoad = controller.loadNextPage();
+    final secondLoad = controller.loadNextPage();
+
+    expect(controller.isPageLoadingStreamValue.value, isTrue);
+    expect(favoriteRepository.requestedPageNumbers, [1, 2]);
+    expect(favoriteRepository.fetchFavoriteResumesPageCallCount, 2);
+
+    pageTwoCompleter.complete(
+      PagedFavoriteResumesResult(
+        items: [_favoriteResume(title: 'Segundo', slug: 'segundo')],
+        hasMore: false,
+      ),
+    );
+    await Future.wait([firstLoad, secondLoad]);
+
+    expect(controller.isPageLoadingStreamValue.value, isFalse);
+    expect(
+      controller.favoritesStreamValue.value?.map((item) => item.title).toList(),
+      ['Primeiro', 'Segundo'],
+    );
+
+    controller.onDispose();
+  });
+
+  test(
+    'favorites section keeps continuation state when a refresh fails after extra pages were loaded',
+    () async {
+      final favoriteRepository = _FakeFavoriteRepository(
+        pagedResultsByPage: {
+          1: PagedFavoriteResumesResult(
+            items: [_favoriteResume(title: 'Primeiro', slug: 'primeiro')],
+            hasMore: true,
+          ),
+          2: PagedFavoriteResumesResult(
+            items: [_favoriteResume(title: 'Segundo', slug: 'segundo')],
+            hasMore: true,
+          ),
+          3: PagedFavoriteResumesResult(
+            items: [_favoriteResume(title: 'Terceiro', slug: 'terceiro')],
+            hasMore: false,
+          ),
+        },
+      );
+      final controller = FavoritesSectionController(
+        favoriteRepository: favoriteRepository,
+        appDataRepository: _FakeAppDataRepository(),
+      );
+
+      await controller.init();
+      await controller.loadNextPage();
+      favoriteRepository.failuresBeforeSuccess = 3;
+
+      await controller.init();
+
+      expect(
+        controller.favoritesStreamValue.value
+            ?.map((item) => item.title)
+            .toList(),
+        ['Primeiro', 'Segundo'],
+      );
+      expect(controller.hasMoreFavoritesStreamValue.value, isTrue);
+
+      await controller.loadNextPage();
+
+      expect(
+        controller.favoritesStreamValue.value
+            ?.map((item) => item.title)
+            .toList(),
+        ['Primeiro', 'Segundo', 'Terceiro'],
+      );
+      expect(favoriteRepository.requestedPageNumbers, [1, 2, 1, 1, 1, 3]);
+
+      controller.onDispose();
+    },
+  );
+
+  test(
+    'favorites section ignores stale next-page completions after a refresh starts',
+    () async {
+      final pageTwoCompleter = Completer<PagedFavoriteResumesResult>();
+      final pagedResultsByPage = <int, PagedFavoriteResumesResult>{
+        1: PagedFavoriteResumesResult(
+          items: [_favoriteResume(title: 'Primeiro', slug: 'primeiro')],
+          hasMore: true,
+        ),
+      };
+      final favoriteRepository = _FakeFavoriteRepository(
+        pagedResultsByPage: pagedResultsByPage,
+        pagedResultCompletersByPage: {2: pageTwoCompleter},
+      );
+      final controller = FavoritesSectionController(
+        favoriteRepository: favoriteRepository,
+        appDataRepository: _FakeAppDataRepository(),
+      );
+
+      await controller.init();
+      final staleNextPageLoad = controller.loadNextPage();
+
+      pagedResultsByPage[1] = PagedFavoriteResumesResult(
+        items: [_favoriteResume(title: 'Atualizado', slug: 'atualizado')],
+        hasMore: false,
+      );
+
+      await controller.init();
+      pageTwoCompleter.complete(
+        PagedFavoriteResumesResult(
+          items: [_favoriteResume(title: 'Stale', slug: 'stale')],
+          hasMore: false,
+        ),
+      );
+      await staleNextPageLoad;
+
+      expect(
+        controller.favoritesStreamValue.value
+            ?.map((item) => item.title)
+            .toList(),
+        ['Atualizado'],
+      );
+      expect(controller.hasMoreFavoritesStreamValue.value, isFalse);
+      expect(favoriteRepository.requestedPageNumbers, [1, 2, 1]);
+
+      controller.onDispose();
+    },
+  );
+
+  test(
     'favorites section resolves canonical event target when the backend exposes an active event path',
     () async {
       final controller = FavoritesSectionController(
@@ -199,7 +515,7 @@ void main() {
   );
 
   test(
-    'favorites section falls back to canonical profile navigation when the snapshot only carries a past upcoming timestamp',
+    'favorites section falls back to canonical profile navigation when the occurrence state only carries a past upcoming timestamp',
     () async {
       final controller = FavoritesSectionController(
         favoriteRepository: _FakeFavoriteRepository(),
@@ -402,7 +718,7 @@ void main() {
   );
 
   test(
-    'favorites section derives halo state from snapshot-backed event state',
+    'favorites section derives halo state from occurrence-state event data',
     () async {
       final controller = FavoritesSectionController(
         favoriteRepository: _FakeFavoriteRepository(),
@@ -476,15 +792,24 @@ FavoriteResume _favoriteResume({
   );
 }
 
-class _FakeFavoriteRepository extends FavoriteRepositoryContract {
+class _FakeFavoriteRepository extends FavoriteRepositoryContract
+    with FavoriteRepositoryPagingMixin {
   _FakeFavoriteRepository({
     this.favoriteResumes = const <FavoriteResume>[],
+    this.pagedResultsByPage = const <int, PagedFavoriteResumesResult>{},
+    this.pagedResultCompletersByPage =
+        const <int, Completer<PagedFavoriteResumesResult>>{},
     this.failuresBeforeSuccess = 0,
   });
 
   List<FavoriteResume> favoriteResumes;
+  final Map<int, PagedFavoriteResumesResult> pagedResultsByPage;
+  final Map<int, Completer<PagedFavoriteResumesResult>>
+  pagedResultCompletersByPage;
   int fetchFavoriteResumesCallCount = 0;
+  int fetchFavoriteResumesPageCallCount = 0;
   int failuresBeforeSuccess;
+  final List<int> requestedPageNumbers = <int>[];
 
   @override
   Future<List<Favorite>> fetchFavorites() async => <Favorite>[];
@@ -497,6 +822,35 @@ class _FakeFavoriteRepository extends FavoriteRepositoryContract {
       throw StateError('favorite resumes unavailable');
     }
     return favoriteResumes;
+  }
+
+  @override
+  Future<PagedFavoriteResumesResult> fetchFavoriteResumesPage({
+    required int page,
+    required int pageSize,
+  }) async {
+    if (pagedResultsByPage.isEmpty && pagedResultCompletersByPage.isEmpty) {
+      return super.fetchFavoriteResumesPage(page: page, pageSize: pageSize);
+    }
+
+    fetchFavoriteResumesPageCallCount += 1;
+    requestedPageNumbers.add(page);
+
+    if (failuresBeforeSuccess > 0) {
+      failuresBeforeSuccess -= 1;
+      throw StateError('favorite resumes unavailable');
+    }
+
+    final completer = pagedResultCompletersByPage[page];
+    if (completer != null) {
+      return completer.future;
+    }
+
+    return pagedResultsByPage[page] ??
+        const PagedFavoriteResumesResult(
+          items: <FavoriteResume>[],
+          hasMore: false,
+        );
   }
 }
 

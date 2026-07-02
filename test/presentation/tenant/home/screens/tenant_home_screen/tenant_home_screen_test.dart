@@ -62,44 +62,63 @@ class _TestTenantHomeController extends MockTenantHomeController {
 
 class _TestFavoritesSectionController extends MockFavoritesSectionController {
   _TestFavoritesSectionController()
-      : _navigationTargetStreamValue =
-            StreamValue<FavoriteNavigationTarget?>(defaultValue: null);
+    : _navigationTargetStreamValue = StreamValue<FavoriteNavigationTarget?>(
+        defaultValue: null,
+      ),
+      _hasMoreFavoritesStreamValue = StreamValue<bool>(defaultValue: false),
+      _isPageLoadingStreamValue = StreamValue<bool>(defaultValue: false);
 
   final StreamValue<FavoriteNavigationTarget?> _navigationTargetStreamValue;
+  final StreamValue<bool> _hasMoreFavoritesStreamValue;
+  final StreamValue<bool> _isPageLoadingStreamValue;
 
   @override
   StreamValue<FavoriteNavigationTarget?> get navigationTargetStreamValue =>
       _navigationTargetStreamValue;
+
+  @override
+  StreamValue<bool> get hasMoreFavoritesStreamValue =>
+      _hasMoreFavoritesStreamValue;
+
+  @override
+  StreamValue<bool> get isPageLoadingStreamValue => _isPageLoadingStreamValue;
+
+  @override
+  Future<void> loadNextPage() async {}
 }
 
 class _TestTenantHomeAgendaController extends MockTenantHomeAgendaController {
   _TestTenantHomeAgendaController()
-      : _authUserStreamValue = StreamValue<UserContract?>(defaultValue: null),
-        _isRadiusActionCompactStreamValue =
-            StreamValue<bool>(defaultValue: false),
-        _isRadiusRefreshLoadingStreamValue =
-            StreamValue<bool>(defaultValue: false),
-        _discoveryFilterCatalogStreamValue =
-            StreamValue<DiscoveryFilterCatalog>(
-          defaultValue: const DiscoveryFilterCatalog(surface: 'home.events'),
-        ),
-        _discoveryFilterSelectionStreamValue =
-            StreamValue<DiscoveryFilterSelection>(
-          defaultValue: const DiscoveryFilterSelection(),
-        ),
-        _hasCanonicalDiscoveryFilterCatalogStreamValue =
-            StreamValue<bool>(defaultValue: true),
-        _isDiscoveryFilterCatalogLoadingStreamValue =
-            StreamValue<bool>(defaultValue: false),
-        _isDiscoveryFilterPanelVisibleStreamValue =
-            StreamValue<bool>(defaultValue: false);
+    : _authUserStreamValue = StreamValue<UserContract?>(defaultValue: null),
+      _isRadiusActionCompactStreamValue = StreamValue<bool>(
+        defaultValue: false,
+      ),
+      _isRadiusRefreshLoadingStreamValue = StreamValue<bool>(
+        defaultValue: false,
+      ),
+      _discoveryFilterCatalogStreamValue = StreamValue<DiscoveryFilterCatalog>(
+        defaultValue: const DiscoveryFilterCatalog(surface: 'home.events'),
+      ),
+      _discoveryFilterSelectionStreamValue =
+          StreamValue<DiscoveryFilterSelection>(
+            defaultValue: const DiscoveryFilterSelection(),
+          ),
+      _hasCanonicalDiscoveryFilterCatalogStreamValue = StreamValue<bool>(
+        defaultValue: true,
+      ),
+      _isDiscoveryFilterCatalogLoadingStreamValue = StreamValue<bool>(
+        defaultValue: false,
+      ),
+      _isDiscoveryFilterPanelVisibleStreamValue = StreamValue<bool>(
+        defaultValue: false,
+      );
 
   final StreamValue<UserContract?> _authUserStreamValue;
   final StreamValue<bool> _isRadiusActionCompactStreamValue;
   final StreamValue<bool> _isRadiusRefreshLoadingStreamValue;
   final StreamValue<DiscoveryFilterCatalog> _discoveryFilterCatalogStreamValue;
   final StreamValue<DiscoveryFilterSelection>
-      _discoveryFilterSelectionStreamValue;
+  _discoveryFilterSelectionStreamValue;
   final StreamValue<bool> _hasCanonicalDiscoveryFilterCatalogStreamValue;
   final StreamValue<bool> _isDiscoveryFilterCatalogLoadingStreamValue;
   final StreamValue<bool> _isDiscoveryFilterPanelVisibleStreamValue;
@@ -121,8 +140,8 @@ class _TestTenantHomeAgendaController extends MockTenantHomeAgendaController {
 
   @override
   StreamValue<DiscoveryFilterSelection>
-      get discoveryFilterSelectionStreamValue =>
-          _discoveryFilterSelectionStreamValue;
+  get discoveryFilterSelectionStreamValue =>
+      _discoveryFilterSelectionStreamValue;
 
   @override
   StreamValue<bool> get hasCanonicalDiscoveryFilterCatalogStreamValue =>
@@ -220,9 +239,7 @@ Widget _buildRoutedTenantHomeApp(
       config: AutoRoute(
         page: TenantHomeRoute.page,
         path: '/',
-        meta: canonicalRouteMeta(
-          family: CanonicalRouteFamily.tenantHome,
-        ),
+        meta: canonicalRouteMeta(family: CanonicalRouteFamily.tenantHome),
       ),
       segments: const <String>[],
       stringMatch: '/',
@@ -273,10 +290,12 @@ void main() {
 
     GetIt.I.registerSingleton<TenantHomeController>(mockController);
     GetIt.I.registerSingleton<TenantHomeAgendaController>(mockAgendaController);
-    GetIt.I
-        .registerSingleton<FavoritesSectionController>(mockFavoritesController);
+    GetIt.I.registerSingleton<FavoritesSectionController>(
+      mockFavoritesController,
+    );
     GetIt.I.registerSingleton<InvitesBannerBuilderController>(
-        mockInvitesBannerController);
+      mockInvitesBannerController,
+    );
     GetIt.I.registerSingleton<AppDataRepository>(mockAppDataRepository);
     GetIt.I.registerSingleton<AppData>(mockAppData);
 
@@ -291,14 +310,24 @@ void main() {
     mockito
         .when(mockAppData.mainIconLightUrl)
         .thenReturn(IconUrlValue()..parse('http://example.com/icon.png'));
-    mockito.when(mockAppData.mainLogoLightUrl).thenReturn(
-        MainLogoUrlValue()..parse('http://example.com/logo-light.png'));
-    mockito.when(mockAppData.mainLogoDarkUrl).thenReturn(
-        MainLogoUrlValue()..parse('http://example.com/logo-dark.png'));
-    mockito.when(mockAppDataRepository.maxRadiusMetersStreamValue).thenReturn(
+    mockito
+        .when(mockAppData.mainLogoLightUrl)
+        .thenReturn(
+          MainLogoUrlValue()..parse('http://example.com/logo-light.png'),
+        );
+    mockito
+        .when(mockAppData.mainLogoDarkUrl)
+        .thenReturn(
+          MainLogoUrlValue()..parse('http://example.com/logo-dark.png'),
+        );
+    mockito
+        .when(mockAppDataRepository.maxRadiusMetersStreamValue)
+        .thenReturn(
           StreamValue<DistanceInMetersValue>(
-            defaultValue:
-                DistanceInMetersValue.fromRaw(5000, defaultValue: 5000),
+            defaultValue: DistanceInMetersValue.fromRaw(
+              5000,
+              defaultValue: 5000,
+            ),
           ),
         );
 
@@ -307,7 +336,9 @@ void main() {
         .when(mockFavoritesController.favoritesStreamValue)
         .thenReturn(StreamValue<List<FavoriteResume>?>(defaultValue: []));
     mockito.when(mockFavoritesController.init()).thenAnswer((_) async {});
-    mockito.when(mockFavoritesController.buildPinnedFavorite()).thenReturn(
+    mockito
+        .when(mockFavoritesController.buildPinnedFavorite())
+        .thenReturn(
           FavoriteResume(
             titleValue: TitleValue()..parse('Pinned'),
             assetPathValue: AssetPathValue()
@@ -320,11 +351,14 @@ void main() {
         .thenReturn(StreamValue<List<InviteModel>>(defaultValue: const []));
     mockito
         .when(
-            mockInvitesBannerController.isPendingInvitesDisplayReadyStreamValue)
+          mockInvitesBannerController.isPendingInvitesDisplayReadyStreamValue,
+        )
         .thenReturn(StreamValue<bool>(defaultValue: false));
 
     // Stub Home Controller
-    mockito.when(mockController.homeLocationStatusStreamValue).thenReturn(
+    mockito
+        .when(mockController.homeLocationStatusStreamValue)
+        .thenReturn(
           StreamValue<HomeLocationStatusState?>(
             defaultValue: const HomeLocationStatusState(
               statusText: 'Usando sua localização.',
@@ -373,7 +407,9 @@ void main() {
     mockito
         .when(mockAgendaController.hasMoreStreamValue)
         .thenReturn(StreamValue<bool>(defaultValue: false));
-    mockito.when(mockAgendaController.displayStateStreamValue).thenReturn(
+    mockito
+        .when(mockAgendaController.displayStateStreamValue)
+        .thenReturn(
           StreamValue<TenantHomeAgendaDisplayState?>(
             defaultValue: TenantHomeAgendaDisplayState(events: []),
           ),
@@ -383,8 +419,11 @@ void main() {
         .thenReturn(TextEditingController());
     mockito.when(mockAgendaController.focusNode).thenReturn(FocusNode());
     mockito
-        .when(mockAgendaController.init(
-            startWithHistory: mockito.anyNamed('startWithHistory')))
+        .when(
+          mockAgendaController.init(
+            startWithHistory: mockito.anyNamed('startWithHistory'),
+          ),
+        )
         .thenAnswer((_) async {});
     mockito
         .when(mockAgendaController.setInviteFilter(mockito.any))
@@ -406,10 +445,7 @@ void main() {
 
   tearDown(() async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(
-      SystemChannels.platform,
-      null,
-    );
+        .setMockMethodCallHandler(SystemChannels.platform, null);
     testScrollController.dispose();
     await GetIt.I.reset();
   });
@@ -424,16 +460,14 @@ void main() {
       startDateTime: now.add(const Duration(hours: 2)),
       location: 'Local do Evento Teste Longo',
     );
-    mockito.when(mockController.myEventsFilteredStreamValue).thenReturn(
-          StreamValue<List<VenueEventResume>>(defaultValue: [event]),
-        );
+    mockito
+        .when(mockController.myEventsFilteredStreamValue)
+        .thenReturn(StreamValue<List<VenueEventResume>>(defaultValue: [event]));
     final mockRouter = MockStackRouter();
     _stubMockRouterRoot(mockRouter);
     mockito.when(mockRouter.push(mockito.any)).thenAnswer((_) async => null);
 
-    await tester.pumpWidget(
-      _buildRoutedTenantHomeApp(mockRouter),
-    );
+    await tester.pumpWidget(_buildRoutedTenantHomeApp(mockRouter));
     await tester.pump();
 
     // Verify AppBar
@@ -460,42 +494,41 @@ void main() {
   });
 
   testWidgets(
-      'tenant home agenda header compacts radius action from agenda controller stream',
-      (tester) async {
-    final mockRouter = MockStackRouter();
-    _stubMockRouterRoot(mockRouter);
-    mockito.when(mockRouter.push(mockito.any)).thenAnswer((_) async => null);
+    'tenant home agenda header compacts radius action from agenda controller stream',
+    (tester) async {
+      final mockRouter = MockStackRouter();
+      _stubMockRouterRoot(mockRouter);
+      mockito.when(mockRouter.push(mockito.any)).thenAnswer((_) async => null);
 
-    await tester.pumpWidget(
-      _buildRoutedTenantHomeApp(mockRouter),
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(_buildRoutedTenantHomeApp(mockRouter));
+      await tester.pumpAndSettle();
 
-    expect(
-      find.byKey(const ValueKey<String>('agenda-radius-expanded')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const ValueKey<String>('agenda-radius-compact')),
-      findsNothing,
-    );
+      expect(
+        find.byKey(const ValueKey<String>('agenda-radius-expanded')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey<String>('agenda-radius-compact')),
+        findsNothing,
+      );
 
-    mockAgendaController.setRadiusActionCompactState(true);
-    await tester.pumpAndSettle();
+      mockAgendaController.setRadiusActionCompactState(true);
+      await tester.pumpAndSettle();
 
-    expect(
-      find.byKey(const ValueKey<String>('agenda-radius-compact')),
-      findsOneWidget,
-    );
+      expect(
+        find.byKey(const ValueKey<String>('agenda-radius-compact')),
+        findsOneWidget,
+      );
 
-    mockAgendaController.setRadiusActionCompactState(false);
-    await tester.pumpAndSettle();
+      mockAgendaController.setRadiusActionCompactState(false);
+      await tester.pumpAndSettle();
 
-    expect(
-      find.byKey(const ValueKey<String>('agenda-radius-expanded')),
-      findsOneWidget,
-    );
-  });
+      expect(
+        find.byKey(const ValueKey<String>('agenda-radius-expanded')),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('taps My Events card and pushes detail route', (tester) async {
     final now = DateTime.now();
@@ -508,17 +541,15 @@ void main() {
       location: 'Local do Evento Teste Longo',
       selectedOccurrenceId: 'occ-home-2',
     );
-    mockito.when(mockController.myEventsFilteredStreamValue).thenReturn(
-          StreamValue<List<VenueEventResume>>(defaultValue: [event]),
-        );
+    mockito
+        .when(mockController.myEventsFilteredStreamValue)
+        .thenReturn(StreamValue<List<VenueEventResume>>(defaultValue: [event]));
 
     final mockRouter = MockStackRouter();
     _stubMockRouterRoot(mockRouter);
     mockito.when(mockRouter.push(mockito.any)).thenAnswer((_) async => null);
 
-    await tester.pumpWidget(
-      _buildRoutedTenantHomeApp(mockRouter),
-    );
+    await tester.pumpWidget(_buildRoutedTenantHomeApp(mockRouter));
 
     await tester.pump();
 
@@ -527,18 +558,18 @@ void main() {
     await tester.tap(cardFinder);
     await tester.pump();
 
-    final pushedRoute = mockito
-        .verify(mockRouter.push(mockito.captureAny))
-        .captured
-        .single as ImmersiveEventDetailRoute;
+    final pushedRoute =
+        mockito.verify(mockRouter.push(mockito.captureAny)).captured.single
+            as ImmersiveEventDetailRoute;
     expect(pushedRoute.args?.eventSlug, 'event-1');
     expect(pushedRoute.args?.occurrenceId, 'occ-home-2');
     expect(pushedRoute.rawQueryParams['occurrence'], 'occ-home-2');
     expect(pushedRoute.rawQueryParams['tab'], isNull);
   });
 
-  testWidgets('renders pending invites banner when pending invites exist',
-      (tester) async {
+  testWidgets('renders pending invites banner when pending invites exist', (
+    tester,
+  ) async {
     final pendingInviteStream = StreamValue<List<InviteModel>>(
       defaultValue: [
         buildInviteModelFromPrimitives(
@@ -560,24 +591,26 @@ void main() {
         .thenReturn(pendingInviteStream);
     mockito
         .when(
-            mockInvitesBannerController.isPendingInvitesDisplayReadyStreamValue)
+          mockInvitesBannerController.isPendingInvitesDisplayReadyStreamValue,
+        )
         .thenReturn(StreamValue<bool>(defaultValue: true));
 
     final mockRouter = MockStackRouter();
     _stubMockRouterRoot(mockRouter);
     mockito.when(mockRouter.push(mockito.any)).thenAnswer((_) async => null);
 
-    await tester.pumpWidget(
-      _buildRoutedTenantHomeApp(mockRouter),
-    );
+    await tester.pumpWidget(_buildRoutedTenantHomeApp(mockRouter));
     await tester.pump();
 
     expect(find.text('Voce tem 1 convites pendentes'), findsOneWidget);
   });
 
-  testWidgets('tapping home location status opens explanatory dialog',
-      (tester) async {
-    mockito.when(mockController.homeLocationStatusStreamValue).thenReturn(
+  testWidgets('tapping home location status opens explanatory dialog', (
+    tester,
+  ) async {
+    mockito
+        .when(mockController.homeLocationStatusStreamValue)
+        .thenReturn(
           StreamValue<HomeLocationStatusState?>(
             defaultValue: const HomeLocationStatusState(
               statusText: 'Usando localização fixa.',
@@ -591,9 +624,7 @@ void main() {
     _stubMockRouterRoot(mockRouter);
     mockito.when(mockRouter.maybePop()).thenAnswer((_) async => true);
 
-    await tester.pumpWidget(
-      _buildRoutedTenantHomeApp(mockRouter),
-    );
+    await tester.pumpWidget(_buildRoutedTenantHomeApp(mockRouter));
     await tester.pump();
 
     await tester.tap(find.text('Usando localização fixa.'));
@@ -604,103 +635,103 @@ void main() {
   });
 
   testWidgets(
-      'tenant home system back consumes scroll position before pop or exit',
-      (tester) async {
-    final router = _RecordingBackRouter(canPopResult: false);
+    'tenant home system back consumes scroll position before pop or exit',
+    (tester) async {
+      final router = _RecordingBackRouter(canPopResult: false);
 
-    await tester.pumpWidget(
-      _buildRoutedTenantHomeApp(router),
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(_buildRoutedTenantHomeApp(router));
+      await tester.pumpAndSettle();
 
-    testScrollController.jumpTo(120);
-    await tester.pump();
+      testScrollController.jumpTo(120);
+      await tester.pump();
 
-    final popScope = tester.widget<PopScope<dynamic>>(
-      find.byWidgetPredicate((widget) => widget is PopScope),
-    );
-    popScope.onPopInvokedWithResult?.call(false, null);
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 350));
-    await tester.pumpAndSettle();
+      final popScope = tester.widget<PopScope<dynamic>>(
+        find.byWidgetPredicate((widget) => widget is PopScope),
+      );
+      popScope.onPopInvokedWithResult?.call(false, null);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
 
-    expect(testScrollController.offset, 0);
-    expect(router.canPopCallCount, 0);
-    expect(router.popCallCount, 0);
-    expect(find.text('Sair do app?'), findsNothing);
-  });
+      expect(testScrollController.offset, 0);
+      expect(router.canPopCallCount, 0);
+      expect(router.popCallCount, 0);
+      expect(find.text('Sair do app?'), findsNothing);
+    },
+  );
 
   testWidgets(
-      'tenant home system back opens exit confirmation when root-opened without history',
-      (tester) async {
-    final navigatorKey = GlobalKey<NavigatorState>();
-    final router = _RecordingBackRouter(
-      canPopResult: false,
-      navigatorKey: navigatorKey,
-    );
+    'tenant home system back opens exit confirmation when root-opened without history',
+    (tester) async {
+      final navigatorKey = GlobalKey<NavigatorState>();
+      final router = _RecordingBackRouter(
+        canPopResult: false,
+        navigatorKey: navigatorKey,
+      );
 
-    await tester.pumpWidget(
-      _buildRoutedTenantHomeApp(router, navigatorKey: navigatorKey),
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        _buildRoutedTenantHomeApp(router, navigatorKey: navigatorKey),
+      );
+      await tester.pumpAndSettle();
 
-    final popScope = tester.widget<PopScope<dynamic>>(
-      find.byWidgetPredicate((widget) => widget is PopScope),
-    );
-    popScope.onPopInvokedWithResult?.call(false, null);
-    await tester.pumpAndSettle();
+      final popScope = tester.widget<PopScope<dynamic>>(
+        find.byWidgetPredicate((widget) => widget is PopScope),
+      );
+      popScope.onPopInvokedWithResult?.call(false, null);
+      await tester.pumpAndSettle();
 
-    expect(router.canPopCallCount, 1);
-    expect(router.popCallCount, 0);
-    expect(find.text('Sair do app?'), findsOneWidget);
-    expect(find.text('Deseja fechar o aplicativo agora?'), findsOneWidget);
+      expect(router.canPopCallCount, 1);
+      expect(router.popCallCount, 0);
+      expect(find.text('Sair do app?'), findsOneWidget);
+      expect(find.text('Deseja fechar o aplicativo agora?'), findsOneWidget);
 
-    await tester.tap(find.text('Cancelar'));
-    await tester.pumpAndSettle();
-    expect(find.text('Sair do app?'), findsNothing);
-  });
+      await tester.tap(find.text('Cancelar'));
+      await tester.pumpAndSettle();
+      expect(find.text('Sair do app?'), findsNothing);
+    },
+  );
 
-  testWidgets('tenant home exit confirmation delegates to SystemNavigator.pop',
-      (tester) async {
-    final navigatorKey = GlobalKey<NavigatorState>();
-    final router = _RecordingBackRouter(
-      canPopResult: false,
-      navigatorKey: navigatorKey,
-    );
-    var systemPopCallCount = 0;
+  testWidgets(
+    'tenant home exit confirmation delegates to SystemNavigator.pop',
+    (tester) async {
+      final navigatorKey = GlobalKey<NavigatorState>();
+      final router = _RecordingBackRouter(
+        canPopResult: false,
+        navigatorKey: navigatorKey,
+      );
+      var systemPopCallCount = 0;
 
-    await tester.pumpWidget(
-      _buildRoutedTenantHomeApp(router, navigatorKey: navigatorKey),
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        _buildRoutedTenantHomeApp(router, navigatorKey: navigatorKey),
+      );
+      await tester.pumpAndSettle();
 
-    final popScope = tester.widget<PopScope<dynamic>>(
-      find.byWidgetPredicate((widget) => widget is PopScope),
-    );
-    popScope.onPopInvokedWithResult?.call(false, null);
-    await tester.pumpAndSettle();
+      final popScope = tester.widget<PopScope<dynamic>>(
+        find.byWidgetPredicate((widget) => widget is PopScope),
+      );
+      popScope.onPopInvokedWithResult?.call(false, null);
+      await tester.pumpAndSettle();
 
-    expect(find.text('Sair'), findsOneWidget);
+      expect(find.text('Sair'), findsOneWidget);
 
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(
-      SystemChannels.platform,
-      (call) async {
-        if (call.method == 'SystemNavigator.pop') {
-          systemPopCallCount += 1;
-        }
-        return null;
-      },
-    );
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+            if (call.method == 'SystemNavigator.pop') {
+              systemPopCallCount += 1;
+            }
+            return null;
+          });
 
-    await tester.tap(find.text('Sair'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('Sair'));
+      await tester.pumpAndSettle();
 
-    expect(systemPopCallCount, 1);
-  });
+      expect(systemPopCallCount, 1);
+    },
+  );
 
-  testWidgets('tenant home system back pops when previous history exists',
-      (tester) async {
+  testWidgets('tenant home system back pops when previous history exists', (
+    tester,
+  ) async {
     final navigatorKey = GlobalKey<NavigatorState>();
     final router = _RecordingBackRouter(
       canPopResult: true,

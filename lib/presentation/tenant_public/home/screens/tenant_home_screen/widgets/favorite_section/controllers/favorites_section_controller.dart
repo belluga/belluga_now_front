@@ -28,6 +28,10 @@ class FavoritesSectionController implements Disposable {
 
   StreamValue<List<FavoriteResume>?> get favoritesStreamValue =>
       _favoriteRepository.favoriteResumesStreamValue;
+  StreamValue<bool> get hasMoreFavoritesStreamValue =>
+      _favoriteRepository.hasMoreFavoriteResumesStreamValue;
+  StreamValue<bool> get isPageLoadingStreamValue =>
+      _favoriteRepository.isFavoriteResumesPageLoadingStreamValue;
   final StreamValue<FavoriteNavigationTarget?> navigationTargetStreamValue =
       StreamValue<FavoriteNavigationTarget?>(defaultValue: null);
 
@@ -38,6 +42,10 @@ class FavoritesSectionController implements Disposable {
     }
 
     await _favoriteRepository.refreshFavoriteResumes();
+  }
+
+  Future<void> loadNextPage() async {
+    await _favoriteRepository.loadNextFavoriteResumesPage();
   }
 
   FavoriteResume buildPinnedFavorite() {

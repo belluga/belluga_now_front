@@ -9,15 +9,22 @@ import 'package:stream_value/core/stream_value.dart';
 export 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_batch_terms_repository_contract.dart';
 export 'package:belluga_now/domain/repositories/value_objects/tenant_admin_taxonomies_repository_contract_values.dart';
 
-typedef TenantAdminTaxRepoString
-    = TenantAdminTaxonomiesRepositoryContractTextValue;
+typedef TenantAdminTaxRepoString =
+    TenantAdminTaxonomiesRepositoryContractTextValue;
 typedef TenantAdminTaxRepoInt = TenantAdminTaxonomiesRepositoryContractIntValue;
-typedef TenantAdminTaxRepoBool
-    = TenantAdminTaxonomiesRepositoryContractBoolValue;
+typedef TenantAdminTaxRepoBool =
+    TenantAdminTaxonomiesRepositoryContractBoolValue;
+
+abstract class TenantAdminTaxonomiesScopedLookupRepositoryContract {
+  Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomiesBySlugs({
+    required List<TenantAdminTaxRepoString> slugs,
+    TenantAdminTaxRepoString? appliesTo,
+  });
+}
 
 abstract class TenantAdminTaxonomiesRepositoryContract {
   static final Expando<_TenantAdminTaxonomiesPaginationState>
-      _paginationStateByRepository =
+  _paginationStateByRepository =
       Expando<_TenantAdminTaxonomiesPaginationState>();
 
   _TenantAdminTaxonomiesPaginationState get _paginationState =>
@@ -49,29 +56,20 @@ abstract class TenantAdminTaxonomiesRepositoryContract {
       _paginationState.termsErrorStreamValue;
 
   Future<void> loadTaxonomies({TenantAdminTaxRepoInt? pageSize}) async {
-    final effectivePageSize = pageSize ??
-        tenantAdminTaxRepoInt(
-          20,
-          defaultValue: 20,
-        );
+    final effectivePageSize =
+        pageSize ?? tenantAdminTaxRepoInt(20, defaultValue: 20);
     await _waitForTaxonomiesFetch();
     _resetTaxonomiesPagination();
     taxonomiesStreamValue.addValue(null);
     await _fetchTaxonomiesPage(
-      page: tenantAdminTaxRepoInt(
-        1,
-        defaultValue: 1,
-      ),
+      page: tenantAdminTaxRepoInt(1, defaultValue: 1),
       pageSize: effectivePageSize,
     );
   }
 
   Future<void> loadNextTaxonomiesPage({TenantAdminTaxRepoInt? pageSize}) async {
-    final effectivePageSize = pageSize ??
-        tenantAdminTaxRepoInt(
-          20,
-          defaultValue: 20,
-        );
+    final effectivePageSize =
+        pageSize ?? tenantAdminTaxRepoInt(20, defaultValue: 20);
     if (_paginationState.isFetchingTaxonomiesPage.value ||
         !_paginationState.hasMoreTaxonomies.value) {
       return;
@@ -86,11 +84,8 @@ abstract class TenantAdminTaxonomiesRepositoryContract {
   }
 
   Future<void> loadAllTaxonomies({TenantAdminTaxRepoInt? pageSize}) async {
-    final effectivePageSize = pageSize ??
-        tenantAdminTaxRepoInt(
-          50,
-          defaultValue: 50,
-        );
+    final effectivePageSize =
+        pageSize ?? tenantAdminTaxRepoInt(50, defaultValue: 50);
     await loadTaxonomies(pageSize: effectivePageSize);
     var safetyCounter = 0;
     while (hasMoreTaxonomiesStreamValue.value.value && safetyCounter < 200) {
@@ -107,7 +102,7 @@ abstract class TenantAdminTaxonomiesRepositoryContract {
 
   Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies();
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
-      fetchTaxonomiesPage({
+  fetchTaxonomiesPage({
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
   }) async {
@@ -153,7 +148,7 @@ abstract class TenantAdminTaxonomiesRepositoryContract {
   });
 
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
-      fetchTermsPage({
+  fetchTermsPage({
     required TenantAdminTaxRepoString taxonomyId,
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
@@ -189,31 +184,22 @@ abstract class TenantAdminTaxonomiesRepositoryContract {
     required TenantAdminTaxRepoString taxonomyId,
     TenantAdminTaxRepoInt? pageSize,
   }) async {
-    final effectivePageSize = pageSize ??
-        tenantAdminTaxRepoInt(
-          20,
-          defaultValue: 20,
-        );
+    final effectivePageSize =
+        pageSize ?? tenantAdminTaxRepoInt(20, defaultValue: 20);
     _paginationState.activeTaxonomyId = taxonomyId;
     await _waitForTermsFetch();
     _resetTermsPagination();
     termsStreamValue.addValue(null);
     await _fetchTermsPage(
       taxonomyId: taxonomyId,
-      page: tenantAdminTaxRepoInt(
-        1,
-        defaultValue: 1,
-      ),
+      page: tenantAdminTaxRepoInt(1, defaultValue: 1),
       pageSize: effectivePageSize,
     );
   }
 
   Future<void> loadNextTermsPage({TenantAdminTaxRepoInt? pageSize}) async {
-    final effectivePageSize = pageSize ??
-        tenantAdminTaxRepoInt(
-          20,
-          defaultValue: 20,
-        );
+    final effectivePageSize =
+        pageSize ?? tenantAdminTaxRepoInt(20, defaultValue: 20);
     final taxonomyId = _paginationState.activeTaxonomyId;
     if (taxonomyId == null ||
         taxonomyId.value.isEmpty ||
@@ -235,11 +221,8 @@ abstract class TenantAdminTaxonomiesRepositoryContract {
     required TenantAdminTaxRepoString taxonomyId,
     TenantAdminTaxRepoInt? pageSize,
   }) async {
-    final effectivePageSize = pageSize ??
-        tenantAdminTaxRepoInt(
-          50,
-          defaultValue: 50,
-        );
+    final effectivePageSize =
+        pageSize ?? tenantAdminTaxRepoInt(50, defaultValue: 50);
     await loadTerms(taxonomyId: taxonomyId, pageSize: effectivePageSize);
     var safetyCounter = 0;
     while (hasMoreTermsStreamValue.value.value && safetyCounter < 200) {
@@ -285,17 +268,11 @@ abstract class TenantAdminTaxonomiesRepositoryContract {
     );
     if (page.value > 1) {
       isTaxonomiesPageLoadingStreamValue.addValue(
-        tenantAdminTaxRepoBool(
-          true,
-          defaultValue: true,
-        ),
+        tenantAdminTaxRepoBool(true, defaultValue: true),
       );
     }
     try {
-      final result = await fetchTaxonomiesPage(
-        page: page,
-        pageSize: pageSize,
-      );
+      final result = await fetchTaxonomiesPage(page: page, pageSize: pageSize);
       if (page.value == 1) {
         _paginationState.cachedTaxonomies
           ..clear()
@@ -308,9 +285,7 @@ abstract class TenantAdminTaxonomiesRepositoryContract {
         result.hasMore,
         defaultValue: true,
       );
-      hasMoreTaxonomiesStreamValue.addValue(
-        _paginationState.hasMoreTaxonomies,
-      );
+      hasMoreTaxonomiesStreamValue.addValue(_paginationState.hasMoreTaxonomies);
       taxonomiesStreamValue.addValue(
         List<TenantAdminTaxonomyDefinition>.unmodifiable(
           _paginationState.cachedTaxonomies,
@@ -330,10 +305,7 @@ abstract class TenantAdminTaxonomiesRepositoryContract {
         defaultValue: false,
       );
       isTaxonomiesPageLoadingStreamValue.addValue(
-        tenantAdminTaxRepoBool(
-          false,
-          defaultValue: false,
-        ),
+        tenantAdminTaxRepoBool(false, defaultValue: false),
       );
     }
   }
@@ -353,16 +325,10 @@ abstract class TenantAdminTaxonomiesRepositoryContract {
       defaultValue: false,
     );
     hasMoreTaxonomiesStreamValue.addValue(
-      tenantAdminTaxRepoBool(
-        true,
-        defaultValue: true,
-      ),
+      tenantAdminTaxRepoBool(true, defaultValue: true),
     );
     isTaxonomiesPageLoadingStreamValue.addValue(
-      tenantAdminTaxRepoBool(
-        false,
-        defaultValue: false,
-      ),
+      tenantAdminTaxRepoBool(false, defaultValue: false),
     );
   }
 
@@ -386,10 +352,7 @@ abstract class TenantAdminTaxonomiesRepositoryContract {
     );
     if (page.value > 1) {
       isTermsPageLoadingStreamValue.addValue(
-        tenantAdminTaxRepoBool(
-          true,
-          defaultValue: true,
-        ),
+        tenantAdminTaxRepoBool(true, defaultValue: true),
       );
     }
     try {
@@ -430,10 +393,7 @@ abstract class TenantAdminTaxonomiesRepositoryContract {
         defaultValue: false,
       );
       isTermsPageLoadingStreamValue.addValue(
-        tenantAdminTaxRepoBool(
-          false,
-          defaultValue: false,
-        ),
+        tenantAdminTaxRepoBool(false, defaultValue: false),
       );
     }
   }
@@ -453,16 +413,10 @@ abstract class TenantAdminTaxonomiesRepositoryContract {
       defaultValue: false,
     );
     hasMoreTermsStreamValue.addValue(
-      tenantAdminTaxRepoBool(
-        true,
-        defaultValue: true,
-      ),
+      tenantAdminTaxRepoBool(true, defaultValue: true),
     );
     isTermsPageLoadingStreamValue.addValue(
-      tenantAdminTaxRepoBool(
-        false,
-        defaultValue: false,
-      ),
+      tenantAdminTaxRepoBool(false, defaultValue: false),
     );
   }
 }
@@ -470,7 +424,8 @@ abstract class TenantAdminTaxonomiesRepositoryContract {
 extension TenantAdminTaxonomiesRepositoryLookup
     on TenantAdminTaxonomiesRepositoryContract {
   Future<TenantAdminTaxonomyDefinition> fetchTaxonomy(
-      TenantAdminTaxRepoString taxonomyId) async {
+    TenantAdminTaxRepoString taxonomyId,
+  ) async {
     final normalizedId = taxonomyId.value.trim();
     if (normalizedId.isEmpty) {
       throw ArgumentError.value(
@@ -533,7 +488,7 @@ extension TenantAdminTaxonomiesRepositoryLookup
 mixin TenantAdminTaxonomiesPaginationMixin
     implements TenantAdminTaxonomiesRepositoryContract {
   static final Expando<_TenantAdminTaxonomiesPaginationState>
-      _paginationStateByRepository =
+  _paginationStateByRepository =
       Expando<_TenantAdminTaxonomiesPaginationState>();
 
   @override
@@ -575,30 +530,21 @@ mixin TenantAdminTaxonomiesPaginationMixin
 
   @override
   Future<void> loadTaxonomies({TenantAdminTaxRepoInt? pageSize}) async {
-    final effectivePageSize = pageSize ??
-        tenantAdminTaxRepoInt(
-          20,
-          defaultValue: 20,
-        );
+    final effectivePageSize =
+        pageSize ?? tenantAdminTaxRepoInt(20, defaultValue: 20);
     await _waitForTaxonomiesFetch();
     _resetTaxonomiesPagination();
     taxonomiesStreamValue.addValue(null);
     await _fetchTaxonomiesPage(
-      page: tenantAdminTaxRepoInt(
-        1,
-        defaultValue: 1,
-      ),
+      page: tenantAdminTaxRepoInt(1, defaultValue: 1),
       pageSize: effectivePageSize,
     );
   }
 
   @override
   Future<void> loadNextTaxonomiesPage({TenantAdminTaxRepoInt? pageSize}) async {
-    final effectivePageSize = pageSize ??
-        tenantAdminTaxRepoInt(
-          20,
-          defaultValue: 20,
-        );
+    final effectivePageSize =
+        pageSize ?? tenantAdminTaxRepoInt(20, defaultValue: 20);
     if (_paginationState.isFetchingTaxonomiesPage.value ||
         !_paginationState.hasMoreTaxonomies.value) {
       return;
@@ -614,11 +560,8 @@ mixin TenantAdminTaxonomiesPaginationMixin
 
   @override
   Future<void> loadAllTaxonomies({TenantAdminTaxRepoInt? pageSize}) async {
-    final effectivePageSize = pageSize ??
-        tenantAdminTaxRepoInt(
-          50,
-          defaultValue: 50,
-        );
+    final effectivePageSize =
+        pageSize ?? tenantAdminTaxRepoInt(50, defaultValue: 50);
     await loadTaxonomies(pageSize: effectivePageSize);
     var safetyCounter = 0;
     while (hasMoreTaxonomiesStreamValue.value.value && safetyCounter < 200) {
@@ -639,32 +582,23 @@ mixin TenantAdminTaxonomiesPaginationMixin
     required TenantAdminTaxRepoString taxonomyId,
     TenantAdminTaxRepoInt? pageSize,
   }) async {
-    final effectivePageSize = pageSize ??
-        tenantAdminTaxRepoInt(
-          20,
-          defaultValue: 20,
-        );
+    final effectivePageSize =
+        pageSize ?? tenantAdminTaxRepoInt(20, defaultValue: 20);
     _paginationState.activeTaxonomyId = taxonomyId;
     await _waitForTermsFetch();
     _resetTermsPagination();
     termsStreamValue.addValue(null);
     await _fetchTermsPage(
       taxonomyId: taxonomyId,
-      page: tenantAdminTaxRepoInt(
-        1,
-        defaultValue: 1,
-      ),
+      page: tenantAdminTaxRepoInt(1, defaultValue: 1),
       pageSize: effectivePageSize,
     );
   }
 
   @override
   Future<void> loadNextTermsPage({TenantAdminTaxRepoInt? pageSize}) async {
-    final effectivePageSize = pageSize ??
-        tenantAdminTaxRepoInt(
-          20,
-          defaultValue: 20,
-        );
+    final effectivePageSize =
+        pageSize ?? tenantAdminTaxRepoInt(20, defaultValue: 20);
     final taxonomyId = _paginationState.activeTaxonomyId;
     if (taxonomyId == null ||
         taxonomyId.value.isEmpty ||
@@ -687,11 +621,8 @@ mixin TenantAdminTaxonomiesPaginationMixin
     required TenantAdminTaxRepoString taxonomyId,
     TenantAdminTaxRepoInt? pageSize,
   }) async {
-    final effectivePageSize = pageSize ??
-        tenantAdminTaxRepoInt(
-          50,
-          defaultValue: 50,
-        );
+    final effectivePageSize =
+        pageSize ?? tenantAdminTaxRepoInt(50, defaultValue: 50);
     await loadTerms(taxonomyId: taxonomyId, pageSize: effectivePageSize);
     var safetyCounter = 0;
     while (hasMoreTermsStreamValue.value.value && safetyCounter < 200) {
@@ -729,17 +660,11 @@ mixin TenantAdminTaxonomiesPaginationMixin
     );
     if (page.value > 1) {
       isTaxonomiesPageLoadingStreamValue.addValue(
-        tenantAdminTaxRepoBool(
-          true,
-          defaultValue: true,
-        ),
+        tenantAdminTaxRepoBool(true, defaultValue: true),
       );
     }
     try {
-      final result = await fetchTaxonomiesPage(
-        page: page,
-        pageSize: pageSize,
-      );
+      final result = await fetchTaxonomiesPage(page: page, pageSize: pageSize);
       if (page.value == 1) {
         _paginationState.cachedTaxonomies
           ..clear()
@@ -752,9 +677,7 @@ mixin TenantAdminTaxonomiesPaginationMixin
         result.hasMore,
         defaultValue: true,
       );
-      hasMoreTaxonomiesStreamValue.addValue(
-        _paginationState.hasMoreTaxonomies,
-      );
+      hasMoreTaxonomiesStreamValue.addValue(_paginationState.hasMoreTaxonomies);
       taxonomiesStreamValue.addValue(
         List<TenantAdminTaxonomyDefinition>.unmodifiable(
           _paginationState.cachedTaxonomies,
@@ -774,10 +697,7 @@ mixin TenantAdminTaxonomiesPaginationMixin
         defaultValue: false,
       );
       isTaxonomiesPageLoadingStreamValue.addValue(
-        tenantAdminTaxRepoBool(
-          false,
-          defaultValue: false,
-        ),
+        tenantAdminTaxRepoBool(false, defaultValue: false),
       );
     }
   }
@@ -798,16 +718,10 @@ mixin TenantAdminTaxonomiesPaginationMixin
       defaultValue: false,
     );
     hasMoreTaxonomiesStreamValue.addValue(
-      tenantAdminTaxRepoBool(
-        true,
-        defaultValue: true,
-      ),
+      tenantAdminTaxRepoBool(true, defaultValue: true),
     );
     isTaxonomiesPageLoadingStreamValue.addValue(
-      tenantAdminTaxRepoBool(
-        false,
-        defaultValue: false,
-      ),
+      tenantAdminTaxRepoBool(false, defaultValue: false),
     );
   }
 
@@ -833,10 +747,7 @@ mixin TenantAdminTaxonomiesPaginationMixin
     );
     if (page.value > 1) {
       isTermsPageLoadingStreamValue.addValue(
-        tenantAdminTaxRepoBool(
-          true,
-          defaultValue: true,
-        ),
+        tenantAdminTaxRepoBool(true, defaultValue: true),
       );
     }
     try {
@@ -877,10 +788,7 @@ mixin TenantAdminTaxonomiesPaginationMixin
         defaultValue: false,
       );
       isTermsPageLoadingStreamValue.addValue(
-        tenantAdminTaxRepoBool(
-          false,
-          defaultValue: false,
-        ),
+        tenantAdminTaxRepoBool(false, defaultValue: false),
       );
     }
   }
@@ -901,16 +809,10 @@ mixin TenantAdminTaxonomiesPaginationMixin
       defaultValue: false,
     );
     hasMoreTermsStreamValue.addValue(
-      tenantAdminTaxRepoBool(
-        true,
-        defaultValue: true,
-      ),
+      tenantAdminTaxRepoBool(true, defaultValue: true),
     );
     isTermsPageLoadingStreamValue.addValue(
-      tenantAdminTaxRepoBool(
-        false,
-        defaultValue: false,
-      ),
+      tenantAdminTaxRepoBool(false, defaultValue: false),
     );
   }
 }
@@ -921,40 +823,27 @@ class _TenantAdminTaxonomiesPaginationState {
   final List<TenantAdminTaxonomyTermDefinition> cachedTerms =
       <TenantAdminTaxonomyTermDefinition>[];
   final StreamValue<List<TenantAdminTaxonomyDefinition>?>
-      taxonomiesStreamValue =
-      StreamValue<List<TenantAdminTaxonomyDefinition>?>();
+  taxonomiesStreamValue = StreamValue<List<TenantAdminTaxonomyDefinition>?>();
   final StreamValue<TenantAdminTaxRepoBool> hasMoreTaxonomiesStreamValue =
       StreamValue<TenantAdminTaxRepoBool>(
-    defaultValue: tenantAdminTaxRepoBool(
-      true,
-      defaultValue: true,
-    ),
-  );
+        defaultValue: tenantAdminTaxRepoBool(true, defaultValue: true),
+      );
   final StreamValue<TenantAdminTaxRepoBool> isTaxonomiesPageLoadingStreamValue =
       StreamValue<TenantAdminTaxRepoBool>(
-    defaultValue: tenantAdminTaxRepoBool(
-      false,
-      defaultValue: false,
-    ),
-  );
+        defaultValue: tenantAdminTaxRepoBool(false, defaultValue: false),
+      );
   final StreamValue<TenantAdminTaxRepoString?> taxonomiesErrorStreamValue =
       StreamValue<TenantAdminTaxRepoString?>();
   final StreamValue<List<TenantAdminTaxonomyTermDefinition>?> termsStreamValue =
       StreamValue<List<TenantAdminTaxonomyTermDefinition>?>();
   final StreamValue<TenantAdminTaxRepoBool> hasMoreTermsStreamValue =
       StreamValue<TenantAdminTaxRepoBool>(
-    defaultValue: tenantAdminTaxRepoBool(
-      true,
-      defaultValue: true,
-    ),
-  );
+        defaultValue: tenantAdminTaxRepoBool(true, defaultValue: true),
+      );
   final StreamValue<TenantAdminTaxRepoBool> isTermsPageLoadingStreamValue =
       StreamValue<TenantAdminTaxRepoBool>(
-    defaultValue: tenantAdminTaxRepoBool(
-      false,
-      defaultValue: false,
-    ),
-  );
+        defaultValue: tenantAdminTaxRepoBool(false, defaultValue: false),
+      );
   final StreamValue<TenantAdminTaxRepoString?> termsErrorStreamValue =
       StreamValue<TenantAdminTaxRepoString?>();
   TenantAdminTaxRepoBool isFetchingTaxonomiesPage = tenantAdminTaxRepoBool(

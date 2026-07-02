@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 
 class TenantAdminEventFormState {
@@ -10,7 +11,7 @@ class TenantAdminEventFormState {
     required this.publishAt,
     required this.locationMode,
     required this.publicationStatus,
-    required this.selectedVenueId,
+    required this.selectedVenue,
     required this.selectedTypeSlug,
     required this.selectedRelatedAccountProfileIds,
     required this.profileGroups,
@@ -28,7 +29,7 @@ class TenantAdminEventFormState {
       publishAt: null,
       locationMode: 'physical',
       publicationStatus: 'draft',
-      selectedVenueId: null,
+      selectedVenue: null,
       selectedTypeSlug: null,
       selectedRelatedAccountProfileIds: <String>[],
       profileGroups: <TenantAdminNestedProfileGroup>[],
@@ -45,7 +46,7 @@ class TenantAdminEventFormState {
   final DateTime? publishAt;
   final String locationMode;
   final String publicationStatus;
-  final String? selectedVenueId;
+  final TenantAdminAccountProfile? selectedVenue;
   final String? selectedTypeSlug;
   final List<String> selectedRelatedAccountProfileIds;
   final List<TenantAdminNestedProfileGroup> profileGroups;
@@ -55,13 +56,15 @@ class TenantAdminEventFormState {
   final Map<String, Set<String>> selectedTaxonomyTerms;
   final bool hasHydratedDefaultVenue;
 
+  String? get selectedVenueId => selectedVenue?.id;
+
   TenantAdminEventFormState copyWith({
     Object? startAt = _undefined,
     Object? endAt = _undefined,
     Object? publishAt = _undefined,
     String? locationMode,
     String? publicationStatus,
-    Object? selectedVenueId = _undefined,
+    Object? selectedVenue = _undefined,
     Object? selectedTypeSlug = _undefined,
     List<String>? selectedRelatedAccountProfileIds,
     List<TenantAdminNestedProfileGroup>? profileGroups,
@@ -74,24 +77,26 @@ class TenantAdminEventFormState {
     return TenantAdminEventFormState(
       startAt: startAt == _undefined ? this.startAt : startAt as DateTime?,
       endAt: endAt == _undefined ? this.endAt : endAt as DateTime?,
-      publishAt:
-          publishAt == _undefined ? this.publishAt : publishAt as DateTime?,
+      publishAt: publishAt == _undefined
+          ? this.publishAt
+          : publishAt as DateTime?,
       locationMode: locationMode ?? this.locationMode,
       publicationStatus: publicationStatus ?? this.publicationStatus,
-      selectedVenueId: selectedVenueId == _undefined
-          ? this.selectedVenueId
-          : selectedVenueId as String?,
+      selectedVenue: selectedVenue == _undefined
+          ? this.selectedVenue
+          : selectedVenue as TenantAdminAccountProfile?,
       selectedTypeSlug: selectedTypeSlug == _undefined
           ? this.selectedTypeSlug
           : selectedTypeSlug as String?,
-      selectedRelatedAccountProfileIds: selectedRelatedAccountProfileIds ??
+      selectedRelatedAccountProfileIds:
+          selectedRelatedAccountProfileIds ??
           this.selectedRelatedAccountProfileIds,
       profileGroups: profileGroups ?? this.profileGroups,
       occurrences: occurrences ?? this.occurrences,
       occurrenceLocalIds: occurrenceLocalIds ?? this.occurrenceLocalIds,
       programmingItemLocalIdsByOccurrenceKey:
           programmingItemLocalIdsByOccurrenceKey ??
-              this.programmingItemLocalIdsByOccurrenceKey,
+          this.programmingItemLocalIdsByOccurrenceKey,
       selectedTaxonomyTerms:
           selectedTaxonomyTerms ?? this.selectedTaxonomyTerms,
       hasHydratedDefaultVenue:

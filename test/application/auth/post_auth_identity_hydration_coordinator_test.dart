@@ -21,6 +21,7 @@ import 'package:belluga_now/domain/repositories/user_events_repository_contract.
 import 'package:belluga_now/domain/repositories/value_objects/account_profiles_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/value_objects/auth_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
+import 'package:belluga_now/infrastructure/repositories/favorite_repository_paging_mixin.dart';
 import 'package:belluga_now/domain/user/user_belluga.dart';
 import 'package:belluga_now/domain/user/user_profile_contract.dart';
 import 'package:belluga_now/domain/user/value_objects/user_identity_state_value.dart';
@@ -84,40 +85,46 @@ void main() {
     coordinator.dispose();
   });
 
-  test('rehydrates same user after anonymous reset during in-flight hydration',
-      () async {
-    final authRepository = _FakeAuthRepository();
-    final refreshGate = Completer<void>();
-    final accountProfilesRepository = _FakeAccountProfilesRepository(
-      firstRefreshGate: refreshGate,
-    );
-    final coordinator = PostAuthIdentityHydrationCoordinator(
-      authRepository: authRepository,
-      accountProfilesRepository: accountProfilesRepository,
-    );
+  test(
+    'rehydrates same user after anonymous reset during in-flight hydration',
+    () async {
+      final authRepository = _FakeAuthRepository();
+      final refreshGate = Completer<void>();
+      final accountProfilesRepository = _FakeAccountProfilesRepository(
+        firstRefreshGate: refreshGate,
+      );
+      final coordinator = PostAuthIdentityHydrationCoordinator(
+        authRepository: authRepository,
+        accountProfilesRepository: accountProfilesRepository,
+      );
 
-    coordinator.bind();
-    authRepository.emit(_user(_registeredUserId, 'registered'));
-    await pumpEventQueue();
+      coordinator.bind();
+      authRepository.emit(_user(_registeredUserId, 'registered'));
+      await pumpEventQueue();
 
-    expect(accountProfilesRepository.refreshFavoriteAccountProfileIdsCalls, 1);
+      expect(
+        accountProfilesRepository.refreshFavoriteAccountProfileIdsCalls,
+        1,
+      );
 
-    authRepository.emit(null);
-    await pumpEventQueue();
-    refreshGate.complete();
-    await pumpEventQueue();
+      authRepository.emit(null);
+      await pumpEventQueue();
+      refreshGate.complete();
+      await pumpEventQueue();
 
-    authRepository.emit(_user(_registeredUserId, 'registered'));
-    await pumpEventQueue();
+      authRepository.emit(_user(_registeredUserId, 'registered'));
+      await pumpEventQueue();
 
-    expect(
-      accountProfilesRepository.refreshFavoriteAccountProfileIdsCalls,
-      2,
-      reason: 'Logout/anonymous reset must clear the per-user hydration guard.',
-    );
+      expect(
+        accountProfilesRepository.refreshFavoriteAccountProfileIdsCalls,
+        2,
+        reason:
+            'Logout/anonymous reset must clear the per-user hydration guard.',
+      );
 
-    coordinator.dispose();
-  });
+      coordinator.dispose();
+    },
+  );
 }
 
 const _anonymousUserId = '507f1f77bcf86cd799439011';
@@ -219,7 +226,8 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserBelluga> {
   }) async {}
 }
 
-class _FakeFavoriteRepository extends FavoriteRepositoryContract {
+class _FakeFavoriteRepository extends FavoriteRepositoryContract
+    with FavoriteRepositoryPagingMixin {
   int refreshFavoriteResumesCalls = 0;
 
   @override
@@ -237,10 +245,9 @@ class _FakeFavoriteRepository extends FavoriteRepositoryContract {
 }
 
 class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
-  _FakeAccountProfilesRepository({Completer<void>? firstRefreshGate})
-      : _firstRefreshGate = firstRefreshGate;
+  _FakeAccountProfilesRepository({this.firstRefreshGate});
 
-  Completer<void>? _firstRefreshGate;
+  Completer<void>? firstRefreshGate;
   int refreshFavoriteAccountProfileIdsCalls = 0;
 
   @override
@@ -249,9 +256,9 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   @override
   Future<void> refreshFavoriteAccountProfileIds() async {
     refreshFavoriteAccountProfileIdsCalls += 1;
-    final refreshGate = _firstRefreshGate;
+    final refreshGate = firstRefreshGate;
     if (refreshGate != null) {
-      _firstRefreshGate = null;
+      firstRefreshGate = null;
       await refreshGate.future;
     }
   }
@@ -284,17 +291,15 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   @override
   Future<AccountProfileModel?> getAccountProfileBySlug(
     AccountProfilesRepositoryContractPrimString slug,
-  ) async =>
-      null;
+  ) async => null;
 
   @override
   AccountProfilesRepositoryContractPrimBool isFavorite(
     AccountProfilesRepositoryContractPrimString accountProfileId,
-  ) =>
-      AccountProfilesRepositoryContractPrimBool.fromRaw(
-        false,
-        defaultValue: false,
-      );
+  ) => AccountProfilesRepositoryContractPrimBool.fromRaw(
+    false,
+    defaultValue: false,
+  );
 
   @override
   Future<void> toggleFavorite(
@@ -306,8 +311,8 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   @override
   final confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(
-    defaultValue: const <UserEventsRepositoryContractPrimString>{},
-  );
+        defaultValue: const <UserEventsRepositoryContractPrimString>{},
+      );
 
   int refreshConfirmedOccurrenceIdsCalls = 0;
 
@@ -333,8 +338,7 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   @override
   UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
     UserEventsRepositoryContractPrimString occurrenceId,
-  ) =>
-      userEventsRepoBool(false);
+  ) => userEventsRepoBool(false);
 
   @override
   Future<void> unconfirmEventAttendance(
@@ -389,14 +393,12 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   Future<List<InviteModel>> fetchInvites({
     InvitesRepositoryContractPrimInt? page,
     InvitesRepositoryContractPrimInt? pageSize,
-  }) async =>
-      const <InviteModel>[];
+  }) async => const <InviteModel>[];
 
   @override
   Future<List<InviteContactMatch>> importContacts(
     InviteContacts contacts,
-  ) async =>
-      const <InviteContactMatch>[];
+  ) async => const <InviteContactMatch>[];
 
   @override
   Future<InviteRuntimeSettings> fetchSettings() {
@@ -406,8 +408,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   @override
   Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
     InvitesRepositoryContractPrimString occurrenceId,
-  ) async =>
-      const <SentInviteStatus>[];
+  ) async => const <SentInviteStatus>[];
 
   @override
   Future<List<SentInviteStatus>> refreshSentInvitesForOccurrence({

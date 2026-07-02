@@ -21,6 +21,47 @@ void main() {
   });
 
   test(
+      'tryParseFormValidationFailure accepts legacy fieldErrors envelopes and merges them',
+      () {
+    final failure = tryParseFormValidationFailure(
+      statusCode: 422,
+      rawData: <String, dynamic>{
+        'message': 'The given data was invalid.',
+        'errors': <String, dynamic>{
+          'type.id': <String>['Event type not found for this tenant.'],
+        },
+        'fieldErrors': <String, dynamic>{
+          'type.id': <String>['Tipo de evento invalido.'],
+        },
+      },
+    );
+
+    expect(failure, isNotNull);
+    expect(
+      failure!.fieldErrors['type.id'],
+      <String>[
+        'Event type not found for this tenant.',
+        'Tipo de evento invalido.',
+      ],
+    );
+  });
+
+  test('tryParseFormValidationFailure parses stringified 422 json payloads', () {
+    final failure = tryParseFormValidationFailure(
+      statusCode: 422,
+      rawData:
+          '{"message":"The given data was invalid.","errors":{"type.id":["Tipo de evento invalido."]}}',
+    );
+
+    expect(failure, isNotNull);
+    expect(failure!.message, 'The given data was invalid.');
+    expect(
+      failure.fieldErrors['type.id'],
+      <String>['Tipo de evento invalido.'],
+    );
+  });
+
+  test(
       'tryParseFormValidationFailure maps 422 security envelope to global validation',
       () {
     final failure = tryParseFormValidationFailure(

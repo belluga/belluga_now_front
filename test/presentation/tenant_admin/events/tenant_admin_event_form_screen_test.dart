@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_form_validation/belluga_form_validation.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
@@ -20,6 +21,7 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_accou
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/events/models/tenant_admin_event_form_validation_config.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/screens/tenant_admin_event_form_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
 import 'package:flutter/material.dart';
@@ -3601,6 +3603,385 @@ void main() {
     expect(draft.placeRef, isNull);
   });
 
+  testWidgets(
+    'shows inline validation when physical mode has no selected host',
+    (tester) async {
+      final eventsRepository = _FakeEventsRepository()
+        ..physicalHostCandidates = const <TenantAdminAccountProfile>[];
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+
+      eventsRepository.eventTypes = [
+        TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439015'),
+          nameValue: tenantAdminRequiredText('Live'),
+          slugValue: tenantAdminRequiredText('live'),
+          descriptionValue: tenantAdminOptionalText('Tipo de evento: Live'),
+        ),
+      ];
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(body: TenantAdminEventFormScreen()),
+      );
+
+      await _fillRequiredFields(tester, controller: controller);
+      await tester.tap(find.text('Online').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Physical').last);
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.widgetWithText(FilledButton, 'Criar evento'),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Criar evento'));
+      await tester.pumpAndSettle();
+
+      expect(eventsRepository.createEventCalls, 0);
+      expect(
+        find.text('Host físico é obrigatório para physical.'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'renders backend place_ref validation inline on the location group',
+    (tester) async {
+      final eventsRepository = _FakeEventsRepository()
+        ..createEventError = FormValidationFailure(
+          statusCode: 422,
+          message: 'validation.required_if',
+          fieldErrors: <String, List<String>>{
+            'place_ref': const <String>['validation.required_if'],
+          },
+        );
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+
+      eventsRepository.eventTypes = [
+        TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439015'),
+          nameValue: tenantAdminRequiredText('Live'),
+          slugValue: tenantAdminRequiredText('live'),
+          descriptionValue: tenantAdminOptionalText('Tipo de evento: Live'),
+        ),
+      ];
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(body: TenantAdminEventFormScreen()),
+      );
+
+      await _fillRequiredFields(tester, controller: controller);
+      await tester.tap(find.text('Online').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Physical').last);
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(
+        find.byKey(const Key('tenantAdminEventLocationProfileDropdown')),
+      );
+      await tester.tap(
+        find.byKey(const Key('tenantAdminEventLocationProfileDropdown')),
+        warnIfMissed: false,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('tenantAdminEventLocationOption_venue-1')),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.widgetWithText(FilledButton, 'Criar evento'),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Criar evento'));
+      await tester.pumpAndSettle();
+
+      expect(eventsRepository.createEventCalls, 1);
+      expect(find.text('validation.required_if'), findsOneWidget);
+      expect(
+        controller.eventValidationStreamValue.value.errorsForGroup(
+          TenantAdminEventFormValidationTargets.location,
+        ),
+        contains('validation.required_if'),
+      );
+    },
+  );
+
+  testWidgets(
+    'renders backend type.id validation inline on the event type field',
+    (tester) async {
+      final eventsRepository = _FakeEventsRepository()
+        ..createEventError = FormValidationFailure(
+          statusCode: 422,
+          message: 'The given data was invalid.',
+          fieldErrors: <String, List<String>>{
+            'type.id': const <String>['Tipo de evento invalido.'],
+          },
+        );
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+
+      eventsRepository.eventTypes = [
+        TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439015'),
+          nameValue: tenantAdminRequiredText('Live'),
+          slugValue: tenantAdminRequiredText('live'),
+          descriptionValue: tenantAdminOptionalText('Tipo de evento: Live'),
+        ),
+      ];
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(body: TenantAdminEventFormScreen()),
+      );
+
+      await _fillRequiredFields(tester, controller: controller);
+
+      await tester.scrollUntilVisible(
+        find.widgetWithText(FilledButton, 'Criar evento'),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Criar evento'));
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(eventsRepository.createEventCalls, 1);
+      expect(find.text('Tipo de evento invalido.'), findsOneWidget);
+      expect(
+        controller.eventValidationStreamValue.value.errorForField(
+          TenantAdminEventFormValidationTargets.eventType,
+        ),
+        'Tipo de evento invalido.',
+      );
+    },
+  );
+
+  testWidgets(
+    'renders backend place_ref.id validation inline on the location group',
+    (tester) async {
+      final eventsRepository = _FakeEventsRepository()
+        ..createEventError = FormValidationFailure(
+          statusCode: 422,
+          message: 'The given data was invalid.',
+          fieldErrors: <String, List<String>>{
+            'place_ref.id': const <String>['Host físico inválido.'],
+          },
+        );
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+
+      eventsRepository.eventTypes = [
+        TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439015'),
+          nameValue: tenantAdminRequiredText('Live'),
+          slugValue: tenantAdminRequiredText('live'),
+          descriptionValue: tenantAdminOptionalText('Tipo de evento: Live'),
+        ),
+      ];
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(body: TenantAdminEventFormScreen()),
+      );
+
+      await _fillRequiredFields(tester, controller: controller);
+      await tester.tap(find.text('Online').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Physical').last);
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(
+        find.byKey(const Key('tenantAdminEventLocationProfileDropdown')),
+      );
+      await tester.tap(
+        find.byKey(const Key('tenantAdminEventLocationProfileDropdown')),
+        warnIfMissed: false,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('tenantAdminEventLocationOption_venue-1')),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.widgetWithText(FilledButton, 'Criar evento'),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Criar evento'));
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(eventsRepository.createEventCalls, 1);
+      expect(find.text('Host físico inválido.'), findsOneWidget);
+      expect(
+        controller.eventValidationStreamValue.value.errorsForGroup(
+          TenantAdminEventFormValidationTargets.location,
+        ),
+        contains('Host físico inválido.'),
+      );
+      expect(
+        controller.eventValidationStreamValue.value.errorsForGlobal(),
+        isEmpty,
+      );
+    },
+  );
+
+  testWidgets(
+    'renders backend event_parties validation inline on the related profiles section',
+    (tester) async {
+      final eventsRepository = _FakeEventsRepository()
+        ..createEventError = FormValidationFailure(
+          statusCode: 422,
+          message: 'The given data was invalid.',
+          fieldErrors: <String, List<String>>{
+            'event_parties.0.party_ref_id': const <String>[
+              'Perfil relacionado inválido.',
+            ],
+          },
+        );
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+
+      eventsRepository.eventTypes = [
+        TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439015'),
+          nameValue: tenantAdminRequiredText('Live'),
+          slugValue: tenantAdminRequiredText('live'),
+          descriptionValue: tenantAdminOptionalText('Tipo de evento: Live'),
+        ),
+      ];
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(body: TenantAdminEventFormScreen()),
+      );
+
+      await _fillRequiredFields(tester, controller: controller);
+
+      await tester.scrollUntilVisible(
+        find.widgetWithText(FilledButton, 'Criar evento'),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Criar evento'));
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(eventsRepository.createEventCalls, 1);
+      expect(find.text('Perfil relacionado inválido.'), findsOneWidget);
+      expect(
+        controller.eventValidationStreamValue.value.errorsForGroup(
+          TenantAdminEventFormValidationTargets.relatedProfiles,
+        ),
+        contains('Perfil relacionado inválido.'),
+      );
+      expect(
+        controller.eventValidationStreamValue.value.errorsForGlobal(),
+        isEmpty,
+      );
+    },
+  );
+
+  testWidgets(
+    'renders backend occurrence programming validation inline on the schedule group',
+    (tester) async {
+      final eventsRepository = _FakeEventsRepository()
+        ..createEventError = FormValidationFailure(
+          statusCode: 422,
+          message: 'The given data was invalid.',
+          fieldErrors: <String, List<String>>{
+            'occurrences.0.programming_items.0.place_ref.id': const <String>[
+              'Host da programação inválido.',
+            ],
+          },
+        );
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+
+      eventsRepository.eventTypes = [
+        TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439015'),
+          nameValue: tenantAdminRequiredText('Live'),
+          slugValue: tenantAdminRequiredText('live'),
+          descriptionValue: tenantAdminOptionalText('Tipo de evento: Live'),
+        ),
+      ];
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(body: TenantAdminEventFormScreen()),
+      );
+
+      await _fillRequiredFields(tester, controller: controller);
+
+      await tester.scrollUntilVisible(
+        find.widgetWithText(FilledButton, 'Criar evento'),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Criar evento'));
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(eventsRepository.createEventCalls, 1);
+      expect(find.text('Host da programação inválido.'), findsOneWidget);
+      expect(
+        controller.eventValidationStreamValue.value.errorsForGroup(
+          TenantAdminEventFormValidationTargets.schedule,
+        ),
+        contains('Host da programação inválido.'),
+      );
+      expect(
+        controller.eventValidationStreamValue.value.errorsForGlobal(),
+        isEmpty,
+      );
+    },
+  );
+
   testWidgets('physical mode venue picker filters venues by search', (
     tester,
   ) async {
@@ -3850,6 +4231,173 @@ void main() {
       await tester.tap(
         find.byKey(const Key('tenantAdminEventLocationOption_venue-jazz-1')),
       );
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.widgetWithText(FilledButton, 'Criar evento'),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Criar evento'));
+      await tester.pumpAndSettle();
+
+      final draft = eventsRepository.lastCreateDraft;
+      expect(draft, isNotNull);
+      expect(draft!.location?.mode, 'physical');
+      expect(draft.location?.latitude, -20.612121);
+      expect(draft.location?.longitude, -40.498917);
+      expect(draft.placeRef?.id, 'venue-jazz-1');
+    },
+  );
+
+  testWidgets(
+    'submits account-scoped physical venue selected from remote search beyond the bootstrap venue slice',
+    (tester) async {
+      final eventsRepository =
+          _SearchDrivenPhysicalHostCandidatesEventsRepository();
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+
+      eventsRepository.eventTypes = [
+        TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439016'),
+          nameValue: tenantAdminRequiredText('Live'),
+          slugValue: tenantAdminRequiredText('live'),
+          descriptionValue: tenantAdminOptionalText('Tipo de evento: Live'),
+        ),
+      ];
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(
+          body: TenantAdminEventFormScreen(
+            accountSlugForOwnCreate: 'school-account',
+          ),
+        ),
+      );
+
+      await _fillRequiredFields(tester, controller: controller);
+
+      await tester.scrollUntilVisible(
+        find.text('Online'),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Online').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Physical').last);
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(
+        find.byKey(const Key('tenantAdminEventLocationProfileDropdown')),
+      );
+      await tester.tap(
+        find.byKey(const Key('tenantAdminEventLocationProfileDropdown')),
+        warnIfMissed: false,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('tenantAdminEventLocationSearchField')),
+        'Jazz',
+      );
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byKey(const Key('tenantAdminEventLocationOption_venue-jazz-1')),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.widgetWithText(FilledButton, 'Criar evento'),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Criar evento'));
+      await tester.pumpAndSettle();
+
+      final draft = eventsRepository.lastCreateOwnDraft;
+      expect(eventsRepository.lastCreateOwnAccountSlug, 'school-account');
+      expect(draft, isNotNull);
+      expect(draft!.location?.mode, 'physical');
+      expect(draft.location?.latitude, -20.612121);
+      expect(draft.location?.longitude, -40.498917);
+      expect(draft.placeRef?.id, 'venue-jazz-1');
+    },
+  );
+
+  testWidgets(
+    'keeps remote physical venue resolution after picker caches are replaced',
+    (tester) async {
+      final eventsRepository =
+          _SearchDrivenPhysicalHostCandidatesEventsRepository();
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+
+      eventsRepository.eventTypes = [
+        TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439016'),
+          nameValue: tenantAdminRequiredText('Live'),
+          slugValue: tenantAdminRequiredText('live'),
+          descriptionValue: tenantAdminOptionalText('Tipo de evento: Live'),
+        ),
+      ];
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(body: TenantAdminEventFormScreen()),
+      );
+
+      await _fillRequiredFields(tester, controller: controller);
+
+      await tester.scrollUntilVisible(
+        find.text('Online'),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Online').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Physical').last);
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(
+        find.byKey(const Key('tenantAdminEventLocationProfileDropdown')),
+      );
+      await tester.tap(
+        find.byKey(const Key('tenantAdminEventLocationProfileDropdown')),
+        warnIfMissed: false,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('tenantAdminEventLocationSearchField')),
+        'Jazz',
+      );
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byKey(const Key('tenantAdminEventLocationOption_venue-jazz-1')),
+      );
+      await tester.pumpAndSettle();
+
+      controller.accountProfilePickerResultsStreamValue.addValue(const []);
+      controller.venueCandidatesStreamValue.addValue(const []);
       await tester.pumpAndSettle();
 
       await tester.scrollUntilVisible(
@@ -4408,6 +4956,86 @@ void main() {
 
       expect(find.text('Zulu Artist'), findsOneWidget);
       expect(find.text('Perfil não disponível na lista atual'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'mounted edit reuse reinitializes controllers when existing event changes',
+    (tester) async {
+      final eventsRepository = _FakeEventsRepository();
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+
+      final eventType = TenantAdminEventType(
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439104'),
+        nameValue: tenantAdminRequiredText('Show'),
+        slugValue: tenantAdminRequiredText('show'),
+      );
+      eventsRepository.eventTypes = [eventType];
+
+      final firstEvent = _buildMountedReuseEditEvent(
+        type: eventType,
+        eventId: 'evt-mounted-reuse',
+        title: 'Evento occ-1',
+        firstOccurrenceId: 'occ-1',
+        secondOccurrenceId: 'occ-2',
+      );
+      final secondEvent = _buildMountedReuseEditEvent(
+        type: eventType,
+        eventId: 'evt-mounted-reuse',
+        title: 'Evento occ-2',
+        firstOccurrenceId: 'occ-2',
+        secondOccurrenceId: 'occ-1',
+      );
+      final currentEvent = ValueNotifier<TenantAdminEvent>(firstEvent);
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        ValueListenableBuilder<TenantAdminEvent>(
+          valueListenable: currentEvent,
+          builder: (context, event, _) {
+            return Scaffold(
+              body: TenantAdminEventFormScreen(existingEvent: event),
+            );
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(controller.eventTitleController.text, 'Evento occ-1');
+      expect(
+        controller
+            .eventFormStateStreamValue
+            .value
+            .occurrences
+            .first
+            .occurrenceId,
+        'occ-1',
+      );
+
+      await tester.enterText(find.byType(TextFormField).first, 'Titulo sujo');
+      await tester.pump();
+      expect(controller.eventTitleController.text, 'Titulo sujo');
+
+      currentEvent.value = secondEvent;
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(controller.eventTitleController.text, 'Evento occ-2');
+      expect(
+        controller
+            .eventFormStateStreamValue
+            .value
+            .occurrences
+            .first
+            .occurrenceId,
+        'occ-2',
+      );
     },
   );
 
@@ -5090,6 +5718,9 @@ class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
   TenantAdminEventDraft? lastUpdateDraft;
   String? lastCreateOwnAccountSlug;
   String? lastUpdateEventId;
+  Object? createEventError;
+  Object? createOwnEventError;
+  Object? updateEventError;
   int createEventCalls = 0;
   int createOwnEventCalls = 0;
   int updateEventCalls = 0;
@@ -5100,6 +5731,9 @@ class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
   }) async {
     createEventCalls += 1;
     lastCreateDraft = draft;
+    if (createEventError != null) {
+      throw createEventError!;
+    }
     return _eventFromDraft(draft);
   }
 
@@ -5111,6 +5745,9 @@ class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
     createOwnEventCalls += 1;
     lastCreateOwnAccountSlug = accountSlug.value;
     lastCreateOwnDraft = draft;
+    if (createOwnEventError != null) {
+      throw createOwnEventError!;
+    }
     return _eventFromDraft(draft);
   }
 
@@ -5197,6 +5834,9 @@ class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
     updateEventCalls += 1;
     lastUpdateEventId = eventId.value;
     lastUpdateDraft = draft;
+    if (updateEventError != null) {
+      throw updateEventError!;
+    }
     return _eventFromDraft(draft);
   }
 
@@ -5249,6 +5889,35 @@ String _fixtureTaxonomyLabel(int index) => 'Fixture Taxonomy $index';
 
 String _fixtureTermLabel(int index) => 'Fixture Term $index';
 
+TenantAdminEvent _buildMountedReuseEditEvent({
+  required TenantAdminEventType type,
+  required String eventId,
+  required String title,
+  required String firstOccurrenceId,
+  required String secondOccurrenceId,
+}) {
+  return TenantAdminEvent(
+    eventIdValue: tenantAdminRequiredText(eventId),
+    slugValue: tenantAdminRequiredText('$eventId-slug'),
+    titleValue: tenantAdminRequiredText(title),
+    contentValue: tenantAdminOptionalText('Conteudo de $title'),
+    type: type,
+    occurrences: <TenantAdminEventOccurrence>[
+      TenantAdminEventOccurrence(
+        occurrenceIdValue: tenantAdminOptionalText(firstOccurrenceId),
+        dateTimeStartValue: tenantAdminDateTime(DateTime.utc(2026, 7, 1, 20)),
+      ),
+      TenantAdminEventOccurrence(
+        occurrenceIdValue: tenantAdminOptionalText(secondOccurrenceId),
+        dateTimeStartValue: tenantAdminDateTime(DateTime.utc(2026, 7, 2, 20)),
+      ),
+    ],
+    publication: TenantAdminEventPublication(
+      statusValue: tenantAdminRequiredText('draft'),
+    ),
+  );
+}
+
 String _encodedAdminTaxonomyTerm(String taxonomySlug, String termSlug) {
   return '$taxonomySlug:$termSlug';
 }
@@ -5261,6 +5930,7 @@ class _FakeTaxonomiesRepository
     with TenantAdminTaxonomiesPaginationMixin
     implements
         TenantAdminTaxonomiesRepositoryContract,
+        TenantAdminTaxonomiesScopedLookupRepositoryContract,
         TenantAdminTaxonomiesBatchTermsRepositoryContract {
   int fetchTermsCalls = 0;
   final List<List<String>> batchFetchTaxonomyIds = <List<String>>[];
@@ -5336,6 +6006,27 @@ class _FakeTaxonomiesRepository
   }) async {
     final taxonomies = await fetchTaxonomies();
     return tenantAdminPagedResultFromRaw(items: taxonomies, hasMore: false);
+  }
+
+  @override
+  Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomiesBySlugs({
+    required List<TenantAdminTaxRepoString> slugs,
+    TenantAdminTaxRepoString? appliesTo,
+  }) async {
+    final allowedSlugs = slugs
+        .map((entry) => entry.value.trim())
+        .where((entry) => entry.isNotEmpty)
+        .toSet();
+    final appliesToFilter = appliesTo?.value.trim();
+    return (await fetchTaxonomies())
+        .where((taxonomy) => allowedSlugs.contains(taxonomy.slug))
+        .where(
+          (taxonomy) =>
+              appliesToFilter == null ||
+              appliesToFilter.isEmpty ||
+              taxonomy.appliesTo.contains(appliesToFilter),
+        )
+        .toList(growable: false);
   }
 
   @override

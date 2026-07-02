@@ -132,10 +132,14 @@ class UserEventsRepository implements UserEventsRepositoryContract {
     }
 
     final fallbackImage = _resolveDefaultEventImage();
-    final events = await _scheduleRepository.loadConfirmedEvents(
+    final events = await _scheduleRepository.loadEventSearch(
       showPastOnly: ScheduleRepoBool.fromRaw(
         false,
         defaultValue: false,
+      ),
+      confirmedOnly: ScheduleRepoBool.fromRaw(
+        true,
+        defaultValue: true,
       ),
     );
     return List<VenueEventResume>.unmodifiable(

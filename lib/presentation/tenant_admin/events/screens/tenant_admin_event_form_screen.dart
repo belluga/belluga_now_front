@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_form_validation/belluga_form_validation.dart';
 import 'package:belluga_now/application/rich_text/tenant_admin_rich_text_limits.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
@@ -17,6 +18,7 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_occurrence_editor_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/events/models/tenant_admin_event_form_validation_config.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/widgets/tenant_admin_account_profile_location_picker_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/widgets/tenant_admin_event_occurrence_editor_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
@@ -54,6 +56,7 @@ class _TenantAdminEventFormScreenState
     extends State<TenantAdminEventFormScreen> {
   final TenantAdminEventsController _controller = GetIt.I
       .get<TenantAdminEventsController>();
+  final FormValidationAnchors _validationAnchors = FormValidationAnchors();
   bool _submitInFlight = false;
 
   bool get _isEditing => widget.existingEvent != null;
@@ -66,6 +69,28 @@ class _TenantAdminEventFormScreenState
     _controller.clearSubmitMessages();
     _controller.loadFormDependencies(
       accountSlug: widget.accountSlugForOwnCreate,
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant TenantAdminEventFormScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    final accountSlugChanged =
+        _normalizeAccountSlug(oldWidget.accountSlugForOwnCreate) !=
+        _normalizeAccountSlug(widget.accountSlugForOwnCreate);
+    if (oldWidget.existingEvent == widget.existingEvent &&
+        !accountSlugChanged) {
+      return;
+    }
+
+    _submitInFlight = false;
+    _controller.initEventForm(existingEvent: widget.existingEvent);
+    _controller.clearSubmitMessages();
+    unawaited(
+      _controller.loadFormDependencies(
+        accountSlug: widget.accountSlugForOwnCreate,
+      ),
     );
   }
 
@@ -104,6 +129,17 @@ class _TenantAdminEventFormScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              FormValidationAnchor(
+                anchors: _validationAnchors,
+                targetId: TenantAdminEventFormValidationTargets.global,
+                child: FormValidationGlobalSummary(
+                  validationStreamValue: _controller.eventValidationStreamValue,
+                  targetId: TenantAdminEventFormValidationTargets.global,
+                  summarySuffixBuilder: _validationSummarySuffix,
+                  expandLabel: 'Ver todos',
+                  collapseLabel: 'Ocultar',
+                ),
+              ),
               if (viewModel.submitError?.isNotEmpty ?? false)
                 TenantAdminErrorBanner(
                   rawError: viewModel.submitError ?? '',
@@ -198,19 +234,23 @@ class _TenantAdminEventFormScreenState
       title: 'Identificação',
       child: Column(
         children: [
-          TextFormField(
-            controller: _controller.eventTitleController,
-            decoration: const InputDecoration(
-              labelText: 'Título',
-              hintText: 'Ex: Feira de Inverno',
+          FormValidationAnchor(
+            anchors: _validationAnchors,
+            targetId: TenantAdminEventFormValidationTargets.title,
+            child: FormValidationFieldErrorBuilder(
+              validationStreamValue: _controller.eventValidationStreamValue,
+              fieldId: TenantAdminEventFormValidationTargets.title,
+              builder: (context, errorText) {
+                return TextFormField(
+                  controller: _controller.eventTitleController,
+                  decoration: InputDecoration(
+                    labelText: 'Título',
+                    hintText: 'Ex: Feira de Inverno',
+                    errorText: errorText,
+                  ),
+                );
+              },
             ),
-            validator: (value) {
-              final trimmed = value?.trim() ?? '';
-              if (trimmed.isEmpty) {
-                return 'Título é obrigatório.';
-              }
-              return null;
-            },
           ),
           const SizedBox(height: 12),
           TenantAdminRichTextEditor(
@@ -342,28 +382,36 @@ class _TenantAdminEventFormScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          DropdownButtonFormField<String>(
-            key: ValueKey<String?>('event-type-${formState.selectedTypeSlug}'),
-            initialValue: selectedType?.slug,
-            decoration: const InputDecoration(labelText: 'Tipo'),
-            items: eventTypes
-                .map(
-                  (type) => DropdownMenuItem<String>(
-                    value: type.slug,
-                    child: Text(type.name),
+          FormValidationAnchor(
+            anchors: _validationAnchors,
+            targetId: TenantAdminEventFormValidationTargets.eventType,
+            child: FormValidationFieldErrorBuilder(
+              validationStreamValue: _controller.eventValidationStreamValue,
+              fieldId: TenantAdminEventFormValidationTargets.eventType,
+              builder: (context, errorText) {
+                return DropdownButtonFormField<String>(
+                  key: ValueKey<String?>(
+                    'event-type-${formState.selectedTypeSlug}',
                   ),
-                )
-                .toList(growable: false),
-            onChanged: (value) {
-              _controller.updateEventTypeSelection(value);
-            },
-            validator: (value) {
-              final trimmed = value?.trim() ?? '';
-              if (trimmed.isEmpty) {
-                return 'Tipo de evento é obrigatório.';
-              }
-              return null;
-            },
+                  initialValue: selectedType?.slug,
+                  decoration: InputDecoration(
+                    labelText: 'Tipo',
+                    errorText: errorText,
+                  ),
+                  items: eventTypes
+                      .map(
+                        (type) => DropdownMenuItem<String>(
+                          value: type.slug,
+                          child: Text(type.name),
+                        ),
+                      )
+                      .toList(growable: false),
+                  onChanged: (value) {
+                    _controller.updateEventTypeSelection(value);
+                  },
+                );
+              },
+            ),
           ),
           if (selectedType?.description?.trim().isNotEmpty == true) ...[
             const SizedBox(height: 8),
@@ -391,20 +439,86 @@ class _TenantAdminEventFormScreenState
     final canEditPrimaryOccurrence =
         formState.startAt != null || occurrences.isNotEmpty;
     if (occurrences.length > 1) {
-      return TenantAdminFormSectionCard(
-        title: 'Datas',
-        description:
-            'Gerencie as ocorrências deste evento. Campos compartilhados ficam nas seções acima.',
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (var index = 0; index < occurrences.length; index++)
-              _buildOccurrenceCard(
-                occurrence: occurrences[index],
-                index: index,
-                totalCount: occurrences.length,
-                venues: venues,
+      return FormValidationAnchor(
+        anchors: _validationAnchors,
+        targetId: TenantAdminEventFormValidationTargets.schedule,
+        child: TenantAdminFormSectionCard(
+          title: 'Datas',
+          description:
+              'Gerencie as ocorrências deste evento. Campos compartilhados ficam nas seções acima.',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              FormValidationGroupError(
+                validationStreamValue: _controller.eventValidationStreamValue,
+                groupId: TenantAdminEventFormValidationTargets.schedule,
+                summarySuffixBuilder: _validationSummarySuffix,
+                expandLabel: 'Ver todos',
+                collapseLabel: 'Ocultar',
               ),
+              for (var index = 0; index < occurrences.length; index++)
+                _buildOccurrenceCard(
+                  occurrence: occurrences[index],
+                  index: index,
+                  totalCount: occurrences.length,
+                  venues: venues,
+                ),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: _buildAddOccurrenceInlineButton(
+                  formState: formState,
+                  venues: venues,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return FormValidationAnchor(
+      anchors: _validationAnchors,
+      targetId: TenantAdminEventFormValidationTargets.schedule,
+      child: TenantAdminFormSectionCard(
+        title: 'Ocorrência',
+        description:
+            'Selecione data e horário da primeira ocorrência. Depois disso, adicione outras datas quando o evento tiver múltiplas ocorrências.',
+        child: Column(
+          children: [
+            FormValidationGroupError(
+              validationStreamValue: _controller.eventValidationStreamValue,
+              groupId: TenantAdminEventFormValidationTargets.schedule,
+              summarySuffixBuilder: _validationSummarySuffix,
+              expandLabel: 'Ver todos',
+              collapseLabel: 'Ocultar',
+            ),
+            _buildDateTimeField(
+              controller: _controller.eventStartController,
+              label: 'Início',
+              onTap: _pickStartDateTime,
+            ),
+            const SizedBox(height: 12),
+            _buildDateTimeField(
+              controller: _controller.eventEndController,
+              label: 'Fim (opcional)',
+              onTap: _pickEndDateTime,
+              onClear: formState.endAt == null
+                  ? null
+                  : _controller.clearEventEndAt,
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton.icon(
+                key: const Key('tenantAdminEventEditPrimaryOccurrenceButton'),
+                onPressed: canEditPrimaryOccurrence
+                    ? () => _openPrimaryOccurrenceEditor(venues: venues)
+                    : null,
+                icon: const Icon(Icons.tune_outlined),
+                label: const Text('Editar ocorrência principal'),
+              ),
+            ),
             const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerLeft,
@@ -415,86 +529,6 @@ class _TenantAdminEventFormScreenState
             ),
           ],
         ),
-      );
-    }
-
-    return TenantAdminFormSectionCard(
-      title: 'Ocorrência',
-      description:
-          'Selecione data e horário da primeira ocorrência. Depois disso, adicione outras datas quando o evento tiver múltiplas ocorrências.',
-      child: Column(
-        children: [
-          _buildDateTimeField(
-            controller: _controller.eventStartController,
-            label: 'Início',
-            onTap: _pickStartDateTime,
-            validator: (_) {
-              final startAt =
-                  formState.startAt ??
-                  _toLocalDateTime(
-                    _parseDateTimeFromField(
-                      _controller.eventStartController.text,
-                    ),
-                  );
-              if (startAt == null) {
-                return 'Início é obrigatório.';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 12),
-          _buildDateTimeField(
-            controller: _controller.eventEndController,
-            label: 'Fim (opcional)',
-            onTap: _pickEndDateTime,
-            onClear: formState.endAt == null
-                ? null
-                : _controller.clearEventEndAt,
-            validator: (_) {
-              final startAt =
-                  formState.startAt ??
-                  _toLocalDateTime(
-                    _parseDateTimeFromField(
-                      _controller.eventStartController.text,
-                    ),
-                  );
-              final endAt =
-                  formState.endAt ??
-                  _toLocalDateTime(
-                    _parseDateTimeFromField(
-                      _controller.eventEndController.text,
-                    ),
-                  );
-              if (endAt == null) {
-                return null;
-              }
-              if (startAt != null && endAt.isBefore(startAt)) {
-                return 'Fim deve ser posterior ao início.';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: OutlinedButton.icon(
-              key: const Key('tenantAdminEventEditPrimaryOccurrenceButton'),
-              onPressed: canEditPrimaryOccurrence
-                  ? () => _openPrimaryOccurrenceEditor(venues: venues)
-                  : null,
-              icon: const Icon(Icons.tune_outlined),
-              label: const Text('Editar ocorrência principal'),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: _buildAddOccurrenceInlineButton(
-              formState: formState,
-              venues: venues,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -632,57 +666,52 @@ class _TenantAdminEventFormScreenState
   Widget _buildPublicationSection({
     required TenantAdminEventFormState formState,
   }) {
-    return TenantAdminFormSectionCard(
-      title: 'Publicação',
-      child: Column(
-        children: [
-          DropdownButtonFormField<String>(
-            initialValue: formState.publicationStatus,
-            decoration: const InputDecoration(labelText: 'Status'),
-            items: const [
-              DropdownMenuItem(value: 'draft', child: Text('Draft')),
-              DropdownMenuItem(value: 'published', child: Text('Published')),
-              DropdownMenuItem(
-                value: 'publish_scheduled',
-                child: Text('Publish scheduled'),
-              ),
-              DropdownMenuItem(value: 'ended', child: Text('Ended')),
-            ],
-            onChanged: (value) {
-              if (value == null) {
-                return;
-              }
-              _controller.updateEventPublicationStatus(value);
-            },
-          ),
-          if (formState.publicationStatus == 'publish_scheduled') ...[
-            const SizedBox(height: 12),
-            _buildDateTimeField(
-              controller: _controller.eventPublishAtController,
-              label: 'Publish at',
-              onTap: _pickPublishAtDateTime,
-              onClear: formState.publishAt == null
-                  ? null
-                  : _controller.clearEventPublishAt,
-              validator: (_) {
-                if (formState.publicationStatus != 'publish_scheduled') {
-                  return null;
+    return FormValidationAnchor(
+      anchors: _validationAnchors,
+      targetId: TenantAdminEventFormValidationTargets.publication,
+      child: TenantAdminFormSectionCard(
+        title: 'Publicação',
+        child: Column(
+          children: [
+            DropdownButtonFormField<String>(
+              initialValue: formState.publicationStatus,
+              decoration: const InputDecoration(labelText: 'Status'),
+              items: const [
+                DropdownMenuItem(value: 'draft', child: Text('Draft')),
+                DropdownMenuItem(value: 'published', child: Text('Published')),
+                DropdownMenuItem(
+                  value: 'publish_scheduled',
+                  child: Text('Publish scheduled'),
+                ),
+                DropdownMenuItem(value: 'ended', child: Text('Ended')),
+              ],
+              onChanged: (value) {
+                if (value == null) {
+                  return;
                 }
-                final publishAt =
-                    formState.publishAt ??
-                    _toLocalDateTime(
-                      _parseDateTimeFromField(
-                        _controller.eventPublishAtController.text,
-                      ),
-                    );
-                if (publishAt == null) {
-                  return 'Publish at é obrigatório para publish_scheduled.';
-                }
-                return null;
+                _controller.updateEventPublicationStatus(value);
               },
             ),
+            if (formState.publicationStatus == 'publish_scheduled') ...[
+              const SizedBox(height: 12),
+              _buildDateTimeField(
+                controller: _controller.eventPublishAtController,
+                label: 'Publish at',
+                onTap: _pickPublishAtDateTime,
+                onClear: formState.publishAt == null
+                    ? null
+                    : _controller.clearEventPublishAt,
+              ),
+            ],
+            FormValidationGroupError(
+              validationStreamValue: _controller.eventValidationStreamValue,
+              groupId: TenantAdminEventFormValidationTargets.publication,
+              summarySuffixBuilder: _validationSummarySuffix,
+              expandLabel: 'Ver todos',
+              collapseLabel: 'Ocultar',
+            ),
           ],
-        ],
+        ),
       ),
     );
   }
@@ -692,171 +721,139 @@ class _TenantAdminEventFormScreenState
     required TenantAdminEventFormState formState,
     required bool partyCandidatesLoading,
   }) {
-    return TenantAdminFormSectionCard(
-      title: 'Localização',
-      description:
-          'Para physical/hybrid, a localização do evento pode ser derivada do perfil anfitrião selecionado.',
-      child: Column(
-        children: [
-          DropdownButtonFormField<String>(
-            initialValue: formState.locationMode,
-            decoration: const InputDecoration(labelText: 'Modo'),
-            items: const [
-              DropdownMenuItem(value: 'physical', child: Text('Physical')),
-              DropdownMenuItem(value: 'online', child: Text('Online')),
-              DropdownMenuItem(value: 'hybrid', child: Text('Hybrid')),
-            ],
-            onChanged: (value) {
-              if (value == null) {
-                return;
-              }
-              _controller.updateEventLocationMode(value);
-            },
-          ),
-          if (formState.locationMode == 'physical' ||
-              formState.locationMode == 'hybrid') ...[
-            const SizedBox(height: 12),
-            FormField<String>(
-              key: ValueKey<String?>(
-                'tenantAdminEventVenueField_${formState.locationMode}_${formState.selectedVenueId}',
-              ),
-              initialValue: formState.selectedVenueId,
-              validator: (_) {
-                if (formState.locationMode == 'physical' ||
-                    formState.locationMode == 'hybrid') {
-                  final selectedVenueId = formState.selectedVenueId?.trim();
-                  if (selectedVenueId == null || selectedVenueId.isEmpty) {
-                    return 'Host físico é obrigatório para ${formState.locationMode}.';
-                  }
+    return FormValidationAnchor(
+      anchors: _validationAnchors,
+      targetId: TenantAdminEventFormValidationTargets.location,
+      child: TenantAdminFormSectionCard(
+        title: 'Localização',
+        description:
+            'Para physical/hybrid, a localização do evento pode ser derivada do perfil anfitrião selecionado.',
+        child: Column(
+          children: [
+            DropdownButtonFormField<String>(
+              initialValue: formState.locationMode,
+              decoration: const InputDecoration(labelText: 'Modo'),
+              items: const [
+                DropdownMenuItem(value: 'physical', child: Text('Physical')),
+                DropdownMenuItem(value: 'online', child: Text('Online')),
+                DropdownMenuItem(value: 'hybrid', child: Text('Hybrid')),
+              ],
+              onChanged: (value) {
+                if (value == null) {
+                  return;
                 }
-                return null;
+                _controller.updateEventLocationMode(value);
               },
-              builder: (state) {
-                final selectedLabel = _selectedVenueLabel(
-                  venues,
-                  formState.selectedVenueId,
-                );
-
-                Future<void> pickVenue() async {
-                  await _controller.preparePhysicalHostAccountProfilePicker(
-                    accountSlug: widget.accountSlugForOwnCreate,
+            ),
+            if (formState.locationMode == 'physical' ||
+                formState.locationMode == 'hybrid') ...[
+              const SizedBox(height: 12),
+              Builder(
+                builder: (context) {
+                  final selectedLabel = _selectedVenueLabel(
+                    venues,
+                    formState.selectedVenueId,
                   );
-                  if (!mounted) {
-                    return;
-                  }
-                  final selected =
-                      await showTenantAdminAccountProfileLocationPickerSheet(
-                        context: context,
-                        controller: _controller,
-                        selectedLocationProfileId: formState.selectedVenueId,
-                        title: 'Local do evento',
-                        subtitle:
-                            'Selecione o perfil anfitrião físico deste evento.',
-                        keyPrefix: 'tenantAdminEventLocation',
-                        closeModalSheet: _closeModalSheet,
-                        includeEmptyOption: false,
-                        selectedLocationFallbackLabel: selectedLabel,
-                      );
-                  if (selected == null) {
-                    return;
-                  }
-                  _controller.updateEventVenueSelection(selected);
-                  state.didChange(selected);
-                }
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Host físico (perfil)',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).hintColor,
+                  Future<void> pickVenue() async {
+                    await _controller.preparePhysicalHostAccountProfilePicker(
+                      accountSlug: widget.accountSlugForOwnCreate,
+                    );
+                    if (!context.mounted) {
+                      return;
+                    }
+                    final selected =
+                        await showTenantAdminAccountProfileLocationPickerSheet(
+                          context: context,
+                          controller: _controller,
+                          selectedLocationProfileId: formState.selectedVenueId,
+                          title: 'Local do evento',
+                          subtitle:
+                              'Selecione o perfil anfitrião físico deste evento.',
+                          keyPrefix: 'tenantAdminEventLocation',
+                          closeModalSheet: _closeModalSheet,
+                          includeEmptyOption: false,
+                          selectedLocationFallbackLabel: selectedLabel,
+                        );
+                    if (selected == null) {
+                      return;
+                    }
+                    _controller.updateEventVenueSelection(selected);
+                  }
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Host físico (perfil)',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).hintColor,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Semantics(
-                      button: true,
-                      label: 'Host físico (perfil). $selectedLabel',
-                      child: ExcludeSemantics(
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            key: const Key(
-                              'tenantAdminEventLocationProfileDropdown',
-                            ),
-                            onPressed: pickVenue,
-                            style: OutlinedButton.styleFrom(
-                              alignment: Alignment.centerLeft,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 16,
+                      const SizedBox(height: 8),
+                      Semantics(
+                        button: true,
+                        label: 'Host físico (perfil). $selectedLabel',
+                        child: ExcludeSemantics(
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              key: const Key(
+                                'tenantAdminEventLocationProfileDropdown',
                               ),
-                            ),
-                            icon: const Icon(Icons.place_outlined),
-                            label: Text(
-                              selectedLabel,
-                              overflow: TextOverflow.ellipsis,
+                              onPressed: pickVenue,
+                              style: OutlinedButton.styleFrom(
+                                alignment: Alignment.centerLeft,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 16,
+                                ),
+                              ),
+                              icon: const Icon(Icons.place_outlined),
+                              label: Text(
+                                selectedLabel,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    if (state.errorText != null) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        state.errorText!,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                      ),
                     ],
-                  ],
-                );
-              },
-            ),
-            if (!partyCandidatesLoading && venues.isEmpty) ...[
-              const SizedBox(height: 8),
-              Text(
-                'Nenhum perfil elegível para host físico.',
-                style: Theme.of(context).textTheme.bodySmall,
+                  );
+                },
+              ),
+              if (!partyCandidatesLoading && venues.isEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Nenhum perfil elegível para host físico.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ],
+            if (formState.locationMode == 'online' ||
+                formState.locationMode == 'hybrid') ...[
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _controller.eventOnlineUrlController,
+                decoration: const InputDecoration(labelText: 'URL online'),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _controller.eventOnlinePlatformController,
+                decoration: const InputDecoration(
+                  labelText: 'Plataforma online (opcional)',
+                ),
               ),
             ],
-          ],
-          if (formState.locationMode == 'online' ||
-              formState.locationMode == 'hybrid') ...[
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _controller.eventOnlineUrlController,
-              decoration: const InputDecoration(labelText: 'URL online'),
-              validator: (value) {
-                if (!(formState.locationMode == 'online' ||
-                    formState.locationMode == 'hybrid')) {
-                  return null;
-                }
-                final trimmed = value?.trim() ?? '';
-                if (trimmed.isEmpty) {
-                  return 'URL online é obrigatória.';
-                }
-                final uri = Uri.tryParse(trimmed);
-                final valid =
-                    uri != null &&
-                    (uri.scheme == 'http' || uri.scheme == 'https') &&
-                    uri.host.isNotEmpty;
-                if (!valid) {
-                  return 'URL online inválida.';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _controller.eventOnlinePlatformController,
-              decoration: const InputDecoration(
-                labelText: 'Plataforma online (opcional)',
-              ),
+            FormValidationGroupError(
+              validationStreamValue: _controller.eventValidationStreamValue,
+              groupId: TenantAdminEventFormValidationTargets.location,
+              summarySuffixBuilder: _validationSummarySuffix,
+              expandLabel: 'Ver todos',
+              collapseLabel: 'Ocultar',
             ),
           ],
-        ],
+        ),
       ),
     );
   }
@@ -892,41 +889,60 @@ class _TenantAdminEventFormScreenState
     List<TenantAdminAccountProfile> relatedAccountProfiles, {
     required TenantAdminEventFormState formState,
   }) {
-    return TenantAdminNestedProfileGroupsEditor(
-      keyPrefix: 'EventProfile',
-      title: 'Abas de perfis relacionados',
-      selectorTitle: 'Perfis',
-      emptyCandidatesText: 'Nenhum perfil disponivel.',
-      emptySelectionText: 'Selecionar perfis',
-      selectedCountLabel: 'perfil(is) selecionado(s)',
-      searchLabelText: 'Buscar perfil',
-      emptySearchText: 'Nenhum perfil encontrado.',
-      groups: formState.profileGroups,
-      candidatesStreamValue:
-          _controller.relatedAccountProfileCandidatesStreamValue,
-      onSearchChanged: (query) => unawaited(
-        _controller.searchRelatedAccountProfileCandidatesForNestedGroups(query),
-      ),
-      onLoadMore:
-          _controller.loadNextRelatedAccountProfileCandidatesForNestedGroups,
-      searchLoadingStreamValue:
-          _controller.relatedAccountProfileSearchLoadingStreamValue,
-      searchPageLoadingStreamValue:
-          _controller.relatedAccountProfileSearchPageLoadingStreamValue,
-      searchHasMoreStreamValue:
-          _controller.relatedAccountProfileSearchHasMoreStreamValue,
-      profileTypes: const [],
-      addButtonKey: const Key('TenantAdminEventProfileGroupAdd'),
-      onAddGroup: _controller.addEventProfileGroup,
-      onRenameGroup: _controller.renameEventProfileGroup,
-      onMoveGroup: _controller.moveEventProfileGroup,
-      onRemoveGroup: _controller.removeEventProfileGroup,
-      onSelectionChanged: (groupId, profileId, selected) =>
-          _controller.toggleEventProfileGroupMember(
-            groupId: groupId,
-            profileId: profileId,
-            selected: selected,
+    return FormValidationAnchor(
+      anchors: _validationAnchors,
+      targetId: TenantAdminEventFormValidationTargets.relatedProfiles,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TenantAdminNestedProfileGroupsEditor(
+            keyPrefix: 'EventProfile',
+            title: 'Abas de perfis relacionados',
+            selectorTitle: 'Perfis',
+            emptyCandidatesText: 'Nenhum perfil disponivel.',
+            emptySelectionText: 'Selecionar perfis',
+            selectedCountLabel: 'perfil(is) selecionado(s)',
+            searchLabelText: 'Buscar perfil',
+            emptySearchText: 'Nenhum perfil encontrado.',
+            groups: formState.profileGroups,
+            candidatesStreamValue:
+                _controller.relatedAccountProfileCandidatesStreamValue,
+            onSearchChanged: (query) => unawaited(
+              _controller.searchRelatedAccountProfileCandidatesForNestedGroups(
+                query,
+              ),
+            ),
+            onLoadMore: _controller
+                .loadNextRelatedAccountProfileCandidatesForNestedGroups,
+            searchLoadingStreamValue:
+                _controller.relatedAccountProfileSearchLoadingStreamValue,
+            searchPageLoadingStreamValue:
+                _controller.relatedAccountProfileSearchPageLoadingStreamValue,
+            searchHasMoreStreamValue:
+                _controller.relatedAccountProfileSearchHasMoreStreamValue,
+            profileTypes: const [],
+            addButtonKey: const Key('TenantAdminEventProfileGroupAdd'),
+            onAddGroup: _controller.addEventProfileGroup,
+            onRenameGroup: _controller.renameEventProfileGroup,
+            onMoveGroup: _controller.moveEventProfileGroup,
+            onRemoveGroup: _controller.removeEventProfileGroup,
+            onSelectionChanged: (groupId, profileId, selected) =>
+                _controller.toggleEventProfileGroupMember(
+                  groupId: groupId,
+                  profileId: profileId,
+                  selected: selected,
+                ),
           ),
+          const SizedBox(height: 12),
+          FormValidationGroupError(
+            validationStreamValue: _controller.eventValidationStreamValue,
+            groupId: TenantAdminEventFormValidationTargets.relatedProfiles,
+            summarySuffixBuilder: _validationSummarySuffix,
+            expandLabel: 'Ver todos',
+            collapseLabel: 'Ocultar',
+          ),
+        ],
+      ),
     );
   }
 
@@ -1066,71 +1082,82 @@ class _TenantAdminEventFormScreenState
     required bool isLoading,
     required String? loadError,
   }) {
-    return TenantAdminFormSectionCard(
-      title: 'Taxonomias',
-      description: 'Termos permitidos para o tipo de evento selecionado.',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (isLoading) ...[
-            const LinearProgressIndicator(),
-            const SizedBox(height: 12),
-          ],
-          if (loadError?.trim().isNotEmpty == true) ...[
-            Text(
-              'Nao foi possivel carregar os termos das taxonomias.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.error,
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
-          ...taxonomies.map((taxonomy) {
-            final terms =
-                termsBySlug[taxonomy.slug] ??
-                const <TenantAdminTaxonomyTermDefinition>[];
-            final selected =
-                formState.selectedTaxonomyTerms[taxonomy.slug] ??
-                const <String>{};
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  taxonomy.name,
-                  style: Theme.of(context).textTheme.titleSmall,
+    return FormValidationAnchor(
+      anchors: _validationAnchors,
+      targetId: TenantAdminEventFormValidationTargets.taxonomies,
+      child: TenantAdminFormSectionCard(
+        title: 'Taxonomias',
+        description: 'Termos permitidos para o tipo de evento selecionado.',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (isLoading) ...[
+              const LinearProgressIndicator(),
+              const SizedBox(height: 12),
+            ],
+            if (loadError?.trim().isNotEmpty == true) ...[
+              Text(
+                'Nao foi possivel carregar os termos das taxonomias.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.error,
                 ),
-                const SizedBox(height: 8),
-                if (terms.isEmpty)
+              ),
+              const SizedBox(height: 12),
+            ],
+            FormValidationGroupError(
+              validationStreamValue: _controller.eventValidationStreamValue,
+              groupId: TenantAdminEventFormValidationTargets.taxonomies,
+              summarySuffixBuilder: _validationSummarySuffix,
+              expandLabel: 'Ver todos',
+              collapseLabel: 'Ocultar',
+            ),
+            ...taxonomies.map((taxonomy) {
+              final terms =
+                  termsBySlug[taxonomy.slug] ??
+                  const <TenantAdminTaxonomyTermDefinition>[];
+              final selected =
+                  formState.selectedTaxonomyTerms[taxonomy.slug] ??
+                  const <String>{};
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    isLoading
-                        ? 'Carregando termos...'
-                        : 'Nenhum termo cadastrado para esta taxonomia.',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  )
-                else
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: terms
-                        .map(
-                          (term) => FilterChip(
-                            label: Text(term.name),
-                            selected: selected.contains(term.slug),
-                            onSelected: (isSelected) =>
-                                _controller.toggleEventTaxonomyTerm(
-                                  taxonomySlug: taxonomy.slug,
-                                  termSlug: term.slug,
-                                  isSelected: isSelected,
-                                ),
-                          ),
-                        )
-                        .toList(growable: false),
+                    taxonomy.name,
+                    style: Theme.of(context).textTheme.titleSmall,
                   ),
-                const SizedBox(height: 12),
-              ],
-            );
-          }),
-        ],
+                  const SizedBox(height: 8),
+                  if (terms.isEmpty)
+                    Text(
+                      isLoading
+                          ? 'Carregando termos...'
+                          : 'Nenhum termo cadastrado para esta taxonomia.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    )
+                  else
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: terms
+                          .map(
+                            (term) => FilterChip(
+                              label: Text(term.name),
+                              selected: selected.contains(term.slug),
+                              onSelected: (isSelected) =>
+                                  _controller.toggleEventTaxonomyTerm(
+                                    taxonomySlug: taxonomy.slug,
+                                    termSlug: term.slug,
+                                    isSelected: isSelected,
+                                  ),
+                            ),
+                          )
+                          .toList(growable: false),
+                    ),
+                  const SizedBox(height: 12),
+                ],
+              );
+            }),
+          ],
+        ),
       ),
     );
   }
@@ -1269,7 +1296,6 @@ class _TenantAdminEventFormScreenState
     required TextEditingController controller,
     required String label,
     required Future<void> Function() onTap,
-    String? Function(String?)? validator,
     VoidCallback? onClear,
   }) {
     return TextFormField(
@@ -1294,9 +1320,18 @@ class _TenantAdminEventFormScreenState
           ],
         ),
       ),
-      validator: validator,
       onTap: onTap,
     );
+  }
+
+  Future<void> _scrollToFirstInvalidTarget() {
+    return _validationAnchors.scrollToFirstInvalidTarget(
+      _controller.eventValidationStreamValue.value,
+    );
+  }
+
+  String _validationSummarySuffix(int remainingCount) {
+    return '(+$remainingCount erros)';
   }
 
   void _openEventTypeManagement() {
@@ -1716,8 +1751,9 @@ class _TenantAdminEventFormScreenState
     if (_submitInFlight) {
       return;
     }
-    final form = _controller.eventFormKey.currentState;
-    if (form == null || !form.validate()) {
+    final isLocallyValid = _controller.validateEventBeforeSubmit();
+    if (!isLocallyValid) {
+      await _scrollToFirstInvalidTarget();
       return;
     }
 
@@ -1888,6 +1924,9 @@ class _TenantAdminEventFormScreenState
             ));
 
       if (result == null || !mounted) {
+        if (_controller.eventValidationStreamValue.value.hasErrors) {
+          await _scrollToFirstInvalidTarget();
+        }
         return;
       }
       submitSucceeded = true;
@@ -1901,6 +1940,14 @@ class _TenantAdminEventFormScreenState
 
   void _completeSubmit(TenantAdminEvent result) {
     context.router.maybePop<TenantAdminEvent>(result);
+  }
+
+  String? _normalizeAccountSlug(String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return null;
+    }
+    return trimmed;
   }
 
   TenantAdminEventLocation _buildLocationFromSelection(
