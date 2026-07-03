@@ -44,8 +44,9 @@ void main() {
     await GetIt.I.reset();
   });
 
-  testWidgets('renders shared marker icon picker in event type visual editor',
-      (tester) async {
+  testWidgets('renders shared marker icon picker in event type visual editor', (
+    tester,
+  ) async {
     final controller = TenantAdminEventsController(
       eventsRepository: _NoopEventsRepository(),
       taxonomiesRepository: _NoopTaxonomiesRepository(),
@@ -74,233 +75,246 @@ void main() {
   });
 
   testWidgets(
-      'shows canonical event type image upload controls for type_asset visuals',
-      (tester) async {
-    final controller = TenantAdminEventsController(
-      eventsRepository: _NoopEventsRepository(),
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-    );
-    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+    'shows canonical event type image upload controls for type_asset visuals',
+    (tester) async {
+      final controller = TenantAdminEventsController(
+        eventsRepository: _NoopEventsRepository(),
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+      );
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: TenantAdminEventTypeFormScreen(
-          existingType: TenantAdminEventType(
-            idValue: tenantAdminOptionalText('type-1'),
-            nameValue: tenantAdminRequiredText('Festival'),
-            slugValue: tenantAdminRequiredText('festival'),
-            visual: TenantAdminPoiVisual.image(
-              imageSource: TenantAdminPoiVisualImageSource.typeAsset,
-              colorValue: TenantAdminHexColorValue()..parse('#00897B'),
-              imageUrlValue: TenantAdminOptionalUrlValue()
-                ..parse(
-                  'https://tenant.test/api/v1/media/event-types/type-1/type_asset?v=3',
-                ),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TenantAdminEventTypeFormScreen(
+            existingType: TenantAdminEventType(
+              idValue: tenantAdminOptionalText('type-1'),
+              nameValue: tenantAdminRequiredText('Festival'),
+              slugValue: tenantAdminRequiredText('festival'),
+              visual: TenantAdminPoiVisual.image(
+                imageSource: TenantAdminPoiVisualImageSource.typeAsset,
+                colorValue: TenantAdminHexColorValue()..parse('#00897B'),
+                imageUrlValue: TenantAdminOptionalUrlValue()
+                  ..parse(
+                    'https://tenant.test/api/v1/media/event-types/type-1/type_asset?v=3',
+                  ),
+              ),
             ),
           ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.text('Imagem canônica do tipo'), findsOneWidget);
-    expect(
-      find.widgetWithText(TextFormField, 'Cor do marcador'),
-      findsOneWidget,
-    );
-    expect(find.byType(TenantAdminImageUploadField), findsOneWidget);
-    expect(find.text('Enviar imagem canônica'), findsOneWidget);
-  });
+      expect(find.text('Imagem canônica do tipo'), findsOneWidget);
+      expect(
+        find.widgetWithText(TextFormField, 'Cor do marcador'),
+        findsOneWidget,
+      );
+      expect(find.byType(TenantAdminImageUploadField), findsOneWidget);
+      expect(find.text('Enviar imagem canônica'), findsOneWidget);
+    },
+  );
 
   testWidgets(
-      'event type image source options exclude avatar and use event cover label',
-      (tester) async {
-    final controller = TenantAdminEventsController(
-      eventsRepository: _NoopEventsRepository(),
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-    );
-    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+    'event type image source options exclude avatar and use event cover label',
+    (tester) async {
+      final controller = TenantAdminEventsController(
+        eventsRepository: _NoopEventsRepository(),
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+      );
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: TenantAdminEventTypeFormScreen(
-          existingType: TenantAdminEventType(
-            idValue: tenantAdminOptionalText('type-1'),
-            nameValue: tenantAdminRequiredText('Festival'),
-            slugValue: tenantAdminRequiredText('festival'),
-            visual: TenantAdminPoiVisual.image(
-              imageSource: TenantAdminPoiVisualImageSource.cover,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TenantAdminEventTypeFormScreen(
+            existingType: TenantAdminEventType(
+              idValue: tenantAdminOptionalText('type-1'),
+              nameValue: tenantAdminRequiredText('Festival'),
+              slugValue: tenantAdminRequiredText('festival'),
+              visual: TenantAdminPoiVisual.image(
+                imageSource: TenantAdminPoiVisualImageSource.cover,
+              ),
             ),
           ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    await tester.tap(
-        find.byType(DropdownButtonFormField<TenantAdminPoiVisualImageSource>));
-    await tester.pumpAndSettle();
+      await tester.tap(
+        find.byType(DropdownButtonFormField<TenantAdminPoiVisualImageSource>),
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.text('Capa do evento'), findsWidgets);
-    expect(find.text('Imagem canônica do tipo'), findsWidgets);
-    expect(find.text('Avatar do perfil'), findsNothing);
-  });
-
-  testWidgets(
-      'drops duplicate submits while preparing type asset upload for event type save',
-      (tester) async {
-    final saveCompleter = Completer<TenantAdminEventType>();
-    final uploadGate = Completer<void>();
-    final repository = _RecordingEventsRepository(
-      updateEventTypeWithVisualResult: saveCompleter.future,
-    );
-    final imageIngestionService = _DelayedImageIngestionService(
-      buildUploadCompleter: uploadGate,
-      upload: tenantAdminMediaUploadFromRaw(
-        bytes: Uint8List.fromList(_validPngBytes),
-        fileName: 'event-type.png',
-        mimeType: 'image/png',
-      ),
-    );
-    final controller = TenantAdminEventsController(
-      eventsRepository: repository,
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-      imageIngestionService: imageIngestionService,
-    );
-    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
-
-    final existingType = TenantAdminEventType(
-      idValue: tenantAdminOptionalText('type-1'),
-      nameValue: tenantAdminRequiredText('Festival'),
-      slugValue: tenantAdminRequiredText('festival'),
-      visual: TenantAdminPoiVisual.image(
-        imageSource: TenantAdminPoiVisualImageSource.typeAsset,
-      ),
-    );
-
-    await tester.pumpWidget(
-      _buildRoutedTestApp(
-        router: _RecordingStackRouter(),
-        child: TenantAdminEventTypeFormScreen(existingType: existingType),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    controller.updateEventTypeTypeAssetFile(
-      XFile.fromData(
-        Uint8List.fromList(_validPngBytes),
-        name: 'picked.png',
-        mimeType: 'image/png',
-      ),
-    );
-    await tester.pump();
-
-    final saveButton = find.text('Salvar alterações');
-    await tester.ensureVisible(saveButton);
-    await tester.pumpAndSettle();
-    await tester.tap(saveButton);
-    await tester.pump();
-    await tester.tap(saveButton);
-    await tester.pump();
-
-    expect(controller.eventTypeFormStateStreamValue.value.isSaving, isTrue);
-    expect(repository.updateEventTypeWithVisualCallCount, 0);
-
-    uploadGate.complete();
-    await tester.pump();
-    await tester.pump();
-
-    expect(repository.updateEventTypeWithVisualCallCount, 1);
-
-    saveCompleter.complete(existingType);
-    await tester.pumpAndSettle();
-  });
+      expect(find.text('Capa do evento'), findsWidgets);
+      expect(find.text('Imagem canônica do tipo'), findsWidgets);
+      expect(find.text('Avatar do perfil'), findsNothing);
+    },
+  );
 
   testWidgets(
-      'event type edit preloads allowed taxonomies and preserves them when saving unrelated visual changes',
-      (tester) async {
-    final taxonomyA = TenantAdminTaxonomyDefinition(
-      idValue: tenantAdminRequiredText('taxonomy-a'),
-      slugValue: tenantAdminRequiredText('genre'),
-      nameValue: tenantAdminRequiredText('Genero Musical'),
-      appliesToValue: tenantAdminTrimmedStringList(const ['event']),
-      iconValue: tenantAdminOptionalText('music_note'),
-      colorValue: tenantAdminOptionalText('#AA5500'),
-    );
-    final taxonomyB = TenantAdminTaxonomyDefinition(
-      idValue: tenantAdminRequiredText('taxonomy-b'),
-      slugValue: tenantAdminRequiredText('cuisine'),
-      nameValue: tenantAdminRequiredText('Cozinha'),
-      appliesToValue: tenantAdminTrimmedStringList(const ['event']),
-      iconValue: tenantAdminOptionalText('restaurant'),
-      colorValue: tenantAdminOptionalText('#225588'),
-    );
-    final existingType = TenantAdminEventType.withAllowedTaxonomies(
-      idValue: tenantAdminOptionalText('type-1'),
-      nameValue: tenantAdminRequiredText('Festival'),
-      slugValue: tenantAdminRequiredText('festival'),
-      allowedTaxonomiesValue:
-          tenantAdminTrimmedStringList(const ['genre', 'cuisine']),
-      visual: TenantAdminPoiVisual.icon(
-        iconValue: TenantAdminRequiredTextValue()..parse('celebration'),
-        colorValue: TenantAdminHexColorValue()..parse('#FF8800'),
-      ),
-    );
-    final repository = _RecordingEventsRepository(
-      updateEventTypeWithVisualResult: Future<TenantAdminEventType>.value(
-        existingType,
-      ),
-    );
-    final controller = TenantAdminEventsController(
-      eventsRepository: repository,
-      taxonomiesRepository: _SeededTaxonomiesRepository(
-        taxonomies: [taxonomyA, taxonomyB],
-      ),
-    );
-    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+    'drops duplicate submits while preparing type asset upload for event type save',
+    (tester) async {
+      final saveCompleter = Completer<TenantAdminEventType>();
+      final uploadGate = Completer<void>();
+      final repository = _RecordingEventsRepository(
+        updateEventTypeWithVisualResult: saveCompleter.future,
+      );
+      final imageIngestionService = _DelayedImageIngestionService(
+        buildUploadCompleter: uploadGate,
+        upload: tenantAdminMediaUploadFromRaw(
+          bytes: Uint8List.fromList(_validPngBytes),
+          fileName: 'event-type.png',
+          mimeType: 'image/png',
+        ),
+      );
+      final controller = TenantAdminEventsController(
+        eventsRepository: repository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        imageIngestionService: imageIngestionService,
+      );
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
 
-    await tester.pumpWidget(
-      _buildRoutedTestApp(
-        router: _RecordingStackRouter(),
-        child: TenantAdminEventTypeFormScreen(existingType: existingType),
-      ),
-    );
-    await tester.pumpAndSettle();
+      final existingType = TenantAdminEventType(
+        idValue: tenantAdminOptionalText('type-1'),
+        nameValue: tenantAdminRequiredText('Festival'),
+        slugValue: tenantAdminRequiredText('festival'),
+        visual: TenantAdminPoiVisual.image(
+          imageSource: TenantAdminPoiVisualImageSource.typeAsset,
+        ),
+      );
 
-    expect(find.text('Taxonomias permitidas'), findsOneWidget);
-    expect(
-      controller.selectedEventTypeAllowedTaxonomies,
-      ['genre', 'cuisine'],
-    );
-    await tester.ensureVisible(find.text('Genero Musical (genre)'));
-    await tester.pumpAndSettle();
-    final taxonomySemantics = tester
-        .getSemantics(
-          find.byKey(
-            const ValueKey<String>(
-              'tenantAdminEventTypeAllowedTaxonomySemantics_genre',
+      await tester.pumpWidget(
+        _buildRoutedTestApp(
+          router: _RecordingStackRouter(),
+          child: TenantAdminEventTypeFormScreen(existingType: existingType),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      controller.updateEventTypeTypeAssetFile(
+        XFile.fromData(
+          Uint8List.fromList(_validPngBytes),
+          name: 'picked.png',
+          mimeType: 'image/png',
+        ),
+      );
+      await tester.pump();
+
+      final saveButton = find.text('Salvar alterações');
+      await tester.ensureVisible(saveButton);
+      await tester.pumpAndSettle();
+      await tester.tap(saveButton);
+      await tester.pump();
+      await tester.tap(saveButton);
+      await tester.pump();
+
+      expect(controller.eventTypeFormStateStreamValue.value.isSaving, isTrue);
+      expect(repository.updateEventTypeWithVisualCallCount, 0);
+
+      uploadGate.complete();
+      await tester.pump();
+      await tester.pump();
+
+      expect(repository.updateEventTypeWithVisualCallCount, 1);
+
+      saveCompleter.complete(existingType);
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
+    'event type edit preloads allowed taxonomies and preserves them when saving unrelated visual changes',
+    (tester) async {
+      final staleTaxonomy = TenantAdminTaxonomyDefinition(
+        idValue: tenantAdminRequiredText('taxonomy-stale'),
+        slugValue: tenantAdminRequiredText('stale'),
+        nameValue: tenantAdminRequiredText('Stale'),
+        appliesToValue: tenantAdminTrimmedStringList(const ['event']),
+        iconValue: tenantAdminOptionalText('warning'),
+        colorValue: tenantAdminOptionalText('#333333'),
+      );
+      final taxonomyA = TenantAdminTaxonomyDefinition(
+        idValue: tenantAdminRequiredText('taxonomy-a'),
+        slugValue: tenantAdminRequiredText('genre'),
+        nameValue: tenantAdminRequiredText('Genero Musical'),
+        appliesToValue: tenantAdminTrimmedStringList(const ['event']),
+        iconValue: tenantAdminOptionalText('music_note'),
+        colorValue: tenantAdminOptionalText('#AA5500'),
+      );
+      final taxonomyB = TenantAdminTaxonomyDefinition(
+        idValue: tenantAdminRequiredText('taxonomy-b'),
+        slugValue: tenantAdminRequiredText('cuisine'),
+        nameValue: tenantAdminRequiredText('Cozinha'),
+        appliesToValue: tenantAdminTrimmedStringList(const ['event']),
+        iconValue: tenantAdminOptionalText('restaurant'),
+        colorValue: tenantAdminOptionalText('#225588'),
+      );
+      final existingType = TenantAdminEventType.withAllowedTaxonomies(
+        idValue: tenantAdminOptionalText('type-1'),
+        nameValue: tenantAdminRequiredText('Festival'),
+        slugValue: tenantAdminRequiredText('festival'),
+        allowedTaxonomiesValue: tenantAdminTrimmedStringList(const [
+          'genre',
+          'cuisine',
+        ]),
+        visual: TenantAdminPoiVisual.icon(
+          iconValue: TenantAdminRequiredTextValue()..parse('celebration'),
+          colorValue: TenantAdminHexColorValue()..parse('#FF8800'),
+        ),
+      );
+      final repository = _RecordingEventsRepository(
+        updateEventTypeWithVisualResult: Future<TenantAdminEventType>.value(
+          existingType,
+        ),
+      );
+      final controller = TenantAdminEventsController(
+        eventsRepository: repository,
+        taxonomiesRepository: _SeededTaxonomiesRepository(
+          taxonomies: [taxonomyA, taxonomyB],
+        ),
+      );
+      controller.taxonomiesStreamValue.addValue([staleTaxonomy]);
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await tester.pumpWidget(
+        _buildRoutedTestApp(
+          router: _RecordingStackRouter(),
+          child: TenantAdminEventTypeFormScreen(existingType: existingType),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Taxonomias permitidas'), findsOneWidget);
+      expect(controller.selectedEventTypeAllowedTaxonomies, [
+        'genre',
+        'cuisine',
+      ]);
+      await tester.ensureVisible(find.text('Genero Musical (genre)'));
+      await tester.pumpAndSettle();
+      final taxonomySemantics = tester
+          .getSemantics(
+            find.byKey(
+              const ValueKey<String>(
+                'tenantAdminEventTypeAllowedTaxonomySemantics_genre',
+              ),
             ),
-          ),
-        )
-        .getSemanticsData();
-    expect(taxonomySemantics.hasAction(SemanticsAction.tap), isTrue);
+          )
+          .getSemanticsData();
+      expect(taxonomySemantics.hasAction(SemanticsAction.tap), isTrue);
 
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Cor do marcador'),
-      '#123456',
-    );
-    final saveButton = find.text('Salvar alterações');
-    await tester.ensureVisible(saveButton);
-    await tester.pumpAndSettle();
-    await tester.tap(saveButton);
-    await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Cor do marcador'),
+        '#123456',
+      );
+      final saveButton = find.text('Salvar alterações');
+      await tester.ensureVisible(saveButton);
+      await tester.pumpAndSettle();
+      await tester.tap(saveButton);
+      await tester.pumpAndSettle();
 
-    expect(repository.updateEventTypeWithVisualCallCount, 1);
-    expect(
-      repository.lastUpdateAllowedTaxonomies,
-      ['genre', 'cuisine'],
-    );
-  });
+      expect(repository.updateEventTypeWithVisualCallCount, 1);
+      expect(repository.lastUpdateAllowedTaxonomies, ['genre', 'cuisine']);
+    },
+  );
 }
 
 Widget _buildRoutedTestApp({
@@ -327,10 +341,7 @@ Widget _buildRoutedTestApp({
     controller: router,
     stateHash: 0,
     child: MaterialApp(
-      home: RouteDataScope(
-        routeData: routeData,
-        child: child,
-      ),
+      home: RouteDataScope(routeData: routeData, child: child),
     ),
   );
 }
@@ -377,7 +388,8 @@ class _NoopEventsRepository extends TenantAdminEventsRepositoryContract
 
   @override
   Future<TenantAdminEvent> fetchEvent(
-      TenantAdminEventsRepoString eventIdOrSlug) {
+    TenantAdminEventsRepoString eventIdOrSlug,
+  ) {
     throw UnimplementedError();
   }
 
@@ -414,7 +426,7 @@ class _NoopEventsRepository extends TenantAdminEventsRepositoryContract
 
   @override
   Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-      fetchEventAccountProfileCandidatesPage({
+  fetchEventAccountProfileCandidatesPage({
     required TenantAdminEventAccountProfileCandidateType candidateType,
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
@@ -429,7 +441,7 @@ class _NoopEventsRepository extends TenantAdminEventsRepositoryContract
 
   @override
   Future<TenantAdminLegacyEventPartiesSummary>
-      fetchLegacyEventPartiesSummary() async {
+  fetchLegacyEventPartiesSummary() async {
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(0),
       invalidValue: TenantAdminCountValue(0),
@@ -441,7 +453,7 @@ class _NoopEventsRepository extends TenantAdminEventsRepositoryContract
 
   @override
   Future<TenantAdminLegacyEventPartiesSummary>
-      repairLegacyEventParties() async {
+  repairLegacyEventParties() async {
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(0),
       invalidValue: TenantAdminCountValue(0),
@@ -510,7 +522,7 @@ class _NoopTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
-      fetchTaxonomiesPage({
+  fetchTaxonomiesPage({
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
   }) async {
@@ -529,7 +541,7 @@ class _NoopTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
-      fetchTermsPage({
+  fetchTermsPage({
     required TenantAdminTaxRepoString taxonomyId,
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
@@ -564,9 +576,7 @@ class _NoopTaxonomiesRepository
 }
 
 class _SeededTaxonomiesRepository extends _NoopTaxonomiesRepository {
-  _SeededTaxonomiesRepository({
-    required this.taxonomies,
-  });
+  _SeededTaxonomiesRepository({required this.taxonomies});
 
   final List<TenantAdminTaxonomyDefinition> taxonomies;
 
@@ -577,21 +587,16 @@ class _SeededTaxonomiesRepository extends _NoopTaxonomiesRepository {
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
-      fetchTaxonomiesPage({
+  fetchTaxonomiesPage({
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
   }) async {
-    return tenantAdminPagedResultFromRaw(
-      items: taxonomies,
-      hasMore: false,
-    );
+    return tenantAdminPagedResultFromRaw(items: taxonomies, hasMore: false);
   }
 }
 
 class _RecordingEventsRepository extends _NoopEventsRepository {
-  _RecordingEventsRepository({
-    required this.updateEventTypeWithVisualResult,
-  });
+  _RecordingEventsRepository({required this.updateEventTypeWithVisualResult});
 
   final Future<TenantAdminEventType> updateEventTypeWithVisualResult;
   int updateEventTypeWithVisualCallCount = 0;
@@ -609,8 +614,9 @@ class _RecordingEventsRepository extends _NoopEventsRepository {
     TenantAdminEventsRepoBool? removeTypeAsset,
   }) {
     updateEventTypeWithVisualCallCount += 1;
-    lastUpdateAllowedTaxonomies =
-        allowedTaxonomies?.map((entry) => entry.value).toList(growable: false);
+    lastUpdateAllowedTaxonomies = allowedTaxonomies
+        ?.map((entry) => entry.value)
+        .toList(growable: false);
     return updateEventTypeWithVisualResult;
   }
 }

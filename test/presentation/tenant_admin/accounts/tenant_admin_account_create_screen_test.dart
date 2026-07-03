@@ -26,6 +26,7 @@ import 'package:belluga_now/domain/services/tenant_admin_location_selection_cont
 import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_contract.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_account_create_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/accounts/models/tenant_admin_account_create_validation_config.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/screens/tenant_admin_account_create_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_upload_field.dart';
@@ -1021,6 +1022,69 @@ void main() {
     expect(find.byType(SnackBar), findsNothing);
   });
 
+  testWidgets('renders backend profile_type validation inline without snackbar',
+      (tester) async {
+    final accountsRepository =
+        GetIt.I.get<TenantAdminAccountsRepositoryContract>()
+            as _FakeAccountsRepository;
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+    profilesRepository._profileTypes = [
+      tenantAdminProfileTypeDefinitionFromRaw(
+        type: 'venue',
+        label: 'Venue',
+        allowedTaxonomies: [],
+        capabilities: TenantAdminProfileTypeCapabilities(
+          isFavoritable: TenantAdminFlagValue(true),
+          isPoiEnabled: TenantAdminFlagValue(false),
+          hasBio: TenantAdminFlagValue(false),
+          hasContent: TenantAdminFlagValue(false),
+          hasTaxonomies: TenantAdminFlagValue(false),
+          hasAvatar: TenantAdminFlagValue(false),
+          hasCover: TenantAdminFlagValue(false),
+          hasEvents: TenantAdminFlagValue(false),
+        ),
+      ),
+    ];
+    accountsRepository.createAccountError = FormValidationFailure(
+      statusCode: 422,
+      message: 'The given data was invalid.',
+      fieldErrors: <String, List<String>>{
+        'profile_type': <String>['Tipo de perfil invalido.'],
+      },
+    );
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminAccountCreateScreen(),
+      ),
+    );
+
+    await _selectProfileType(tester, 'Venue');
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Nome'),
+      'Conta teste',
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('tenant_admin_account_create_save')),
+      warnIfMissed: false,
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final controller = GetIt.I.get<TenantAdminAccountCreateController>();
+    expect(find.text('Tipo de perfil invalido.'), findsOneWidget);
+    expect(
+      controller.createValidationStreamValue.value.errorForField(
+        TenantAdminAccountCreateValidationTargets.profileType,
+      ),
+      'Tipo de perfil invalido.',
+    );
+    expect(find.byType(SnackBar), findsNothing);
+  });
+
   testWidgets('shows operational submit failures in snackbar', (tester) async {
     final accountsRepository =
         GetIt.I.get<TenantAdminAccountsRepositoryContract>()
@@ -1288,7 +1352,7 @@ Future<void> _pumpWithAutoRoute(
           family: CanonicalRouteFamily.tenantAdminAccountsInternal,
           chromeMode: RouteChromeMode.fullscreen,
         ),
-        builder: (_, __) => child,
+        builder: (context, routeData) => child,
       ),
       NamedRouteDef(
         name: TenantAdminAccountDetailRoute.name,

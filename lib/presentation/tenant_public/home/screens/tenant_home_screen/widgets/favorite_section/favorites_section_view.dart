@@ -23,31 +23,41 @@ class FavoritesSectionView extends StatelessWidget {
         child: Center(child: CircularProgressIndicator()),
       ),
       builder: (context, favorites) {
-        final all = favorites ?? const <FavoriteResume>[];
-        final items = all.where((fav) => !fav.isPrimary).toList();
-        final pinned = controller.buildPinnedFavorite();
-        final router = context.router;
+        return StreamValueBuilder<bool>(
+          streamValue: controller.hasMoreFavoritesStreamValue,
+          builder: (context, hasMore) {
+            return StreamValueBuilder<bool>(
+              streamValue: controller.isPageLoadingStreamValue,
+              builder: (context, isPageLoading) {
+                final all = favorites ?? const <FavoriteResume>[];
+                final items = all.where((fav) => !fav.isPrimary).toList();
+                final pinned = controller.buildPinnedFavorite();
+                final router = context.router;
 
-        return Row(
-          children: [
-            Expanded(
-              child: FavoritesStrip(
-                items: items,
-                pinned: pinned,
-                resolvedVisualForItem: controller.resolvedVisualFor,
-                haloStateForItem: controller.haloStateFor,
-                onSearchTap: () {
-                  router.push(DiscoveryRoute());
-                },
-                onFavoriteTap: (favorite) {
-                  _openFavoriteTarget(router, favorite);
-                },
-                onPinnedTap: () {
-                  // TODO(Delphi): Route to About screen once available in AutoRoute map.
-                },
-              ),
-            ),
-          ],
+                return Row(
+                  children: [
+                    Expanded(
+                      child: FavoritesStrip(
+                        items: items,
+                        pinned: pinned,
+                        resolvedVisualForItem: controller.resolvedVisualFor,
+                        haloStateForItem: controller.haloStateFor,
+                        canLoadMore: hasMore,
+                        isLoadingMore: isPageLoading,
+                        onEndReached: controller.loadNextPage,
+                        onSearchTap: () {
+                          router.push(DiscoveryRoute());
+                        },
+                        onFavoriteTap: (favorite) {
+                          _openFavoriteTarget(router, favorite);
+                        },
+                      ),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
         );
       },
     );

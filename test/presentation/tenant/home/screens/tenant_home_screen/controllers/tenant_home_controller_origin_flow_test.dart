@@ -119,7 +119,7 @@ void main() {
     controller.onDispose();
   });
 
-  test('my-events home flow paginates until has_more is false', () async {
+  test('my-events home flow uses the confirmed preview slice only', () async {
     final tenantDefaultOrigin = _buildCoordinate(
       latitude: -20.671339,
       longitude: -40.495395,
@@ -140,8 +140,8 @@ void main() {
 
     final events = await userEventsRepository.fetchMyEvents();
 
-    expect(events.length, 2);
-    expect(backend.requests.map((sample) => sample.page), [1, 2]);
+    expect(events.length, 1);
+    expect(backend.requests.map((sample) => sample.page), [1]);
     expect(backend.requests.every((sample) => sample.confirmedOnly), isTrue);
   });
 

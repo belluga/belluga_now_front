@@ -83,7 +83,7 @@ void main() {
     final events = await repository.fetchMyEvents();
 
     expect(events, isEmpty);
-    expect(scheduleRepository.loadConfirmedEventsCallCount, 0);
+    expect(scheduleRepository.loadEventSearchCallCount, 0);
   });
 }
 
@@ -112,13 +112,19 @@ class _FakeUserEventsBackend implements UserEventsBackendContract {
 
 class _FakeScheduleRepository extends Fake
     implements ScheduleRepositoryContract {
-  int loadConfirmedEventsCallCount = 0;
+  int loadEventSearchCallCount = 0;
 
   @override
-  Future<List<EventModel>> loadConfirmedEvents({
+  Future<List<EventModel>> loadEventSearch({
     required ScheduleRepoBool showPastOnly,
+    ScheduleRepoString? searchQuery,
+    ScheduleRepoBool? confirmedOnly,
+    List<ScheduleRepoString>? occurrenceIds,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   }) async {
-    loadConfirmedEventsCallCount += 1;
+    loadEventSearchCallCount += 1;
     return const <EventModel>[];
   }
 }

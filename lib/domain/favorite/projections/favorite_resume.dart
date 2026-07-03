@@ -1,3 +1,4 @@
+import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/favorite/favorite.dart';
 import 'package:belluga_now/domain/favorite/favorite_badge.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_event_occurrence_id_value.dart';
@@ -14,11 +15,7 @@ import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:flutter/material.dart';
 
-enum FavoriteChipHaloState {
-  none,
-  upcoming,
-  liveNow,
-}
+enum FavoriteChipHaloState { none, upcoming, liveNow }
 
 class FavoriteResume {
   FavoriteResume({
@@ -40,25 +37,26 @@ class FavoriteResume {
     DomainOptionalDateTimeValue? lastEventOccurrenceAtValue,
     this.liveNowEventOccurrenceIdValue,
     DomainOptionalDateTimeValue? liveNowEventOccurrenceAtValue,
-  })  : assert(
-          imageUriValue != null || assetPathValue != null,
-          'Provide either an image or an asset path.',
-        ),
-        assert(
-          imageUriValue == null || assetPathValue == null,
-          'Only one of image or asset path can be provided.',
-        ),
-        nextEventOccurrenceAtValue =
-            nextEventOccurrenceAtValue ?? DomainOptionalDateTimeValue(),
-        lastEventOccurrenceAtValue =
-            lastEventOccurrenceAtValue ?? DomainOptionalDateTimeValue(),
-        canOpenPublicDetailValue = canOpenPublicDetailValue ??
-            (DomainBooleanValue(defaultValue: false, isRequired: false)
-              ..parse('false')),
-        liveNowEventOccurrenceAtValue =
-            liveNowEventOccurrenceAtValue ?? DomainOptionalDateTimeValue(),
-        isPrimaryValue =
-            isPrimaryValue ?? (FavoritePrimaryFlagValue()..parse('false'));
+  }) : assert(
+         imageUriValue != null || assetPathValue != null,
+         'Provide either an image or an asset path.',
+       ),
+       assert(
+         imageUriValue == null || assetPathValue == null,
+         'Only one of image or asset path can be provided.',
+       ),
+       nextEventOccurrenceAtValue =
+           nextEventOccurrenceAtValue ?? DomainOptionalDateTimeValue(),
+       lastEventOccurrenceAtValue =
+           lastEventOccurrenceAtValue ?? DomainOptionalDateTimeValue(),
+       canOpenPublicDetailValue =
+           canOpenPublicDetailValue ??
+           (DomainBooleanValue(defaultValue: false, isRequired: false)
+             ..parse('false')),
+       liveNowEventOccurrenceAtValue =
+           liveNowEventOccurrenceAtValue ?? DomainOptionalDateTimeValue(),
+       isPrimaryValue =
+           isPrimaryValue ?? (FavoritePrimaryFlagValue()..parse('false'));
 
   final TitleValue titleValue;
   final SlugValue? slugValue;
@@ -111,12 +109,20 @@ class FavoriteResume {
   String? get liveNowEventOccurrenceId => liveNowEventOccurrenceIdValue?.value;
   DateTime? get liveNowEventOccurrenceAt => liveNowEventOccurrenceAtValue.value;
   bool get isAccountProfileTarget => targetType == 'account_profile';
+  bool get hasFutureEventOccurrence {
+    final nextOccurrenceAt = nextEventOccurrenceAt;
+    if (nextOccurrenceAt == null) {
+      return false;
+    }
+    return nextOccurrenceAt.isAfter(TimezoneConverter.localToUtc(DateTime.now()));
+  }
+
   FavoriteChipHaloState get haloState {
     if ((liveNowEventOccurrenceId?.trim().isNotEmpty ?? false) ||
         liveNowEventOccurrenceAt != null) {
       return FavoriteChipHaloState.liveNow;
     }
-    if (nextEventOccurrenceAt != null) {
+    if (hasFutureEventOccurrence) {
       return FavoriteChipHaloState.upcoming;
     }
     return FavoriteChipHaloState.none;
@@ -126,7 +132,7 @@ class FavoriteResume {
   ///
   /// Use `FavoritePreviewDTO.toResume()` for navigation-capable favorites,
   /// because the legacy `Favorite` domain object does not carry the routed
-  /// public-detail / event-target snapshot fields.
+  /// public-detail / event-target occurrence-state fields.
   @Deprecated('Use FavoritePreviewDTO.toResume for navigation-capable data.')
   factory FavoriteResume.fromFavorite(Favorite favorite) {
     return FavoriteResume(
