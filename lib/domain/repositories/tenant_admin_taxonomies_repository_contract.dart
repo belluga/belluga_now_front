@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_defin
 import 'package:stream_value/core/stream_value.dart';
 
 export 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_batch_terms_repository_contract.dart';
+export 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_scoped_lookup_repository_contract.dart';
 export 'package:belluga_now/domain/repositories/value_objects/tenant_admin_taxonomies_repository_contract_values.dart';
 
 typedef TenantAdminTaxRepoString =
@@ -14,13 +15,6 @@ typedef TenantAdminTaxRepoString =
 typedef TenantAdminTaxRepoInt = TenantAdminTaxonomiesRepositoryContractIntValue;
 typedef TenantAdminTaxRepoBool =
     TenantAdminTaxonomiesRepositoryContractBoolValue;
-
-abstract class TenantAdminTaxonomiesScopedLookupRepositoryContract {
-  Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomiesBySlugs({
-    required List<TenantAdminTaxRepoString> slugs,
-    TenantAdminTaxRepoString? appliesTo,
-  });
-}
 
 abstract class TenantAdminTaxonomiesRepositoryContract {
   static final Expando<_TenantAdminTaxonomiesPaginationState>
