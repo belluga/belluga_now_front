@@ -338,6 +338,7 @@ class TenantAdminEventsController implements Disposable {
   _bootstrapRelatedAccountProfileCandidatesPage;
   int _accountProfilePickerCurrentPage = 0;
   int _accountProfilePickerRequestToken = 0;
+  int _formDependenciesLoadSerial = 0;
   int _eventFormLocalIdSerial = 0;
   String? _eventFormInitialFingerprint;
   TenantAdminEventAccountProfileCandidateType? _accountProfilePickerType;
@@ -1902,16 +1903,20 @@ class TenantAdminEventsController implements Disposable {
   }
 
   Future<void> loadFormDependencies({String? accountSlug}) async {
+    final requestToken = ++_formDependenciesLoadSerial;
     final normalizedAccountSlug = _normalizeOptionalText(accountSlug);
     _formAccountProfileCandidatesAccountSlug = normalizedAccountSlug;
     final cleanBaselineBeforeLoad = _eventFormInitialFingerprint;
     final tasks = <Future<void>>[
-      _loadEventTypeCatalog(),
-      _loadAccountProfileCandidates(accountSlug: normalizedAccountSlug),
+      _loadEventTypeCatalog(requestToken: requestToken),
+      _loadAccountProfileCandidates(
+        accountSlug: normalizedAccountSlug,
+        requestToken: requestToken,
+      ),
     ];
 
     await Future.wait<void>(tasks);
-    if (!_isDisposed) {
+    if (!_isDisposed && requestToken == _formDependenciesLoadSerial) {
       final canRefreshCleanBaseline =
           cleanBaselineBeforeLoad != null &&
           _eventFormFingerprint() == cleanBaselineBeforeLoad;
@@ -1936,10 +1941,11 @@ class TenantAdminEventsController implements Disposable {
     await _waitForAccountProfileCandidatesLoad();
   }
 
-  Future<void> _loadEventTypeCatalog() async {
+  Future<void> _loadEventTypeCatalog({int? requestToken}) async {
     try {
       final eventTypes = await _eventsRepository.fetchEventTypes();
-      if (_isDisposed) {
+      if (_isDisposed ||
+          (requestToken != null && requestToken != _formDependenciesLoadSerial)) {
         return;
       }
       final sorted = eventTypes.toList(growable: false)
@@ -2439,7 +2445,10 @@ class TenantAdminEventsController implements Disposable {
     await loadNextAccountProfilePickerPage();
   }
 
-  Future<void> _loadAccountProfileCandidates({String? accountSlug}) async {
+  Future<void> _loadAccountProfileCandidates({
+    String? accountSlug,
+    int? requestToken,
+  }) async {
     final normalizedAccountSlug = _normalizeOptionalText(accountSlug);
     accountProfileCandidatesLoadingStreamValue.addValue(true);
     accountProfileCandidatesErrorStreamValue.addValue(null);
@@ -2458,7 +2467,8 @@ class TenantAdminEventsController implements Disposable {
         ),
       ]);
 
-      if (_isDisposed) {
+      if (_isDisposed ||
+          (requestToken != null && requestToken != _formDependenciesLoadSerial)) {
         return;
       }
 
@@ -2487,12 +2497,14 @@ class TenantAdminEventsController implements Disposable {
         ),
       );
     } catch (error) {
-      if (_isDisposed) {
+      if (_isDisposed ||
+          (requestToken != null && requestToken != _formDependenciesLoadSerial)) {
         return;
       }
       accountProfileCandidatesErrorStreamValue.addValue(error.toString());
     } finally {
-      if (!_isDisposed) {
+      if (!_isDisposed &&
+          (requestToken == null || requestToken == _formDependenciesLoadSerial)) {
         accountProfileCandidatesLoadingStreamValue.addValue(false);
       }
     }

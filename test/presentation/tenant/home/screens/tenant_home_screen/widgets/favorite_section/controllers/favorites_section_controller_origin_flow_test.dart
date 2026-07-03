@@ -529,7 +529,7 @@ void main() {
           targetType: 'account_profile',
           canOpenPublicDetail: true,
           publicDetailPath: '/parceiro/yuri-dias',
-          nextEventOccurrenceAt: DateTime.utc(2026, 6, 21, 16),
+          nextEventOccurrenceAt: _pastOccurrence(),
         ),
       );
 
@@ -557,6 +557,29 @@ void main() {
           canOpenPublicDetail: true,
           publicDetailPath: '/parceiro/evento-sem-rota-canonica',
           liveNowEventOccurrenceId: 'occ-live',
+        ),
+      );
+
+      expect(unavailableTarget, isA<FavoriteNavigationUnavailable>());
+    },
+  );
+
+  test(
+    'favorites section fails closed when a future event favorite is missing the canonical event target path',
+    () async {
+      final controller = FavoritesSectionController(
+        favoriteRepository: _FakeFavoriteRepository(),
+        appDataRepository: _FakeAppDataRepository(),
+      );
+
+      final unavailableTarget = await controller.resolveNavigationTarget(
+        _favoriteResume(
+          title: 'Evento Futuro Sem Rota Canonica',
+          slug: 'evento-futuro-sem-rota-canonica',
+          targetType: 'account_profile',
+          canOpenPublicDetail: true,
+          publicDetailPath: '/parceiro/evento-futuro-sem-rota-canonica',
+          nextEventOccurrenceAt: _futureOccurrence(),
         ),
       );
 
@@ -741,10 +764,21 @@ void main() {
           _favoriteResume(
             title: 'Próximo',
             slug: 'proximo',
-            nextEventOccurrenceAt: DateTime(2026, 4, 4, 20),
+            nextEventOccurrenceAt: _futureOccurrence(),
           ),
         ),
         FavoriteChipHaloState.upcoming,
+      );
+
+      expect(
+        controller.haloStateFor(
+          _favoriteResume(
+            title: 'Próximo Antigo',
+            slug: 'proximo-antigo',
+            nextEventOccurrenceAt: _pastOccurrence(),
+          ),
+        ),
+        FavoriteChipHaloState.none,
       );
 
       expect(
@@ -791,6 +825,12 @@ FavoriteResume _favoriteResume({
     liveNowEventOccurrenceId: liveNowEventOccurrenceId,
   );
 }
+
+DateTime _futureOccurrence() =>
+    DateTime.now().toUtc().add(const Duration(days: 7));
+
+DateTime _pastOccurrence() =>
+    DateTime.now().toUtc().subtract(const Duration(days: 7));
 
 class _FakeFavoriteRepository extends FavoriteRepositoryContract
     with FavoriteRepositoryPagingMixin {

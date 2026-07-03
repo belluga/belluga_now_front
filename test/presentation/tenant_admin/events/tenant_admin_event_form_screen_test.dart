@@ -3722,6 +3722,10 @@ void main() {
         ),
         contains('validation.required_if'),
       );
+      expect(
+        controller.eventValidationStreamValue.value.errorsForGlobal(),
+        isEmpty,
+      );
     },
   );
 
@@ -5035,6 +5039,94 @@ void main() {
             .first
             .occurrenceId,
         'occ-2',
+      );
+    },
+  );
+
+  testWidgets(
+    'mounted own-create reuse ignores stale dependency loads when account slug changes',
+    (tester) async {
+      final eventsRepository = _AccountScopedDelayedCandidatesEventsRepository(
+        physicalHostCandidatesByAccountSlug: <String, List<TenantAdminAccountProfile>>{
+          'school-a': <TenantAdminAccountProfile>[
+            tenantAdminAccountProfileFromRaw(
+              id: 'venue-school-a',
+              accountId: 'acc-venue-school-a',
+              profileType: 'venue',
+              displayName: 'Venue School A',
+              location: tenantAdminLocationFromRaw(
+                latitude: -20.611121,
+                longitude: -40.498617,
+              ),
+            ),
+          ],
+          'school-b': <TenantAdminAccountProfile>[
+            tenantAdminAccountProfileFromRaw(
+              id: 'venue-school-b',
+              accountId: 'acc-venue-school-b',
+              profileType: 'venue',
+              displayName: 'Venue School B',
+              location: tenantAdminLocationFromRaw(
+                latitude: -20.612121,
+                longitude: -40.499617,
+              ),
+            ),
+          ],
+        },
+        delayByAccountSlug: <String, Duration>{
+          'school-a': const Duration(milliseconds: 200),
+          'school-b': Duration.zero,
+        },
+      );
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+      controller.eventTypeCatalogStreamValue.addValue(const []);
+
+      final currentAccountSlug = ValueNotifier<String>('school-a');
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        ValueListenableBuilder<String>(
+          valueListenable: currentAccountSlug,
+          builder: (context, accountSlug, _) {
+            return Scaffold(
+              body: TenantAdminEventFormScreen(
+                accountSlugForOwnCreate: accountSlug,
+              ),
+            );
+          },
+        ),
+      );
+
+      await tester.pump();
+      currentAccountSlug.value = 'school-b';
+      await tester.pump();
+      await tester.pump();
+
+      expect(
+        controller.eventFormStateStreamValue.value.selectedVenue?.id,
+        'venue-school-b',
+      );
+      expect(
+        controller.venueCandidatesStreamValue.value.map((venue) => venue.id),
+        ['venue-school-b'],
+      );
+
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pumpAndSettle();
+
+      expect(
+        controller.eventFormStateStreamValue.value.selectedVenue?.id,
+        'venue-school-b',
+      );
+      expect(
+        controller.venueCandidatesStreamValue.value.map((venue) => venue.id),
+        ['venue-school-b'],
       );
     },
   );
@@ -6466,6 +6558,50 @@ class _DelayedRelatedCandidatesEventsRepository extends _FakeEventsRepository {
     if (candidateType ==
         TenantAdminEventAccountProfileCandidateType.relatedAccountProfile) {
       await Future<void>.delayed(delay);
+    }
+
+    return super.fetchEventAccountProfileCandidatesPage(
+      candidateType: candidateType,
+      page: page,
+      pageSize: pageSize,
+      search: search,
+      accountSlug: accountSlug,
+    );
+  }
+}
+
+class _AccountScopedDelayedCandidatesEventsRepository
+    extends _FakeEventsRepository {
+  _AccountScopedDelayedCandidatesEventsRepository({
+    required this.physicalHostCandidatesByAccountSlug,
+    required this.delayByAccountSlug,
+  });
+
+  final Map<String, List<TenantAdminAccountProfile>>
+  physicalHostCandidatesByAccountSlug;
+  final Map<String, Duration> delayByAccountSlug;
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+  fetchEventAccountProfileCandidatesPage({
+    required TenantAdminEventAccountProfileCandidateType candidateType,
+    required TenantAdminEventsRepoInt page,
+    required TenantAdminEventsRepoInt pageSize,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? accountSlug,
+  }) async {
+    if (candidateType ==
+        TenantAdminEventAccountProfileCandidateType.physicalHost) {
+      final normalizedAccountSlug = accountSlug?.value.trim() ?? '';
+      final delay = delayByAccountSlug[normalizedAccountSlug];
+      if (delay != null && delay > Duration.zero) {
+        await Future<void>.delayed(delay);
+      }
+
+      final items =
+          physicalHostCandidatesByAccountSlug[normalizedAccountSlug] ??
+          const <TenantAdminAccountProfile>[];
+      return tenantAdminPagedResultFromRaw(items: items, hasMore: false);
     }
 
     return super.fetchEventAccountProfileCandidatesPage(

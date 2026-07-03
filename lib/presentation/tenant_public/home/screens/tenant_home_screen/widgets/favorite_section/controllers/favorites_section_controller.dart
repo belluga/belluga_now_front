@@ -75,19 +75,17 @@ class FavoritesSectionController implements Disposable {
     }
 
     final eventTargetPath = favorite.eventTargetPath?.trim();
-    if (favorite.haloState != FavoriteChipHaloState.none &&
-        eventTargetPath != null &&
-        eventTargetPath.isNotEmpty) {
-      return FavoriteNavigationPath(path: eventTargetPath);
+    if (favorite.haloState != FavoriteChipHaloState.none) {
+      if (eventTargetPath != null && eventTargetPath.isNotEmpty) {
+        return FavoriteNavigationPath(path: eventTargetPath);
+      }
+      return const FavoriteNavigationUnavailable();
     }
 
     final publicDetailPath = favorite.publicDetailPath?.trim();
     if (favorite.canOpenPublicDetail &&
         publicDetailPath != null &&
         publicDetailPath.isNotEmpty) {
-      if (favorite.haloState == FavoriteChipHaloState.liveNow) {
-        return const FavoriteNavigationUnavailable();
-      }
       return FavoriteNavigationPath(path: publicDetailPath);
     }
 

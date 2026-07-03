@@ -325,8 +325,8 @@ void main() {
                 '/parceiro/yuri-dias',
               ),
               nextEventOccurrenceAtValue: DomainOptionalDateTimeValue(
-                defaultValue: DateTime.utc(2026, 6, 21, 16),
-              )..parse(DateTime.utc(2026, 6, 21, 16).toIso8601String()),
+                defaultValue: _pastOccurrence(),
+              )..parse(_pastOccurrence().toIso8601String()),
             ),
             FavoriteResume(
               titleValue: TitleValue()..parse('Later Favorite'),
@@ -403,7 +403,7 @@ void main() {
             ),
             _favoriteResume(
               title: 'Tem Evento',
-              nextEventOccurrenceAt: DateTime(2026, 4, 4, 20),
+              nextEventOccurrenceAt: _futureOccurrence(),
             ),
             _favoriteResume(title: 'Sem Evento'),
           ],
@@ -451,7 +451,7 @@ void main() {
             ),
             _favoriteResume(
               title: 'Tem Evento',
-              nextEventOccurrenceAt: DateTime(2026, 4, 4, 20),
+              nextEventOccurrenceAt: _futureOccurrence(),
             ),
           ],
         ),
@@ -519,7 +519,7 @@ void main() {
             ),
             _favoriteResume(
               title: 'Tem Evento',
-              nextEventOccurrenceAt: DateTime(2026, 4, 4, 20),
+              nextEventOccurrenceAt: _futureOccurrence(),
             ),
             _favoriteResume(title: 'Sem Evento'),
           ],
@@ -659,6 +659,12 @@ FavoriteResume _favoriteResume({
         : FavoriteEventOccurrenceIdValue(liveNowEventOccurrenceId),
   );
 }
+
+DateTime _futureOccurrence() =>
+    DateTime.now().toUtc().add(const Duration(days: 7));
+
+DateTime _pastOccurrence() =>
+    DateTime.now().toUtc().subtract(const Duration(days: 7));
 
 class _TestHttpOverrides extends HttpOverrides {
   @override

@@ -195,11 +195,12 @@ void assertFavoritesOrdering(List<FavoritePreviewDTO> items) {
     if (previousBucket == 0) {
       final previousAt = previous.favoritedAt;
       final currentAt = current.favoritedAt;
-      if (previousAt == null || currentAt == null) {
-        continue;
-      }
+      expect(previousAt, isNotNull, reason: 'bucket 0 requires favorited_at.');
+      expect(currentAt, isNotNull, reason: 'bucket 0 requires favorited_at.');
+      final previousAtValue = previousAt!;
+      final currentAtValue = currentAt!;
       expect(
-        !previousAt.isBefore(currentAt),
+        !previousAtValue.isBefore(currentAtValue),
         isTrue,
         reason:
             'favorited_at must be descending inside bucket 0 at '
@@ -223,14 +224,15 @@ void assertFavoritesOrdering(List<FavoritePreviewDTO> items) {
 
     final previousAt = previous.favoritedAt;
     final currentAt = current.favoritedAt;
-    if (previousAt != null && currentAt != null) {
-      expect(
-        !previousAt.isBefore(currentAt),
-        isTrue,
-        reason:
-            'favorited_at must be descending inside bucket 2 at index $index.',
-      );
-    }
+    expect(previousAt, isNotNull, reason: 'bucket 2 requires favorited_at.');
+    expect(currentAt, isNotNull, reason: 'bucket 2 requires favorited_at.');
+    final previousAtValue = previousAt!;
+    final currentAtValue = currentAt!;
+    expect(
+      !previousAtValue.isBefore(currentAtValue),
+      isTrue,
+      reason: 'favorited_at must be descending inside bucket 2 at index $index.',
+    );
   }
 }
 

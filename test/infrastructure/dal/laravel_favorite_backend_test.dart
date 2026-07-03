@@ -98,6 +98,24 @@ void main() {
     expect(adapter.requests, hasLength(1));
     expect(adapter.requests.single.queryParameters['page'], 2);
     expect(adapter.requests.single.queryParameters['page_size'], 10);
+    expect(
+      adapter.requests.single.queryParameters['registry_key'],
+      'account_profile',
+    );
+    expect(
+      adapter.requests.single.queryParameters['target_type'],
+      'account_profile',
+    );
+    expect(
+      adapter.requests.single.headers['Authorization'],
+      'Bearer test-token',
+    );
+    expect(adapter.requests.single.connectTimeout, const Duration(seconds: 5));
+    expect(adapter.requests.single.sendTimeout, const Duration(seconds: 12));
+    expect(
+      adapter.requests.single.receiveTimeout,
+      const Duration(seconds: 12),
+    );
   });
 
   test(

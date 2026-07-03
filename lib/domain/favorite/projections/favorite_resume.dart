@@ -1,3 +1,4 @@
+import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/favorite/favorite.dart';
 import 'package:belluga_now/domain/favorite/favorite_badge.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_event_occurrence_id_value.dart';
@@ -108,12 +109,20 @@ class FavoriteResume {
   String? get liveNowEventOccurrenceId => liveNowEventOccurrenceIdValue?.value;
   DateTime? get liveNowEventOccurrenceAt => liveNowEventOccurrenceAtValue.value;
   bool get isAccountProfileTarget => targetType == 'account_profile';
+  bool get hasFutureEventOccurrence {
+    final nextOccurrenceAt = nextEventOccurrenceAt;
+    if (nextOccurrenceAt == null) {
+      return false;
+    }
+    return nextOccurrenceAt.isAfter(TimezoneConverter.localToUtc(DateTime.now()));
+  }
+
   FavoriteChipHaloState get haloState {
     if ((liveNowEventOccurrenceId?.trim().isNotEmpty ?? false) ||
         liveNowEventOccurrenceAt != null) {
       return FavoriteChipHaloState.liveNow;
     }
-    if (nextEventOccurrenceAt != null) {
+    if (hasFutureEventOccurrence) {
       return FavoriteChipHaloState.upcoming;
     }
     return FavoriteChipHaloState.none;
