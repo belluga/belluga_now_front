@@ -4,6 +4,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/value_object/environment_name_value.dart';
 import 'package:belluga_now/domain/favorite/favorite.dart';
+import 'package:belluga_now/domain/favorite/paged_favorite_resumes_result.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_event_target_path_value.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_event_occurrence_id_value.dart';
@@ -20,6 +21,7 @@ import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_optional_date_time_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
+import 'package:belluga_now/infrastructure/repositories/favorite_repository_paging_mixin.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_chip.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorites_section_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/favorites_section_view.dart';
@@ -29,14 +31,18 @@ import 'package:get_it/get_it.dart';
 import 'package:mockito/mockito.dart';
 import 'package:stream_value/core/stream_value.dart';
 
-class _FakeFavoriteRepository extends FavoriteRepositoryContract {
+class _FakeFavoriteRepository extends FavoriteRepositoryContract
+    with FavoriteRepositoryPagingMixin {
   _FakeFavoriteRepository({
     this.favoriteResumes = const <FavoriteResume>[],
+    this.pagedResultsByPage = const <int, PagedFavoriteResumesResult>{},
     this.failuresBeforeSuccess = 0,
   });
 
   final List<FavoriteResume> favoriteResumes;
+  final Map<int, PagedFavoriteResumesResult> pagedResultsByPage;
   int failuresBeforeSuccess;
+  final List<int> requestedPageNumbers = <int>[];
 
   @override
   Future<List<Favorite>> fetchFavorites() async => <Favorite>[];
@@ -48,6 +54,29 @@ class _FakeFavoriteRepository extends FavoriteRepositoryContract {
       throw StateError('favorite resumes unavailable');
     }
     return favoriteResumes;
+  }
+
+  @override
+  Future<PagedFavoriteResumesResult> fetchFavoriteResumesPage({
+    required int page,
+    required int pageSize,
+  }) async {
+    if (pagedResultsByPage.isEmpty) {
+      return super.fetchFavoriteResumesPage(page: page, pageSize: pageSize);
+    }
+
+    requestedPageNumbers.add(page);
+
+    if (failuresBeforeSuccess > 0) {
+      failuresBeforeSuccess -= 1;
+      throw StateError('favorite resumes unavailable');
+    }
+
+    return pagedResultsByPage[page] ??
+        const PagedFavoriteResumesResult(
+          items: <FavoriteResume>[],
+          hasMore: false,
+        );
   }
 }
 
@@ -296,8 +325,8 @@ void main() {
                 '/parceiro/yuri-dias',
               ),
               nextEventOccurrenceAtValue: DomainOptionalDateTimeValue(
-                defaultValue: DateTime.utc(2026, 6, 21, 16),
-              )..parse(DateTime.utc(2026, 6, 21, 16).toIso8601String()),
+                defaultValue: _pastOccurrence(),
+              )..parse(_pastOccurrence().toIso8601String()),
             ),
             FavoriteResume(
               titleValue: TitleValue()..parse('Later Favorite'),
@@ -374,7 +403,7 @@ void main() {
             ),
             _favoriteResume(
               title: 'Tem Evento',
-              nextEventOccurrenceAt: DateTime(2026, 4, 4, 20),
+              nextEventOccurrenceAt: _futureOccurrence(),
             ),
             _favoriteResume(title: 'Sem Evento'),
           ],
@@ -422,7 +451,7 @@ void main() {
             ),
             _favoriteResume(
               title: 'Tem Evento',
-              nextEventOccurrenceAt: DateTime(2026, 4, 4, 20),
+              nextEventOccurrenceAt: _futureOccurrence(),
             ),
           ],
         ),
@@ -490,7 +519,7 @@ void main() {
             ),
             _favoriteResume(
               title: 'Tem Evento',
-              nextEventOccurrenceAt: DateTime(2026, 4, 4, 20),
+              nextEventOccurrenceAt: _futureOccurrence(),
             ),
             _favoriteResume(title: 'Sem Evento'),
           ],
@@ -531,6 +560,52 @@ void main() {
       );
       expect((liveLabelTop - noEventLabelTop).abs(), lessThan(0.1));
       expect((upcomingLabelTop - noEventLabelTop).abs(), lessThan(0.1));
+    },
+  );
+
+  testWidgets(
+    'favorites view requests and renders the next page when the horizontal strip reaches the end',
+    (tester) async {
+      final favoriteRepository = _FakeFavoriteRepository(
+        pagedResultsByPage: {
+          1: PagedFavoriteResumesResult(
+            items: List<FavoriteResume>.generate(
+              10,
+              (index) => _favoriteResume(title: 'Item ${index + 1}'),
+            ),
+            hasMore: true,
+          ),
+          2: PagedFavoriteResumesResult(
+            items: [_favoriteResume(title: 'Item 11')],
+            hasMore: false,
+          ),
+        },
+      );
+      final controller = FavoritesSectionController(
+        favoriteRepository: favoriteRepository,
+        appDataRepository: _FakeAppDataRepository(),
+      );
+      await controller.init();
+
+      final router = _RecordingStackRouter();
+
+      await tester.pumpWidget(
+        _favoritesHarness(controller: controller, router: router),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Item 11'), findsNothing);
+
+      await tester.dragUntilVisible(
+        find.text('Procurar'),
+        find.byType(ListView),
+        const Offset(-250, 0),
+      );
+      await tester.drag(find.byType(ListView), const Offset(-200, 0));
+      await tester.pumpAndSettle();
+
+      expect(favoriteRepository.requestedPageNumbers, [1, 2]);
+      expect(find.text('Item 11'), findsOneWidget);
     },
   );
 }
@@ -584,6 +659,12 @@ FavoriteResume _favoriteResume({
         : FavoriteEventOccurrenceIdValue(liveNowEventOccurrenceId),
   );
 }
+
+DateTime _futureOccurrence() =>
+    DateTime.now().toUtc().add(const Duration(days: 7));
+
+DateTime _pastOccurrence() =>
+    DateTime.now().toUtc().subtract(const Duration(days: 7));
 
 class _TestHttpOverrides extends HttpOverrides {
   @override

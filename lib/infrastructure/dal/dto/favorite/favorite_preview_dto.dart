@@ -67,30 +67,37 @@ class FavoritePreviewDTO {
     final target = targetRaw is Map<String, dynamic>
         ? targetRaw
         : const <String, dynamic>{};
-    final snapshotRaw = json['snapshot'];
-    final snapshot = snapshotRaw is Map<String, dynamic>
-        ? snapshotRaw
+    final occurrenceStateRaw = json['occurrence_state'];
+    final occurrenceState = occurrenceStateRaw is Map<String, dynamic>
+        ? occurrenceStateRaw
         : const <String, dynamic>{};
     final navigationRaw = json['navigation'];
     final navigation = navigationRaw is Map<String, dynamic>
         ? navigationRaw
         : const <String, dynamic>{};
 
-    final targetId =
-        (json['target_id'] ?? target['id'] ?? '').toString().trim();
-    final title =
-        (target['display_name'] ?? json['title'] ?? targetId).toString().trim();
-    final slug =
-        (target['slug'] ?? navigation['target_slug'])?.toString().trim();
-    final navigationKind = navigation['kind']?.toString().trim();
-    final navigationTargetPath = navigation['target_path']?.toString().trim();
-    final publicDetailPath = (navigation['profile_target_path'] ??
-            target['public_detail_path'] ??
-            (navigationKind == 'account_profile' ? navigationTargetPath : null))
+    final targetId = (json['target_id'] ?? target['id'] ?? '')
+        .toString()
+        .trim();
+    final title = (target['display_name'] ?? json['title'] ?? targetId)
+        .toString()
+        .trim();
+    final slug = (target['slug'] ?? navigation['target_slug'])
         ?.toString()
         .trim();
+    final navigationKind = navigation['kind']?.toString().trim();
+    final navigationTargetPath = navigation['target_path']?.toString().trim();
+    final publicDetailPath =
+        (navigation['profile_target_path'] ??
+                target['public_detail_path'] ??
+                (navigationKind == 'account_profile'
+                    ? navigationTargetPath
+                    : null))
+            ?.toString()
+            .trim();
     final eventTargetPath = navigation['event_target_path']?.toString().trim();
-    final canOpenPublicDetail = navigation['can_open_public_detail'] == true ||
+    final canOpenPublicDetail =
+        navigation['can_open_public_detail'] == true ||
         target['can_open_public_detail'] == true;
 
     DateTime? parseDate(dynamic value) {
@@ -110,20 +117,28 @@ class FavoritePreviewDTO {
       registryKey: (json['registry_key'] ?? '').toString().trim(),
       targetType: (json['target_type'] ?? '').toString().trim(),
       favoritedAt: parseDate(json['favorited_at']),
-      nextEventOccurrenceAt: parseDate(snapshot['next_event_occurrence_at']),
-      lastEventOccurrenceAt: parseDate(snapshot['last_event_occurrence_at']),
-      liveNowEventOccurrenceId:
-          snapshot['live_now_event_occurrence_id']?.toString().trim(),
-      liveNowEventOccurrenceAt:
-          parseDate(snapshot['live_now_event_occurrence_at']),
+      nextEventOccurrenceAt: parseDate(
+        occurrenceState['next_event_occurrence_at'],
+      ),
+      lastEventOccurrenceAt: parseDate(
+        occurrenceState['last_event_occurrence_at'],
+      ),
+      liveNowEventOccurrenceId: occurrenceState['live_now_event_occurrence_id']
+          ?.toString()
+          .trim(),
+      liveNowEventOccurrenceAt: parseDate(
+        occurrenceState['live_now_event_occurrence_at'],
+      ),
       imageUrl: target['avatar_url']?.toString(),
       coverUrl: target['cover_url']?.toString(),
       profileType: target['profile_type']?.toString().trim(),
       canOpenPublicDetail: canOpenPublicDetail,
-      publicDetailPath:
-          publicDetailPath?.isNotEmpty == true ? publicDetailPath : null,
-      eventTargetPath:
-          eventTargetPath?.isNotEmpty == true ? eventTargetPath : null,
+      publicDetailPath: publicDetailPath?.isNotEmpty == true
+          ? publicDetailPath
+          : null,
+      eventTargetPath: eventTargetPath?.isNotEmpty == true
+          ? eventTargetPath
+          : null,
       assetPath: null,
       isPrimary: false,
     );
@@ -168,10 +183,8 @@ class FavoritePreviewDTO {
     if (imageUrl != null) {
       final parsed = Uri.tryParse(imageUrl!);
       if (parsed != null) {
-        imageUriValue = ThumbUriValue(
-          defaultValue: parsed,
-          isRequired: true,
-        )..parse(imageUrl);
+        imageUriValue = ThumbUriValue(defaultValue: parsed, isRequired: true)
+          ..parse(imageUrl);
       }
     }
 
@@ -251,10 +264,8 @@ class FavoritePreviewDTO {
     if (parsed == null) {
       return null;
     }
-    return ThumbUriValue(
-      defaultValue: parsed,
-      isRequired: true,
-    )..parse(normalized);
+    return ThumbUriValue(defaultValue: parsed, isRequired: true)
+      ..parse(normalized);
   }
 
   String? _trimOrNull(String? value) {

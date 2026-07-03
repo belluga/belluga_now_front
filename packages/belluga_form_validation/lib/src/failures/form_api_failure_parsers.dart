@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:belluga_form_validation/src/failures/form_api_failure.dart';
 import 'package:belluga_form_validation/src/failures/form_validation_failure.dart';
 
@@ -112,27 +114,61 @@ Map<String, dynamic>? _asMap(Object? rawData) {
   if (rawData is Map) {
     return Map<String, dynamic>.from(rawData);
   }
+  if (rawData is String) {
+    final trimmed = rawData.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+    try {
+      final decoded = jsonDecode(trimmed);
+      if (decoded is Map) {
+        return Map<String, dynamic>.from(decoded);
+      }
+    } catch (_) {
+      return null;
+    }
+  }
+  if (rawData is List<int>) {
+    try {
+      return _asMap(utf8.decode(rawData));
+    } catch (_) {
+      return null;
+    }
+  }
   return null;
 }
 
 Map<String, List<String>> _readFieldErrors(Map<String, dynamic> data) {
-  final rawErrors = data['errors'];
-  if (rawErrors is! Map) {
-    return <String, List<String>>{};
+  final fieldErrors = <String, List<String>>{};
+
+  for (final key in const <String>['errors', 'fieldErrors']) {
+    final rawErrors = data[key];
+    if (rawErrors is! Map) {
+      continue;
+    }
+
+    for (final entry in rawErrors.entries) {
+      final normalizedKey = entry.key.toString().trim();
+      if (normalizedKey.isEmpty) {
+        continue;
+      }
+      final messages = _coerceMessages(entry.value);
+      if (messages.isEmpty) {
+        continue;
+      }
+
+      final mergedMessages = <String>[
+        ...(fieldErrors[normalizedKey] ?? const <String>[]),
+      ];
+      for (final message in messages) {
+        if (!mergedMessages.contains(message)) {
+          mergedMessages.add(message);
+        }
+      }
+      fieldErrors[normalizedKey] = mergedMessages;
+    }
   }
 
-  final fieldErrors = <String, List<String>>{};
-  for (final entry in rawErrors.entries) {
-    final key = entry.key.toString().trim();
-    if (key.isEmpty) {
-      continue;
-    }
-    final messages = _coerceMessages(entry.value);
-    if (messages.isEmpty) {
-      continue;
-    }
-    fieldErrors[key] = messages;
-  }
   return fieldErrors;
 }
 

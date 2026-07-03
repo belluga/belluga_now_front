@@ -26,33 +26,37 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 void main() {
-  test('deleteEvent rethrows repository errors and updates error stream',
-      () async {
-    final eventsRepository = _FailingDeleteEventsRepository();
-    final controller = TenantAdminEventsController(
-      eventsRepository: eventsRepository,
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-      landlordAuthRepository:
-          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
-    );
+  test(
+    'deleteEvent rethrows repository errors and updates error stream',
+    () async {
+      final eventsRepository = _FailingDeleteEventsRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken(
+          'landlord-token',
+        ),
+      );
 
-    await expectLater(
-      () => controller.deleteEvent('evt-1'),
-      throwsA(isA<StateError>()),
-    );
+      await expectLater(
+        () => controller.deleteEvent('evt-1'),
+        throwsA(isA<StateError>()),
+      );
 
-    final error = controller.eventsErrorStreamValue.value;
-    expect(error, isNotNull);
-    expect(error, contains('delete failed'));
-  });
+      final error = controller.eventsErrorStreamValue.value;
+      expect(error, isNotNull);
+      expect(error, contains('delete failed'));
+    },
+  );
 
   test('loadEvents forwards default temporal filters to repository', () async {
     final eventsRepository = _TrackingEventsRepository();
     final controller = TenantAdminEventsController(
       eventsRepository: eventsRepository,
       taxonomiesRepository: _NoopTaxonomiesRepository(),
-      landlordAuthRepository:
-          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
+      landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken(
+        'landlord-token',
+      ),
     );
 
     await controller.loadEvents();
@@ -63,194 +67,207 @@ void main() {
     );
   });
 
-  test('loadEvents forwards specific date, venue, and related profile filters',
-      () async {
-    final eventsRepository = _TrackingEventsRepository();
-    final controller = TenantAdminEventsController(
-      eventsRepository: eventsRepository,
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-      landlordAuthRepository:
-          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
-    );
+  test(
+    'loadEvents forwards specific date, venue, and related profile filters',
+    () async {
+      final eventsRepository = _TrackingEventsRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken(
+          'landlord-token',
+        ),
+      );
 
-    controller.selectSpecificDateFilter(DateTime(2026, 4, 12));
-    controller.selectVenueFilter(
-      tenantAdminAccountProfileFromRaw(
-        id: 'venue-1',
-        accountId: 'acc-venue-1',
-        profileType: 'venue',
-        displayName: 'Main Venue',
-      ),
-    );
-    controller.selectRelatedAccountProfileFilter(
-      tenantAdminAccountProfileFromRaw(
-        id: 'profile-1',
-        accountId: 'acc-profile-1',
-        profileType: 'artist',
-        displayName: 'DJ Test',
-      ),
-    );
+      controller.selectSpecificDateFilter(DateTime(2026, 4, 12));
+      controller.selectVenueFilter(
+        tenantAdminAccountProfileFromRaw(
+          id: 'venue-1',
+          accountId: 'acc-venue-1',
+          profileType: 'venue',
+          displayName: 'Main Venue',
+        ),
+      );
+      controller.selectRelatedAccountProfileFilter(
+        tenantAdminAccountProfileFromRaw(
+          id: 'profile-1',
+          accountId: 'acc-profile-1',
+          profileType: 'artist',
+          displayName: 'DJ Test',
+        ),
+      );
 
-    await controller.loadEvents();
+      await controller.loadEvents();
 
-    expect(eventsRepository.lastLoadSpecificDate, '2026-04-12');
-    expect(eventsRepository.lastLoadVenueProfileId, 'venue-1');
-    expect(eventsRepository.lastLoadRelatedAccountProfileId, 'profile-1');
-  });
-
-  test('loadEvents records repository errors when a filtered reload fails',
-      () async {
-    final eventsRepository = _FailingFilteredLoadEventsRepository();
-    final controller = TenantAdminEventsController(
-      eventsRepository: eventsRepository,
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-      landlordAuthRepository:
-          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
-    );
-
-    controller.selectSpecificDateFilter(DateTime(2026, 4, 12));
-
-    await controller.loadEvents();
-    await Future<void>.delayed(const Duration(milliseconds: 20));
-
-    expect(eventsRepository.lastLoadSpecificDate, '2026-04-12');
-    expect(controller.eventsStreamValue.value, isEmpty);
-    expect(
-      controller.eventsErrorStreamValue.value,
-      contains('filtered load failed'),
-    );
-  });
+      expect(eventsRepository.lastLoadSpecificDate, '2026-04-12');
+      expect(eventsRepository.lastLoadVenueProfileId, 'venue-1');
+      expect(eventsRepository.lastLoadRelatedAccountProfileId, 'profile-1');
+    },
+  );
 
   test(
-      'root programming stays on the first occurrence after a second occurrence is drafted and populated',
-      () {
-    final eventsRepository = _TrackingEventsRepository();
-    final controller = TenantAdminEventsController(
-      eventsRepository: eventsRepository,
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-      landlordAuthRepository:
-          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
-    );
+    'loadEvents records repository errors when a filtered reload fails',
+    () async {
+      final eventsRepository = _FailingFilteredLoadEventsRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken(
+          'landlord-token',
+        ),
+      );
 
-    controller.initEventForm(
-      existingEvent: _buildEventDetailFixture(
-        eventId: 'evt-programming-scope',
-        title: 'Programming Scope Event',
-      ),
-    );
+      controller.selectSpecificDateFilter(DateTime(2026, 4, 12));
 
-    final primaryKey = controller.primaryOccurrenceKey();
-    expect(primaryKey, isNotNull);
+      await controller.loadEvents();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
 
-    controller.addOccurrenceProgrammingItem(
-      primaryKey!,
-      TenantAdminEventProgrammingItem(
-        timeValue: tenantAdminRequiredText('09:30'),
-        titleValue: tenantAdminOptionalText('Programação raiz'),
-      ),
-    );
-
-    final secondOccurrenceKey = controller.createOccurrenceDraft();
-    controller.addOccurrenceProgrammingItem(
-      secondOccurrenceKey,
-      TenantAdminEventProgrammingItem(
-        timeValue: tenantAdminRequiredText('13:00'),
-        titleValue: tenantAdminOptionalText('Programação local'),
-      ),
-    );
-
-    final occurrences = controller.eventFormStateStreamValue.value.occurrences;
-    expect(occurrences, hasLength(2));
-    expect(
-      occurrences.first.programmingItems.map((item) => item.title).toList(),
-      ['Programação raiz'],
-    );
-    expect(
-      occurrences.last.programmingItems.map((item) => item.title).toList(),
-      ['Programação local'],
-    );
-  });
+      expect(eventsRepository.lastLoadSpecificDate, '2026-04-12');
+      expect(controller.eventsStreamValue.value, isEmpty);
+      expect(
+        controller.eventsErrorStreamValue.value,
+        contains('filtered load failed'),
+      );
+    },
+  );
 
   test(
-      'initEventForm preserves hydrated occurrence order when assigning the primary draft',
-      () {
-    final eventsRepository = _TrackingEventsRepository();
-    final controller = TenantAdminEventsController(
-      eventsRepository: eventsRepository,
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-      landlordAuthRepository:
-          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
-    );
-
-    controller.initEventForm(
-      existingEvent: TenantAdminEvent(
-        eventIdValue: tenantAdminRequiredText('evt-programming-order'),
-        slugValue: tenantAdminRequiredText('evt-programming-order'),
-        titleValue: tenantAdminRequiredText('Programming Order Event'),
-        contentValue: tenantAdminOptionalText(''),
-        type: TenantAdminEventType(
-          nameValue: tenantAdminRequiredText('Show'),
-          slugValue: tenantAdminRequiredText('show'),
+    'root programming stays on the first occurrence after a second occurrence is drafted and populated',
+    () {
+      final eventsRepository = _TrackingEventsRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken(
+          'landlord-token',
         ),
-        occurrences: <TenantAdminEventOccurrence>[
-          TenantAdminEventOccurrence(
-            occurrenceIdValue: tenantAdminOptionalText('occ-2'),
-            occurrenceSlugValue: tenantAdminOptionalText('occ-2'),
-            dateTimeStartValue: tenantAdminDateTime(
-              DateTime.utc(2026, 4, 21, 20),
-            ),
-            programmingItems: [
-              TenantAdminEventProgrammingItem(
-                timeValue: tenantAdminRequiredText('13:00'),
-                titleValue: tenantAdminOptionalText('Programação local'),
-              ),
-            ],
-          ),
-          TenantAdminEventOccurrence(
-            occurrenceIdValue: tenantAdminOptionalText('occ-1'),
-            occurrenceSlugValue: tenantAdminOptionalText('occ-1'),
-            dateTimeStartValue: tenantAdminDateTime(
-              DateTime.utc(2026, 4, 20, 20),
-            ),
-            programmingItems: [
-              TenantAdminEventProgrammingItem(
-                timeValue: tenantAdminRequiredText('09:30'),
-                titleValue: tenantAdminOptionalText('Programação raiz'),
-              ),
-            ],
-          ),
-        ],
-        publication: TenantAdminEventPublication(
-          statusValue: tenantAdminRequiredText('draft'),
-        ),
-      ),
-    );
+      );
 
-    final occurrences = controller.eventFormStateStreamValue.value.occurrences;
-    expect(
-      occurrences.map((occurrence) => occurrence.occurrenceId).toList(),
-      ['occ-2', 'occ-1'],
-    );
-    expect(
-      occurrences.first.programmingItems.map((item) => item.title).toList(),
-      ['Programação local'],
-    );
-    expect(
-      occurrences.last.programmingItems.map((item) => item.title).toList(),
-      ['Programação raiz'],
-    );
-    expect(
-      controller.eventFormStateStreamValue.value.startAt,
-      TimezoneConverter.utcToLocal(DateTime.utc(2026, 4, 21, 20)),
-    );
-  });
+      controller.initEventForm(
+        existingEvent: _buildEventDetailFixture(
+          eventId: 'evt-programming-scope',
+          title: 'Programming Scope Event',
+        ),
+      );
+
+      final primaryKey = controller.primaryOccurrenceKey();
+      expect(primaryKey, isNotNull);
+
+      controller.addOccurrenceProgrammingItem(
+        primaryKey!,
+        TenantAdminEventProgrammingItem(
+          timeValue: tenantAdminRequiredText('09:30'),
+          titleValue: tenantAdminOptionalText('Programação raiz'),
+        ),
+      );
+
+      final secondOccurrenceKey = controller.createOccurrenceDraft();
+      controller.addOccurrenceProgrammingItem(
+        secondOccurrenceKey,
+        TenantAdminEventProgrammingItem(
+          timeValue: tenantAdminRequiredText('13:00'),
+          titleValue: tenantAdminOptionalText('Programação local'),
+        ),
+      );
+
+      final occurrences =
+          controller.eventFormStateStreamValue.value.occurrences;
+      expect(occurrences, hasLength(2));
+      expect(
+        occurrences.first.programmingItems.map((item) => item.title).toList(),
+        ['Programação raiz'],
+      );
+      expect(
+        occurrences.last.programmingItems.map((item) => item.title).toList(),
+        ['Programação local'],
+      );
+    },
+  );
+
+  test(
+    'initEventForm preserves hydrated occurrence order when assigning the primary draft',
+    () {
+      final eventsRepository = _TrackingEventsRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken(
+          'landlord-token',
+        ),
+      );
+
+      controller.initEventForm(
+        existingEvent: TenantAdminEvent(
+          eventIdValue: tenantAdminRequiredText('evt-programming-order'),
+          slugValue: tenantAdminRequiredText('evt-programming-order'),
+          titleValue: tenantAdminRequiredText('Programming Order Event'),
+          contentValue: tenantAdminOptionalText(''),
+          type: TenantAdminEventType(
+            nameValue: tenantAdminRequiredText('Show'),
+            slugValue: tenantAdminRequiredText('show'),
+          ),
+          occurrences: <TenantAdminEventOccurrence>[
+            TenantAdminEventOccurrence(
+              occurrenceIdValue: tenantAdminOptionalText('occ-2'),
+              occurrenceSlugValue: tenantAdminOptionalText('occ-2'),
+              dateTimeStartValue: tenantAdminDateTime(
+                DateTime.utc(2026, 4, 21, 20),
+              ),
+              programmingItems: [
+                TenantAdminEventProgrammingItem(
+                  timeValue: tenantAdminRequiredText('13:00'),
+                  titleValue: tenantAdminOptionalText('Programação local'),
+                ),
+              ],
+            ),
+            TenantAdminEventOccurrence(
+              occurrenceIdValue: tenantAdminOptionalText('occ-1'),
+              occurrenceSlugValue: tenantAdminOptionalText('occ-1'),
+              dateTimeStartValue: tenantAdminDateTime(
+                DateTime.utc(2026, 4, 20, 20),
+              ),
+              programmingItems: [
+                TenantAdminEventProgrammingItem(
+                  timeValue: tenantAdminRequiredText('09:30'),
+                  titleValue: tenantAdminOptionalText('Programação raiz'),
+                ),
+              ],
+            ),
+          ],
+          publication: TenantAdminEventPublication(
+            statusValue: tenantAdminRequiredText('draft'),
+          ),
+        ),
+      );
+
+      final occurrences =
+          controller.eventFormStateStreamValue.value.occurrences;
+      expect(
+        occurrences.map((occurrence) => occurrence.occurrenceId).toList(),
+        ['occ-2', 'occ-1'],
+      );
+      expect(
+        occurrences.first.programmingItems.map((item) => item.title).toList(),
+        ['Programação local'],
+      );
+      expect(
+        occurrences.last.programmingItems.map((item) => item.title).toList(),
+        ['Programação raiz'],
+      );
+      expect(
+        controller.eventFormStateStreamValue.value.startAt,
+        TimezoneConverter.utcToLocal(DateTime.utc(2026, 4, 21, 20)),
+      );
+    },
+  );
 
   test('clearEventEndAt clears the optional first occurrence end date', () {
     final controller = TenantAdminEventsController(
       eventsRepository: _TrackingEventsRepository(),
       taxonomiesRepository: _NoopTaxonomiesRepository(),
-      landlordAuthRepository:
-          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
+      landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken(
+        'landlord-token',
+      ),
     );
     final startAt = DateTime(2026, 4, 22, 10);
     final endAt = DateTime(2026, 4, 22, 12);
@@ -274,324 +291,342 @@ void main() {
     );
   });
 
-  test('related account profile selection preserves order and supports reorder',
-      () {
-    final controller = TenantAdminEventsController(
-      eventsRepository: _TrackingEventsRepository(),
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-      landlordAuthRepository:
-          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
-    );
+  test(
+    'related account profile selection preserves order and supports reorder',
+    () {
+      final controller = TenantAdminEventsController(
+        eventsRepository: _TrackingEventsRepository(),
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken(
+          'landlord-token',
+        ),
+      );
 
-    controller.initEventForm();
-    controller.addRelatedAccountProfile('artist-1');
-    controller.addRelatedAccountProfile('producer-1');
-    controller.addRelatedAccountProfile('band-1');
+      controller.initEventForm();
+      controller.addRelatedAccountProfile('artist-1');
+      controller.addRelatedAccountProfile('producer-1');
+      controller.addRelatedAccountProfile('band-1');
 
-    controller.reorderRelatedAccountProfile(
-      profileId: 'band-1',
-      newIndex: 1,
-    );
+      controller.reorderRelatedAccountProfile(profileId: 'band-1', newIndex: 1);
 
-    expect(
-      controller
-          .eventFormStateStreamValue.value.selectedRelatedAccountProfileIds,
-      ['artist-1', 'band-1', 'producer-1'],
-    );
+      expect(
+        controller
+            .eventFormStateStreamValue
+            .value
+            .selectedRelatedAccountProfileIds,
+        ['artist-1', 'band-1', 'producer-1'],
+      );
 
-    controller.removeRelatedAccountProfile('band-1');
+      controller.removeRelatedAccountProfile('band-1');
 
-    expect(
-      controller
-          .eventFormStateStreamValue.value.selectedRelatedAccountProfileIds,
-      ['artist-1', 'producer-1'],
-    );
-  });
+      expect(
+        controller
+            .eventFormStateStreamValue
+            .value
+            .selectedRelatedAccountProfileIds,
+        ['artist-1', 'producer-1'],
+      );
+    },
+  );
 
   test(
-      'initEventForm seeds related profile cache with occurrence-owned profiles',
-      () {
-    final controller = TenantAdminEventsController(
-      eventsRepository: _TrackingEventsRepository(),
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-      landlordAuthRepository:
-          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
-    );
-    final occurrenceArtist = tenantAdminAccountProfileFromRaw(
-      id: 'occ-artist-1',
-      accountId: 'acc-occ-artist-1',
-      profileType: 'artist',
-      displayName: 'Occurrence Artist',
-    );
-    final occurrenceExhibitor = tenantAdminAccountProfileFromRaw(
-      id: 'occ-exhibitor-1',
-      accountId: 'acc-occ-exhibitor-1',
-      profileType: 'exhibitor',
-      displayName: 'Occurrence Exhibitor',
-    );
-    final existingEvent = TenantAdminEvent(
-      eventIdValue: tenantAdminRequiredText('evt-occ-cache'),
-      slugValue: tenantAdminRequiredText('evt-occ-cache'),
-      titleValue: tenantAdminRequiredText('Evento em edição'),
-      contentValue: tenantAdminOptionalText('Conteúdo'),
-      type: TenantAdminEventType(
-        idValue: tenantAdminOptionalText('type-1'),
-        nameValue: tenantAdminRequiredText('Show'),
-        slugValue: tenantAdminRequiredText('show'),
-      ),
-      occurrences: <TenantAdminEventOccurrence>[
-        TenantAdminEventOccurrence(
-          dateTimeStartValue: tenantAdminDateTime(DateTime.utc(2026, 6, 7, 3)),
+    'initEventForm seeds related profile cache with occurrence-owned profiles',
+    () {
+      final controller = TenantAdminEventsController(
+        eventsRepository: _TrackingEventsRepository(),
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken(
+          'landlord-token',
         ),
-        TenantAdminEventOccurrence(
-          occurrenceIdValue: tenantAdminOptionalText('occurrence-2'),
-          dateTimeStartValue: tenantAdminDateTime(DateTime.utc(2026, 6, 8, 3)),
-          relatedAccountProfileIdValues: [
-            TenantAdminAccountProfileIdValue(occurrenceArtist.id),
-            TenantAdminAccountProfileIdValue(occurrenceExhibitor.id),
-          ],
-          relatedAccountProfiles: [
-            occurrenceArtist,
-            occurrenceExhibitor,
-          ],
-          profileGroups: [
-            TenantAdminNestedProfileGroup(
-              idValue: TenantAdminNestedProfileGroupTextValue('outro-grupo'),
-              labelValue: TenantAdminNestedProfileGroupTextValue('Outro Grupo'),
-              orderValue: TenantAdminNestedProfileGroupOrderValue(0),
-              accountProfileIdValues: [
-                TenantAdminNestedProfileGroupTextValue(occurrenceArtist.id),
-                TenantAdminNestedProfileGroupTextValue(
-                  occurrenceExhibitor.id,
-                ),
-              ],
+      );
+      final occurrenceArtist = tenantAdminAccountProfileFromRaw(
+        id: 'occ-artist-1',
+        accountId: 'acc-occ-artist-1',
+        profileType: 'artist',
+        displayName: 'Occurrence Artist',
+      );
+      final occurrenceExhibitor = tenantAdminAccountProfileFromRaw(
+        id: 'occ-exhibitor-1',
+        accountId: 'acc-occ-exhibitor-1',
+        profileType: 'exhibitor',
+        displayName: 'Occurrence Exhibitor',
+      );
+      final existingEvent = TenantAdminEvent(
+        eventIdValue: tenantAdminRequiredText('evt-occ-cache'),
+        slugValue: tenantAdminRequiredText('evt-occ-cache'),
+        titleValue: tenantAdminRequiredText('Evento em edição'),
+        contentValue: tenantAdminOptionalText('Conteúdo'),
+        type: TenantAdminEventType(
+          idValue: tenantAdminOptionalText('type-1'),
+          nameValue: tenantAdminRequiredText('Show'),
+          slugValue: tenantAdminRequiredText('show'),
+        ),
+        occurrences: <TenantAdminEventOccurrence>[
+          TenantAdminEventOccurrence(
+            dateTimeStartValue: tenantAdminDateTime(
+              DateTime.utc(2026, 6, 7, 3),
             ),
-          ],
-        ),
-      ],
-      publication: TenantAdminEventPublication(
-        statusValue: tenantAdminRequiredText('draft'),
-      ),
-    );
-
-    controller.initEventForm(existingEvent: existingEvent);
-
-    expect(
-      controller.relatedAccountProfileCandidatesStreamValue.value
-          .map((profile) => profile.id),
-      containsAll([
-        occurrenceArtist.id,
-        occurrenceExhibitor.id,
-      ]),
-    );
-  });
-
-  test(
-      'upsertOccurrence keeps occurrence programming profiles out of event-level related selection',
-      () {
-    final controller = TenantAdminEventsController(
-      eventsRepository: _TrackingEventsRepository(),
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-      landlordAuthRepository:
-          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
-    );
-    final occurrenceProfile = tenantAdminAccountProfileFromRaw(
-      id: 'artist-1',
-      accountId: 'acc-artist-1',
-      profileType: 'artist',
-      displayName: 'Artist A',
-    );
-
-    controller.initEventForm();
-    controller.addRelatedAccountProfile('producer-1');
-    controller.upsertOccurrence(
-      index: null,
-      occurrence: TenantAdminEventOccurrence(
-        dateTimeStartValue: tenantAdminDateTime(DateTime(2026, 4, 22, 20)),
-        relatedAccountProfileIdValues:
-            List<TenantAdminAccountProfileIdValue>.of(
-          [
-            TenantAdminAccountProfileIdValue('artist-1'),
-          ],
-        ),
-        relatedAccountProfiles: [occurrenceProfile],
-        programmingItems: List<TenantAdminEventProgrammingItem>.of([
-          TenantAdminEventProgrammingItem(
-            timeValue: tenantAdminRequiredText('20:00'),
-            accountProfileIdValues: List<TenantAdminAccountProfileIdValue>.of([
-              TenantAdminAccountProfileIdValue('artist-1'),
-            ]),
-            linkedAccountProfiles: [occurrenceProfile],
           ),
-        ]),
-      ),
-    );
-
-    expect(
-      controller
-          .eventFormStateStreamValue.value.selectedRelatedAccountProfileIds,
-      ['producer-1'],
-    );
-    expect(
-      controller.eventFormStateStreamValue.value.occurrences.single
-          .relatedAccountProfileIds
-          .map((value) => value.value)
-          .toList(growable: false),
-      ['artist-1'],
-    );
-    expect(
-      controller.eventFormStateStreamValue.value.occurrences.single
-          .programmingItems.single.accountProfileIds
-          .map((value) => value.value)
-          .toList(growable: false),
-      ['artist-1'],
-    );
-  });
-
-  test(
-      'occurrence profile-group changes clear stale programming profile links for removed members',
-      () {
-    final controller = TenantAdminEventsController(
-      eventsRepository: _TrackingEventsRepository(),
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-      landlordAuthRepository:
-          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
-    );
-    final occurrenceProfile = tenantAdminAccountProfileFromRaw(
-      id: 'artist-1',
-      accountId: 'acc-artist-1',
-      profileType: 'artist',
-      displayName: 'Artist A',
-    );
-
-    controller.initEventForm();
-    controller.upsertOccurrence(
-      index: null,
-      occurrence: TenantAdminEventOccurrence(
-        dateTimeStartValue: tenantAdminDateTime(DateTime(2026, 4, 22, 20)),
-        relatedAccountProfileIdValues:
-            List<TenantAdminAccountProfileIdValue>.of(
-          [
-            TenantAdminAccountProfileIdValue('artist-1'),
-          ],
-        ),
-        relatedAccountProfiles: [occurrenceProfile],
-        profileGroups: [
-          TenantAdminNestedProfileGroup(
-            idValue: TenantAdminNestedProfileGroupTextValue('bandas'),
-            labelValue: TenantAdminNestedProfileGroupTextValue('Bandas'),
-            orderValue: TenantAdminNestedProfileGroupOrderValue(0),
-            accountProfileIdValues: [
-              TenantAdminNestedProfileGroupTextValue('artist-1'),
+          TenantAdminEventOccurrence(
+            occurrenceIdValue: tenantAdminOptionalText('occurrence-2'),
+            dateTimeStartValue: tenantAdminDateTime(
+              DateTime.utc(2026, 6, 8, 3),
+            ),
+            relatedAccountProfileIdValues: [
+              TenantAdminAccountProfileIdValue(occurrenceArtist.id),
+              TenantAdminAccountProfileIdValue(occurrenceExhibitor.id),
+            ],
+            relatedAccountProfiles: [occurrenceArtist, occurrenceExhibitor],
+            profileGroups: [
+              TenantAdminNestedProfileGroup(
+                idValue: TenantAdminNestedProfileGroupTextValue('outro-grupo'),
+                labelValue: TenantAdminNestedProfileGroupTextValue(
+                  'Outro Grupo',
+                ),
+                orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+                accountProfileIdValues: [
+                  TenantAdminNestedProfileGroupTextValue(occurrenceArtist.id),
+                  TenantAdminNestedProfileGroupTextValue(
+                    occurrenceExhibitor.id,
+                  ),
+                ],
+              ),
             ],
           ),
         ],
-        programmingItems: List<TenantAdminEventProgrammingItem>.of([
-          TenantAdminEventProgrammingItem(
-            timeValue: tenantAdminRequiredText('20:00'),
-            titleValue: tenantAdminOptionalText('Show principal'),
-            accountProfileIdValues: List<TenantAdminAccountProfileIdValue>.of([
-              TenantAdminAccountProfileIdValue('artist-1'),
-            ]),
-            linkedAccountProfiles: [occurrenceProfile],
-          ),
-        ]),
-      ),
-    );
+        publication: TenantAdminEventPublication(
+          statusValue: tenantAdminRequiredText('draft'),
+        ),
+      );
 
-    controller.toggleOccurrenceProfileGroupMember(
-      occurrenceKey: (controller.primaryOccurrenceKey())!,
-      groupId: 'bandas',
-      profileId: 'artist-1',
-      selected: false,
-    );
+      controller.initEventForm(existingEvent: existingEvent);
 
-    final occurrence =
-        controller.eventFormStateStreamValue.value.occurrences.single;
-    expect(occurrence.relatedAccountProfileIds, isEmpty);
-    expect(occurrence.relatedAccountProfiles, isEmpty);
-    expect(
-      occurrence.programmingItems.single.accountProfileIds,
-      isEmpty,
-    );
-    expect(
-      occurrence.programmingItems.single.linkedAccountProfiles,
-      isEmpty,
-    );
-    expect(occurrence.programmingItems.single.title, 'Show principal');
-  });
+      expect(
+        controller.relatedAccountProfileCandidatesStreamValue.value.map(
+          (profile) => profile.id,
+        ),
+        containsAll([occurrenceArtist.id, occurrenceExhibitor.id]),
+      );
+    },
+  );
 
   test(
-      'selectSpecificDateFilter expands temporal buckets and clearing restores defaults',
-      () {
-    final controller = TenantAdminEventsController(
-      eventsRepository: _TrackingEventsRepository(),
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-      landlordAuthRepository:
-          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
-    );
-
-    controller.selectSpecificDateFilter(DateTime(2026, 4, 12));
-
-    expect(
-      controller.temporalFilterStreamValue.value,
-      equals(TenantAdminEventTemporalBucket.values.toSet()),
-    );
-
-    controller.clearSpecificDateFilter();
-
-    expect(
-      controller.temporalFilterStreamValue.value,
-      equals(TenantAdminEventTemporalBucket.defaultSelection),
-    );
-    expect(controller.specificDateFilterStreamValue.value, isNull);
-  });
-
-  test(
-      'resetEventFilters clears specific date, venue, related profile, and restores default temporal selection',
-      () {
-    final controller = TenantAdminEventsController(
-      eventsRepository: _TrackingEventsRepository(),
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-      landlordAuthRepository:
-          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
-    );
-
-    controller.selectSpecificDateFilter(DateTime(2026, 4, 12));
-    controller.selectVenueFilter(
-      tenantAdminAccountProfileFromRaw(
-        id: 'venue-1',
-        accountId: 'acc-venue-1',
-        profileType: 'venue',
-        displayName: 'Main Venue',
-      ),
-    );
-    controller.selectRelatedAccountProfileFilter(
-      tenantAdminAccountProfileFromRaw(
-        id: 'profile-1',
-        accountId: 'acc-profile-1',
+    'upsertOccurrence keeps occurrence programming profiles out of event-level related selection',
+    () {
+      final controller = TenantAdminEventsController(
+        eventsRepository: _TrackingEventsRepository(),
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken(
+          'landlord-token',
+        ),
+      );
+      final occurrenceProfile = tenantAdminAccountProfileFromRaw(
+        id: 'artist-1',
+        accountId: 'acc-artist-1',
         profileType: 'artist',
-        displayName: 'DJ Test',
-      ),
-    );
+        displayName: 'Artist A',
+      );
 
-    controller.resetEventFilters();
+      controller.initEventForm();
+      controller.addRelatedAccountProfile('producer-1');
+      controller.upsertOccurrence(
+        index: null,
+        occurrence: TenantAdminEventOccurrence(
+          dateTimeStartValue: tenantAdminDateTime(DateTime(2026, 4, 22, 20)),
+          relatedAccountProfileIdValues:
+              List<TenantAdminAccountProfileIdValue>.of([
+                TenantAdminAccountProfileIdValue('artist-1'),
+              ]),
+          relatedAccountProfiles: [occurrenceProfile],
+          programmingItems: List<TenantAdminEventProgrammingItem>.of([
+            TenantAdminEventProgrammingItem(
+              timeValue: tenantAdminRequiredText('20:00'),
+              accountProfileIdValues: List<TenantAdminAccountProfileIdValue>.of(
+                [TenantAdminAccountProfileIdValue('artist-1')],
+              ),
+              linkedAccountProfiles: [occurrenceProfile],
+            ),
+          ]),
+        ),
+      );
 
-    expect(controller.specificDateFilterStreamValue.value, isNull);
-    expect(controller.venueFilterStreamValue.value, isNull);
-    expect(controller.relatedAccountProfileFilterStreamValue.value, isNull);
-    expect(
-      controller.temporalFilterStreamValue.value,
-      equals(TenantAdminEventTemporalBucket.defaultSelection),
-    );
-  });
+      expect(
+        controller
+            .eventFormStateStreamValue
+            .value
+            .selectedRelatedAccountProfileIds,
+        ['producer-1'],
+      );
+      expect(
+        controller
+            .eventFormStateStreamValue
+            .value
+            .occurrences
+            .single
+            .relatedAccountProfileIds
+            .map((value) => value.value)
+            .toList(growable: false),
+        ['artist-1'],
+      );
+      expect(
+        controller
+            .eventFormStateStreamValue
+            .value
+            .occurrences
+            .single
+            .programmingItems
+            .single
+            .accountProfileIds
+            .map((value) => value.value)
+            .toList(growable: false),
+        ['artist-1'],
+      );
+    },
+  );
+
+  test(
+    'occurrence profile-group changes clear stale programming profile links for removed members',
+    () {
+      final controller = TenantAdminEventsController(
+        eventsRepository: _TrackingEventsRepository(),
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken(
+          'landlord-token',
+        ),
+      );
+      final occurrenceProfile = tenantAdminAccountProfileFromRaw(
+        id: 'artist-1',
+        accountId: 'acc-artist-1',
+        profileType: 'artist',
+        displayName: 'Artist A',
+      );
+
+      controller.initEventForm();
+      controller.upsertOccurrence(
+        index: null,
+        occurrence: TenantAdminEventOccurrence(
+          dateTimeStartValue: tenantAdminDateTime(DateTime(2026, 4, 22, 20)),
+          relatedAccountProfileIdValues:
+              List<TenantAdminAccountProfileIdValue>.of([
+                TenantAdminAccountProfileIdValue('artist-1'),
+              ]),
+          relatedAccountProfiles: [occurrenceProfile],
+          profileGroups: [
+            TenantAdminNestedProfileGroup(
+              idValue: TenantAdminNestedProfileGroupTextValue('bandas'),
+              labelValue: TenantAdminNestedProfileGroupTextValue('Bandas'),
+              orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+              accountProfileIdValues: [
+                TenantAdminNestedProfileGroupTextValue('artist-1'),
+              ],
+            ),
+          ],
+          programmingItems: List<TenantAdminEventProgrammingItem>.of([
+            TenantAdminEventProgrammingItem(
+              timeValue: tenantAdminRequiredText('20:00'),
+              titleValue: tenantAdminOptionalText('Show principal'),
+              accountProfileIdValues: List<TenantAdminAccountProfileIdValue>.of(
+                [TenantAdminAccountProfileIdValue('artist-1')],
+              ),
+              linkedAccountProfiles: [occurrenceProfile],
+            ),
+          ]),
+        ),
+      );
+
+      controller.toggleOccurrenceProfileGroupMember(
+        occurrenceKey: (controller.primaryOccurrenceKey())!,
+        groupId: 'bandas',
+        profileId: 'artist-1',
+        selected: false,
+      );
+
+      final occurrence =
+          controller.eventFormStateStreamValue.value.occurrences.single;
+      expect(occurrence.relatedAccountProfileIds, isEmpty);
+      expect(occurrence.relatedAccountProfiles, isEmpty);
+      expect(occurrence.programmingItems.single.accountProfileIds, isEmpty);
+      expect(occurrence.programmingItems.single.linkedAccountProfiles, isEmpty);
+      expect(occurrence.programmingItems.single.title, 'Show principal');
+    },
+  );
+
+  test(
+    'selectSpecificDateFilter expands temporal buckets and clearing restores defaults',
+    () {
+      final controller = TenantAdminEventsController(
+        eventsRepository: _TrackingEventsRepository(),
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken(
+          'landlord-token',
+        ),
+      );
+
+      controller.selectSpecificDateFilter(DateTime(2026, 4, 12));
+
+      expect(
+        controller.temporalFilterStreamValue.value,
+        equals(TenantAdminEventTemporalBucket.values.toSet()),
+      );
+
+      controller.clearSpecificDateFilter();
+
+      expect(
+        controller.temporalFilterStreamValue.value,
+        equals(TenantAdminEventTemporalBucket.defaultSelection),
+      );
+      expect(controller.specificDateFilterStreamValue.value, isNull);
+    },
+  );
+
+  test(
+    'resetEventFilters clears specific date, venue, related profile, and restores default temporal selection',
+    () {
+      final controller = TenantAdminEventsController(
+        eventsRepository: _TrackingEventsRepository(),
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken(
+          'landlord-token',
+        ),
+      );
+
+      controller.selectSpecificDateFilter(DateTime(2026, 4, 12));
+      controller.selectVenueFilter(
+        tenantAdminAccountProfileFromRaw(
+          id: 'venue-1',
+          accountId: 'acc-venue-1',
+          profileType: 'venue',
+          displayName: 'Main Venue',
+        ),
+      );
+      controller.selectRelatedAccountProfileFilter(
+        tenantAdminAccountProfileFromRaw(
+          id: 'profile-1',
+          accountId: 'acc-profile-1',
+          profileType: 'artist',
+          displayName: 'DJ Test',
+        ),
+      );
+
+      controller.resetEventFilters();
+
+      expect(controller.specificDateFilterStreamValue.value, isNull);
+      expect(controller.venueFilterStreamValue.value, isNull);
+      expect(controller.relatedAccountProfileFilterStreamValue.value, isNull);
+      expect(
+        controller.temporalFilterStreamValue.value,
+        equals(TenantAdminEventTemporalBucket.defaultSelection),
+      );
+    },
+  );
 
   test('toggleTemporalFilter keeps at least one bucket selected', () {
     final controller = TenantAdminEventsController(
       eventsRepository: _TrackingEventsRepository(),
       taxonomiesRepository: _NoopTaxonomiesRepository(),
-      landlordAuthRepository:
-          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
+      landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken(
+        'landlord-token',
+      ),
     );
 
     controller.toggleTemporalFilter(TenantAdminEventTemporalBucket.future);
@@ -614,312 +649,30 @@ void main() {
   });
 
   test(
-      'event type taxonomy term loading ignores stale in-flight responses after empty transition',
-      () async {
-    final taxonomiesRepository = _DelayedBatchTaxonomiesRepository();
-    final controller = TenantAdminEventsController(
-      eventsRepository: _TrackingEventsRepository(),
-      taxonomiesRepository: taxonomiesRepository,
-      batchTermsRepository: taxonomiesRepository,
-      landlordAuthRepository:
-          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
-    );
-    controller.eventTypeCatalogStreamValue.addValue([
-      TenantAdminEventType.withAllowedTaxonomies(
-        nameValue: tenantAdminRequiredText('Shows'),
-        slugValue: tenantAdminRequiredText('shows'),
-        allowedTaxonomiesValue: tenantAdminTrimmedStringList(['genre']),
-      ),
-      TenantAdminEventType.withAllowedTaxonomies(
-        nameValue: tenantAdminRequiredText('Plain'),
-        slugValue: tenantAdminRequiredText('plain'),
-        allowedTaxonomiesValue: tenantAdminTrimmedStringList(const []),
-      ),
-    ]);
-    controller.taxonomiesStreamValue.addValue([
-      tenantAdminTaxonomyDefinitionFromRaw(
-        id: 'tax-genre',
-        slug: 'genre',
-        name: 'Genre',
-        appliesTo: ['event'],
-        icon: null,
-        color: null,
-      ),
-    ]);
-
-    controller.updateEventTypeSelection('shows');
-    await taxonomiesRepository.waitForPendingRequest();
-    expect(controller.taxonomyLoadingStreamValue.value, isTrue);
-    controller.updateEventTypeSelection('plain');
-    expect(controller.taxonomyLoadingStreamValue.value, isFalse);
-
-    taxonomiesRepository.completePending(
-      taxonomyId: 'tax-genre',
-      termSlug: 'rock',
-      termName: 'Rock',
-    );
-    await Future<void>.delayed(Duration.zero);
-
-    expect(controller.taxonomyTermsBySlugStreamValue.value, isEmpty);
-    expect(controller.taxonomyLoadingStreamValue.value, isFalse);
-  });
-
-  test(
-      'event type taxonomy term loading ignores stale in-flight responses after cache hit transition',
-      () async {
-    final taxonomiesRepository = _DelayedBatchTaxonomiesRepository();
-    final controller = TenantAdminEventsController(
-      eventsRepository: _TrackingEventsRepository(),
-      taxonomiesRepository: taxonomiesRepository,
-      batchTermsRepository: taxonomiesRepository,
-      landlordAuthRepository:
-          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
-    );
-    controller.eventTypeCatalogStreamValue.addValue([
-      TenantAdminEventType.withAllowedTaxonomies(
-        nameValue: tenantAdminRequiredText('Shows'),
-        slugValue: tenantAdminRequiredText('shows'),
-        allowedTaxonomiesValue: tenantAdminTrimmedStringList(['genre']),
-      ),
-      TenantAdminEventType.withAllowedTaxonomies(
-        nameValue: tenantAdminRequiredText('Food'),
-        slugValue: tenantAdminRequiredText('food'),
-        allowedTaxonomiesValue: tenantAdminTrimmedStringList(['cuisine']),
-      ),
-    ]);
-    controller.taxonomiesStreamValue.addValue([
-      tenantAdminTaxonomyDefinitionFromRaw(
-        id: 'tax-genre',
-        slug: 'genre',
-        name: 'Genre',
-        appliesTo: ['event'],
-        icon: null,
-        color: null,
-      ),
-      tenantAdminTaxonomyDefinitionFromRaw(
-        id: 'tax-cuisine',
-        slug: 'cuisine',
-        name: 'Cuisine',
-        appliesTo: ['event'],
-        icon: null,
-        color: null,
-      ),
-    ]);
-
-    controller.updateEventTypeSelection('shows');
-    await taxonomiesRepository.waitForPendingRequest();
-    taxonomiesRepository.completePending(
-      taxonomyId: 'tax-genre',
-      termSlug: 'rock',
-      termName: 'Rock',
-    );
-    await Future<void>.delayed(Duration.zero);
-    expect(controller.taxonomyTermsBySlugStreamValue.value.keys, ['genre']);
-
-    controller.updateEventTypeSelection('food');
-    await taxonomiesRepository.waitForPendingRequest();
-    expect(controller.taxonomyLoadingStreamValue.value, isTrue);
-    controller.updateEventTypeSelection('shows');
-    expect(controller.taxonomyLoadingStreamValue.value, isFalse);
-
-    taxonomiesRepository.completePending(
-      taxonomyId: 'tax-cuisine',
-      termSlug: 'pizza',
-      termName: 'Pizza',
-    );
-    await Future<void>.delayed(Duration.zero);
-
-    final termsBySlug = controller.taxonomyTermsBySlugStreamValue.value;
-    expect(termsBySlug.keys, ['genre']);
-    expect(termsBySlug['genre']?.single.slug, 'rock');
-    expect(controller.taxonomyLoadingStreamValue.value, isFalse);
-  });
-
-  test(
-      'account-scoped loadFormDependencies uses dedicated event types endpoint and account-profile candidate pages',
-      () async {
-    final eventsRepository = _AccountScopedEventsRepository();
-    final controller = TenantAdminEventsController(
-      eventsRepository: eventsRepository,
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-    );
-
-    await controller.loadFormDependencies(accountSlug: 'my-account');
-
-    expect(eventsRepository.fetchEventTypesCalls, 1);
-    expect(eventsRepository.fetchEventsCalls, 0);
-    expect(eventsRepository.accountProfileCandidatePageCalls, 2);
-    expect(
-        eventsRepository.lastAccountProfileCandidatesAccountSlug, 'my-account');
-    expect(
-      eventsRepository.candidateTypes,
-      containsAll(<TenantAdminEventAccountProfileCandidateType>[
-        TenantAdminEventAccountProfileCandidateType.physicalHost,
-        TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
-      ]),
-    );
-  });
-
-  test(
-      'loadFormDependencies only fetches the first candidate page per type during bootstrap',
-      () async {
-    final eventsRepository = _BootstrapPagedCandidatesRepository();
-    final controller = TenantAdminEventsController(
-      eventsRepository: eventsRepository,
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-    );
-
-    await controller.loadFormDependencies();
-
-    expect(eventsRepository.accountProfileCandidatePageCalls, 2);
-    expect(
-      eventsRepository.candidatePageRequests,
-      <(TenantAdminEventAccountProfileCandidateType, int)>[
-        (TenantAdminEventAccountProfileCandidateType.physicalHost, 1),
-        (
-          TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
-          1,
+    'event type taxonomy term loading ignores stale in-flight responses after empty transition',
+    () async {
+      final taxonomiesRepository = _DelayedBatchTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: _TrackingEventsRepository(),
+        taxonomiesRepository: taxonomiesRepository,
+        batchTermsRepository: taxonomiesRepository,
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken(
+          'landlord-token',
         ),
-      ],
-    );
-    expect(
-      controller.venueCandidatesStreamValue.value
-          .map((profile) => profile.id)
-          .toList(growable: false),
-      ['venue-bootstrap-1'],
-    );
-    expect(
-      controller.relatedAccountProfileCandidatesStreamValue.value
-          .map((profile) => profile.id)
-          .toList(growable: false),
-      ['artist-bootstrap-1'],
-    );
-    expect(controller.accountProfileCandidatesErrorStreamValue.value, isNull);
-  });
-
-  test(
-      'loadFormDependencies preserves an existing venue that is off the first bootstrap page',
-      () async {
-    final eventsRepository = _BootstrapPagedCandidatesRepository();
-    final controller = TenantAdminEventsController(
-      eventsRepository: eventsRepository,
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-    );
-    final existingEvent = TenantAdminEvent(
-      eventIdValue: tenantAdminRequiredText('evt-off-page-venue'),
-      slugValue: tenantAdminRequiredText('evt-off-page-venue'),
-      titleValue: tenantAdminRequiredText('Evento com venue fora da pagina'),
-      contentValue: tenantAdminOptionalText('Conteudo'),
-      type: TenantAdminEventType(
-        idValue: tenantAdminOptionalText('type-1'),
-        nameValue: tenantAdminRequiredText('Show'),
-        slugValue: tenantAdminRequiredText('show'),
-      ),
-      location: TenantAdminEventLocation(
-        modeValue: tenantAdminRequiredText('physical'),
-        latitudeValue: tenantAdminOptionalDouble(-20.0),
-        longitudeValue: tenantAdminOptionalDouble(-40.0),
-      ),
-      placeRef: TenantAdminEventPlaceRef(
-        typeValue: tenantAdminRequiredText('account_profile'),
-        idValue: tenantAdminRequiredText('venue-selected'),
-      ),
-      venueDisplayNameValue: tenantAdminOptionalText('Selected Venue'),
-      occurrences: [
-        TenantAdminEventOccurrence(
-          dateTimeStartValue: tenantAdminDateTime(
-            DateTime.utc(2026, 6, 7, 3),
-          ),
+      );
+      controller.eventTypeCatalogStreamValue.addValue([
+        TenantAdminEventType.withAllowedTaxonomies(
+          nameValue: tenantAdminRequiredText('Shows'),
+          slugValue: tenantAdminRequiredText('shows'),
+          allowedTaxonomiesValue: tenantAdminTrimmedStringList(['genre']),
         ),
-      ],
-      publication: TenantAdminEventPublication(
-        statusValue: tenantAdminRequiredText('draft'),
-      ),
-    );
-
-    controller.initEventForm(existingEvent: existingEvent);
-    await controller.loadFormDependencies();
-
-    expect(
-      controller.eventFormStateStreamValue.value.selectedVenueId,
-      'venue-selected',
-    );
-    expect(
-      controller.venueCandidatesStreamValue.value
-          .map((profile) => profile.id)
-          .toList(growable: false),
-      ['venue-selected', 'venue-bootstrap-1'],
-    );
-    expect(
-      controller.venueCandidatesStreamValue.value.first.displayName,
-      'Selected Venue',
-    );
-  });
-
-  test('bootstrap-seeded venue picker loads page 2 on next page request',
-      () async {
-    final eventsRepository = _BootstrapPagedCandidatesRepository();
-    final controller = TenantAdminEventsController(
-      eventsRepository: eventsRepository,
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-    );
-
-    await controller.loadFormDependencies();
-    await controller.prepareAccountProfilePicker(
-      candidateType: TenantAdminEventAccountProfileCandidateType.physicalHost,
-    );
-
-    expect(
-      controller.accountProfilePickerResultsStreamValue.value
-          .map((profile) => profile.id)
-          .toList(growable: false),
-      ['venue-bootstrap-1'],
-    );
-    expect(
-      eventsRepository.candidatePageRequests,
-      <(TenantAdminEventAccountProfileCandidateType, int)>[
-        (TenantAdminEventAccountProfileCandidateType.physicalHost, 1),
-        (
-          TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
-          1,
+        TenantAdminEventType.withAllowedTaxonomies(
+          nameValue: tenantAdminRequiredText('Plain'),
+          slugValue: tenantAdminRequiredText('plain'),
+          allowedTaxonomiesValue: tenantAdminTrimmedStringList(const []),
         ),
-      ],
-    );
-
-    await controller.loadNextAccountProfilePickerPage();
-
-    expect(
-      eventsRepository.candidatePageRequests,
-      <(TenantAdminEventAccountProfileCandidateType, int)>[
-        (TenantAdminEventAccountProfileCandidateType.physicalHost, 1),
-        (
-          TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
-          1,
-        ),
-        (TenantAdminEventAccountProfileCandidateType.physicalHost, 2),
-      ],
-    );
-    expect(
-      controller.accountProfilePickerResultsStreamValue.value
-          .map((profile) => profile.id)
-          .toList(growable: false),
-      ['venue-bootstrap-1', 'venue-bootstrap-2'],
-    );
-    expect(controller.accountProfilePickerHasMoreStreamValue.value, isFalse);
-  });
-
-  test(
-      'loadFormDependencies hydrates default event type and terms in controller',
-      () async {
-    final eventsRepository = _ConfigurableEventTypesRepository([
-      TenantAdminEventType.withAllowedTaxonomies(
-        nameValue: tenantAdminRequiredText('Shows'),
-        slugValue: tenantAdminRequiredText('shows'),
-        allowedTaxonomiesValue: tenantAdminTrimmedStringList(['genre']),
-      ),
-    ]);
-    final taxonomiesRepository = _StaticBatchTaxonomiesRepository(
-      taxonomies: [
+      ]);
+      controller.taxonomiesStreamValue.addValue([
         tenantAdminTaxonomyDefinitionFromRaw(
           id: 'tax-genre',
           slug: 'genre',
@@ -928,137 +681,557 @@ void main() {
           icon: null,
           color: null,
         ),
-      ],
-      termsByTaxonomyId: {
-        'tax-genre': [
-          TenantAdminTaxonomyTermDefinition(
-            idValue: tenantAdminRequiredText('term-rock'),
-            taxonomyIdValue: tenantAdminRequiredText('tax-genre'),
-            slugValue: tenantAdminRequiredText('rock'),
-            nameValue: tenantAdminRequiredText('Rock'),
+      ]);
+
+      controller.updateEventTypeSelection('shows');
+      await taxonomiesRepository.waitForPendingRequest();
+      expect(controller.taxonomyLoadingStreamValue.value, isTrue);
+      controller.updateEventTypeSelection('plain');
+      expect(controller.taxonomyLoadingStreamValue.value, isFalse);
+
+      taxonomiesRepository.completePending(
+        taxonomyId: 'tax-genre',
+        termSlug: 'rock',
+        termName: 'Rock',
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(controller.taxonomyTermsBySlugStreamValue.value, isEmpty);
+      expect(controller.taxonomyLoadingStreamValue.value, isFalse);
+    },
+  );
+
+  test(
+    'event type taxonomy term loading ignores stale in-flight responses after cache hit transition',
+    () async {
+      final taxonomiesRepository = _DelayedBatchTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: _TrackingEventsRepository(),
+        taxonomiesRepository: taxonomiesRepository,
+        batchTermsRepository: taxonomiesRepository,
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken(
+          'landlord-token',
+        ),
+      );
+      controller.eventTypeCatalogStreamValue.addValue([
+        TenantAdminEventType.withAllowedTaxonomies(
+          nameValue: tenantAdminRequiredText('Shows'),
+          slugValue: tenantAdminRequiredText('shows'),
+          allowedTaxonomiesValue: tenantAdminTrimmedStringList(['genre']),
+        ),
+        TenantAdminEventType.withAllowedTaxonomies(
+          nameValue: tenantAdminRequiredText('Food'),
+          slugValue: tenantAdminRequiredText('food'),
+          allowedTaxonomiesValue: tenantAdminTrimmedStringList(['cuisine']),
+        ),
+      ]);
+      controller.taxonomiesStreamValue.addValue([
+        tenantAdminTaxonomyDefinitionFromRaw(
+          id: 'tax-genre',
+          slug: 'genre',
+          name: 'Genre',
+          appliesTo: ['event'],
+          icon: null,
+          color: null,
+        ),
+        tenantAdminTaxonomyDefinitionFromRaw(
+          id: 'tax-cuisine',
+          slug: 'cuisine',
+          name: 'Cuisine',
+          appliesTo: ['event'],
+          icon: null,
+          color: null,
+        ),
+      ]);
+
+      controller.updateEventTypeSelection('shows');
+      await taxonomiesRepository.waitForPendingRequest();
+      taxonomiesRepository.completePending(
+        taxonomyId: 'tax-genre',
+        termSlug: 'rock',
+        termName: 'Rock',
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(controller.taxonomyTermsBySlugStreamValue.value.keys, ['genre']);
+
+      controller.updateEventTypeSelection('food');
+      await taxonomiesRepository.waitForPendingRequest();
+      expect(controller.taxonomyLoadingStreamValue.value, isTrue);
+      controller.updateEventTypeSelection('shows');
+      expect(controller.taxonomyLoadingStreamValue.value, isFalse);
+
+      taxonomiesRepository.completePending(
+        taxonomyId: 'tax-cuisine',
+        termSlug: 'pizza',
+        termName: 'Pizza',
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final termsBySlug = controller.taxonomyTermsBySlugStreamValue.value;
+      expect(termsBySlug.keys, ['genre']);
+      expect(termsBySlug['genre']?.single.slug, 'rock');
+      expect(controller.taxonomyLoadingStreamValue.value, isFalse);
+    },
+  );
+
+  test(
+    'loadEventTypeFormTaxonomies reapplies persisted allowed taxonomies after stale taxonomy context cleared them',
+    () async {
+      final taxonomiesRepository = _StaticBatchTaxonomiesRepository(
+        taxonomies: [
+          tenantAdminTaxonomyDefinitionFromRaw(
+            id: 'tax-genre',
+            slug: 'genre',
+            name: 'Genre',
+            appliesTo: ['event'],
+            icon: null,
+            color: null,
+          ),
+          tenantAdminTaxonomyDefinitionFromRaw(
+            id: 'tax-cuisine',
+            slug: 'cuisine',
+            name: 'Cuisine',
+            appliesTo: ['event'],
+            icon: null,
+            color: null,
           ),
         ],
-      },
-    );
-    final controller = TenantAdminEventsController(
-      eventsRepository: eventsRepository,
-      taxonomiesRepository: taxonomiesRepository,
-      batchTermsRepository: taxonomiesRepository,
-    );
+        termsByTaxonomyId: const {},
+      );
+      final controller = TenantAdminEventsController(
+        eventsRepository: _TrackingEventsRepository(),
+        taxonomiesRepository: taxonomiesRepository,
+      );
+      controller.taxonomiesStreamValue.addValue([
+        tenantAdminTaxonomyDefinitionFromRaw(
+          id: 'tax-stale',
+          slug: 'stale',
+          name: 'Stale',
+          appliesTo: ['event'],
+          icon: null,
+          color: null,
+        ),
+      ]);
 
-    controller.initEventForm();
-    await controller.loadFormDependencies();
+      controller.initEventTypeForm(
+        existingType: TenantAdminEventType.withAllowedTaxonomies(
+          idValue: tenantAdminOptionalText('type-1'),
+          nameValue: tenantAdminRequiredText('Festival'),
+          slugValue: tenantAdminRequiredText('festival'),
+          allowedTaxonomiesValue: tenantAdminTrimmedStringList([
+            'genre',
+            'cuisine',
+          ]),
+        ),
+      );
 
-    expect(
-        controller.eventFormStateStreamValue.value.selectedTypeSlug, 'shows');
-    expect(controller.taxonomyTermsBySlugStreamValue.value.keys, ['genre']);
-    expect(
-      controller.taxonomyTermsBySlugStreamValue.value['genre']?.single.slug,
-      'rock',
-    );
-  });
+      expect(controller.selectedEventTypeAllowedTaxonomies, isEmpty);
 
-  test('occurrence taxonomy overrides are scoped to the selected event type',
-      () {
-    final controller = TenantAdminEventsController(
-      eventsRepository: _TrackingEventsRepository(),
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-    );
-    final showType = TenantAdminEventType.withAllowedTaxonomies(
-      nameValue: tenantAdminRequiredText('Shows'),
-      slugValue: tenantAdminRequiredText('shows'),
-      allowedTaxonomiesValue: tenantAdminTrimmedStringList(['genre']),
-    );
-    final foodType = TenantAdminEventType.withAllowedTaxonomies(
-      nameValue: tenantAdminRequiredText('Food'),
-      slugValue: tenantAdminRequiredText('food'),
-      allowedTaxonomiesValue: tenantAdminTrimmedStringList(['cuisine']),
-    );
-    controller.eventTypeCatalogStreamValue.addValue([showType, foodType]);
-    controller.initEventForm(
-      existingEvent: TenantAdminEvent(
-        eventIdValue: tenantAdminRequiredText('evt-1'),
-        slugValue: tenantAdminRequiredText('evt-1'),
-        titleValue: tenantAdminRequiredText('Evento'),
+      await controller.loadEventTypeFormTaxonomies();
+
+      expect(controller.selectedEventTypeAllowedTaxonomies, [
+        'genre',
+        'cuisine',
+      ]);
+    },
+  );
+
+  test(
+    'account-scoped loadFormDependencies uses dedicated event types endpoint and account-profile candidate pages',
+    () async {
+      final eventsRepository = _AccountScopedEventsRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+      );
+
+      await controller.loadFormDependencies(accountSlug: 'my-account');
+
+      expect(eventsRepository.fetchEventTypesCalls, 1);
+      expect(eventsRepository.fetchEventsCalls, 0);
+      expect(eventsRepository.accountProfileCandidatePageCalls, 2);
+      expect(
+        eventsRepository.lastAccountProfileCandidatesAccountSlug,
+        'my-account',
+      );
+      expect(
+        eventsRepository.candidateTypes,
+        containsAll(<TenantAdminEventAccountProfileCandidateType>[
+          TenantAdminEventAccountProfileCandidateType.physicalHost,
+          TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
+        ]),
+      );
+    },
+  );
+
+  test(
+    'loadFormDependencies only fetches the first candidate page per type during bootstrap',
+    () async {
+      final eventsRepository = _BootstrapPagedCandidatesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+      );
+
+      await controller.loadFormDependencies();
+
+      expect(eventsRepository.accountProfileCandidatePageCalls, 2);
+      expect(eventsRepository.candidatePageRequests, <
+        (TenantAdminEventAccountProfileCandidateType, int)
+      >[
+        (TenantAdminEventAccountProfileCandidateType.physicalHost, 1),
+        (TenantAdminEventAccountProfileCandidateType.relatedAccountProfile, 1),
+      ]);
+      expect(
+        controller.venueCandidatesStreamValue.value
+            .map((profile) => profile.id)
+            .toList(growable: false),
+        ['venue-bootstrap-1'],
+      );
+      expect(
+        controller.relatedAccountProfileCandidatesStreamValue.value
+            .map((profile) => profile.id)
+            .toList(growable: false),
+        ['artist-bootstrap-1'],
+      );
+      expect(controller.accountProfileCandidatesErrorStreamValue.value, isNull);
+    },
+  );
+
+  test(
+    'loadFormDependencies preserves an existing venue that is off the first bootstrap page',
+    () async {
+      final eventsRepository = _BootstrapPagedCandidatesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+      );
+      final existingEvent = TenantAdminEvent(
+        eventIdValue: tenantAdminRequiredText('evt-off-page-venue'),
+        slugValue: tenantAdminRequiredText('evt-off-page-venue'),
+        titleValue: tenantAdminRequiredText('Evento com venue fora da pagina'),
         contentValue: tenantAdminOptionalText('Conteudo'),
-        type: showType,
+        type: TenantAdminEventType(
+          idValue: tenantAdminOptionalText('type-1'),
+          nameValue: tenantAdminRequiredText('Show'),
+          slugValue: tenantAdminRequiredText('show'),
+        ),
+        location: TenantAdminEventLocation(
+          modeValue: tenantAdminRequiredText('physical'),
+          latitudeValue: tenantAdminOptionalDouble(-20.0),
+          longitudeValue: tenantAdminOptionalDouble(-40.0),
+        ),
+        placeRef: TenantAdminEventPlaceRef(
+          typeValue: tenantAdminRequiredText('account_profile'),
+          idValue: tenantAdminRequiredText('venue-selected'),
+        ),
+        venueDisplayNameValue: tenantAdminOptionalText('Selected Venue'),
         occurrences: [
           TenantAdminEventOccurrence(
             dateTimeStartValue: tenantAdminDateTime(
-              DateTime.utc(2026, 4, 5, 20),
+              DateTime.utc(2026, 6, 7, 3),
             ),
           ),
         ],
         publication: TenantAdminEventPublication(
           statusValue: tenantAdminRequiredText('draft'),
         ),
-      ),
-    );
+      );
 
-    final occurrenceKey = controller.primaryOccurrenceKey();
-    expect(occurrenceKey, isNotNull);
+      controller.initEventForm(existingEvent: existingEvent);
+      await controller.loadFormDependencies();
 
-    controller.toggleOccurrenceTaxonomyTerm(
-      occurrenceKey: occurrenceKey!,
-      taxonomySlug: 'genre',
-      termSlug: 'rock',
-      isSelected: true,
-    );
-    controller.toggleOccurrenceTaxonomyTerm(
-      occurrenceKey: occurrenceKey,
-      taxonomySlug: 'cuisine',
-      termSlug: 'italian',
-      isSelected: true,
-    );
+      expect(
+        controller.eventFormStateStreamValue.value.selectedVenueId,
+        'venue-selected',
+      );
+      expect(
+        controller.venueCandidatesStreamValue.value
+            .map((profile) => profile.id)
+            .toList(growable: false),
+        ['venue-selected', 'venue-bootstrap-1'],
+      );
+      expect(
+        controller.venueCandidatesStreamValue.value.first.displayName,
+        'Selected Venue',
+      );
+    },
+  );
 
-    expect(
-      controller
-          .occurrenceForKey(occurrenceKey)
-          ?.taxonomyTerms
-          .map((term) => '${term.type}:${term.value}')
-          .toList(growable: false),
-      ['genre:rock'],
-    );
+  test(
+    'bootstrap-seeded venue picker loads page 2 on next page request',
+    () async {
+      final eventsRepository = _BootstrapPagedCandidatesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+      );
 
-    controller.updateEventTypeSelection('food');
+      await controller.loadFormDependencies();
+      await controller.prepareAccountProfilePicker(
+        candidateType: TenantAdminEventAccountProfileCandidateType.physicalHost,
+      );
 
-    expect(controller.occurrenceForKey(occurrenceKey)?.taxonomyTerms, isEmpty);
+      expect(
+        controller.accountProfilePickerResultsStreamValue.value
+            .map((profile) => profile.id)
+            .toList(growable: false),
+        ['venue-bootstrap-1'],
+      );
+      expect(eventsRepository.candidatePageRequests, <
+        (TenantAdminEventAccountProfileCandidateType, int)
+      >[
+        (TenantAdminEventAccountProfileCandidateType.physicalHost, 1),
+        (TenantAdminEventAccountProfileCandidateType.relatedAccountProfile, 1),
+      ]);
 
-    controller.toggleOccurrenceTaxonomyTerm(
-      occurrenceKey: occurrenceKey,
-      taxonomySlug: 'cuisine',
-      termSlug: 'italian',
-      isSelected: true,
-    );
+      await controller.loadNextAccountProfilePickerPage();
 
-    expect(
-      controller
-          .occurrenceForKey(occurrenceKey)
-          ?.taxonomyTerms
-          .map((term) => '${term.type}:${term.value}')
-          .toList(growable: false),
-      ['cuisine:italian'],
-    );
-  });
+      expect(eventsRepository.candidatePageRequests, <
+        (TenantAdminEventAccountProfileCandidateType, int)
+      >[
+        (TenantAdminEventAccountProfileCandidateType.physicalHost, 1),
+        (TenantAdminEventAccountProfileCandidateType.relatedAccountProfile, 1),
+        (TenantAdminEventAccountProfileCandidateType.physicalHost, 2),
+      ]);
+      expect(
+        controller.accountProfilePickerResultsStreamValue.value
+            .map((profile) => profile.id)
+            .toList(growable: false),
+        ['venue-bootstrap-1', 'venue-bootstrap-2'],
+      );
+      expect(controller.accountProfilePickerHasMoreStreamValue.value, isFalse);
+    },
+  );
 
-  test('account-scoped submitCreate does not refresh tenant-admin events list',
-      () async {
-    final eventsRepository = _AccountScopedEventsRepository();
-    final controller = TenantAdminEventsController(
-      eventsRepository: eventsRepository,
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-    );
+  test(
+    'loadFormDependencies fetches only selected event-type taxonomies via scoped slug lookup',
+    () async {
+      final eventsRepository = _ConfigurableEventTypesRepository([
+        TenantAdminEventType.withAllowedTaxonomies(
+          nameValue: tenantAdminRequiredText('Shows'),
+          slugValue: tenantAdminRequiredText('shows'),
+          allowedTaxonomiesValue: tenantAdminTrimmedStringList([
+            'genre',
+            'audience',
+          ]),
+        ),
+      ]);
+      final taxonomiesRepository = _StaticBatchTaxonomiesRepository(
+        taxonomies: [
+          tenantAdminTaxonomyDefinitionFromRaw(
+            id: 'tax-genre',
+            slug: 'genre',
+            name: 'Genre',
+            appliesTo: ['event'],
+            icon: null,
+            color: null,
+          ),
+          tenantAdminTaxonomyDefinitionFromRaw(
+            id: 'tax-audience',
+            slug: 'audience',
+            name: 'Audience',
+            appliesTo: ['event'],
+            icon: null,
+            color: null,
+          ),
+          tenantAdminTaxonomyDefinitionFromRaw(
+            id: 'tax-cuisine',
+            slug: 'cuisine',
+            name: 'Cuisine',
+            appliesTo: ['account_profile'],
+            icon: null,
+            color: null,
+          ),
+        ],
+        termsByTaxonomyId: const {},
+      );
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+        batchTermsRepository: taxonomiesRepository,
+      );
 
-    final created = await controller.submitCreate(
-      _buildDraft(),
-      accountSlug: 'my-account',
-    );
+      controller.initEventForm();
+      await controller.loadFormDependencies();
 
-    expect(created, isNotNull);
-    expect(eventsRepository.createOwnCalls, 1);
-    expect(eventsRepository.fetchEventsPageCalls, 0);
-    expect(controller.submitErrorMessageStreamValue.value, isNull);
-  });
+      expect(taxonomiesRepository.fetchTaxonomiesBySlugsCalls, 1);
+      expect(taxonomiesRepository.lastFetchedTaxonomySlugs, [
+        'audience',
+        'genre',
+      ]);
+      expect(taxonomiesRepository.lastFetchedAppliesTo, 'event');
+      expect(taxonomiesRepository.fetchTaxonomiesPageCalls, 0);
+      expect(
+        controller.taxonomiesStreamValue.value
+            .map((entry) => entry.slug)
+            .toList(growable: false),
+        ['audience', 'genre'],
+      );
+    },
+  );
+
+  test(
+    'loadFormDependencies hydrates default event type and terms in controller',
+    () async {
+      final eventsRepository = _ConfigurableEventTypesRepository([
+        TenantAdminEventType.withAllowedTaxonomies(
+          nameValue: tenantAdminRequiredText('Shows'),
+          slugValue: tenantAdminRequiredText('shows'),
+          allowedTaxonomiesValue: tenantAdminTrimmedStringList(['genre']),
+        ),
+      ]);
+      final taxonomiesRepository = _StaticBatchTaxonomiesRepository(
+        taxonomies: [
+          tenantAdminTaxonomyDefinitionFromRaw(
+            id: 'tax-genre',
+            slug: 'genre',
+            name: 'Genre',
+            appliesTo: ['event'],
+            icon: null,
+            color: null,
+          ),
+        ],
+        termsByTaxonomyId: {
+          'tax-genre': [
+            TenantAdminTaxonomyTermDefinition(
+              idValue: tenantAdminRequiredText('term-rock'),
+              taxonomyIdValue: tenantAdminRequiredText('tax-genre'),
+              slugValue: tenantAdminRequiredText('rock'),
+              nameValue: tenantAdminRequiredText('Rock'),
+            ),
+          ],
+        },
+      );
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+        batchTermsRepository: taxonomiesRepository,
+      );
+
+      controller.initEventForm();
+      await controller.loadFormDependencies();
+
+      expect(
+        controller.eventFormStateStreamValue.value.selectedTypeSlug,
+        'shows',
+      );
+      expect(controller.taxonomyTermsBySlugStreamValue.value.keys, ['genre']);
+      expect(
+        controller.taxonomyTermsBySlugStreamValue.value['genre']?.single.slug,
+        'rock',
+      );
+    },
+  );
+
+  test(
+    'occurrence taxonomy overrides are scoped to the selected event type',
+    () {
+      final controller = TenantAdminEventsController(
+        eventsRepository: _TrackingEventsRepository(),
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+      );
+      final showType = TenantAdminEventType.withAllowedTaxonomies(
+        nameValue: tenantAdminRequiredText('Shows'),
+        slugValue: tenantAdminRequiredText('shows'),
+        allowedTaxonomiesValue: tenantAdminTrimmedStringList(['genre']),
+      );
+      final foodType = TenantAdminEventType.withAllowedTaxonomies(
+        nameValue: tenantAdminRequiredText('Food'),
+        slugValue: tenantAdminRequiredText('food'),
+        allowedTaxonomiesValue: tenantAdminTrimmedStringList(['cuisine']),
+      );
+      controller.eventTypeCatalogStreamValue.addValue([showType, foodType]);
+      controller.initEventForm(
+        existingEvent: TenantAdminEvent(
+          eventIdValue: tenantAdminRequiredText('evt-1'),
+          slugValue: tenantAdminRequiredText('evt-1'),
+          titleValue: tenantAdminRequiredText('Evento'),
+          contentValue: tenantAdminOptionalText('Conteudo'),
+          type: showType,
+          occurrences: [
+            TenantAdminEventOccurrence(
+              dateTimeStartValue: tenantAdminDateTime(
+                DateTime.utc(2026, 4, 5, 20),
+              ),
+            ),
+          ],
+          publication: TenantAdminEventPublication(
+            statusValue: tenantAdminRequiredText('draft'),
+          ),
+        ),
+      );
+
+      final occurrenceKey = controller.primaryOccurrenceKey();
+      expect(occurrenceKey, isNotNull);
+
+      controller.toggleOccurrenceTaxonomyTerm(
+        occurrenceKey: occurrenceKey!,
+        taxonomySlug: 'genre',
+        termSlug: 'rock',
+        isSelected: true,
+      );
+      controller.toggleOccurrenceTaxonomyTerm(
+        occurrenceKey: occurrenceKey,
+        taxonomySlug: 'cuisine',
+        termSlug: 'italian',
+        isSelected: true,
+      );
+
+      expect(
+        controller
+            .occurrenceForKey(occurrenceKey)
+            ?.taxonomyTerms
+            .map((term) => '${term.type}:${term.value}')
+            .toList(growable: false),
+        ['genre:rock'],
+      );
+
+      controller.updateEventTypeSelection('food');
+
+      expect(
+        controller.occurrenceForKey(occurrenceKey)?.taxonomyTerms,
+        isEmpty,
+      );
+
+      controller.toggleOccurrenceTaxonomyTerm(
+        occurrenceKey: occurrenceKey,
+        taxonomySlug: 'cuisine',
+        termSlug: 'italian',
+        isSelected: true,
+      );
+
+      expect(
+        controller
+            .occurrenceForKey(occurrenceKey)
+            ?.taxonomyTerms
+            .map((term) => '${term.type}:${term.value}')
+            .toList(growable: false),
+        ['cuisine:italian'],
+      );
+    },
+  );
+
+  test(
+    'account-scoped submitCreate does not refresh tenant-admin events list',
+    () async {
+      final eventsRepository = _AccountScopedEventsRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+      );
+
+      final created = await controller.submitCreate(
+        _buildDraft(),
+        accountSlug: 'my-account',
+      );
+
+      expect(created, isNotNull);
+      expect(eventsRepository.createOwnCalls, 1);
+      expect(eventsRepository.fetchEventsPageCalls, 0);
+      expect(controller.submitErrorMessageStreamValue.value, isNull);
+    },
+  );
 
   test('submitCreate ignores concurrent submission while loading', () async {
     final eventsRepository = _AccountScopedEventsRepository();
@@ -1083,172 +1256,188 @@ void main() {
     expect(eventsRepository.createOwnCalls, 1);
   });
 
-  test('tenant scope change without landlord token skips admin events load',
-      () async {
-    final eventsRepository = _TrackingEventsRepository();
-    final tenantScope = _FakeTenantScope();
-    final controller = TenantAdminEventsController(
-      eventsRepository: eventsRepository,
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-      tenantScope: tenantScope,
-      landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken(''),
-    );
+  test(
+    'tenant scope change without landlord token skips admin events load',
+    () async {
+      final eventsRepository = _TrackingEventsRepository();
+      final tenantScope = _FakeTenantScope();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        tenantScope: tenantScope,
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken(''),
+      );
 
-    tenantScope.selectTenantDomain('guarappari.belluga.space');
-    await Future<void>.delayed(const Duration(milliseconds: 20));
+      tenantScope.selectTenantDomain('guarappari.belluga.space');
+      await Future<void>.delayed(const Duration(milliseconds: 20));
 
-    expect(eventsRepository.fetchEventsCalls, 0);
-    expect(eventsRepository.fetchEventsPageCalls, 0);
-    expect(controller.eventsStreamValue.value, isEmpty);
-    expect(controller.eventsErrorStreamValue.value, isNull);
-  });
-
-  test('saveEventType sends null description when edit description is cleared',
-      () async {
-    final eventsRepository = _EventTypeUpdateTrackingRepository();
-    final controller = TenantAdminEventsController(
-      eventsRepository: eventsRepository,
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-      landlordAuthRepository:
-          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
-    );
-
-    await controller.saveEventType(
-      name: 'Show',
-      slug: 'show',
-      description: '   ',
-      existingType: TenantAdminEventType(
-        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439011'),
-        nameValue: tenantAdminRequiredText('Show'),
-        slugValue: tenantAdminRequiredText('show'),
-        descriptionValue: tenantAdminOptionalText('Legacy description'),
-      ),
-    );
-
-    expect(eventsRepository.lastUpdateDescription, isNull);
-  });
-
-  test('saveEventType delegates canonical visual mutation when requested',
-      () async {
-    final eventsRepository = _EventTypeVisualTrackingRepository();
-    final controller = TenantAdminEventsController(
-      eventsRepository: eventsRepository,
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-      landlordAuthRepository:
-          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
-    );
-
-    await controller.saveEventType(
-      name: 'Festival',
-      slug: 'festival',
-      description: 'Tipo com imagem',
-      visual: TenantAdminPoiVisual.image(
-        imageSource: TenantAdminPoiVisualImageSource.typeAsset,
-      ),
-      typeAssetUpload: tenantAdminMediaUploadFromRaw(
-        bytes: Uint8List.fromList([1, 2, 3]),
-        fileName: 'festival-type.png',
-      ),
-      removeTypeAsset: true,
-      includeVisual: true,
-      existingType: TenantAdminEventType(
-        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439011'),
-        nameValue: tenantAdminRequiredText('Show'),
-        slugValue: tenantAdminRequiredText('show'),
-      ),
-    );
-
-    expect(eventsRepository.visualUpdateCalls, 1);
-    expect(eventsRepository.lastVisual?.mode, TenantAdminPoiVisualMode.image);
-    expect(
-      eventsRepository.lastVisual?.imageSource,
-      TenantAdminPoiVisualImageSource.typeAsset,
-    );
-    expect(eventsRepository.lastRemoveTypeAsset, isTrue);
-    expect(eventsRepository.lastTypeAssetUpload, isNotNull);
-  });
+      expect(eventsRepository.fetchEventsCalls, 0);
+      expect(eventsRepository.fetchEventsPageCalls, 0);
+      expect(controller.eventsStreamValue.value, isEmpty);
+      expect(controller.eventsErrorStreamValue.value, isNull);
+    },
+  );
 
   test(
-      'related account profile search is backend-driven, paginated, and resets on query change',
-      () async {
-    final eventsRepository =
-        _SearchableRelatedAccountProfileCandidatesRepository();
-    final controller = TenantAdminEventsController(
-      eventsRepository: eventsRepository,
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-    );
+    'saveEventType sends null description when edit description is cleared',
+    () async {
+      final eventsRepository = _EventTypeUpdateTrackingRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken(
+          'landlord-token',
+        ),
+      );
 
-    await controller.loadFormDependencies();
-    await controller.prepareRelatedAccountProfilePicker();
+      await controller.saveEventType(
+        name: 'Show',
+        slug: 'show',
+        description: '   ',
+        existingType: TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439011'),
+          nameValue: tenantAdminRequiredText('Show'),
+          slugValue: tenantAdminRequiredText('show'),
+          descriptionValue: tenantAdminOptionalText('Legacy description'),
+        ),
+      );
 
-    expect(eventsRepository.searchRequests, [('', 1)]);
-
-    controller.updateRelatedAccountProfileSearchQuery('zulu');
-    await controller.retryRelatedAccountProfileSearch();
-
-    expect(
-      controller.relatedAccountProfileSearchResultsStreamValue.value
-          .map((profile) => profile.displayName)
-          .toList(growable: false),
-      ['Zulu Artist 1'],
-    );
-    expect(eventsRepository.searchRequests.last, ('zulu', 1));
-
-    await controller.loadNextRelatedAccountProfileSearchPage();
-
-    expect(
-      controller.relatedAccountProfileSearchResultsStreamValue.value
-          .map((profile) => profile.displayName)
-          .toList(growable: false),
-      ['Zulu Artist 1', 'Zulu Artist 2'],
-    );
-    expect(eventsRepository.searchRequests.last, ('zulu', 2));
-
-    controller.updateRelatedAccountProfileSearchQuery('echo');
-    await controller.retryRelatedAccountProfileSearch();
-
-    expect(
-      controller.relatedAccountProfileSearchResultsStreamValue.value
-          .map((profile) => profile.displayName)
-          .toList(growable: false),
-      ['Echo Artist'],
-    );
-    expect(
-      eventsRepository.searchRequests,
-      [('', 1), ('zulu', 1), ('zulu', 2), ('echo', 1)],
-    );
-  });
+      expect(eventsRepository.lastUpdateDescription, isNull);
+    },
+  );
 
   test(
-      'nested group related account profile search backfills later candidate pages into the known cache',
-      () async {
-    final eventsRepository = _NestedGroupLaterPageCandidatesRepository();
-    final controller = TenantAdminEventsController(
-      eventsRepository: eventsRepository,
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-    );
+    'saveEventType delegates canonical visual mutation when requested',
+    () async {
+      final eventsRepository = _EventTypeVisualTrackingRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken(
+          'landlord-token',
+        ),
+      );
 
-    await controller.loadFormDependencies();
+      await controller.saveEventType(
+        name: 'Festival',
+        slug: 'festival',
+        description: 'Tipo com imagem',
+        visual: TenantAdminPoiVisual.image(
+          imageSource: TenantAdminPoiVisualImageSource.typeAsset,
+        ),
+        typeAssetUpload: tenantAdminMediaUploadFromRaw(
+          bytes: Uint8List.fromList([1, 2, 3]),
+          fileName: 'festival-type.png',
+        ),
+        removeTypeAsset: true,
+        includeVisual: true,
+        existingType: TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439011'),
+          nameValue: tenantAdminRequiredText('Show'),
+          slugValue: tenantAdminRequiredText('show'),
+        ),
+      );
 
-    expect(
-      controller.relatedAccountProfileCandidatesStreamValue.value
-          .map((profile) => profile.displayName)
-          .toList(growable: false),
-      contains('Legacy Artist Page 1 001'),
-    );
+      expect(eventsRepository.visualUpdateCalls, 1);
+      expect(eventsRepository.lastVisual?.mode, TenantAdminPoiVisualMode.image);
+      expect(
+        eventsRepository.lastVisual?.imageSource,
+        TenantAdminPoiVisualImageSource.typeAsset,
+      );
+      expect(eventsRepository.lastRemoveTypeAsset, isTrue);
+      expect(eventsRepository.lastTypeAssetUpload, isNotNull);
+    },
+  );
 
-    await controller.searchRelatedAccountProfileCandidatesForNestedGroups(
-      '021',
-    );
+  test(
+    'related account profile search is backend-driven, paginated, and resets on query change',
+    () async {
+      final eventsRepository =
+          _SearchableRelatedAccountProfileCandidatesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+      );
 
-    expect(
-      controller.relatedAccountProfileCandidatesStreamValue.value
-          .map((profile) => profile.displayName)
-          .toList(growable: false),
-      contains('Legacy Artist Page 2 021'),
-    );
-    expect(eventsRepository.searchRequests, [('', 1), ('021', 1), ('021', 2)]);
-  });
+      await controller.loadFormDependencies();
+      await controller.prepareRelatedAccountProfilePicker();
+
+      expect(eventsRepository.searchRequests, [('', 1)]);
+
+      controller.updateRelatedAccountProfileSearchQuery('zulu');
+      await controller.retryRelatedAccountProfileSearch();
+
+      expect(
+        controller.relatedAccountProfileSearchResultsStreamValue.value
+            .map((profile) => profile.displayName)
+            .toList(growable: false),
+        ['Zulu Artist 1'],
+      );
+      expect(eventsRepository.searchRequests.last, ('zulu', 1));
+
+      await controller.loadNextRelatedAccountProfileSearchPage();
+
+      expect(
+        controller.relatedAccountProfileSearchResultsStreamValue.value
+            .map((profile) => profile.displayName)
+            .toList(growable: false),
+        ['Zulu Artist 1', 'Zulu Artist 2'],
+      );
+      expect(eventsRepository.searchRequests.last, ('zulu', 2));
+
+      controller.updateRelatedAccountProfileSearchQuery('echo');
+      await controller.retryRelatedAccountProfileSearch();
+
+      expect(
+        controller.relatedAccountProfileSearchResultsStreamValue.value
+            .map((profile) => profile.displayName)
+            .toList(growable: false),
+        ['Echo Artist'],
+      );
+      expect(eventsRepository.searchRequests, [
+        ('', 1),
+        ('zulu', 1),
+        ('zulu', 2),
+        ('echo', 1),
+      ]);
+    },
+  );
+
+  test(
+    'nested group related account profile search backfills later candidate pages into the known cache',
+    () async {
+      final eventsRepository = _NestedGroupLaterPageCandidatesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+      );
+
+      await controller.loadFormDependencies();
+
+      expect(
+        controller.relatedAccountProfileCandidatesStreamValue.value
+            .map((profile) => profile.displayName)
+            .toList(growable: false),
+        contains('Legacy Artist Page 1 001'),
+      );
+
+      await controller.searchRelatedAccountProfileCandidatesForNestedGroups(
+        '021',
+      );
+
+      expect(
+        controller.relatedAccountProfileCandidatesStreamValue.value
+            .map((profile) => profile.displayName)
+            .toList(growable: false),
+        contains('Legacy Artist Page 2 021'),
+      );
+      expect(eventsRepository.searchRequests, [
+        ('', 1),
+        ('021', 1),
+        ('021', 2),
+      ]);
+    },
+  );
 
   test('inspectLegacyEventParties delegates to repository', () async {
     final eventsRepository = _LegacySummaryTrackingEventsRepository();
@@ -1295,9 +1484,7 @@ TenantAdminEvent _buildEventDetailFixture({
     occurrences: <TenantAdminEventOccurrence>[
       TenantAdminEventOccurrence(
         occurrenceIdValue: tenantAdminOptionalText('$eventId-occurrence'),
-        dateTimeStartValue: tenantAdminDateTime(
-          DateTime.utc(2026, 6, 24, 18),
-        ),
+        dateTimeStartValue: tenantAdminDateTime(DateTime.utc(2026, 6, 24, 18)),
       ),
     ],
     publication: TenantAdminEventPublication(
@@ -1349,7 +1536,7 @@ class _FailingDeleteEventsRepository extends TenantAdminEventsRepositoryContract
 
   @override
   Future<TenantAdminLegacyEventPartiesSummary>
-      fetchLegacyEventPartiesSummary() async {
+  fetchLegacyEventPartiesSummary() async {
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(0),
       invalidValue: TenantAdminCountValue(0),
@@ -1361,7 +1548,8 @@ class _FailingDeleteEventsRepository extends TenantAdminEventsRepositoryContract
 
   @override
   Future<TenantAdminEvent> fetchEvent(
-      TenantAdminEventsRepoString eventIdOrSlug) async {
+    TenantAdminEventsRepoString eventIdOrSlug,
+  ) async {
     throw UnimplementedError();
   }
 
@@ -1398,7 +1586,7 @@ class _FailingDeleteEventsRepository extends TenantAdminEventsRepositoryContract
 
   @override
   Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-      fetchEventAccountProfileCandidatesPage({
+  fetchEventAccountProfileCandidatesPage({
     required TenantAdminEventAccountProfileCandidateType candidateType,
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
@@ -1421,7 +1609,7 @@ class _FailingDeleteEventsRepository extends TenantAdminEventsRepositoryContract
 
   @override
   Future<TenantAdminLegacyEventPartiesSummary>
-      repairLegacyEventParties() async {
+  repairLegacyEventParties() async {
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(0),
       invalidValue: TenantAdminCountValue(0),
@@ -1434,7 +1622,14 @@ class _FailingDeleteEventsRepository extends TenantAdminEventsRepositoryContract
 
 class _NoopTaxonomiesRepository
     with TenantAdminTaxonomiesPaginationMixin
-    implements TenantAdminTaxonomiesRepositoryContract {
+    implements
+        TenantAdminTaxonomiesRepositoryContract,
+        TenantAdminTaxonomiesScopedLookupRepositoryContract {
+  int fetchTaxonomiesPageCalls = 0;
+  int fetchTaxonomiesBySlugsCalls = 0;
+  List<String> lastFetchedTaxonomySlugs = const <String>[];
+  String? lastFetchedAppliesTo;
+
   @override
   Future<TenantAdminTaxonomyDefinition> createTaxonomy({
     required TenantAdminTaxRepoString slug,
@@ -1471,14 +1666,42 @@ class _NoopTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
-      fetchTaxonomiesPage({
+  fetchTaxonomiesPage({
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
   }) async {
+    fetchTaxonomiesPageCalls += 1;
     return tenantAdminPagedResultFromRaw(
       items: <TenantAdminTaxonomyDefinition>[],
       hasMore: false,
     );
+  }
+
+  @override
+  Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomiesBySlugs({
+    required List<TenantAdminTaxRepoString> slugs,
+    TenantAdminTaxRepoString? appliesTo,
+  }) async {
+    fetchTaxonomiesBySlugsCalls += 1;
+    lastFetchedTaxonomySlugs = slugs
+        .map((entry) => entry.value)
+        .toList(growable: false);
+    lastFetchedAppliesTo = appliesTo?.value;
+    final available = await fetchTaxonomies();
+    final allowedSlugs = slugs
+        .map((entry) => entry.value.trim())
+        .where((entry) => entry.isNotEmpty)
+        .toSet();
+    final appliesToFilter = appliesTo?.value.trim();
+    return available
+        .where((taxonomy) => allowedSlugs.contains(taxonomy.slug))
+        .where(
+          (taxonomy) =>
+              appliesToFilter == null ||
+              appliesToFilter.isEmpty ||
+              taxonomy.appliesTo.contains(appliesToFilter),
+        )
+        .toList(growable: false);
   }
 
   @override
@@ -1490,7 +1713,7 @@ class _NoopTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
-      fetchTermsPage({
+  fetchTermsPage({
     required TenantAdminTaxRepoString taxonomyId,
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
@@ -1553,7 +1776,8 @@ class _TrackingEventsRepository extends TenantAdminEventsRepositoryContract
 
   @override
   Future<TenantAdminEvent> fetchEvent(
-      TenantAdminEventsRepoString eventIdOrSlug) async {
+    TenantAdminEventsRepoString eventIdOrSlug,
+  ) async {
     throw UnimplementedError();
   }
 
@@ -1600,7 +1824,7 @@ class _TrackingEventsRepository extends TenantAdminEventsRepositoryContract
 
   @override
   Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-      fetchEventAccountProfileCandidatesPage({
+  fetchEventAccountProfileCandidatesPage({
     required TenantAdminEventAccountProfileCandidateType candidateType,
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
@@ -1623,7 +1847,7 @@ class _TrackingEventsRepository extends TenantAdminEventsRepositoryContract
 
   @override
   Future<TenantAdminLegacyEventPartiesSummary>
-      fetchLegacyEventPartiesSummary() async {
+  fetchLegacyEventPartiesSummary() async {
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(0),
       invalidValue: TenantAdminCountValue(0),
@@ -1635,7 +1859,7 @@ class _TrackingEventsRepository extends TenantAdminEventsRepositoryContract
 
   @override
   Future<TenantAdminLegacyEventPartiesSummary>
-      repairLegacyEventParties() async {
+  repairLegacyEventParties() async {
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(0),
       invalidValue: TenantAdminCountValue(0),
@@ -1768,8 +1992,13 @@ class _StaticBatchTaxonomiesRepository extends _NoopTaxonomiesRepository
   final Map<String, List<TenantAdminTaxonomyTermDefinition>> termsByTaxonomyId;
 
   @override
+  Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async {
+    return taxonomies;
+  }
+
+  @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
-      fetchTaxonomiesPage({
+  fetchTaxonomiesPage({
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
   }) async {
@@ -1789,7 +2018,8 @@ class _StaticBatchTaxonomiesRepository extends _NoopTaxonomiesRepository
         for (final taxonomyId in taxonomyIds)
           TenantAdminTaxonomyTermsForTaxonomyId(
             taxonomyIdValue: tenantAdminRequiredText(taxonomyId.value),
-            terms: termsByTaxonomyId[taxonomyId.value] ??
+            terms:
+                termsByTaxonomyId[taxonomyId.value] ??
                 const <TenantAdminTaxonomyTermDefinition>[],
           ),
       ],
@@ -1814,8 +2044,9 @@ class _FakeLandlordAuthRepositoryWithToken
 
   @override
   Future<void> loginWithEmailPassword(
-      LandlordAuthRepositoryContractPrimString email,
-      LandlordAuthRepositoryContractPrimString password) async {}
+    LandlordAuthRepositoryContractPrimString email,
+    LandlordAuthRepositoryContractPrimString password,
+  ) async {}
 
   @override
   Future<void> logout() async {
@@ -1867,7 +2098,8 @@ class _AccountScopedEventsRepository extends TenantAdminEventsRepositoryContract
 
   @override
   Future<TenantAdminEvent> fetchEvent(
-      TenantAdminEventsRepoString eventIdOrSlug) async {
+    TenantAdminEventsRepoString eventIdOrSlug,
+  ) async {
     throw UnimplementedError();
   }
 
@@ -1919,7 +2151,7 @@ class _AccountScopedEventsRepository extends TenantAdminEventsRepositoryContract
 
   @override
   Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-      fetchEventAccountProfileCandidatesPage({
+  fetchEventAccountProfileCandidatesPage({
     required TenantAdminEventAccountProfileCandidateType candidateType,
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
@@ -1945,7 +2177,7 @@ class _AccountScopedEventsRepository extends TenantAdminEventsRepositoryContract
 
   @override
   Future<TenantAdminLegacyEventPartiesSummary>
-      fetchLegacyEventPartiesSummary() async {
+  fetchLegacyEventPartiesSummary() async {
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(0),
       invalidValue: TenantAdminCountValue(0),
@@ -1957,7 +2189,7 @@ class _AccountScopedEventsRepository extends TenantAdminEventsRepositoryContract
 
   @override
   Future<TenantAdminLegacyEventPartiesSummary>
-      repairLegacyEventParties() async {
+  repairLegacyEventParties() async {
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(0),
       invalidValue: TenantAdminCountValue(0),
@@ -1983,12 +2215,12 @@ class _ConfigurableEventTypesRepository extends _AccountScopedEventsRepository {
 class _BootstrapPagedCandidatesRepository
     extends _AccountScopedEventsRepository {
   final List<(TenantAdminEventAccountProfileCandidateType, int)>
-      candidatePageRequests =
+  candidatePageRequests =
       <(TenantAdminEventAccountProfileCandidateType, int)>[];
 
   @override
   Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-      fetchEventAccountProfileCandidatesPage({
+  fetchEventAccountProfileCandidatesPage({
     required TenantAdminEventAccountProfileCandidateType candidateType,
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
@@ -2084,7 +2316,7 @@ class _LegacySummaryTrackingEventsRepository extends _TrackingEventsRepository {
 
   @override
   Future<TenantAdminLegacyEventPartiesSummary>
-      fetchLegacyEventPartiesSummary() async {
+  fetchLegacyEventPartiesSummary() async {
     inspectCalls += 1;
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(7),
@@ -2097,7 +2329,7 @@ class _LegacySummaryTrackingEventsRepository extends _TrackingEventsRepository {
 
   @override
   Future<TenantAdminLegacyEventPartiesSummary>
-      repairLegacyEventParties() async {
+  repairLegacyEventParties() async {
     repairCalls += 1;
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(7),
@@ -2115,7 +2347,7 @@ class _SearchableRelatedAccountProfileCandidatesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-      fetchEventAccountProfileCandidatesPage({
+  fetchEventAccountProfileCandidatesPage({
     required TenantAdminEventAccountProfileCandidateType candidateType,
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
@@ -2135,70 +2367,64 @@ class _SearchableRelatedAccountProfileCandidatesRepository
 
     final result = switch ((normalizedSearch, page.value)) {
       ('', 1) => (
-          <TenantAdminAccountProfile>[
-            tenantAdminAccountProfileFromRaw(
-              id: 'artist-bootstrap',
-              accountId: 'acc-bootstrap',
-              profileType: 'artist',
-              displayName: 'Bootstrap Artist',
-            ),
-          ],
-          true,
-        ),
+        <TenantAdminAccountProfile>[
+          tenantAdminAccountProfileFromRaw(
+            id: 'artist-bootstrap',
+            accountId: 'acc-bootstrap',
+            profileType: 'artist',
+            displayName: 'Bootstrap Artist',
+          ),
+        ],
+        true,
+      ),
       ('', 2) => (
-          <TenantAdminAccountProfile>[
-            tenantAdminAccountProfileFromRaw(
-              id: 'artist-bootstrap-2',
-              accountId: 'acc-bootstrap-2',
-              profileType: 'artist',
-              displayName: 'Bootstrap Artist 2',
-            ),
-          ],
-          false,
-        ),
+        <TenantAdminAccountProfile>[
+          tenantAdminAccountProfileFromRaw(
+            id: 'artist-bootstrap-2',
+            accountId: 'acc-bootstrap-2',
+            profileType: 'artist',
+            displayName: 'Bootstrap Artist 2',
+          ),
+        ],
+        false,
+      ),
       ('zulu', 1) => (
-          <TenantAdminAccountProfile>[
-            tenantAdminAccountProfileFromRaw(
-              id: 'artist-zulu-1',
-              accountId: 'acc-zulu-1',
-              profileType: 'artist',
-              displayName: 'Zulu Artist 1',
-            ),
-          ],
-          true,
-        ),
+        <TenantAdminAccountProfile>[
+          tenantAdminAccountProfileFromRaw(
+            id: 'artist-zulu-1',
+            accountId: 'acc-zulu-1',
+            profileType: 'artist',
+            displayName: 'Zulu Artist 1',
+          ),
+        ],
+        true,
+      ),
       ('zulu', 2) => (
-          <TenantAdminAccountProfile>[
-            tenantAdminAccountProfileFromRaw(
-              id: 'artist-zulu-2',
-              accountId: 'acc-zulu-2',
-              profileType: 'artist',
-              displayName: 'Zulu Artist 2',
-            ),
-          ],
-          false,
-        ),
+        <TenantAdminAccountProfile>[
+          tenantAdminAccountProfileFromRaw(
+            id: 'artist-zulu-2',
+            accountId: 'acc-zulu-2',
+            profileType: 'artist',
+            displayName: 'Zulu Artist 2',
+          ),
+        ],
+        false,
+      ),
       ('echo', 1) => (
-          <TenantAdminAccountProfile>[
-            tenantAdminAccountProfileFromRaw(
-              id: 'artist-echo-1',
-              accountId: 'acc-echo-1',
-              profileType: 'artist',
-              displayName: 'Echo Artist',
-            ),
-          ],
-          false,
-        ),
-      _ => (
-          const <TenantAdminAccountProfile>[],
-          false,
-        ),
+        <TenantAdminAccountProfile>[
+          tenantAdminAccountProfileFromRaw(
+            id: 'artist-echo-1',
+            accountId: 'acc-echo-1',
+            profileType: 'artist',
+            displayName: 'Echo Artist',
+          ),
+        ],
+        false,
+      ),
+      _ => (const <TenantAdminAccountProfile>[], false),
     };
 
-    return tenantAdminPagedResultFromRaw(
-      items: result.$1,
-      hasMore: result.$2,
-    );
+    return tenantAdminPagedResultFromRaw(items: result.$1, hasMore: result.$2);
   }
 }
 
@@ -2208,7 +2434,7 @@ class _NestedGroupLaterPageCandidatesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-      fetchEventAccountProfileCandidatesPage({
+  fetchEventAccountProfileCandidatesPage({
     required TenantAdminEventAccountProfileCandidateType candidateType,
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,

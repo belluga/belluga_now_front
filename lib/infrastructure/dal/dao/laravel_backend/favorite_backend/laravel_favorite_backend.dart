@@ -2,14 +2,14 @@ import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/infrastructure/dal/dao/favorite_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/shared/tenant_public_auth_headers.dart';
 import 'package:belluga_now/infrastructure/dal/dto/favorite/favorite_preview_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/favorite/favorite_preview_page_dto.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
 class LaravelFavoriteBackend implements FavoriteBackendContract {
   LaravelFavoriteBackend({Dio? dio}) : _dio = dio ?? Dio();
 
-  static const int _defaultPageSize = 30;
-  static const int _maxPages = 5;
+  static const int _defaultPageSize = 10;
   static const Duration _connectTimeout = Duration(seconds: 5);
   static const Duration _sendTimeout = Duration(seconds: 12);
   static const Duration _receiveTimeout = Duration(seconds: 12);
@@ -41,7 +41,7 @@ class LaravelFavoriteBackend implements FavoriteBackendContract {
     final token = await TenantPublicAuthHeaders.resolveToken(
       bootstrapIfEmpty: true,
     );
-    if (token.isEmpty) {
+    if (token.trim().isEmpty) {
       return const <FavoritePreviewDTO>[];
     }
 
@@ -49,39 +49,77 @@ class LaravelFavoriteBackend implements FavoriteBackendContract {
     var page = 1;
     var hasMore = true;
 
-    while (hasMore && page <= _maxPages) {
-      final payload = await _get(
-        '$_apiBaseUrl/v1/favorites',
+    while (hasMore) {
+      final pagePayload = await _fetchFavoritesPageWithToken(
         token: token,
-        queryParameters: {
-          'page': page,
-          'page_size': _defaultPageSize,
-          'registry_key': 'account_profile',
-          'target_type': 'account_profile',
-        },
+        page: page,
+        pageSize: _defaultPageSize,
       );
-
-      final rawItems = payload['items'];
-      final pageItems = rawItems is List
-          ? rawItems
-              .whereType<Map>()
-              .map((item) => FavoritePreviewDTO.fromJson(
-                    Map<String, dynamic>.from(item),
-                  ))
-              .toList(growable: false)
-          : const <FavoritePreviewDTO>[];
-
-      favorites.addAll(pageItems);
-
-      hasMore = payload['has_more'] == true;
-      if (pageItems.isEmpty) {
+      favorites.addAll(pagePayload.items);
+      hasMore = pagePayload.hasMore;
+      if (pagePayload.items.isEmpty) {
         break;
       }
-
       page += 1;
     }
 
     return favorites;
+  }
+
+  @override
+  Future<FavoritePreviewPageDTO> fetchFavoritesPage({
+    required int page,
+    required int pageSize,
+  }) async {
+    final token = await TenantPublicAuthHeaders.resolveToken(
+      bootstrapIfEmpty: true,
+    );
+    if (token.trim().isEmpty) {
+      return const FavoritePreviewPageDTO(
+        items: <FavoritePreviewDTO>[],
+        hasMore: false,
+      );
+    }
+
+    return _fetchFavoritesPageWithToken(
+      token: token,
+      page: page,
+      pageSize: pageSize,
+    );
+  }
+
+  Future<FavoritePreviewPageDTO> _fetchFavoritesPageWithToken({
+    required String token,
+    required int page,
+    required int pageSize,
+  }) async {
+    final payload = await _get(
+      '$_apiBaseUrl/v1/favorites',
+      token: token,
+      queryParameters: {
+        'page': page,
+        'page_size': pageSize,
+        'registry_key': 'account_profile',
+        'target_type': 'account_profile',
+      },
+    );
+
+    final rawItems = payload['items'];
+    final pageItems = rawItems is List
+        ? rawItems
+              .whereType<Map>()
+              .map(
+                (item) => FavoritePreviewDTO.fromJson(
+                  Map<String, dynamic>.from(item),
+                ),
+              )
+              .toList(growable: false)
+        : const <FavoritePreviewDTO>[];
+
+    return FavoritePreviewPageDTO(
+      items: pageItems,
+      hasMore: payload['has_more'] == true,
+    );
   }
 
   @override
@@ -125,27 +163,16 @@ class LaravelFavoriteBackend implements FavoriteBackendContract {
     try {
       final requestUri = '$_apiBaseUrl/v1/favorites';
       final options = Options(
-        headers: _headers(
-          token: token,
-          includeJsonAccept: true,
-        ),
+        headers: _headers(token: token, includeJsonAccept: true),
         connectTimeout: _connectTimeout,
         sendTimeout: _sendTimeout,
         receiveTimeout: _receiveTimeout,
       );
       if (isFavorite) {
-        await _dio.post(
-          requestUri,
-          data: payload,
-          options: options,
-        );
+        await _dio.post(requestUri, data: payload, options: options);
         return;
       }
-      await _dio.delete(
-        requestUri,
-        data: payload,
-        options: options,
-      );
+      await _dio.delete(requestUri, data: payload, options: options);
     } on DioException catch (error) {
       final statusCode = error.response?.statusCode;
       final data = error.response?.data;
@@ -169,10 +196,7 @@ class LaravelFavoriteBackend implements FavoriteBackendContract {
         url,
         queryParameters: queryParameters,
         options: Options(
-          headers: _headers(
-            token: token,
-            includeJsonAccept: true,
-          ),
+          headers: _headers(token: token, includeJsonAccept: true),
           connectTimeout: _connectTimeout,
           sendTimeout: _sendTimeout,
           receiveTimeout: _receiveTimeout,

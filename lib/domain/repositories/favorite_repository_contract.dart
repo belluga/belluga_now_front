@@ -3,46 +3,21 @@ import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 abstract class FavoriteRepositoryContract {
-  static const int _favoriteResumesFetchMaxAttempts = 3;
-  static const Duration _favoriteResumesRetryDelay = Duration(
-    milliseconds: 250,
+  final favoriteResumesStreamValue = StreamValue<List<FavoriteResume>?>(
+    defaultValue: null,
   );
 
-  final favoriteResumesStreamValue =
-      StreamValue<List<FavoriteResume>?>(defaultValue: null);
+  StreamValue<bool> get hasMoreFavoriteResumesStreamValue;
+
+  StreamValue<bool> get isFavoriteResumesPageLoadingStreamValue;
 
   Future<List<Favorite>> fetchFavorites();
+
   Future<List<FavoriteResume>> fetchFavoriteResumes();
 
-  Future<void> initializeFavoriteResumes() async {
-    if (favoriteResumesStreamValue.value != null) {
-      return;
-    }
-    await refreshFavoriteResumes();
-  }
+  Future<void> initializeFavoriteResumes();
 
-  Future<void> refreshFavoriteResumes() async {
-    final previousValue = favoriteResumesStreamValue.value;
-    for (var attempt = 1;
-        attempt <= _favoriteResumesFetchMaxAttempts;
-        attempt++) {
-      try {
-        final favoriteResumes = await fetchFavoriteResumes();
-        favoriteResumesStreamValue.addValue(favoriteResumes);
-        return;
-      } catch (error) {
-        final hasMoreAttempts = attempt < _favoriteResumesFetchMaxAttempts;
-        if (hasMoreAttempts) {
-          await Future<void>.delayed(_favoriteResumesRetryDelay);
-        }
-      }
-    }
+  Future<void> refreshFavoriteResumes();
 
-    if (previousValue != null) {
-      favoriteResumesStreamValue.addValue(previousValue);
-      return;
-    }
-
-    favoriteResumesStreamValue.addValue(const <FavoriteResume>[]);
-  }
+  Future<void> loadNextFavoriteResumesPage();
 }
