@@ -3278,6 +3278,39 @@ void main() {
     );
 
     test(
+      'ignores late plain bootstrap fallback message after controller dispose',
+      () async {
+        final refreshCompleter = Completer<bool>();
+        final resolveCompleter = Completer<String?>();
+
+        userLocationRepository.refreshIfPermittedCompleter = refreshCompleter;
+        userLocationRepository.resolveUserLocationCompleter = resolveCompleter;
+
+        final initFuture = controller.init();
+        await _flushMicrotasks();
+        await _flushMicrotasks();
+
+        expect(mapRepository.fetchPointsCallCount, 0);
+        expect(userLocationRepository.refreshIfPermittedCallCount, 1);
+        expect(userLocationRepository.resolveUserLocationCallCount, 0);
+
+        refreshCompleter.complete(false);
+        await _flushMicrotasks();
+        await _flushMicrotasks();
+
+        expect(userLocationRepository.resolveUserLocationCallCount, 1);
+
+        await controller.onDispose();
+
+        resolveCompleter.complete(null);
+
+        await expectLater(initFuture, completes);
+        await _flushMicrotasks();
+        await _flushMicrotasks();
+      },
+    );
+
+    test(
       'fails closed when tenant default origin is missing during bootstrap',
       () async {
         final localController = _buildMapController(

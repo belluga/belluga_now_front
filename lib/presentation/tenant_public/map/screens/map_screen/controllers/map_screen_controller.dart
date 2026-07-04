@@ -473,7 +473,7 @@ class MapScreenController implements Disposable {
         _setIdleState();
         _setMapStatus(MapStatus.locating);
         _setMapMessage(null);
-        statusMessageStreamValue.addValue('Obtendo sua localização...');
+        _setMapMessage('Obtendo sua localização...');
       }
     } else {
       await Future.wait([
@@ -705,7 +705,7 @@ class MapScreenController implements Disposable {
         eventName: telemetryRepoString('map_location_resolved'),
         properties: const {'status': 'fallback', 'reason': 'not_found'},
       );
-      statusMessageStreamValue.addValue('Não encontramos sua localização');
+      _setMapMessage('Não encontramos sua localização');
       return;
     }
 
@@ -732,7 +732,7 @@ class MapScreenController implements Disposable {
       properties: const {'status': 'success'},
     );
 
-    statusMessageStreamValue.addValue(null);
+    _setMapMessage(null);
     if (feedback.isErrorLike || feedback.isAlertLike) {
       _showSoftLocationNoticeForState(feedback, force: true);
     }
@@ -746,7 +746,7 @@ class MapScreenController implements Disposable {
     if (_isDisposed) {
       return;
     }
-    statusMessageStreamValue.addValue(null);
+    _setMapMessage(null);
   }
 
   void dismissSoftLocationNotice() {
@@ -1233,7 +1233,7 @@ class MapScreenController implements Disposable {
 
     if (resolvedPoi == null) {
       if (emitNotFoundMessage) {
-        statusMessageStreamValue.addValue('POI do link não foi encontrado.');
+        _setMapMessage('POI do link não foi encontrado.');
       }
       return;
     }
