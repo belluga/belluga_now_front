@@ -3253,6 +3253,31 @@ void main() {
     );
 
     test(
+      'ignores late bootstrap poi completion after controller dispose',
+      () async {
+        final firstFetch = Completer<List<CityPoiModel>>();
+        mapRepository.queuedFetchCompleters.add(firstFetch);
+
+        final initFuture = controller.init(
+          initialLocationGateResult:
+              LocationPermissionGateResult.continueWithoutLocation,
+        );
+        await _flushMicrotasks();
+        await _flushMicrotasks();
+
+        expect(mapRepository.fetchPointsCallCount, 1);
+
+        await controller.onDispose();
+
+        firstFetch.complete(<CityPoiModel>[_buildPoi(id: 'poi-late-dispose')]);
+
+        await expectLater(initFuture, completes);
+        await _flushMicrotasks();
+        await _flushMicrotasks();
+      },
+    );
+
+    test(
       'fails closed when tenant default origin is missing during bootstrap',
       () async {
         final localController = _buildMapController(
