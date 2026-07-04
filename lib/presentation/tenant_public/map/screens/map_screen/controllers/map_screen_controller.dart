@@ -92,25 +92,29 @@ class MapScreenController implements Disposable {
     LocationOriginServiceContract? locationOriginService,
     AuthRepositoryContract? authRepository,
     ProximityPreferencesRepositoryContract? proximityPreferencesRepository,
-  })  : _poiRepository = poiRepository ?? GetIt.I.get<PoiRepositoryContract>(),
-        _userLocationRepository = userLocationRepository ??
-            GetIt.I.get<UserLocationRepositoryContract>(),
-        _telemetryRepository =
-            telemetryRepository ?? GetIt.I.get<TelemetryRepositoryContract>(),
-        _appData = appData ?? GetIt.I.get<AppData>(),
-        _appDataRepository =
-            appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
-        _locationOriginService = locationOriginService ??
-            GetIt.I.get<LocationOriginServiceContract>(),
-        _authRepository = authRepository ??
-            (GetIt.I.isRegistered<AuthRepositoryContract>()
-                ? GetIt.I.get<AuthRepositoryContract>()
-                : null),
-        _proximityPreferencesRepository = proximityPreferencesRepository ??
-            (GetIt.I.isRegistered<ProximityPreferencesRepositoryContract>()
-                ? GetIt.I.get<ProximityPreferencesRepositoryContract>()
-                : null),
-        mapHandle = mapHandle ?? BellugaMapHandle();
+  }) : _poiRepository = poiRepository ?? GetIt.I.get<PoiRepositoryContract>(),
+       _userLocationRepository =
+           userLocationRepository ??
+           GetIt.I.get<UserLocationRepositoryContract>(),
+       _telemetryRepository =
+           telemetryRepository ?? GetIt.I.get<TelemetryRepositoryContract>(),
+       _appData = appData ?? GetIt.I.get<AppData>(),
+       _appDataRepository =
+           appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
+       _locationOriginService =
+           locationOriginService ??
+           GetIt.I.get<LocationOriginServiceContract>(),
+       _authRepository =
+           authRepository ??
+           (GetIt.I.isRegistered<AuthRepositoryContract>()
+               ? GetIt.I.get<AuthRepositoryContract>()
+               : null),
+       _proximityPreferencesRepository =
+           proximityPreferencesRepository ??
+           (GetIt.I.isRegistered<ProximityPreferencesRepositoryContract>()
+               ? GetIt.I.get<ProximityPreferencesRepositoryContract>()
+               : null),
+       mapHandle = mapHandle ?? BellugaMapHandle();
 
   final PoiRepositoryContract _poiRepository;
   final UserLocationRepositoryContract _userLocationRepository;
@@ -127,10 +131,10 @@ class MapScreenController implements Disposable {
   final softLocationNoticeStreamValue = StreamValue<String>(defaultValue: '');
   final locationFeedbackStateStreamValue =
       StreamValue<MapLocationFeedbackState>(
-    defaultValue: const MapLocationFeedbackState.loading(
-      resolutionPhase: LocationResolutionPhase.unknown,
-    ),
-  );
+        defaultValue: const MapLocationFeedbackState.loading(
+          resolutionPhase: LocationResolutionPhase.unknown,
+        ),
+      );
   final mapStatusStreamValue = StreamValue<MapStatus>(
     defaultValue: MapStatus.locating,
   );
@@ -230,7 +234,7 @@ class MapScreenController implements Disposable {
   StreamSubscription<CityPoiModel?>? _selectedPoiSubscription;
   StreamSubscription<LocationResolutionPhase>? _locationResolutionSubscription;
   StreamSubscription<LocationOriginSettings?>?
-      _locationOriginSettingsSubscription;
+  _locationOriginSettingsSubscription;
   int _poiRequestSequence = 0;
   bool _filterInteractionLocked = false;
   CityPoiModel? _pendingInitialPoiFocus;
@@ -255,12 +259,42 @@ class MapScreenController implements Disposable {
   bool get isUserAuthenticated => _authRepository?.isUserLoggedIn ?? false;
 
   String? get authenticatedUserDisplayName {
-    final raw =
-        _authRepository?.userStreamValue.value?.profile.nameValue?.value.trim();
+    final raw = _authRepository?.userStreamValue.value?.profile.nameValue?.value
+        .trim();
     if (raw == null || raw.isEmpty) {
       return null;
     }
     return raw;
+  }
+
+  void _setPendingFilterLabel(String? label) {
+    if (_isDisposed) {
+      return;
+    }
+    pendingFilterLabelStreamValue.addValue(label);
+  }
+
+  void _setAppliedCatalogFilterKey(String? key) {
+    _appliedCatalogFilterKey = key;
+    if (_isDisposed) {
+      return;
+    }
+    appliedCatalogFilterKeyStreamValue.addValue(_appliedCatalogFilterKey);
+  }
+
+  void _setFilterInteractionLocked(bool locked) {
+    _filterInteractionLocked = locked;
+    if (_isDisposed) {
+      return;
+    }
+    filterInteractionLockedStreamValue.addValue(locked);
+  }
+
+  void _setMapInteractionGuardActive(bool isActive) {
+    if (_isDisposed) {
+      return;
+    }
+    mapInteractionGuardActiveStreamValue.addValue(isActive);
   }
 
   AccountProfileModel? hydratedAccountProfileForPoi(CityPoiModel poi) {
@@ -295,7 +329,9 @@ class MapScreenController implements Disposable {
 
   bool isPoiReferencePoint(CityPoiModel poi) {
     final fixedReference = _proximityPreferencesRepository
-        ?.proximityPreference?.locationPreference.fixedReference;
+        ?.proximityPreference
+        ?.locationPreference
+        .fixedReference;
     final profile = hydratedAccountProfileForPoi(poi);
     if (profile != null) {
       return AccountProfileReferencePointResolver.matchesAccountProfile(
@@ -330,14 +366,16 @@ class MapScreenController implements Disposable {
     }
     final profile = hydratedAccountProfileForPoi(poi);
     if (profile == null || !canUsePoiAsReferencePoint(poi)) {
-      _setMapMessage('Este perfil não pode ser usado como ponto de referência.');
+      _setMapMessage(
+        'Este perfil não pode ser usado como ponto de referência.',
+      );
       return false;
     }
     final fixedReference =
         AccountProfileReferencePointResolver.buildFromAccountProfile(
-      profile,
-      fallbackCoordinate: poi.coordinate,
-    );
+          profile,
+          fallbackCoordinate: poi.coordinate,
+        );
     if (fixedReference == null) {
       _setMapMessage('Localização indisponível para ${poi.name}.');
       return false;
@@ -422,7 +460,8 @@ class MapScreenController implements Disposable {
     String? initialPoiStackQuery,
     LocationPermissionGateResult? initialLocationGateResult,
   }) async {
-    final enteredViaSoftLocationGate = initialLocationGateResult ==
+    final enteredViaSoftLocationGate =
+        initialLocationGateResult ==
         LocationPermissionGateResult.continueWithoutLocation;
     _resetInitialPoiFocusState();
     _resetBootstrapUserOriginHandoffState();
@@ -439,7 +478,8 @@ class MapScreenController implements Disposable {
       return;
     }
     final hasInitialPoiQuery = _normalizePoiQuery(initialPoiQuery) != null;
-    final shouldAwaitFreshBootstrapOrigin = !enteredViaSoftLocationGate &&
+    final shouldAwaitFreshBootstrapOrigin =
+        !enteredViaSoftLocationGate &&
         _locationOriginService.resolveCached().liveUserCoordinate == null;
     _bindFilteredPoisClamp();
     _bindSelectedPoiPresence();
@@ -510,7 +550,7 @@ class MapScreenController implements Disposable {
 
     final hasVisiblePois =
         (filteredPoisStreamValue.value?.isNotEmpty ?? false) ||
-            selectedPoiStreamValue.value != null;
+        selectedPoiStreamValue.value != null;
     if (!hasVisiblePois && mapStatusStreamValue.value == MapStatus.error) {
       await loadPois(PoiQuery(), announceLoadingMessage: false);
     }
@@ -562,22 +602,25 @@ class MapScreenController implements Disposable {
 
   void _attachLocationFeedbackListeners() {
     _locationResolutionSubscription ??= _userLocationRepository
-        .locationResolutionPhaseStreamValue.stream
+        .locationResolutionPhaseStreamValue
+        .stream
         .listen((_) {
-      if (_isDisposed) {
-        return;
-      }
-      _refreshLocationFeedback(emitNotice: _locationFeedbackNoticesArmed);
-      unawaited(_reconcileResolvedOriginIfNeeded());
-    });
-    _locationOriginSettingsSubscription ??=
-        _appDataRepository.locationOriginSettingsStreamValue.stream.listen((_) {
-      if (_isDisposed) {
-        return;
-      }
-      _refreshLocationFeedback(emitNotice: _locationFeedbackNoticesArmed);
-      unawaited(_reconcileResolvedOriginIfNeeded());
-    });
+          if (_isDisposed) {
+            return;
+          }
+          _refreshLocationFeedback(emitNotice: _locationFeedbackNoticesArmed);
+          unawaited(_reconcileResolvedOriginIfNeeded());
+        });
+    _locationOriginSettingsSubscription ??= _appDataRepository
+        .locationOriginSettingsStreamValue
+        .stream
+        .listen((_) {
+          if (_isDisposed) {
+            return;
+          }
+          _refreshLocationFeedback(emitNotice: _locationFeedbackNoticesArmed);
+          unawaited(_reconcileResolvedOriginIfNeeded());
+        });
   }
 
   void _bindFilteredPoisClamp() {
@@ -648,8 +691,9 @@ class MapScreenController implements Disposable {
       return;
     }
     try {
-      final baseQuery =
-          _hasEstablishedInitialPoiQuery ? _currentQuery : PoiQuery();
+      final baseQuery = _hasEstablishedInitialPoiQuery
+          ? _currentQuery
+          : PoiQuery();
       final resolvedQuery = await _resolveRuntimeQuery(baseQuery);
       if (_isDisposed) {
         return;
@@ -657,7 +701,8 @@ class MapScreenController implements Disposable {
       if (resolvedQuery.origin == null) {
         _filtersLoadFailed = true;
         debugPrint(
-            'Skipped POI filters load because no canonical origin was resolved.');
+          'Skipped POI filters load because no canonical origin was resolved.',
+        );
         return;
       }
       await _poiRepository.fetchFilters(resolvedQuery);
@@ -918,7 +963,8 @@ class MapScreenController implements Disposable {
       return;
     }
 
-    final shouldEmit = force ||
+    final shouldEmit =
+        force ||
         previous == null ||
         previous.kind != state.kind ||
         !previous.isTerminal;
@@ -1633,28 +1679,30 @@ class MapScreenController implements Disposable {
             imageUriValue: _parseImageUriValue(markerImageUrl),
           );
 
-    final mergedDescription = _isWeakPoiDescription(poi.description) &&
+    final mergedDescription =
+        _isWeakPoiDescription(poi.description) &&
             !_isWeakPoiDescription(profile.bio ?? '')
         ? _parsePoiDescriptionValue(profile.bio!)
         : null;
 
-    final mergedAddress = _isWeakPoiAddress(poi.address) &&
+    final mergedAddress =
+        _isWeakPoiAddress(poi.address) &&
             !_isWeakPoiAddress(profile.locationAddress ?? '')
         ? _parsePoiAddressValue(profile.locationAddress!)
         : null;
 
     final mergedDistance =
         poi.distanceMeters == null && profile.distanceMeters != null
-            ? _parseDistanceValue(profile.distanceMeters)
-            : null;
+        ? _parseDistanceValue(profile.distanceMeters)
+        : null;
 
     final mergedCoordinate =
         profile.locationLat != null && profile.locationLng != null
-            ? CityCoordinate(
-                latitudeValue: _parseLatitudeValue(profile.locationLat!),
-                longitudeValue: _parseLongitudeValue(profile.locationLng!),
-              )
-            : poi.coordinate;
+        ? CityCoordinate(
+            latitudeValue: _parseLatitudeValue(profile.locationLat!),
+            longitudeValue: _parseLongitudeValue(profile.locationLng!),
+          )
+        : poi.coordinate;
     final normalizedProfileType = profile.profileType.trim();
     final categoryLabelValue = normalizedProfileType.isEmpty
         ? null
@@ -1662,19 +1710,22 @@ class MapScreenController implements Disposable {
     final canonicalProfilePath = profile.canOpenPublicDetail
         ? _normalizedPublicDetailPath(profile.publicDetailPath)
         : null;
-    final clearedReferencePathValue =
-        poi.refPath == null ? null : PoiReferencePathValue(isRequired: false);
+    final clearedReferencePathValue = poi.refPath == null
+        ? null
+        : PoiReferencePathValue(isRequired: false);
 
     return poi.copyWith(
       descriptionValue: mergedDescription,
       addressValue: mergedAddress,
       distanceMetersValue: mergedDistance,
       categoryLabelValue: categoryLabelValue,
-      coverImageUriValue:
-          coverUrl == null ? null : _parseImageUriValue(coverUrl),
+      coverImageUriValue: coverUrl == null
+          ? null
+          : _parseImageUriValue(coverUrl),
       coordinate: mergedCoordinate,
       visual: mergedVisual,
-      refSlugValue: poi.refSlug == null &&
+      refSlugValue:
+          poi.refSlug == null &&
               profile.canOpenPublicDetail &&
               profile.slug.trim().isNotEmpty
           ? _parseReferenceSlugValue(profile.slug)
@@ -1682,8 +1733,8 @@ class MapScreenController implements Disposable {
       refPathValue: canonicalProfilePath == null
           ? clearedReferencePathValue
           : poi.refPath?.trim() == canonicalProfilePath
-              ? null
-              : _parseReferencePathValue(canonicalProfilePath),
+          ? null
+          : _parseReferencePathValue(canonicalProfilePath),
     );
   }
 
@@ -1706,14 +1757,16 @@ class MapScreenController implements Disposable {
       descriptionValue: descriptionExcerpt == null
           ? null
           : _parsePoiDescriptionValue(descriptionExcerpt),
-      coverImageUriValue:
-          coverImageUrl == null ? null : _parseImageUriValue(coverImageUrl),
+      coverImageUriValue: coverImageUrl == null
+          ? null
+          : _parseImageUriValue(coverImageUrl),
       linkedProfiles: linkedProfiles,
       visual: mergedVisual,
       refSlugValue: poi.refSlug == null && event.slug.trim().isNotEmpty
           ? _parseReferenceSlugValue(event.slug)
           : null,
-      refPathValue: canonicalEventPath == null ||
+      refPathValue:
+          canonicalEventPath == null ||
               poi.refPath?.trim() == canonicalEventPath
           ? null
           : _parseReferencePathValue(canonicalEventPath),
@@ -1734,17 +1787,20 @@ class MapScreenController implements Disposable {
   ) {
     final coverImageUrl = _normalizeExternalImageUrl(asset.coverUrl);
     final description = _resolveStaticAssetDescription(asset);
-    final canonicalPath =
-        asset.slug.trim().isEmpty ? null : '/static/${asset.slug}';
+    final canonicalPath = asset.slug.trim().isEmpty
+        ? null
+        : '/static/${asset.slug}';
 
     return poi.copyWith(
-      descriptionValue:
-          description == null ? null : _parsePoiDescriptionValue(description),
+      descriptionValue: description == null
+          ? null
+          : _parsePoiDescriptionValue(description),
       categoryLabelValue: asset.profileType.trim().isEmpty
           ? null
           : _parseTypeLabelValue(asset.profileType),
-      coverImageUriValue:
-          coverImageUrl == null ? null : _parseImageUriValue(coverImageUrl),
+      coverImageUriValue: coverImageUrl == null
+          ? null
+          : _parseImageUriValue(coverImageUrl),
       visual: coverImageUrl == null
           ? poi.visual
           : CityPoiVisual.image(
@@ -1755,8 +1811,8 @@ class MapScreenController implements Disposable {
           : null,
       refPathValue:
           canonicalPath == null || poi.refPath?.trim() == canonicalPath
-              ? null
-              : _parseReferencePathValue(canonicalPath),
+          ? null
+          : _parseReferencePathValue(canonicalPath),
     );
   }
 
@@ -2059,8 +2115,9 @@ class MapScreenController implements Disposable {
     required String stackKey,
     required int stackCount,
   }) {
-    final normalizedStackKey =
-        stackKey.trim().isNotEmpty ? stackKey.trim() : items.first.stackKey;
+    final normalizedStackKey = stackKey.trim().isNotEmpty
+        ? stackKey.trim()
+        : items.first.stackKey;
     final normalizedCount = stackCount > 0 ? stackCount : items.length;
     final seeded = items
         .map(
@@ -2158,7 +2215,8 @@ class MapScreenController implements Disposable {
       mapTrayModeStreamValue.addValue(MapTrayMode.search);
     }
     clearSelectedPoi();
-    _searchTrayOrigin = mapHandle.currentCenter ??
+    _searchTrayOrigin =
+        mapHandle.currentCenter ??
         _resolveCurrentEffectiveOrigin() ??
         initialMapCenter;
     unawaited(
@@ -2200,7 +2258,7 @@ class MapScreenController implements Disposable {
     _activeCatalogFilterKey = null;
     _publishActiveFilters();
     activeFilterLabelStreamValue.addValue(_labelForMode(mode));
-    pendingFilterLabelStreamValue.addValue(null);
+    _setPendingFilterLabel(null);
     _poiRepository.applyFilterMode(mode);
     clearSelectedPoi(preserveMarkerMemory: false);
     _logMapTelemetry(
@@ -2228,7 +2286,8 @@ class MapScreenController implements Disposable {
     if (_filterInteractionLocked) {
       return;
     }
-    final wasFiltered = filterModeStreamValue.value != PoiFilterMode.none ||
+    final wasFiltered =
+        filterModeStreamValue.value != PoiFilterMode.none ||
         _activeCategoryKeys.isNotEmpty ||
         _activeTaxonomyTokens.isNotEmpty ||
         _activeTags.isNotEmpty ||
@@ -2242,7 +2301,7 @@ class MapScreenController implements Disposable {
     _activeCatalogFilterKey = null;
     _publishActiveFilters();
     final previousFilterLabel = activeFilterLabelStreamValue.value?.trim();
-    pendingFilterLabelStreamValue.addValue(
+    _setPendingFilterLabel(
       previousFilterLabel == null || previousFilterLabel.isEmpty
           ? null
           : previousFilterLabel,
@@ -2317,7 +2376,7 @@ class MapScreenController implements Disposable {
     _activeCatalogFilterKey = category.key.trim().toLowerCase();
     _publishActiveFilters();
     activeFilterLabelStreamValue.addValue(category.label);
-    pendingFilterLabelStreamValue.addValue(null);
+    _setPendingFilterLabel(null);
     _poiRepository.applyFilterMode(PoiFilterMode.server);
     clearSelectedPoi(preserveMarkerMemory: false);
     if (mapTrayModeStreamValue.value != MapTrayMode.filterResults) {
@@ -2357,16 +2416,21 @@ class MapScreenController implements Disposable {
   }) async {
     try {
       await loadPois(query, announceLoadingMessage: false);
-      _appliedCatalogFilterKey = appliedCatalogFilterKeyOnSuccess;
-      appliedCatalogFilterKeyStreamValue.addValue(_appliedCatalogFilterKey);
+      if (_isDisposed) {
+        return;
+      }
+      _setAppliedCatalogFilterKey(appliedCatalogFilterKeyOnSuccess);
       if (focusLeadingResultOnSuccess) {
         await _focusLeadingFilteredResult();
       }
     } finally {
+      if (_isDisposed) {
+        _filterInteractionLocked = false;
+        return;
+      }
       _armPostFilterMarkerTapSuppression();
-      _filterInteractionLocked = false;
-      filterInteractionLockedStreamValue.addValue(false);
-      pendingFilterLabelStreamValue.addValue(null);
+      _setFilterInteractionLocked(false);
+      _setPendingFilterLabel(null);
     }
   }
 
@@ -2374,20 +2438,22 @@ class MapScreenController implements Disposable {
     if (_filterInteractionLocked) {
       return;
     }
-    _filterInteractionLocked = true;
-    filterInteractionLockedStreamValue.addValue(true);
-    mapInteractionGuardActiveStreamValue.addValue(true);
+    _setFilterInteractionLocked(true);
+    _setMapInteractionGuardActive(true);
   }
 
   void _armPostFilterMarkerTapSuppression() {
+    if (_isDisposed) {
+      return;
+    }
     _postFilterMarkerTapSuppressionTimer?.cancel();
     _markerTapSuppressedAfterFilterReload = true;
-    mapInteractionGuardActiveStreamValue.addValue(true);
+    _setMapInteractionGuardActive(true);
     _postFilterMarkerTapSuppressionTimer = Timer(
       _postFilterMarkerTapSuppression,
       () {
         _markerTapSuppressedAfterFilterReload = false;
-        mapInteractionGuardActiveStreamValue.addValue(false);
+        _setMapInteractionGuardActive(false);
       },
     );
   }
@@ -2545,14 +2611,16 @@ class MapScreenController implements Disposable {
       return true;
     }
 
-    final activeCatalogFilterKey =
-        activeCatalogFilterKeyStreamValue.value?.trim().toLowerCase();
+    final activeCatalogFilterKey = activeCatalogFilterKeyStreamValue.value
+        ?.trim()
+        .toLowerCase();
     if (_isEventFilterKey(activeCatalogFilterKey)) {
       return true;
     }
 
-    final appliedCatalogFilterKey =
-        appliedCatalogFilterKeyStreamValue.value?.trim().toLowerCase();
+    final appliedCatalogFilterKey = appliedCatalogFilterKeyStreamValue.value
+        ?.trim()
+        .toLowerCase();
     return _isEventFilterKey(appliedCatalogFilterKey);
   }
 
@@ -2909,7 +2977,8 @@ class MapScreenController implements Disposable {
 
   Set<String> _categoryKeysForCatalogFilter(PoiFilterCategory category) {
     final serverQuery = category.serverQuery;
-    final configured = category.serverQuery?.categoryKeyValues
+    final configured =
+        category.serverQuery?.categoryKeyValues
             .map((entry) => entry.value.trim().toLowerCase())
             .where((entry) => entry.isNotEmpty)
             .toSet() ??
@@ -2928,8 +2997,9 @@ class MapScreenController implements Disposable {
   }
 
   String? _sourceForCatalogFilter(PoiFilterCategory category) {
-    final source =
-        category.serverQuery?.sourceValue?.value.trim().toLowerCase();
+    final source = category.serverQuery?.sourceValue?.value
+        .trim()
+        .toLowerCase();
     if (source == null || source.isEmpty) {
       return null;
     }
@@ -3132,8 +3202,9 @@ class MapScreenController implements Disposable {
     final lastIndex = deckPois.length - 1;
     final normalizedIndex = currentIndex.clamp(0, lastIndex);
     final startIndex = normalizedIndex > 0 ? normalizedIndex - 1 : 0;
-    final endIndex =
-        normalizedIndex < lastIndex ? normalizedIndex + 1 : lastIndex;
+    final endIndex = normalizedIndex < lastIndex
+        ? normalizedIndex + 1
+        : lastIndex;
     return List<CityPoiModel>.unmodifiable(
       deckPois.sublist(startIndex, endIndex + 1),
     );
