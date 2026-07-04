@@ -320,18 +320,17 @@ class MapScreenController implements Disposable {
   }
 
   Future<bool> setPoiAsReferencePoint(CityPoiModel poi) async {
+    if (_isDisposed) {
+      return false;
+    }
     final repository = _proximityPreferencesRepository;
     if (repository == null) {
-      statusMessageStreamValue.addValue(
-        'Não foi possível salvar o ponto de referência.',
-      );
+      _setMapMessage('Não foi possível salvar o ponto de referência.');
       return false;
     }
     final profile = hydratedAccountProfileForPoi(poi);
     if (profile == null || !canUsePoiAsReferencePoint(poi)) {
-      statusMessageStreamValue.addValue(
-        'Este perfil não pode ser usado como ponto de referência.',
-      );
+      _setMapMessage('Este perfil não pode ser usado como ponto de referência.');
       return false;
     }
     final fixedReference =
@@ -340,39 +339,46 @@ class MapScreenController implements Disposable {
       fallbackCoordinate: poi.coordinate,
     );
     if (fixedReference == null) {
-      statusMessageStreamValue.addValue(
-        'Localização indisponível para ${poi.name}.',
-      );
+      _setMapMessage('Localização indisponível para ${poi.name}.');
       return false;
     }
     try {
       await repository.setFixedReference(fixedReference: fixedReference);
-      statusMessageStreamValue.addValue('Ponto de referência atualizado.');
+      if (_isDisposed) {
+        return false;
+      }
+      _setMapMessage('Ponto de referência atualizado.');
       return true;
     } catch (_) {
-      statusMessageStreamValue.addValue(
-        'Não foi possível salvar o ponto de referência.',
-      );
+      if (_isDisposed) {
+        return false;
+      }
+      _setMapMessage('Não foi possível salvar o ponto de referência.');
       return false;
     }
   }
 
   Future<bool> clearReferencePoint() async {
+    if (_isDisposed) {
+      return false;
+    }
     final repository = _proximityPreferencesRepository;
     if (repository == null) {
-      statusMessageStreamValue.addValue(
-        'Não foi possível remover o ponto de referência.',
-      );
+      _setMapMessage('Não foi possível remover o ponto de referência.');
       return false;
     }
     try {
       await repository.clearFixedReference();
-      statusMessageStreamValue.addValue('Ponto de referência removido.');
+      if (_isDisposed) {
+        return false;
+      }
+      _setMapMessage('Ponto de referência removido.');
       return true;
     } catch (_) {
-      statusMessageStreamValue.addValue(
-        'Não foi possível remover o ponto de referência.',
-      );
+      if (_isDisposed) {
+        return false;
+      }
+      _setMapMessage('Não foi possível remover o ponto de referência.');
       return false;
     }
   }

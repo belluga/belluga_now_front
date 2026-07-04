@@ -5548,6 +5548,98 @@ void main() {
     );
 
     test(
+      'map controller ignores late set reference point completion after dispose',
+      () async {
+        final pendingWrite = Completer<void>();
+        final localProximityRepository = _FakeProximityPreferencesRepository(
+          setFixedReferenceCompleter: pendingWrite,
+        );
+        final localAccountProfilesRepository = _FakeAccountProfilesRepository();
+        final localStaticAssetsRepository = _FakeStaticAssetsRepository();
+        localAccountProfilesRepository.profilesBySlug['casa-marracini'] =
+            buildAccountProfileModelFromPrimitives(
+          id: '507f1f77bcf86cd799439011',
+          name: 'Casa Marracini',
+          slug: 'casa-marracini',
+          type: 'artist',
+          locationLat: -20.7389,
+          locationLng: -40.8212,
+        );
+        final localPoiRepository = _buildPoiRepository(
+          mapRepository: mapRepository,
+          accountProfilesRepository: localAccountProfilesRepository,
+          staticAssetsRepository: localStaticAssetsRepository,
+        );
+        final localController = _buildMapController(
+          poiRepository: localPoiRepository,
+          userLocationRepository: userLocationRepository,
+          telemetryRepository: telemetry,
+          appData: _buildAppData(artistReferenceLocationEnabled: true),
+          proximityPreferencesRepository: localProximityRepository,
+        );
+        final poi = _buildPoi(
+          id: 'poi-partner',
+          name: 'Casa Marracini',
+          refType: 'account_profile',
+          refId: '507f1f77bcf86cd799439011',
+          refSlug: 'casa-marracini',
+          refPath: '/parceiro/casa-marracini',
+          category: CityPoiCategory.restaurant,
+        );
+
+        await localPoiRepository.ensurePoiHydrated(poi);
+
+        final saveFuture = localController.setPoiAsReferencePoint(poi);
+        await _flushMicrotasks();
+
+        await localController.onDispose();
+        pendingWrite.complete();
+
+        await expectLater(saveFuture, completion(isFalse));
+      },
+    );
+
+    test(
+      'map controller ignores late clear reference point completion after dispose',
+      () async {
+        final pendingWrite = Completer<void>();
+        final localProximityRepository = _FakeProximityPreferencesRepository(
+          fixedReference: FixedLocationReference(
+            sourceKind: FixedLocationReferenceSourceKind.entityReference,
+            coordinate: _buildCoordinate('-20.7389', '-40.8212'),
+            labelValue: ProximityPreferenceOptionalTextValue.fromRaw(
+              'Casa Marracini',
+            ),
+            entityNamespaceValue:
+                ProximityPreferenceOptionalTextValue.fromRaw('account_profile'),
+            entityTypeValue: ProximityPreferenceOptionalTextValue.fromRaw(
+              'artist',
+            ),
+            entityIdValue: ProximityPreferenceOptionalTextValue.fromRaw(
+              '507f1f77bcf86cd799439011',
+            ),
+            entitySlugValue:
+                ProximityPreferenceOptionalTextValue.fromRaw('casa-marracini'),
+          ),
+        )..clearFixedReferenceCompleter = pendingWrite;
+        final localController = _buildMapController(
+          poiRepository: _buildPoiRepository(mapRepository: mapRepository),
+          userLocationRepository: userLocationRepository,
+          telemetryRepository: telemetry,
+          proximityPreferencesRepository: localProximityRepository,
+        );
+
+        final clearFuture = localController.clearReferencePoint();
+        await _flushMicrotasks();
+
+        await localController.onDispose();
+        pendingWrite.complete();
+
+        await expectLater(clearFuture, completion(isFalse));
+      },
+    );
+
+    test(
       'map controller detects current ponto de referência selected state',
       () async {
         final localAccountProfilesRepository = _FakeAccountProfilesRepository();
