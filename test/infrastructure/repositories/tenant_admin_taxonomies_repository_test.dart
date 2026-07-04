@@ -22,27 +22,29 @@ void main() {
     await GetIt.I.reset();
   });
 
-  test('fetchTaxonomiesPage sends pagination params and parses hasMore',
-      () async {
-    final adapter = _TaxonomiesRoutingAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
-    final repository = TenantAdminTaxonomiesRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
+  test(
+    'fetchTaxonomiesPage sends pagination params and parses hasMore',
+    () async {
+      final adapter = _TaxonomiesRoutingAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminTaxonomiesRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
 
-    final result = await repository.fetchTaxonomiesPage(
-      page: tenantAdminTaxRepoInt(1),
-      pageSize: tenantAdminTaxRepoInt(2),
-    );
+      final result = await repository.fetchTaxonomiesPage(
+        page: tenantAdminTaxRepoInt(1),
+        pageSize: tenantAdminTaxRepoInt(2),
+      );
 
-    expect(result.items, hasLength(2));
-    expect(result.hasMore, isTrue);
-    expect(adapter.requests, hasLength(1));
-    expect(adapter.requests.first.queryParameters['page'], 1);
-    expect(adapter.requests.first.queryParameters['page_size'], 2);
-  });
+      expect(result.items, hasLength(2));
+      expect(result.hasMore, isTrue);
+      expect(adapter.requests, hasLength(1));
+      expect(adapter.requests.first.queryParameters['page'], 1);
+      expect(adapter.requests.first.queryParameters['page_size'], 2);
+    },
+  );
 
   test('load/reset/next follow paged stream contract for taxonomies', () async {
     final adapter = _TaxonomiesRoutingAdapter();
@@ -55,12 +57,10 @@ void main() {
 
     await verifyTenantAdminPagedStreamContract(
       scope: 'taxonomies',
-      loadFirstPage: () => repository.loadTaxonomies(
-        pageSize: tenantAdminTaxRepoInt(2),
-      ),
-      loadNextPage: () => repository.loadNextTaxonomiesPage(
-        pageSize: tenantAdminTaxRepoInt(2),
-      ),
+      loadFirstPage: () =>
+          repository.loadTaxonomies(pageSize: tenantAdminTaxRepoInt(2)),
+      loadNextPage: () =>
+          repository.loadNextTaxonomiesPage(pageSize: tenantAdminTaxRepoInt(2)),
       resetState: repository.resetTaxonomiesState,
       readItems: () => repository.taxonomiesStreamValue.value,
       readHasMore: () => repository.hasMoreTaxonomiesStreamValue.value.value,
@@ -70,33 +70,34 @@ void main() {
     );
   });
 
-  test('load/reset/next follow paged stream contract for taxonomy terms',
-      () async {
-    final adapter = _TaxonomiesRoutingAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
-    final repository = TenantAdminTaxonomiesRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
+  test(
+    'load/reset/next follow paged stream contract for taxonomy terms',
+    () async {
+      final adapter = _TaxonomiesRoutingAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminTaxonomiesRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
 
-    await verifyTenantAdminPagedStreamContract(
-      scope: 'taxonomy terms',
-      loadFirstPage: () => repository.loadTerms(
-        taxonomyId: tenantAdminTaxRepoString('tax-1'),
-        pageSize: tenantAdminTaxRepoInt(2),
-      ),
-      loadNextPage: () => repository.loadNextTermsPage(
-        pageSize: tenantAdminTaxRepoInt(2),
-      ),
-      resetState: repository.resetTermsState,
-      readItems: () => repository.termsStreamValue.value,
-      readHasMore: () => repository.hasMoreTermsStreamValue.value.value,
-      readError: () => repository.termsErrorStreamValue.value?.value,
-      expectedCountsPerStep: const [2, 3],
-      loadNextCalls: 1,
-    );
-  });
+      await verifyTenantAdminPagedStreamContract(
+        scope: 'taxonomy terms',
+        loadFirstPage: () => repository.loadTerms(
+          taxonomyId: tenantAdminTaxRepoString('tax-1'),
+          pageSize: tenantAdminTaxRepoInt(2),
+        ),
+        loadNextPage: () =>
+            repository.loadNextTermsPage(pageSize: tenantAdminTaxRepoInt(2)),
+        resetState: repository.resetTermsState,
+        readItems: () => repository.termsStreamValue.value,
+        readHasMore: () => repository.hasMoreTermsStreamValue.value.value,
+        readError: () => repository.termsErrorStreamValue.value?.value,
+        expectedCountsPerStep: const [2, 3],
+        loadNextCalls: 1,
+      );
+    },
+  );
 
   test('fetchTermsByTaxonomyIds uses one batch endpoint request', () async {
     final adapter = _TaxonomiesRoutingAdapter();
@@ -114,10 +115,14 @@ void main() {
       ],
     );
 
-    expect(result.termsForId(tenantAdminRequiredText('tax-1')).single.slug,
-        'samba');
-    expect(result.termsForId(tenantAdminRequiredText('tax-2')).single.slug,
-        'italian');
+    expect(
+      result.termsForId(tenantAdminRequiredText('tax-1')).single.slug,
+      'samba',
+    );
+    expect(
+      result.termsForId(tenantAdminRequiredText('tax-2')).single.slug,
+      'italian',
+    );
     expect(adapter.requests, hasLength(1));
     expect(
       adapter.requests.single.path,
@@ -137,9 +142,29 @@ void main() {
     );
   });
 
-  test('fetchTaxonomiesPage tolerates missing applies_to as legacy payload',
-      () async {
-    final adapter = _TaxonomiesRoutingAdapter(omitAppliesTo: true);
+  test(
+    'fetchTaxonomiesPage tolerates missing applies_to as legacy payload',
+    () async {
+      final adapter = _TaxonomiesRoutingAdapter(omitAppliesTo: true);
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminTaxonomiesRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      final result = await repository.fetchTaxonomiesPage(
+        page: tenantAdminTaxRepoInt(1),
+        pageSize: tenantAdminTaxRepoInt(2),
+      );
+
+      expect(result.items, isNotEmpty);
+      expect(result.items.first.appliesTo, isEmpty);
+    },
+  );
+
+  test('fetchTaxonomiesBySlugs sends scoped lookup filters', () async {
+    final adapter = _TaxonomiesRoutingAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
     final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
     final repository = TenantAdminTaxonomiesRepository(
@@ -147,13 +172,22 @@ void main() {
       tenantScope: scope,
     );
 
-    final result = await repository.fetchTaxonomiesPage(
-      page: tenantAdminTaxRepoInt(1),
-      pageSize: tenantAdminTaxRepoInt(2),
+    final result = await repository.fetchTaxonomiesBySlugs(
+      slugs: [
+        tenantAdminTaxRepoString('genre'),
+        tenantAdminTaxRepoString('mood'),
+      ],
+      appliesTo: tenantAdminTaxRepoString('event'),
     );
 
-    expect(result.items, isNotEmpty);
-    expect(result.items.first.appliesTo, isEmpty);
+    expect(result.map((entry) => entry.slug).toList(growable: false), [
+      'genre',
+      'mood',
+    ]);
+    expect(adapter.requests, hasLength(1));
+    expect(adapter.requests.single.queryParameters['slugs'], ['genre', 'mood']);
+    expect(adapter.requests.single.queryParameters['applies_to'], 'event');
+    expect(adapter.requests.single.listFormat, ListFormat.multiCompatible);
   });
 }
 
@@ -169,8 +203,9 @@ class _StubAuthRepo implements LandlordAuthRepositoryContract {
 
   @override
   Future<void> loginWithEmailPassword(
-      LandlordAuthRepositoryContractPrimString email,
-      LandlordAuthRepositoryContractPrimString password) async {}
+    LandlordAuthRepositoryContractPrimString email,
+    LandlordAuthRepositoryContractPrimString password,
+  ) async {}
 
   @override
   Future<void> logout() async {}
@@ -201,10 +236,12 @@ class _MutableTenantScope implements TenantAdminTenantScopeContract {
 
   @override
   void selectTenantDomain(Object tenantDomain) {
-    _selectedTenantDomainStreamValue.addValue((tenantDomain is String
-            ? tenantDomain
-            : (tenantDomain as dynamic).value as String)
-        .trim());
+    _selectedTenantDomainStreamValue.addValue(
+      (tenantDomain is String
+              ? tenantDomain
+              : (tenantDomain as dynamic).value as String)
+          .trim(),
+    );
   }
 }
 
@@ -228,6 +265,21 @@ class _TaxonomiesRoutingAdapter implements HttpClientAdapter {
     final page = pageRaw is int ? pageRaw : int.tryParse('$pageRaw') ?? 1;
 
     if (options.path.endsWith('/v1/taxonomies')) {
+      final slugs = options.queryParameters['slugs'];
+      if (slugs is List && slugs.isNotEmpty) {
+        final taxonomyPool = <Map<String, dynamic>>[
+          _taxonomyJson(id: 'tax-1', slug: 'genre', name: 'Genero'),
+          _taxonomyJson(id: 'tax-2', slug: 'mood', name: 'Humor'),
+          _taxonomyJson(id: 'tax-3', slug: 'style', name: 'Estilo'),
+        ];
+        final filtered = taxonomyPool
+            .where((taxonomy) {
+              final slug = '${taxonomy['slug']}';
+              return slugs.contains(slug);
+            })
+            .toList(growable: false);
+        return _jsonResponse({'data': filtered});
+      }
       final payload = page == 1
           ? {
               'data': [

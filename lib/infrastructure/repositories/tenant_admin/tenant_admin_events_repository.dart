@@ -15,17 +15,15 @@ import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_med
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_events_request_encoder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_events_response_decoder.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_pagination_utils.dart';
+import 'package:belluga_now/infrastructure/repositories/tenant_admin/support/tenant_admin_validation_failure_resolver.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
 class TenantAdminEventsRepository
     with TenantAdminEventsPaginationMixin
     implements TenantAdminEventsRepositoryContract {
-  TenantAdminEventsRepository({
-    Dio? dio,
-    TenantAdminTenantScopeContract? tenantScope,
-  })  : _dio = dio ?? Dio(),
-        _tenantScope = tenantScope;
+  TenantAdminEventsRepository({Dio? dio, this._tenantScope})
+    : _dio = dio ?? Dio();
 
   final Dio _dio;
   final TenantAdminTenantScopeContract? _tenantScope;
@@ -52,10 +50,7 @@ class TenantAdminEventsRepository
         'Failed to resolve landlord auth token for tenant-admin events request.',
       );
     }
-    return {
-      'Authorization': 'Bearer $token',
-      'Accept': 'application/json',
-    };
+    return {'Authorization': 'Bearer $token', 'Accept': 'application/json'};
   }
 
   Map<String, String> _buildAccountHeaders() {
@@ -65,10 +60,7 @@ class TenantAdminEventsRepository
         'Failed to resolve account auth token for account-scoped events request.',
       );
     }
-    return {
-      'Authorization': 'Bearer $token',
-      'Accept': 'application/json',
-    };
+    return {'Authorization': 'Bearer $token', 'Accept': 'application/json'};
   }
 
   Map<String, String> _buildEventTypesReadHeaders() {
@@ -115,8 +107,10 @@ class TenantAdminEventsRepository
     while (hasMore) {
       final result = await fetchEventsPage(
         page: TenantAdminEventsRepoInt.fromRaw(page, defaultValue: page),
-        pageSize:
-            TenantAdminEventsRepoInt.fromRaw(pageSize, defaultValue: pageSize),
+        pageSize: TenantAdminEventsRepoInt.fromRaw(
+          pageSize,
+          defaultValue: pageSize,
+        ),
         search: search,
         specificDate: specificDate,
         status: status,
@@ -149,14 +143,14 @@ class TenantAdminEventsRepository
       final normalizedSpecificDate = specificDate?.value.trim();
       final normalizedStatus = status?.value.trim();
       final normalizedVenueProfileId = venueProfileId?.value.trim();
-      final normalizedRelatedAccountProfileId =
-          relatedAccountProfileId?.value.trim();
+      final normalizedRelatedAccountProfileId = relatedAccountProfileId?.value
+          .trim();
       final archivedValue = archived?.value ?? false;
       final normalizedTemporal = temporalBuckets == null
           ? const <String>[]
-          : temporalBuckets.map((bucket) => bucket.apiValue).toList(
-                growable: false,
-              );
+          : temporalBuckets
+                .map((bucket) => bucket.apiValue)
+                .toList(growable: false);
       final response = await _dio.get(
         '$_apiBaseUrl/v1/events',
         queryParameters: {
@@ -213,7 +207,9 @@ class TenantAdminEventsRepository
         '$_apiBaseUrl/v1/events/${eventIdOrSlug.value}',
         options: Options(headers: _buildLandlordHeaders()),
       );
-      return _responseDecoder.decodeEventItem(_normalizeEventMediaPayload(response.data));
+      return _responseDecoder.decodeEventItem(
+        _normalizeEventMediaPayload(response.data),
+      );
     } on DioException catch (error) {
       throw _wrapError(error, 'load event');
     } on FormatException catch (error) {
@@ -259,9 +255,11 @@ class TenantAdminEventsRepository
           contentType: hasMultipart ? 'multipart/form-data' : null,
         ),
       );
-      return _responseDecoder.decodeEventItem(_normalizeEventMediaPayload(response.data));
+      return _responseDecoder.decodeEventItem(
+        _normalizeEventMediaPayload(response.data),
+      );
     } on DioException catch (error) {
-      throw _wrapError(error, 'create event');
+      throw _wrapMutationError(error, 'create event');
     }
   }
 
@@ -294,9 +292,11 @@ class TenantAdminEventsRepository
           contentType: hasMultipart ? 'multipart/form-data' : null,
         ),
       );
-      return _responseDecoder.decodeEventItem(_normalizeEventMediaPayload(response.data));
+      return _responseDecoder.decodeEventItem(
+        _normalizeEventMediaPayload(response.data),
+      );
     } on DioException catch (error) {
-      throw _wrapError(error, 'create own event');
+      throw _wrapMutationError(error, 'create own event');
     }
   }
 
@@ -333,9 +333,11 @@ class TenantAdminEventsRepository
               data: payload,
               options: Options(headers: _buildLandlordHeaders()),
             );
-      return _responseDecoder.decodeEventItem(_normalizeEventMediaPayload(response.data));
+      return _responseDecoder.decodeEventItem(
+        _normalizeEventMediaPayload(response.data),
+      );
     } on DioException catch (error) {
-      throw _wrapError(error, 'update event');
+      throw _wrapMutationError(error, 'update event');
     }
   }
 
@@ -353,7 +355,7 @@ class TenantAdminEventsRepository
 
   @override
   Future<TenantAdminLegacyEventPartiesSummary>
-      fetchLegacyEventPartiesSummary() async {
+  fetchLegacyEventPartiesSummary() async {
     try {
       final response = await _dio.get(
         '$_apiBaseUrl/v1/events/legacy_event_parties/summary',
@@ -367,7 +369,7 @@ class TenantAdminEventsRepository
 
   @override
   Future<TenantAdminLegacyEventPartiesSummary>
-      repairLegacyEventParties() async {
+  repairLegacyEventParties() async {
     try {
       final response = await _dio.post(
         '$_apiBaseUrl/v1/events/legacy_event_parties/repair',
@@ -568,7 +570,7 @@ class TenantAdminEventsRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-      fetchEventAccountProfileCandidatesPage({
+  fetchEventAccountProfileCandidatesPage({
     required TenantAdminEventAccountProfileCandidateType candidateType,
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
@@ -627,6 +629,14 @@ class TenantAdminEventsRepository
     );
   }
 
+  Exception _wrapMutationError(DioException error, String label) {
+    final validationFailure = tenantAdminTryResolveValidationFailure(error);
+    if (validationFailure != null) {
+      return validationFailure;
+    }
+    return tenantAdminWrapRepositoryError(error, label);
+  }
+
   FormatException _wrapDecodeError(
     FormatException error, {
     required String context,
@@ -642,9 +652,7 @@ class TenantAdminEventsRepository
     required String context,
     required String uri,
   }) {
-    return FormatException(
-      'Failed to $context [decode] ($uri): $error',
-    );
+    return FormatException('Failed to $context [decode] ($uri): $error');
   }
 
   Object? _normalizeEventMediaPayload(Object? raw) {
@@ -669,7 +677,8 @@ class TenantAdminEventsRepository
     bool includePatchMethodOverride = false,
     Iterable<String> preserveExplicitEmptyArrayKeys = const <String>[],
   }) {
-    final formData = uploadPayload ??
+    final formData =
+        uploadPayload ??
         _mediaFormDataBuilder.buildMultipartPayload(
           payload: payload,
           preserveExplicitEmptyArrayKeys: preserveExplicitEmptyArrayKeys,

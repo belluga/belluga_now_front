@@ -16,6 +16,7 @@ import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_cont
 import 'package:belluga_now/infrastructure/dal/dao/favorite_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/favorite/favorite_preview_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/account_profiles_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/favorite_repository_paging_mixin.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -34,831 +35,849 @@ void main() {
     await GetIt.I.reset();
   });
 
-  test('fetchAccountProfilesPage returns items when registry enables type',
-      () async {
-    final validId = _generateMongoId();
-    final backend = _StubAccountProfilesBackend(
-      accountProfiles: [
-        buildAccountProfileModelFromPrimitives(
-          id: validId,
-          name: 'Artist One',
-          slug: 'artist-one',
-          type: 'artist',
-        ),
-      ],
-    );
-    final repository = AccountProfilesRepository(
-      backend: backend,
-      favoriteBackend: _StubFavoriteBackend(favorites: const []),
-      favoriteAccountProfileIds: const {},
-    );
+  test(
+    'fetchAccountProfilesPage returns items when registry enables type',
+    () async {
+      final validId = _generateMongoId();
+      final backend = _StubAccountProfilesBackend(
+        accountProfiles: [
+          buildAccountProfileModelFromPrimitives(
+            id: validId,
+            name: 'Artist One',
+            slug: 'artist-one',
+            type: 'artist',
+          ),
+        ],
+      );
+      final repository = AccountProfilesRepository(
+        backend: backend,
+        favoriteBackend: _StubFavoriteBackend(favorites: const []),
+        favoriteAccountProfileIds: const {},
+      );
 
-    final page = await repository.fetchAccountProfilesPage(
-      page: AccountProfilesRepositoryContractPrimInt.fromRaw(1),
-      pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
-    );
+      final page = await repository.fetchAccountProfilesPage(
+        page: AccountProfilesRepositoryContractPrimInt.fromRaw(1),
+        pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
+      );
 
-    expect(page.profiles, hasLength(1));
-    expect(page.profiles.first.type, 'artist');
-  });
+      expect(page.profiles, hasLength(1));
+      expect(page.profiles.first.type, 'artist');
+    },
+  );
 
   test(
-      'fetchAccountProfilesPage still calls backend and preserves public results when the local registry has not caught up to the selected type',
-      () async {
-    final backend = _StubAccountProfilesBackend(
-      accountProfiles: [
-        buildAccountProfileModelFromPrimitives(
-          id: _generateMongoId(),
-          name: 'Dynamic Public Type',
-          slug: 'dynamic-public-type',
-          type: 'dynamic-public-type',
-        ),
-      ],
-    );
-    final repository = AccountProfilesRepository(
-      backend: backend,
-      favoriteBackend: _StubFavoriteBackend(favorites: const []),
-      favoriteAccountProfileIds: const {},
-    );
+    'fetchAccountProfilesPage still calls backend and preserves public results when the local registry has not caught up to the selected type',
+    () async {
+      final backend = _StubAccountProfilesBackend(
+        accountProfiles: [
+          buildAccountProfileModelFromPrimitives(
+            id: _generateMongoId(),
+            name: 'Dynamic Public Type',
+            slug: 'dynamic-public-type',
+            type: 'dynamic-public-type',
+          ),
+        ],
+      );
+      final repository = AccountProfilesRepository(
+        backend: backend,
+        favoriteBackend: _StubFavoriteBackend(favorites: const []),
+        favoriteAccountProfileIds: const {},
+      );
 
-    final page = await repository.fetchAccountProfilesPage(
-      page: AccountProfilesRepositoryContractPrimInt.fromRaw(1),
-      pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
-      typeFilters: [
-        AccountProfilesRepositoryContractPrimString.fromRaw(
-          'dynamic-public-type',
-        ),
-      ],
-    );
+      final page = await repository.fetchAccountProfilesPage(
+        page: AccountProfilesRepositoryContractPrimInt.fromRaw(1),
+        pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
+        typeFilters: [
+          AccountProfilesRepositoryContractPrimString.fromRaw(
+            'dynamic-public-type',
+          ),
+        ],
+      );
 
-    expect(backend.fetchAccountProfilesPageCalls, 1);
-    expect(page.profiles, hasLength(1));
-    expect(page.profiles.first.type, 'dynamic-public-type');
-  });
+      expect(backend.fetchAccountProfilesPageCalls, 1);
+      expect(page.profiles, hasLength(1));
+      expect(page.profiles.first.type, 'dynamic-public-type');
+    },
+  );
 
-  test('fetchAccountProfilesPage does not force profile_type list for "Todos"',
-      () async {
-    final backend = _StubAccountProfilesBackend(
-      accountProfiles: [
-        buildAccountProfileModelFromPrimitives(
-          id: _generateMongoId(),
-          name: 'Artist One',
-          slug: 'artist-one',
-          type: 'artist',
-        ),
-        buildAccountProfileModelFromPrimitives(
-          id: _generateMongoId(),
-          name: 'Artist Two',
-          slug: 'artist-two',
-          type: 'artist',
-        ),
-      ],
-    );
-    final repository = AccountProfilesRepository(
-      backend: backend,
-      favoriteBackend: _StubFavoriteBackend(favorites: const []),
-      favoriteAccountProfileIds: const {},
-    );
+  test(
+    'fetchAccountProfilesPage does not force profile_type list for "Todos"',
+    () async {
+      final backend = _StubAccountProfilesBackend(
+        accountProfiles: [
+          buildAccountProfileModelFromPrimitives(
+            id: _generateMongoId(),
+            name: 'Artist One',
+            slug: 'artist-one',
+            type: 'artist',
+          ),
+          buildAccountProfileModelFromPrimitives(
+            id: _generateMongoId(),
+            name: 'Artist Two',
+            slug: 'artist-two',
+            type: 'artist',
+          ),
+        ],
+      );
+      final repository = AccountProfilesRepository(
+        backend: backend,
+        favoriteBackend: _StubFavoriteBackend(favorites: const []),
+        favoriteAccountProfileIds: const {},
+      );
 
-    final page = await repository.fetchAccountProfilesPage(
-      page: AccountProfilesRepositoryContractPrimInt.fromRaw(1),
-      pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
-      typeFilter: null,
-    );
+      final page = await repository.fetchAccountProfilesPage(
+        page: AccountProfilesRepositoryContractPrimInt.fromRaw(1),
+        pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
+        typeFilter: null,
+      );
 
-    expect(backend.lastAllowedTypes, isNull);
-    expect(page.profiles, hasLength(2));
-  });
+      expect(backend.lastAllowedTypes, isNull);
+      expect(page.profiles, hasLength(2));
+    },
+  );
 
-  test('fetchAccountProfilesPage forwards canonical type and taxonomy filters',
-      () async {
-    final backend = _StubAccountProfilesBackend(
-      accountProfiles: [
-        buildAccountProfileModelFromPrimitives(
-          id: _generateMongoId(),
-          name: 'Artist One',
-          slug: 'artist-one',
-          type: 'artist',
-        ),
-      ],
-    );
-    final repository = AccountProfilesRepository(
-      backend: backend,
-      favoriteBackend: _StubFavoriteBackend(favorites: const []),
-      favoriteAccountProfileIds: const {},
-    );
+  test(
+    'fetchAccountProfilesPage forwards canonical type and taxonomy filters',
+    () async {
+      final backend = _StubAccountProfilesBackend(
+        accountProfiles: [
+          buildAccountProfileModelFromPrimitives(
+            id: _generateMongoId(),
+            name: 'Artist One',
+            slug: 'artist-one',
+            type: 'artist',
+          ),
+        ],
+      );
+      final repository = AccountProfilesRepository(
+        backend: backend,
+        favoriteBackend: _StubFavoriteBackend(favorites: const []),
+        favoriteAccountProfileIds: const {},
+      );
 
-    await repository.fetchAccountProfilesPage(
-      page: AccountProfilesRepositoryContractPrimInt.fromRaw(1),
-      pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
-      typeFilters: [
-        AccountProfilesRepositoryContractPrimString.fromRaw('artist'),
-        AccountProfilesRepositoryContractPrimString.fromRaw('venue'),
-      ],
-      taxonomyFilters: [
-        AccountProfilesRepositoryTaxonomyFilter.fromRaw(
-          type: 'genre',
-          value: 'rock',
-        ),
-      ],
-    );
+      await repository.fetchAccountProfilesPage(
+        page: AccountProfilesRepositoryContractPrimInt.fromRaw(1),
+        pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
+        typeFilters: [
+          AccountProfilesRepositoryContractPrimString.fromRaw('artist'),
+          AccountProfilesRepositoryContractPrimString.fromRaw('venue'),
+        ],
+        taxonomyFilters: [
+          AccountProfilesRepositoryTaxonomyFilter.fromRaw(
+            type: 'genre',
+            value: 'rock',
+          ),
+        ],
+      );
 
-    expect(backend.lastTypeFilters, const ['artist', 'venue']);
-    expect(backend.lastTaxonomyFilters.map((filter) => filter.type.value),
-        const ['genre']);
-    expect(backend.lastTaxonomyFilters.map((filter) => filter.term.value),
-        const ['rock']);
-  });
+      expect(backend.lastTypeFilters, const ['artist', 'venue']);
+      expect(
+        backend.lastTaxonomyFilters.map((filter) => filter.type.value),
+        const ['genre'],
+      );
+      expect(
+        backend.lastTaxonomyFilters.map((filter) => filter.term.value),
+        const ['rock'],
+      );
+    },
+  );
 
-  test('fetchAccountProfilesPage preserves backend runtime discovery facets',
-      () async {
-    final runtimeFacets = DiscoveryFilterRuntimeFacets.fromJson(
-      <String, Object?>{
-        'surface': 'discovery.account_profiles',
-        'filter_keys': <String>['artist', 'venue'],
-        'taxonomy_options': <String, Object?>{
-          'cuisine': <String, Object?>{
-            'key': 'cuisine',
-            'label': 'Cozinha',
-            'terms': <Object?>[
-              <String, Object?>{
-                'value': 'italian',
-                'label': 'Italiano',
-              },
-            ],
+  test(
+    'fetchAccountProfilesPage preserves backend runtime discovery facets',
+    () async {
+      final runtimeFacets = DiscoveryFilterRuntimeFacets.fromJson(
+        <String, Object?>{
+          'surface': 'discovery.account_profiles',
+          'filter_keys': <String>['artist', 'venue'],
+          'taxonomy_options': <String, Object?>{
+            'cuisine': <String, Object?>{
+              'key': 'cuisine',
+              'label': 'Cozinha',
+              'terms': <Object?>[
+                <String, Object?>{'value': 'italian', 'label': 'Italiano'},
+              ],
+            },
           },
         },
-      },
-    );
-    final backend = _StubAccountProfilesBackend(
-      accountProfiles: [
-        buildAccountProfileModelFromPrimitives(
-          id: _generateMongoId(),
-          name: 'Artist One',
-          slug: 'artist-one',
-          type: 'artist',
-        ),
-      ],
-      discoveryFilterFacets: runtimeFacets,
-    );
-    final repository = AccountProfilesRepository(
-      backend: backend,
-      favoriteBackend: _StubFavoriteBackend(favorites: const []),
-      favoriteAccountProfileIds: const {},
-    );
-
-    final page = await repository.fetchAccountProfilesPage(
-      page: AccountProfilesRepositoryContractPrimInt.fromRaw(1),
-      pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
-    );
-
-    expect(page.discoveryFilterFacets, isNotNull);
-    expect(page.discoveryFilterFacets?.surface, 'discovery.account_profiles');
-    expect(page.discoveryFilterFacets?.filterKeys, <String>{'artist', 'venue'});
-    expect(
-      page.discoveryFilterFacets?.taxonomyOptionsByKey['cuisine']?.terms
-          .map((entry) => entry.value)
-          .toList(),
-      <String>['italian'],
-    );
-  });
-
-  test('fetchAccountProfilesPage preserves backend canonical discovery catalog',
-      () async {
-    const runtimeCatalog = DiscoveryFilterCatalog(
-      surface: 'discovery.account_profiles',
-      filters: <DiscoveryFilterCatalogItem>[
-        DiscoveryFilterCatalogItem(
-          key: 'artist',
-          label: 'Artistas',
-          entities: <String>{'account_profile'},
-          types: <String>{'artist'},
-          typesByEntity: <String, Set<String>>{
-            'account_profile': <String>{'artist'},
-          },
-        ),
-      ],
-      typeOptionsByEntity: <String, List<DiscoveryFilterTypeOption>>{
-        'account_profile': <DiscoveryFilterTypeOption>[
-          DiscoveryFilterTypeOption(
-            value: 'artist',
-            label: 'Artistas',
+      );
+      final backend = _StubAccountProfilesBackend(
+        accountProfiles: [
+          buildAccountProfileModelFromPrimitives(
+            id: _generateMongoId(),
+            name: 'Artist One',
+            slug: 'artist-one',
+            type: 'artist',
           ),
         ],
-      },
-    );
-    final backend = _StubAccountProfilesBackend(
-      accountProfiles: [
-        buildAccountProfileModelFromPrimitives(
-          id: _generateMongoId(),
-          name: 'Artist One',
-          slug: 'artist-one',
-          type: 'artist',
-        ),
-      ],
-      discoveryFilterCatalog: runtimeCatalog,
-    );
-    final repository = AccountProfilesRepository(
-      backend: backend,
-      favoriteBackend: _StubFavoriteBackend(favorites: const []),
-      favoriteAccountProfileIds: const {},
-    );
+        discoveryFilterFacets: runtimeFacets,
+      );
+      final repository = AccountProfilesRepository(
+        backend: backend,
+        favoriteBackend: _StubFavoriteBackend(favorites: const []),
+        favoriteAccountProfileIds: const {},
+      );
 
-    final page = await repository.fetchAccountProfilesPage(
-      page: AccountProfilesRepositoryContractPrimInt.fromRaw(1),
-      pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
-    );
+      final page = await repository.fetchAccountProfilesPage(
+        page: AccountProfilesRepositoryContractPrimInt.fromRaw(1),
+        pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
+      );
 
-    expect(page.discoveryFilterCatalog, isNotNull);
-    expect(page.discoveryFilterCatalog?.surface, 'discovery.account_profiles');
-    expect(
-      page.discoveryFilterCatalog?.filters.map((entry) => entry.key).toList(),
-      <String>['artist'],
-    );
-    expect(
-      page.discoveryFilterCatalog?.typeOptionsByEntity['account_profile']
-          ?.map((entry) => entry.value)
-          .toList(),
-      <String>['artist'],
-    );
-  });
+      expect(page.discoveryFilterFacets, isNotNull);
+      expect(page.discoveryFilterFacets?.surface, 'discovery.account_profiles');
+      expect(page.discoveryFilterFacets?.filterKeys, <String>{
+        'artist',
+        'venue',
+      });
+      expect(
+        page.discoveryFilterFacets?.taxonomyOptionsByKey['cuisine']?.terms
+            .map((entry) => entry.value)
+            .toList(),
+        <String>['italian'],
+      );
+    },
+  );
 
-  test('resetPagedAccountProfilesState clears paired discovery filter streams',
-      () async {
-    const runtimeCatalog = DiscoveryFilterCatalog(
-      surface: 'discovery.account_profiles',
-      filters: <DiscoveryFilterCatalogItem>[
-        DiscoveryFilterCatalogItem(
-          key: 'artist',
-          label: 'Artistas',
-          entities: <String>{'account_profile'},
-          types: <String>{'artist'},
-          typesByEntity: <String, Set<String>>{
-            'account_profile': <String>{'artist'},
-          },
-        ),
-      ],
-      typeOptionsByEntity: <String, List<DiscoveryFilterTypeOption>>{
-        'account_profile': <DiscoveryFilterTypeOption>[
-          DiscoveryFilterTypeOption(
-            value: 'artist',
+  test(
+    'fetchAccountProfilesPage preserves backend canonical discovery catalog',
+    () async {
+      const runtimeCatalog = DiscoveryFilterCatalog(
+        surface: 'discovery.account_profiles',
+        filters: <DiscoveryFilterCatalogItem>[
+          DiscoveryFilterCatalogItem(
+            key: 'artist',
             label: 'Artistas',
+            entities: <String>{'account_profile'},
+            types: <String>{'artist'},
+            typesByEntity: <String, Set<String>>{
+              'account_profile': <String>{'artist'},
+            },
           ),
         ],
-      },
-    );
-    const runtimeFacets = DiscoveryFilterRuntimeFacets(
-      surface: 'discovery.account_profiles',
-      filterKeys: <String>{'artist'},
-      taxonomyOptionsByKey: <String, DiscoveryFilterTaxonomyGroupOption>{
-        'music': DiscoveryFilterTaxonomyGroupOption(
-          key: 'music',
-          label: 'Musica',
-          terms: <DiscoveryFilterTaxonomyTermOption>[
-            DiscoveryFilterTaxonomyTermOption(value: 'forro', label: 'Forro'),
+        typeOptionsByEntity: <String, List<DiscoveryFilterTypeOption>>{
+          'account_profile': <DiscoveryFilterTypeOption>[
+            DiscoveryFilterTypeOption(value: 'artist', label: 'Artistas'),
           ],
-        ),
-      },
-    );
-    final backend = _StubAccountProfilesBackend(
-      accountProfiles: [
-        buildAccountProfileModelFromPrimitives(
-          id: _generateMongoId(),
-          name: 'Artist One',
-          slug: 'artist-one',
-          type: 'artist',
-        ),
-      ],
-      discoveryFilterCatalog: runtimeCatalog,
-      discoveryFilterFacets: runtimeFacets,
-    );
-    final repository = AccountProfilesRepository(
-      backend: backend,
-      favoriteBackend: _StubFavoriteBackend(favorites: const []),
-      favoriteAccountProfileIds: const {},
-    );
+        },
+      );
+      final backend = _StubAccountProfilesBackend(
+        accountProfiles: [
+          buildAccountProfileModelFromPrimitives(
+            id: _generateMongoId(),
+            name: 'Artist One',
+            slug: 'artist-one',
+            type: 'artist',
+          ),
+        ],
+        discoveryFilterCatalog: runtimeCatalog,
+      );
+      final repository = AccountProfilesRepository(
+        backend: backend,
+        favoriteBackend: _StubFavoriteBackend(favorites: const []),
+        favoriteAccountProfileIds: const {},
+      );
 
-    await repository.loadAccountProfilesPage(
-      pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
-    );
+      final page = await repository.fetchAccountProfilesPage(
+        page: AccountProfilesRepositoryContractPrimInt.fromRaw(1),
+        pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
+      );
 
-    expect(repository.publicDiscoveryFilterFacetsStreamValue.value, isNotNull);
-    expect(repository.publicDiscoveryFilterCatalogStreamValue.value, isNotNull);
-
-    repository.resetPagedAccountProfilesState();
-
-    expect(repository.publicDiscoveryFilterFacetsStreamValue.value, isNull);
-    expect(repository.publicDiscoveryFilterCatalogStreamValue.value, isNull);
-    expect(repository.pagedAccountProfilesStreamValue.value, isNull);
-  });
-
-  test(
-      'init loads favorite ids from backend favorites source without preloading full catalog',
-      () async {
-    final validId = _generateMongoId();
-    final backend = _StubAccountProfilesBackend(
-      accountProfiles: [
-        buildAccountProfileModelFromPrimitives(
-          id: validId,
-          name: 'Artist One',
-          slug: 'artist-one',
-          type: 'artist',
-        ),
-      ],
-    );
-    final favoritesBackend = _StubFavoriteBackend(
-      favorites: [
-        const FavoritePreviewDTO(
-          id: 'profile-fav-1',
-          title: 'Fav 1',
-          targetId: 'profile-fav-1',
-          registryKey: 'account_profile',
-          targetType: 'account_profile',
-        ),
-      ],
-    );
-
-    final repository = AccountProfilesRepository(
-      backend: backend,
-      favoriteBackend: favoritesBackend,
-      favoriteAccountProfileIds: const {},
-    );
-
-    await repository.init();
-
-    expect(
-      repository.favoriteAccountProfileIdsStreamValue.value
-          .map((entry) => entry.value)
-          .toSet(),
-      contains('profile-fav-1'),
-    );
-    expect(backend.fetchAccountProfilesPageCalls, 0);
-    expect(repository.allAccountProfilesStreamValue.value, isEmpty);
-  });
+      expect(page.discoveryFilterCatalog, isNotNull);
+      expect(
+        page.discoveryFilterCatalog?.surface,
+        'discovery.account_profiles',
+      );
+      expect(
+        page.discoveryFilterCatalog?.filters.map((entry) => entry.key).toList(),
+        <String>['artist'],
+      );
+      expect(
+        page.discoveryFilterCatalog?.typeOptionsByEntity['account_profile']
+            ?.map((entry) => entry.value)
+            .toList(),
+        <String>['artist'],
+      );
+    },
+  );
 
   test(
-      'refreshFavoriteAccountProfileIds clears stale ids when current identity has no backend favorites',
-      () async {
-    const staleFavoriteId = 'stale-profile-id';
-    final backend = _StubAccountProfilesBackend(
-      accountProfiles: const <AccountProfileModel>[],
-    );
-    final favoritesBackend = _StubFavoriteBackend(
-      favorites: const [],
-    );
-    final repository = AccountProfilesRepository(
-      backend: backend,
-      favoriteBackend: favoritesBackend,
-      favoriteAccountProfileIds: const {staleFavoriteId},
-    );
+    'resetPagedAccountProfilesState clears paired discovery filter streams',
+    () async {
+      const runtimeCatalog = DiscoveryFilterCatalog(
+        surface: 'discovery.account_profiles',
+        filters: <DiscoveryFilterCatalogItem>[
+          DiscoveryFilterCatalogItem(
+            key: 'artist',
+            label: 'Artistas',
+            entities: <String>{'account_profile'},
+            types: <String>{'artist'},
+            typesByEntity: <String, Set<String>>{
+              'account_profile': <String>{'artist'},
+            },
+          ),
+        ],
+        typeOptionsByEntity: <String, List<DiscoveryFilterTypeOption>>{
+          'account_profile': <DiscoveryFilterTypeOption>[
+            DiscoveryFilterTypeOption(value: 'artist', label: 'Artistas'),
+          ],
+        },
+      );
+      const runtimeFacets = DiscoveryFilterRuntimeFacets(
+        surface: 'discovery.account_profiles',
+        filterKeys: <String>{'artist'},
+        taxonomyOptionsByKey: <String, DiscoveryFilterTaxonomyGroupOption>{
+          'music': DiscoveryFilterTaxonomyGroupOption(
+            key: 'music',
+            label: 'Musica',
+            terms: <DiscoveryFilterTaxonomyTermOption>[
+              DiscoveryFilterTaxonomyTermOption(value: 'forro', label: 'Forro'),
+            ],
+          ),
+        },
+      );
+      final backend = _StubAccountProfilesBackend(
+        accountProfiles: [
+          buildAccountProfileModelFromPrimitives(
+            id: _generateMongoId(),
+            name: 'Artist One',
+            slug: 'artist-one',
+            type: 'artist',
+          ),
+        ],
+        discoveryFilterCatalog: runtimeCatalog,
+        discoveryFilterFacets: runtimeFacets,
+      );
+      final repository = AccountProfilesRepository(
+        backend: backend,
+        favoriteBackend: _StubFavoriteBackend(favorites: const []),
+        favoriteAccountProfileIds: const {},
+      );
 
-    await repository.refreshFavoriteAccountProfileIds();
+      await repository.loadAccountProfilesPage(
+        pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
+      );
 
-    expect(
-      repository.favoriteAccountProfileIdsStreamValue.value
-          .map((entry) => entry.value)
-          .toSet(),
-      isEmpty,
-    );
-  });
+      expect(
+        repository.publicDiscoveryFilterFacetsStreamValue.value,
+        isNotNull,
+      );
+      expect(
+        repository.publicDiscoveryFilterCatalogStreamValue.value,
+        isNotNull,
+      );
 
-  test('toggleFavorite persists favorite and unfavorite through backend',
-      () async {
-    final validId = _generateMongoId();
-    final backend = _StubAccountProfilesBackend(
-      accountProfiles: [
-        buildAccountProfileModelFromPrimitives(
-          id: validId,
-          name: 'Artist One',
-          slug: 'artist-one',
-          type: 'artist',
-        ),
-      ],
-    );
-    final favoritesBackend = _StubFavoriteBackend(
-      favorites: const [],
-    );
-    final telemetry = _SpyTelemetry();
+      repository.resetPagedAccountProfilesState();
 
-    final repository = AccountProfilesRepository(
-      backend: backend,
-      favoriteBackend: favoritesBackend,
-      favoriteAccountProfileIds: const {},
-      telemetryRepository: telemetry,
-    );
-
-    await repository.toggleFavorite(
-      AccountProfilesRepositoryContractPrimString.fromRaw(validId),
-    );
-    expect(favoritesBackend.favoritedIds, contains(validId));
-    expect(
-      repository.favoriteAccountProfileIdsStreamValue.value
-          .map((entry) => entry.value)
-          .toSet(),
-      contains(validId),
-    );
-
-    await repository.toggleFavorite(
-      AccountProfilesRepositoryContractPrimString.fromRaw(validId),
-    );
-    expect(favoritesBackend.unfavoritedIds, contains(validId));
-    expect(
-      repository.favoriteAccountProfileIdsStreamValue.value
-          .map((entry) => entry.value)
-          .toSet(),
-      isNot(contains(validId)),
-    );
-
-    expect(telemetry.calls, hasLength(2));
-    expect(
-      telemetry.calls.first.event,
-      EventTrackerEvents.favoriteArtistToggled,
-    );
-    expect(
-      telemetry.calls.first.eventName,
-      'favorite_artist_toggled',
-    );
-    expect(
-      telemetry.calls.first.properties?['account_profile_id'],
-      validId,
-    );
-    expect(telemetry.calls.first.properties?['is_favorite'], isTrue);
-
-    expect(
-      telemetry.calls.last.event,
-      EventTrackerEvents.favoriteArtistToggled,
-    );
-    expect(
-      telemetry.calls.last.eventName,
-      'favorite_artist_toggled',
-    );
-    expect(
-      telemetry.calls.last.properties?['account_profile_id'],
-      validId,
-    );
-    expect(telemetry.calls.last.properties?['is_favorite'], isFalse);
-  });
+      expect(repository.publicDiscoveryFilterFacetsStreamValue.value, isNull);
+      expect(repository.publicDiscoveryFilterCatalogStreamValue.value, isNull);
+      expect(repository.pagedAccountProfilesStreamValue.value, isNull);
+    },
+  );
 
   test(
-      'toggleFavorite refreshes canonical favorite resumes consumed by Home after mutations',
-      () async {
-    final validId = _generateMongoId();
-    final backend = _StubAccountProfilesBackend(
-      accountProfiles: [
-        buildAccountProfileModelFromPrimitives(
-          id: validId,
-          name: 'Artist One',
-          slug: 'artist-one',
-          type: 'artist',
-        ),
-      ],
-    );
-    final favoritesBackend = _StubFavoriteBackend(
-      favorites: const [],
-      favoritePreviewsByAccountProfileId: {
-        validId: _favoritePreview(
-          id: validId,
-          title: 'Artist One',
-        ),
-      },
-    );
-    final favoriteRepository = _TrackingFavoriteRepository(
-      favoriteBackend: favoritesBackend,
-    );
-    GetIt.I.registerSingleton<FavoriteRepositoryContract>(favoriteRepository);
+    'init loads favorite ids from backend favorites source without preloading full catalog',
+    () async {
+      final validId = _generateMongoId();
+      final backend = _StubAccountProfilesBackend(
+        accountProfiles: [
+          buildAccountProfileModelFromPrimitives(
+            id: validId,
+            name: 'Artist One',
+            slug: 'artist-one',
+            type: 'artist',
+          ),
+        ],
+      );
+      final favoritesBackend = _StubFavoriteBackend(
+        favorites: [
+          const FavoritePreviewDTO(
+            id: 'profile-fav-1',
+            title: 'Fav 1',
+            targetId: 'profile-fav-1',
+            registryKey: 'account_profile',
+            targetType: 'account_profile',
+          ),
+        ],
+      );
 
-    final repository = AccountProfilesRepository(
-      backend: backend,
-      favoriteBackend: favoritesBackend,
-      favoriteAccountProfileIds: const {},
-    );
+      final repository = AccountProfilesRepository(
+        backend: backend,
+        favoriteBackend: favoritesBackend,
+        favoriteAccountProfileIds: const {},
+      );
 
-    await repository.toggleFavorite(
-      AccountProfilesRepositoryContractPrimString.fromRaw(validId),
-    );
+      await repository.init();
 
-    expect(favoritesBackend.favoritedIds, contains(validId));
-    expect(
-      favoritesBackend.operationLog,
-      ['favorite:$validId', 'fetchFavorites'],
-    );
-    expect(favoriteRepository.fetchFavoriteResumesCallCount, 1);
-    expect(
-      favoriteRepository.favoriteResumesStreamValue.value
-          ?.map((favorite) => favorite.title)
-          .toList(),
-      ['Artist One'],
-    );
+      expect(
+        repository.favoriteAccountProfileIdsStreamValue.value
+            .map((entry) => entry.value)
+            .toSet(),
+        contains('profile-fav-1'),
+      );
+      expect(backend.fetchAccountProfilesPageCalls, 0);
+      expect(repository.allAccountProfilesStreamValue.value, isEmpty);
+    },
+  );
 
-    await repository.toggleFavorite(
-      AccountProfilesRepositoryContractPrimString.fromRaw(validId),
-    );
+  test(
+    'refreshFavoriteAccountProfileIds clears stale ids when current identity has no backend favorites',
+    () async {
+      const staleFavoriteId = 'stale-profile-id';
+      final backend = _StubAccountProfilesBackend(
+        accountProfiles: const <AccountProfileModel>[],
+      );
+      final favoritesBackend = _StubFavoriteBackend(favorites: const []);
+      final repository = AccountProfilesRepository(
+        backend: backend,
+        favoriteBackend: favoritesBackend,
+        favoriteAccountProfileIds: const {staleFavoriteId},
+      );
 
-    expect(favoritesBackend.unfavoritedIds, contains(validId));
-    expect(
-      favoritesBackend.operationLog,
-      [
+      await repository.refreshFavoriteAccountProfileIds();
+
+      expect(
+        repository.favoriteAccountProfileIdsStreamValue.value
+            .map((entry) => entry.value)
+            .toSet(),
+        isEmpty,
+      );
+    },
+  );
+
+  test(
+    'toggleFavorite persists favorite and unfavorite through backend',
+    () async {
+      final validId = _generateMongoId();
+      final backend = _StubAccountProfilesBackend(
+        accountProfiles: [
+          buildAccountProfileModelFromPrimitives(
+            id: validId,
+            name: 'Artist One',
+            slug: 'artist-one',
+            type: 'artist',
+          ),
+        ],
+      );
+      final favoritesBackend = _StubFavoriteBackend(favorites: const []);
+      final telemetry = _SpyTelemetry();
+
+      final repository = AccountProfilesRepository(
+        backend: backend,
+        favoriteBackend: favoritesBackend,
+        favoriteAccountProfileIds: const {},
+        telemetryRepository: telemetry,
+      );
+
+      await repository.toggleFavorite(
+        AccountProfilesRepositoryContractPrimString.fromRaw(validId),
+      );
+      expect(favoritesBackend.favoritedIds, contains(validId));
+      expect(
+        repository.favoriteAccountProfileIdsStreamValue.value
+            .map((entry) => entry.value)
+            .toSet(),
+        contains(validId),
+      );
+
+      await repository.toggleFavorite(
+        AccountProfilesRepositoryContractPrimString.fromRaw(validId),
+      );
+      expect(favoritesBackend.unfavoritedIds, contains(validId));
+      expect(
+        repository.favoriteAccountProfileIdsStreamValue.value
+            .map((entry) => entry.value)
+            .toSet(),
+        isNot(contains(validId)),
+      );
+
+      expect(telemetry.calls, hasLength(2));
+      expect(
+        telemetry.calls.first.event,
+        EventTrackerEvents.favoriteArtistToggled,
+      );
+      expect(telemetry.calls.first.eventName, 'favorite_artist_toggled');
+      expect(telemetry.calls.first.properties?['account_profile_id'], validId);
+      expect(telemetry.calls.first.properties?['is_favorite'], isTrue);
+
+      expect(
+        telemetry.calls.last.event,
+        EventTrackerEvents.favoriteArtistToggled,
+      );
+      expect(telemetry.calls.last.eventName, 'favorite_artist_toggled');
+      expect(telemetry.calls.last.properties?['account_profile_id'], validId);
+      expect(telemetry.calls.last.properties?['is_favorite'], isFalse);
+    },
+  );
+
+  test(
+    'toggleFavorite refreshes canonical favorite resumes consumed by Home after mutations',
+    () async {
+      final validId = _generateMongoId();
+      final backend = _StubAccountProfilesBackend(
+        accountProfiles: [
+          buildAccountProfileModelFromPrimitives(
+            id: validId,
+            name: 'Artist One',
+            slug: 'artist-one',
+            type: 'artist',
+          ),
+        ],
+      );
+      final favoritesBackend = _StubFavoriteBackend(
+        favorites: const [],
+        favoritePreviewsByAccountProfileId: {
+          validId: _favoritePreview(id: validId, title: 'Artist One'),
+        },
+      );
+      final favoriteRepository = _TrackingFavoriteRepository(
+        favoriteBackend: favoritesBackend,
+      );
+      GetIt.I.registerSingleton<FavoriteRepositoryContract>(favoriteRepository);
+
+      final repository = AccountProfilesRepository(
+        backend: backend,
+        favoriteBackend: favoritesBackend,
+        favoriteAccountProfileIds: const {},
+      );
+
+      await repository.toggleFavorite(
+        AccountProfilesRepositoryContractPrimString.fromRaw(validId),
+      );
+
+      expect(favoritesBackend.favoritedIds, contains(validId));
+      expect(favoritesBackend.operationLog, [
+        'favorite:$validId',
+        'fetchFavorites',
+      ]);
+      expect(favoriteRepository.fetchFavoriteResumesCallCount, 1);
+      expect(
+        favoriteRepository.favoriteResumesStreamValue.value
+            ?.map((favorite) => favorite.title)
+            .toList(),
+        ['Artist One'],
+      );
+
+      await repository.toggleFavorite(
+        AccountProfilesRepositoryContractPrimString.fromRaw(validId),
+      );
+
+      expect(favoritesBackend.unfavoritedIds, contains(validId));
+      expect(favoritesBackend.operationLog, [
         'favorite:$validId',
         'fetchFavorites',
         'unfavorite:$validId',
         'fetchFavorites',
-      ],
-    );
-    expect(favoriteRepository.fetchFavoriteResumesCallCount, 2);
-    expect(favoriteRepository.favoriteResumesStreamValue.value, isEmpty);
-  });
+      ]);
+      expect(favoriteRepository.fetchFavoriteResumesCallCount, 2);
+      expect(favoriteRepository.favoriteResumesStreamValue.value, isEmpty);
+    },
+  );
 
   test(
-      'toggleFavorite does not refresh Home favorite resumes when persistence fails',
-      () async {
-    final validId = _generateMongoId();
-    final backend = _StubAccountProfilesBackend(
-      accountProfiles: [
-        buildAccountProfileModelFromPrimitives(
-          id: validId,
-          name: 'Artist One',
-          slug: 'artist-one',
-          type: 'artist',
+    'toggleFavorite does not refresh Home favorite resumes when persistence fails',
+    () async {
+      final validId = _generateMongoId();
+      final backend = _StubAccountProfilesBackend(
+        accountProfiles: [
+          buildAccountProfileModelFromPrimitives(
+            id: validId,
+            name: 'Artist One',
+            slug: 'artist-one',
+            type: 'artist',
+          ),
+        ],
+      );
+      final favoritesBackend = _StubFavoriteBackend(
+        favorites: const [],
+        throwOnFavorite: true,
+        favoritePreviewsByAccountProfileId: {
+          validId: _favoritePreview(id: validId, title: 'Artist One'),
+        },
+      );
+      final favoriteRepository = _TrackingFavoriteRepository(
+        favoriteBackend: favoritesBackend,
+      );
+      GetIt.I.registerSingleton<FavoriteRepositoryContract>(favoriteRepository);
+
+      final repository = AccountProfilesRepository(
+        backend: backend,
+        favoriteBackend: favoritesBackend,
+        favoriteAccountProfileIds: const {},
+      );
+
+      await repository.toggleFavorite(
+        AccountProfilesRepositoryContractPrimString.fromRaw(validId),
+      );
+
+      expect(favoritesBackend.operationLog, ['favorite:$validId']);
+      expect(favoritesBackend.favoritedIds, isEmpty);
+      expect(favoriteRepository.fetchFavoriteResumesCallCount, 0);
+      expect(favoriteRepository.favoriteResumesStreamValue.value, isNull);
+      expect(
+        repository.favoriteAccountProfileIdsStreamValue.value.map(
+          (entry) => entry.value,
         ),
-      ],
-    );
-    final favoritesBackend = _StubFavoriteBackend(
-      favorites: const [],
-      throwOnFavorite: true,
-      favoritePreviewsByAccountProfileId: {
-        validId: _favoritePreview(
-          id: validId,
-          title: 'Artist One',
-        ),
-      },
-    );
-    final favoriteRepository = _TrackingFavoriteRepository(
-      favoriteBackend: favoritesBackend,
-    );
-    GetIt.I.registerSingleton<FavoriteRepositoryContract>(favoriteRepository);
-
-    final repository = AccountProfilesRepository(
-      backend: backend,
-      favoriteBackend: favoritesBackend,
-      favoriteAccountProfileIds: const {},
-    );
-
-    await repository.toggleFavorite(
-      AccountProfilesRepositoryContractPrimString.fromRaw(validId),
-    );
-
-    expect(favoritesBackend.operationLog, ['favorite:$validId']);
-    expect(favoritesBackend.favoritedIds, isEmpty);
-    expect(favoriteRepository.fetchFavoriteResumesCallCount, 0);
-    expect(favoriteRepository.favoriteResumesStreamValue.value, isNull);
-    expect(
-      repository.favoriteAccountProfileIdsStreamValue.value
-          .map((entry) => entry.value),
-      isNot(contains(validId)),
-    );
-  });
+        isNot(contains(validId)),
+      );
+    },
+  );
 
   test(
-      'toggleFavorite keeps persisted state when Home favorite resume refresh fails',
-      () async {
-    final validId = _generateMongoId();
-    final backend = _StubAccountProfilesBackend(
-      accountProfiles: [
-        buildAccountProfileModelFromPrimitives(
-          id: validId,
-          name: 'Artist One',
-          slug: 'artist-one',
-          type: 'artist',
+    'toggleFavorite keeps persisted state when Home favorite resume refresh fails',
+    () async {
+      final validId = _generateMongoId();
+      final backend = _StubAccountProfilesBackend(
+        accountProfiles: [
+          buildAccountProfileModelFromPrimitives(
+            id: validId,
+            name: 'Artist One',
+            slug: 'artist-one',
+            type: 'artist',
+          ),
+        ],
+      );
+      final favoritesBackend = _StubFavoriteBackend(
+        favorites: const [],
+        favoritePreviewsByAccountProfileId: {
+          validId: _favoritePreview(id: validId, title: 'Artist One'),
+        },
+      );
+      final favoriteRepository = _TrackingFavoriteRepository(
+        favoriteBackend: favoritesBackend,
+        throwOnRefreshFavoriteResumes: true,
+      );
+      GetIt.I.registerSingleton<FavoriteRepositoryContract>(favoriteRepository);
+
+      final repository = AccountProfilesRepository(
+        backend: backend,
+        favoriteBackend: favoritesBackend,
+        favoriteAccountProfileIds: const {},
+      );
+
+      await repository.toggleFavorite(
+        AccountProfilesRepositoryContractPrimString.fromRaw(validId),
+      );
+
+      expect(favoritesBackend.favoritedIds, contains(validId));
+      expect(favoriteRepository.refreshFavoriteResumesCallCount, 1);
+      expect(
+        repository.favoriteAccountProfileIdsStreamValue.value.map(
+          (entry) => entry.value,
         ),
-      ],
-    );
-    final favoritesBackend = _StubFavoriteBackend(
-      favorites: const [],
-      favoritePreviewsByAccountProfileId: {
-        validId: _favoritePreview(
-          id: validId,
-          title: 'Artist One',
-        ),
-      },
-    );
-    final favoriteRepository = _TrackingFavoriteRepository(
-      favoriteBackend: favoritesBackend,
-      throwOnRefreshFavoriteResumes: true,
-    );
-    GetIt.I.registerSingleton<FavoriteRepositoryContract>(favoriteRepository);
-
-    final repository = AccountProfilesRepository(
-      backend: backend,
-      favoriteBackend: favoritesBackend,
-      favoriteAccountProfileIds: const {},
-    );
-
-    await repository.toggleFavorite(
-      AccountProfilesRepositoryContractPrimString.fromRaw(validId),
-    );
-
-    expect(favoritesBackend.favoritedIds, contains(validId));
-    expect(favoriteRepository.refreshFavoriteResumesCallCount, 1);
-    expect(
-      repository.favoriteAccountProfileIdsStreamValue.value
-          .map((entry) => entry.value),
-      contains(validId),
-    );
-  });
-
-  test('fetchNearbyAccountProfiles keeps only favoritable registry types',
-      () async {
-    final artistId = _generateMongoId();
-    final curatorId = _generateMongoId();
-    final backend = _StubAccountProfilesBackend(
-      accountProfiles: [
-        buildAccountProfileModelFromPrimitives(
-          id: artistId,
-          name: 'Nearby Artist',
-          slug: 'nearby-artist',
-          type: 'artist',
-        ),
-        buildAccountProfileModelFromPrimitives(
-          id: curatorId,
-          name: 'Nearby Curator',
-          slug: 'nearby-curator',
-          type: 'curator',
-        ),
-      ],
-    );
-    final repository = AccountProfilesRepository(
-      backend: backend,
-      favoriteBackend: _StubFavoriteBackend(favorites: const []),
-      favoriteAccountProfileIds: const {},
-    );
-
-    final nearby = await repository.fetchNearbyAccountProfiles(
-      pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(10),
-    );
-
-    expect(nearby, hasLength(1));
-    expect(nearby.first.type, 'artist');
-  });
+        contains(validId),
+      );
+    },
+  );
 
   test(
-      'getAccountProfileBySlug delegates to backend direct lookup without paged scans',
-      () async {
-    final backend = _StubAccountProfilesBackend(
-      accountProfiles: [
-        buildAccountProfileModelFromPrimitives(
-          id: _generateMongoId(),
-          name: 'Artist One',
-          slug: 'artist-one',
-          type: 'artist',
-        ),
-      ],
-    );
-    final repository = AccountProfilesRepository(
-      backend: backend,
-      favoriteBackend: _StubFavoriteBackend(favorites: const []),
-      favoriteAccountProfileIds: const {},
-    );
+    'fetchNearbyAccountProfiles keeps only favoritable registry types',
+    () async {
+      final artistId = _generateMongoId();
+      final curatorId = _generateMongoId();
+      final backend = _StubAccountProfilesBackend(
+        accountProfiles: [
+          buildAccountProfileModelFromPrimitives(
+            id: artistId,
+            name: 'Nearby Artist',
+            slug: 'nearby-artist',
+            type: 'artist',
+          ),
+          buildAccountProfileModelFromPrimitives(
+            id: curatorId,
+            name: 'Nearby Curator',
+            slug: 'nearby-curator',
+            type: 'curator',
+          ),
+        ],
+      );
+      final repository = AccountProfilesRepository(
+        backend: backend,
+        favoriteBackend: _StubFavoriteBackend(favorites: const []),
+        favoriteAccountProfileIds: const {},
+      );
 
-    final profile = await repository.getAccountProfileBySlug(
-      AccountProfilesRepositoryContractPrimString.fromRaw('artist-one'),
-    );
+      final nearby = await repository.fetchNearbyAccountProfiles(
+        pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(10),
+      );
 
-    expect(profile?.slug, 'artist-one');
-    expect(backend.fetchBySlugCalls, 1);
-    expect(backend.fetchAccountProfilesPageCalls, 0);
-  });
-
-  test(
-      'getAccountProfileBySlug does not reject a backend-authoritative public profile just because the local registry does not know the type yet',
-      () async {
-    final backend = _StubAccountProfilesBackend(
-      accountProfiles: [
-        buildAccountProfileModelFromPrimitives(
-          id: _generateMongoId(),
-          name: 'Dynamic Public Type',
-          slug: 'dynamic-public-type',
-          type: 'dynamic-public-type',
-        ),
-      ],
-    );
-    final repository = AccountProfilesRepository(
-      backend: backend,
-      favoriteBackend: _StubFavoriteBackend(favorites: const []),
-      favoriteAccountProfileIds: const {},
-    );
-
-    final profile = await repository.getAccountProfileBySlug(
-      AccountProfilesRepositoryContractPrimString.fromRaw(
-        'dynamic-public-type',
-      ),
-    );
-
-    expect(profile, isNotNull);
-    expect(profile?.type, 'dynamic-public-type');
-    expect(backend.fetchBySlugCalls, 1);
-  });
-
-  test('paged account profiles stream accumulates loaded pages canonically',
-      () async {
-    final backend = _StubAccountProfilesBackend(
-      accountProfiles: [
-        buildAccountProfileModelFromPrimitives(
-          id: _generateMongoId(),
-          name: 'Artist One',
-          slug: 'artist-one',
-          type: 'artist',
-        ),
-        buildAccountProfileModelFromPrimitives(
-          id: _generateMongoId(),
-          name: 'Artist Two',
-          slug: 'artist-two',
-          type: 'artist',
-        ),
-      ],
-    );
-    final repository = AccountProfilesRepository(
-      backend: backend,
-      favoriteBackend: _StubFavoriteBackend(favorites: const []),
-      favoriteAccountProfileIds: const {},
-    );
-
-    await repository.loadAccountProfilesPage(
-      pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(1),
-    );
-    expect(repository.currentPagedAccountProfilesPage.value, 1);
-    expect(repository.pagedAccountProfilesStreamValue.value?.profiles,
-        hasLength(1));
-    expect(
-        repository.hasMorePagedAccountProfilesStreamValue.value.value, isTrue);
-
-    await repository.loadNextAccountProfilesPage(
-      pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(1),
-    );
-    expect(repository.currentPagedAccountProfilesPage.value, 2);
-    expect(repository.pagedAccountProfilesStreamValue.value?.profiles,
-        hasLength(2));
-    expect(
-        repository.hasMorePagedAccountProfilesStreamValue.value.value, isFalse);
-  });
+      expect(nearby, hasLength(1));
+      expect(nearby.first.type, 'artist');
+    },
+  );
 
   test(
-      'discovery nearby stream uses dedicated near endpoint even with paged cache',
-      () async {
-    final backend = _StubAccountProfilesBackend(
-      accountProfiles: [
-        buildAccountProfileModelFromPrimitives(
-          id: _generateMongoId(),
-          name: 'Artist One',
-          slug: 'artist-one',
-          type: 'artist',
-        ),
-        buildAccountProfileModelFromPrimitives(
-          id: _generateMongoId(),
-          name: 'Curator One',
-          slug: 'curator-one',
-          type: 'curator',
-        ),
-      ],
-      nearbyProfiles: [
-        buildAccountProfileModelFromPrimitives(
-          id: _generateMongoId(),
-          name: 'Nearest Venue',
-          slug: 'nearest-venue',
-          type: 'artist',
-          distanceMeters: 120,
-        ),
-        buildAccountProfileModelFromPrimitives(
-          id: _generateMongoId(),
-          name: 'Second Venue',
-          slug: 'second-venue',
-          type: 'artist',
-          distanceMeters: 340,
-        ),
-      ],
-    );
-    final repository = AccountProfilesRepository(
-      backend: backend,
-      favoriteBackend: _StubFavoriteBackend(favorites: const []),
-      favoriteAccountProfileIds: const {},
-    );
+    'getAccountProfileBySlug delegates to backend direct lookup without paged scans',
+    () async {
+      final backend = _StubAccountProfilesBackend(
+        accountProfiles: [
+          buildAccountProfileModelFromPrimitives(
+            id: _generateMongoId(),
+            name: 'Artist One',
+            slug: 'artist-one',
+            type: 'artist',
+          ),
+        ],
+      );
+      final repository = AccountProfilesRepository(
+        backend: backend,
+        favoriteBackend: _StubFavoriteBackend(favorites: const []),
+        favoriteAccountProfileIds: const {},
+      );
 
-    await repository.loadAccountProfilesPage(
-      pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(10),
-    );
-    await repository.syncDiscoveryNearbyAccountProfiles(
-      pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(10),
-    );
+      final profile = await repository.getAccountProfileBySlug(
+        AccountProfilesRepositoryContractPrimString.fromRaw('artist-one'),
+      );
 
-    expect(backend.fetchNearbyCalls, 1);
-    expect(repository.discoveryNearbyAccountProfilesStreamValue.value,
-        hasLength(2));
-    expect(
-      repository.discoveryNearbyAccountProfilesStreamValue.value
-          .map((profile) => profile.name)
-          .toList(),
-      ['Nearest Venue', 'Second Venue'],
-    );
-  });
+      expect(profile?.slug, 'artist-one');
+      expect(backend.fetchBySlugCalls, 1);
+      expect(backend.fetchAccountProfilesPageCalls, 0);
+    },
+  );
+
+  test(
+    'getAccountProfileBySlug does not reject a backend-authoritative public profile just because the local registry does not know the type yet',
+    () async {
+      final backend = _StubAccountProfilesBackend(
+        accountProfiles: [
+          buildAccountProfileModelFromPrimitives(
+            id: _generateMongoId(),
+            name: 'Dynamic Public Type',
+            slug: 'dynamic-public-type',
+            type: 'dynamic-public-type',
+          ),
+        ],
+      );
+      final repository = AccountProfilesRepository(
+        backend: backend,
+        favoriteBackend: _StubFavoriteBackend(favorites: const []),
+        favoriteAccountProfileIds: const {},
+      );
+
+      final profile = await repository.getAccountProfileBySlug(
+        AccountProfilesRepositoryContractPrimString.fromRaw(
+          'dynamic-public-type',
+        ),
+      );
+
+      expect(profile, isNotNull);
+      expect(profile?.type, 'dynamic-public-type');
+      expect(backend.fetchBySlugCalls, 1);
+    },
+  );
+
+  test(
+    'paged account profiles stream accumulates loaded pages canonically',
+    () async {
+      final backend = _StubAccountProfilesBackend(
+        accountProfiles: [
+          buildAccountProfileModelFromPrimitives(
+            id: _generateMongoId(),
+            name: 'Artist One',
+            slug: 'artist-one',
+            type: 'artist',
+          ),
+          buildAccountProfileModelFromPrimitives(
+            id: _generateMongoId(),
+            name: 'Artist Two',
+            slug: 'artist-two',
+            type: 'artist',
+          ),
+        ],
+      );
+      final repository = AccountProfilesRepository(
+        backend: backend,
+        favoriteBackend: _StubFavoriteBackend(favorites: const []),
+        favoriteAccountProfileIds: const {},
+      );
+
+      await repository.loadAccountProfilesPage(
+        pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(1),
+      );
+      expect(repository.currentPagedAccountProfilesPage.value, 1);
+      expect(
+        repository.pagedAccountProfilesStreamValue.value?.profiles,
+        hasLength(1),
+      );
+      expect(
+        repository.hasMorePagedAccountProfilesStreamValue.value.value,
+        isTrue,
+      );
+
+      await repository.loadNextAccountProfilesPage(
+        pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(1),
+      );
+      expect(repository.currentPagedAccountProfilesPage.value, 2);
+      expect(
+        repository.pagedAccountProfilesStreamValue.value?.profiles,
+        hasLength(2),
+      );
+      expect(
+        repository.hasMorePagedAccountProfilesStreamValue.value.value,
+        isFalse,
+      );
+    },
+  );
+
+  test(
+    'discovery nearby stream uses dedicated near endpoint even with paged cache',
+    () async {
+      final backend = _StubAccountProfilesBackend(
+        accountProfiles: [
+          buildAccountProfileModelFromPrimitives(
+            id: _generateMongoId(),
+            name: 'Artist One',
+            slug: 'artist-one',
+            type: 'artist',
+          ),
+          buildAccountProfileModelFromPrimitives(
+            id: _generateMongoId(),
+            name: 'Curator One',
+            slug: 'curator-one',
+            type: 'curator',
+          ),
+        ],
+        nearbyProfiles: [
+          buildAccountProfileModelFromPrimitives(
+            id: _generateMongoId(),
+            name: 'Nearest Venue',
+            slug: 'nearest-venue',
+            type: 'artist',
+            distanceMeters: 120,
+          ),
+          buildAccountProfileModelFromPrimitives(
+            id: _generateMongoId(),
+            name: 'Second Venue',
+            slug: 'second-venue',
+            type: 'artist',
+            distanceMeters: 340,
+          ),
+        ],
+      );
+      final repository = AccountProfilesRepository(
+        backend: backend,
+        favoriteBackend: _StubFavoriteBackend(favorites: const []),
+        favoriteAccountProfileIds: const {},
+      );
+
+      await repository.loadAccountProfilesPage(
+        pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(10),
+      );
+      await repository.syncDiscoveryNearbyAccountProfiles(
+        pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(10),
+      );
+
+      expect(backend.fetchNearbyCalls, 1);
+      expect(
+        repository.discoveryNearbyAccountProfilesStreamValue.value,
+        hasLength(2),
+      );
+      expect(
+        repository.discoveryNearbyAccountProfilesStreamValue.value
+            .map((profile) => profile.name)
+            .toList(),
+        ['Nearest Venue', 'Second Venue'],
+      );
+    },
+  );
 }
 
 class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
@@ -894,8 +913,9 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
     fetchAccountProfilesPageCalls += 1;
     lastAllowedTypes = allowedTypes;
     lastTypeFilters = typeFilters;
-    lastTaxonomyFilters =
-        List<AccountProfilesRepositoryTaxonomyFilter>.of(taxonomyFilters ?? []);
+    lastTaxonomyFilters = List<AccountProfilesRepositoryTaxonomyFilter>.of(
+      taxonomyFilters ?? [],
+    );
     final start = (page - 1) * pageSize;
     if (start < 0 || start >= accountProfiles.length) {
       return pagedAccountProfilesResultFromRaw(
@@ -933,8 +953,8 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
 class _NoopTelemetry implements TelemetryRepositoryContract {
   @override
   Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
-          EventTrackerTimedEventHandle handle) async =>
-      telemetryRepoBool(true);
+    EventTrackerTimedEventHandle handle,
+  ) async => telemetryRepoBool(true);
 
   @override
   Future<TelemetryRepositoryContractPrimBool> flushTimedEvents() async =>
@@ -945,16 +965,14 @@ class _NoopTelemetry implements TelemetryRepositoryContract {
     EventTrackerEvents event, {
     TelemetryRepositoryContractPrimString? eventName,
     TelemetryRepositoryContractPrimMap? properties,
-  }) async =>
-      telemetryRepoBool(true);
+  }) async => telemetryRepoBool(true);
 
   @override
   Future<EventTrackerTimedEventHandle?> startTimedEvent(
     EventTrackerEvents event, {
     TelemetryRepositoryContractPrimString? eventName,
     TelemetryRepositoryContractPrimMap? properties,
-  }) async =>
-      null;
+  }) async => null;
 
   @override
   void setScreenContext(TelemetryRepositoryContractPrimMap? screenContext) {}
@@ -963,10 +981,9 @@ class _NoopTelemetry implements TelemetryRepositoryContract {
   EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
 
   @override
-  Future<TelemetryRepositoryContractPrimBool> mergeIdentity(
-          {required TelemetryRepositoryContractPrimString
-              previousUserId}) async =>
-      telemetryRepoBool(true);
+  Future<TelemetryRepositoryContractPrimBool> mergeIdentity({
+    required TelemetryRepositoryContractPrimString previousUserId,
+  }) async => telemetryRepoBool(true);
 }
 
 class _TelemetryCall {
@@ -1004,8 +1021,8 @@ class _SpyTelemetry implements TelemetryRepositoryContract {
 
   @override
   Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
-          EventTrackerTimedEventHandle handle) async =>
-      telemetryRepoBool(true);
+    EventTrackerTimedEventHandle handle,
+  ) async => telemetryRepoBool(true);
 
   @override
   Future<TelemetryRepositoryContractPrimBool> flushTimedEvents() async =>
@@ -1016,8 +1033,7 @@ class _SpyTelemetry implements TelemetryRepositoryContract {
     EventTrackerEvents event, {
     TelemetryRepositoryContractPrimString? eventName,
     TelemetryRepositoryContractPrimMap? properties,
-  }) async =>
-      null;
+  }) async => null;
 
   @override
   void setScreenContext(TelemetryRepositoryContractPrimMap? screenContext) {}
@@ -1026,10 +1042,9 @@ class _SpyTelemetry implements TelemetryRepositoryContract {
   EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
 
   @override
-  Future<TelemetryRepositoryContractPrimBool> mergeIdentity(
-          {required TelemetryRepositoryContractPrimString
-              previousUserId}) async =>
-      telemetryRepoBool(true);
+  Future<TelemetryRepositoryContractPrimBool> mergeIdentity({
+    required TelemetryRepositoryContractPrimString previousUserId,
+  }) async => telemetryRepoBool(true);
 }
 
 class _StubFavoriteBackend extends FavoriteBackendContract {
@@ -1037,14 +1052,14 @@ class _StubFavoriteBackend extends FavoriteBackendContract {
     required this.favorites,
     Map<String, FavoritePreviewDTO>? favoritePreviewsByAccountProfileId,
     this.throwOnFavorite = false,
-  })  : _favoritesByAccountProfileId = {
-          for (final favorite in favorites)
-            (favorite.targetId ?? favorite.id): favorite,
-        },
-        _favoritePreviewsByAccountProfileId =
-            Map<String, FavoritePreviewDTO>.from(
-          favoritePreviewsByAccountProfileId ?? const {},
-        );
+  }) : _favoritesByAccountProfileId = {
+         for (final favorite in favorites)
+           (favorite.targetId ?? favorite.id): favorite,
+       },
+       _favoritePreviewsByAccountProfileId =
+           Map<String, FavoritePreviewDTO>.from(
+             favoritePreviewsByAccountProfileId ?? const {},
+           );
 
   final List<FavoritePreviewDTO> favorites;
   final bool throwOnFavorite;
@@ -1069,10 +1084,7 @@ class _StubFavoriteBackend extends FavoriteBackendContract {
     favoritedIds.add(accountProfileId);
     _favoritesByAccountProfileId[accountProfileId] =
         _favoritePreviewsByAccountProfileId[accountProfileId] ??
-            _favoritePreview(
-              id: accountProfileId,
-              title: accountProfileId,
-            );
+        _favoritePreview(id: accountProfileId, title: accountProfileId);
   }
 
   @override
@@ -1083,7 +1095,8 @@ class _StubFavoriteBackend extends FavoriteBackendContract {
   }
 }
 
-class _TrackingFavoriteRepository extends FavoriteRepositoryContract {
+class _TrackingFavoriteRepository extends FavoriteRepositoryContract
+    with FavoriteRepositoryPagingMixin {
   _TrackingFavoriteRepository({
     required this.favoriteBackend,
     this.throwOnRefreshFavoriteResumes = false,
@@ -1097,18 +1110,18 @@ class _TrackingFavoriteRepository extends FavoriteRepositoryContract {
   @override
   Future<List<Favorite>> fetchFavorites() async {
     final favorites = await favoriteBackend.fetchFavorites();
-    return favorites.map((favorite) => favorite.toDomain()).toList(
-          growable: false,
-        );
+    return favorites
+        .map((favorite) => favorite.toDomain())
+        .toList(growable: false);
   }
 
   @override
   Future<List<FavoriteResume>> fetchFavoriteResumes() async {
     fetchFavoriteResumesCallCount += 1;
     final favorites = await favoriteBackend.fetchFavorites();
-    return favorites.map((favorite) => favorite.toResume()).toList(
-          growable: false,
-        );
+    return favorites
+        .map((favorite) => favorite.toResume())
+        .toList(growable: false);
   }
 
   @override
@@ -1194,13 +1207,14 @@ AppData _buildAppData() {
     'device': 'test-device',
   };
   return buildAppDataFromInitialization(
-      remoteData: remoteData, localInfo: localInfo);
+    remoteData: remoteData,
+    localInfo: localInfo,
+  );
 }
 
 String _generateMongoId() {
   // 24-char hex string to satisfy MongoIDValue validation in AccountProfileModel.
-  return DateTime.now()
-      .microsecondsSinceEpoch
+  return DateTime.now().microsecondsSinceEpoch
       .toRadixString(16)
       .padLeft(24, '0')
       .substring(0, 24);

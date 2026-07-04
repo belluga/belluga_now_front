@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:belluga_form_validation/belluga_form_validation.dart';
 import 'package:belluga_now/domain/auth/auth_phone_otp_challenge.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
@@ -26,24 +27,15 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart
 
 void main() {
   TenantAdminEventsRepoString _repoText(String value) {
-    return TenantAdminEventsRepoString.fromRaw(
-      value,
-      defaultValue: value,
-    );
+    return TenantAdminEventsRepoString.fromRaw(value, defaultValue: value);
   }
 
   TenantAdminEventsRepoInt _repoInt(int value) {
-    return TenantAdminEventsRepoInt.fromRaw(
-      value,
-      defaultValue: value,
-    );
+    return TenantAdminEventsRepoInt.fromRaw(value, defaultValue: value);
   }
 
   TenantAdminEventsRepoBool _repoBool(bool value) {
-    return TenantAdminEventsRepoBool.fromRaw(
-      value,
-      defaultValue: value,
-    );
+    return TenantAdminEventsRepoBool.fromRaw(value, defaultValue: value);
   }
 
   Future<void> registerAuth({
@@ -94,10 +86,7 @@ void main() {
             tenantAdminTaxonomyTermFromRaw(type: 'music_genre', value: 'rock'),
           );
           terms.add(
-            tenantAdminTaxonomyTermFromRaw(
-              type: 'audience',
-              value: 'families',
-            ),
+            tenantAdminTaxonomyTermFromRaw(type: 'audience', value: 'families'),
           );
           return terms;
         })(),
@@ -120,14 +109,87 @@ void main() {
         {'type': 'audience', 'value': 'families'},
       ]),
     );
-    expect(created.taxonomyTerms.map((term) => term.type),
-        contains('music_genre'));
+    expect(
+      created.taxonomyTerms.map((term) => term.type),
+      contains('music_genre'),
+    );
   });
 
   test(
-      'createEvent omits geo payload for online mode even when coordinates exist',
-      () async {
-    final adapter = _EventsRoutingAdapter();
+    'createEvent omits geo payload for online mode even when coordinates exist',
+    () async {
+      final adapter = _EventsRoutingAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      await repository.createEvent(
+        draft: _buildDraft(
+          location: TenantAdminEventLocation(
+            modeValue: tenantAdminRequiredText('online'),
+            latitudeValue: tenantAdminOptionalDouble(-20.611121),
+            longitudeValue: tenantAdminOptionalDouble(-40.498617),
+            online: TenantAdminEventOnlineLocation(
+              urlValue: tenantAdminRequiredText('https://example.com/live'),
+            ),
+          ),
+        ),
+      );
+
+      expect(adapter.requests, isNotEmpty);
+      final request = adapter.requests.last;
+      expect(request.method, 'POST');
+      expect(request.path, endsWith('/admin/api/v1/events'));
+      final payload = request.data as Map<String, dynamic>;
+      final location = payload['location'] as Map<String, dynamic>;
+      expect(location['mode'], 'online');
+      expect(location.containsKey('geo'), isFalse);
+      expect(location['online'], {'url': 'https://example.com/live'});
+    },
+  );
+
+  test(
+    'createEvent keeps account_profile place_ref contract for physical mode',
+    () async {
+      final adapter = _EventsRoutingAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      await repository.createEvent(
+        draft: _buildDraft(
+          location: TenantAdminEventLocation(
+            modeValue: tenantAdminRequiredText('physical'),
+            latitudeValue: tenantAdminOptionalDouble(-20.611121),
+            longitudeValue: tenantAdminOptionalDouble(-40.498617),
+          ),
+          placeRef: TenantAdminEventPlaceRef(
+            typeValue: tenantAdminRequiredText('account_profile'),
+            idValue: tenantAdminRequiredText('profile-1'),
+          ),
+        ),
+      );
+
+      expect(adapter.requests, isNotEmpty);
+      final request = adapter.requests.last;
+      expect(request.method, 'POST');
+      expect(request.path, endsWith('/admin/api/v1/events'));
+      final payload = request.data as Map<String, dynamic>;
+      expect(payload['place_ref'], isA<Map<String, dynamic>>());
+      final placeRef = payload['place_ref'] as Map<String, dynamic>;
+      expect(placeRef['type'], 'account_profile');
+      expect(placeRef['id'], 'profile-1');
+    },
+  );
+
+  test('createEvent preserves backend 422 validation failures', () async {
+    final adapter = _EventsCreateValidationAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
     final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
     final repository = TenantAdminEventsRepository(
@@ -135,63 +197,30 @@ void main() {
       tenantScope: scope,
     );
 
-    await repository.createEvent(
-      draft: _buildDraft(
-        location: TenantAdminEventLocation(
-          modeValue: tenantAdminRequiredText('online'),
-          latitudeValue: tenantAdminOptionalDouble(-20.611121),
-          longitudeValue: tenantAdminOptionalDouble(-40.498617),
-          online: TenantAdminEventOnlineLocation(
-            urlValue: tenantAdminRequiredText('https://example.com/live'),
+    await expectLater(
+      () => repository.createEvent(
+        draft: _buildDraft(
+          location: TenantAdminEventLocation(
+            modeValue: tenantAdminRequiredText('physical'),
+            latitudeValue: tenantAdminOptionalDouble(-20.611121),
+            longitudeValue: tenantAdminOptionalDouble(-40.498617),
+          ),
+          placeRef: TenantAdminEventPlaceRef(
+            typeValue: tenantAdminRequiredText('account_profile'),
+            idValue: tenantAdminRequiredText('profile-1'),
           ),
         ),
       ),
-    );
-
-    expect(adapter.requests, isNotEmpty);
-    final request = adapter.requests.last;
-    expect(request.method, 'POST');
-    expect(request.path, endsWith('/admin/api/v1/events'));
-    final payload = request.data as Map<String, dynamic>;
-    final location = payload['location'] as Map<String, dynamic>;
-    expect(location['mode'], 'online');
-    expect(location.containsKey('geo'), isFalse);
-    expect(location['online'], {'url': 'https://example.com/live'});
-  });
-
-  test('createEvent keeps account_profile place_ref contract for physical mode',
-      () async {
-    final adapter = _EventsRoutingAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
-    final repository = TenantAdminEventsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
-
-    await repository.createEvent(
-      draft: _buildDraft(
-        location: TenantAdminEventLocation(
-          modeValue: tenantAdminRequiredText('physical'),
-          latitudeValue: tenantAdminOptionalDouble(-20.611121),
-          longitudeValue: tenantAdminOptionalDouble(-40.498617),
-        ),
-        placeRef: TenantAdminEventPlaceRef(
-          typeValue: tenantAdminRequiredText('account_profile'),
-          idValue: tenantAdminRequiredText('profile-1'),
-        ),
+      throwsA(
+        isA<FormValidationFailure>()
+            .having((error) => error.statusCode, 'statusCode', 422)
+            .having(
+              (error) => error.fieldErrors['place_ref'],
+              'place_ref',
+              contains('validation.required_if'),
+            ),
       ),
     );
-
-    expect(adapter.requests, isNotEmpty);
-    final request = adapter.requests.last;
-    expect(request.method, 'POST');
-    expect(request.path, endsWith('/admin/api/v1/events'));
-    final payload = request.data as Map<String, dynamic>;
-    expect(payload['place_ref'], isA<Map<String, dynamic>>());
-    final placeRef = payload['place_ref'] as Map<String, dynamic>;
-    expect(placeRef['type'], 'account_profile');
-    expect(placeRef['id'], 'profile-1');
   });
 
   test('createOwnEvent uses account-scoped endpoint', () async {
@@ -215,142 +244,161 @@ void main() {
     expect(request.headers['Authorization'], 'Bearer account-token');
   });
 
-  test('createEvent uses multipart payload when cover upload is provided',
-      () async {
-    final adapter = _EventsRoutingAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
-    final repository = TenantAdminEventsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
+  test(
+    'createEvent uses multipart payload when cover upload is provided',
+    () async {
+      final adapter = _EventsRoutingAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
 
-    await repository.createEvent(
-      draft: _buildDraft(
-        coverUpload: tenantAdminMediaUploadFromRaw(
-          bytes: Uint8List.fromList([1, 2, 3, 4]),
-          fileName: 'event-cover.png',
-          mimeType: 'image/png',
+      await repository.createEvent(
+        draft: _buildDraft(
+          coverUpload: tenantAdminMediaUploadFromRaw(
+            bytes: Uint8List.fromList([1, 2, 3, 4]),
+            fileName: 'event-cover.png',
+            mimeType: 'image/png',
+          ),
         ),
-      ),
-    );
+      );
 
-    final request = adapter.requests.last;
-    expect(request.method, 'POST');
-    expect(request.path, endsWith('/admin/api/v1/events'));
-    expect(request.data, isA<FormData>());
-    final formData = request.data as FormData;
-    expect(formData.files.map((entry) => entry.key), contains('cover'));
-  });
+      final request = adapter.requests.last;
+      expect(request.method, 'POST');
+      expect(request.path, endsWith('/admin/api/v1/events'));
+      expect(request.data, isA<FormData>());
+      final formData = request.data as FormData;
+      expect(formData.files.map((entry) => entry.key), contains('cover'));
+    },
+  );
 
   test(
-      'createEvent multipart preserves occurrence-owned profiles and programming payload',
-      () async {
-    final adapter = _EventsRoutingAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
-    final repository = TenantAdminEventsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
-
-    await repository.createEvent(
-      draft: _buildDraft(
-        coverUpload: tenantAdminMediaUploadFromRaw(
-          bytes: Uint8List.fromList([7, 8, 9]),
-          fileName: 'event-cover.png',
-          mimeType: 'image/png',
-        ),
-        occurrences: [
-          TenantAdminEventOccurrence(
-            dateTimeStartValue: tenantAdminDateTime(DateTime(2026, 3, 5, 20)),
-          ),
-          TenantAdminEventOccurrence(
-            dateTimeStartValue: tenantAdminDateTime(DateTime(2026, 3, 6, 17)),
-            profileGroups: [
-              TenantAdminNestedProfileGroup(
-                idValue: TenantAdminNestedProfileGroupTextValue('bandas'),
-                labelValue: TenantAdminNestedProfileGroupTextValue('Bandas'),
-                orderValue: TenantAdminNestedProfileGroupOrderValue(0),
-                accountProfileIdValues: [
-                  TenantAdminNestedProfileGroupTextValue(
-                    '507f1f77bcf86cd799439021',
-                  ),
-                ],
-              ),
-            ],
-            programmingItems: [
-              TenantAdminEventProgrammingItem(
-                timeValue: tenantAdminRequiredText('17:00'),
-                titleValue: tenantAdminOptionalText('Show com a banda'),
-                accountProfileIdValues: [
-                  TenantAdminAccountProfileIdValue('507f1f77bcf86cd799439021'),
-                ],
-                placeRef: TenantAdminEventPlaceRef(
-                  typeValue: tenantAdminRequiredText('account_profile'),
-                  idValue: tenantAdminRequiredText('507f1f77bcf86cd799439031'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-
-    final request = adapter.requests.last;
-    expect(request.method, 'POST');
-    expect(request.data, isA<FormData>());
-    final formData = request.data as FormData;
-
-    bool hasField(String key, String value) {
-      return formData.fields.any(
-        (entry) => entry.key == key && entry.value == value,
+    'createEvent multipart preserves occurrence-owned profiles and programming payload',
+    () async {
+      final adapter = _EventsRoutingAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
       );
-    }
 
-    expect(
-      hasField('occurrences[1][profile_groups][0][id]', 'bandas'),
-      isTrue,
-    );
-    expect(
-      hasField('occurrences[1][profile_groups][0][label]', 'Bandas'),
-      isTrue,
-    );
-    expect(
-      hasField('occurrences[1][profile_groups][0][account_profile_ids][]',
-          '507f1f77bcf86cd799439021'),
-      isTrue,
-    );
-    expect(
-      hasField('occurrences[1][event_parties][0][party_ref_id]',
-          '507f1f77bcf86cd799439021'),
-      isTrue,
-    );
-    expect(
-      hasField('occurrences[1][programming_items][0][time]', '17:00'),
-      isTrue,
-    );
-    expect(
-      hasField(
-          'occurrences[1][programming_items][0][title]', 'Show com a banda'),
-      isTrue,
-    );
-    expect(
-      hasField('occurrences[1][programming_items][0][account_profile_ids][]',
-          '507f1f77bcf86cd799439021'),
-      isTrue,
-    );
-    expect(
-      hasField('occurrences[1][programming_items][0][place_ref][type]',
-          'account_profile'),
-      isTrue,
-    );
-    expect(
-      hasField('occurrences[1][programming_items][0][place_ref][id]',
-          '507f1f77bcf86cd799439031'),
-      isTrue,
-    );
-  });
+      await repository.createEvent(
+        draft: _buildDraft(
+          coverUpload: tenantAdminMediaUploadFromRaw(
+            bytes: Uint8List.fromList([7, 8, 9]),
+            fileName: 'event-cover.png',
+            mimeType: 'image/png',
+          ),
+          occurrences: [
+            TenantAdminEventOccurrence(
+              dateTimeStartValue: tenantAdminDateTime(DateTime(2026, 3, 5, 20)),
+            ),
+            TenantAdminEventOccurrence(
+              dateTimeStartValue: tenantAdminDateTime(DateTime(2026, 3, 6, 17)),
+              profileGroups: [
+                TenantAdminNestedProfileGroup(
+                  idValue: TenantAdminNestedProfileGroupTextValue('bandas'),
+                  labelValue: TenantAdminNestedProfileGroupTextValue('Bandas'),
+                  orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+                  accountProfileIdValues: [
+                    TenantAdminNestedProfileGroupTextValue(
+                      '507f1f77bcf86cd799439021',
+                    ),
+                  ],
+                ),
+              ],
+              programmingItems: [
+                TenantAdminEventProgrammingItem(
+                  timeValue: tenantAdminRequiredText('17:00'),
+                  titleValue: tenantAdminOptionalText('Show com a banda'),
+                  accountProfileIdValues: [
+                    TenantAdminAccountProfileIdValue(
+                      '507f1f77bcf86cd799439021',
+                    ),
+                  ],
+                  placeRef: TenantAdminEventPlaceRef(
+                    typeValue: tenantAdminRequiredText('account_profile'),
+                    idValue: tenantAdminRequiredText(
+                      '507f1f77bcf86cd799439031',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+
+      final request = adapter.requests.last;
+      expect(request.method, 'POST');
+      expect(request.data, isA<FormData>());
+      final formData = request.data as FormData;
+
+      bool hasField(String key, String value) {
+        return formData.fields.any(
+          (entry) => entry.key == key && entry.value == value,
+        );
+      }
+
+      expect(
+        hasField('occurrences[1][profile_groups][0][id]', 'bandas'),
+        isTrue,
+      );
+      expect(
+        hasField('occurrences[1][profile_groups][0][label]', 'Bandas'),
+        isTrue,
+      );
+      expect(
+        hasField(
+          'occurrences[1][profile_groups][0][account_profile_ids][]',
+          '507f1f77bcf86cd799439021',
+        ),
+        isTrue,
+      );
+      expect(
+        hasField(
+          'occurrences[1][event_parties][0][party_ref_id]',
+          '507f1f77bcf86cd799439021',
+        ),
+        isTrue,
+      );
+      expect(
+        hasField('occurrences[1][programming_items][0][time]', '17:00'),
+        isTrue,
+      );
+      expect(
+        hasField(
+          'occurrences[1][programming_items][0][title]',
+          'Show com a banda',
+        ),
+        isTrue,
+      );
+      expect(
+        hasField(
+          'occurrences[1][programming_items][0][account_profile_ids][]',
+          '507f1f77bcf86cd799439021',
+        ),
+        isTrue,
+      );
+      expect(
+        hasField(
+          'occurrences[1][programming_items][0][place_ref][type]',
+          'account_profile',
+        ),
+        isTrue,
+      );
+      expect(
+        hasField(
+          'occurrences[1][programming_items][0][place_ref][id]',
+          '507f1f77bcf86cd799439031',
+        ),
+        isTrue,
+      );
+    },
+  );
 
   test('updateEvent sends remove_cover as multipart patch override', () async {
     final adapter = _EventsRoutingAdapter();
@@ -376,69 +424,72 @@ void main() {
   });
 
   test(
-      'updateEvent remove_cover multipart path preserves explicit empty event_parties clear intent',
-      () async {
-    final adapter = _EventsRoutingAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
-    final repository = TenantAdminEventsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
+    'updateEvent remove_cover multipart path preserves explicit empty event_parties clear intent',
+    () async {
+      final adapter = _EventsRoutingAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
 
-    await repository.updateEvent(
-      eventId: _repoText('evt-1'),
-      draft: _buildDraft(removeCover: true),
-    );
+      await repository.updateEvent(
+        eventId: _repoText('evt-1'),
+        draft: _buildDraft(removeCover: true),
+      );
 
-    final request = adapter.requests.last;
-    expect(request.method, 'POST');
-    expect(request.path, endsWith('/admin/api/v1/events/evt-1'));
-    expect(request.data, isA<FormData>());
-    final formData = request.data as FormData;
-    expect(
-      formData.fields.any(
-        (entry) => entry.key == 'event_parties' && entry.value == '[]',
-      ),
-      isTrue,
-    );
-    expect(
-      formData.fields.any(
-        (entry) => entry.key == 'remove_cover' && entry.value == '1',
-      ),
-      isTrue,
-    );
-    expect(
-      formData.fields.any(
-        (entry) => entry.key == '_method' && entry.value == 'PATCH',
-      ),
-      isTrue,
-    );
-  });
+      final request = adapter.requests.last;
+      expect(request.method, 'POST');
+      expect(request.path, endsWith('/admin/api/v1/events/evt-1'));
+      expect(request.data, isA<FormData>());
+      final formData = request.data as FormData;
+      expect(
+        formData.fields.any(
+          (entry) => entry.key == 'event_parties' && entry.value == '[]',
+        ),
+        isTrue,
+      );
+      expect(
+        formData.fields.any(
+          (entry) => entry.key == 'remove_cover' && entry.value == '1',
+        ),
+        isTrue,
+      );
+      expect(
+        formData.fields.any(
+          (entry) => entry.key == '_method' && entry.value == 'PATCH',
+        ),
+        isTrue,
+      );
+    },
+  );
 
-  test('updateEvent sends empty event_parties when clearing related accounts',
-      () async {
-    final adapter = _EventsRoutingAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
-    final repository = TenantAdminEventsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
+  test(
+    'updateEvent sends empty event_parties when clearing related accounts',
+    () async {
+      final adapter = _EventsRoutingAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
 
-    await repository.updateEvent(
-      eventId: _repoText('evt-1'),
-      draft: _buildDraft(),
-    );
+      await repository.updateEvent(
+        eventId: _repoText('evt-1'),
+        draft: _buildDraft(),
+      );
 
-    final request = adapter.requests.last;
-    expect(request.method, 'PATCH');
-    expect(request.path, endsWith('/admin/api/v1/events/evt-1'));
-    expect(request.data, isA<Map<String, dynamic>>());
-    final payload = request.data as Map<String, dynamic>;
-    expect(payload.containsKey('event_parties'), isTrue);
-    expect(payload['event_parties'], isEmpty);
-  });
+      final request = adapter.requests.last;
+      expect(request.method, 'PATCH');
+      expect(request.path, endsWith('/admin/api/v1/events/evt-1'));
+      expect(request.data, isA<Map<String, dynamic>>());
+      final payload = request.data as Map<String, dynamic>;
+      expect(payload.containsKey('event_parties'), isTrue);
+      expect(payload['event_parties'], isEmpty);
+    },
+  );
 
   test('fetchEventsPage propagates 404 as repository error', () async {
     final adapter = _NotFoundEventsAdapter();
@@ -450,10 +501,7 @@ void main() {
     );
 
     await expectLater(
-      repository.fetchEventsPage(
-        page: _repoInt(1),
-        pageSize: _repoInt(20),
-      ),
+      repository.fetchEventsPage(page: _repoInt(1), pageSize: _repoInt(20)),
       throwsA(
         isA<FormatException>().having(
           (error) => error.message,
@@ -464,276 +512,290 @@ void main() {
     );
   });
 
-  test('fetchEventsPage serializes archived filter as integer boolean',
-      () async {
-    final adapter = _EventsRoutingAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
-    final repository = TenantAdminEventsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
-
-    await repository.fetchEventsPage(
-      page: _repoInt(1),
-      pageSize: _repoInt(20),
-      archived: _repoBool(true),
-    );
-
-    final request = adapter.requests.lastWhere(
-      (request) =>
-          request.method == 'GET' &&
-          request.path.endsWith('/admin/api/v1/events'),
-    );
-    expect(request.queryParameters['archived'], 1);
-  });
-
-  test('fetchEventsPage serializes specific date as date query parameter',
-      () async {
-    final adapter = _EventsRoutingAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
-    final repository = TenantAdminEventsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
-
-    await repository.fetchEventsPage(
-      page: _repoInt(1),
-      pageSize: _repoInt(20),
-      specificDate: _repoText('2026-04-10'),
-    );
-
-    final request = adapter.requests.lastWhere(
-      (request) =>
-          request.method == 'GET' &&
-          request.path.endsWith('/admin/api/v1/events'),
-    );
-    expect(request.queryParameters['date'], '2026-04-10');
-  });
-
-  test('fetchEventsPage never serializes retired direct search parameter',
-      () async {
-    final adapter = _EventsRoutingAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
-    final repository = TenantAdminEventsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
-
-    await repository.fetchEventsPage(
-      page: _repoInt(1),
-      pageSize: _repoInt(20),
-      search: _repoText('legacy search'),
-    );
-
-    final request = adapter.requests.lastWhere(
-      (request) =>
-          request.method == 'GET' &&
-          request.path.endsWith('/admin/api/v1/events'),
-    );
-    expect(request.queryParameters.containsKey('search'), isFalse);
-  });
-
-  test('fetchEventsPage serializes temporal filter as csv query parameter',
-      () async {
-    final adapter = _EventsRoutingAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
-    final repository = TenantAdminEventsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
-
-    await repository.fetchEventsPage(
-      page: _repoInt(1),
-      pageSize: _repoInt(20),
-      temporalBuckets: const <TenantAdminEventTemporalBucket>{
-        TenantAdminEventTemporalBucket.now,
-        TenantAdminEventTemporalBucket.future,
-      },
-    );
-
-    final request = adapter.requests.lastWhere(
-      (request) =>
-          request.method == 'GET' &&
-          request.path.endsWith('/admin/api/v1/events'),
-    );
-    expect(request.queryParameters['temporal'], 'now,future');
-  });
-
   test(
-      'fetchEventsPage serializes venue and related account profile filters as dedicated query parameters',
-      () async {
-    final adapter = _EventsRoutingAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
-    final repository = TenantAdminEventsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
+    'fetchEventsPage serializes archived filter as integer boolean',
+    () async {
+      final adapter = _EventsRoutingAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
 
-    await repository.fetchEventsPage(
-      page: _repoInt(1),
-      pageSize: _repoInt(20),
-      venueProfileId: _repoText('venue-42'),
-      relatedAccountProfileId: _repoText('profile-77'),
-    );
-
-    final request = adapter.requests.lastWhere(
-      (request) =>
-          request.method == 'GET' &&
-          request.path.endsWith('/admin/api/v1/events'),
-    );
-    expect(request.queryParameters['venue_profile_id'], 'venue-42');
-    expect(
-      request.queryParameters['related_account_profile_id'],
-      'profile-77',
-    );
-  });
-
-  test(
-      'fetchEventsPage decodes summarized related account profiles without requiring full account profile payload',
-      () async {
-    final adapter = _EventsListWithSummarizedRelatedProfilesAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
-    final repository = TenantAdminEventsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
-
-    final result = await repository.fetchEventsPage(
-      page: _repoInt(1),
-      pageSize: _repoInt(20),
-    );
-
-    expect(result.items, hasLength(1));
-    expect(result.items.first.title, 'Summarized Artist Event');
-    expect(result.items.first.relatedAccountProfiles, hasLength(1));
-    expect(
-      result.items.first.relatedAccountProfiles.first.id,
-      'artist-summary-1',
-    );
-    expect(
-      result.items.first.relatedAccountProfiles.first.displayName,
-      'DJ Summary',
-    );
-    expect(
-      result.items.first.relatedAccountProfiles.first.profileType,
-      'artist',
-    );
-    expect(
-      result.items.first.relatedAccountProfiles.first.accountId,
-      'artist-summary-1',
-    );
-  });
-
-  test(
-      'fetchEventsPage normalizes relative related profile media urls to tenant origin before admin decode',
-      () async {
-    final adapter = _EventsListWithRelativeRelatedProfileMediaAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
-    final repository = TenantAdminEventsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
-
-    final result = await repository.fetchEventsPage(
-      page: _repoInt(1),
-      pageSize: _repoInt(20),
-    );
-
-    expect(result.items, hasLength(1));
-    expect(result.items.first.relatedAccountProfiles, hasLength(1));
-    expect(
-      result.items.first.relatedAccountProfiles.first.avatarUrl,
-      'https://tenant-a.test/api/v1/media/account-profiles/artist-relative/avatar?v=7',
-    );
-    expect(
-      result.items.first.relatedAccountProfiles.first.coverUrl,
-      'https://tenant-a.test/account-profiles/artist-relative/cover?v=8',
-    );
-  });
-
-  test('fetchEventsPage wraps decoder failures with readable repository error',
-      () async {
-    final adapter = _MalformedEventsPayloadAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
-    final repository = TenantAdminEventsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
-
-    await expectLater(
-      repository.fetchEventsPage(
+      await repository.fetchEventsPage(
         page: _repoInt(1),
         pageSize: _repoInt(20),
         archived: _repoBool(true),
-      ),
-      throwsA(
-        isA<FormatException>()
-            .having(
-              (error) => error.message,
-              'message',
-              contains('Failed to load events page [decode]'),
-            )
-            .having(
-              (error) => error.message,
-              'message',
-              contains('Invalid scalar text value'),
-            )
-            .having(
-              (error) => error.message,
-              'message',
-              contains('/admin/api/v1/events'),
-            ),
-      ),
-    );
-  });
+      );
+
+      final request = adapter.requests.lastWhere(
+        (request) =>
+            request.method == 'GET' &&
+            request.path.endsWith('/admin/api/v1/events'),
+      );
+      expect(request.queryParameters['archived'], 1);
+    },
+  );
 
   test(
-      'fetchEvent uses dedicated item readback and normalizes relative related profile media',
-      () async {
-    final adapter = _EventItemWithRelativeRelatedProfileMediaAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
-    final repository = TenantAdminEventsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
+    'fetchEventsPage serializes specific date as date query parameter',
+    () async {
+      final adapter = _EventsRoutingAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
 
-    final event = await repository.fetchEvent(_repoText('evt-readback'));
+      await repository.fetchEventsPage(
+        page: _repoInt(1),
+        pageSize: _repoInt(20),
+        specificDate: _repoText('2026-04-10'),
+      );
 
-    expect(event.eventId, 'evt-readback');
-    expect(event.title, 'Evento readback');
-    expect(event.relatedAccountProfiles, hasLength(2));
-    expect(
-      event.relatedAccountProfiles.first.avatarUrl,
-      'https://tenant-a.test/api/v1/media/account-profiles/artist-1/avatar?v=7',
-    );
-    expect(
-      event.profileGroups.single.accountProfileIdValues
-          .map((value) => value.value)
-          .toList(growable: false),
-      ['artist-1', 'delegate-1'],
-    );
-    expect(
-      event.occurrences.single.profileGroups.single.accountProfileIdValues
-          .map((value) => value.value)
-          .toList(growable: false),
-      ['artist-1', 'delegate-1'],
-    );
+      final request = adapter.requests.lastWhere(
+        (request) =>
+            request.method == 'GET' &&
+            request.path.endsWith('/admin/api/v1/events'),
+      );
+      expect(request.queryParameters['date'], '2026-04-10');
+    },
+  );
 
-    expect(adapter.requests, hasLength(1));
-    final request = adapter.requests.single;
-    expect(request.method, 'GET');
-    expect(request.path, endsWith('/admin/api/v1/events/evt-readback'));
-    expect(request.headers['Authorization'], 'Bearer test-token');
-  });
+  test(
+    'fetchEventsPage never serializes retired direct search parameter',
+    () async {
+      final adapter = _EventsRoutingAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      await repository.fetchEventsPage(
+        page: _repoInt(1),
+        pageSize: _repoInt(20),
+        search: _repoText('legacy search'),
+      );
+
+      final request = adapter.requests.lastWhere(
+        (request) =>
+            request.method == 'GET' &&
+            request.path.endsWith('/admin/api/v1/events'),
+      );
+      expect(request.queryParameters.containsKey('search'), isFalse);
+    },
+  );
+
+  test(
+    'fetchEventsPage serializes temporal filter as csv query parameter',
+    () async {
+      final adapter = _EventsRoutingAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      await repository.fetchEventsPage(
+        page: _repoInt(1),
+        pageSize: _repoInt(20),
+        temporalBuckets: const <TenantAdminEventTemporalBucket>{
+          TenantAdminEventTemporalBucket.now,
+          TenantAdminEventTemporalBucket.future,
+        },
+      );
+
+      final request = adapter.requests.lastWhere(
+        (request) =>
+            request.method == 'GET' &&
+            request.path.endsWith('/admin/api/v1/events'),
+      );
+      expect(request.queryParameters['temporal'], 'now,future');
+    },
+  );
+
+  test(
+    'fetchEventsPage serializes venue and related account profile filters as dedicated query parameters',
+    () async {
+      final adapter = _EventsRoutingAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      await repository.fetchEventsPage(
+        page: _repoInt(1),
+        pageSize: _repoInt(20),
+        venueProfileId: _repoText('venue-42'),
+        relatedAccountProfileId: _repoText('profile-77'),
+      );
+
+      final request = adapter.requests.lastWhere(
+        (request) =>
+            request.method == 'GET' &&
+            request.path.endsWith('/admin/api/v1/events'),
+      );
+      expect(request.queryParameters['venue_profile_id'], 'venue-42');
+      expect(
+        request.queryParameters['related_account_profile_id'],
+        'profile-77',
+      );
+    },
+  );
+
+  test(
+    'fetchEventsPage decodes summarized related account profiles without requiring full account profile payload',
+    () async {
+      final adapter = _EventsListWithSummarizedRelatedProfilesAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      final result = await repository.fetchEventsPage(
+        page: _repoInt(1),
+        pageSize: _repoInt(20),
+      );
+
+      expect(result.items, hasLength(1));
+      expect(result.items.first.title, 'Summarized Artist Event');
+      expect(result.items.first.relatedAccountProfiles, hasLength(1));
+      expect(
+        result.items.first.relatedAccountProfiles.first.id,
+        'artist-summary-1',
+      );
+      expect(
+        result.items.first.relatedAccountProfiles.first.displayName,
+        'DJ Summary',
+      );
+      expect(
+        result.items.first.relatedAccountProfiles.first.profileType,
+        'artist',
+      );
+      expect(
+        result.items.first.relatedAccountProfiles.first.accountId,
+        'artist-summary-1',
+      );
+    },
+  );
+
+  test(
+    'fetchEventsPage normalizes relative related profile media urls to tenant origin before admin decode',
+    () async {
+      final adapter = _EventsListWithRelativeRelatedProfileMediaAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      final result = await repository.fetchEventsPage(
+        page: _repoInt(1),
+        pageSize: _repoInt(20),
+      );
+
+      expect(result.items, hasLength(1));
+      expect(result.items.first.relatedAccountProfiles, hasLength(1));
+      expect(
+        result.items.first.relatedAccountProfiles.first.avatarUrl,
+        'https://tenant-a.test/api/v1/media/account-profiles/artist-relative/avatar?v=7',
+      );
+      expect(
+        result.items.first.relatedAccountProfiles.first.coverUrl,
+        'https://tenant-a.test/account-profiles/artist-relative/cover?v=8',
+      );
+    },
+  );
+
+  test(
+    'fetchEventsPage wraps decoder failures with readable repository error',
+    () async {
+      final adapter = _MalformedEventsPayloadAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      await expectLater(
+        repository.fetchEventsPage(
+          page: _repoInt(1),
+          pageSize: _repoInt(20),
+          archived: _repoBool(true),
+        ),
+        throwsA(
+          isA<FormatException>()
+              .having(
+                (error) => error.message,
+                'message',
+                contains('Failed to load events page [decode]'),
+              )
+              .having(
+                (error) => error.message,
+                'message',
+                contains('Invalid scalar text value'),
+              )
+              .having(
+                (error) => error.message,
+                'message',
+                contains('/admin/api/v1/events'),
+              ),
+        ),
+      );
+    },
+  );
+
+  test(
+    'fetchEvent uses dedicated item readback and normalizes relative related profile media',
+    () async {
+      final adapter = _EventItemWithRelativeRelatedProfileMediaAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      final event = await repository.fetchEvent(_repoText('evt-readback'));
+
+      expect(event.eventId, 'evt-readback');
+      expect(event.title, 'Evento readback');
+      expect(event.relatedAccountProfiles, hasLength(2));
+      expect(
+        event.relatedAccountProfiles.first.avatarUrl,
+        'https://tenant-a.test/api/v1/media/account-profiles/artist-1/avatar?v=7',
+      );
+      expect(
+        event.profileGroups.single.accountProfileIdValues
+            .map((value) => value.value)
+            .toList(growable: false),
+        ['artist-1', 'delegate-1'],
+      );
+      expect(
+        event.occurrences.single.profileGroups.single.accountProfileIdValues
+            .map((value) => value.value)
+            .toList(growable: false),
+        ['artist-1', 'delegate-1'],
+      );
+
+      expect(adapter.requests, hasLength(1));
+      final request = adapter.requests.single;
+      expect(request.method, 'GET');
+      expect(request.path, endsWith('/admin/api/v1/events/evt-readback'));
+      expect(request.headers['Authorization'], 'Bearer test-token');
+    },
+  );
 
   test('fetchEventTypes prefers landlord token and maps payload', () async {
     final adapter = _EventTypesAdapter();
@@ -761,326 +823,364 @@ void main() {
     expect(request.headers['Authorization'], 'Bearer test-token');
   });
 
-  test('fetchEventTypes falls back to account token when landlord token empty',
-      () async {
-    await registerAuth(
-      landlordToken: '',
-      accountToken: 'account-token',
-    );
+  test(
+    'fetchEventTypes falls back to account token when landlord token empty',
+    () async {
+      await registerAuth(landlordToken: '', accountToken: 'account-token');
 
-    final adapter = _EventTypesAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
-    final repository = TenantAdminEventsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
+      final adapter = _EventTypesAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
 
-    final eventTypes = await repository.fetchEventTypes();
+      final eventTypes = await repository.fetchEventTypes();
 
-    expect(eventTypes, hasLength(2));
-    expect(adapter.requests, hasLength(1));
-    final request = adapter.requests.first;
-    expect(request.method, 'GET');
-    expect(request.path, endsWith('/admin/api/v1/event_types'));
-    expect(request.headers['Authorization'], 'Bearer account-token');
-  });
-
-  test('fetchEventTypes throws when both landlord and account token are empty',
-      () async {
-    await registerAuth(
-      landlordToken: '',
-      accountToken: '',
-    );
-
-    final adapter = _EventTypesAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
-    final repository = TenantAdminEventsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
-
-    await expectLater(
-      () => repository.fetchEventTypes(),
-      throwsA(
-        isA<FormatException>().having(
-          (error) => error.message,
-          'message',
-          contains('Failed to resolve auth token for event types request.'),
-        ),
-      ),
-    );
-  });
-
-  test('fetchEventAccountProfileCandidatesPage uses dedicated endpoint',
-      () async {
-    final adapter = _AccountProfileCandidatesAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
-    final repository = TenantAdminEventsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
-
-    final candidates = await repository.fetchEventAccountProfileCandidatesPage(
-      candidateType: TenantAdminEventAccountProfileCandidateType.physicalHost,
-      page: _repoInt(1),
-      pageSize: _repoInt(20),
-      search: _repoText('main'),
-    );
-
-    expect(candidates.items, hasLength(1));
-    expect(candidates.items.first.id, 'venue-1');
-    expect(candidates.items.first.profileType, 'venue');
-    expect(candidates.hasMore, isFalse);
-
-    final candidateRequests = adapter.requests
-        .where((request) => request.path
-            .endsWith('/admin/api/v1/events/account_profile_candidates'))
-        .toList(growable: false);
-
-    expect(candidateRequests, hasLength(1));
-    expect(candidateRequests.first.queryParameters['type'], 'physical_host');
-    expect(candidateRequests.first.queryParameters['page'], 1);
-    expect(candidateRequests.first.queryParameters['page_size'], 20);
-    expect(candidateRequests.first.queryParameters['search'], 'main');
-    expect(
-        candidateRequests.first.headers['Authorization'], 'Bearer test-token');
-  });
+      expect(eventTypes, hasLength(2));
+      expect(adapter.requests, hasLength(1));
+      final request = adapter.requests.first;
+      expect(request.method, 'GET');
+      expect(request.path, endsWith('/admin/api/v1/event_types'));
+      expect(request.headers['Authorization'], 'Bearer account-token');
+    },
+  );
 
   test(
-      'fetchEventAccountProfileCandidatesPage derives hasMore from backend pagination metadata',
-      () async {
-    final adapter = _AccountProfileCandidatesAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
-    final repository = TenantAdminEventsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
+    'fetchEventTypes throws when both landlord and account token are empty',
+    () async {
+      await registerAuth(landlordToken: '', accountToken: '');
 
-    final candidates = await repository.fetchEventAccountProfileCandidatesPage(
-      candidateType:
-          TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
-      page: _repoInt(2),
-      pageSize: _repoInt(20),
-      search: _repoText('paged'),
-    );
+      final adapter = _EventTypesAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
 
-    expect(candidates.items, hasLength(20));
-    expect(candidates.items.first.id, 'artist-page-21');
-    expect(candidates.items.first.displayName, 'Paged Artist 021');
-    expect(candidates.hasMore, isTrue);
-
-    final candidateRequests = adapter.requests
-        .where((request) => request.path
-            .endsWith('/admin/api/v1/events/account_profile_candidates'))
-        .toList(growable: false);
-
-    expect(candidateRequests, hasLength(1));
-    expect(candidateRequests.first.queryParameters['page'], 2);
-    expect(candidateRequests.first.queryParameters['page_size'], 20);
-    expect(candidateRequests.first.queryParameters['search'], 'paged');
-  });
-
-  test(
-      'fetchEventAccountProfileCandidatesPage uses account-scoped endpoint for own-create flow',
-      () async {
-    final adapter = _AccountProfileCandidatesAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
-    final repository = TenantAdminEventsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
-
-    final candidates = await repository.fetchEventAccountProfileCandidatesPage(
-      candidateType: TenantAdminEventAccountProfileCandidateType.physicalHost,
-      page: _repoInt(2),
-      pageSize: _repoInt(10),
-      search: _repoText('main'),
-      accountSlug: _repoText('my-account'),
-    );
-
-    expect(candidates.items, hasLength(1));
-    expect(candidates.items.first.id, 'venue-1');
-    expect(candidates.items.first.profileType, 'venue');
-
-    final candidateRequests = adapter.requests
-        .where((request) => request.path.endsWith(
-            '/api/v1/accounts/my-account/events/account_profile_candidates'))
-        .toList(growable: false);
-
-    expect(candidateRequests, hasLength(1));
-    expect(candidateRequests.first.queryParameters['type'], 'physical_host');
-    expect(candidateRequests.first.queryParameters['page'], 2);
-    expect(candidateRequests.first.queryParameters['page_size'], 10);
-    expect(candidateRequests.first.queryParameters['search'], 'main');
-    expect(candidateRequests.first.headers['Authorization'],
-        'Bearer account-token');
-  });
-
-  test(
-      'fetchEventAccountProfileCandidatesPage decodes related account profile candidate pages',
-      () async {
-    final adapter = _AccountProfileCandidatesAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
-    final repository = TenantAdminEventsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
-
-    final candidates = await repository.fetchEventAccountProfileCandidatesPage(
-      candidateType:
-          TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
-      page: _repoInt(1),
-      pageSize: _repoInt(20),
-      search: _repoText('dj'),
-    );
-
-    expect(candidates.items, hasLength(1));
-    expect(candidates.items.first.id, 'artist-1');
-    expect(candidates.items.first.profileType, 'artist');
-  });
-
-  test(
-      'fetchEventAccountProfileCandidatesPage keeps valid candidates when a page includes malformed rows',
-      () async {
-    final adapter = _AccountProfileCandidatesAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
-    final repository = TenantAdminEventsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
-
-    final candidates = await repository.fetchEventAccountProfileCandidatesPage(
-      candidateType:
-          TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
-      page: _repoInt(1),
-      pageSize: _repoInt(20),
-      search: _repoText('mixed'),
-    );
-
-    expect(candidates.items, hasLength(1));
-    expect(candidates.items.single.id, 'artist-valid');
-    expect(candidates.items.single.displayName, 'Valid Mixed Artist');
-
-    final candidateRequests = adapter.requests
-        .where((request) => request.path
-            .endsWith('/admin/api/v1/events/account_profile_candidates'))
-        .toList(growable: false);
-
-    expect(candidateRequests, hasLength(1));
-    expect(candidateRequests.single.queryParameters['search'], 'mixed');
-  });
-
-  test(
-      'fetchEventAccountProfileCandidatesPage throws when endpoint is unauthorized',
-      () async {
-    final adapter = _UnauthorizedAdminAccountProfileCandidatesAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
-    final repository = TenantAdminEventsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
-
-    await expectLater(
-      () => repository.fetchEventAccountProfileCandidatesPage(
-        candidateType:
-            TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
-        page: _repoInt(1),
-        pageSize: _repoInt(20),
-        search: _repoText('main'),
-      ),
-      throwsA(
-        isA<FormatException>().having(
-          (error) => error.message,
-          'message',
-          contains('Failed to load event account profile candidates'),
-        ),
-      ),
-    );
-
-    final candidateRequests = adapter.requests
-        .where((request) => request.path
-            .endsWith('/admin/api/v1/events/account_profile_candidates'))
-        .toList(growable: false);
-    expect(candidateRequests, hasLength(1));
-  });
-
-  test(
-      'fetchEventAccountProfileCandidatesPage throws when endpoint is not found',
-      () async {
-    final adapter = _NotFoundAdminAccountProfileCandidatesAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
-    final repository = TenantAdminEventsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
-
-    await expectLater(
-      () => repository.fetchEventAccountProfileCandidatesPage(
-        candidateType:
-            TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
-        page: _repoInt(1),
-        pageSize: _repoInt(20),
-        search: _repoText('main'),
-      ),
-      throwsA(
-        isA<FormatException>().having(
-          (error) => error.message,
-          'message',
-          allOf(
-            contains('Failed to load event account profile candidates'),
-            contains('status=404'),
+      await expectLater(
+        () => repository.fetchEventTypes(),
+        throwsA(
+          isA<FormatException>().having(
+            (error) => error.message,
+            'message',
+            contains('Failed to resolve auth token for event types request.'),
           ),
         ),
-      ),
-    );
+      );
+    },
+  );
 
-    final candidateRequests = adapter.requests
-        .where((request) => request.path
-            .endsWith('/admin/api/v1/events/account_profile_candidates'))
-        .toList(growable: false);
-    expect(candidateRequests, hasLength(1));
-  });
+  test(
+    'fetchEventAccountProfileCandidatesPage uses dedicated endpoint',
+    () async {
+      final adapter = _AccountProfileCandidatesAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
 
-  test('updateEventType sends null description when value is cleared',
-      () async {
-    final adapter = _EventTypeMutationsAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
-    final repository = TenantAdminEventsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
+      final candidates = await repository
+          .fetchEventAccountProfileCandidatesPage(
+            candidateType:
+                TenantAdminEventAccountProfileCandidateType.physicalHost,
+            page: _repoInt(1),
+            pageSize: _repoInt(20),
+            search: _repoText('main'),
+          );
 
-    await repository.updateEventType(
-      eventTypeId: _repoText('507f1f77bcf86cd799439011'),
-      name: _repoText('Show'),
-      slug: _repoText('show'),
-      description: null,
-    );
+      expect(candidates.items, hasLength(1));
+      expect(candidates.items.first.id, 'venue-1');
+      expect(candidates.items.first.profileType, 'venue');
+      expect(candidates.hasMore, isFalse);
 
-    final request = adapter.requests.singleWhere(
-      (candidate) =>
-          candidate.method == 'PATCH' &&
-          candidate.path
-              .endsWith('/admin/api/v1/event_types/507f1f77bcf86cd799439011'),
-    );
+      final candidateRequests = adapter.requests
+          .where(
+            (request) => request.path.endsWith(
+              '/admin/api/v1/events/account_profile_candidates',
+            ),
+          )
+          .toList(growable: false);
 
-    expect(request.data, isA<Map<String, dynamic>>());
-    final payload = request.data as Map<String, dynamic>;
-    expect(payload['name'], 'Show');
-    expect(payload['slug'], 'show');
-    expect(payload.containsKey('description'), isTrue);
-    expect(payload['description'], isNull);
-  });
+      expect(candidateRequests, hasLength(1));
+      expect(candidateRequests.first.queryParameters['type'], 'physical_host');
+      expect(candidateRequests.first.queryParameters['page'], 1);
+      expect(candidateRequests.first.queryParameters['page_size'], 20);
+      expect(candidateRequests.first.queryParameters['search'], 'main');
+      expect(
+        candidateRequests.first.headers['Authorization'],
+        'Bearer test-token',
+      );
+    },
+  );
+
+  test(
+    'fetchEventAccountProfileCandidatesPage derives hasMore from backend pagination metadata',
+    () async {
+      final adapter = _AccountProfileCandidatesAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      final candidates = await repository
+          .fetchEventAccountProfileCandidatesPage(
+            candidateType: TenantAdminEventAccountProfileCandidateType
+                .relatedAccountProfile,
+            page: _repoInt(2),
+            pageSize: _repoInt(20),
+            search: _repoText('paged'),
+          );
+
+      expect(candidates.items, hasLength(20));
+      expect(candidates.items.first.id, 'artist-page-21');
+      expect(candidates.items.first.displayName, 'Paged Artist 021');
+      expect(candidates.hasMore, isTrue);
+
+      final candidateRequests = adapter.requests
+          .where(
+            (request) => request.path.endsWith(
+              '/admin/api/v1/events/account_profile_candidates',
+            ),
+          )
+          .toList(growable: false);
+
+      expect(candidateRequests, hasLength(1));
+      expect(candidateRequests.first.queryParameters['page'], 2);
+      expect(candidateRequests.first.queryParameters['page_size'], 20);
+      expect(candidateRequests.first.queryParameters['search'], 'paged');
+    },
+  );
+
+  test(
+    'fetchEventAccountProfileCandidatesPage uses account-scoped endpoint for own-create flow',
+    () async {
+      final adapter = _AccountProfileCandidatesAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      final candidates = await repository
+          .fetchEventAccountProfileCandidatesPage(
+            candidateType:
+                TenantAdminEventAccountProfileCandidateType.physicalHost,
+            page: _repoInt(2),
+            pageSize: _repoInt(10),
+            search: _repoText('main'),
+            accountSlug: _repoText('my-account'),
+          );
+
+      expect(candidates.items, hasLength(1));
+      expect(candidates.items.first.id, 'venue-1');
+      expect(candidates.items.first.profileType, 'venue');
+
+      final candidateRequests = adapter.requests
+          .where(
+            (request) => request.path.endsWith(
+              '/api/v1/accounts/my-account/events/account_profile_candidates',
+            ),
+          )
+          .toList(growable: false);
+
+      expect(candidateRequests, hasLength(1));
+      expect(candidateRequests.first.queryParameters['type'], 'physical_host');
+      expect(candidateRequests.first.queryParameters['page'], 2);
+      expect(candidateRequests.first.queryParameters['page_size'], 10);
+      expect(candidateRequests.first.queryParameters['search'], 'main');
+      expect(
+        candidateRequests.first.headers['Authorization'],
+        'Bearer account-token',
+      );
+    },
+  );
+
+  test(
+    'fetchEventAccountProfileCandidatesPage decodes related account profile candidate pages',
+    () async {
+      final adapter = _AccountProfileCandidatesAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      final candidates = await repository
+          .fetchEventAccountProfileCandidatesPage(
+            candidateType: TenantAdminEventAccountProfileCandidateType
+                .relatedAccountProfile,
+            page: _repoInt(1),
+            pageSize: _repoInt(20),
+            search: _repoText('dj'),
+          );
+
+      expect(candidates.items, hasLength(1));
+      expect(candidates.items.first.id, 'artist-1');
+      expect(candidates.items.first.profileType, 'artist');
+    },
+  );
+
+  test(
+    'fetchEventAccountProfileCandidatesPage keeps valid candidates when a page includes malformed rows',
+    () async {
+      final adapter = _AccountProfileCandidatesAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      final candidates = await repository
+          .fetchEventAccountProfileCandidatesPage(
+            candidateType: TenantAdminEventAccountProfileCandidateType
+                .relatedAccountProfile,
+            page: _repoInt(1),
+            pageSize: _repoInt(20),
+            search: _repoText('mixed'),
+          );
+
+      expect(candidates.items, hasLength(1));
+      expect(candidates.items.single.id, 'artist-valid');
+      expect(candidates.items.single.displayName, 'Valid Mixed Artist');
+
+      final candidateRequests = adapter.requests
+          .where(
+            (request) => request.path.endsWith(
+              '/admin/api/v1/events/account_profile_candidates',
+            ),
+          )
+          .toList(growable: false);
+
+      expect(candidateRequests, hasLength(1));
+      expect(candidateRequests.single.queryParameters['search'], 'mixed');
+    },
+  );
+
+  test(
+    'fetchEventAccountProfileCandidatesPage throws when endpoint is unauthorized',
+    () async {
+      final adapter = _UnauthorizedAdminAccountProfileCandidatesAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      await expectLater(
+        () => repository.fetchEventAccountProfileCandidatesPage(
+          candidateType:
+              TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
+          page: _repoInt(1),
+          pageSize: _repoInt(20),
+          search: _repoText('main'),
+        ),
+        throwsA(
+          isA<FormatException>().having(
+            (error) => error.message,
+            'message',
+            contains('Failed to load event account profile candidates'),
+          ),
+        ),
+      );
+
+      final candidateRequests = adapter.requests
+          .where(
+            (request) => request.path.endsWith(
+              '/admin/api/v1/events/account_profile_candidates',
+            ),
+          )
+          .toList(growable: false);
+      expect(candidateRequests, hasLength(1));
+    },
+  );
+
+  test(
+    'fetchEventAccountProfileCandidatesPage throws when endpoint is not found',
+    () async {
+      final adapter = _NotFoundAdminAccountProfileCandidatesAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      await expectLater(
+        () => repository.fetchEventAccountProfileCandidatesPage(
+          candidateType:
+              TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
+          page: _repoInt(1),
+          pageSize: _repoInt(20),
+          search: _repoText('main'),
+        ),
+        throwsA(
+          isA<FormatException>().having(
+            (error) => error.message,
+            'message',
+            allOf(
+              contains('Failed to load event account profile candidates'),
+              contains('status=404'),
+            ),
+          ),
+        ),
+      );
+
+      final candidateRequests = adapter.requests
+          .where(
+            (request) => request.path.endsWith(
+              '/admin/api/v1/events/account_profile_candidates',
+            ),
+          )
+          .toList(growable: false);
+      expect(candidateRequests, hasLength(1));
+    },
+  );
+
+  test(
+    'updateEventType sends null description when value is cleared',
+    () async {
+      final adapter = _EventTypeMutationsAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      await repository.updateEventType(
+        eventTypeId: _repoText('507f1f77bcf86cd799439011'),
+        name: _repoText('Show'),
+        slug: _repoText('show'),
+        description: null,
+      );
+
+      final request = adapter.requests.singleWhere(
+        (candidate) =>
+            candidate.method == 'PATCH' &&
+            candidate.path.endsWith(
+              '/admin/api/v1/event_types/507f1f77bcf86cd799439011',
+            ),
+      );
+
+      expect(request.data, isA<Map<String, dynamic>>());
+      final payload = request.data as Map<String, dynamic>;
+      expect(payload['name'], 'Show');
+      expect(payload['slug'], 'show');
+      expect(payload.containsKey('description'), isTrue);
+      expect(payload['description'], isNull);
+    },
+  );
 
   test('createEventType omits description when value is blank', () async {
     final adapter = _EventTypeMutationsAdapter();
@@ -1110,154 +1210,164 @@ void main() {
     expect(payload.containsKey('description'), isFalse);
   });
 
-  test('createEventTypeWithVisual sends canonical and legacy visual payloads',
-      () async {
-    final adapter = _EventTypeMutationsAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
-    final repository = TenantAdminEventsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
+  test(
+    'createEventTypeWithVisual sends canonical and legacy visual payloads',
+    () async {
+      final adapter = _EventTypeMutationsAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
 
-    await repository.createEventTypeWithVisual(
-      name: _repoText('Festival'),
-      slug: _repoText('festival'),
-      description: _repoText('Tipo com imagem'),
-      visual: TenantAdminPoiVisual.image(
-        imageSource: TenantAdminPoiVisualImageSource.cover,
-      ),
-    );
+      await repository.createEventTypeWithVisual(
+        name: _repoText('Festival'),
+        slug: _repoText('festival'),
+        description: _repoText('Tipo com imagem'),
+        visual: TenantAdminPoiVisual.image(
+          imageSource: TenantAdminPoiVisualImageSource.cover,
+        ),
+      );
 
-    final request = adapter.requests.singleWhere(
-      (candidate) =>
-          candidate.method == 'POST' &&
-          candidate.path.endsWith('/admin/api/v1/event_types'),
-    );
+      final request = adapter.requests.singleWhere(
+        (candidate) =>
+            candidate.method == 'POST' &&
+            candidate.path.endsWith('/admin/api/v1/event_types'),
+      );
 
-    expect(request.data, isA<Map<String, dynamic>>());
-    final payload = request.data as Map<String, dynamic>;
-    expect(payload['visual'], <String, dynamic>{
-      'mode': 'image',
-      'image_source': 'cover',
-    });
-    expect(payload['poi_visual'], <String, dynamic>{
-      'mode': 'image',
-      'image_source': 'cover',
-    });
-  });
+      expect(request.data, isA<Map<String, dynamic>>());
+      final payload = request.data as Map<String, dynamic>;
+      expect(payload['visual'], <String, dynamic>{
+        'mode': 'image',
+        'image_source': 'cover',
+      });
+      expect(payload['poi_visual'], <String, dynamic>{
+        'mode': 'image',
+        'image_source': 'cover',
+      });
+    },
+  );
 
-  test('createEventTypeWithVisual uses multipart when type_asset upload exists',
-      () async {
-    final adapter = _EventTypeMutationsAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
-    final repository = TenantAdminEventsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
+  test(
+    'createEventTypeWithVisual uses multipart when type_asset upload exists',
+    () async {
+      final adapter = _EventTypeMutationsAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
 
-    await repository.createEventTypeWithVisual(
-      name: _repoText('Festival'),
-      slug: _repoText('festival'),
-      visual: TenantAdminPoiVisual.image(
-        imageSource: TenantAdminPoiVisualImageSource.typeAsset,
-        colorValue: TenantAdminHexColorValue()..parse('#00897B'),
-      ),
-      typeAssetUpload: tenantAdminMediaUploadFromRaw(
-        bytes: Uint8List.fromList([7, 8, 9]),
-        fileName: 'festival-type.png',
-        mimeType: 'image/png',
-      ),
-    );
+      await repository.createEventTypeWithVisual(
+        name: _repoText('Festival'),
+        slug: _repoText('festival'),
+        visual: TenantAdminPoiVisual.image(
+          imageSource: TenantAdminPoiVisualImageSource.typeAsset,
+          colorValue: TenantAdminHexColorValue()..parse('#00897B'),
+        ),
+        typeAssetUpload: tenantAdminMediaUploadFromRaw(
+          bytes: Uint8List.fromList([7, 8, 9]),
+          fileName: 'festival-type.png',
+          mimeType: 'image/png',
+        ),
+      );
 
-    final request = adapter.requests.singleWhere(
-      (candidate) =>
-          candidate.method == 'POST' &&
-          candidate.path.endsWith('/admin/api/v1/event_types'),
-    );
+      final request = adapter.requests.singleWhere(
+        (candidate) =>
+            candidate.method == 'POST' &&
+            candidate.path.endsWith('/admin/api/v1/event_types'),
+      );
 
-    expect(request.data, isA<FormData>());
-    final formData = request.data as FormData;
-    expect(
-      formData.fields.any(
-        (entry) =>
-            entry.key == 'visual[image_source]' && entry.value == 'type_asset',
-      ),
-      isTrue,
-    );
-    expect(
-      formData.fields.any(
-        (entry) => entry.key == 'visual[color]' && entry.value == '#00897B',
-      ),
-      isTrue,
-    );
-    expect(
-      formData.fields.any(
-        (entry) =>
-            entry.key == 'poi_visual[image_source]' &&
-            entry.value == 'type_asset',
-      ),
-      isTrue,
-    );
-    expect(
-      formData.fields.any(
-        (entry) => entry.key == 'poi_visual[color]' && entry.value == '#00897B',
-      ),
-      isTrue,
-    );
-    expect(formData.files.any((entry) => entry.key == 'type_asset'), isTrue);
-  });
+      expect(request.data, isA<FormData>());
+      final formData = request.data as FormData;
+      expect(
+        formData.fields.any(
+          (entry) =>
+              entry.key == 'visual[image_source]' &&
+              entry.value == 'type_asset',
+        ),
+        isTrue,
+      );
+      expect(
+        formData.fields.any(
+          (entry) => entry.key == 'visual[color]' && entry.value == '#00897B',
+        ),
+        isTrue,
+      );
+      expect(
+        formData.fields.any(
+          (entry) =>
+              entry.key == 'poi_visual[image_source]' &&
+              entry.value == 'type_asset',
+        ),
+        isTrue,
+      );
+      expect(
+        formData.fields.any(
+          (entry) =>
+              entry.key == 'poi_visual[color]' && entry.value == '#00897B',
+        ),
+        isTrue,
+      );
+      expect(formData.files.any((entry) => entry.key == 'type_asset'), isTrue);
+    },
+  );
 
-  test('updateEventTypeWithVisual uses multipart when type_asset upload exists',
-      () async {
-    final adapter = _EventTypeMutationsAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
-    final repository = TenantAdminEventsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
+  test(
+    'updateEventTypeWithVisual uses multipart when type_asset upload exists',
+    () async {
+      final adapter = _EventTypeMutationsAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
 
-    await repository.updateEventTypeWithVisual(
-      eventTypeId: _repoText('507f1f77bcf86cd799439011'),
-      visual: TenantAdminPoiVisual.image(
-        imageSource: TenantAdminPoiVisualImageSource.typeAsset,
-      ),
-      typeAssetUpload: tenantAdminMediaUploadFromRaw(
-        bytes: Uint8List.fromList([4, 5, 6]),
-        fileName: 'festival-type.png',
-        mimeType: 'image/png',
-      ),
-    );
+      await repository.updateEventTypeWithVisual(
+        eventTypeId: _repoText('507f1f77bcf86cd799439011'),
+        visual: TenantAdminPoiVisual.image(
+          imageSource: TenantAdminPoiVisualImageSource.typeAsset,
+        ),
+        typeAssetUpload: tenantAdminMediaUploadFromRaw(
+          bytes: Uint8List.fromList([4, 5, 6]),
+          fileName: 'festival-type.png',
+          mimeType: 'image/png',
+        ),
+      );
 
-    final request = adapter.requests.singleWhere(
-      (candidate) =>
-          candidate.method == 'POST' &&
-          candidate.path
-              .endsWith('/admin/api/v1/event_types/507f1f77bcf86cd799439011'),
-    );
+      final request = adapter.requests.singleWhere(
+        (candidate) =>
+            candidate.method == 'POST' &&
+            candidate.path.endsWith(
+              '/admin/api/v1/event_types/507f1f77bcf86cd799439011',
+            ),
+      );
 
-    expect(request.data, isA<FormData>());
-    final formData = request.data as FormData;
-    expect(formData.fields, contains(const MapEntry('_method', 'PATCH')));
-    expect(
-      formData.fields.any(
-        (entry) =>
-            entry.key == 'visual[image_source]' && entry.value == 'type_asset',
-      ),
-      isTrue,
-    );
-    expect(
-      formData.fields.any(
-        (entry) =>
-            entry.key == 'poi_visual[image_source]' &&
-            entry.value == 'type_asset',
-      ),
-      isTrue,
-    );
-    expect(formData.files.any((entry) => entry.key == 'type_asset'), isTrue);
-  });
+      expect(request.data, isA<FormData>());
+      final formData = request.data as FormData;
+      expect(formData.fields, contains(const MapEntry('_method', 'PATCH')));
+      expect(
+        formData.fields.any(
+          (entry) =>
+              entry.key == 'visual[image_source]' &&
+              entry.value == 'type_asset',
+        ),
+        isTrue,
+      );
+      expect(
+        formData.fields.any(
+          (entry) =>
+              entry.key == 'poi_visual[image_source]' &&
+              entry.value == 'type_asset',
+        ),
+        isTrue,
+      );
+      expect(formData.files.any((entry) => entry.key == 'type_asset'), isTrue);
+    },
+  );
 }
 
 TenantAdminEventDraft _buildDraft({
@@ -1277,7 +1387,8 @@ TenantAdminEventDraft _buildDraft({
       nameValue: tenantAdminRequiredText('Show'),
       slugValue: tenantAdminRequiredText('show'),
     ),
-    occurrences: occurrences ??
+    occurrences:
+        occurrences ??
         [
           TenantAdminEventOccurrence(
             dateTimeStartValue: tenantAdminDateTime(DateTime(2026, 3, 5, 20)),
@@ -1361,8 +1472,10 @@ class _StubAccountAuthRepo implements AuthRepositoryContract<UserContract> {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
-      AuthRepositoryContractParamString password) async {}
+  Future<void> loginWithEmailPassword(
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
+  ) async {}
 
   @override
   Future<AuthPhoneOtpChallenge> requestPhoneOtpChallenge(
@@ -1388,8 +1501,9 @@ class _StubAccountAuthRepo implements AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> sendTokenRecoveryPassword(
-      AuthRepositoryContractParamString email,
-      AuthRepositoryContractParamString codigoEnviado) async {}
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString codigoEnviado,
+  ) async {}
 
   @override
   Future<void> logout() async {}
@@ -1402,7 +1516,8 @@ class _StubAccountAuthRepo implements AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> sendPasswordResetEmail(
-      AuthRepositoryContractParamString email) async {}
+    AuthRepositoryContractParamString email,
+  ) async {}
 
   @override
   Future<void> updateUser(UserCustomData data) async {}
@@ -1433,10 +1548,12 @@ class _MutableTenantScope implements TenantAdminTenantScopeContract {
 
   @override
   void selectTenantDomain(Object tenantDomain) {
-    _selectedTenantDomainStreamValue.addValue((tenantDomain is String
-            ? tenantDomain
-            : (tenantDomain as dynamic).value as String)
-        .trim());
+    _selectedTenantDomainStreamValue.addValue(
+      (tenantDomain is String
+              ? tenantDomain
+              : (tenantDomain as dynamic).value as String)
+          .trim(),
+    );
   }
 }
 
@@ -1459,9 +1576,7 @@ class _EventsRoutingAdapter implements HttpClientAdapter {
       final payload = options.data is Map<String, dynamic>
           ? options.data as Map<String, dynamic>
           : <String, dynamic>{};
-      return _jsonResponse(
-        {'data': _eventFromPayload(payload)},
-      );
+      return _jsonResponse({'data': _eventFromPayload(payload)});
     }
 
     if (options.path.contains('/api/v1/accounts/') &&
@@ -1470,17 +1585,11 @@ class _EventsRoutingAdapter implements HttpClientAdapter {
       final payload = options.data is Map<String, dynamic>
           ? options.data as Map<String, dynamic>
           : <String, dynamic>{};
-      return _jsonResponse(
-        {'data': _eventFromPayload(payload)},
-      );
+      return _jsonResponse({'data': _eventFromPayload(payload)});
     }
 
     if (options.path.endsWith('/v1/events') && options.method == 'GET') {
-      return _jsonResponse({
-        'data': [],
-        'current_page': 1,
-        'last_page': 1,
-      });
+      return _jsonResponse({'data': [], 'current_page': 1, 'last_page': 1});
     }
 
     return _jsonResponse({'data': {}});
@@ -1492,17 +1601,14 @@ class _EventsRoutingAdapter implements HttpClientAdapter {
       'slug': 'my-event',
       'title': payload['title'] ?? 'My event',
       'content': payload['content'] ?? 'Content',
-      'type': payload['type'] ??
-          {
-            'name': 'Show',
-            'slug': 'show',
-          },
+      'type': payload['type'] ?? {'name': 'Show', 'slug': 'show'},
       'date_time_start': '2026-03-05T20:00:00Z',
       'publication': payload['publication'] ?? {'status': 'draft'},
       'taxonomy_terms': payload['taxonomy_terms'] ?? [],
-      'occurrences': payload['occurrences'] ??
+      'occurrences':
+          payload['occurrences'] ??
           [
-            {'date_time_start': '2026-03-05T20:00:00Z'}
+            {'date_time_start': '2026-03-05T20:00:00Z'},
           ],
     };
   }
@@ -1510,6 +1616,41 @@ class _EventsRoutingAdapter implements HttpClientAdapter {
   ResponseBody _jsonResponse(Map<String, dynamic> payload) {
     return ResponseBody.fromString(
       jsonEncode(payload),
+      200,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+}
+
+class _EventsCreateValidationAdapter implements HttpClientAdapter {
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    if (options.path.endsWith('/v1/events') && options.method == 'POST') {
+      return ResponseBody.fromString(
+        jsonEncode({
+          'message': 'validation.required_if',
+          'errors': {
+            'place_ref': ['validation.required_if'],
+          },
+        }),
+        422,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
+
+    return ResponseBody.fromString(
+      jsonEncode({'data': {}}),
       200,
       headers: {
         Headers.contentTypeHeader: ['application/json'],
@@ -1539,26 +1680,17 @@ class _EventsListWithSummarizedRelatedProfilesAdapter
               'slug': 'summarized-artist-event',
               'title': 'Summarized Artist Event',
               'content': 'Content',
-              'type': {
-                'name': 'Show',
-                'slug': 'show',
-              },
-              'publication': {
-                'status': 'draft',
-              },
+              'type': {'name': 'Show', 'slug': 'show'},
+              'publication': {'status': 'draft'},
               'occurrences': [
-                {
-                  'date_time_start': '2026-03-05T20:00:00Z',
-                }
+                {'date_time_start': '2026-03-05T20:00:00Z'},
               ],
               'event_parties': [
                 {
                   'party_type': 'artist',
                   'party_ref_id': 'artist-summary-1',
-                  'permissions': {
-                    'can_edit': true,
-                  },
-                }
+                  'permissions': {'can_edit': true},
+                },
               ],
               'linked_account_profiles': [
                 {
@@ -1568,7 +1700,7 @@ class _EventsListWithSummarizedRelatedProfilesAdapter
                   'profile_type': 'artist',
                   'avatar_url': 'https://example.com/dj-summary.jpg',
                   'slug': 'dj-summary',
-                }
+                },
               ],
             },
           ],
@@ -1615,26 +1747,17 @@ class _EventsListWithRelativeRelatedProfileMediaAdapter
               'slug': 'relative-media-event',
               'title': 'Relative Media Event',
               'content': 'Content',
-              'type': {
-                'name': 'Show',
-                'slug': 'show',
-              },
-              'publication': {
-                'status': 'draft',
-              },
+              'type': {'name': 'Show', 'slug': 'show'},
+              'publication': {'status': 'draft'},
               'occurrences': [
-                {
-                  'date_time_start': '2026-03-05T20:00:00Z',
-                }
+                {'date_time_start': '2026-03-05T20:00:00Z'},
               ],
               'event_parties': [
                 {
                   'party_type': 'artist',
                   'party_ref_id': 'artist-relative',
-                  'permissions': {
-                    'can_edit': true,
-                  },
-                }
+                  'permissions': {'can_edit': true},
+                },
               ],
               'linked_account_profiles': [
                 {
@@ -1644,10 +1767,9 @@ class _EventsListWithRelativeRelatedProfileMediaAdapter
                   'profile_type': 'artist',
                   'avatar_url':
                       '/api/v1/media/account-profiles/artist-relative/avatar?v=7',
-                  'cover_url':
-                      'account-profiles/artist-relative/cover?v=8',
+                  'cover_url': 'account-profiles/artist-relative/cover?v=8',
                   'slug': 'dj-relative',
-                }
+                },
               ],
             },
           ],
@@ -1728,15 +1850,9 @@ class _EventItemWithRelativeRelatedProfileMediaAdapter
             'slug': 'evento-readback',
             'title': 'Evento readback',
             'content': 'Conteudo readback',
-            'type': {
-              'id': 'type-1',
-              'name': 'Show',
-              'slug': 'show',
-            },
+            'type': {'id': 'type-1', 'name': 'Show', 'slug': 'show'},
             'date_time_start': '2026-04-05T20:00:00+00:00',
-            'publication': {
-              'status': 'draft',
-            },
+            'publication': {'status': 'draft'},
             'event_parties': [
               {
                 'party_type': 'artist',
@@ -1866,17 +1982,10 @@ class _MalformedEventsPayloadAdapter implements HttpClientAdapter {
               'slug': 'bad-event',
               'title': {'raw': 'Bad Event'},
               'content': 'Content',
-              'type': {
-                'name': 'Show',
-                'slug': 'show',
-              },
-              'publication': {
-                'status': 'draft',
-              },
+              'type': {'name': 'Show', 'slug': 'show'},
+              'publication': {'status': 'draft'},
               'occurrences': [
-                {
-                  'date_time_start': '2026-03-05T20:00:00Z',
-                }
+                {'date_time_start': '2026-03-05T20:00:00Z'},
               ],
             },
           ],
@@ -1966,13 +2075,15 @@ class _AccountProfileCandidatesAdapter implements HttpClientAdapter {
   ) async {
     requests.add(options);
 
-    final isAdminCandidatesRequest = options.path
-            .endsWith('/admin/api/v1/events/account_profile_candidates') &&
+    final isAdminCandidatesRequest =
+        options.path.endsWith(
+          '/admin/api/v1/events/account_profile_candidates',
+        ) &&
         options.method == 'GET';
     final isAccountCandidatesRequest =
         options.path.endsWith('/events/account_profile_candidates') &&
-            options.path.contains('/api/v1/accounts/') &&
-            options.method == 'GET';
+        options.path.contains('/api/v1/accounts/') &&
+        options.method == 'GET';
 
     if (isAdminCandidatesRequest || isAccountCandidatesRequest) {
       final rawSearch = options.queryParameters['search']?.toString() ?? '';
@@ -1980,8 +2091,10 @@ class _AccountProfileCandidatesAdapter implements HttpClientAdapter {
       final search = rawSearch.trim().toLowerCase();
       final requestedPage =
           int.tryParse(options.queryParameters['page']?.toString() ?? '') ?? 1;
-      final requestedPageSize = int.tryParse(
-              options.queryParameters['page_size']?.toString() ?? '') ??
+      final requestedPageSize =
+          int.tryParse(
+            options.queryParameters['page_size']?.toString() ?? '',
+          ) ??
           20;
       final venueRows = <Map<String, dynamic>>[
         {
@@ -2024,17 +2137,17 @@ class _AccountProfileCandidatesAdapter implements HttpClientAdapter {
       ];
       final pagedRelatedAccountProfileRows =
           List<Map<String, dynamic>>.generate(
-        45,
-        (index) => {
-          'id': 'artist-page-${index + 1}',
-          'account_id': 'account-${index + 100}',
-          'profile_type': 'artist',
-          'display_name':
-              'Paged Artist ${(index + 1).toString().padLeft(3, '0')}',
-          'slug': 'paged-artist-${index + 1}',
-        },
-        growable: false,
-      );
+            45,
+            (index) => {
+              'id': 'artist-page-${index + 1}',
+              'account_id': 'account-${index + 100}',
+              'profile_type': 'artist',
+              'display_name':
+                  'Paged Artist ${(index + 1).toString().padLeft(3, '0')}',
+              'slug': 'paged-artist-${index + 1}',
+            },
+            growable: false,
+          );
 
       List<Map<String, dynamic>> rows;
       int currentPage;
@@ -2044,11 +2157,13 @@ class _AccountProfileCandidatesAdapter implements HttpClientAdapter {
       switch (candidateType) {
         case 'physical_host':
           rows = venueRows
-              .where((row) =>
-                  search.isEmpty ||
-                  (row['display_name'] as String)
-                      .toLowerCase()
-                      .contains(search))
+              .where(
+                (row) =>
+                    search.isEmpty ||
+                    (row['display_name'] as String).toLowerCase().contains(
+                      search,
+                    ),
+              )
               .toList(growable: false);
           currentPage = requestedPage;
           lastPage = requestedPage;
@@ -2061,19 +2176,21 @@ class _AccountProfileCandidatesAdapter implements HttpClientAdapter {
             _ => relatedAccountProfileRows,
           };
           final filteredRows = sourceRows
-              .where((row) =>
-                  search.isEmpty ||
-                  (row['display_name'] as String)
-                      .toLowerCase()
-                      .contains(search))
+              .where(
+                (row) =>
+                    search.isEmpty ||
+                    (row['display_name'] as String).toLowerCase().contains(
+                      search,
+                    ),
+              )
               .toList(growable: false);
           final startIndex = (requestedPage - 1) * requestedPageSize;
           rows = startIndex >= filteredRows.length
               ? const <Map<String, dynamic>>[]
               : filteredRows
-                  .skip(startIndex)
-                  .take(requestedPageSize)
-                  .toList(growable: false);
+                    .skip(startIndex)
+                    .take(requestedPageSize)
+                    .toList(growable: false);
           currentPage = requestedPage;
           lastPage = filteredRows.isEmpty
               ? requestedPage
@@ -2199,8 +2316,9 @@ class _UnauthorizedAdminAccountProfileCandidatesAdapter
   ) async {
     requests.add(options);
 
-    if (options.path
-            .endsWith('/admin/api/v1/events/account_profile_candidates') &&
+    if (options.path.endsWith(
+          '/admin/api/v1/events/account_profile_candidates',
+        ) &&
         options.method == 'GET') {
       return ResponseBody.fromString(
         jsonEncode({'message': 'Unauthorized.'}),
@@ -2236,8 +2354,9 @@ class _NotFoundAdminAccountProfileCandidatesAdapter
   ) async {
     requests.add(options);
 
-    if (options.path
-            .endsWith('/admin/api/v1/events/account_profile_candidates') &&
+    if (options.path.endsWith(
+          '/admin/api/v1/events/account_profile_candidates',
+        ) &&
         options.method == 'GET') {
       return ResponseBody.fromString(
         jsonEncode({'message': 'Not found.'}),
