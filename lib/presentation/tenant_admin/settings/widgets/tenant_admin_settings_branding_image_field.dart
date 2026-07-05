@@ -83,7 +83,7 @@ class TenantAdminSettingsBrandingImageField extends StatelessWidget {
                               width: previewWidth,
                               height: previewHeight,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Icon(
+                              errorBuilder: (_, _, _) => Icon(
                                 Icons.broken_image_outlined,
                                 color: Theme.of(context)
                                     .colorScheme

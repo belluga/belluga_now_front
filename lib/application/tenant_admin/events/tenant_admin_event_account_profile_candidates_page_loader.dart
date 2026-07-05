@@ -5,8 +5,8 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 
 final class TenantAdminEventAccountProfileCandidatesPageLoader {
   const TenantAdminEventAccountProfileCandidatesPageLoader({
-    required TenantAdminEventsRepositoryContract eventsRepository,
-  }) : _eventsRepository = eventsRepository;
+    required this._eventsRepository,
+  });
 
   final TenantAdminEventsRepositoryContract _eventsRepository;
 

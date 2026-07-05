@@ -52,7 +52,7 @@ class PoiClusterPickerPopover extends StatelessWidget {
                   padding: EdgeInsets.zero,
                   shrinkWrap: true,
                   itemCount: pois.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemBuilder: (context, index) {
                     final poi = pois[index];
                     return _ClusterPickerItem(
@@ -201,7 +201,7 @@ class _ClusterPickerItemVisual extends StatelessWidget {
           width: _kClusterPickerVisualSize,
           height: _kClusterPickerVisualSize,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _buildPlaceholder(scheme),
+          errorBuilder: (_, _, _) => _buildPlaceholder(scheme),
         ),
       );
     } else {

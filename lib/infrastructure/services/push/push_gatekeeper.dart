@@ -7,12 +7,10 @@ import 'package:push_handler/push_handler.dart';
 
 class PushGatekeeper {
   PushGatekeeper({
-    required BuildContext? Function() contextProvider,
-    PushAnswerResolver? answerResolver,
-    Future<bool> Function()? contactsPermissionChecker,
-  }) : _contextProvider = contextProvider,
-       _answerResolver = answerResolver,
-       _contactsPermissionChecker = contactsPermissionChecker;
+    required this._contextProvider,
+    this._answerResolver,
+    this._contactsPermissionChecker,
+  });
 
   final BuildContext? Function() _contextProvider;
   final PushAnswerResolver? _answerResolver;

@@ -199,7 +199,7 @@ Future<void> _pumpAdminRoute(WidgetTester tester, Widget child) async {
           family: CanonicalRouteFamily.tenantAdminAccountsInternal,
           chromeMode: RouteChromeMode.fullscreen,
         ),
-        builder: (_, __) => child,
+        builder: (_, _) => child,
       ),
     ],
   )..ignorePopCompleters = true;

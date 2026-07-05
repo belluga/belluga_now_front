@@ -37,10 +37,7 @@ void main() {
     );
   }
 
-  Future<void> _pumpFor(
-    WidgetTester tester,
-    Duration duration,
-  ) async {
+  Future<void> _pumpFor(WidgetTester tester, Duration duration) async {
     final end = DateTime.now().add(duration);
     while (DateTime.now().isBefore(end)) {
       await tester.pump(const Duration(milliseconds: 100));
@@ -104,25 +101,20 @@ void main() {
     await tester.pumpWidget(app);
     await _pumpFor(tester, const Duration(seconds: 2));
 
-    await _waitForFinder(
-      tester,
-      _tenantAdminShellRouterFinder(),
-    );
+    await _waitForFinder(tester, _tenantAdminShellRouterFinder());
     await _waitForFinder(tester, find.text('Eventos'));
     await tester.pumpAndSettle(const Duration(seconds: 1));
     await tester.tap(find.text('Eventos').first);
     await tester.pumpAndSettle(const Duration(seconds: 1));
     await _waitForFinder(tester, find.text('Novo evento'));
-    await _waitForFinder(
-      tester,
-      _tenantAdminShellRouterFinder(),
-    );
+    await _waitForFinder(tester, _tenantAdminShellRouterFinder());
   });
 }
 
 class _InMemoryAdminModeRepository implements AdminModeRepositoryContract {
-  final StreamValue<AdminMode> _modeStreamValue =
-      StreamValue<AdminMode>(defaultValue: AdminMode.user);
+  final StreamValue<AdminMode> _modeStreamValue = StreamValue<AdminMode>(
+    defaultValue: AdminMode.user,
+  );
 
   @override
   StreamValue<AdminMode> get modeStreamValue => _modeStreamValue;
@@ -148,30 +140,28 @@ class _InMemoryAdminModeRepository implements AdminModeRepositoryContract {
 }
 
 class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
-  _FakeLandlordAuthRepository({required bool hasValidSession})
-      : _hasValidSession = hasValidSession;
-
-  bool _hasValidSession;
+  _FakeLandlordAuthRepository({required this.hasValidSession});
 
   @override
-  bool get hasValidSession => _hasValidSession;
+  bool hasValidSession;
 
   @override
-  String get token => _hasValidSession ? 'token' : '';
+  String get token => hasValidSession ? 'token' : '';
 
   @override
   Future<void> init() async {}
 
   @override
   Future<void> loginWithEmailPassword(
-      LandlordAuthRepositoryContractPrimString email,
-      LandlordAuthRepositoryContractPrimString password) async {
-    _hasValidSession = true;
+    LandlordAuthRepositoryContractPrimString email,
+    LandlordAuthRepositoryContractPrimString password,
+  ) async {
+    hasValidSession = true;
   }
 
   @override
   Future<void> logout() async {
-    _hasValidSession = false;
+    hasValidSession = false;
   }
 }
 

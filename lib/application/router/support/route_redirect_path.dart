@@ -164,9 +164,8 @@ Uri? buildTenantPromotionUriFromAppContext({
   final query = <String, String>{
     'path': targetPath,
     'store_channel': 'web',
-    if (normalizedCode != null) 'code': normalizedCode,
-    if (normalizedPlatformTarget != null)
-      'platform_target': normalizedPlatformTarget,
+    'code': ?normalizedCode,
+    'platform_target': ?normalizedPlatformTarget,
     if (fallbackToPromotionBoundary) 'fallback': 'promotion',
   };
   return targetUri.replace(queryParameters: query.isEmpty ? null : query);
@@ -209,7 +208,7 @@ String? buildDeferredResolverPayloadFromPromotionUri(Uri promotionUri) {
     queryParameters: <String, String>{
       'store_channel': storeChannel,
       'target_path': targetPath,
-      if (code != null) 'code': code,
+      'code': ?code,
     },
   ).query;
 }

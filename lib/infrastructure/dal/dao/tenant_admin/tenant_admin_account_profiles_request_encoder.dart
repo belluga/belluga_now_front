@@ -11,47 +11,51 @@ class TenantAdminAccountProfilesRequestEncoder {
   const TenantAdminAccountProfilesRequestEncoder();
 
   TenantAdminAccountProfileGalleryEncodedPayload
-      encodeUpdateAccountProfileGallery(
+  encodeUpdateAccountProfileGallery(
     List<TenantAdminAccountProfileGalleryUpdateGroup> groups,
   ) {
     final uploads = <String, TenantAdminMediaUpload>{};
 
-    final payload = groups.map((group) {
-      final items = group.items.map((item) {
-        final upload = item.upload;
-        String? uploadKey;
-        if (upload != null) {
-          uploadKey = 'upload_${group.groupId}_${item.itemId}'
-              .replaceAll(RegExp(r'[^a-zA-Z0-9_]+'), '_');
-          uploads[uploadKey] = upload;
-        }
+    final payload = groups
+        .map((group) {
+          final items = group.items
+              .map((item) {
+                final upload = item.upload;
+                String? uploadKey;
+                if (upload != null) {
+                  uploadKey = 'upload_${group.groupId}_${item.itemId}'
+                      .replaceAll(RegExp(r'[^a-zA-Z0-9_]+'), '_');
+                  uploads[uploadKey] = upload;
+                }
 
-        return <String, dynamic>{
-          'item_id': item.itemId,
-          'description': item.description,
-          'order': item.order,
-          if (uploadKey != null) 'upload': uploadKey,
-        };
-      }).toList(growable: false);
+                return <String, dynamic>{
+                  'item_id': item.itemId,
+                  'description': item.description,
+                  'order': item.order,
+                  'upload': ?uploadKey,
+                };
+              })
+              .toList(growable: false);
 
-      return <String, dynamic>{
-        'group_id': group.groupId,
-        'subtitle': group.subtitle,
-        'order': group.order,
-        'items': items,
-      };
-    }).toList(growable: false);
+          return <String, dynamic>{
+            'group_id': group.groupId,
+            'subtitle': group.subtitle,
+            'order': group.order,
+            'items': items,
+          };
+        })
+        .toList(growable: false);
 
-    return (
-      galleryGroups: payload,
-      uploads: uploads,
-    );
+    return (galleryGroups: payload, uploads: uploads);
   }
 
   Map<String, dynamic> encodeFetchAccountProfilesQuery({
     String? accountId,
     bool queryableOnly = false,
     String? excludeAccountProfileId,
+    String? search,
+    int? page,
+    int? pageSize,
   }) {
     final payload = <String, dynamic>{};
     if (accountId != null && accountId.trim().isNotEmpty) {
@@ -63,6 +67,15 @@ class TenantAdminAccountProfilesRequestEncoder {
     if (excludeAccountProfileId != null &&
         excludeAccountProfileId.trim().isNotEmpty) {
       payload['exclude_account_profile_id'] = excludeAccountProfileId.trim();
+    }
+    if (search != null && search.trim().isNotEmpty) {
+      payload['search'] = search.trim();
+    }
+    if (page != null && page > 0) {
+      payload['page'] = page;
+    }
+    if (pageSize != null && pageSize > 0) {
+      payload['page_size'] = pageSize;
     }
 
     return payload;
@@ -92,10 +105,10 @@ class TenantAdminAccountProfilesRequestEncoder {
         'taxonomy_terms': taxonomyTerms
             .map((term) => {'type': term.type, 'value': term.value})
             .toList(),
-      if (bio != null) 'bio': bio,
-      if (content != null) 'content': content,
-      if (avatarUrl != null) 'avatar_url': avatarUrl,
-      if (coverUrl != null) 'cover_url': coverUrl,
+      'bio': ?bio,
+      'content': ?content,
+      'avatar_url': ?avatarUrl,
+      'cover_url': ?coverUrl,
       if (nestedProfileGroups.isNotEmpty)
         'nested_profile_groups': encodeTenantAdminNestedProfileGroups(
           nestedProfileGroups,

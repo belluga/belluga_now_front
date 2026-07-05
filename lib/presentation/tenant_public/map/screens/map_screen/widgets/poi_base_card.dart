@@ -47,14 +47,15 @@ abstract class PoiBaseCard extends StatelessWidget {
     final bodyPadding = isCompactLayout
         ? const EdgeInsets.fromLTRB(12, 10, 12, 12)
         : const EdgeInsets.fromLTRB(20, 18, 20, 20);
-    final titleStyle = (isCompactLayout
-            ? Theme.of(context).textTheme.titleLarge
-            : Theme.of(context).textTheme.headlineSmall)
-        ?.copyWith(
-      fontWeight: FontWeight.w900,
-      height: 1.02,
-      letterSpacing: -0.5,
-    );
+    final titleStyle =
+        (isCompactLayout
+                ? Theme.of(context).textTheme.titleLarge
+                : Theme.of(context).textTheme.headlineSmall)
+            ?.copyWith(
+              fontWeight: FontWeight.w900,
+              height: 1.02,
+              letterSpacing: -0.5,
+            );
     final headerGap = isCompactLayout ? 4.0 : 10.0;
     final sectionGap = isCompactLayout ? 6.0 : 12.0;
     final actionsTopGap = isCompactLayout ? 8.0 : 18.0;
@@ -119,9 +120,7 @@ abstract class PoiBaseCard extends StatelessWidget {
                           ),
                           child: Text(
                             badge.toUpperCase(),
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelMedium
+                            style: Theme.of(context).textTheme.labelMedium
                                 ?.copyWith(
                                   color: accentForeground,
                                   fontWeight: FontWeight.w800,
@@ -158,10 +157,7 @@ abstract class PoiBaseCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         if (_shouldShowHeaderAvatar()) ...[
-                          _CardAvatar(
-                            poi: poi,
-                            accentColor: accentColor,
-                          ),
+                          _CardAvatar(poi: poi, accentColor: accentColor),
                           const SizedBox(width: 12),
                         ],
                         Expanded(
@@ -195,9 +191,9 @@ abstract class PoiBaseCard extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                              height: 1.35,
-                            ),
+                          color: colorScheme.onSurfaceVariant,
+                          height: 1.35,
+                        ),
                       ),
                     ],
                     for (final section in sectionsAfterDescription) ...[
@@ -269,10 +265,13 @@ abstract class PoiBaseCard extends StatelessWidget {
   }) {
     final imageUri = PoiContentResolver.coverImageUri(poi);
     final assetPath = PoiContentResolver.assetPath(poi);
-    final heroPlaceholder =
-        _HeroPlaceholder(accentColor: accentColor, poi: poi);
+    final heroPlaceholder = _HeroPlaceholder(
+      accentColor: accentColor,
+      poi: poi,
+    );
     final heroBackdrop = _HeroBackdrop(accentColor: accentColor);
-    final hasMedia = imageUri != null && imageUri.isNotEmpty ||
+    final hasMedia =
+        imageUri != null && imageUri.isNotEmpty ||
         assetPath != null && assetPath.isNotEmpty;
     final heroChild = imageUri != null && imageUri.isNotEmpty
         ? BellugaNetworkImage(
@@ -282,17 +281,18 @@ abstract class PoiBaseCard extends StatelessWidget {
             errorWidget: heroPlaceholder,
           )
         : assetPath != null && assetPath.isNotEmpty
-            ? Image.asset(
-                assetPath,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => heroPlaceholder,
-              )
-            : heroPlaceholder;
+        ? Image.asset(
+            assetPath,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => heroPlaceholder,
+          )
+        : heroPlaceholder;
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final maxWidth =
-            constraints.maxWidth.isFinite ? constraints.maxWidth : 348.0;
+        final maxWidth = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : 348.0;
         final targetAspectRatio = hasMedia ? 1.56 : 2.18;
         final rawHeight = maxWidth / targetAspectRatio;
         final resolvedHeight = rawHeight.clamp(
@@ -301,10 +301,7 @@ abstract class PoiBaseCard extends StatelessWidget {
         );
         final boundedHeight = heroMaxHeight == null
             ? resolvedHeight
-            : resolvedHeight.clamp(
-                hasMedia ? 76.0 : 68.0,
-                heroMaxHeight!,
-              );
+            : resolvedHeight.clamp(hasMedia ? 76.0 : 68.0, heroMaxHeight!);
 
         return ClipRRect(
           borderRadius: BorderRadius.circular(24),
@@ -344,15 +341,17 @@ abstract class PoiBaseCard extends StatelessWidget {
 
   Widget buildPrimaryMeta(BuildContext context, Color accentColor) {
     final metaStyle = Theme.of(context).textTheme.titleSmall?.copyWith(
-          fontWeight: FontWeight.w700,
-          color: colorScheme.onSurfaceVariant,
-        );
-    final mutedStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: colorScheme.onSurfaceVariant,
-        );
+      fontWeight: FontWeight.w700,
+      color: colorScheme.onSurfaceVariant,
+    );
+    final mutedStyle = Theme.of(
+      context,
+    ).textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant);
 
-    final distance =
-        PoiContentResolver.distanceLabel(poi, includeAudienceSuffix: true);
+    final distance = PoiContentResolver.distanceLabel(
+      poi,
+      includeAudienceSuffix: true,
+    );
     final locationLine = PoiContentResolver.compactAddress(poi);
     final fallbackType = PoiContentResolver.typeLabel(poi);
 
@@ -365,11 +364,7 @@ abstract class PoiBaseCard extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.near_me_rounded,
-                size: 17,
-                color: accentColor,
-              ),
+              Icon(Icons.near_me_rounded, size: 17, color: accentColor),
               const SizedBox(width: 4),
               Text(distance, style: metaStyle),
             ],
@@ -512,10 +507,7 @@ class _ReferencePointButton extends StatelessWidget {
 }
 
 class _CardAvatar extends StatelessWidget {
-  const _CardAvatar({
-    required this.poi,
-    required this.accentColor,
-  });
+  const _CardAvatar({required this.poi, required this.accentColor});
 
   final CityPoiModel poi;
   final Color accentColor;
@@ -543,7 +535,7 @@ class _CardAvatar extends StatelessWidget {
           width: _size,
           height: _size,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _buildPlaceholder(context),
+          errorBuilder: (_, _, _) => _buildPlaceholder(context),
         ),
       );
     } else {
@@ -559,31 +551,23 @@ class _CardAvatar extends StatelessWidget {
   }
 
   Widget _buildPlaceholder(BuildContext context) {
-    final iconColor = PoiContentResolver.iconColor(poi) ??
+    final iconColor =
+        PoiContentResolver.iconColor(poi) ??
         Theme.of(context).colorScheme.onPrimaryContainer;
     final backgroundColor = PoiContentResolver.accentColor(poi) ?? accentColor;
     return DecoratedBox(
       decoration: BoxDecoration(
         color: backgroundColor.withValues(alpha: 0.16),
         shape: BoxShape.circle,
-        border: Border.all(
-          color: backgroundColor.withValues(alpha: 0.38),
-        ),
+        border: Border.all(color: backgroundColor.withValues(alpha: 0.38)),
       ),
-      child: Icon(
-        PoiContentResolver.icon(poi),
-        size: 22,
-        color: iconColor,
-      ),
+      child: Icon(PoiContentResolver.icon(poi), size: 22, color: iconColor),
     );
   }
 }
 
 class _HeroPlaceholder extends StatelessWidget {
-  const _HeroPlaceholder({
-    required this.accentColor,
-    required this.poi,
-  });
+  const _HeroPlaceholder({required this.accentColor, required this.poi});
 
   final Color accentColor;
   final CityPoiModel poi;
@@ -605,20 +589,14 @@ class _HeroPlaceholder extends StatelessWidget {
         ),
       ),
       child: Center(
-        child: Icon(
-          icon,
-          size: 64,
-          color: iconColor.withValues(alpha: 0.92),
-        ),
+        child: Icon(icon, size: 64, color: iconColor.withValues(alpha: 0.92)),
       ),
     );
   }
 }
 
 class _HeroBackdrop extends StatelessWidget {
-  const _HeroBackdrop({
-    required this.accentColor,
-  });
+  const _HeroBackdrop({required this.accentColor});
 
   final Color accentColor;
 
@@ -665,11 +643,7 @@ class _CardActionIconButton extends StatelessWidget {
           child: SizedBox(
             width: 40,
             height: 40,
-            child: Icon(
-              icon,
-              size: 20,
-              color: scheme.onSurfaceVariant,
-            ),
+            child: Icon(icon, size: 20, color: scheme.onSurfaceVariant),
           ),
         ),
       ),

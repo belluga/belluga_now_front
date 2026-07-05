@@ -1197,11 +1197,22 @@ void main() {
         settingsRepository: _FakeTenantAdminSettingsRepository(),
         ruleCatalogRepository: TenantAdminDiscoveryFilterRuleCatalogRepository(
           accountProfilesRepository:
-              _FakeDiscoveryFilterAccountProfilesRepository(),
-          staticAssetsRepository: _FakeDiscoveryFilterStaticAssetsRepository(),
+              _FakeDiscoveryFilterAccountProfilesRepository(
+                profileTypes: const <TenantAdminProfileTypeDefinition>[],
+              ),
+          staticAssetsRepository: _FakeDiscoveryFilterStaticAssetsRepository(
+            staticTypes: const <TenantAdminStaticProfileTypeDefinition>[],
+          ),
           taxonomiesRepository: taxonomiesRepository,
           eventsRepository: _FakeDiscoveryFilterEventsRepository(
             allowedTaxonomies: ['genre', 'cuisine'],
+            eventTypes: [
+              _eventTypeDefinition(
+                name: 'Event',
+                slug: 'event',
+                allowedTaxonomies: ['genre', 'cuisine'],
+              ),
+            ],
           ),
         ),
       );
@@ -2364,7 +2375,7 @@ void main() {
             name: _settingsTestRouteNameForChild(child),
             path: '/',
             meta: _settingsTestMetaForChild(child),
-            builder: (_, __) => child,
+            builder: (_, _) => child,
           ),
         ],
       )..ignorePopCompleters = true;
@@ -2439,7 +2450,7 @@ void main() {
             name: _settingsTestRouteNameForChild(child),
             path: '/',
             meta: _settingsTestMetaForChild(child),
-            builder: (_, __) => child,
+            builder: (_, _) => child,
           ),
         ],
       )..ignorePopCompleters = true;
@@ -3438,7 +3449,7 @@ Future<void> _pumpSettingsHubWithDiscoveryFiltersRoutes(
         meta: canonicalRouteMeta(
           family: CanonicalRouteFamily.tenantAdminSettingsRoot,
         ),
-        builder: (_, __) => const Scaffold(body: TenantAdminSettingsScreen()),
+        builder: (_, _) => const Scaffold(body: TenantAdminSettingsScreen()),
       ),
       NamedRouteDef(
         name: TenantAdminDiscoveryFiltersRoute.name,
@@ -3446,7 +3457,7 @@ Future<void> _pumpSettingsHubWithDiscoveryFiltersRoutes(
         meta: canonicalRouteMeta(
           family: CanonicalRouteFamily.tenantAdminFiltersRoot,
         ),
-        builder: (_, __) =>
+        builder: (_, _) =>
             const Scaffold(body: TenantAdminDiscoveryFiltersScreen()),
       ),
       NamedRouteDef(
@@ -3491,7 +3502,7 @@ Future<void> _pumpWithAutoRoute(WidgetTester tester, Widget child) async {
         name: _settingsTestRouteNameForChild(child),
         path: '/',
         meta: _settingsTestMetaForChild(child),
-        builder: (_, __) => child,
+        builder: (_, _) => child,
       ),
     ],
   )..ignorePopCompleters = true;
@@ -3560,15 +3571,14 @@ bool _isScaffoldWithBody<T extends Widget>(Widget child) {
 class _FakeDiscoveryFilterAccountProfilesRepository
     extends TenantAdminAccountProfilesRepositoryContract {
   _FakeDiscoveryFilterAccountProfilesRepository({
-    List<TenantAdminProfileTypeDefinition> profileTypes =
-        const <TenantAdminProfileTypeDefinition>[],
-  }) : _profileTypes = profileTypes;
+    this.profileTypes = const <TenantAdminProfileTypeDefinition>[],
+  });
 
-  final List<TenantAdminProfileTypeDefinition> _profileTypes;
+  final List<TenantAdminProfileTypeDefinition> profileTypes;
 
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async {
-    return _profileTypes;
+    return profileTypes;
   }
 
   @override
@@ -3578,16 +3588,15 @@ class _FakeDiscoveryFilterAccountProfilesRepository
 class _FakeDiscoveryFilterStaticAssetsRepository
     extends TenantAdminStaticAssetsRepositoryContract {
   _FakeDiscoveryFilterStaticAssetsRepository({
-    List<TenantAdminStaticProfileTypeDefinition> staticTypes =
-        const <TenantAdminStaticProfileTypeDefinition>[],
-  }) : _staticTypes = staticTypes;
+    this.staticTypes = const <TenantAdminStaticProfileTypeDefinition>[],
+  });
 
-  final List<TenantAdminStaticProfileTypeDefinition> _staticTypes;
+  final List<TenantAdminStaticProfileTypeDefinition> staticTypes;
 
   @override
   Future<List<TenantAdminStaticProfileTypeDefinition>>
   fetchStaticProfileTypes() async {
-    return _staticTypes;
+    return staticTypes;
   }
 
   @override
@@ -3598,17 +3607,17 @@ class _FakeDiscoveryFilterEventsRepository
     extends TenantAdminEventsRepositoryContract {
   _FakeDiscoveryFilterEventsRepository({
     this.allowedTaxonomies = const <String>[],
-    List<TenantAdminEventType>? eventTypes,
-  }) : _eventTypes = eventTypes;
+    this.eventTypes,
+  });
 
   final List<String> allowedTaxonomies;
-  final List<TenantAdminEventType>? _eventTypes;
+  final List<TenantAdminEventType>? eventTypes;
 
   @override
   Future<List<TenantAdminEventType>> fetchEventTypes() async {
-    final eventTypes = _eventTypes;
-    if (eventTypes != null) {
-      return eventTypes;
+    final configuredEventTypes = eventTypes;
+    if (configuredEventTypes != null) {
+      return configuredEventTypes;
     }
     if (allowedTaxonomies.isEmpty) {
       return const <TenantAdminEventType>[];

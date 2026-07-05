@@ -16,6 +16,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dar
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
@@ -74,55 +75,56 @@ void main() {
     await GetIt.I.reset();
   });
 
-  testWidgets('prefers route account slug over cached controller slug on init',
-      (tester) async {
-    final accountsRepository =
-        GetIt.I.get<TenantAdminAccountsRepositoryContract>()
-            as _FakeAccountsRepository;
+  testWidgets(
+    'prefers route account slug over cached controller slug on init',
+    (tester) async {
+      final accountsRepository =
+          GetIt.I.get<TenantAdminAccountsRepositoryContract>()
+              as _FakeAccountsRepository;
 
-    await _pumpScreen(
-      tester,
-      TenantAdminAccountProfileCreateScreen(accountSlug: 'route-account'),
-    );
+      await _pumpScreen(
+        tester,
+        TenantAdminAccountProfileCreateScreen(accountSlug: 'route-account'),
+      );
 
-    expect(accountsRepository.fetchAccountBySlugCalls, 1);
-    expect(accountsRepository.lastFetchedSlug, 'route-account');
-  });
+      expect(accountsRepository.fetchAccountBySlugCalls, 1);
+      expect(accountsRepository.lastFetchedSlug, 'route-account');
+    },
+  );
 
-  testWidgets('hides nested group editor when profile type disables capability',
-      (tester) async {
+  testWidgets(
+    'hides nested group editor when profile type disables capability',
+    (tester) async {
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+      profilesRepository.profileTypesToReturn = [
+        _profileType(hasNestedProfileGroups: false),
+      ];
+
+      await _pumpScreen(
+        tester,
+        TenantAdminAccountProfileCreateScreen(accountSlug: 'route-account'),
+      );
+
+      await _selectProfileType(tester, 'Venue');
+
+      expect(find.text('Abas de contas vinculadas'), findsNothing);
+      expect(
+        find.byKey(const Key('tenantAdminCreateAddNestedGroupButton')),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets('adds nested group editor with searchable selector', (
+    tester,
+  ) async {
     final profilesRepository =
         GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
             as _FakeAccountProfilesRepository;
     profilesRepository.profileTypesToReturn = [
-      _profileType(hasNestedProfileGroups: false),
-    ];
-
-    await _pumpScreen(
-      tester,
-      TenantAdminAccountProfileCreateScreen(accountSlug: 'route-account'),
-    );
-
-    await _selectProfileType(tester, 'Venue');
-
-    expect(find.text('Abas de contas vinculadas'), findsNothing);
-    expect(
-      find.byKey(const Key('tenantAdminCreateAddNestedGroupButton')),
-      findsNothing,
-    );
-  });
-
-  testWidgets('adds nested group editor with searchable type-filtered selector',
-      (tester) async {
-    final profilesRepository =
-        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
-            as _FakeAccountProfilesRepository;
-    profilesRepository.profileTypesToReturn = [
-      _profileType(
-        type: 'venue',
-        label: 'Venue',
-        hasNestedProfileGroups: true,
-      ),
+      _profileType(type: 'venue', label: 'Venue', hasNestedProfileGroups: true),
       _profileType(
         type: 'publisher',
         label: 'Publisher',
@@ -183,30 +185,16 @@ void main() {
     await tester.enterText(searchField, '');
     await tester.pumpAndSettle();
 
-    final typeFilter = find.byWidgetPredicate((widget) {
-      final key = widget.key?.toString() ?? '';
-      return widget is DropdownButtonFormField<String> &&
-          key.contains('tenantAdminCreateNestedAccountTypeFilter_');
-    });
-    await tester.tap(typeFilter);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Publisher').last);
-    await tester.pumpAndSettle();
-
-    expect(find.text('Runtime Sender'), findsOneWidget);
-    expect(find.text('Conta Parceira'), findsNothing);
-
-    await tester.tap(typeFilter);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Venue').last);
-    await tester.pumpAndSettle();
-
     await tester.tap(find.text('Conta Parceira'));
     await tester.pumpAndSettle();
 
     final controller = GetIt.I.get<TenantAdminAccountProfilesController>();
     expect(
-      controller.createStateStreamValue.value.nestedProfileGroups.single
+      controller
+          .createStateStreamValue
+          .value
+          .nestedProfileGroups
+          .single
           .accountProfileIdValues
           .map((entry) => entry.value)
           .toList(growable: false),
@@ -225,7 +213,7 @@ Future<void> _pumpScreen(WidgetTester tester, Widget child) async {
           family: CanonicalRouteFamily.tenantAdminAccountsInternal,
           chromeMode: RouteChromeMode.fullscreen,
         ),
-        builder: (_, __) => child,
+        builder: (_, _) => child,
       ),
     ],
   )..ignorePopCompleters = true;
@@ -309,19 +297,22 @@ class _FakeAccountsRepository extends TenantAdminAccountsRepositoryContract {
 
   @override
   Future<void> deleteAccount(
-      TenantAdminAccountsRepositoryContractPrimString accountSlug) {
+    TenantAdminAccountsRepositoryContractPrimString accountSlug,
+  ) {
     throw UnimplementedError();
   }
 
   @override
   Future<TenantAdminAccount> restoreAccount(
-      TenantAdminAccountsRepositoryContractPrimString accountSlug) {
+    TenantAdminAccountsRepositoryContractPrimString accountSlug,
+  ) {
     throw UnimplementedError();
   }
 
   @override
   Future<void> forceDeleteAccount(
-      TenantAdminAccountsRepositoryContractPrimString accountSlug) {
+    TenantAdminAccountsRepositoryContractPrimString accountSlug,
+  ) {
     throw UnimplementedError();
   }
 }
@@ -339,7 +330,43 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoBool? queryableOnly,
     TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async {
-    return profilesToReturn;
+    return _filterProfiles(
+      excludeAccountProfileId: excludeAccountProfileId?.value,
+    );
+  }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+  fetchAccountProfilesPage({
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
+    TenantAdminAccountProfilesRepoString? search,
+    TenantAdminAccountProfilesRepoString? accountId,
+    TenantAdminAccountProfilesRepoBool? queryableOnly,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
+  }) async {
+    final filtered = _filterProfiles(
+      search: search?.value,
+      excludeAccountProfileId: excludeAccountProfileId?.value,
+    );
+    final start = (page.value - 1) * pageSize.value;
+    if (page.value <= 0 || pageSize.value <= 0 || start >= filtered.length) {
+      return tenantAdminPagedResultFromRaw(
+        items: const <TenantAdminAccountProfile>[],
+        hasMore: false,
+        currentPage: page.value,
+        pageSize: pageSize.value,
+      );
+    }
+    final end = start + pageSize.value < filtered.length
+        ? start + pageSize.value
+        : filtered.length;
+    return tenantAdminPagedResultFromRaw(
+      items: filtered.sublist(start, end),
+      hasMore: end < filtered.length,
+      currentPage: page.value,
+      pageSize: pageSize.value,
+    );
   }
 
   @override
@@ -404,7 +431,8 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<void> deleteAccountProfile(
-      TenantAdminAccountProfilesRepoString accountProfileId) {
+    TenantAdminAccountProfilesRepoString accountProfileId,
+  ) {
     throw UnimplementedError();
   }
 
@@ -417,7 +445,8 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<void> forceDeleteAccountProfile(
-      TenantAdminAccountProfilesRepoString accountProfileId) {
+    TenantAdminAccountProfilesRepoString accountProfileId,
+  ) {
     throw UnimplementedError();
   }
 
@@ -447,6 +476,29 @@ class _FakeAccountProfilesRepository
   @override
   Future<void> deleteProfileType(TenantAdminAccountProfilesRepoString type) {
     throw UnimplementedError();
+  }
+
+  List<TenantAdminAccountProfile> _filterProfiles({
+    String? search,
+    String? excludeAccountProfileId,
+  }) {
+    final normalizedSearch = search?.trim().toLowerCase() ?? '';
+    return profilesToReturn
+        .where((profile) {
+          if (excludeAccountProfileId != null &&
+              excludeAccountProfileId.isNotEmpty &&
+              profile.id == excludeAccountProfileId) {
+            return false;
+          }
+          if (normalizedSearch.isEmpty) {
+            return true;
+          }
+          final normalizedSlug = profile.slug?.toLowerCase() ?? '';
+          return profile.displayName.toLowerCase().contains(normalizedSearch) ||
+              profile.profileType.toLowerCase().contains(normalizedSearch) ||
+              normalizedSlug.contains(normalizedSearch);
+        })
+        .toList(growable: false);
   }
 }
 

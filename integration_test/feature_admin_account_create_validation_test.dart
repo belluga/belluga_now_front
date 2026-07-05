@@ -36,10 +36,7 @@ void main() {
     );
   }
 
-  Future<void> _pumpFor(
-    WidgetTester tester,
-    Duration duration,
-  ) async {
+  Future<void> _pumpFor(WidgetTester tester, Duration duration) async {
     final end = DateTime.now().add(duration);
     while (DateTime.now().isBefore(end)) {
       await tester.pump(const Duration(milliseconds: 100));
@@ -101,9 +98,7 @@ void main() {
     await _pumpFor(tester, const Duration(seconds: 1));
 
     app.appRouter.replaceAll([
-      const TenantAdminShellRoute(
-        children: [TenantAdminAccountCreateRoute()],
-      ),
+      const TenantAdminShellRoute(children: [TenantAdminAccountCreateRoute()]),
     ]);
 
     await tester.pumpWidget(app);
@@ -113,14 +108,14 @@ void main() {
       const ValueKey('tenant_admin_account_create_profile_types_error'),
     );
     final profileTypeField = find.byType(DropdownButtonFormField<String>);
-    await _waitForAny(
-      tester,
-      [profileTypesError, profileTypeField],
-      timeout: const Duration(seconds: 30),
-    );
+    await _waitForAny(tester, [
+      profileTypesError,
+      profileTypeField,
+    ], timeout: const Duration(seconds: 30));
 
-    final saveButton =
-        find.byKey(const ValueKey('tenant_admin_account_create_save'));
+    final saveButton = find.byKey(
+      const ValueKey('tenant_admin_account_create_save'),
+    );
     await _waitForFinder(tester, saveButton);
     await tester.ensureVisible(saveButton);
     await tester.tap(saveButton, warnIfMissed: false);
@@ -132,8 +127,9 @@ void main() {
 }
 
 class _InMemoryAdminModeRepository implements AdminModeRepositoryContract {
-  final StreamValue<AdminMode> _modeStreamValue =
-      StreamValue<AdminMode>(defaultValue: AdminMode.user);
+  final StreamValue<AdminMode> _modeStreamValue = StreamValue<AdminMode>(
+    defaultValue: AdminMode.user,
+  );
 
   @override
   StreamValue<AdminMode> get modeStreamValue => _modeStreamValue;
@@ -159,29 +155,27 @@ class _InMemoryAdminModeRepository implements AdminModeRepositoryContract {
 }
 
 class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
-  _FakeLandlordAuthRepository({required bool hasValidSession})
-      : _hasValidSession = hasValidSession;
-
-  bool _hasValidSession;
+  _FakeLandlordAuthRepository({required this.hasValidSession});
 
   @override
-  bool get hasValidSession => _hasValidSession;
+  bool hasValidSession;
 
   @override
-  String get token => _hasValidSession ? 'token' : '';
+  String get token => hasValidSession ? 'token' : '';
 
   @override
   Future<void> init() async {}
 
   @override
   Future<void> loginWithEmailPassword(
-      LandlordAuthRepositoryContractPrimString email,
-      LandlordAuthRepositoryContractPrimString password) async {
-    _hasValidSession = true;
+    LandlordAuthRepositoryContractPrimString email,
+    LandlordAuthRepositoryContractPrimString password,
+  ) async {
+    hasValidSession = true;
   }
 
   @override
   Future<void> logout() async {
-    _hasValidSession = false;
+    hasValidSession = false;
   }
 }

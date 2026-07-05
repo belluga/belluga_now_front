@@ -74,6 +74,54 @@ class TenantAdminAccountProfilesRepository
   }
 
   @override
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+  fetchAccountProfilesPage({
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
+    TenantAdminAccountProfilesRepoString? search,
+    TenantAdminAccountProfilesRepoString? accountId,
+    TenantAdminAccountProfilesRepoBool? queryableOnly,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
+  }) async {
+    try {
+      final queryParameters = _requestEncoder.encodeFetchAccountProfilesQuery(
+        accountId: accountId?.value,
+        queryableOnly: queryableOnly?.value ?? false,
+        excludeAccountProfileId: excludeAccountProfileId?.value,
+        search: search?.value,
+        page: page.value,
+        pageSize: pageSize.value,
+      );
+      final response = await _dio.get(
+        '$_apiBaseUrl/v1/account_profiles',
+        queryParameters: queryParameters.isEmpty ? null : queryParameters,
+        options: Options(headers: _buildHeaders()),
+      );
+      final rawResponse = response.data;
+      final currentPage =
+          tenantAdminReadPageValue(rawResponse, 'current_page') ??
+          tenantAdminReadPageValue(rawResponse, 'page') ??
+          page.value;
+      final resolvedPageSize =
+          tenantAdminReadPageValue(rawResponse, 'page_size') ??
+          tenantAdminReadPageValue(rawResponse, 'per_page') ??
+          pageSize.value;
+      final dtos = _responseDecoder.decodeAccountProfileList(rawResponse);
+      return tenantAdminPagedResultFromRaw(
+        items: dtos.map((dto) => dto.toDomain()).toList(growable: false),
+        hasMore: tenantAdminResolveHasMore(
+          rawResponse: rawResponse,
+          requestedPage: currentPage,
+        ),
+        currentPage: currentPage,
+        pageSize: resolvedPageSize,
+      );
+    } on DioException catch (error) {
+      throw _wrapError(error, 'load account profile candidates page');
+    }
+  }
+
+  @override
   Future<TenantAdminAccountProfile> fetchAccountProfile(
     TenantAdminAccountProfilesRepoString accountProfileId,
   ) async {

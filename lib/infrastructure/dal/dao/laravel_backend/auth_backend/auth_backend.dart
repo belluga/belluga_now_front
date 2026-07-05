@@ -10,13 +10,8 @@ import 'package:get_it/get_it.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 class LaravelAuthBackend extends AuthBackendContract {
-  LaravelAuthBackend({
-    BackendContext? context,
-    Dio? dio,
-    FlutterSecureStorage? storage,
-  })  : _context = context,
-        _dio = dio,
-        _storage = storage ?? FlutterSecureStorage();
+  LaravelAuthBackend({this._context, this._dio, FlutterSecureStorage? storage})
+    : _storage = storage ?? FlutterSecureStorage();
 
   final BackendContext? _context;
   Dio? _dio;
@@ -28,7 +23,8 @@ class LaravelAuthBackend extends AuthBackendContract {
     if (_dio != null) {
       return _dio!;
     }
-    final resolvedContext = _context ??
+    final resolvedContext =
+        _context ??
         (GetIt.I.isRegistered<BackendContract>()
             ? GetIt.I.get<BackendContract>().context
             : null);
@@ -97,9 +93,7 @@ class LaravelAuthBackend extends AuthBackendContract {
       await dio.post(
         '/v1/auth/logout$tenantQuery',
         data: {'device': deviceName},
-        options: Options(
-          headers: {'Authorization': 'Bearer $token'},
-        ),
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
     } on DioException catch (e) {
       final statusCode = e.response?.statusCode;
@@ -124,9 +118,7 @@ class LaravelAuthBackend extends AuthBackendContract {
       final tenantQuery = await _tenantQuerySuffix();
       final response = await dio.get(
         '/v1/auth/token_validate$tenantQuery',
-        options: Options(
-          headers: {'Authorization': 'Bearer $token'},
-        ),
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
       final raw = response.data;
       if (raw is Map<String, dynamic>) {
@@ -322,8 +314,8 @@ class LaravelAuthBackend extends AuthBackendContract {
       'device_name': deviceName,
       'fingerprint': {
         'hash': fingerprintHash,
-        if (userAgent != null) 'user_agent': userAgent,
-        if (locale != null) 'locale': locale,
+        'user_agent': ?userAgent,
+        'locale': ?locale,
       },
       if (metadata != null && metadata.isNotEmpty) 'metadata': metadata,
     };
@@ -459,8 +451,9 @@ UserDto _userDtoFromOtpVerifyData(Map<String, dynamic> data) {
   final me = data['me'];
   final meMap = me is Map ? Map<String, dynamic>.from(me) : <String, dynamic>{};
   final profile = meMap['data'];
-  final profileMap =
-      profile is Map ? Map<String, dynamic>.from(profile) : <String, dynamic>{};
+  final profileMap = profile is Map
+      ? Map<String, dynamic>.from(profile)
+      : <String, dynamic>{};
   final id = data['user_id']?.toString() ?? profileMap['user_id']?.toString();
   if (id == null || id.isEmpty) {
     throw Exception('OTP verification user id missing.');

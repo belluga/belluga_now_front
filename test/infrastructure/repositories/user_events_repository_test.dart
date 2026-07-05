@@ -8,83 +8,89 @@ import 'package:belluga_now/infrastructure/services/user_events_backend_contract
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('refreshConfirmedOccurrenceIds stores canonical occurrence ids',
-      () async {
-    final backend = _FakeUserEventsBackend(
-      response: const {
-        'confirmed_occurrence_ids': ['occ-1', '', 'occ-2'],
-      },
-    );
-    final repository = UserEventsRepository(
-      scheduleRepository: _FakeScheduleRepository(),
-      backend: backend,
-    );
+  test(
+    'refreshConfirmedOccurrenceIds stores canonical occurrence ids',
+    () async {
+      final backend = _FakeUserEventsBackend(
+        response: const {
+          'confirmed_occurrence_ids': ['occ-1', '', 'occ-2'],
+        },
+      );
+      final repository = UserEventsRepository(
+        scheduleRepository: _FakeScheduleRepository(),
+        backend: backend,
+      );
 
-    await repository.refreshConfirmedOccurrenceIds();
+      await repository.refreshConfirmedOccurrenceIds();
 
-    final confirmed = repository.confirmedOccurrenceIdsStream.value
-        .map((entry) => entry.value)
-        .toSet();
-    expect(confirmed, {'occ-1', 'occ-2'});
-    expect(
-      repository
-          .isOccurrenceConfirmed(
-            userEventsRepoString('occ-2', defaultValue: '', isRequired: true),
-          )
-          .value,
-      isTrue,
-    );
-  });
-
-  test('refreshConfirmedOccurrenceIds fails loudly on stale response shape',
-      () async {
-    final backend = _FakeUserEventsBackend(
-      response: const {
-        'confirmed_occurrence_ids': ['occ-1'],
-      },
-    );
-    final repository = UserEventsRepository(
-      scheduleRepository: _FakeScheduleRepository(),
-      backend: backend,
-    );
-
-    await repository.refreshConfirmedOccurrenceIds();
-    backend.response = const {
-      'event_ids': ['legacy-event-id'],
-    };
-
-    expect(
-      repository.refreshConfirmedOccurrenceIds(),
-      throwsA(
-        isA<StateError>().having(
-          (error) => error.message,
-          'message',
-          contains('confirmed_occurrence_ids'),
-        ),
-      ),
-    );
-    expect(
-      repository.confirmedOccurrenceIdsStream.value
+      final confirmed = repository.confirmedOccurrenceIdsStream.value
           .map((entry) => entry.value)
-          .toSet(),
-      {'occ-1'},
-    );
-  });
+          .toSet();
+      expect(confirmed, {'occ-1', 'occ-2'});
+      expect(
+        repository
+            .isOccurrenceConfirmed(
+              userEventsRepoString('occ-2', defaultValue: '', isRequired: true),
+            )
+            .value,
+        isTrue,
+      );
+    },
+  );
 
-  test('fetchMyEvents skips confirmed query when identity is anonymous',
-      () async {
-    final scheduleRepository = _FakeScheduleRepository();
-    final repository = UserEventsRepository(
-      scheduleRepository: scheduleRepository,
-      backend: _FakeUserEventsBackend(response: const {}),
-      authRepository: _FakeAuthRepository(authorized: false),
-    );
+  test(
+    'refreshConfirmedOccurrenceIds fails loudly on stale response shape',
+    () async {
+      final backend = _FakeUserEventsBackend(
+        response: const {
+          'confirmed_occurrence_ids': ['occ-1'],
+        },
+      );
+      final repository = UserEventsRepository(
+        scheduleRepository: _FakeScheduleRepository(),
+        backend: backend,
+      );
 
-    final events = await repository.fetchMyEvents();
+      await repository.refreshConfirmedOccurrenceIds();
+      backend.response = const {
+        'event_ids': ['legacy-event-id'],
+      };
 
-    expect(events, isEmpty);
-    expect(scheduleRepository.loadEventSearchCallCount, 0);
-  });
+      expect(
+        repository.refreshConfirmedOccurrenceIds(),
+        throwsA(
+          isA<StateError>().having(
+            (error) => error.message,
+            'message',
+            contains('confirmed_occurrence_ids'),
+          ),
+        ),
+      );
+      expect(
+        repository.confirmedOccurrenceIdsStream.value
+            .map((entry) => entry.value)
+            .toSet(),
+        {'occ-1'},
+      );
+    },
+  );
+
+  test(
+    'fetchMyEvents skips confirmed query when identity is anonymous',
+    () async {
+      final scheduleRepository = _FakeScheduleRepository();
+      final repository = UserEventsRepository(
+        scheduleRepository: scheduleRepository,
+        backend: _FakeUserEventsBackend(response: const {}),
+        authRepository: _FakeAuthRepository(authorized: false),
+      );
+
+      final events = await repository.fetchMyEvents();
+
+      expect(events, isEmpty);
+      expect(scheduleRepository.loadEventSearchCallCount, 0);
+    },
+  );
 }
 
 class _FakeUserEventsBackend implements UserEventsBackendContract {
@@ -99,15 +105,13 @@ class _FakeUserEventsBackend implements UserEventsBackendContract {
   Future<Map<String, dynamic>> confirmAttendance({
     required String eventId,
     required String occurrenceId,
-  }) async =>
-      response;
+  }) async => response;
 
   @override
   Future<Map<String, dynamic>> unconfirmAttendance({
     required String eventId,
     required String occurrenceId,
-  }) async =>
-      response;
+  }) async => response;
 }
 
 class _FakeScheduleRepository extends Fake
@@ -130,15 +134,15 @@ class _FakeScheduleRepository extends Fake
 }
 
 class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
-  _FakeAuthRepository({required bool authorized}) : _authorized = authorized;
+  _FakeAuthRepository({required this.authorized});
 
-  bool _authorized;
+  bool authorized;
 
   @override
   Object get backend => throw UnimplementedError();
 
   @override
-  String get userToken => _authorized ? 'token' : '';
+  String get userToken => authorized ? 'token' : '';
 
   @override
   void setUserToken(AuthRepositoryContractParamString? token) {}
@@ -147,13 +151,13 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<String> getDeviceId() async => 'device-1';
 
   @override
-  Future<String?> getUserId() async => _authorized ? 'user-1' : null;
+  Future<String?> getUserId() async => authorized ? 'user-1' : null;
 
   @override
-  bool get isUserLoggedIn => _authorized;
+  bool get isUserLoggedIn => authorized;
 
   @override
-  bool get isAuthorized => _authorized;
+  bool get isAuthorized => authorized;
 
   @override
   Future<void> init() async {}
@@ -187,7 +191,7 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> logout() async {
-    _authorized = false;
+    authorized = false;
     userStreamValue.addValue(null);
   }
 

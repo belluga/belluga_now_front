@@ -13,7 +13,7 @@ RootStackRouter buildSingleScreenTestRouter(Widget child) {
       NamedRouteDef(
         name: 'tenant-admin-image-crop-test',
         path: '/',
-        builder: (_, __) => child,
+        builder: (_, _) => child,
       ),
     ],
   );

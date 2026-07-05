@@ -6837,7 +6837,7 @@ Future<void> _pumpPoiDetailDeckWithAutoRouter(
         name: 'poi-detail-deck-test',
         path: '/',
         meta: canonicalRouteMeta(family: CanonicalRouteFamily.cityMap),
-        builder: (_, __) => RouteInstanceScope(
+        builder: (_, _) => RouteInstanceScope(
           child: Scaffold(
             body: PoiDetailDeck(
               controller: controller,
