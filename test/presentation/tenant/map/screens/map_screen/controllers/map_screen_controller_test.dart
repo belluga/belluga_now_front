@@ -787,10 +787,19 @@ class _FakeMapHandle implements BellugaMapHandleContract {
     double? initialZoom,
     CityCoordinate? initialCenter,
     bool treatNoOpMoveAsSuccess = false,
-  }) : _isReady = isReady,
-       _currentZoom = initialZoom ?? 16,
-       _currentCenter = initialCenter,
-       _treatNoOpMoveAsSuccess = treatNoOpMoveAsSuccess;
+  }) : this._internal(
+         isReady,
+         initialZoom ?? 16,
+         initialCenter,
+         treatNoOpMoveAsSuccess,
+       );
+
+  _FakeMapHandle._internal(
+    this._isReady,
+    this._currentZoom,
+    this._currentCenter,
+    this._treatNoOpMoveAsSuccess,
+  );
 
   final StreamController<BellugaMapInteractionEvent> _events =
       StreamController<BellugaMapInteractionEvent>.broadcast();

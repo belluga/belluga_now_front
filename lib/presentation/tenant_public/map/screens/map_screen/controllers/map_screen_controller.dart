@@ -2387,7 +2387,7 @@ class MapScreenController implements Disposable {
       eventName: telemetryRepoString('map_catalog_filter_applied'),
       properties: {
         'category_keys': categoryKeys.toList(growable: false),
-        if (source != null) 'source': source,
+        ...?(source == null ? null : <String, Object?>{'source': source}),
         'types': types.toList(growable: false),
         'taxonomy': taxonomyTokens.toList(growable: false),
         'tags': tags.toList(growable: false),
@@ -2426,11 +2426,11 @@ class MapScreenController implements Disposable {
     } finally {
       if (_isDisposed) {
         _filterInteractionLocked = false;
-        return;
+      } else {
+        _armPostFilterMarkerTapSuppression();
+        _setFilterInteractionLocked(false);
+        _setPendingFilterLabel(null);
       }
-      _armPostFilterMarkerTapSuppression();
-      _setFilterInteractionLocked(false);
-      _setPendingFilterLabel(null);
     }
   }
 
@@ -2783,7 +2783,7 @@ class MapScreenController implements Disposable {
       eventName: telemetryRepoString('map_ride_share_clicked'),
       properties: {
         'provider': provider.name,
-        if (poiId != null) 'poi_id': poiId,
+        ...?(poiId == null ? null : <String, Object?>{'poi_id': poiId}),
       },
     );
   }
