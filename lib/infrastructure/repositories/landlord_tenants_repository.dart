@@ -10,9 +10,17 @@ class LandlordTenantsRepository implements LandlordTenantsRepositoryContract {
     Dio? dio,
     LandlordAuthRepositoryContract? landlordAuthRepository,
     String? landlordOriginOverride,
-  })  : _dio = dio ?? Dio(),
-        _landlordAuthRepository = landlordAuthRepository,
-        _landlordOriginOverride = landlordOriginOverride;
+  }) : this._internal(
+         dio ?? Dio(),
+         landlordAuthRepository,
+         landlordOriginOverride,
+       );
+
+  LandlordTenantsRepository._internal(
+    this._dio,
+    this._landlordAuthRepository,
+    this._landlordOriginOverride,
+  );
 
   final Dio _dio;
   final LandlordAuthRepositoryContract? _landlordAuthRepository;
@@ -32,10 +40,7 @@ class LandlordTenantsRepository implements LandlordTenantsRepositoryContract {
     do {
       final response = await _dio.get(
         '${_apiBaseUrl()}/v1/tenants',
-        queryParameters: {
-          'per_page': 100,
-          'page': currentPage,
-        },
+        queryParameters: {'per_page': 100, 'page': currentPage},
         options: Options(headers: _buildHeaders()),
       );
 
@@ -44,8 +49,9 @@ class LandlordTenantsRepository implements LandlordTenantsRepositoryContract {
       for (final tenantMap in data) {
         final tenant = _responseDecoder.mapTenantOption(
           tenantMap,
-          landlordHost:
-              _resolveHost(_landlordOriginOverride ?? BellugaConstants.landlordDomain),
+          landlordHost: _resolveHost(
+            _landlordOriginOverride ?? BellugaConstants.landlordDomain,
+          ),
         );
         if (tenant == null) {
           continue;
@@ -64,15 +70,12 @@ class LandlordTenantsRepository implements LandlordTenantsRepositoryContract {
 
   Map<String, String> _buildHeaders() {
     final token = _authRepository.token;
-    return {
-      'Authorization': 'Bearer $token',
-      'Accept': 'application/json',
-    };
+    return {'Authorization': 'Bearer $token', 'Accept': 'application/json'};
   }
 
   String _apiBaseUrl() {
-    final raw =
-        (_landlordOriginOverride ?? BellugaConstants.landlordDomain).trim();
+    final raw = (_landlordOriginOverride ?? BellugaConstants.landlordDomain)
+        .trim();
     final uri = Uri.tryParse(raw);
     if (uri == null ||
         !uri.hasScheme ||
@@ -82,10 +85,12 @@ class LandlordTenantsRepository implements LandlordTenantsRepositoryContract {
         'Invalid LANDLORD_DOMAIN: "$raw". Expected a full origin.',
       );
     }
-    final origin =
-        uri.replace(path: '', query: null, fragment: null).toString();
-    final normalized =
-        origin.endsWith('/') ? origin.substring(0, origin.length - 1) : origin;
+    final origin = uri
+        .replace(path: '', query: null, fragment: null)
+        .toString();
+    final normalized = origin.endsWith('/')
+        ? origin.substring(0, origin.length - 1)
+        : origin;
     return '$normalized/admin/api';
   }
 
