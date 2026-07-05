@@ -536,6 +536,44 @@ void main() {
     expect(router.lastReplacedPath, '/');
   });
 
+  testWidgets('Invite flow ignores legacy public fallback query input', (
+    tester,
+  ) async {
+    final controller = InviteFlowScreenController(
+      repository: _FakeInvitesRepository(initialInvites: const []),
+      userEventsRepository: _FakeUserEventsRepository(),
+      telemetryRepository: _FakeTelemetryRepository(),
+    );
+    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
+
+    final router = _RecordingStackRouter(canPopValue: false);
+    final routeData = _buildRouteData(
+      router,
+      path: '/invite',
+      queryParams: const {
+        'fallback': '/agenda/evento/event-1?occurrence=occ-1',
+      },
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: const InviteFlowScreen(),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+
+    expect(router.lastReplacedPath, '/');
+  });
+
   testWidgets('Ver detalhes opens public event route using invite slug', (
     tester,
   ) async {
@@ -850,15 +888,36 @@ void main() {
   );
 
   testWidgets(
-    'Invite flow falls back to event when invite is empty and event still resolves',
+    'Invite flow falls back to event when invite is empty and session continuity still resolves',
     (tester) async {
       final scheduleRepository = _FakeScheduleRepository(
         eventsBySlug: <String, EventModel?>{
           'event-1': _buildResolvedEvent('event-1'),
         },
       );
+      final repository = _FakeInvitesRepository(initialInvites: const []);
+      repository.setShareCodeSessionContext(
+        code: invitesRepoString(
+          'SHARE-CODE-123',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        invite: buildInviteModelFromPrimitives(
+          id: 'invite-1',
+          eventId: 'event-1',
+          eventSlug: 'event-1',
+          eventName: 'Invite Event',
+          eventDateTime: DateTime(2026, 1, 1, 18),
+          eventImageUrl: 'https://example.com/event.jpg',
+          location: 'Guarapari',
+          hostName: 'Belluga',
+          message: 'Bora?',
+          tags: const ['music'],
+          occurrenceId: 'occ-1',
+        ),
+      );
       final controller = InviteFlowScreenController(
-        repository: _FakeInvitesRepository(initialInvites: const []),
+        repository: repository,
         userEventsRepository: _FakeUserEventsRepository(),
         telemetryRepository: _FakeTelemetryRepository(),
         scheduleRepository: scheduleRepository,
@@ -879,7 +938,6 @@ void main() {
                 decisionResult: null,
                 requiresAuthentication: false,
                 isInitialized: true,
-                fallbackPath: '/agenda/evento/event-1?occurrence=occ-1',
               ),
             ),
           ),
@@ -897,13 +955,34 @@ void main() {
   );
 
   testWidgets(
-    'Invite flow falls back home when invite is empty and event no longer resolves',
+    'Invite flow falls back home when invite is empty and session continuity no longer resolves',
     (tester) async {
       final scheduleRepository = _FakeScheduleRepository(
         eventsBySlug: const <String, EventModel?>{'event-ended': null},
       );
+      final repository = _FakeInvitesRepository(initialInvites: const []);
+      repository.setShareCodeSessionContext(
+        code: invitesRepoString(
+          'SHARE-CODE-123',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        invite: buildInviteModelFromPrimitives(
+          id: 'invite-ended',
+          eventId: 'event-ended',
+          eventSlug: 'event-ended',
+          eventName: 'Ended Event',
+          eventDateTime: DateTime(2026, 1, 1, 18),
+          eventImageUrl: 'https://example.com/event-ended.jpg',
+          location: 'Guarapari',
+          hostName: 'Belluga',
+          message: 'Bora?',
+          tags: const ['music'],
+          occurrenceId: 'occ-ended',
+        ),
+      );
       final controller = InviteFlowScreenController(
-        repository: _FakeInvitesRepository(initialInvites: const []),
+        repository: repository,
         userEventsRepository: _FakeUserEventsRepository(),
         telemetryRepository: _FakeTelemetryRepository(),
         scheduleRepository: scheduleRepository,
@@ -924,7 +1003,6 @@ void main() {
                 decisionResult: null,
                 requiresAuthentication: false,
                 isInitialized: true,
-                fallbackPath: '/agenda/evento/event-ended?occurrence=occ-ended',
               ),
             ),
           ),
@@ -1352,6 +1430,7 @@ InviteModel _buildInvite(String id) {
   return buildInviteModelFromPrimitives(
     id: id,
     eventId: 'event-$id',
+    eventSlug: 'event-$id',
     eventName: 'Event $id',
     eventDateTime: DateTime(2026, 1, 1, 18),
     eventImageUrl: 'https://example.com/$id.jpg',

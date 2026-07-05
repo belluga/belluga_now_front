@@ -360,15 +360,36 @@ void main() {
   );
 
   testWidgets(
-    'invite fallback replaces stale invite with event route when event resolves',
+    'invite session continuity replaces stale invite with event route when event resolves',
     (tester) async {
       final scheduleRepository = _FakeScheduleRepository(
         eventsBySlug: <String, EventModel?>{
           'event-live': _buildResolvedEvent('event-live'),
         },
       );
+      final repository = _RecordingInvitesRepository(initialInvites: const []);
+      repository.setShareCodeSessionContext(
+        code: invitesRepoString(
+          'SHARE-CODE-123',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        invite: buildInviteModelFromPrimitives(
+          id: 'invite-live',
+          eventId: 'event-live',
+          eventSlug: 'event-live',
+          eventName: 'Live Event',
+          eventDateTime: DateTime(2026, 3, 15, 18),
+          eventImageUrl: 'https://example.com/live.jpg',
+          location: 'Guarapari',
+          hostName: 'Belluga',
+          message: 'Convite para evento',
+          tags: const ['music'],
+          occurrenceId: 'occ-live',
+        ),
+      );
       final controller = InviteFlowScreenController(
-        repository: _RecordingInvitesRepository(initialInvites: const []),
+        repository: repository,
         userEventsRepository: _FakeUserEventsRepository(),
         telemetryRepository: _FakeTelemetryRepository(),
         scheduleRepository: scheduleRepository,
@@ -388,7 +409,6 @@ void main() {
                 decisionResult: null,
                 requiresAuthentication: false,
                 isInitialized: true,
-                fallbackPath: '/agenda/evento/event-live?occurrence=occ-live',
               ),
             ),
           ),
@@ -406,7 +426,7 @@ void main() {
   );
 
   testWidgets(
-    'invite fallback keeps event route even when the resolved event is already ended',
+    'invite session continuity keeps event route even when the resolved event is already ended',
     (tester) async {
       final scheduleRepository = _FakeScheduleRepository(
         eventsBySlug: <String, EventModel?>{
@@ -417,8 +437,29 @@ void main() {
           ),
         },
       );
+      final repository = _RecordingInvitesRepository(initialInvites: const []);
+      repository.setShareCodeSessionContext(
+        code: invitesRepoString(
+          'SHARE-CODE-123',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        invite: buildInviteModelFromPrimitives(
+          id: 'invite-ended',
+          eventId: 'event-ended',
+          eventSlug: 'event-ended',
+          eventName: 'Ended Event',
+          eventDateTime: DateTime(2026, 3, 15, 18),
+          eventImageUrl: 'https://example.com/ended.jpg',
+          location: 'Guarapari',
+          hostName: 'Belluga',
+          message: 'Convite para evento',
+          tags: const ['music'],
+          occurrenceId: 'occ-ended',
+        ),
+      );
       final controller = InviteFlowScreenController(
-        repository: _RecordingInvitesRepository(initialInvites: const []),
+        repository: repository,
         userEventsRepository: _FakeUserEventsRepository(),
         telemetryRepository: _FakeTelemetryRepository(),
         scheduleRepository: scheduleRepository,
@@ -438,7 +479,6 @@ void main() {
                 decisionResult: null,
                 requiresAuthentication: false,
                 isInitialized: true,
-                fallbackPath: '/agenda/evento/event-ended?occurrence=occ-ended',
               ),
             ),
           ),
@@ -456,13 +496,34 @@ void main() {
   );
 
   testWidgets(
-    'invite fallback routes home when the fallback event no longer resolves',
+    'invite session continuity routes home when the session event no longer resolves',
     (tester) async {
       final scheduleRepository = _FakeScheduleRepository(
         eventsBySlug: const <String, EventModel?>{'event-missing': null},
       );
+      final repository = _RecordingInvitesRepository(initialInvites: const []);
+      repository.setShareCodeSessionContext(
+        code: invitesRepoString(
+          'SHARE-CODE-123',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        invite: buildInviteModelFromPrimitives(
+          id: 'invite-missing',
+          eventId: 'event-missing',
+          eventSlug: 'event-missing',
+          eventName: 'Missing Event',
+          eventDateTime: DateTime(2026, 3, 15, 18),
+          eventImageUrl: 'https://example.com/missing.jpg',
+          location: 'Guarapari',
+          hostName: 'Belluga',
+          message: 'Convite para evento',
+          tags: const ['music'],
+          occurrenceId: 'occ-missing',
+        ),
+      );
       final controller = InviteFlowScreenController(
-        repository: _RecordingInvitesRepository(initialInvites: const []),
+        repository: repository,
         userEventsRepository: _FakeUserEventsRepository(),
         telemetryRepository: _FakeTelemetryRepository(),
         scheduleRepository: scheduleRepository,
@@ -482,8 +543,6 @@ void main() {
                 decisionResult: null,
                 requiresAuthentication: false,
                 isInitialized: true,
-                fallbackPath:
-                    '/agenda/evento/event-missing?occurrence=occ-missing',
               ),
             ),
           ),
