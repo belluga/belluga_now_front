@@ -5313,12 +5313,16 @@ class _ProductionLikePagedHomeAgendaBackend implements ScheduleBackendContract {
         },
       },
       'date_time_start': dateTimeStart,
-      if (dateTimeEnd != null) 'date_time_end': dateTimeEnd,
+      ...?(dateTimeEnd == null
+          ? null
+          : <String, Object?>{'date_time_end': dateTimeEnd}),
       'occurrences': [
         {
           'occurrence_id': occurrenceId,
           'date_time_start': dateTimeStart,
-          if (dateTimeEnd != null) 'date_time_end': dateTimeEnd,
+          ...?(dateTimeEnd == null
+              ? null
+              : <String, Object?>{'date_time_end': dateTimeEnd}),
           'is_selected': true,
         },
       ],

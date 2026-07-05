@@ -1545,9 +1545,12 @@ class _FakeInvitesBackend implements InvitesBackendContract {
   }) async {
     updatedContactGroupPayloads.add({
       'group_id': groupId,
-      if (name != null) 'name': name,
-      if (recipientAccountProfileIds != null)
-        'recipient_account_profile_ids': recipientAccountProfileIds,
+      ...?(name == null ? null : <String, dynamic>{'name': name}),
+      ...?(recipientAccountProfileIds == null
+          ? null
+          : <String, dynamic>{
+              'recipient_account_profile_ids': recipientAccountProfileIds,
+            }),
     });
     return _updateContactGroupResponse;
   }
