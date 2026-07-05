@@ -21,8 +21,12 @@ class TenantAdminAccountProfilesRepository
   TenantAdminAccountProfilesRepository({
     Dio? dio,
     TenantAdminTenantScopeContract? tenantScope,
-  }) : _dio = dio ?? Dio(),
-       _tenantScope = tenantScope;
+  }) : this._internal(dio ?? Dio(), tenantScope);
+
+  TenantAdminAccountProfilesRepository._internal(
+    this._dio, [
+    this._tenantScope,
+  ]);
 
   final Dio _dio;
   final TenantAdminTenantScopeContract? _tenantScope;

@@ -10,7 +10,9 @@ import 'package:get_it/get_it.dart';
 class TenantAdminFaviconIngestionService {
   TenantAdminFaviconIngestionService({
     TenantAdminExternalImageProxyContract? externalImageProxy,
-  }) : _externalImageProxy = externalImageProxy;
+  }) : this._internal(externalImageProxy);
+
+  TenantAdminFaviconIngestionService._internal([this._externalImageProxy]);
 
   final TenantAdminExternalImageProxyContract? _externalImageProxy;
 
@@ -51,7 +53,8 @@ class TenantAdminFaviconIngestionService {
     }
 
     try {
-      final proxy = _externalImageProxy ??
+      final proxy =
+          _externalImageProxy ??
           GetIt.I.get<TenantAdminExternalImageProxyContract>();
       final imageUrlValue = TenantAdminOptionalUrlValue();
       imageUrlValue.parse(uri.toString());

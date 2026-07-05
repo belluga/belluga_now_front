@@ -12,8 +12,12 @@ class TenantAdminExternalImageProxyService
   TenantAdminExternalImageProxyService({
     Dio? dio,
     TenantAdminTenantScopeContract? tenantScope,
-  })  : _dio = dio ?? Dio(),
-        _tenantScope = tenantScope;
+  }) : this._internal(dio ?? Dio(), tenantScope);
+
+  TenantAdminExternalImageProxyService._internal(
+    this._dio, [
+    this._tenantScope,
+  ]);
 
   final Dio _dio;
   final TenantAdminTenantScopeContract? _tenantScope;
@@ -38,9 +42,7 @@ class TenantAdminExternalImageProxyService
     try {
       final response = await _dio.post<List<int>>(
         '$_apiBaseUrl/v1/media/external-image',
-        data: {
-          'url': imageUrl.value.trim(),
-        },
+        data: {'url': imageUrl.value.trim()},
         options: Options(
           headers: _buildHeaders(),
           responseType: ResponseType.bytes,

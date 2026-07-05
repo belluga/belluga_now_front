@@ -36,8 +36,12 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
   LaravelAccountProfilesBackend({
     Dio? dio,
     LocationOriginServiceContract? locationOriginService,
-  })  : _dio = dio ?? Dio(),
-        _locationOriginService = locationOriginService;
+  }) : this._internal(dio ?? Dio(), locationOriginService);
+
+  LaravelAccountProfilesBackend._internal(
+    this._dio, [
+    this._locationOriginService,
+  ]);
 
   final Dio _dio;
   LocationOriginServiceContract? _locationOriginService;
@@ -115,8 +119,8 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       final hasMore = raw.containsKey('has_more')
           ? hasMoreFlag
           : lastPage != null
-              ? currentPage < lastPage
-              : raw['next_page_url'] != null;
+          ? currentPage < lastPage
+          : raw['next_page_url'] != null;
 
       final distanceOrigin = await _resolveDistanceOrigin();
       return pagedAccountProfilesResultFromRaw(
@@ -251,9 +255,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     }
 
     return DiscoveryFilterRuntimeFacets.fromJson(
-      raw.map(
-        (key, value) => MapEntry<String, Object?>(key.toString(), value),
-      ),
+      raw.map((key, value) => MapEntry<String, Object?>(key.toString(), value)),
     );
   }
 
@@ -263,9 +265,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     }
 
     return DiscoveryFilterCatalog.fromJson(
-      raw.map(
-        (key, value) => MapEntry<String, Object?>(key.toString(), value),
-      ),
+      raw.map((key, value) => MapEntry<String, Object?>(key.toString(), value)),
     );
   }
 
@@ -346,23 +346,22 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           allowUnavailableSentinel: allowUnavailableNameFallback,
         );
         final trimmedType = json['profile_type']?.toString().trim() ?? '';
-        if (id.isEmpty ||
-            slug == null ||
-            name == null ||
-            trimmedType.isEmpty) {
+        if (id.isEmpty || slug == null || name == null || trimmedType.isEmpty) {
           continue;
         }
         final tags = _extractTags(json['taxonomy_terms']);
         final agendaEvents = _extractAgendaEvents(json['agenda_occurrences']);
         final galleryGroups = _extractGalleryGroups(json['gallery_groups']);
-        final nestedGroups =
-            _extractNestedProfileGroups(json['nested_profile_groups']);
+        final nestedGroups = _extractNestedProfileGroups(
+          json['nested_profile_groups'],
+        );
         final distanceMeters = _resolveDistanceMeters(
           json,
           distanceOrigin: distanceOrigin,
         );
         final locationCoordinates =
-            _parseLocationLatLng(json['location']) ?? _parseTopLevelLatLng(json);
+            _parseLocationLatLng(json['location']) ??
+            _parseTopLevelLatLng(json);
         final locationAddress = _parseLocationAddress(json);
         ThumbUriValue? avatarValue;
         final avatarUrl = json['avatar_url']?.toString();
@@ -388,9 +387,10 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
         }
         final publicDetailPath =
             json['public_detail_path']?.toString().trim().isNotEmpty == true
-                ? json['public_detail_path']?.toString().trim()
-                : null;
-        final canOpenPublicDetail = json['can_open_public_detail'] == true &&
+            ? json['public_detail_path']?.toString().trim()
+            : null;
+        final canOpenPublicDetail =
+            json['can_open_public_detail'] == true &&
             publicDetailPath != null &&
             publicDetailPath.isNotEmpty;
         AccountProfileLocationAddressValue? locationAddressValue;
@@ -418,18 +418,21 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
             bioValue: bioValue,
             contentValue: contentValue,
             galleryGroupValues: galleryGroups,
-            tagValues:
-                tags.map(AccountProfileTagValue.new).toList(growable: false),
+            tagValues: tags
+                .map(AccountProfileTagValue.new)
+                .toList(growable: false),
             agendaEventViews: agendaEvents,
             nestedProfileGroupValues: nestedGroups,
-            distanceMetersValue:
-                AccountProfileDistanceMetersValue(distanceMeters),
+            distanceMetersValue: AccountProfileDistanceMetersValue(
+              distanceMeters,
+            ),
             locationAddressValue: locationAddressValue,
             locationLatitudeValue: locationLatitudeValue,
             locationLongitudeValue: locationLongitudeValue,
-            canOpenPublicDetailValue:
-                DomainBooleanValue(defaultValue: false, isRequired: false)
-                  ..parse(canOpenPublicDetail.toString()),
+            canOpenPublicDetailValue: DomainBooleanValue(
+              defaultValue: false,
+              isRequired: false,
+            )..parse(canOpenPublicDetail.toString()),
             publicDetailPathValue: publicDetailPath == null
                 ? null
                 : AccountProfilePublicDetailPathValue(publicDetailPath),
@@ -453,7 +456,8 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       return normalizedDisplayName;
     }
 
-    final slugLabel = _humanizeSlugLabel(payloadSlug) ??
+    final slugLabel =
+        _humanizeSlugLabel(payloadSlug) ??
         _humanizeSlugLabel(routeSlugFallback);
     if (slugLabel != null) {
       return slugLabel;
@@ -462,10 +466,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     return allowUnavailableSentinel ? _publicUnavailableProfileLabel : null;
   }
 
-  String? _resolvePublicSlug({
-    String? payloadSlug,
-    String? routeSlugFallback,
-  }) {
+  String? _resolvePublicSlug({String? payloadSlug, String? routeSlugFallback}) {
     final normalizedPayloadSlug = payloadSlug?.trim() ?? '';
     if (normalizedPayloadSlug.isNotEmpty) {
       return normalizedPayloadSlug;
@@ -639,9 +640,10 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
         final profileType = json['profile_type']?.toString().trim() ?? '';
         final publicDetailPath =
             json['public_detail_path']?.toString().trim().isNotEmpty == true
-                ? json['public_detail_path']?.toString().trim()
-                : null;
-        final canOpenPublicDetail = json['can_open_public_detail'] == true &&
+            ? json['public_detail_path']?.toString().trim()
+            : null;
+        final canOpenPublicDetail =
+            json['can_open_public_detail'] == true &&
             publicDetailPath != null &&
             publicDetailPath.isNotEmpty;
         if (id.isEmpty ||
@@ -685,9 +687,9 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
             publicDetailPathValue: publicDetailPath == null
                 ? null
                 : AccountProfileNestedGroupMemberTextValue(publicDetailPath),
-            tagValues: _extractTags(json['taxonomy_terms'])
-                .map(AccountProfileTagValue.new)
-                .toList(growable: false),
+            tagValues: _extractTags(
+              json['taxonomy_terms'],
+            ).map(AccountProfileTagValue.new).toList(growable: false),
           ),
         );
       } catch (_) {
@@ -717,7 +719,8 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     final tags = <String>[];
     for (final entry in raw) {
       if (entry is Map) {
-        final value = entry['name']?.toString() ??
+        final value =
+            entry['name']?.toString() ??
             entry['label']?.toString() ??
             entry['value']?.toString();
         if (value != null && value.trim().isNotEmpty) {
@@ -740,7 +743,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       final title = json['title']?.toString().trim() ?? '';
       final startRaw =
           (json['date_time_start'] ?? json['starts_at'])?.toString().trim() ??
-              '';
+          '';
       if (eventId.isEmpty ||
           occurrenceId.isEmpty ||
           slug.isEmpty ||
@@ -761,13 +764,11 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       final eventTypeLabel = _extractAgendaEventTypeLabel(json);
       final locationLabel =
           _extractAgendaLocationLabel(json) ?? venueTitle ?? '';
-      final linkedAccountProfiles =
-          _extractAgendaLinkedAccountProfiles(json['linked_account_profiles']);
-      ThumbUriValue? imageUriValue;
-      final imageUrl = _extractAgendaImageUrl(
-        json,
-        linkedAccountProfiles,
+      final linkedAccountProfiles = _extractAgendaLinkedAccountProfiles(
+        json['linked_account_profiles'],
       );
+      ThumbUriValue? imageUriValue;
+      final imageUrl = _extractAgendaImageUrl(json, linkedAccountProfiles);
       if (imageUrl != null && imageUrl.isNotEmpty) {
         imageUriValue = ThumbUriValue(defaultValue: Uri.parse(imageUrl))
           ..parse(imageUrl);
@@ -785,8 +786,9 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           startDateTimeValue: startDateTimeValue,
           endDateTimeValue: endDateTimeValue,
           locationValue: partnerProjectionRequiredText(locationLabel),
-          venueIdValue:
-              venueId == null ? null : (MongoIDValue()..parse(venueId)),
+          venueIdValue: venueId == null
+              ? null
+              : (MongoIDValue()..parse(venueId)),
           venueTitleValue: venueTitle == null
               ? null
               : partnerProjectionOptionalText(venueTitle),
@@ -872,8 +874,9 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     }
 
     final type = Map<String, dynamic>.from(rawType);
-    final value =
-        (type['label'] ?? type['name'] ?? type['title'])?.toString().trim();
+    final value = (type['label'] ?? type['name'] ?? type['title'])
+        ?.toString()
+        .trim();
     if (value == null || value.isEmpty) {
       return null;
     }
@@ -994,9 +997,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
 
     return haversineDistanceMeters(
       coordinateA: distanceOrigin,
-      coordinateB: CityCoordinate.fromLatLng(
-        LatLng(location.$1, location.$2),
-      ),
+      coordinateB: CityCoordinate.fromLatLng(LatLng(location.$1, location.$2)),
     ).value;
   }
 
@@ -1057,9 +1058,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       return null;
     }
     final resolution = await locationOriginService.resolve(
-      LocationOriginResolutionRequestFactory.create(
-        warmUpIfPossible: true,
-      ),
+      LocationOriginResolutionRequestFactory.create(warmUpIfPossible: true),
     );
     return resolution.effectiveCoordinate;
   }
@@ -1086,8 +1085,9 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       return geoLatLng;
     }
 
-    final locationCoordinates =
-        _parseCoordinatesPayload(location['coordinates']);
+    final locationCoordinates = _parseCoordinatesPayload(
+      location['coordinates'],
+    );
     if (locationCoordinates != null) {
       return locationCoordinates;
     }
@@ -1105,7 +1105,8 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
 
   (double, double)? _parseLatLngFromMap(Map<String, dynamic> map) {
     final lat = _parseDouble(map['lat']) ?? _parseDouble(map['latitude']);
-    final lng = _parseDouble(map['lng']) ??
+    final lng =
+        _parseDouble(map['lng']) ??
         _parseDouble(map['lon']) ??
         _parseDouble(map['longitude']);
     if (lat != null && lng != null) {

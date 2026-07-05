@@ -22,8 +22,9 @@ class TenantAdminTaxonomiesRepository
   TenantAdminTaxonomiesRepository({
     Dio? dio,
     TenantAdminTenantScopeContract? tenantScope,
-  }) : _dio = dio ?? Dio(),
-       _tenantScope = tenantScope;
+  }) : this._internal(dio ?? Dio(), tenantScope);
+
+  TenantAdminTaxonomiesRepository._internal(this._dio, [this._tenantScope]);
 
   final Dio _dio;
   final TenantAdminTenantScopeContract? _tenantScope;

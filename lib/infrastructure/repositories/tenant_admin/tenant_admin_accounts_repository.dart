@@ -24,8 +24,9 @@ class TenantAdminAccountsRepository
   TenantAdminAccountsRepository({
     Dio? dio,
     TenantAdminTenantScopeContract? tenantScope,
-  })  : _dio = dio ?? Dio(),
-        _tenantScope = tenantScope;
+  }) : this._internal(dio ?? Dio(), tenantScope);
+
+  TenantAdminAccountsRepository._internal(this._dio, [this._tenantScope]);
 
   final Dio _dio;
   final TenantAdminTenantScopeContract? _tenantScope;
@@ -44,10 +45,7 @@ class TenantAdminAccountsRepository
 
   Map<String, String> _buildHeaders() {
     final token = GetIt.I.get<LandlordAuthRepositoryContract>().token;
-    return {
-      'Authorization': 'Bearer $token',
-      'Accept': 'application/json',
-    };
+    return {'Authorization': 'Bearer $token', 'Accept': 'application/json'};
   }
 
   @override
@@ -111,15 +109,14 @@ class TenantAdminAccountsRepository
         options: Options(headers: _buildHeaders()),
       );
       final dtos = _responseDecoder.decodeAccountList(response.data);
-      final currentPage = _extractCurrentPage(
+      final currentPage =
+          _extractCurrentPage(
             rawResponse: response.data,
             fallback: page.value,
           ) ??
           page.value;
-      final lastPage = _extractLastPage(
-            rawResponse: response.data,
-            fallback: page.value,
-          ) ??
+      final lastPage =
+          _extractLastPage(rawResponse: response.data, fallback: page.value) ??
           currentPage;
       final hasMore = currentPage < lastPage;
       return tenantAdminPagedAccountsResultFromRaw(
@@ -228,8 +225,9 @@ class TenantAdminAccountsRepository
               ),
       );
       final onboardingData = _responseDecoder.decodeOnboarding(response.data);
-      final account =
-          _normalizeAccountMediaUrls(onboardingData.account).toDomain();
+      final account = _normalizeAccountMediaUrls(
+        onboardingData.account,
+      ).toDomain();
       final accountProfile = onboardingData.accountProfile.toDomain();
       _appendLoadedAccount(account);
       return TenantAdminAccountOnboardingResult(
@@ -326,10 +324,7 @@ class TenantAdminAccountsRepository
       );
       return;
     }
-    final nextAccounts = <TenantAdminAccount>[
-      ...currentAccounts,
-      account,
-    ];
+    final nextAccounts = <TenantAdminAccount>[...currentAccounts, account];
     accountsStreamValue.addValue(
       List<TenantAdminAccount>.unmodifiable(nextAccounts),
     );
@@ -373,10 +368,7 @@ class TenantAdminAccountsRepository
     }
   }
 
-  int? _extractCurrentPage({
-    required Object? rawResponse,
-    int? fallback,
-  }) {
+  int? _extractCurrentPage({required Object? rawResponse, int? fallback}) {
     return _paginationDecoder.readPageValue(rawResponse, 'current_page') ??
         _paginationDecoder.readPageValue(
           _paginationDecoder.extractMetaNode(rawResponse),
@@ -385,10 +377,7 @@ class TenantAdminAccountsRepository
         fallback;
   }
 
-  int? _extractLastPage({
-    required Object? rawResponse,
-    int? fallback,
-  }) {
+  int? _extractLastPage({required Object? rawResponse, int? fallback}) {
     return _paginationDecoder.readPageValue(rawResponse, 'last_page') ??
         _paginationDecoder.readPageValue(
           _paginationDecoder.extractMetaNode(rawResponse),

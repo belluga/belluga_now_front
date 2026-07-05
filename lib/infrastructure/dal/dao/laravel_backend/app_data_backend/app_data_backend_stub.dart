@@ -6,7 +6,9 @@ import 'package:dio/dio.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 class AppDataBackend implements AppDataBackendContract {
-  AppDataBackend({Dio? dio}) : _dio = dio;
+  AppDataBackend({Dio? dio}) : this._internal(dio);
+
+  AppDataBackend._internal(this._dio);
 
   final Dio? _dio;
 
@@ -24,20 +26,14 @@ class AppDataBackend implements AppDataBackendContract {
   String _resolveBootstrapBaseUrl() {
     final explicit = BellugaConstants.bootstrapBaseUrlOverride.trim();
     if (explicit.isNotEmpty) {
-      return _parseRequiredOrigin(
-        explicit,
-        fieldName: 'BOOTSTRAP_BASE_URL',
-      );
+      return _parseRequiredOrigin(explicit, fieldName: 'BOOTSTRAP_BASE_URL');
     }
 
     final landlordDomain = BellugaConstants.landlordDomain.trim();
     if (landlordDomain.isEmpty) {
       final injected = _dio?.options.baseUrl.trim() ?? '';
       if (injected.isNotEmpty) {
-        return _parseRequiredOrigin(
-          injected,
-          fieldName: 'DIO_BASE_URL',
-        );
+        return _parseRequiredOrigin(injected, fieldName: 'DIO_BASE_URL');
       }
 
       throw StateError(
@@ -47,16 +43,10 @@ class AppDataBackend implements AppDataBackendContract {
       );
     }
 
-    return _parseRequiredOrigin(
-      landlordDomain,
-      fieldName: 'LANDLORD_DOMAIN',
-    );
+    return _parseRequiredOrigin(landlordDomain, fieldName: 'LANDLORD_DOMAIN');
   }
 
-  String _parseRequiredOrigin(
-    String raw, {
-    required String fieldName,
-  }) {
+  String _parseRequiredOrigin(String raw, {required String fieldName}) {
     final uri = Uri.tryParse(raw);
     if (uri == null ||
         !uri.hasScheme ||

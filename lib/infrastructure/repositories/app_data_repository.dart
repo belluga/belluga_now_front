@@ -26,13 +26,21 @@ class AppDataRepository implements AppDataRepositoryContract {
     required AppDataLocalInfoSource localInfoSource,
     List<Duration>? bootstrapRetryDelays,
     FlutterSecureStorage? storage,
-  })  : _backend = backend ??
-            (backendContract ?? GetIt.I.get<BackendContract>()).appData,
-        _localInfoSource = localInfoSource,
-        _storage = storage ?? const FlutterSecureStorage(),
-        _bootstrapRetryDelays = List<Duration>.unmodifiable(
-          bootstrapRetryDelays ?? _defaultBootstrapRetryDelays,
-        );
+  }) : this._internal(
+         backend ?? (backendContract ?? GetIt.I.get<BackendContract>()).appData,
+         localInfoSource,
+         storage ?? const FlutterSecureStorage(),
+         List<Duration>.unmodifiable(
+           bootstrapRetryDelays ?? _defaultBootstrapRetryDelays,
+         ),
+       );
+
+  AppDataRepository._internal(
+    this._backend,
+    this._localInfoSource,
+    this._storage,
+    this._bootstrapRetryDelays,
+  );
 
   @override
   late AppData appData;
@@ -53,16 +61,14 @@ class AppDataRepository implements AppDataRepositoryContract {
     Duration(milliseconds: 2500),
   ];
   @override
-  final StreamValue<ThemeMode?> themeModeStreamValue =
-      StreamValue<ThemeMode?>(defaultValue: ThemeMode.system);
+  final StreamValue<ThemeMode?> themeModeStreamValue = StreamValue<ThemeMode?>(
+    defaultValue: ThemeMode.system,
+  );
   @override
   final StreamValue<DistanceInMetersValue> maxRadiusMetersStreamValue =
       StreamValue<DistanceInMetersValue>(
-    defaultValue: DistanceInMetersValue.fromRaw(
-      50000,
-      defaultValue: 50000,
-    ),
-  );
+        defaultValue: DistanceInMetersValue.fromRaw(50000, defaultValue: 50000),
+      );
   @override
   final StreamValue<LocationOriginSettings?> locationOriginSettingsStreamValue =
       StreamValue<LocationOriginSettings?>(defaultValue: null);
@@ -80,7 +86,7 @@ class AppDataRepository implements AppDataRepositoryContract {
       'home_fixed_location_reference_lng';
   static const String _apiBaseUrlStorageKey = 'api_base_url';
   static const AppDataDiscoveryFilterSelectionCodec
-      _discoveryFilterSelectionCodec = AppDataDiscoveryFilterSelectionCodec();
+  _discoveryFilterSelectionCodec = AppDataDiscoveryFilterSelectionCodec();
   bool _hasPersistedMaxRadiusPreference = false;
   bool _hasPersistedLocationOriginPreference = false;
 
@@ -177,10 +183,7 @@ class AppDataRepository implements AppDataRepositoryContract {
       ),
     );
     _hasPersistedMaxRadiusPreference = true;
-    await _storage.write(
-      key: _maxRadiusStorageKey,
-      value: clamped.toString(),
-    );
+    await _storage.write(key: _maxRadiusStorageKey, value: clamped.toString());
   }
 
   @override
@@ -248,9 +251,7 @@ class AppDataRepository implements AppDataRepositoryContract {
 
   @override
   Future<void> useUserLiveLocationOrigin() {
-    return setLocationOriginSettings(
-      LocationOriginSettings.userLiveLocation(),
-    );
+    return setLocationOriginSettings(LocationOriginSettings.userLiveLocation());
   }
 
   @override
@@ -330,9 +331,7 @@ class AppDataRepository implements AppDataRepositoryContract {
       return null;
     }
 
-    final reasonRaw = await _storage.read(
-      key: _locationOriginReasonStorageKey,
-    );
+    final reasonRaw = await _storage.read(key: _locationOriginReasonStorageKey);
     final reason = switch (reasonRaw?.trim()) {
       'outsideRange' => LocationOriginReason.outsideRange,
       'unavailable' => LocationOriginReason.unavailable,
@@ -372,8 +371,8 @@ class AppDataRepository implements AppDataRepositoryContract {
 
   ThemeMode _resolveInitialThemeMode() =>
       appData.themeDataSettings.brightnessDefault == Brightness.dark
-          ? ThemeMode.dark
-          : ThemeMode.light;
+      ? ThemeMode.dark
+      : ThemeMode.light;
 
   Future<void> _precacheLogos() async {
     final urls = <String>{};
@@ -424,10 +423,7 @@ class AppDataRepository implements AppDataRepositoryContract {
 
   Future<void> _persistRuntimeMetadata() async {
     final apiBaseUrl = appData.mainDomainValue.value.resolve('/api').toString();
-    await _storage.write(
-      key: _apiBaseUrlStorageKey,
-      value: apiBaseUrl,
-    );
+    await _storage.write(key: _apiBaseUrlStorageKey, value: apiBaseUrl);
   }
 
   Future<void> _persistRuntimeMetadataBestEffort() async {

@@ -3,8 +3,10 @@ import 'package:stream_value/main.dart';
 
 class MockWebSocketService {
   MockWebSocketService({Duration latency = Duration.zero})
-      : _latency = latency,
-        eventsStreamValue = StreamValue<Map<String, dynamic>?>();
+    : this._internal(latency);
+
+  MockWebSocketService._internal(this._latency)
+    : eventsStreamValue = StreamValue<Map<String, dynamic>?>();
 
   final Duration _latency;
   final StreamValue<Map<String, dynamic>?> eventsStreamValue;
@@ -34,11 +36,7 @@ class MockWebSocketService {
     await Future<void>.delayed(_latency);
     eventsStreamValue.addValue({
       'event': 'poi:offer_activated',
-      'payload': {
-        'poiId': poiId,
-        'details': offerDetails,
-        'icon': offerIcon,
-      },
+      'payload': {'poiId': poiId, 'details': offerDetails, 'icon': offerIcon},
     });
   }
 
