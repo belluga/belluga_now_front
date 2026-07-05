@@ -46,8 +46,9 @@ void main() {
     await GetIt.I.reset();
   });
 
-  testWidgets('renders tester waitlist override with proper field keyboards',
-      (tester) async {
+  testWidgets('renders tester waitlist override with proper field keyboards', (
+    tester,
+  ) async {
     _registerControllers(
       experience: AppPromotionExperience.testerWaitlist,
       preferredStorePlatformResolver: () => null,
@@ -95,8 +96,9 @@ void main() {
     expect(whatsappField.keyboardType, TextInputType.phone);
   });
 
-  testWidgets('renders app download experience by default for store release',
-      (tester) async {
+  testWidgets('renders app download experience by default for store release', (
+    tester,
+  ) async {
     _registerDefaultControllers(
       preferredStorePlatformResolver: () => AppPromotionStorePlatform.ios,
       appDataRepository: appDataRepository,
@@ -117,8 +119,9 @@ void main() {
     );
   });
 
-  testWidgets('submits tester waitlist lead and shows success state',
-      (tester) async {
+  testWidgets('submits tester waitlist lead and shows success state', (
+    tester,
+  ) async {
     _registerControllers(
       experience: AppPromotionExperience.testerWaitlist,
       preferredStorePlatformResolver: () => null,
@@ -199,10 +202,12 @@ void main() {
     );
   });
 
-  testWidgets('shows the underlying submission error on screen',
-      (tester) async {
-    leadCaptureService.errorToThrow =
-        StateError('Promotion lead capture failed with status 521');
+  testWidgets('shows the underlying submission error on screen', (
+    tester,
+  ) async {
+    leadCaptureService.errorToThrow = StateError(
+      'Promotion lead capture failed with status 521',
+    );
 
     _registerControllers(
       experience: AppPromotionExperience.testerWaitlist,
@@ -251,10 +256,7 @@ void main() {
       find.byKey(const Key('app_promotion_waitlist_error')),
       findsOneWidget,
     );
-    expect(
-      find.textContaining('status 521'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('status 521'), findsOneWidget);
   });
 
   testWidgets('close button uses pop when router can pop', (tester) async {
@@ -277,63 +279,65 @@ void main() {
   });
 
   testWidgets(
-      'close button falls back to home when auth-owned redirect has no stack',
-      (tester) async {
-    _registerControllers(
-      experience: AppPromotionExperience.testerWaitlist,
-      preferredStorePlatformResolver: () => null,
-      appDataRepository: appDataRepository,
-      leadCaptureService: leadCaptureService,
-    );
-    router.canPopValue = false;
+    'close button falls back to home when auth-owned redirect has no stack',
+    (tester) async {
+      _registerControllers(
+        experience: AppPromotionExperience.testerWaitlist,
+        preferredStorePlatformResolver: () => null,
+        appDataRepository: appDataRepository,
+        leadCaptureService: leadCaptureService,
+      );
+      router.canPopValue = false;
 
-    await tester.pumpWidget(
-      _buildWidget(
-        router: router,
-        redirectPath: '/profile',
-      ),
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        _buildWidget(router: router, redirectPath: '/profile'),
+      );
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('app_promotion_close_button')));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('app_promotion_close_button')));
+      await tester.pumpAndSettle();
 
-    expect(router.popCalls, 0);
-    expect(router.replaceAllCalls, 1);
-    expect(router.lastReplaceAllRoutes, isNotNull);
-    expect(router.lastReplaceAllRoutes!.single.routeName, TenantHomeRoute.name);
-  });
+      expect(router.popCalls, 0);
+      expect(router.replaceAllCalls, 1);
+      expect(router.lastReplaceAllRoutes, isNotNull);
+      expect(
+        router.lastReplaceAllRoutes!.single.routeName,
+        TenantHomeRoute.name,
+      );
+    },
+  );
 
   testWidgets(
-      'system back falls back to home when auth-owned redirect has no stack',
-      (tester) async {
-    _registerControllers(
-      experience: AppPromotionExperience.testerWaitlist,
-      preferredStorePlatformResolver: () => null,
-      appDataRepository: appDataRepository,
-      leadCaptureService: leadCaptureService,
-    );
-    router.canPopValue = false;
+    'system back falls back to home when auth-owned redirect has no stack',
+    (tester) async {
+      _registerControllers(
+        experience: AppPromotionExperience.testerWaitlist,
+        preferredStorePlatformResolver: () => null,
+        appDataRepository: appDataRepository,
+        leadCaptureService: leadCaptureService,
+      );
+      router.canPopValue = false;
 
-    await tester.pumpWidget(
-      _buildWidget(
-        router: router,
-        redirectPath: '/profile',
-      ),
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        _buildWidget(router: router, redirectPath: '/profile'),
+      );
+      await tester.pumpAndSettle();
 
-    final popScope = tester.widget<PopScope<dynamic>>(
-      find.byWidgetPredicate((widget) => widget is PopScope),
-    );
-    popScope.onPopInvokedWithResult?.call(false, null);
-    await tester.pumpAndSettle();
+      final popScope = tester.widget<PopScope<dynamic>>(
+        find.byWidgetPredicate((widget) => widget is PopScope),
+      );
+      popScope.onPopInvokedWithResult?.call(false, null);
+      await tester.pumpAndSettle();
 
-    expect(router.popCalls, 0);
-    expect(router.replaceAllCalls, 1);
-    expect(router.lastReplaceAllRoutes, isNotNull);
-    expect(router.lastReplaceAllRoutes!.single.routeName, TenantHomeRoute.name);
-  });
+      expect(router.popCalls, 0);
+      expect(router.replaceAllCalls, 1);
+      expect(router.lastReplaceAllRoutes, isNotNull);
+      expect(
+        router.lastReplaceAllRoutes!.single.routeName,
+        TenantHomeRoute.name,
+      );
+    },
+  );
 
   testWidgets('success CTA uses pop only', (tester) async {
     _registerControllers(
@@ -388,93 +392,98 @@ void main() {
     expect(router.replaceAllCalls, 0);
   });
 
-  testWidgets('success CTA falls back to invite preview when there is no stack',
-      (tester) async {
-    _registerControllers(
-      experience: AppPromotionExperience.testerWaitlist,
-      preferredStorePlatformResolver: () => null,
-      appDataRepository: appDataRepository,
-      leadCaptureService: leadCaptureService,
-    );
+  testWidgets(
+    'success CTA falls back to invite preview when there is no stack',
+    (tester) async {
+      _registerControllers(
+        experience: AppPromotionExperience.testerWaitlist,
+        preferredStorePlatformResolver: () => null,
+        appDataRepository: appDataRepository,
+        leadCaptureService: leadCaptureService,
+      );
 
-    await tester.pumpWidget(_buildWidget(router: router));
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(_buildWidget(router: router));
+      await tester.pumpAndSettle();
 
-    await tester.enterText(
-      find.byKey(const Key('app_promotion_waitlist_name_field')),
-      'Maria Tester',
-    );
-    await tester.enterText(
-      find.byKey(const Key('app_promotion_waitlist_email_field')),
-      'tester@example.com',
-    );
-    await tester.enterText(
-      find.byKey(const Key('app_promotion_waitlist_whatsapp_field')),
-      '27999999999',
-    );
-    await tester.ensureVisible(
-      find.byKey(const Key('app_promotion_waitlist_platform_android')),
-    );
-    await tester.tap(
-      find.byKey(const Key('app_promotion_waitlist_platform_android')),
-    );
-    await tester.pumpAndSettle();
-    await tester.enterText(
-      find.byKey(const Key('app_promotion_waitlist_expectations_field')),
-      'Mapa confiável e agenda atualizada.',
-    );
-    await tester.ensureVisible(
-      find.byKey(const Key('app_promotion_waitlist_submit_button')),
-    );
-    await tester.tap(
-      find.byKey(const Key('app_promotion_waitlist_submit_button')),
-    );
-    await tester.pump();
-    await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('app_promotion_waitlist_name_field')),
+        'Maria Tester',
+      );
+      await tester.enterText(
+        find.byKey(const Key('app_promotion_waitlist_email_field')),
+        'tester@example.com',
+      );
+      await tester.enterText(
+        find.byKey(const Key('app_promotion_waitlist_whatsapp_field')),
+        '27999999999',
+      );
+      await tester.ensureVisible(
+        find.byKey(const Key('app_promotion_waitlist_platform_android')),
+      );
+      await tester.tap(
+        find.byKey(const Key('app_promotion_waitlist_platform_android')),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('app_promotion_waitlist_expectations_field')),
+        'Mapa confiável e agenda atualizada.',
+      );
+      await tester.ensureVisible(
+        find.byKey(const Key('app_promotion_waitlist_submit_button')),
+      );
+      await tester.tap(
+        find.byKey(const Key('app_promotion_waitlist_submit_button')),
+      );
+      await tester.pump();
+      await tester.pumpAndSettle();
 
-    await tester.tap(
-      find.byKey(const Key('app_promotion_waitlist_continue_button')),
-    );
-    await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('app_promotion_waitlist_continue_button')),
+      );
+      await tester.pumpAndSettle();
 
-    expect(router.popCalls, 0);
-    expect(router.replaceAllCalls, 1);
-    expect(router.lastReplaceAllRoutes, isNotNull);
-    expect(
-        router.lastReplaceAllRoutes!.single.routeName, InviteEntryRoute.name);
-    expect(
-      router.lastReplaceAllRoutes!.single.rawQueryParams['code'],
-      'CODE123',
-    );
-  });
+      expect(router.popCalls, 0);
+      expect(router.replaceAllCalls, 1);
+      expect(router.lastReplaceAllRoutes, isNotNull);
+      expect(
+        router.lastReplaceAllRoutes!.single.routeName,
+        InviteEntryRoute.name,
+      );
+      expect(
+        router.lastReplaceAllRoutes!.single.rawQueryParams['code'],
+        'CODE123',
+      );
+    },
+  );
 
   testWidgets(
-      'renders only App Store badge when iOS is inferred in app download override',
-      (tester) async {
-    _registerControllers(
-      experience: AppPromotionExperience.appDownload,
-      preferredStorePlatformResolver: () => AppPromotionStorePlatform.ios,
-      appDataRepository: appDataRepository,
-      leadCaptureService: leadCaptureService,
-    );
+    'renders only App Store badge when iOS is inferred in app download override',
+    (tester) async {
+      _registerControllers(
+        experience: AppPromotionExperience.appDownload,
+        preferredStorePlatformResolver: () => AppPromotionStorePlatform.ios,
+        appDataRepository: appDataRepository,
+        leadCaptureService: leadCaptureService,
+      );
 
-    await tester.pumpWidget(_buildWidget(router: router));
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(_buildWidget(router: router));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Bóora! fica melhor no app'), findsOneWidget);
-    expect(
-      find.byKey(const Key('app_promotion_store_badge_ios')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const Key('app_promotion_store_badge_android')),
-      findsNothing,
-    );
-    expect(
-      find.byKey(const Key('app_promotion_waitlist_email_field')),
-      findsNothing,
-    );
-  });
+      expect(find.text('Bóora! fica melhor no app'), findsOneWidget);
+      expect(
+        find.byKey(const Key('app_promotion_store_badge_ios')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('app_promotion_store_badge_android')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const Key('app_promotion_waitlist_email_field')),
+        findsNothing,
+      );
+    },
+  );
 
   testWidgets('renders only active publication store targets', (tester) async {
     final repository = _FakeAppDataRepository(
@@ -566,9 +575,7 @@ Widget _buildWidget({
   final routeData = RouteData(
     route: _FakeRouteMatch(
       fullPath: '/baixe-o-app',
-      queryParams: <String, dynamic>{
-        'redirect': redirectPath,
-      },
+      queryParams: <String, dynamic>{'redirect': redirectPath},
     ),
     router: router,
     stackKey: const ValueKey<String>('stack'),
@@ -582,9 +589,7 @@ Widget _buildWidget({
     child: MaterialApp(
       home: RouteDataScope(
         routeData: routeData,
-        child: AppPromotionScreen(
-          redirectPath: redirectPath,
-        ),
+        child: AppPromotionScreen(redirectPath: redirectPath),
       ),
     ),
   );
@@ -598,9 +603,9 @@ class _RecordingStackRouter extends Mock implements StackRouter {
 
   @override
   RootStackRouter get root => _FakeRootStackRouter(
-        currentPath: '/baixe-o-app',
-        buildPageRouteDelegate: buildPageRoute,
-      );
+    currentPath: '/baixe-o-app',
+    buildPageRouteDelegate: buildPageRoute,
+  );
 
   @override
   bool canPop({
@@ -643,13 +648,13 @@ class _RecordingStackRouter extends Mock implements StackRouter {
     return switch (uri.path) {
       '/' || '/home' => const TenantHomeRoute(),
       '/invite' => PageRouteInfo(
-          InviteEntryRoute.name,
-          rawQueryParams: uri.queryParameters,
-        ),
+        InviteEntryRoute.name,
+        rawQueryParams: uri.queryParameters,
+      ),
       _ => PageRouteInfo(
-          'mock:${uri.path}',
-          rawQueryParams: uri.queryParameters,
-        ),
+        'mock:${uri.path}',
+        rawQueryParams: uri.queryParameters,
+      ),
     };
   }
 }
@@ -663,10 +668,8 @@ class _FakeRootStackRouter extends Fake implements RootStackRouter {
   @override
   final String currentPath;
 
-  final PageRouteInfo? Function(
-    String? path, {
-    bool includePrefixMatches,
-  }) buildPageRouteDelegate;
+  final PageRouteInfo? Function(String? path, {bool includePrefixMatches})
+  buildPageRouteDelegate;
 
   @override
   Object? get pathState => null;
@@ -699,9 +702,8 @@ class _FakeRouteMatch extends Fake implements RouteMatch {
   final String fullPath;
 
   @override
-  Map<String, dynamic> get meta => canonicalRouteMeta(
-        family: CanonicalRouteFamily.appPromotion,
-      );
+  Map<String, dynamic> get meta =>
+      canonicalRouteMeta(family: CanonicalRouteFamily.appPromotion);
 
   final Parameters _queryParams;
 
@@ -748,13 +750,13 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
     required Uri iconDarkUrl,
     AppPublicationSettings? publicationSettings,
   }) : _appData = _FakeAppData(
-          appName: appName,
-          mainDomain: mainDomain,
-          iconLightUrl: iconLightUrl,
-          iconDarkUrl: iconDarkUrl,
-          publicationSettings:
-              publicationSettings ?? AppPublicationSettings.empty(),
-        );
+         appName: appName,
+         mainDomain: mainDomain,
+         iconLightUrl: iconLightUrl,
+         iconDarkUrl: iconDarkUrl,
+         publicationSettings:
+             publicationSettings ?? AppPublicationSettings.empty(),
+       );
 
   final AppData _appData;
 
@@ -797,12 +799,11 @@ class _FakeAppData extends Fake implements AppData {
     required Uri mainDomain,
     required Uri iconLightUrl,
     required Uri iconDarkUrl,
-    required AppPublicationSettings publicationSettings,
-  })  : _mainDomainValue = DomainValue(defaultValue: mainDomain),
-        _nameValue = EnvironmentNameValue()..parse(appName),
-        _mainIconLightUrl = IconUrlValue(defaultValue: iconLightUrl),
-        _mainIconDarkUrl = IconUrlValue(defaultValue: iconDarkUrl),
-        _publicationSettings = publicationSettings;
+    required this._publicationSettings,
+  }) : _mainDomainValue = DomainValue(defaultValue: mainDomain),
+       _nameValue = EnvironmentNameValue()..parse(appName),
+       _mainIconLightUrl = IconUrlValue(defaultValue: iconLightUrl),
+       _mainIconDarkUrl = IconUrlValue(defaultValue: iconDarkUrl);
 
   final DomainValue _mainDomainValue;
   final EnvironmentNameValue _nameValue;

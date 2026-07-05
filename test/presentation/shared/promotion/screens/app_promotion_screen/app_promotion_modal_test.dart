@@ -38,8 +38,9 @@ void main() {
     expect(find.byKey(const Key('app_promotion_modal')), findsOneWidget);
     expect(find.byKey(const Key('app_promotion_modal_body')), findsOneWidget);
     expect(find.text('Bóora! fica melhor no app'), findsOneWidget);
-    final brandSize =
-        tester.getSize(find.byKey(const Key('app_promotion_brand_icon')));
+    final brandSize = tester.getSize(
+      find.byKey(const Key('app_promotion_brand_icon')),
+    );
     expect(brandSize.width, lessThan(120));
     expect(brandSize.height, lessThan(120));
     expect(
@@ -52,8 +53,9 @@ void main() {
     );
   });
 
-  testWidgets('modal renders contextual action copy when provided',
-      (tester) async {
+  testWidgets('modal renders contextual action copy when provided', (
+    tester,
+  ) async {
     _registerPromotionController(
       preferredStorePlatformResolver: () => AppPromotionStorePlatform.android,
       publicationSettings: _publicationSettings(
@@ -100,8 +102,9 @@ void main() {
     );
   });
 
-  testWidgets('modal renders both stores when both targets are active',
-      (tester) async {
+  testWidgets('modal renders both stores when both targets are active', (
+    tester,
+  ) async {
     _registerPromotionController(
       preferredStorePlatformResolver: () => null,
       publicationSettings: _publicationSettings(
@@ -122,27 +125,30 @@ void main() {
     );
   });
 
-  testWidgets('modal keeps inferred preferred platform without explicit config',
-      (tester) async {
-    _registerPromotionController(
-      preferredStorePlatformResolver: () => AppPromotionStorePlatform.ios,
-      publicationSettings: AppPublicationSettings.empty(),
-    );
+  testWidgets(
+    'modal keeps inferred preferred platform without explicit config',
+    (tester) async {
+      _registerPromotionController(
+        preferredStorePlatformResolver: () => AppPromotionStorePlatform.ios,
+        publicationSettings: AppPublicationSettings.empty(),
+      );
 
-    await _openModal(tester);
+      await _openModal(tester);
 
-    expect(
-      find.byKey(const Key('app_promotion_store_badge_ios')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const Key('app_promotion_store_badge_android')),
-      findsNothing,
-    );
-  });
+      expect(
+        find.byKey(const Key('app_promotion_store_badge_ios')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('app_promotion_store_badge_android')),
+        findsNothing,
+      );
+    },
+  );
 
-  testWidgets('modal renders preparation copy when no store target is active',
-      (tester) async {
+  testWidgets('modal renders preparation copy when no store target is active', (
+    tester,
+  ) async {
     _registerPromotionController(
       preferredStorePlatformResolver: () => null,
       publicationSettings: _publicationSettings(
@@ -259,12 +265,12 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
     required Uri iconDarkUrl,
     required AppPublicationSettings publicationSettings,
   }) : _appData = _FakeAppData(
-          appName: appName,
-          mainDomain: mainDomain,
-          iconLightUrl: iconLightUrl,
-          iconDarkUrl: iconDarkUrl,
-          publicationSettings: publicationSettings,
-        );
+         appName: appName,
+         mainDomain: mainDomain,
+         iconLightUrl: iconLightUrl,
+         iconDarkUrl: iconDarkUrl,
+         publicationSettings: publicationSettings,
+       );
 
   final AppData _appData;
 
@@ -307,12 +313,11 @@ class _FakeAppData extends Fake implements AppData {
     required Uri mainDomain,
     required Uri iconLightUrl,
     required Uri iconDarkUrl,
-    required AppPublicationSettings publicationSettings,
-  })  : _mainDomainValue = DomainValue(defaultValue: mainDomain),
-        _nameValue = EnvironmentNameValue()..parse(appName),
-        _mainIconLightUrl = IconUrlValue(defaultValue: iconLightUrl),
-        _mainIconDarkUrl = IconUrlValue(defaultValue: iconDarkUrl),
-        _publicationSettings = publicationSettings;
+    required this._publicationSettings,
+  }) : _mainDomainValue = DomainValue(defaultValue: mainDomain),
+       _nameValue = EnvironmentNameValue()..parse(appName),
+       _mainIconLightUrl = IconUrlValue(defaultValue: iconLightUrl),
+       _mainIconDarkUrl = IconUrlValue(defaultValue: iconDarkUrl);
 
   final DomainValue _mainDomainValue;
   final EnvironmentNameValue _nameValue;

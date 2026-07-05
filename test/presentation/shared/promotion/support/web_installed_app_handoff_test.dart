@@ -37,8 +37,7 @@ void main() {
     expect(result.queryParameters['fallback'], 'promotion');
   });
 
-  test('web installed-app handoff derives canonical origin from AppData',
-      () {
+  test('web installed-app handoff derives canonical origin from AppData', () {
     GetIt.I.registerSingleton<AppDataRepositoryContract>(
       _FakeAppDataRepository(
         mainDomain: Uri.parse('https://belluga.space'),
@@ -60,10 +59,8 @@ void main() {
 }
 
 class _FakeAppDataRepository extends AppDataRepositoryContract {
-  _FakeAppDataRepository({
-    required Uri mainDomain,
-    required String href,
-  }) : _appData = _FakeAppData(mainDomain: mainDomain, href: href);
+  _FakeAppDataRepository({required Uri mainDomain, required String href})
+    : _appData = _FakeAppData(mainDomain: mainDomain, href: href);
 
   final AppData _appData;
 
@@ -98,11 +95,8 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
 }
 
 class _FakeAppData extends Fake implements AppData {
-  _FakeAppData({
-    required Uri mainDomain,
-    required String href,
-  })  : _mainDomainValue = DomainValue(defaultValue: mainDomain),
-        _href = href;
+  _FakeAppData({required Uri mainDomain, required this._href})
+    : _mainDomainValue = DomainValue(defaultValue: mainDomain);
 
   final DomainValue _mainDomainValue;
   final String _href;
