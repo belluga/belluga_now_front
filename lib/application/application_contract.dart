@@ -210,9 +210,6 @@ abstract class ApplicationContract extends ModularAppContract {
       );
       return;
     }
-    if (!_canUseFirebaseMessagingRuntime()) {
-      return;
-    }
     final authRepository =
         authRepositoryOverride ?? GetIt.I.get<AuthRepositoryContract>();
     final invitePushTapSource =
@@ -316,9 +313,6 @@ abstract class ApplicationContract extends ModularAppContract {
       debugPrint(
         '[Push] Web registration skipped; Firebase web config/VAPID not configured.',
       );
-      return false;
-    }
-    if (!_canUseFirebaseMessagingRuntime()) {
       return false;
     }
     final resolvedPlatform =
@@ -528,25 +522,6 @@ abstract class ApplicationContract extends ModularAppContract {
     _pushTapSubscription = tapSource.onMessageOpenedApp.listen((message) {
       unawaited(coordinator.handleNotificationTap(message));
     });
-  }
-
-  bool _canUseFirebaseMessagingRuntime() {
-    if (Firebase.apps.isNotEmpty) {
-      return true;
-    }
-    if (!GetIt.I.isRegistered<AppDataRepositoryContract>()) {
-      return true;
-    }
-    final settings = GetIt.I
-        .get<AppDataRepositoryContract>()
-        .appData
-        .firebaseSettings;
-    if (settings != null) {
-      return true;
-    }
-
-    debugPrint('[Push] Firebase settings missing; skipping push registration.');
-    return false;
   }
 
   void _listenForInvitePushUpdates(
