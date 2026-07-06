@@ -15,11 +15,13 @@ import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dar
 import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_bool_value.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/tenant/tenant.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/user/user_profile_contract.dart';
@@ -183,6 +185,34 @@ void main() {
     expect(capture.factoryCalled, isFalse);
     expect(capture.initCalled, isFalse);
   });
+
+  test(
+    'ApplicationContract skips mobile push wiring when Firebase settings are missing',
+    () async {
+      final appData = _buildTestAppData();
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(
+        _FakeAppDataRepository(appData),
+      );
+      final authRepository = _FakeAuthRepository(
+        userTokenValue: 'token-123',
+        deviceId: 'device-1',
+      );
+      GetIt.I.registerSingleton<AuthRepositoryContract>(authRepository);
+
+      final app = _TestApplication();
+      GetIt.I.registerSingleton<ApplicationContract>(app);
+
+      final capture = _RepositoryCapture();
+      await app.initializePushHandlerForTesting(
+        isWebOverride: false,
+        repositoryFactory: capture.factory,
+        invitePushTapSourceOverride: _ThrowingInvitePushTapSource(),
+      );
+
+      expect(capture.factoryCalled, isFalse);
+      expect(capture.initCalled, isFalse);
+    },
+  );
 
   test(
     'ApplicationContract reports recoverable push init failures to Sentry',
@@ -455,6 +485,18 @@ class _FakeInvitePushTapSource extends InvitePushTapSource {
       const Stream<RemoteMessage>.empty();
 }
 
+class _ThrowingInvitePushTapSource extends InvitePushTapSource {
+  @override
+  Future<RemoteMessage?> getInitialMessage() {
+    throw StateError('Firebase tap source should not be touched.');
+  }
+
+  @override
+  Stream<RemoteMessage> get onMessageOpenedApp {
+    throw StateError('Firebase tap stream should not be touched.');
+  }
+}
+
 class _FakeInvitePushRuntimeCoordinator extends InvitePushRuntimeCoordinator {
   _FakeInvitePushRuntimeCoordinator({required this.preparedPath})
     : super(navigatePath: (_) async {});
@@ -601,6 +643,49 @@ class _FakePushHandlerRepository extends PushHandlerRepositoryContract {
   Future<void> init() async {
     onInit();
     await initCompleter?.future;
+  }
+}
+
+class _FakeAppDataRepository extends AppDataRepositoryContract {
+  _FakeAppDataRepository(this._appData);
+
+  final AppData _appData;
+  final StreamValue<ThemeMode?> _themeModeStreamValue = StreamValue<ThemeMode?>(
+    defaultValue: ThemeMode.light,
+  );
+  final StreamValue<DistanceInMetersValue> _maxRadiusMetersStreamValue =
+      StreamValue<DistanceInMetersValue>(
+        defaultValue: DistanceInMetersValue.fromRaw(50000, defaultValue: 50000),
+      );
+
+  @override
+  AppData get appData => _appData;
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  StreamValue<ThemeMode?> get themeModeStreamValue => _themeModeStreamValue;
+
+  @override
+  ThemeMode get themeMode => _themeModeStreamValue.value ?? ThemeMode.light;
+
+  @override
+  Future<void> setThemeMode(AppThemeModeValue mode) async {
+    _themeModeStreamValue.addValue(mode.value);
+  }
+
+  @override
+  StreamValue<DistanceInMetersValue> get maxRadiusMetersStreamValue =>
+      _maxRadiusMetersStreamValue;
+
+  @override
+  DistanceInMetersValue get maxRadiusMeters =>
+      _maxRadiusMetersStreamValue.value;
+
+  @override
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {
+    _maxRadiusMetersStreamValue.addValue(meters);
   }
 }
 
