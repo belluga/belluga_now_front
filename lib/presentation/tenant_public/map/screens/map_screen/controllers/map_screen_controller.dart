@@ -214,8 +214,12 @@ class MapScreenController implements Disposable {
   final StreamValue<String?> pendingFilterLabelStreamValue =
       StreamValue<String?>();
 
-  CityCoordinate? get initialMapCenter =>
-      _locationOriginService.resolveCached().tenantDefaultCoordinate;
+  CityCoordinate? get initialMapCenter {
+    final resolution = _locationOriginService.resolveCached();
+    return resolution.effectiveCoordinate ??
+        resolution.tenantDefaultCoordinate ??
+        resolution.liveUserCoordinate;
+  }
   bool get hasInitialMapCenter => initialMapCenter != null;
 
   PoiQuery _currentQuery = PoiQuery();
@@ -473,10 +477,6 @@ class MapScreenController implements Disposable {
     softLocationNoticeStreamValue.addValue('');
     _attachLocationFeedbackListeners();
     _refreshLocationFeedback(emitNotice: false);
-    if (!hasInitialMapCenter) {
-      _publishMissingDefaultOriginError();
-      return;
-    }
     final hasInitialPoiQuery = _normalizePoiQuery(initialPoiQuery) != null;
     final shouldAwaitFreshBootstrapOrigin =
         !enteredViaSoftLocationGate &&
@@ -523,6 +523,12 @@ class MapScreenController implements Disposable {
         initialPoiHydrationFuture,
       ]);
     }
+
+    if (!hasInitialMapCenter) {
+      _publishMissingDefaultOriginError();
+      return;
+    }
+
     await _retryBootstrapLoadsIfNeeded();
 
     if (hasInitialPoiQuery) {
