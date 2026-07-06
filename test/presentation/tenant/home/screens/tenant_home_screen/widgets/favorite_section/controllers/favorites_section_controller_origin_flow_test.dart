@@ -94,8 +94,43 @@ void main() {
 
       await controller.init();
 
-      expect(favoriteRepository.fetchFavoriteResumesCallCount, 3);
+      expect(favoriteRepository.fetchFavoriteResumesCallCount, 4);
       expect(controller.favoritesStreamValue.value, isEmpty);
+
+      controller.onDispose();
+    },
+  );
+
+  test(
+    'favorites section recovers first page from canonical direct read when paged init exhausts retries',
+    () async {
+      final favoriteRepository = _FakeFavoriteRepository(
+        favoriteResumes: [
+          _favoriteResume(title: 'Fav 1', slug: 'fav-1'),
+          _favoriteResume(title: 'Fav 2', slug: 'fav-2'),
+        ],
+        pagedResultsByPage: {
+          1: const PagedFavoriteResumesResult(
+            items: <FavoriteResume>[],
+            hasMore: false,
+          ),
+        },
+        pageFailuresBeforeSuccess: 3,
+      );
+      final controller = FavoritesSectionController(
+        favoriteRepository: favoriteRepository,
+        appDataRepository: _FakeAppDataRepository(),
+      );
+
+      await controller.init();
+
+      expect(favoriteRepository.fetchFavoriteResumesPageCallCount, 3);
+      expect(favoriteRepository.fetchFavoriteResumesCallCount, 1);
+      expect(
+        controller.favoritesStreamValue.value?.map((item) => item.title).toList(),
+        ['Fav 1', 'Fav 2'],
+      );
+      expect(controller.hasMoreFavoritesStreamValue.value, isFalse);
 
       controller.onDispose();
     },
@@ -840,6 +875,7 @@ class _FakeFavoriteRepository extends FavoriteRepositoryContract
     this.pagedResultCompletersByPage =
         const <int, Completer<PagedFavoriteResumesResult>>{},
     this.failuresBeforeSuccess = 0,
+    this.pageFailuresBeforeSuccess = 0,
   });
 
   List<FavoriteResume> favoriteResumes;
@@ -849,6 +885,7 @@ class _FakeFavoriteRepository extends FavoriteRepositoryContract
   int fetchFavoriteResumesCallCount = 0;
   int fetchFavoriteResumesPageCallCount = 0;
   int failuresBeforeSuccess;
+  int pageFailuresBeforeSuccess;
   final List<int> requestedPageNumbers = <int>[];
 
   @override
@@ -878,6 +915,10 @@ class _FakeFavoriteRepository extends FavoriteRepositoryContract
 
     if (failuresBeforeSuccess > 0) {
       failuresBeforeSuccess -= 1;
+      throw StateError('favorite resumes unavailable');
+    }
+    if (pageFailuresBeforeSuccess > 0) {
+      pageFailuresBeforeSuccess -= 1;
       throw StateError('favorite resumes unavailable');
     }
 

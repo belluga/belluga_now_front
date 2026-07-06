@@ -90,8 +90,32 @@ mixin FavoriteRepositoryPagingMixin on FavoriteRepositoryContract {
       return;
     }
 
+    final recovered = await _recoverInitialFavoriteResumesDirectRead();
+    if (recovered) {
+      return;
+    }
+
     _resetFavoriteResumesPaginationState();
     favoriteResumesStreamValue.addValue(const <FavoriteResume>[]);
+  }
+
+  Future<bool> _recoverInitialFavoriteResumesDirectRead() async {
+    try {
+      final favorites = await fetchFavoriteResumes();
+      final pageItems = favorites
+          .take(_favoriteResumesPageSize)
+          .toList(growable: false);
+
+      favoriteResumesStreamValue.addValue(pageItems);
+      _hasMoreFavoriteResumes = favorites.length > _favoriteResumesPageSize;
+      hasMoreFavoriteResumesStreamValue.addValue(_hasMoreFavoriteResumes);
+      _currentFavoriteResumesPage = pageItems.isEmpty ? 0 : 1;
+      isFavoriteResumesPageLoadingStreamValue.addValue(false);
+      _isFetchingFavoriteResumesPage = false;
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> _reloadFavoriteResumesWindow({
