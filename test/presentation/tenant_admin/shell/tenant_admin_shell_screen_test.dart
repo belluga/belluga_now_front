@@ -41,17 +41,15 @@ void main() {
 
   tearDown(() async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(
-      urlLauncherChannel,
-      null,
-    );
+        .setMockMethodCallHandler(urlLauncherChannel, null);
     await GetIt.I.reset();
   });
 
-  testWidgets('shows loading gate while tenant resolution is in progress',
-      (tester) async {
+  testWidgets('shows loading gate while tenant resolution is in progress', (
+    tester,
+  ) async {
     final appDataRepository = _FakeAppDataRepository(
-      appData: _buildAppData(
+      _buildAppData(
         envType: 'landlord',
         hostname: 'belluga.space',
         domains: ['https://belluga.space'],
@@ -67,11 +65,7 @@ void main() {
     GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
     GetIt.I.registerSingleton<TenantAdminShellController>(controller);
 
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: TenantAdminShellScreen(),
-      ),
-    );
+    await tester.pumpWidget(const MaterialApp(home: TenantAdminShellScreen()));
     await tester.pump();
 
     expect(find.text('Preparando tenant'), findsOneWidget);
@@ -80,80 +74,76 @@ void main() {
   });
 
   testWidgets(
-      'tenant selection on app keeps in-app scope without domain redirect',
-      (tester) async {
-    final launchedUrls = <String>[];
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(
-      urlLauncherChannel,
-      (MethodCall call) async {
-        if (call.method == 'launch') {
-          final url = (call.arguments as Map)['url']?.toString();
-          if (url != null) {
-            launchedUrls.add(url);
-          }
-          return true;
-        }
-        if (call.method == 'canLaunch') {
-          return true;
-        }
-        return null;
-      },
-    );
+    'tenant selection on app keeps in-app scope without domain redirect',
+    (tester) async {
+      final launchedUrls = <String>[];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(urlLauncherChannel, (
+            MethodCall call,
+          ) async {
+            if (call.method == 'launch') {
+              final url = (call.arguments as Map)['url']?.toString();
+              if (url != null) {
+                launchedUrls.add(url);
+              }
+              return true;
+            }
+            if (call.method == 'canLaunch') {
+              return true;
+            }
+            return null;
+          });
 
-    final appDataRepository = _FakeAppDataRepository(
-      appData: _buildAppData(
-        envType: 'landlord',
-        hostname: 'belluga.space',
-        domains: ['https://belluga.space'],
-      ),
-    );
+      final appDataRepository = _FakeAppDataRepository(
+        _buildAppData(
+          envType: 'landlord',
+          hostname: 'belluga.space',
+          domains: ['https://belluga.space'],
+        ),
+      );
 
-    final controller = TenantAdminShellController(
-      adminModeRepository: _FakeAdminModeRepository(),
-      appDataRepository: appDataRepository,
-      landlordAuthRepository: _FakeLandlordAuthRepository(),
-      landlordTenantsRepository: _FixedLandlordTenantsRepository(
-        [
+      final controller = TenantAdminShellController(
+        adminModeRepository: _FakeAdminModeRepository(),
+        appDataRepository: appDataRepository,
+        landlordAuthRepository: _FakeLandlordAuthRepository(),
+        landlordTenantsRepository: _FixedLandlordTenantsRepository([
           _tenantOption(
             id: 'tenant-guarappari',
             name: 'Guarappari',
             mainDomain: 'https://guarappari.belluga.space',
           ),
-        ],
-      ),
-      selectedTenantRepository: _FakeSelectedTenantRepository(
-        suppressSelectionStreamUpdates: true,
-      ),
-    );
-    GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
-    GetIt.I.registerSingleton<TenantAdminShellController>(controller);
+        ]),
+        selectedTenantRepository: _FakeSelectedTenantRepository(
+          suppressSelectionStreamUpdates: true,
+        ),
+      );
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
+      GetIt.I.registerSingleton<TenantAdminShellController>(controller);
 
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: TenantAdminShellScreen(),
-      ),
-    );
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
+      await tester.pumpWidget(
+        const MaterialApp(home: TenantAdminShellScreen()),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
 
-    expect(find.text('Selecionar tenant'), findsOneWidget);
-    await tester.tap(find.text('Guarappari'));
-    await tester.pump(const Duration(milliseconds: 200));
+      expect(find.text('Selecionar tenant'), findsOneWidget);
+      await tester.tap(find.text('Guarappari'));
+      await tester.pump(const Duration(milliseconds: 200));
 
-    expect(launchedUrls, isEmpty);
-    expect(controller.selectedTenantDomain, 'https://guarappari.belluga.space');
-  });
+      expect(launchedUrls, isEmpty);
+      expect(
+        controller.selectedTenantDomain,
+        'https://guarappari.belluga.space',
+      );
+    },
+  );
 
   test('tenant environment auto-selects current host on init', () {
     final appDataRepository = _FakeAppDataRepository(
-      appData: _buildAppData(
+      _buildAppData(
         envType: 'tenant',
         hostname: 'guarappari.belluga.space',
-        domains: [
-          'https://guarappari.belluga.space',
-          'https://belluga.space',
-        ],
+        domains: ['https://guarappari.belluga.space', 'https://belluga.space'],
       ),
     );
     final selectedTenantRepository = _FakeSelectedTenantRepository();
@@ -175,7 +165,7 @@ void main() {
 
   test('tenant environment init skips landlord tenant fetch', () {
     final appDataRepository = _FakeAppDataRepository(
-      appData: _buildAppData(
+      _buildAppData(
         envType: 'tenant',
         hostname: 'guarappari.belluga.space',
         domains: ['https://guarappari.belluga.space'],
@@ -196,41 +186,41 @@ void main() {
   });
 
   testWidgets(
-      'tenant environment without local landlord session shows admin auth gate',
-      (tester) async {
-    final appDataRepository = _FakeAppDataRepository(
-      appData: _buildAppData(
-        envType: 'tenant',
-        hostname: 'guarapari.belluga.space',
-        domains: ['https://guarapari.belluga.space'],
-      ),
-    );
-    final controller = TenantAdminShellController(
-      adminModeRepository: _FakeAdminModeRepository(),
-      appDataRepository: appDataRepository,
-      landlordAuthRepository:
-          _FakeLandlordAuthRepository(hasValidSession: false),
-      landlordTenantsRepository: _PendingLandlordTenantsRepository(),
-      selectedTenantRepository: _FakeSelectedTenantRepository(),
-    );
+    'tenant environment without local landlord session shows admin auth gate',
+    (tester) async {
+      final appDataRepository = _FakeAppDataRepository(
+        _buildAppData(
+          envType: 'tenant',
+          hostname: 'guarapari.belluga.space',
+          domains: ['https://guarapari.belluga.space'],
+        ),
+      );
+      final controller = TenantAdminShellController(
+        adminModeRepository: _FakeAdminModeRepository(),
+        appDataRepository: appDataRepository,
+        landlordAuthRepository: _FakeLandlordAuthRepository(
+          hasValidSession: false,
+        ),
+        landlordTenantsRepository: _PendingLandlordTenantsRepository(),
+        selectedTenantRepository: _FakeSelectedTenantRepository(),
+      );
 
-    GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
-    GetIt.I.registerSingleton<TenantAdminShellController>(controller);
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
+      GetIt.I.registerSingleton<TenantAdminShellController>(controller);
 
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: TenantAdminShellScreen(),
-      ),
-    );
-    await tester.pump();
+      await tester.pumpWidget(
+        const MaterialApp(home: TenantAdminShellScreen()),
+      );
+      await tester.pump();
 
-    expect(find.text('Tenant admin login'), findsOneWidget);
-    expect(find.text('Entrar como Admin'), findsOneWidget);
-  });
+      expect(find.text('Tenant admin login'), findsOneWidget);
+      expect(find.text('Entrar como Admin'), findsOneWidget);
+    },
+  );
 
   test('fails fast when landlord auth repository is missing', () {
     final appDataRepository = _FakeAppDataRepository(
-      appData: _buildAppData(
+      _buildAppData(
         envType: 'landlord',
         hostname: 'belluga.space',
         domains: ['https://belluga.space'],
@@ -271,7 +261,7 @@ class _FakeAdminModeRepository implements AdminModeRepositoryContract {
 }
 
 class _FakeAppDataRepository extends AppDataRepositoryContract {
-  _FakeAppDataRepository({required AppData appData}) : _appData = appData;
+  _FakeAppDataRepository(this._appData);
 
   final AppData _appData;
 
@@ -280,10 +270,13 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
 
   @override
   StreamValue<DistanceInMetersValue> get maxRadiusMetersStreamValue =>
-      StreamValue<DistanceInMetersValue>(defaultValue: DistanceInMetersValue.fromRaw(1000, defaultValue: 1000));
+      StreamValue<DistanceInMetersValue>(
+        defaultValue: DistanceInMetersValue.fromRaw(1000, defaultValue: 1000),
+      );
 
   @override
-  DistanceInMetersValue get maxRadiusMeters => DistanceInMetersValue.fromRaw(1000, defaultValue: 1000);
+  DistanceInMetersValue get maxRadiusMeters =>
+      DistanceInMetersValue.fromRaw(1000, defaultValue: 1000);
 
   @override
   bool get hasPersistedMaxRadiusPreference => false;
@@ -349,8 +342,9 @@ class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
 
   @override
   Future<void> loginWithEmailPassword(
-      LandlordAuthRepositoryContractPrimString email,
-      LandlordAuthRepositoryContractPrimString password) async {}
+    LandlordAuthRepositoryContractPrimString email,
+    LandlordAuthRepositoryContractPrimString password,
+  ) async {}
 
   @override
   Future<void> logout() async {}
@@ -358,9 +352,7 @@ class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
 
 class _FakeSelectedTenantRepository
     implements TenantAdminSelectedTenantRepositoryContract {
-  _FakeSelectedTenantRepository({
-    this.suppressSelectionStreamUpdates = false,
-  });
+  _FakeSelectedTenantRepository({this.suppressSelectionStreamUpdates = false});
 
   final bool suppressSelectionStreamUpdates;
   final StreamValue<List<LandlordTenantOption>> _availableTenantsStreamValue =
@@ -422,10 +414,11 @@ class _FakeSelectedTenantRepository
 
   @override
   void selectTenantDomain(Object tenantDomain) {
-    _selectedTenantDomainValue = (tenantDomain is String
-            ? tenantDomain
-            : (tenantDomain as dynamic).value as String)
-        .trim();
+    _selectedTenantDomainValue =
+        (tenantDomain is String
+                ? tenantDomain
+                : (tenantDomain as dynamic).value as String)
+            .trim();
     _selectedTenantValue = availableTenants.where((tenant) {
       return tenant.mainDomain.trim() ==
           (tenantDomain is String
@@ -434,13 +427,13 @@ class _FakeSelectedTenantRepository
               .trim();
     }).firstOrNull;
     if (!suppressSelectionStreamUpdates) {
-      _selectedTenantDomainStreamValue.addValue((tenantDomain is String
-              ? tenantDomain
-              : (tenantDomain as dynamic).value as String)
-          .trim());
-      _selectedTenantStreamValue.addValue(
-        _selectedTenantValue,
+      _selectedTenantDomainStreamValue.addValue(
+        (tenantDomain is String
+                ? tenantDomain
+                : (tenantDomain as dynamic).value as String)
+            .trim(),
       );
+      _selectedTenantStreamValue.addValue(_selectedTenantValue);
     }
   }
 

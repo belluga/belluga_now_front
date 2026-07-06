@@ -12,8 +12,8 @@ import 'package:get_it/get_it.dart';
 
 class LaravelInvitesBackend implements InvitesBackendContract {
   LaravelInvitesBackend({Dio? dio, SseClient? sseClient})
-      : _dio = dio ?? Dio(),
-        _sseClient = sseClient ?? createSseClient();
+    : _dio = dio ?? Dio(),
+      _sseClient = sseClient ?? createSseClient();
 
   final Dio _dio;
   final SseClient _sseClient;
@@ -30,9 +30,7 @@ class LaravelInvitesBackend implements InvitesBackendContract {
     );
   }
 
-  Future<Map<String, String>> _streamHeaders({
-    bool includeJsonAccept = false,
-  }) {
+  Future<Map<String, String>> _streamHeaders({bool includeJsonAccept = false}) {
     return TenantPublicAuthHeaders.build(
       includeJsonAccept: includeJsonAccept,
       bootstrapIfEmpty: true,
@@ -46,42 +44,32 @@ class LaravelInvitesBackend implements InvitesBackendContract {
   }) async {
     return _get(
       '$_apiBaseUrl/v1/invites',
-      queryParameters: {
-        'page': page,
-        'page_size': pageSize,
-      },
+      queryParameters: {'page': page, 'page_size': pageSize},
     );
   }
 
   @override
-  Stream<InviteRealtimeDeltaDto> watchInvitesStream({
-    String? lastEventId,
-  }) {
-    return Stream<Map<String, String>>.fromFuture(
-      _streamHeaders(),
-    ).asyncExpand((headers) async* {
-      final uri = _inviteStreamUri(
-        accessToken: _extractBearerToken(headers),
-        lastEventId: lastEventId,
-      );
-      yield* _sseClient
-          .connect(
-            uri,
-            lastEventId: lastEventId,
-            headers: headers,
-          )
-          .map((message) => _parseRealtimeDelta(
+  Stream<InviteRealtimeDeltaDto> watchInvitesStream({String? lastEventId}) {
+    return Stream<Map<String, String>>.fromFuture(_streamHeaders()).asyncExpand(
+      (headers) async* {
+        final uri = _inviteStreamUri(
+          accessToken: _extractBearerToken(headers),
+          lastEventId: lastEventId,
+        );
+        yield* _sseClient
+            .connect(uri, lastEventId: lastEventId, headers: headers)
+            .map(
+              (message) => _parseRealtimeDelta(
                 data: message.data,
                 fallbackType: message.event,
                 lastEventId: message.id,
-              ));
-    });
+              ),
+            );
+      },
+    );
   }
 
-  Uri _inviteStreamUri({
-    required String accessToken,
-    String? lastEventId,
-  }) {
+  Uri _inviteStreamUri({required String accessToken, String? lastEventId}) {
     final uri = Uri.parse('$_apiBaseUrl/v1/invites/stream');
     final cursor = lastEventId?.trim() ?? '';
     if (accessToken.isEmpty && cursor.isEmpty) {
@@ -123,10 +111,7 @@ class LaravelInvitesBackend implements InvitesBackendContract {
 
   @override
   Future<Map<String, dynamic>> sendInvites(InviteSendRequest request) {
-    return _post(
-      '$_apiBaseUrl/v1/invites',
-      data: request.toJson(),
-    );
+    return _post('$_apiBaseUrl/v1/invites', data: request.toJson());
   }
 
   @override
@@ -153,10 +138,7 @@ class LaravelInvitesBackend implements InvitesBackendContract {
   Future<Map<String, dynamic>> createShareCode(
     InviteShareCodeCreateRequest request,
   ) {
-    return _post(
-      '$_apiBaseUrl/v1/invites/share',
-      data: request.toJson(),
-    );
+    return _post('$_apiBaseUrl/v1/invites/share', data: request.toJson());
   }
 
   @override
@@ -178,10 +160,7 @@ class LaravelInvitesBackend implements InvitesBackendContract {
   Future<Map<String, dynamic>> importContacts(
     InviteContactImportRequest request,
   ) {
-    return _post(
-      '$_apiBaseUrl/v1/contacts/import',
-      data: request.toJson(),
-    );
+    return _post('$_apiBaseUrl/v1/contacts/import', data: request.toJson());
   }
 
   @override
@@ -222,9 +201,8 @@ class LaravelInvitesBackend implements InvitesBackendContract {
     return _patch(
       '$_apiBaseUrl/v1/contact-groups/$groupId',
       data: {
-        if (name != null) 'name': name,
-        if (recipientAccountProfileIds != null)
-          'recipient_account_profile_ids': recipientAccountProfileIds,
+        'name': ?name,
+        'recipient_account_profile_ids': ?recipientAccountProfileIds,
       },
     );
   }
@@ -336,7 +314,8 @@ class LaravelInvitesBackend implements InvitesBackendContract {
     }
 
     final payload = Map<String, dynamic>.from(decoded);
-    final resolvedType = _stringOrNull(payload['type']) ??
+    final resolvedType =
+        _stringOrNull(payload['type']) ??
         fallbackType?.trim() ??
         'invite.updated';
 
@@ -349,8 +328,9 @@ class LaravelInvitesBackend implements InvitesBackendContract {
           );
 
     final targetRef = payload['target_ref'];
-    final targetRefMap =
-        targetRef is Map ? Map<String, dynamic>.from(targetRef) : null;
+    final targetRefMap = targetRef is Map
+        ? Map<String, dynamic>.from(targetRef)
+        : null;
 
     return InviteRealtimeDeltaDto(
       type: resolvedType,

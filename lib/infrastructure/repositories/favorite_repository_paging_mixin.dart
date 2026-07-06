@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/favorite/paged_favorite_resumes_result.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
 import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
+import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 mixin FavoriteRepositoryPagingMixin on FavoriteRepositoryContract {
@@ -43,7 +44,9 @@ mixin FavoriteRepositoryPagingMixin on FavoriteRepositoryContract {
 
     return PagedFavoriteResumesResult(
       items: items,
-      hasMore: (startIndex + resolvedPageSize) < favorites.length,
+      hasMoreValue:
+          (DomainBooleanValue(defaultValue: false, isRequired: false)
+            ..parse(((startIndex + resolvedPageSize) < favorites.length).toString())),
     );
   }
 
@@ -90,8 +93,34 @@ mixin FavoriteRepositoryPagingMixin on FavoriteRepositoryContract {
       return;
     }
 
+    final recovered = await _recoverInitialFavoriteResumesDirectRead();
+    if (recovered) {
+      return;
+    }
+
     _resetFavoriteResumesPaginationState();
     favoriteResumesStreamValue.addValue(const <FavoriteResume>[]);
+  }
+
+  Future<bool> _recoverInitialFavoriteResumesDirectRead() async {
+    var recovered = false;
+    try {
+      final favorites = await fetchFavoriteResumes();
+      final pageItems = favorites
+          .take(_favoriteResumesPageSize)
+          .toList(growable: false);
+
+      favoriteResumesStreamValue.addValue(pageItems);
+      _hasMoreFavoriteResumes = favorites.length > _favoriteResumesPageSize;
+      hasMoreFavoriteResumesStreamValue.addValue(_hasMoreFavoriteResumes);
+      _currentFavoriteResumesPage = pageItems.isEmpty ? 0 : 1;
+      isFavoriteResumesPageLoadingStreamValue.addValue(false);
+      _isFetchingFavoriteResumesPage = false;
+      recovered = true;
+    } catch (_) {
+      recovered = false;
+    }
+    return recovered;
   }
 
   Future<void> _reloadFavoriteResumesWindow({

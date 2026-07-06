@@ -4,30 +4,30 @@ import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:stream_value/core/stream_value.dart';
 
-typedef IntegrationTestScheduleQueryResolver = List<EventModel> Function({
-  required List<EventModel> seededEvents,
-  required bool showPastOnly,
-  required bool liveNowOnly,
-  String? searchQuery,
-  required bool confirmedOnly,
-  double? originLat,
-  double? originLng,
-  double? maxDistanceMeters,
-});
+typedef IntegrationTestScheduleQueryResolver =
+    List<EventModel> Function({
+      required List<EventModel> seededEvents,
+      required bool showPastOnly,
+      required bool liveNowOnly,
+      String? searchQuery,
+      required bool confirmedOnly,
+      double? originLat,
+      double? originLng,
+      double? maxDistanceMeters,
+    });
 
-typedef IntegrationTestScheduleSlugResolver = EventModel? Function({
-  required List<EventModel> seededEvents,
-  required String slug,
-});
+typedef IntegrationTestScheduleSlugResolver =
+    EventModel? Function({
+      required List<EventModel> seededEvents,
+      required String slug,
+    });
 
 class IntegrationTestScheduleRepositoryFake extends ScheduleRepositoryContract {
   IntegrationTestScheduleRepositoryFake({
     List<EventModel> seededEvents = const <EventModel>[],
-    IntegrationTestScheduleQueryResolver? queryResolver,
-    IntegrationTestScheduleSlugResolver? slugResolver,
-  })  : _seededEvents = List<EventModel>.unmodifiable(seededEvents),
-        _queryResolver = queryResolver,
-        _slugResolver = slugResolver;
+    this.queryResolver,
+    this.slugResolver,
+  }) : _seededEvents = List<EventModel>.unmodifiable(seededEvents);
 
   @override
   final StreamValue<List<EventModel>?> homeAgendaStreamValue =
@@ -36,8 +36,8 @@ class IntegrationTestScheduleRepositoryFake extends ScheduleRepositoryContract {
   final StreamValue<List<EventModel>?> discoveryLiveNowEventsStreamValue =
       StreamValue<List<EventModel>?>(defaultValue: null);
   final List<EventModel> _seededEvents;
-  final IntegrationTestScheduleQueryResolver? _queryResolver;
-  final IntegrationTestScheduleSlugResolver? _slugResolver;
+  final IntegrationTestScheduleQueryResolver? queryResolver;
+  final IntegrationTestScheduleSlugResolver? slugResolver;
   _IntegrationFakeHomeAgendaState? _homeAgendaState;
   final Map<String, _IntegrationFakeQueryState> _eventSearchStateByQueryKey =
       <String, _IntegrationFakeQueryState>{};
@@ -106,7 +106,7 @@ class IntegrationTestScheduleRepositoryFake extends ScheduleRepositoryContract {
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
   }) {
-    final resolver = _queryResolver;
+    final resolver = queryResolver;
     if (resolver != null) {
       return List<EventModel>.unmodifiable(
         resolver(
@@ -283,10 +283,7 @@ class IntegrationTestScheduleRepositoryFake extends ScheduleRepositoryContract {
       originLng: originLng,
       maxDistanceMeters: maxDistanceMeters,
     );
-    final nextEvents = <EventModel>[
-      ...current.events,
-      ...pageEvents,
-    ];
+    final nextEvents = <EventModel>[...current.events, ...pageEvents];
     _homeAgendaState = _IntegrationFakeHomeAgendaState(
       events: nextEvents,
       nextPage: current.nextPage + 1,
@@ -307,7 +304,7 @@ class IntegrationTestScheduleRepositoryFake extends ScheduleRepositoryContract {
     ScheduleRepoString slug, {
     ScheduleRepoString? occurrenceId,
   }) async {
-    final resolver = _slugResolver;
+    final resolver = slugResolver;
     if (resolver != null) {
       return resolver(seededEvents: _seededEvents, slug: slug.value);
     }
@@ -452,8 +449,7 @@ class IntegrationTestScheduleRepositoryFake extends ScheduleRepositoryContract {
     ScheduleRepoDouble? maxDistanceMeters,
     ScheduleRepoString? lastEventId,
     ScheduleRepoBool? showPastOnly,
-  }) =>
-      const Stream<EventDeltaModel>.empty();
+  }) => const Stream<EventDeltaModel>.empty();
 
   @override
   Stream<void> watchEventsSignal({

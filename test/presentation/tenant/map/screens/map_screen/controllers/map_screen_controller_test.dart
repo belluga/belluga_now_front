@@ -787,10 +787,19 @@ class _FakeMapHandle implements BellugaMapHandleContract {
     double? initialZoom,
     CityCoordinate? initialCenter,
     bool treatNoOpMoveAsSuccess = false,
-  }) : _isReady = isReady,
-       _currentZoom = initialZoom ?? 16,
-       _currentCenter = initialCenter,
-       _treatNoOpMoveAsSuccess = treatNoOpMoveAsSuccess;
+  }) : this._internal(
+         isReady,
+         initialZoom ?? 16,
+         initialCenter,
+         treatNoOpMoveAsSuccess,
+       );
+
+  _FakeMapHandle._internal(
+    this._isReady,
+    this._currentZoom,
+    this._currentCenter,
+    this._treatNoOpMoveAsSuccess,
+  );
 
   final StreamController<BellugaMapInteractionEvent> _events =
       StreamController<BellugaMapInteractionEvent>.broadcast();
@@ -3360,8 +3369,9 @@ void main() {
     );
 
     test(
-      'fails closed when tenant default origin is missing during bootstrap',
+      'uses the resolved live origin when tenant default origin is missing during bootstrap',
       () async {
+        final refreshCompleter = Completer<bool>();
         final localController = _buildMapController(
           poiRepository: _buildPoiRepository(mapRepository: mapRepository),
           userLocationRepository: userLocationRepository,
@@ -3371,12 +3381,63 @@ void main() {
         addTearDown(() async {
           await localController.onDispose();
         });
+        userLocationRepository.refreshIfPermittedCompleter = refreshCompleter;
 
-        await localController.init();
+        final initFuture = localController.init();
+        await _flushMicrotasks();
+        await _flushMicrotasks();
+
+        userLocationRepository.userLocationStreamValue.addValue(
+          _buildCoordinate('-20.671339', '-40.495395'),
+        );
+        userLocationRepository.locationResolutionPhaseStreamValue.addValue(
+          LocationResolutionPhase.resolved,
+        );
+        refreshCompleter.complete(true);
+
+        await initFuture;
+        await _flushMicrotasks();
+
+        expect(userLocationRepository.refreshIfPermittedCallCount, 1);
+        expect(mapRepository.fetchPointsCallCount, greaterThan(0));
+        expect(localController.mapStatusStreamValue.value, isNot(MapStatus.error));
+        expect(localController.errorMessage.value, isNull);
+      },
+    );
+
+    test(
+      'fails closed when tenant default origin is missing and bootstrap cannot resolve a live origin',
+      () async {
+        final refreshCompleter = Completer<bool>();
+        final resolveCompleter = Completer<String?>();
+        final localController = _buildMapController(
+          poiRepository: _buildPoiRepository(mapRepository: mapRepository),
+          userLocationRepository: userLocationRepository,
+          telemetryRepository: telemetry,
+          appData: _buildAppData(includeDefaultOrigin: false),
+        );
+        addTearDown(() async {
+          await localController.onDispose();
+        });
+        userLocationRepository.refreshIfPermittedCompleter = refreshCompleter;
+        userLocationRepository.resolveUserLocationCompleter = resolveCompleter;
+
+        final initFuture = localController.init();
+        await _flushMicrotasks();
+        await _flushMicrotasks();
+
+        refreshCompleter.complete(false);
+        await _flushMicrotasks();
+        await _flushMicrotasks();
+
+        resolveCompleter.complete(null);
+
+        await initFuture;
         await _flushMicrotasks();
 
         expect(mapRepository.fetchPointsCallCount, 0);
-        expect(userLocationRepository.refreshIfPermittedCallCount, 0);
+        expect(userLocationRepository.refreshIfPermittedCallCount, 1);
+        expect(userLocationRepository.resolveUserLocationCallCount, 1);
         expect(localController.mapStatusStreamValue.value, MapStatus.error);
         expect(
           localController.errorMessage.value,
@@ -6837,7 +6898,7 @@ Future<void> _pumpPoiDetailDeckWithAutoRouter(
         name: 'poi-detail-deck-test',
         path: '/',
         meta: canonicalRouteMeta(family: CanonicalRouteFamily.cityMap),
-        builder: (_, __) => RouteInstanceScope(
+        builder: (_, _) => RouteInstanceScope(
           child: Scaffold(
             body: PoiDetailDeck(
               controller: controller,

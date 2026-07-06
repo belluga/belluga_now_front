@@ -38,9 +38,10 @@ void main() {
     final dio = Dio()..httpClientAdapter = adapter;
     final backend = LaravelSelfProfileBackend(dio: dio);
 
-    final displayNameValue =
-        UserDisplayNameValue(isRequired: false, minLenght: null)
-          ..parse('Nome Persistido');
+    final displayNameValue = UserDisplayNameValue(
+      isRequired: false,
+      minLenght: null,
+    )..parse('Nome Persistido');
     final bioValue = DescriptionValue(defaultValue: '', minLenght: null)
       ..parse('Bio persistida');
 
@@ -62,74 +63,74 @@ void main() {
     expect(request.headers['Authorization'], 'Bearer test-token');
   });
 
-  test('avatar profile updates use multipart POST with method override',
-      () async {
-    final adapter = _RecordingAdapter(response: const {'ok': true});
-    final dio = Dio()..httpClientAdapter = adapter;
-    final backend = LaravelSelfProfileBackend(dio: dio);
+  test(
+    'avatar profile updates use multipart POST with method override',
+    () async {
+      final adapter = _RecordingAdapter(response: const {'ok': true});
+      final dio = Dio()..httpClientAdapter = adapter;
+      final backend = LaravelSelfProfileBackend(dio: dio);
 
-    final upload = UserProfileMediaUpload(
-      bytesValue: UserProfileMediaBytesValue()
-        ..set(Uint8List.fromList([1, 2, 3])),
-      fileNameValue: GenericStringValue(isRequired: true, minLenght: null)
-        ..parse('avatar.png'),
-      mimeTypeValue: GenericStringValue(isRequired: false, minLenght: null)
-        ..parse('image/png'),
-    );
+      final upload = UserProfileMediaUpload(
+        bytesValue: UserProfileMediaBytesValue()
+          ..set(Uint8List.fromList([1, 2, 3])),
+        fileNameValue: GenericStringValue(isRequired: true, minLenght: null)
+          ..parse('avatar.png'),
+        mimeTypeValue: GenericStringValue(isRequired: false, minLenght: null)
+          ..parse('image/png'),
+      );
 
-    await backend.updateCurrentProfile(
-      avatarUpload: upload,
-    );
+      await backend.updateCurrentProfile(avatarUpload: upload);
 
-    final request = adapter.lastRequest;
-    expect(request, isNotNull);
-    expect(request?.method, 'POST');
-    expect(request?.uri.path, '/api/v1/profile');
-    expect(request?.contentType, contains('multipart/form-data'));
-    expect(request?.data, isA<FormData>());
-    final formData = request!.data as FormData;
-    expect(
-      formData.fields.any(
-        (entry) => entry.key == '_method' && entry.value == 'PATCH',
-      ),
-      isTrue,
-    );
-    expect(formData.files.any((entry) => entry.key == 'avatar'), isTrue);
-    expect(request.headers['Authorization'], 'Bearer test-token');
-  });
+      final request = adapter.lastRequest;
+      expect(request, isNotNull);
+      expect(request?.method, 'POST');
+      expect(request?.uri.path, '/api/v1/profile');
+      expect(request?.contentType, contains('multipart/form-data'));
+      expect(request?.data, isA<FormData>());
+      final formData = request!.data as FormData;
+      expect(
+        formData.fields.any(
+          (entry) => entry.key == '_method' && entry.value == 'PATCH',
+        ),
+        isTrue,
+      );
+      expect(formData.files.any((entry) => entry.key == 'avatar'), isTrue);
+      expect(request.headers['Authorization'], 'Bearer test-token');
+    },
+  );
 
-  test('remove-avatar updates use multipart POST with method override',
-      () async {
-    final adapter = _RecordingAdapter(response: const {'ok': true});
-    final dio = Dio()..httpClientAdapter = adapter;
-    final backend = LaravelSelfProfileBackend(dio: dio);
-    final removeAvatarValue = DomainBooleanValue(defaultValue: false)
-      ..parse('true');
+  test(
+    'remove-avatar updates use multipart POST with method override',
+    () async {
+      final adapter = _RecordingAdapter(response: const {'ok': true});
+      final dio = Dio()..httpClientAdapter = adapter;
+      final backend = LaravelSelfProfileBackend(dio: dio);
+      final removeAvatarValue = DomainBooleanValue(defaultValue: false)
+        ..parse('true');
 
-    await backend.updateCurrentProfile(
-      removeAvatarValue: removeAvatarValue,
-    );
+      await backend.updateCurrentProfile(removeAvatarValue: removeAvatarValue);
 
-    final request = adapter.lastRequest;
-    expect(request, isNotNull);
-    expect(request?.method, 'POST');
-    expect(request?.uri.path, '/api/v1/profile');
-    expect(request?.contentType, contains('multipart/form-data'));
-    expect(request?.data, isA<FormData>());
-    final formData = request!.data as FormData;
-    expect(
-      formData.fields.any(
-        (entry) => entry.key == '_method' && entry.value == 'PATCH',
-      ),
-      isTrue,
-    );
-    expect(
-      formData.fields.any(
-        (entry) => entry.key == 'remove_avatar' && entry.value == 'true',
-      ),
-      isTrue,
-    );
-  });
+      final request = adapter.lastRequest;
+      expect(request, isNotNull);
+      expect(request?.method, 'POST');
+      expect(request?.uri.path, '/api/v1/profile');
+      expect(request?.contentType, contains('multipart/form-data'));
+      expect(request?.data, isA<FormData>());
+      final formData = request!.data as FormData;
+      expect(
+        formData.fields.any(
+          (entry) => entry.key == '_method' && entry.value == 'PATCH',
+        ),
+        isTrue,
+      );
+      expect(
+        formData.fields.any(
+          (entry) => entry.key == 'remove_avatar' && entry.value == 'true',
+        ),
+        isTrue,
+      );
+    },
+  );
 }
 
 class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
@@ -207,10 +208,9 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 }
 
 class _RecordingAdapter implements HttpClientAdapter {
-  _RecordingAdapter({required Map<String, dynamic> response})
-      : _response = response;
+  _RecordingAdapter({required this.response});
 
-  final Map<String, dynamic> _response;
+  final Map<String, dynamic> response;
   RequestOptions? lastRequest;
 
   @override
@@ -224,7 +224,7 @@ class _RecordingAdapter implements HttpClientAdapter {
   ) async {
     lastRequest = options;
     return ResponseBody.fromString(
-      jsonEncode(_response),
+      jsonEncode(response),
       200,
       headers: {
         Headers.contentTypeHeader: [Headers.jsonContentType],
@@ -243,10 +243,7 @@ AppData _buildAppData() {
         'type': 'artist',
         'label': 'Artist',
         'allowed_taxonomies': [],
-        'capabilities': {
-          'is_favoritable': true,
-          'is_poi_enabled': false,
-        },
+        'capabilities': {'is_favoritable': true, 'is_poi_enabled': false},
       },
     ],
     'domains': const ['https://tenant.test'],

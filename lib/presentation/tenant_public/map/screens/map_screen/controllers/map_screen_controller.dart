@@ -214,8 +214,12 @@ class MapScreenController implements Disposable {
   final StreamValue<String?> pendingFilterLabelStreamValue =
       StreamValue<String?>();
 
-  CityCoordinate? get initialMapCenter =>
-      _locationOriginService.resolveCached().tenantDefaultCoordinate;
+  CityCoordinate? get initialMapCenter {
+    final resolution = _locationOriginService.resolveCached();
+    return resolution.effectiveCoordinate ??
+        resolution.tenantDefaultCoordinate ??
+        resolution.liveUserCoordinate;
+  }
   bool get hasInitialMapCenter => initialMapCenter != null;
 
   PoiQuery _currentQuery = PoiQuery();
@@ -473,10 +477,6 @@ class MapScreenController implements Disposable {
     softLocationNoticeStreamValue.addValue('');
     _attachLocationFeedbackListeners();
     _refreshLocationFeedback(emitNotice: false);
-    if (!hasInitialMapCenter) {
-      _publishMissingDefaultOriginError();
-      return;
-    }
     final hasInitialPoiQuery = _normalizePoiQuery(initialPoiQuery) != null;
     final shouldAwaitFreshBootstrapOrigin =
         !enteredViaSoftLocationGate &&
@@ -523,6 +523,12 @@ class MapScreenController implements Disposable {
         initialPoiHydrationFuture,
       ]);
     }
+
+    if (!hasInitialMapCenter) {
+      _publishMissingDefaultOriginError();
+      return;
+    }
+
     await _retryBootstrapLoadsIfNeeded();
 
     if (hasInitialPoiQuery) {
@@ -2387,7 +2393,7 @@ class MapScreenController implements Disposable {
       eventName: telemetryRepoString('map_catalog_filter_applied'),
       properties: {
         'category_keys': categoryKeys.toList(growable: false),
-        if (source != null) 'source': source,
+        ...?(source == null ? null : <String, Object?>{'source': source}),
         'types': types.toList(growable: false),
         'taxonomy': taxonomyTokens.toList(growable: false),
         'tags': tags.toList(growable: false),
@@ -2426,11 +2432,11 @@ class MapScreenController implements Disposable {
     } finally {
       if (_isDisposed) {
         _filterInteractionLocked = false;
-        return;
+      } else {
+        _armPostFilterMarkerTapSuppression();
+        _setFilterInteractionLocked(false);
+        _setPendingFilterLabel(null);
       }
-      _armPostFilterMarkerTapSuppression();
-      _setFilterInteractionLocked(false);
-      _setPendingFilterLabel(null);
     }
   }
 
@@ -2783,7 +2789,7 @@ class MapScreenController implements Disposable {
       eventName: telemetryRepoString('map_ride_share_clicked'),
       properties: {
         'provider': provider.name,
-        if (poiId != null) 'poi_id': poiId,
+        ...?(poiId == null ? null : <String, Object?>{'poi_id': poiId}),
       },
     );
   }

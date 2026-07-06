@@ -371,6 +371,44 @@ void main() {
   );
 
   test(
+    'fetchAccountProfilesPage sends pagination and search filters and parses page window',
+    () async {
+      final adapter = _ProfileListMediaAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+      final page = await repository.fetchAccountProfilesPage(
+        page: tenantAdminAccountProfilesRepoInt(2, defaultValue: 2),
+        pageSize: tenantAdminAccountProfilesRepoInt(20, defaultValue: 20),
+        search: tenantAdminAccountProfilesRepoString('runtime'),
+        queryableOnly: tenantAdminAccountProfilesRepoBool(
+          true,
+          defaultValue: true,
+        ),
+        excludeAccountProfileId: tenantAdminAccountProfilesRepoString(
+          'profile-1',
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
+
+      final request = adapter.requests.single;
+      expect(request.queryParameters['page'], 2);
+      expect(request.queryParameters['page_size'], 20);
+      expect(request.queryParameters['search'], 'runtime');
+      expect(request.queryParameters['queryable_only'], isTrue);
+      expect(
+        request.queryParameters['exclude_account_profile_id'],
+        'profile-1',
+      );
+      expect(page.items, hasLength(2));
+      expect(page.pagination?.currentPage, 2);
+      expect(page.pagination?.pageSize, 20);
+      expect(page.hasMore, isTrue);
+    },
+  );
+
+  test(
     'fetchAccountProfile adds a distinct cache-busting _ts query param per request',
     () async {
       final adapter = _CaptureAdapter();
@@ -1127,6 +1165,33 @@ class _ProfileListMediaAdapter implements HttpClientAdapter {
     requests.add(options);
 
     if (options.path.endsWith('/v1/account_profiles')) {
+      if (options.queryParameters.containsKey('page')) {
+        return _jsonResponse({
+          'current_page': options.queryParameters['page'],
+          'last_page': 3,
+          'page_size': options.queryParameters['page_size'],
+          'data': [
+            {
+              'id': 'profile-21',
+              'account_id': 'acc-21',
+              'profile_type': 'artist',
+              'display_name': 'Runtime Sender',
+              'slug': 'runtime-sender',
+              'avatar_url': 'https://cdn.test/profile-21-avatar.png',
+              'cover_url': 'https://cdn.test/profile-21-cover.png',
+            },
+            {
+              'id': 'profile-22',
+              'account_id': 'acc-22',
+              'profile_type': 'venue',
+              'display_name': 'Runtime Venue',
+              'slug': 'runtime-venue',
+              'avatar_url': 'https://cdn.test/profile-22-avatar.png',
+              'cover_url': 'https://cdn.test/profile-22-cover.png',
+            },
+          ],
+        });
+      }
       return _jsonResponse({
         'data': [
           {

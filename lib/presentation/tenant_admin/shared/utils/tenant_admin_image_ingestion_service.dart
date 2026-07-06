@@ -17,8 +17,12 @@ class TenantAdminImageIngestionService {
   TenantAdminImageIngestionService({
     ImagePicker? imagePicker,
     TenantAdminExternalImageProxyContract? externalImageProxy,
-  })  : _imagePicker = imagePicker ?? ImagePicker(),
-        _externalImageProxy = externalImageProxy;
+  }) : this._internal(imagePicker ?? ImagePicker(), externalImageProxy);
+
+  TenantAdminImageIngestionService._internal(
+    this._imagePicker, [
+    this._externalImageProxy,
+  ]);
 
   final ImagePicker _imagePicker;
   final TenantAdminExternalImageProxyContract? _externalImageProxy;
@@ -35,9 +39,7 @@ class TenantAdminImageIngestionService {
     return selected;
   }
 
-  Future<XFile> fetchFromUrlForCrop({
-    required String imageUrl,
-  }) async {
+  Future<XFile> fetchFromUrlForCrop({required String imageUrl}) async {
     final uri = Uri.tryParse(imageUrl.trim());
     if (uri == null ||
         (uri.scheme != 'http' && uri.scheme != 'https') ||
@@ -46,7 +48,8 @@ class TenantAdminImageIngestionService {
     }
 
     try {
-      final proxy = _externalImageProxy ??
+      final proxy =
+          _externalImageProxy ??
           GetIt.I.get<TenantAdminExternalImageProxyContract>();
       final imageUrlValue = TenantAdminOptionalUrlValue();
       imageUrlValue.parse(uri.toString());
@@ -80,11 +83,7 @@ class TenantAdminImageIngestionService {
     required TenantAdminImageSlot slot,
   }) async {
     final bytes = await file.readAsBytes();
-    return prepareBytesAsXFile(
-      bytes,
-      slot: slot,
-      applyAspectCrop: true,
-    );
+    return prepareBytesAsXFile(bytes, slot: slot, applyAspectCrop: true);
   }
 
   Future<Uint8List> readBytesForCrop(XFile file) async {
@@ -130,10 +129,7 @@ class TenantAdminImageIngestionService {
     }
     return tenantAdminMediaUploadFromRaw(
       bytes: bytes,
-      fileName: _buildOutputFileName(
-        slot,
-        extension: spec.fileExtension,
-      ),
+      fileName: _buildOutputFileName(slot, extension: spec.fileExtension),
       mimeType: spec.mimeType,
     );
   }
@@ -170,11 +166,7 @@ class TenantAdminImageIngestionService {
         ? _encodePngWithinLimit(resized, _maxOutputBytes)
         : _encodeJpegWithinLimit(resized, _maxOutputBytes);
     final fileName = _buildOutputFileName(slot, extension: spec.fileExtension);
-    return XFile.fromData(
-      encoded,
-      mimeType: spec.mimeType,
-      name: fileName,
-    );
+    return XFile.fromData(encoded, mimeType: spec.mimeType, name: fileName);
   }
 
   img.Image _centerCropToRatio(img.Image source, double targetRatio) {
@@ -233,8 +225,9 @@ class TenantAdminImageIngestionService {
 
     for (var pass = 0; pass < 6; pass++) {
       for (final quality in qualities) {
-        final bytes =
-            Uint8List.fromList(img.encodeJpg(current, quality: quality));
+        final bytes = Uint8List.fromList(
+          img.encodeJpg(current, quality: quality),
+        );
         if (bytes.length <= maxBytes) {
           return bytes;
         }

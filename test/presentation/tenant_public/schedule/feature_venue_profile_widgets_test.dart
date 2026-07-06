@@ -126,7 +126,7 @@ void main() {
         NamedRouteDef(
           name: 'VenueCardHostRoute',
           path: '/',
-          builder: (_, __) => Scaffold(body: VenueCard(venue: venue)),
+          builder: (_, _) => Scaffold(body: VenueCard(venue: venue)),
         ),
         NamedRouteDef(
           name: PartnerDetailRoute.name,

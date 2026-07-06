@@ -16,9 +16,17 @@ class ContactsRepository implements ContactsRepositoryContract {
     Future<bool> Function()? permissionRequester,
     Future<List<ContactModel>> Function()? deviceContactsLoader,
     ContactsLocalCacheContract? localCache,
-  }) : _permissionRequester = permissionRequester,
-       _deviceContactsLoader = deviceContactsLoader,
-       _localCache = localCache ?? ContactsLocalCache();
+  }) : this._internal(
+         permissionRequester,
+         deviceContactsLoader,
+         localCache ?? ContactsLocalCache(),
+       );
+
+  ContactsRepository._internal(
+    this._permissionRequester,
+    this._deviceContactsLoader,
+    this._localCache,
+  );
 
   final Future<bool> Function()? _permissionRequester;
   final Future<List<ContactModel>> Function()? _deviceContactsLoader;

@@ -20,7 +20,9 @@ external JSAny? get brandingPayload;
 external JSString? get brandingBootstrapError;
 
 class AppDataBackend implements AppDataBackendContract {
-  AppDataBackend({Dio? dio}) : _dio = dio;
+  AppDataBackend({Dio? dio}) : this._internal(dio);
+
+  AppDataBackend._internal(this._dio);
 
   final Dio? _dio;
 

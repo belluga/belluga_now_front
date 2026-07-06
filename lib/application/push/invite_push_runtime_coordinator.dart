@@ -9,14 +9,12 @@ import 'package:flutter/foundation.dart';
 
 class InvitePushRuntimeCoordinator {
   InvitePushRuntimeCoordinator({
-    required Future<void> Function(String path) navigatePath,
+    required this._navigatePath,
     String Function()? currentPathProvider,
-    InvitesRepositoryContract? invitesRepository,
+    this._invitesRepository,
     DateTime Function()? now,
-  })  : _navigatePath = navigatePath,
-        _currentPathProvider = currentPathProvider ?? (() => ''),
-        _invitesRepository = invitesRepository,
-        _now = now ?? DateTime.now;
+  }) : _currentPathProvider = currentPathProvider ?? (() => ''),
+       _now = now ?? DateTime.now;
 
   static const Duration _tapDedupeWindow = Duration(minutes: 2);
 
@@ -79,8 +77,9 @@ class InvitePushRuntimeCoordinator {
     }
 
     if (invitesRepository is PushInvitePayloadAware) {
-      (invitesRepository as PushInvitePayloadAware)
-          .applyInvitePushPayload(payload);
+      (invitesRepository as PushInvitePayloadAware).applyInvitePushPayload(
+        payload,
+      );
     }
   }
 
@@ -103,9 +102,7 @@ class InvitePushRuntimeCoordinator {
     }
   }
 
-  Future<void> _refreshInviteStateIfNeeded(
-    Map<String, dynamic> payload,
-  ) async {
+  Future<void> _refreshInviteStateIfNeeded(Map<String, dynamic> payload) async {
     final acceptedPayload = _payloadDecoder.decodeAcceptedSentInvite(payload);
     if (acceptedPayload != null) {
       await _refreshAcceptedSentInviteStatusIfNeeded(acceptedPayload);
@@ -166,9 +163,7 @@ class InvitePushRuntimeCoordinator {
     }
   }
 
-  String? _resolveNavigationPath(
-    Map<String, dynamic> payload,
-  ) {
+  String? _resolveNavigationPath(Map<String, dynamic> payload) {
     final fallbackPath = _resolveEventFallbackPath(payload) ?? '/';
     final acceptedPayload = _payloadDecoder.decodeAcceptedSentInvite(payload);
     if (acceptedPayload != null && fallbackPath != '/') {
@@ -177,10 +172,7 @@ class InvitePushRuntimeCoordinator {
 
     final inviteId = _normalizeString(payload['invite_id']);
     if (inviteId != null && inviteId.isNotEmpty) {
-      return _buildInvitePath(
-        inviteId,
-        fallbackPath: fallbackPath,
-      );
+      return _buildInvitePath(inviteId, fallbackPath: fallbackPath);
     }
 
     if (fallbackPath != '/') {
@@ -204,9 +196,7 @@ class InvitePushRuntimeCoordinator {
         _normalizeString(payload['event']);
   }
 
-  String? _resolveEventFallbackPath(
-    Map<String, dynamic> payload,
-  ) {
+  String? _resolveEventFallbackPath(Map<String, dynamic> payload) {
     final eventId = _normalizeString(payload['event_id']);
     if (eventId == null || eventId.isEmpty) {
       return null;
@@ -222,10 +212,7 @@ class InvitePushRuntimeCoordinator {
     ).toString();
   }
 
-  String _buildInvitePath(
-    String inviteId, {
-    String? fallbackPath,
-  }) {
+  String _buildInvitePath(String inviteId, {String? fallbackPath}) {
     final normalizedFallback = fallbackPath?.trim();
     return Uri(
       path: '/convites',

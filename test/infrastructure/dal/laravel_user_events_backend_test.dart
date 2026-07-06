@@ -28,34 +28,38 @@ void main() {
   });
 
   test(
-      'fetchConfirmedOccurrenceIds bootstraps auth token when initially missing',
-      () async {
-    final authRepository = GetIt.I.get<AuthRepositoryContract<UserContract>>()
-        as _FakeAuthRepository;
-    authRepository.setUserToken(authRepoString(''));
-    authRepository.tokenAfterInit = 'refreshed-token';
+    'fetchConfirmedOccurrenceIds bootstraps auth token when initially missing',
+    () async {
+      final authRepository =
+          GetIt.I.get<AuthRepositoryContract<UserContract>>()
+              as _FakeAuthRepository;
+      authRepository.setUserToken(authRepoString(''));
+      authRepository.tokenAfterInit = 'refreshed-token';
 
-    final adapter = _RecordingAdapter(
-      response: const {
-        'data': {
-          'confirmed_occurrence_ids': ['occurrence-1'],
+      final adapter = _RecordingAdapter(
+        response: const {
+          'data': {
+            'confirmed_occurrence_ids': ['occurrence-1'],
+          },
         },
-      },
-    );
-    final dio = Dio()..httpClientAdapter = adapter;
-    final backend = LaravelUserEventsBackend(dio: dio);
+      );
+      final dio = Dio()..httpClientAdapter = adapter;
+      final backend = LaravelUserEventsBackend(dio: dio);
 
-    final response = await backend.fetchConfirmedOccurrenceIds();
+      final response = await backend.fetchConfirmedOccurrenceIds();
 
-    expect(authRepository.initCallCount, 1);
-    expect(response['confirmed_occurrence_ids'], ['occurrence-1']);
-    expect(
-      adapter.lastRequest?.headers['Authorization'],
-      'Bearer refreshed-token',
-    );
-    expect(
-        adapter.lastRequest?.uri.path, '/api/v1/events/attendance/confirmed');
-  });
+      expect(authRepository.initCallCount, 1);
+      expect(response['confirmed_occurrence_ids'], ['occurrence-1']);
+      expect(
+        adapter.lastRequest?.headers['Authorization'],
+        'Bearer refreshed-token',
+      );
+      expect(
+        adapter.lastRequest?.uri.path,
+        '/api/v1/events/attendance/confirmed',
+      );
+    },
+  );
 }
 
 class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
@@ -105,8 +109,10 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
-      AuthRepositoryContractParamString password) async {}
+  Future<void> loginWithEmailPassword(
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
+  ) async {}
 
   @override
   Future<void> signUpWithEmailPassword(
@@ -117,8 +123,9 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> sendTokenRecoveryPassword(
-      AuthRepositoryContractParamString email,
-      AuthRepositoryContractParamString codigoEnviado) async {}
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString codigoEnviado,
+  ) async {}
 
   @override
   Future<void> logout() async {}
@@ -131,17 +138,17 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> sendPasswordResetEmail(
-      AuthRepositoryContractParamString email) async {}
+    AuthRepositoryContractParamString email,
+  ) async {}
 
   @override
   Future<void> updateUser(UserCustomData data) async {}
 }
 
 class _RecordingAdapter implements HttpClientAdapter {
-  _RecordingAdapter({required Map<String, dynamic> response})
-      : _response = response;
+  _RecordingAdapter({required this.response});
 
-  final Map<String, dynamic> _response;
+  final Map<String, dynamic> response;
   RequestOptions? lastRequest;
 
   @override
@@ -155,7 +162,7 @@ class _RecordingAdapter implements HttpClientAdapter {
   ) async {
     lastRequest = options;
     return ResponseBody.fromString(
-      jsonEncode(_response),
+      jsonEncode(response),
       200,
       headers: {
         Headers.contentTypeHeader: [Headers.jsonContentType],
@@ -174,10 +181,7 @@ AppData _buildAppData() {
         'type': 'artist',
         'label': 'Artist',
         'allowed_taxonomies': [],
-        'capabilities': {
-          'is_favoritable': true,
-          'is_poi_enabled': false,
-        },
+        'capabilities': {'is_favoritable': true, 'is_poi_enabled': false},
       },
     ],
     'domains': const ['https://tenant.test'],

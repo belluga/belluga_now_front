@@ -2996,21 +2996,19 @@ class _PageRequest {
 
 class _FakeAppDataRepository extends AppDataRepositoryContract {
   _FakeAppDataRepository({
-    required AppData appData,
-    required double maxRadiusMeters,
+    required this._appData,
+    required this._maxRadiusMeters,
     Map<String, AppDataDiscoveryFilterSelectionSnapshot>?
     discoveryFilterSelections,
-  }) : _appData = appData,
-       _maxRadiusMeters = maxRadiusMeters,
-       _discoveryFilterSelections =
+  }) : _discoveryFilterSelections =
            Map<String, AppDataDiscoveryFilterSelectionSnapshot>.from(
              discoveryFilterSelections ??
                  const <String, AppDataDiscoveryFilterSelectionSnapshot>{},
            ) {
     maxRadiusMetersStreamValue.addValue(
       DistanceInMetersValue.fromRaw(
-        maxRadiusMeters,
-        defaultValue: maxRadiusMeters,
+        _maxRadiusMeters,
+        defaultValue: _maxRadiusMeters,
       ),
     );
   }

@@ -32,8 +32,9 @@ void main() {
     await GetIt.I.reset();
   });
 
-  testWidgets('shows landing + tenants + login CTA when not authenticated',
-      (tester) async {
+  testWidgets('shows landing + tenants + login CTA when not authenticated', (
+    tester,
+  ) async {
     GetIt.I.registerSingleton<AdminModeRepositoryContract>(
       _FakeAdminModeRepository(isLandlordMode: false),
     );
@@ -41,7 +42,7 @@ void main() {
       _FakeLandlordAuthRepository(hasValidSession: false),
     );
     final appDataRepository = _FakeAppDataRepository(
-      appData: _buildAppData(
+      _buildAppData(
         environmentType: EnvironmentType.landlord,
         name: 'Bóora!',
         domain: 'belluga.space',
@@ -69,9 +70,7 @@ void main() {
     GetIt.I.registerSingleton<LandlordHomeScreenController>(controller);
     final router = _RecordingStackRouter();
 
-    await tester.pumpWidget(
-      _buildRoutedLandlordHomeApp(router),
-    );
+    await tester.pumpWidget(_buildRoutedLandlordHomeApp(router));
     await tester.pumpAndSettle();
 
     expect(find.text('O que tem para fazer hoje?'), findsOneWidget);
@@ -99,8 +98,9 @@ void main() {
     );
   });
 
-  testWidgets('shows admin CTA when landlord session and mode are active',
-      (tester) async {
+  testWidgets('shows admin CTA when landlord session and mode are active', (
+    tester,
+  ) async {
     GetIt.I.registerSingleton<AdminModeRepositoryContract>(
       _FakeAdminModeRepository(isLandlordMode: true),
     );
@@ -108,7 +108,7 @@ void main() {
       _FakeLandlordAuthRepository(hasValidSession: true),
     );
     final appDataRepository = _FakeAppDataRepository(
-      appData: _buildAppData(
+      _buildAppData(
         environmentType: EnvironmentType.landlord,
         name: 'Bóora!',
         domain: 'belluga.space',
@@ -131,9 +131,7 @@ void main() {
     GetIt.I.registerSingleton<LandlordHomeScreenController>(controller);
     final router = _RecordingStackRouter();
 
-    await tester.pumpWidget(
-      _buildRoutedLandlordHomeApp(router),
-    );
+    await tester.pumpWidget(_buildRoutedLandlordHomeApp(router));
     await tester.pumpAndSettle();
 
     expect(controller.canAccessAdminArea, isTrue);
@@ -141,8 +139,9 @@ void main() {
     expect(find.text('Entrar'), findsOneWidget);
   });
 
-  testWidgets('landlord home system back delegates to SystemNavigator.pop',
-      (tester) async {
+  testWidgets('landlord home system back delegates to SystemNavigator.pop', (
+    tester,
+  ) async {
     GetIt.I.registerSingleton<AdminModeRepositoryContract>(
       _FakeAdminModeRepository(isLandlordMode: false),
     );
@@ -150,7 +149,7 @@ void main() {
       _FakeLandlordAuthRepository(hasValidSession: false),
     );
     final appDataRepository = _FakeAppDataRepository(
-      appData: _buildAppData(
+      _buildAppData(
         environmentType: EnvironmentType.landlord,
         name: 'Bóora!',
         domain: 'belluga.space',
@@ -174,24 +173,19 @@ void main() {
     final router = _RecordingStackRouter();
     var systemPopCallCount = 0;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(
-      SystemChannels.platform,
-      (call) async {
-        if (call.method == 'SystemNavigator.pop') {
-          systemPopCallCount += 1;
-        }
-        return null;
-      },
-    );
+        .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+          if (call.method == 'SystemNavigator.pop') {
+            systemPopCallCount += 1;
+          }
+          return null;
+        });
     addTearDown(() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(SystemChannels.platform, null);
       return Future<void>.value();
     });
 
-    await tester.pumpWidget(
-      _buildRoutedLandlordHomeApp(router),
-    );
+    await tester.pumpWidget(_buildRoutedLandlordHomeApp(router));
     await tester.pumpAndSettle();
 
     final popScope = tester.widget<PopScope<dynamic>>(
@@ -211,9 +205,7 @@ Widget _buildRoutedLandlordHomeApp(_RecordingStackRouter router) {
       config: AutoRoute(
         page: LandlordHomeRoute.page,
         path: '/',
-        meta: canonicalRouteMeta(
-          family: CanonicalRouteFamily.landlordHome,
-        ),
+        meta: canonicalRouteMeta(family: CanonicalRouteFamily.landlordHome),
       ),
       segments: const <String>[],
       stringMatch: '/',
@@ -320,7 +312,7 @@ class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
 }
 
 class _FakeAppDataRepository extends AppDataRepositoryContract {
-  _FakeAppDataRepository({required AppData appData}) : _appData = appData;
+  _FakeAppDataRepository(this._appData);
 
   final AppData _appData;
 

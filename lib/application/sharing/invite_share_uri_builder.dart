@@ -1,5 +1,3 @@
-import 'package:belluga_now/application/router/support/tenant_public_event_path.dart';
-
 Uri? buildInviteShareUri({
   required String? origin,
   required String? shareCode,
@@ -15,16 +13,7 @@ Uri? buildInviteShareUri({
     return null;
   }
 
-  final fallbackPath = buildTenantPublicEventPath(
-    eventSlug: eventSlug,
-    occurrenceId: occurrenceId,
-  );
-
-  return resolvedOrigin.resolve('/invite').replace(
-        queryParameters: <String, String>{
-          'code': normalizedCode,
-          if (fallbackPath != null && fallbackPath.isNotEmpty)
-            'fallback': fallbackPath,
-        },
-      );
+  return resolvedOrigin
+      .resolve('/invite')
+      .replace(queryParameters: <String, String>{'code': normalizedCode});
 }

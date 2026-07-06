@@ -4,16 +4,16 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/startup/app_startup_navigation_plan.dart';
 import 'package:flutter/foundation.dart';
 
-typedef AppStartupNavigationPlanLoader = Future<AppStartupNavigationPlan>
-    Function();
+typedef AppStartupNavigationPlanLoader =
+    Future<AppStartupNavigationPlan> Function();
 
 final class AppStartupNavigationCoordinator {
   AppStartupNavigationCoordinator({
-    required AppStartupNavigationPlanLoader planLoader,
+    required this._planLoader,
     List<Duration>? retryDelays,
-  })  : _planLoader = planLoader,
-        _retryDelays =
-            List<Duration>.unmodifiable(retryDelays ?? _defaultRetryDelays);
+  }) : _retryDelays = List<Duration>.unmodifiable(
+         retryDelays ?? _defaultRetryDelays,
+       );
 
   final AppStartupNavigationPlanLoader _planLoader;
   final List<Duration> _retryDelays;

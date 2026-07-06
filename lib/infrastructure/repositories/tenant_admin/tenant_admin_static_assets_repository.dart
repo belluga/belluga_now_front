@@ -22,8 +22,9 @@ class TenantAdminStaticAssetsRepository
   TenantAdminStaticAssetsRepository({
     Dio? dio,
     TenantAdminTenantScopeContract? tenantScope,
-  })  : _dio = dio ?? Dio(),
-        _tenantScope = tenantScope;
+  }) : this._internal(dio ?? Dio(), tenantScope);
+
+  TenantAdminStaticAssetsRepository._internal(this._dio, [this._tenantScope]);
 
   final Dio _dio;
   final TenantAdminTenantScopeContract? _tenantScope;
@@ -40,17 +41,16 @@ class TenantAdminStaticAssetsRepository
 
   Map<String, String> _buildHeaders() {
     final token = GetIt.I.get<LandlordAuthRepositoryContract>().token;
-    return {
-      'Authorization': 'Bearer $token',
-      'Accept': 'application/json',
-    };
+    return {'Authorization': 'Bearer $token', 'Accept': 'application/json'};
   }
 
   @override
   Future<List<TenantAdminStaticAsset>> fetchStaticAssets() async {
     var page = 1;
-    final pageSize =
-        TenantAdminStaticAssetsRepoInt.fromRaw(100, defaultValue: 100);
+    final pageSize = TenantAdminStaticAssetsRepoInt.fromRaw(
+      100,
+      defaultValue: 100,
+    );
     var hasMore = true;
     final assets = <TenantAdminStaticAsset>[];
 
@@ -75,18 +75,13 @@ class TenantAdminStaticAssetsRepository
     try {
       final response = await _dio.get(
         '$_apiBaseUrl/v1/static_assets',
-        queryParameters: {
-          'page': page.value,
-          'page_size': pageSize.value,
-        },
+        queryParameters: {'page': page.value, 'page_size': pageSize.value},
         options: Options(headers: _buildHeaders()),
       );
       final dtos = _responseDecoder.decodeStaticAssetList(response.data);
       return tenantAdminPagedResultFromRaw(
         items: dtos
-            .map(
-              (dto) => _normalizeStaticAssetMediaUrls(dto).toDomain(),
-            )
+            .map((dto) => _normalizeStaticAssetMediaUrls(dto).toDomain())
             .toList(growable: false),
         hasMore: tenantAdminResolveHasMore(
           rawResponse: response.data,
@@ -216,7 +211,8 @@ class TenantAdminStaticAssetsRepository
 
   @override
   Future<void> deleteStaticAsset(
-      TenantAdminStaticAssetsRepoString assetId) async {
+    TenantAdminStaticAssetsRepoString assetId,
+  ) async {
     try {
       await _dio.delete(
         '$_apiBaseUrl/v1/static_assets/${assetId.value}',
@@ -259,10 +255,12 @@ class TenantAdminStaticAssetsRepository
 
   @override
   Future<List<TenantAdminStaticProfileTypeDefinition>>
-      fetchStaticProfileTypes() async {
+  fetchStaticProfileTypes() async {
     var page = 1;
-    final pageSize =
-        TenantAdminStaticAssetsRepoInt.fromRaw(100, defaultValue: 100);
+    final pageSize = TenantAdminStaticAssetsRepoInt.fromRaw(
+      100,
+      defaultValue: 100,
+    );
     var hasMore = true;
     final types = <TenantAdminStaticProfileTypeDefinition>[];
 
@@ -281,17 +279,14 @@ class TenantAdminStaticAssetsRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>>
-      fetchStaticProfileTypesPage({
+  fetchStaticProfileTypesPage({
     required TenantAdminStaticAssetsRepoInt page,
     required TenantAdminStaticAssetsRepoInt pageSize,
   }) async {
     try {
       final response = await _dio.get(
         '$_apiBaseUrl/v1/static_profile_types',
-        queryParameters: {
-          'page': page.value,
-          'page_size': pageSize.value,
-        },
+        queryParameters: {'page': page.value, 'page_size': pageSize.value},
         options: Options(headers: _buildHeaders()),
       );
       final dtos = _responseDecoder.decodeStaticProfileTypeList(response.data);
@@ -337,7 +332,7 @@ class TenantAdminStaticAssetsRepository
 
   @override
   Future<TenantAdminStaticProfileTypeDefinition>
-      createStaticProfileTypeWithVisual({
+  createStaticProfileTypeWithVisual({
     required TenantAdminStaticAssetsRepoString type,
     required TenantAdminStaticAssetsRepoString label,
     List<TenantAdminStaticAssetsRepoString>? allowedTaxonomies,
@@ -409,7 +404,7 @@ class TenantAdminStaticAssetsRepository
 
   @override
   Future<TenantAdminStaticProfileTypeDefinition>
-      updateStaticProfileTypeWithVisual({
+  updateStaticProfileTypeWithVisual({
     required TenantAdminStaticAssetsRepoString type,
     TenantAdminStaticAssetsRepoString? newType,
     TenantAdminStaticAssetsRepoString? label,
@@ -460,7 +455,7 @@ class TenantAdminStaticAssetsRepository
 
   @override
   Future<TenantAdminStaticAssetsRepoInt>
-      fetchStaticProfileTypeMapPoiProjectionImpact({
+  fetchStaticProfileTypeMapPoiProjectionImpact({
     required TenantAdminStaticAssetsRepoString type,
   }) async {
     try {

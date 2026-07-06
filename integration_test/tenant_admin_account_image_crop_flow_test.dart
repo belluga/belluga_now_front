@@ -211,7 +211,7 @@ Future<void> _pumpWithAutoRoute(
       NamedRouteDef(
         name: 'account-create-integration-test',
         path: '/',
-        builder: (_, __) => child,
+        builder: (_, _) => child,
       ),
     ],
   );

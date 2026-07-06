@@ -254,7 +254,7 @@ class _TenantAdminAccountsListScreenState
       controller: _controller.accountsListScrollController,
       padding: const EdgeInsets.only(bottom: 112),
       itemCount: itemCount,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         if (index >= filteredAccounts.length) {
           if (isPageLoading) {

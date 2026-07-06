@@ -53,7 +53,7 @@ class _BellugaMapSurfaceState extends State<BellugaMapSurface> {
             minZoom: widget.minZoom,
             maxZoom: widget.maxZoom,
             onMapReady: widget.handle.markReady,
-            onTap: (_, __) {
+            onTap: (_, _) {
               widget.handle.emitInteraction(
                 BellugaMapInteractionEvent(
                   type: BellugaMapInteractionType.emptyTap,

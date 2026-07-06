@@ -55,8 +55,9 @@ void main() {
     await GetIt.I.reset();
   });
 
-  testWidgets('app init retries until telemetry logging succeeds',
-      (tester) async {
+  testWidgets('app init retries until telemetry logging succeeds', (
+    tester,
+  ) async {
     GetIt.I.registerSingleton<AppDataRepositoryContract>(
       _FakeAppDataRepository(appData: _buildAppData()),
     );
@@ -109,17 +110,15 @@ void main() {
     expect(telemetry.appInitCalls, 2);
     await tester.pump(const Duration(milliseconds: 450));
     expect(telemetry.lifecycleEvents.length, 1);
-    expect(
-      telemetry.lifecycleEvents.single,
-      {
-        'state': 'resumed',
-        'sequence': ['paused', 'resumed'],
-      },
-    );
+    expect(telemetry.lifecycleEvents.single, {
+      'state': 'resumed',
+      'sequence': ['paused', 'resumed'],
+    });
   });
 
-  testWidgets('app router consumes runtime pushRouteInformation for /mapa',
-      (tester) async {
+  testWidgets('app router consumes runtime pushRouteInformation for /mapa', (
+    tester,
+  ) async {
     GetIt.I.registerSingleton<AppDataRepositoryContract>(
       _FakeAppDataRepository(appData: _buildAppData()),
     );
@@ -202,14 +201,14 @@ class _TestModule extends ModuleContract {
 
   @override
   List<AutoRoute> get routes => [
-        AutoRoute(
-          page: PageInfo.builder(
-            'TestRoute',
-            builder: (_, __) => const SizedBox.shrink(),
-          ),
-          path: '/',
-        ),
-      ];
+    AutoRoute(
+      page: PageInfo.builder(
+        'TestRoute',
+        builder: (_, _) => const SizedBox.shrink(),
+      ),
+      path: '/',
+    ),
+  ];
 }
 
 class _DeepLinkTestModule extends ModuleContract {
@@ -218,28 +217,24 @@ class _DeepLinkTestModule extends ModuleContract {
 
   @override
   List<AutoRoute> get routes => [
-        AutoRoute(
-          page: PageInfo.builder(
-            'HomeRoute',
-            builder: (_, __) => const Text('home'),
-          ),
-          path: '/',
-        ),
-        AutoRoute(
-          page: PageInfo.builder(
-            'MapRoute',
-            builder: (_, __) => const Text('mapa'),
-          ),
-          path: '/mapa',
-        ),
-      ];
+    AutoRoute(
+      page: PageInfo.builder(
+        'HomeRoute',
+        builder: (_, _) => const Text('home'),
+      ),
+      path: '/',
+    ),
+    AutoRoute(
+      page: PageInfo.builder('MapRoute', builder: (_, _) => const Text('mapa')),
+      path: '/mapa',
+    ),
+  ];
 }
 
 class _FakeTelemetryRepository implements TelemetryRepositoryContract {
-  _FakeTelemetryRepository({required Queue<bool> appInitResults})
-      : _appInitResults = appInitResults;
+  _FakeTelemetryRepository({required this.appInitResults});
 
-  final Queue<bool> _appInitResults;
+  final Queue<bool> appInitResults;
   int appInitCalls = 0;
   final List<Map<String, Object?>> lifecycleEvents = <Map<String, Object?>>[];
 
@@ -251,18 +246,15 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
   }) async {
     if (eventName?.value == 'app_init') {
       appInitCalls += 1;
-      if (_appInitResults.isNotEmpty) {
-        return telemetryRepoBool(_appInitResults.removeFirst());
+      if (appInitResults.isNotEmpty) {
+        return telemetryRepoBool(appInitResults.removeFirst());
       }
     } else if (eventName?.value == 'app_lifecycle') {
       final payload = TelemetryPropertiesCodec.toRawMap(properties);
       final state = payload['state'];
       final sequence = payload['sequence'];
       if (state is String && sequence is List) {
-        lifecycleEvents.add({
-          'state': state,
-          'sequence': sequence,
-        });
+        lifecycleEvents.add({'state': state, 'sequence': sequence});
       }
     }
     return telemetryRepoBool(true);
@@ -279,7 +271,8 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
 
   @override
   Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
-      EventTrackerTimedEventHandle handle) async {
+    EventTrackerTimedEventHandle handle,
+  ) async {
     return telemetryRepoBool(true);
   }
 
@@ -295,8 +288,9 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
   EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
 
   @override
-  Future<TelemetryRepositoryContractPrimBool> mergeIdentity(
-      {required TelemetryRepositoryContractPrimString previousUserId}) async {
+  Future<TelemetryRepositoryContractPrimBool> mergeIdentity({
+    required TelemetryRepositoryContractPrimString previousUserId,
+  }) async {
     return telemetryRepoBool(true);
   }
 }
@@ -330,8 +324,10 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
-      AuthRepositoryContractParamString password) async {}
+  Future<void> loginWithEmailPassword(
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
+  ) async {}
 
   @override
   Future<void> signUpWithEmailPassword(
@@ -342,8 +338,9 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> sendTokenRecoveryPassword(
-      AuthRepositoryContractParamString email,
-      AuthRepositoryContractParamString codigoEnviado) async {}
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString codigoEnviado,
+  ) async {}
 
   @override
   Future<void> logout() async {}
@@ -356,7 +353,8 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> sendPasswordResetEmail(
-      AuthRepositoryContractParamString email) async {}
+    AuthRepositoryContractParamString email,
+  ) async {}
 
   @override
   Future<void> updateUser(UserCustomData data) async {}
@@ -364,10 +362,10 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 
 class _FakeAppDataRepository extends AppDataRepository {
   _FakeAppDataRepository({required AppData appData})
-      : super(
-          backend: _NoopAppDataBackend(),
-          localInfoSource: _NoopLocalInfoSource(),
-        ) {
+    : super(
+        backend: _NoopAppDataBackend(),
+        localInfoSource: _NoopLocalInfoSource(),
+      ) {
     this.appData = appData;
   }
 }
@@ -382,12 +380,12 @@ class _NoopAppDataBackend extends AppDataBackendContract {
 class _NoopLocalInfoSource extends AppDataLocalInfoSource {
   @override
   Future<AppDataLocalInfoDTO> getInfo() async => AppDataLocalInfoDTO(
-        platformTypeValue: PlatformTypeValue(defaultValue: AppType.mobile),
-        port: null,
-        hostname: '',
-        href: '',
-        device: '',
-      );
+    platformTypeValue: PlatformTypeValue(defaultValue: AppType.mobile),
+    port: null,
+    hostname: '',
+    href: '',
+    device: '',
+  );
 }
 
 class _NoopBackend extends BackendContract {
@@ -434,8 +432,7 @@ class _NoopAccountProfilesBackend implements AccountProfilesBackendContract {
     List<String>? typeFilters,
     List<dynamic>? taxonomyFilters,
     List<String>? allowedTypes,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
   Future<AccountProfileModel?> fetchAccountProfileBySlug(String slug) =>
@@ -446,8 +443,7 @@ class _NoopAccountProfilesBackend implements AccountProfilesBackendContract {
     int pageSize = 10,
     List<String>? typeFilters,
     List<dynamic>? taxonomyFilters,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 }
 
 class _NoopAuthBackend extends AuthBackendContract {
@@ -482,8 +478,7 @@ class _NoopAuthBackend extends AuthBackendContract {
     required String email,
     required String password,
     List<String>? anonymousUserIds,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 }
 
 class _NoopTenantBackend extends TenantBackendContract {
@@ -520,8 +515,7 @@ class _NoopScheduleBackend extends ScheduleBackendContract {
   Future<EventDTO?> fetchEventDetail({
     required String eventIdOrSlug,
     String? occurrenceId,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
   Future<EventPageDTO> fetchEventsPage({
@@ -537,8 +531,7 @@ class _NoopScheduleBackend extends ScheduleBackendContract {
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
   Stream<EventDeltaDTO> watchEventsStream({
@@ -552,8 +545,7 @@ class _NoopScheduleBackend extends ScheduleBackendContract {
     double? maxDistanceMeters,
     String? lastEventId,
     bool showPastOnly = false,
-  }) =>
-      const Stream.empty();
+  }) => const Stream.empty();
 }
 
 AppData _buildAppData() {

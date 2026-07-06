@@ -11,8 +11,9 @@ class MockHttpService {
   MockHttpService({
     MockPoiDatabase? database,
     Duration latency = const Duration(milliseconds: 350),
-  })  : _database = database ?? GetIt.I.get<MockPoiDatabase>(),
-        _latency = latency;
+  }) : this._internal(database ?? GetIt.I.get<MockPoiDatabase>(), latency);
+
+  MockHttpService._internal(this._database, this._latency);
 
   final MockPoiDatabase _database;
   final Duration _latency;

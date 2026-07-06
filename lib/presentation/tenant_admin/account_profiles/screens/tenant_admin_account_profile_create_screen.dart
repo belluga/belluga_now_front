@@ -39,8 +39,8 @@ class TenantAdminAccountProfileCreateScreen extends StatefulWidget {
 
 class _TenantAdminAccountProfileCreateScreenState
     extends State<TenantAdminAccountProfileCreateScreen> {
-  final TenantAdminAccountProfilesController _controller =
-      GetIt.I.get<TenantAdminAccountProfilesController>();
+  final TenantAdminAccountProfilesController _controller = GetIt.I
+      .get<TenantAdminAccountProfilesController>();
   bool _routeParamNormalized = false;
 
   @override
@@ -173,9 +173,11 @@ class _TenantAdminAccountProfileCreateScreenState
   ) {
     final allowed = _allowedTaxonomies(selectedType).toSet();
     return _controller.taxonomiesStreamValue.value
-        .where((taxonomy) =>
-            taxonomy.appliesToAccountProfile() &&
-            allowed.contains(taxonomy.slug))
+        .where(
+          (taxonomy) =>
+              taxonomy.appliesToAccountProfile() &&
+              allowed.contains(taxonomy.slug),
+        )
         .toList(growable: false);
   }
 
@@ -215,8 +217,9 @@ class _TenantAdminAccountProfileCreateScreenState
     final selections = _controller.taxonomySelectionStreamValue.value;
     for (final entry in selections.entries) {
       for (final value in entry.value) {
-        terms
-            .add(tenantAdminTaxonomyTermFromRaw(type: entry.key, value: value));
+        terms.add(
+          tenantAdminTaxonomyTermFromRaw(type: entry.key, value: value),
+        );
       }
     }
     final taxonomyTerms = TenantAdminTaxonomyTerms();
@@ -358,11 +361,14 @@ class _TenantAdminAccountProfileCreateScreenState
               streamValue: _controller.createStateStreamValue,
               builder: (context, state) {
                 _normalizeRouteParamIfNeeded();
-                final requiresLocation =
-                    _requiresLocation(state.selectedProfileType);
-                final hasMedia = _hasAvatar(state.selectedProfileType) ||
+                final requiresLocation = _requiresLocation(
+                  state.selectedProfileType,
+                );
+                final hasMedia =
+                    _hasAvatar(state.selectedProfileType) ||
                     _hasCover(state.selectedProfileType);
-                final hasContent = _hasBio(state.selectedProfileType) ||
+                final hasContent =
+                    _hasBio(state.selectedProfileType) ||
                     _hasContent(state.selectedProfileType) ||
                     _hasTaxonomies(state.selectedProfileType);
                 final hasNestedProfileGroups = _hasNestedProfileGroups(
@@ -400,6 +406,16 @@ class _TenantAdminAccountProfileCreateScreenState
                                   .nestedProfileCandidatesStreamValue,
                               profileTypes:
                                   _controller.profileTypesStreamValue.value,
+                              onSearchChanged:
+                                  _controller.searchNestedProfileCandidates,
+                              onLoadMore: _controller
+                                  .loadNextNestedProfileCandidatesPage,
+                              searchLoadingStreamValue: _controller
+                                  .nestedProfileSearchLoadingStreamValue,
+                              searchPageLoadingStreamValue: _controller
+                                  .nestedProfileSearchPageLoadingStreamValue,
+                              searchHasMoreStreamValue: _controller
+                                  .nestedProfileSearchHasMoreStreamValue,
                               addButtonKey: const Key(
                                 'tenantAdminCreateAddNestedGroupButton',
                               ),
@@ -413,13 +429,13 @@ class _TenantAdminAccountProfileCreateScreenState
                                   _controller.removeCreateNestedProfileGroup,
                               onSelectionChanged:
                                   (groupId, profileId, selected) {
-                                _controller
-                                    .toggleCreateNestedProfileGroupMember(
-                                  groupId: groupId,
-                                  profileId: profileId,
-                                  selected: selected,
-                                );
-                              },
+                                    _controller
+                                        .toggleCreateNestedProfileGroupMember(
+                                          groupId: groupId,
+                                          profileId: profileId,
+                                          selected: selected,
+                                        );
+                                  },
                             ),
                           ],
                           const SizedBox(height: 24),
@@ -445,9 +461,9 @@ class _TenantAdminAccountProfileCreateScreenState
     if (message == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _controller.clearCreateSuccessMessage();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
       performTenantAdminCurrentRouteBack(context);
     });
   }
@@ -456,9 +472,9 @@ class _TenantAdminAccountProfileCreateScreenState
     if (message == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _controller.clearCreateErrorMessage();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     });
   }
 
@@ -512,8 +528,9 @@ class _TenantAdminAccountProfileCreateScreenState
                                 .toList(growable: false),
                             onChanged: hasTypes
                                 ? (value) {
-                                    _controller
-                                        .updateCreateSelectedProfileType(value);
+                                    _controller.updateCreateSelectedProfileType(
+                                      value,
+                                    );
                                     _syncTaxonomySelection(
                                       _allowedTaxonomyDefinitions(value),
                                     );
@@ -534,14 +551,14 @@ class _TenantAdminAccountProfileCreateScreenState
                               onPressed: () {
                                 context.router
                                     .push(
-                                  const TenantAdminProfileTypeCreateRoute(),
-                                )
+                                      const TenantAdminProfileTypeCreateRoute(),
+                                    )
                                     .then((_) {
-                                  if (!mounted) {
-                                    return;
-                                  }
-                                  _controller.loadProfileTypes();
-                                });
+                                      if (!mounted) {
+                                        return;
+                                      }
+                                      _controller.loadProfileTypes();
+                                    });
                               },
                               icon: const Icon(Icons.add),
                               label: const Text('Criar tipo de perfil'),
@@ -618,10 +635,7 @@ class _TenantAdminAccountProfileCreateScreenState
           ],
           if (_hasTaxonomies(state.selectedProfileType)) ...[
             if (hasBio || hasContent) const SizedBox(height: 12),
-            Text(
-              'Taxonomias',
-              style: Theme.of(context).textTheme.labelLarge,
-            ),
+            Text('Taxonomias', style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 8),
             StreamValueBuilder(
               streamValue: _controller.taxonomySelectionStreamValue,
@@ -642,32 +656,33 @@ class _TenantAdminAccountProfileCreateScreenState
                                 const SizedBox(height: 8),
                                 if ((termsByTaxonomy[taxonomy.slug] ?? const [])
                                     .isEmpty)
-                                  const Text(
-                                    'Sem termos cadastrados.',
-                                  )
+                                  const Text('Sem termos cadastrados.')
                                 else
                                   Wrap(
                                     spacing: 8,
                                     runSpacing: 8,
-                                    children: (termsByTaxonomy[taxonomy.slug] ??
-                                            const [])
-                                        .map(
-                                          (term) => FilterChip(
-                                            label: Text(term.name),
-                                            selected: selections[taxonomy.slug]
-                                                    ?.contains(term.slug) ??
-                                                false,
-                                            onSelected: (selected) {
-                                              _controller
-                                                  .updateTaxonomySelection(
-                                                taxonomySlug: taxonomy.slug,
-                                                termSlug: term.slug,
-                                                selected: selected,
-                                              );
-                                            },
-                                          ),
-                                        )
-                                        .toList(growable: false),
+                                    children:
+                                        (termsByTaxonomy[taxonomy.slug] ??
+                                                const [])
+                                            .map(
+                                              (term) => FilterChip(
+                                                label: Text(term.name),
+                                                selected:
+                                                    selections[taxonomy.slug]
+                                                        ?.contains(term.slug) ??
+                                                    false,
+                                                onSelected: (selected) {
+                                                  _controller
+                                                      .updateTaxonomySelection(
+                                                        taxonomySlug:
+                                                            taxonomy.slug,
+                                                        termSlug: term.slug,
+                                                        selected: selected,
+                                                      );
+                                                },
+                                              ),
+                                            )
+                                            .toList(growable: false),
                                   ),
                               ],
                             ),
@@ -713,36 +728,37 @@ class _TenantAdminAccountProfileCreateScreenState
                       ),
                     )
                   : hasAvatarUrl
-                      ? BellugaNetworkImage(
-                          avatarUrl,
-                          width: 72,
-                          height: 72,
-                          fit: BoxFit.cover,
-                          clipBorderRadius: BorderRadius.circular(36),
-                          placeholder: Container(
-                            width: 72,
-                            height: 72,
-                            decoration: BoxDecoration(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .surfaceContainerHighest,
-                              borderRadius: BorderRadius.circular(36),
-                            ),
-                            child: const Icon(Icons.person_outline),
-                          ),
-                        )
-                      : Container(
-                          width: 72,
-                          height: 72,
-                          decoration: BoxDecoration(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(36),
-                          ),
-                          child: const Icon(Icons.person_outline),
+                  ? BellugaNetworkImage(
+                      avatarUrl,
+                      width: 72,
+                      height: 72,
+                      fit: BoxFit.cover,
+                      clipBorderRadius: BorderRadius.circular(36),
+                      placeholder: Container(
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(36),
                         ),
-              selectedLabel: state.avatarFile?.name ??
+                        child: const Icon(Icons.person_outline),
+                      ),
+                    )
+                  : Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(36),
+                      ),
+                      child: const Icon(Icons.person_outline),
+                    ),
+              selectedLabel:
+                  state.avatarFile?.name ??
                   avatarUrl ??
                   'Nenhuma imagem selecionada',
               addLabel: 'Adicionar avatar',
@@ -781,27 +797,26 @@ class _TenantAdminAccountProfileCreateScreenState
                       ),
                     )
                   : hasCoverUrl
-                      ? BellugaNetworkImage(
-                          coverUrl,
-                          width: double.infinity,
-                          height: 140,
-                          fit: BoxFit.cover,
-                          clipBorderRadius: BorderRadius.circular(12),
-                        )
-                      : Container(
-                          width: double.infinity,
-                          height: 140,
-                          decoration: BoxDecoration(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Center(
-                            child: Icon(Icons.image_outlined),
-                          ),
-                        ),
-              selectedLabel: state.coverFile?.name ??
+                  ? BellugaNetworkImage(
+                      coverUrl,
+                      width: double.infinity,
+                      height: 140,
+                      fit: BoxFit.cover,
+                      clipBorderRadius: BorderRadius.circular(12),
+                    )
+                  : Container(
+                      width: double.infinity,
+                      height: 140,
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Center(child: Icon(Icons.image_outlined)),
+                    ),
+              selectedLabel:
+                  state.coverFile?.name ??
                   coverUrl ??
                   'Nenhuma imagem selecionada',
               addLabel: 'Adicionar capa',
@@ -840,7 +855,9 @@ class _TenantAdminAccountProfileCreateScreenState
             controller: _controller.latitudeController,
             decoration: const InputDecoration(labelText: 'Latitude'),
             keyboardType: const TextInputType.numberWithOptions(
-                decimal: true, signed: true),
+              decimal: true,
+              signed: true,
+            ),
             inputFormatters: tenantAdminCoordinateInputFormatters,
             textInputAction: TextInputAction.next,
             validator: _validateLatitude,
@@ -850,7 +867,9 @@ class _TenantAdminAccountProfileCreateScreenState
             controller: _controller.longitudeController,
             decoration: const InputDecoration(labelText: 'Longitude'),
             keyboardType: const TextInputType.numberWithOptions(
-                decimal: true, signed: true),
+              decimal: true,
+              signed: true,
+            ),
             inputFormatters: tenantAdminCoordinateInputFormatters,
             textInputAction: TextInputAction.done,
             validator: _validateLongitude,

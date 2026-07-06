@@ -227,6 +227,10 @@ class _FakeAccountProfilesRepository
   String? lastFetchedProfileId;
   bool? lastFetchQueryableOnly;
   String? lastFetchExcludeAccountProfileId;
+  int? lastFetchPage;
+  int? lastFetchPageSize;
+  String? lastFetchSearch;
+  int fetchAccountProfilesPageCalls = 0;
   List<TenantAdminNestedProfileGroup>? lastCreateNestedProfileGroups;
   List<TenantAdminNestedProfileGroup>? lastUpdateNestedProfileGroups;
   List<TenantAdminAccountProfileGalleryUpdateGroup>? lastGalleryGroups;
@@ -239,8 +243,50 @@ class _FakeAccountProfilesRepository
   }) async => () {
     lastFetchQueryableOnly = queryableOnly?.value;
     lastFetchExcludeAccountProfileId = excludeAccountProfileId?.value;
-    return _profiles;
+    return _filterProfiles(
+      excludeAccountProfileId: excludeAccountProfileId?.value,
+    );
   }();
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+  fetchAccountProfilesPage({
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
+    TenantAdminAccountProfilesRepoString? search,
+    TenantAdminAccountProfilesRepoString? accountId,
+    TenantAdminAccountProfilesRepoBool? queryableOnly,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
+  }) async {
+    fetchAccountProfilesPageCalls += 1;
+    lastFetchPage = page.value;
+    lastFetchPageSize = pageSize.value;
+    lastFetchSearch = search?.value;
+    lastFetchQueryableOnly = queryableOnly?.value;
+    lastFetchExcludeAccountProfileId = excludeAccountProfileId?.value;
+    final filtered = _filterProfiles(
+      search: search?.value,
+      excludeAccountProfileId: excludeAccountProfileId?.value,
+    );
+    final start = (page.value - 1) * pageSize.value;
+    if (page.value <= 0 || pageSize.value <= 0 || start >= filtered.length) {
+      return tenantAdminPagedResultFromRaw(
+        items: const <TenantAdminAccountProfile>[],
+        hasMore: false,
+        currentPage: page.value,
+        pageSize: pageSize.value,
+      );
+    }
+    final end = start + pageSize.value < filtered.length
+        ? start + pageSize.value
+        : filtered.length;
+    return tenantAdminPagedResultFromRaw(
+      items: filtered.sublist(start, end),
+      hasMore: end < filtered.length,
+      currentPage: page.value,
+      pageSize: pageSize.value,
+    );
+  }
 
   @override
   Future<TenantAdminAccountProfile> createAccountProfile({
@@ -315,7 +361,10 @@ class _FakeAccountProfilesRepository
   ) async {
     fetchAccountProfileCalls += 1;
     lastFetchedProfileId = accountProfileId.value;
-    return _profiles.first;
+    return _profiles.firstWhere(
+      (profile) => profile.id == accountProfileId.value,
+      orElse: () => _profiles.first,
+    );
   }
 
   @override
@@ -404,6 +453,29 @@ class _FakeAccountProfilesRepository
   Future<void> deleteProfileType(
     TenantAdminAccountProfilesRepoString type,
   ) async {}
+
+  List<TenantAdminAccountProfile> _filterProfiles({
+    String? search,
+    String? excludeAccountProfileId,
+  }) {
+    final normalizedSearch = search?.trim().toLowerCase() ?? '';
+    return _profiles
+        .where((profile) {
+          if (excludeAccountProfileId != null &&
+              excludeAccountProfileId.isNotEmpty &&
+              profile.id == excludeAccountProfileId) {
+            return false;
+          }
+          if (normalizedSearch.isEmpty) {
+            return true;
+          }
+          final normalizedSlug = profile.slug?.toLowerCase() ?? '';
+          return profile.displayName.toLowerCase().contains(normalizedSearch) ||
+              profile.profileType.toLowerCase().contains(normalizedSearch) ||
+              normalizedSlug.contains(normalizedSearch);
+        })
+        .toList(growable: false);
+  }
 }
 
 class _FakeTaxonomiesRepository
@@ -1038,8 +1110,81 @@ void main() {
         excludeProfileId: 'profile-1',
       );
 
+      expect(profilesRepository.fetchAccountProfilesPageCalls, 1);
+      expect(profilesRepository.lastFetchPage, 1);
+      expect(profilesRepository.lastFetchPageSize, 20);
       expect(profilesRepository.lastFetchQueryableOnly, isTrue);
       expect(profilesRepository.lastFetchExcludeAccountProfileId, 'profile-1');
+      expect(
+        controller.nestedProfileCandidatesStreamValue.value
+            .map((profile) => profile.id)
+            .toList(growable: false),
+        ['profile-2'],
+      );
+    },
+  );
+
+  test(
+    'searchNestedProfileCandidates keeps selected profiles published across query windows',
+    () async {
+      final profilesRepository = _FakeAccountProfilesRepository([
+        tenantAdminAccountProfileFromRaw(
+          id: 'profile-selected',
+          accountId: 'acc-1',
+          profileType: 'venue',
+          displayName: 'Conta Parceira',
+          slug: 'conta-parceira',
+        ),
+        tenantAdminAccountProfileFromRaw(
+          id: 'profile-runtime',
+          accountId: 'acc-2',
+          profileType: 'artist',
+          displayName: 'Runtime Sender',
+          slug: 'runtime-sender',
+        ),
+        tenantAdminAccountProfileFromRaw(
+          id: 'profile-other',
+          accountId: 'acc-3',
+          profileType: 'publisher',
+          displayName: 'Outra Conta',
+          slug: 'outra-conta',
+        ),
+      ], const []);
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+
+      controller.addCreateNestedProfileGroup();
+      final groupId =
+          controller.createStateStreamValue.value.nestedProfileGroups.single.id;
+
+      await controller.loadNestedProfileCandidates();
+      controller.toggleCreateNestedProfileGroupMember(
+        groupId: groupId,
+        profileId: 'profile-selected',
+        selected: true,
+      );
+
+      controller.searchNestedProfileCandidates('runtime');
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(profilesRepository.lastFetchSearch, 'runtime');
+      expect(
+        controller.nestedProfileCandidatesStreamValue.value
+            .map((profile) => profile.id)
+            .toList(growable: false),
+        containsAll(<String>['profile-selected', 'profile-runtime']),
+      );
+      expect(
+        controller.nestedProfileCandidatesStreamValue.value.map(
+          (profile) => profile.id,
+        ),
+        isNot(contains('profile-other')),
+      );
     },
   );
 

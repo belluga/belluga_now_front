@@ -12,9 +12,17 @@ class LandlordKnownPublicInstancesRepository
     LandlordPublicInstancesBackendContract? backend,
     AppDataLocalInfoSource? localInfoSource,
     AppDataRepositoryContract? appDataRepository,
-  })  : _backend = backend ?? LandlordKnownPublicInstancesBackend(),
-        _localInfoSource = localInfoSource ?? AppDataLocalInfoSource(),
-        _appDataRepository = appDataRepository;
+  }) : this._internal(
+         backend ?? LandlordKnownPublicInstancesBackend(),
+         localInfoSource ?? AppDataLocalInfoSource(),
+         appDataRepository,
+       );
+
+  LandlordKnownPublicInstancesRepository._internal(
+    this._backend,
+    this._localInfoSource,
+    this._appDataRepository,
+  );
 
   final LandlordPublicInstancesBackendContract _backend;
   final AppDataLocalInfoSource _localInfoSource;

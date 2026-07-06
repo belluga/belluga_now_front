@@ -19,8 +19,12 @@ class LocationOriginService implements LocationOriginServiceContract {
   LocationOriginService({
     required AppDataRepositoryContract appDataRepository,
     UserLocationRepositoryContract? userLocationRepository,
-  })  : _appDataRepository = appDataRepository,
-        _userLocationRepository = userLocationRepository {
+  }) : this._internal(appDataRepository, userLocationRepository);
+
+  LocationOriginService._internal(
+    this._appDataRepository,
+    this._userLocationRepository,
+  ) {
     _effectiveOriginStreamValue.addValue(resolveCached());
     _bindCanonicalOriginSources();
   }
@@ -30,7 +34,7 @@ class LocationOriginService implements LocationOriginServiceContract {
   final StreamValue<LocationOriginResolution?> _effectiveOriginStreamValue =
       StreamValue<LocationOriginResolution?>(defaultValue: null);
   StreamSubscription<LocationOriginSettings?>?
-      _locationOriginSettingsSubscription;
+  _locationOriginSettingsSubscription;
   StreamSubscription<CityCoordinate?>? _userLocationSubscription;
   StreamSubscription<CityCoordinate?>? _lastKnownLocationSubscription;
   StreamSubscription<DateTime?>? _lastKnownCapturedAtSubscription;
@@ -52,10 +56,12 @@ class LocationOriginService implements LocationOriginServiceContract {
   }
 
   void _bindCanonicalOriginSources() {
-    _locationOriginSettingsSubscription ??=
-        _appDataRepository.locationOriginSettingsStreamValue.stream.listen((_) {
-      _publishCachedResolution();
-    });
+    _locationOriginSettingsSubscription ??= _appDataRepository
+        .locationOriginSettingsStreamValue
+        .stream
+        .listen((_) {
+          _publishCachedResolution();
+        });
 
     final repository = _userLocationRepository;
     if (repository != null) {
@@ -64,18 +70,22 @@ class LocationOriginService implements LocationOriginServiceContract {
   }
 
   void _bindUserLocationSources(UserLocationRepositoryContract repository) {
-    _userLocationSubscription ??=
-        repository.userLocationStreamValue.stream.listen((_) {
-      _publishCachedResolution();
-    });
-    _lastKnownLocationSubscription ??=
-        repository.lastKnownLocationStreamValue.stream.listen((_) {
-      _publishCachedResolution();
-    });
-    _lastKnownCapturedAtSubscription ??=
-        repository.lastKnownCapturedAtStreamValue.stream.listen((_) {
-      _publishCachedResolution();
-    });
+    _userLocationSubscription ??= repository.userLocationStreamValue.stream
+        .listen((_) {
+          _publishCachedResolution();
+        });
+    _lastKnownLocationSubscription ??= repository
+        .lastKnownLocationStreamValue
+        .stream
+        .listen((_) {
+          _publishCachedResolution();
+        });
+    _lastKnownCapturedAtSubscription ??= repository
+        .lastKnownCapturedAtStreamValue
+        .stream
+        .listen((_) {
+          _publishCachedResolution();
+        });
   }
 
   void _publishCachedResolution() {
@@ -102,10 +112,14 @@ class LocationOriginService implements LocationOriginServiceContract {
     }
 
     return _sameCoordinate(
-            left.effectiveCoordinate, right.effectiveCoordinate) &&
+          left.effectiveCoordinate,
+          right.effectiveCoordinate,
+        ) &&
         _sameCoordinate(left.liveUserCoordinate, right.liveUserCoordinate) &&
         _sameCoordinate(
-            left.tenantDefaultCoordinate, right.tenantDefaultCoordinate) &&
+          left.tenantDefaultCoordinate,
+          right.tenantDefaultCoordinate,
+        ) &&
         _sameCoordinate(left.userFixedCoordinate, right.userFixedCoordinate) &&
         left.distanceFromTenantDefaultOriginMeters ==
             right.distanceFromTenantDefaultOriginMeters;
@@ -320,9 +334,9 @@ class LocationOriginService implements LocationOriginServiceContract {
         await repository.resolveUserLocation(
           requestPermissionIfNeededValue:
               UserLocationRepositoryContractBoolValue.fromRaw(
-            true,
-            defaultValue: true,
-          ),
+                true,
+                defaultValue: true,
+              ),
           timeout: permissionTimeout == null
               ? null
               : UserLocationRepositoryContractDurationValue.fromRaw(
@@ -344,7 +358,8 @@ class LocationOriginService implements LocationOriginServiceContract {
     if (repository == null) {
       return null;
     }
-    final coordinate = repository.userLocationStreamValue.value ??
+    final coordinate =
+        repository.userLocationStreamValue.value ??
         repository.lastKnownLocationStreamValue.value;
     if (coordinate == null) {
       return null;

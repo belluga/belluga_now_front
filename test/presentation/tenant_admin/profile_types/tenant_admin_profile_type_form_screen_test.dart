@@ -38,7 +38,7 @@ void main() {
   testWidgets(
     'asks destructive confirmation when disabling POI and respects cancel/confirm',
     (tester) async {
-      final controller = _TestProfileTypesController(impactCount: 67);
+      final controller = _TestProfileTypesController(67);
       await _pumpFormScreen(
         tester,
         controller: controller,
@@ -108,7 +108,7 @@ void main() {
   testWidgets('disables reference location toggle when poi is disabled', (
     tester,
   ) async {
-    final controller = _TestProfileTypesController(impactCount: 0);
+    final controller = _TestProfileTypesController(0);
     await _pumpFormScreen(
       tester,
       controller: controller,
@@ -142,7 +142,7 @@ void main() {
   testWidgets('keeps favoritable independent from public discovery changes', (
     tester,
   ) async {
-    final controller = _TestProfileTypesController(impactCount: 0);
+    final controller = _TestProfileTypesController(0);
     await _pumpFormScreen(
       tester,
       controller: controller,
@@ -204,7 +204,7 @@ void main() {
   testWidgets(
     'keeps public discovery toggle editable when queryability is off',
     (tester) async {
-      final controller = _TestProfileTypesController(impactCount: 0);
+      final controller = _TestProfileTypesController(0);
       await _pumpFormScreen(
         tester,
         controller: controller,
@@ -251,9 +251,10 @@ void main() {
     },
   );
 
-  testWidgets('toggles inviteable capability in profile type form',
-      (tester) async {
-    final controller = _TestProfileTypesController(impactCount: 0);
+  testWidgets('toggles inviteable capability in profile type form', (
+    tester,
+  ) async {
+    final controller = _TestProfileTypesController(0);
     await _pumpFormScreen(
       tester,
       controller: controller,
@@ -288,7 +289,7 @@ void main() {
   testWidgets('renders shared marker icon picker in POI visual editor', (
     tester,
   ) async {
-    final controller = _TestProfileTypesController(impactCount: 0);
+    final controller = _TestProfileTypesController(0);
     await _pumpFormScreen(
       tester,
       controller: controller,
@@ -320,7 +321,7 @@ void main() {
   testWidgets('toggles nested account tab capability in profile type form', (
     tester,
   ) async {
-    final controller = _TestProfileTypesController(impactCount: 0);
+    final controller = _TestProfileTypesController(0);
     await _pumpFormScreen(
       tester,
       controller: controller,
@@ -358,7 +359,7 @@ void main() {
   testWidgets('gallery capability toggle updates controller state', (
     tester,
   ) async {
-    final controller = _TestProfileTypesController(impactCount: 0);
+    final controller = _TestProfileTypesController(0);
     await _pumpFormScreen(
       tester,
       controller: controller,
@@ -380,10 +381,7 @@ void main() {
       ),
     );
 
-    final toggle = find.widgetWithText(
-      SwitchListTile,
-      'Galeria habilitada',
-    );
+    final toggle = find.widgetWithText(SwitchListTile, 'Galeria habilitada');
     await tester.ensureVisible(toggle);
     expect(tester.widget<SwitchListTile>(toggle).value, isFalse);
 
@@ -394,45 +392,44 @@ void main() {
     expect(controller.currentCapabilities.hasGallery, isTrue);
   });
 
-  testWidgets('hydrates gallery capability as enabled when type already has it',
-      (tester) async {
-    final controller = _TestProfileTypesController(impactCount: 0);
-    await _pumpFormScreen(
-      tester,
-      controller: controller,
-      definition: tenantAdminProfileTypeDefinitionFromRaw(
-        type: 'venue',
-        label: 'Venue',
-        allowedTaxonomies: const [],
-        capabilities: TenantAdminProfileTypeCapabilities(
-          isFavoritable: TenantAdminFlagValue(true),
-          isPoiEnabled: TenantAdminFlagValue(false),
-          hasBio: TenantAdminFlagValue(false),
-          hasContent: TenantAdminFlagValue(false),
-          hasTaxonomies: TenantAdminFlagValue(false),
-          hasAvatar: TenantAdminFlagValue(false),
-          hasCover: TenantAdminFlagValue(false),
-          hasEvents: TenantAdminFlagValue(false),
-          hasGallery: TenantAdminFlagValue(true),
+  testWidgets(
+    'hydrates gallery capability as enabled when type already has it',
+    (tester) async {
+      final controller = _TestProfileTypesController(0);
+      await _pumpFormScreen(
+        tester,
+        controller: controller,
+        definition: tenantAdminProfileTypeDefinitionFromRaw(
+          type: 'venue',
+          label: 'Venue',
+          allowedTaxonomies: const [],
+          capabilities: TenantAdminProfileTypeCapabilities(
+            isFavoritable: TenantAdminFlagValue(true),
+            isPoiEnabled: TenantAdminFlagValue(false),
+            hasBio: TenantAdminFlagValue(false),
+            hasContent: TenantAdminFlagValue(false),
+            hasTaxonomies: TenantAdminFlagValue(false),
+            hasAvatar: TenantAdminFlagValue(false),
+            hasCover: TenantAdminFlagValue(false),
+            hasEvents: TenantAdminFlagValue(false),
+            hasGallery: TenantAdminFlagValue(true),
+          ),
         ),
-      ),
-    );
+      );
 
-    final toggle = find.widgetWithText(
-      SwitchListTile,
-      'Galeria habilitada',
-    );
-    await tester.ensureVisible(toggle);
+      final toggle = find.widgetWithText(SwitchListTile, 'Galeria habilitada');
+      await tester.ensureVisible(toggle);
 
-    expect(tester.widget<SwitchListTile>(toggle).value, isTrue);
-    expect(controller.currentCapabilities.hasGallery, isTrue);
-  });
+      expect(tester.widget<SwitchListTile>(toggle).value, isTrue);
+      expect(controller.currentCapabilities.hasGallery, isTrue);
+    },
+  );
 
   testWidgets('shows gallery capability label in profile type list cards', (
     tester,
   ) async {
     final controller = _TestProfileTypesController(
-      impactCount: 0,
+      0,
       initialProfileTypes: [
         tenantAdminProfileTypeDefinitionFromRaw(
           type: 'venue',
@@ -462,7 +459,7 @@ void main() {
   testWidgets('shows gallery capability chip in profile type detail', (
     tester,
   ) async {
-    final controller = _TestProfileTypesController(impactCount: 0);
+    final controller = _TestProfileTypesController(0);
     final definition = tenantAdminProfileTypeDefinitionFromRaw(
       type: 'venue',
       label: 'Venue',
@@ -492,7 +489,7 @@ void main() {
   testWidgets('favoritable capability is editable without public discovery', (
     tester,
   ) async {
-    final controller = _TestProfileTypesController(impactCount: 0);
+    final controller = _TestProfileTypesController(0);
     await _pumpFormScreen(
       tester,
       controller: controller,
@@ -526,7 +523,7 @@ void main() {
   });
 
   testWidgets('renders and hydrates plural label field', (tester) async {
-    final controller = _TestProfileTypesController(impactCount: 0);
+    final controller = _TestProfileTypesController(0);
     await _pumpFormScreen(
       tester,
       controller: controller,
@@ -555,7 +552,7 @@ void main() {
   testWidgets(
     'shows canonical type image upload controls for type_asset visuals',
     (tester) async {
-      final controller = _TestProfileTypesController(impactCount: 0);
+      final controller = _TestProfileTypesController(0);
       await _pumpFormScreen(
         tester,
         controller: controller,
@@ -597,7 +594,7 @@ void main() {
   testWidgets('type_asset upload uses canonical image source sheet', (
     tester,
   ) async {
-    final controller = _TestProfileTypesController(impactCount: 0);
+    final controller = _TestProfileTypesController(0);
     await _pumpFormScreen(
       tester,
       controller: controller,
@@ -704,16 +701,15 @@ Future<void> _pumpDetailScreen(
 }
 
 class _TestProfileTypesController extends TenantAdminProfileTypesController {
-  _TestProfileTypesController({
-    required int impactCount,
+  _TestProfileTypesController(
+    this._impactCount, {
     List<TenantAdminProfileTypeDefinition> initialProfileTypes = const [],
-  })  : _impactCount = impactCount,
-        super(
-          repository: _FakeAccountProfilesRepository(
-            initialProfileTypes: initialProfileTypes,
-          ),
-          taxonomiesRepository: _FakeTaxonomiesRepository(),
-        );
+  }) : super(
+         repository: _FakeAccountProfilesRepository(
+           initialProfileTypes: initialProfileTypes,
+         ),
+         taxonomiesRepository: _FakeTaxonomiesRepository(),
+       );
 
   final int _impactCount;
   int submitUpdateCalls = 0;
@@ -750,9 +746,9 @@ class _FakeAccountProfilesRepository
   _FakeAccountProfilesRepository({
     List<TenantAdminProfileTypeDefinition> initialProfileTypes = const [],
   }) : _initialProfileTypes =
-            List<TenantAdminProfileTypeDefinition>.unmodifiable(
-          initialProfileTypes,
-        );
+           List<TenantAdminProfileTypeDefinition>.unmodifiable(
+             initialProfileTypes,
+           );
 
   final List<TenantAdminProfileTypeDefinition> _initialProfileTypes;
 
@@ -820,6 +816,24 @@ class _FakeAccountProfilesRepository
   }
 
   @override
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+  fetchAccountProfilesPage({
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
+    TenantAdminAccountProfilesRepoString? search,
+    TenantAdminAccountProfilesRepoString? accountId,
+    TenantAdminAccountProfilesRepoBool? queryableOnly,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
+  }) async {
+    final profiles = await fetchAccountProfiles(
+      accountId: accountId,
+      queryableOnly: queryableOnly,
+      excludeAccountProfileId: excludeAccountProfileId,
+    );
+    return tenantAdminPagedResultFromRaw(items: profiles, hasMore: false);
+  }
+
+  @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async {
     return _initialProfileTypes;
   }
@@ -838,7 +852,7 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminProfileTypeDefinition>>
-      fetchProfileTypesPage({
+  fetchProfileTypesPage({
     required TenantAdminAccountProfilesRepoInt page,
     required TenantAdminAccountProfilesRepoInt pageSize,
   }) async {
@@ -904,7 +918,8 @@ class _FakeAccountProfilesRepository
       label: label ?? type,
       pluralLabel: pluralLabel ?? label ?? type,
       allowedTaxonomies: allowedTaxonomies ?? const [],
-      capabilities: capabilities ??
+      capabilities:
+          capabilities ??
           TenantAdminProfileTypeCapabilities(
             isFavoritable: TenantAdminFlagValue(false),
             isPoiEnabled: TenantAdminFlagValue(false),
@@ -958,7 +973,7 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
-      fetchTaxonomiesPage({
+  fetchTaxonomiesPage({
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
   }) async {
@@ -977,7 +992,7 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
-      fetchTermsPage({
+  fetchTermsPage({
     required TenantAdminTaxRepoString taxonomyId,
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,

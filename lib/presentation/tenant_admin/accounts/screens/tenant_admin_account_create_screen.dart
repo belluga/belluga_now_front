@@ -36,13 +36,13 @@ class TenantAdminAccountCreateScreen extends StatefulWidget {
 
 class _TenantAdminAccountCreateScreenState
     extends State<TenantAdminAccountCreateScreen> {
-  final TenantAdminAccountCreateController _controller =
-      GetIt.I.get<TenantAdminAccountCreateController>();
+  final TenantAdminAccountCreateController _controller = GetIt.I
+      .get<TenantAdminAccountCreateController>();
   final FormValidationAnchors _validationAnchors = FormValidationAnchors();
 
   StreamSubscription<String?>? _createErrorSubscription;
   StreamSubscription<TenantAdminAccountOnboardingResult?>?
-      _createSuccessSubscription;
+  _createSuccessSubscription;
 
   @override
   void initState() {
@@ -127,14 +127,14 @@ class _TenantAdminAccountCreateScreenState
   }
 
   void _bindCreateSideEffects() {
-    _createErrorSubscription ??=
-        _controller.createErrorMessageStreamValue.stream.listen(
-      _handleCreateErrorMessage,
-    );
-    _createSuccessSubscription ??=
-        _controller.createSuccessAccountStreamValue.stream.listen(
-      _handleCreateSuccess,
-    );
+    _createErrorSubscription ??= _controller
+        .createErrorMessageStreamValue
+        .stream
+        .listen(_handleCreateErrorMessage);
+    _createSuccessSubscription ??= _controller
+        .createSuccessAccountStreamValue
+        .stream
+        .listen(_handleCreateSuccess);
   }
 
   Future<void> _submitCreate() async {
@@ -169,9 +169,9 @@ class _TenantAdminAccountCreateScreenState
     if (message == null || message.isEmpty || !mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
     _controller.clearCreateErrorMessage();
   }
 
@@ -181,9 +181,7 @@ class _TenantAdminAccountCreateScreenState
     }
     _controller.clearCreateSuccessAccount();
     context.router.replace(
-      TenantAdminAccountDetailRoute(
-        accountSlug: result.account.slug,
-      ),
+      TenantAdminAccountDetailRoute(accountSlug: result.account.slug),
     );
   }
 
@@ -200,8 +198,9 @@ class _TenantAdminAccountCreateScreenState
         final hasTaxonomies = definition?.capabilities.hasTaxonomies ?? false;
         final showAvatar = definition?.capabilities.hasAvatar ?? false;
         final showCover = definition?.capabilities.hasCover ?? false;
-        final hasNestedProfileGroups =
-            _hasNestedProfileGroups(state.selectedProfileType);
+        final hasNestedProfileGroups = _hasNestedProfileGroups(
+          state.selectedProfileType,
+        );
         final showMediaSection = showAvatar || showCover;
         return TenantAdminFormScaffold(
           closePolicy: buildTenantAdminCurrentRouteBackPolicy(context),
@@ -350,8 +349,8 @@ class _TenantAdminAccountCreateScreenState
                                               _profileTypeDefinition(value);
                                           _controller
                                               .updateCreateSelectedProfileType(
-                                            value,
-                                          );
+                                                value,
+                                              );
                                           if (!_requiresLocation(value)) {
                                             _controller.latitudeController
                                                 .clear();
@@ -359,24 +358,30 @@ class _TenantAdminAccountCreateScreenState
                                                 .clear();
                                           }
                                           if (!(definition
-                                                  ?.capabilities.hasAvatar ??
+                                                  ?.capabilities
+                                                  .hasAvatar ??
                                               false)) {
-                                            _controller
-                                                .updateCreateAvatarFile(null);
+                                            _controller.updateCreateAvatarFile(
+                                              null,
+                                            );
                                           }
                                           if (!(definition
-                                                  ?.capabilities.hasCover ??
+                                                  ?.capabilities
+                                                  .hasCover ??
                                               false)) {
-                                            _controller
-                                                .updateCreateCoverFile(null);
+                                            _controller.updateCreateCoverFile(
+                                              null,
+                                            );
                                           }
                                           if (!(definition
-                                                  ?.capabilities.hasBio ??
+                                                  ?.capabilities
+                                                  .hasBio ??
                                               false)) {
                                             _controller.bioController.clear();
                                           }
                                           if (!(definition
-                                                  ?.capabilities.hasContent ??
+                                                  ?.capabilities
+                                                  .hasContent ??
                                               false)) {
                                             _controller.contentController
                                                 .clear();
@@ -394,14 +399,14 @@ class _TenantAdminAccountCreateScreenState
                               onPressed: () {
                                 context.router
                                     .push(
-                                  const TenantAdminProfileTypeCreateRoute(),
-                                )
+                                      const TenantAdminProfileTypeCreateRoute(),
+                                    )
                                     .then((_) {
-                                  if (!mounted) {
-                                    return;
-                                  }
-                                  _controller.loadProfileTypes();
-                                });
+                                      if (!mounted) {
+                                        return;
+                                      }
+                                      _controller.loadProfileTypes();
+                                    });
                               },
                               icon: const Icon(Icons.add),
                               label: const Text('Criar tipo de perfil'),
@@ -521,42 +526,45 @@ class _TenantAdminAccountCreateScreenState
                         ),
                       )
                     : (state.avatarWebUrl != null &&
-                            state.avatarWebUrl!.isNotEmpty)
-                        ? Container(
-                            width: 72,
-                            height: 72,
-                            decoration: BoxDecoration(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .surfaceContainerHighest,
-                              borderRadius: BorderRadius.circular(36),
-                            ),
-                            child: const Icon(Icons.link_outlined),
-                          )
-                        : Container(
-                            width: 72,
-                            height: 72,
-                            decoration: BoxDecoration(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .surfaceContainerHighest,
-                              borderRadius: BorderRadius.circular(36),
-                            ),
-                            child: const Icon(Icons.person_outline),
-                          ),
-                selectedLabel: state.avatarFile?.name ??
+                          state.avatarWebUrl!.isNotEmpty)
+                    ? Container(
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(36),
+                        ),
+                        child: const Icon(Icons.link_outlined),
+                      )
+                    : Container(
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(36),
+                        ),
+                        child: const Icon(Icons.person_outline),
+                      ),
+                selectedLabel:
+                    state.avatarFile?.name ??
                     state.avatarWebUrl ??
                     'Nenhuma imagem selecionada',
                 addLabel: 'Adicionar avatar',
-                addButtonKey:
-                    const ValueKey('tenant_admin_account_create_avatar_pick'),
+                addButtonKey: const ValueKey(
+                  'tenant_admin_account_create_avatar_pick',
+                ),
                 removeButtonKey: const ValueKey(
                   'tenant_admin_account_create_avatar_remove',
                 ),
                 sourceSheetTitle: 'Adicionar avatar',
                 urlPromptTitle: 'URL do avatar',
                 busy: state.avatarBusy,
-                canRemove: state.avatarFile != null ||
+                canRemove:
+                    state.avatarFile != null ||
                     (state.avatarWebUrl != null &&
                         state.avatarWebUrl!.isNotEmpty),
                 onRemove: () => _clearImage(isAvatar: true),
@@ -589,46 +597,45 @@ class _TenantAdminAccountCreateScreenState
                         ),
                       )
                     : (state.coverWebUrl != null &&
-                            state.coverWebUrl!.isNotEmpty)
-                        ? Container(
-                            width: double.infinity,
-                            height: 140,
-                            decoration: BoxDecoration(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .surfaceContainerHighest,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Center(
-                              child: Icon(Icons.link_outlined),
-                            ),
-                          )
-                        : Container(
-                            width: double.infinity,
-                            height: 140,
-                            decoration: BoxDecoration(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .surfaceContainerHighest,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Center(
-                              child: Icon(Icons.image_outlined),
-                            ),
-                          ),
-                selectedLabel: state.coverFile?.name ??
+                          state.coverWebUrl!.isNotEmpty)
+                    ? Container(
+                        width: double.infinity,
+                        height: 140,
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Center(child: Icon(Icons.link_outlined)),
+                      )
+                    : Container(
+                        width: double.infinity,
+                        height: 140,
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Center(child: Icon(Icons.image_outlined)),
+                      ),
+                selectedLabel:
+                    state.coverFile?.name ??
                     state.coverWebUrl ??
                     'Nenhuma imagem selecionada',
                 addLabel: 'Adicionar capa',
-                addButtonKey:
-                    const ValueKey('tenant_admin_account_create_cover_pick'),
+                addButtonKey: const ValueKey(
+                  'tenant_admin_account_create_cover_pick',
+                ),
                 removeButtonKey: const ValueKey(
                   'tenant_admin_account_create_cover_remove',
                 ),
                 sourceSheetTitle: 'Adicionar capa',
                 urlPromptTitle: 'URL da capa',
                 busy: state.coverBusy,
-                canRemove: state.coverFile != null ||
+                canRemove:
+                    state.coverFile != null ||
                     (state.coverWebUrl != null &&
                         state.coverWebUrl!.isNotEmpty),
                 onRemove: () => _clearImage(isAvatar: false),
@@ -738,6 +745,14 @@ class _TenantAdminAccountCreateScreenState
       groups: state.nestedProfileGroups,
       candidatesStreamValue: _controller.nestedProfileCandidatesStreamValue,
       profileTypes: _controller.profileTypesStreamValue.value,
+      onSearchChanged: _controller.searchNestedProfileCandidates,
+      onLoadMore: _controller.loadNextNestedProfileCandidatesPage,
+      searchLoadingStreamValue:
+          _controller.nestedProfileSearchLoadingStreamValue,
+      searchPageLoadingStreamValue:
+          _controller.nestedProfileSearchPageLoadingStreamValue,
+      searchHasMoreStreamValue:
+          _controller.nestedProfileSearchHasMoreStreamValue,
       addButtonKey: const Key('tenantAdminAccountCreateAddNestedGroupButton'),
       onAddGroup: _controller.addCreateNestedProfileGroup,
       onRenameGroup: _controller.renameCreateNestedProfileGroup,
@@ -773,7 +788,8 @@ class _TenantAdminAccountCreateScreenState
           streamValue: _controller.taxonomiesErrorStreamValue,
           builder: (context, error) {
             return StreamValueBuilder<
-                Map<String, List<TenantAdminTaxonomyTermDefinition>>>(
+              Map<String, List<TenantAdminTaxonomyTermDefinition>>
+            >(
               streamValue: _controller.taxonomyTermsStreamValue,
               builder: (context, termsByTaxonomy) {
                 return StreamValueBuilder<Map<String, Set<String>>>(
@@ -802,7 +818,8 @@ class _TenantAdminAccountCreateScreenState
                           const Padding(
                             padding: EdgeInsets.only(top: 8),
                             child: Text(
-                                'Nenhuma taxonomia permitida para este tipo.'),
+                              'Nenhuma taxonomia permitida para este tipo.',
+                            ),
                           ),
                         FormValidationGroupError(
                           validationStreamValue:
@@ -905,9 +922,7 @@ class _TenantAdminAccountCreateScreenState
             ),
             const SizedBox(height: 8),
             FilledButton.tonalIcon(
-              key: const ValueKey(
-                'tenant_admin_account_create_map_pick',
-              ),
+              key: const ValueKey('tenant_admin_account_create_map_pick'),
               onPressed: _openMapPicker,
               icon: const Icon(Icons.map_outlined),
               label: const Text('Selecionar no mapa'),

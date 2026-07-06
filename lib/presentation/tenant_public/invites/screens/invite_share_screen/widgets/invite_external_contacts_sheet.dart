@@ -52,7 +52,7 @@ class InviteExternalContactsSheet extends StatelessWidget {
               child: ListView.separated(
                 shrinkWrap: true,
                 itemCount: targets.length,
-                separatorBuilder: (_, __) => Divider(
+                separatorBuilder: (_, _) => Divider(
                   height: 1,
                   color: colorScheme.outlineVariant,
                 ),

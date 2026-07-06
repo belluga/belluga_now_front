@@ -100,8 +100,7 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
   @override
   Future<TelemetryRepositoryContractPrimBool> mergeIdentity({
     required TelemetryRepositoryContractPrimString previousUserId,
-  }) async =>
-      telemetryRepoBool(true);
+  }) async => telemetryRepoBool(true);
 }
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
@@ -121,10 +120,10 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   final List<String> declinedInviteIds = <String>[];
 
   @override
-  Future<List<InviteModel>> fetchInvites(
-          {InvitesRepositoryContractPrimInt? page,
-          InvitesRepositoryContractPrimInt? pageSize}) async =>
-      List<InviteModel>.from(_invites);
+  Future<List<InviteModel>> fetchInvites({
+    InvitesRepositoryContractPrimInt? page,
+    InvitesRepositoryContractPrimInt? pageSize,
+  }) async => List<InviteModel>.from(_invites);
 
   @override
   Future<InviteRuntimeSettings> fetchSettings() async =>
@@ -137,55 +136,55 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteAcceptResult> acceptInvite(
-          InvitesRepositoryContractPrimString inviteId) async =>
-      (() {
-        acceptedInviteIds.add(inviteId.value);
-        _removeInvite(inviteId.value);
-        pendingInvitesStreamValue.addValue(List<InviteModel>.from(_invites));
-        return buildInviteAcceptResult(
-          inviteId: inviteId.value,
-          status: 'accepted',
-          creditedAcceptance: true,
-          attendancePolicy: 'free_confirmation_only',
-          nextStep: InviteNextStep.freeConfirmationCreated,
-          supersededInviteIds: const [],
-        );
-      })();
+    InvitesRepositoryContractPrimString inviteId,
+  ) async => (() {
+    acceptedInviteIds.add(inviteId.value);
+    _removeInvite(inviteId.value);
+    pendingInvitesStreamValue.addValue(List<InviteModel>.from(_invites));
+    return buildInviteAcceptResult(
+      inviteId: inviteId.value,
+      status: 'accepted',
+      creditedAcceptance: true,
+      attendancePolicy: 'free_confirmation_only',
+      nextStep: InviteNextStep.freeConfirmationCreated,
+      supersededInviteIds: const [],
+    );
+  })();
 
   @override
   Future<InviteAcceptResult> acceptInviteByCode(
-          InvitesRepositoryContractPrimString code) async =>
-      (() {
-        acceptedShareCodes.add(code.value);
-        final activeShareInvite = shareCodeSessionContextStreamValue.value?.invite;
-        if (activeShareInvite != null) {
-          _removeInvite(activeShareInvite.id);
-        }
-        clearShareCodeSessionContext(code: code);
-        pendingInvitesStreamValue.addValue(List<InviteModel>.from(_invites));
-        return buildInviteAcceptResult(
-          inviteId: 'mock-${code.value}',
-          status: 'accepted',
-          creditedAcceptance: true,
-          attendancePolicy: 'free_confirmation_only',
-          nextStep: InviteNextStep.freeConfirmationCreated,
-          supersededInviteIds: const [],
-        );
-      })();
+    InvitesRepositoryContractPrimString code,
+  ) async => (() {
+    acceptedShareCodes.add(code.value);
+    final activeShareInvite = shareCodeSessionContextStreamValue.value?.invite;
+    if (activeShareInvite != null) {
+      _removeInvite(activeShareInvite.id);
+    }
+    clearShareCodeSessionContext(code: code);
+    pendingInvitesStreamValue.addValue(List<InviteModel>.from(_invites));
+    return buildInviteAcceptResult(
+      inviteId: 'mock-${code.value}',
+      status: 'accepted',
+      creditedAcceptance: true,
+      attendancePolicy: 'free_confirmation_only',
+      nextStep: InviteNextStep.freeConfirmationCreated,
+      supersededInviteIds: const [],
+    );
+  })();
 
   @override
   Future<InviteDeclineResult> declineInvite(
-          InvitesRepositoryContractPrimString inviteId) async =>
-      (() {
-        declinedInviteIds.add(inviteId.value);
-        _removeInvite(inviteId.value);
-        pendingInvitesStreamValue.addValue(List<InviteModel>.from(_invites));
-        return buildInviteDeclineResult(
-          inviteId: inviteId.value,
-          status: 'declined',
-          groupHasOtherPending: false,
-        );
-      })();
+    InvitesRepositoryContractPrimString inviteId,
+  ) async => (() {
+    declinedInviteIds.add(inviteId.value);
+    _removeInvite(inviteId.value);
+    pendingInvitesStreamValue.addValue(List<InviteModel>.from(_invites));
+    return buildInviteDeclineResult(
+      inviteId: inviteId.value,
+      status: 'declined',
+      groupHasOtherPending: false,
+    );
+  })();
 
   @override
   Future<InviteMaterializeResult> materializeShareCode(
@@ -219,20 +218,18 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   @override
   Future<List<InviteContactMatch>> importContacts(
     InviteContacts contacts,
-  ) async =>
-      const [];
+  ) async => const [];
 
   @override
   Future<InviteShareCodeResult> createShareCode({
     required InvitesRepositoryContractPrimString eventId,
     InvitesRepositoryContractPrimString? occurrenceId,
     InvitesRepositoryContractPrimString? accountProfileId,
-  }) async =>
-      buildInviteShareCodeResult(
-        code: 'CODE123',
-        eventId: eventId.value,
-        occurrenceId: occurrenceId?.value ?? 'occurrence-1',
-      );
+  }) async => buildInviteShareCodeResult(
+    code: 'CODE123',
+    eventId: eventId.value,
+    occurrenceId: occurrenceId?.value ?? 'occurrence-1',
+  );
 
   @override
   Future<void> sendInvites(
@@ -245,17 +242,16 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   @override
   Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
     InvitesRepositoryContractPrimString eventSlug,
-  ) async =>
-      const [];
+  ) async => const [];
 }
 
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   @override
   final StreamValue<Set<UserEventsRepositoryContractPrimString>>
-      confirmedOccurrenceIdsStream =
+  confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(
-    defaultValue: const {},
-  );
+        defaultValue: const {},
+      );
 
   @override
   Future<List<VenueEventResume>> fetchMyEvents() async => const [];
@@ -281,8 +277,7 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   @override
   UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
     UserEventsRepositoryContractPrimString eventId,
-  ) =>
-      userEventsRepoBool(false, defaultValue: false, isRequired: true);
+  ) => userEventsRepoBool(false, defaultValue: false, isRequired: true);
 }
 
 class _FakeAuthRepository extends AuthRepositoryContract {
@@ -358,6 +353,7 @@ InviteModel _buildInvite(String id) {
   return buildInviteModelFromPrimitives(
     id: id,
     eventId: 'event-$id',
+    eventSlug: 'event-$id',
     eventName: 'Event $id',
     eventDateTime: DateTime(2025, 1, 1, 18),
     eventImageUrl: 'https://example.com/$id.jpg',
@@ -371,18 +367,20 @@ InviteModel _buildInvite(String id) {
 }
 
 void main() {
-  test('resolveFallbackNavigationPath defaults to home when raw fallback is absent',
-      () async {
-    final controller = InviteFlowScreenController(
-      repository: _FakeInvitesRepository(initialInvites: const []),
-      userEventsRepository: _FakeUserEventsRepository(),
-      telemetryRepository: _FakeTelemetryRepository(),
-    );
+  test(
+    'resolveFallbackNavigationPath defaults to home when session context is absent',
+    () async {
+      final controller = InviteFlowScreenController(
+        repository: _FakeInvitesRepository(initialInvites: const []),
+        userEventsRepository: _FakeUserEventsRepository(),
+        telemetryRepository: _FakeTelemetryRepository(),
+      );
 
-    final path = await controller.resolveFallbackNavigationPath(null);
+      final path = await controller.resolveFallbackNavigationPath();
 
-    expect(path, '/');
-  });
+      expect(path, '/');
+    },
+  );
 
   test('invite_opened fires when the top invite changes', () async {
     final telemetry = _FakeTelemetryRepository();
@@ -400,200 +398,205 @@ void main() {
 
     expect(telemetry.startedEvents.length, 1);
     expect(telemetry.startedEvents.first.eventName, 'invite_opened');
-    expect(
-      telemetry.startedEvents.first.properties?['event_id'],
-      'event-1',
-    );
+    expect(telemetry.startedEvents.first.properties?['event_id'], 'event-1');
 
     controller.removeInvite();
     await Future<void>.delayed(Duration.zero);
 
     expect(telemetry.startedEvents.length, 2);
-    expect(
-      telemetry.startedEvents[1].properties?['event_id'],
-      'event-2',
-    );
+    expect(telemetry.startedEvents[1].properties?['event_id'], 'event-2');
 
-    await controller.onDispose();
-  });
-
-  test('authenticated init resolves share-code preview without acceptance',
-      () async {
-    final repository = _FakeInvitesRepository(
-      initialInvites: [_buildInvite('preview')],
-      previewInvite: _buildInvite('preview'),
-      materializedInviteId: 'preview',
-    );
-    final controller = InviteFlowScreenController(
-      repository: repository,
-      userEventsRepository: _FakeUserEventsRepository(),
-      telemetryRepository: _FakeTelemetryRepository(),
-    );
-
-    await controller.init(shareCode: 'SHARE-ABC');
-
-    expect(repository.materializedShareCodes, ['SHARE-ABC']);
-    expect(repository.previewedShareCodes, isEmpty);
-    expect(controller.pendingInvitesStreamValue.value, hasLength(1));
-    expect(controller.pendingInvitesStreamValue.value.first.id, 'preview');
-    expect(controller.displayInvitesStreamValue.value.first.id, 'preview');
-    expect(
-      repository.shareCodeSessionContextStreamValue.value?.shareCode,
-      'SHARE-ABC',
-    );
-    expect(controller.authRequiredForDecisionStreamValue.value, isFalse);
-    await controller.onDispose();
-  });
-
-  test('unauthenticated init resolves share-code preview without acceptance',
-      () async {
-    final repository = _FakeInvitesRepository(
-      initialInvites: [_buildInvite('1')],
-      previewInvite: _buildInvite('preview'),
-    );
-    final controller = InviteFlowScreenController(
-      repository: repository,
-      userEventsRepository: _FakeUserEventsRepository(),
-      telemetryRepository: _FakeTelemetryRepository(),
-      authRepository: _FakeAuthRepository(authorized: false),
-    );
-
-    await controller.init(shareCode: 'SHARE-ABC');
-
-    expect(repository.previewedShareCodes, ['SHARE-ABC']);
-    expect(repository.materializedShareCodes, isEmpty);
-    expect(controller.displayInvitesStreamValue.value, hasLength(1));
-    expect(controller.displayInvitesStreamValue.value.first.id, 'preview');
-    expect(
-      repository.shareCodeSessionContextStreamValue.value?.shareCode,
-      'SHARE-ABC',
-    );
-    expect(
-      repository.shareCodeSessionContextStreamValue.value?.invite.id,
-      'preview',
-    );
-    expect(controller.authRequiredForDecisionStreamValue.value, isTrue);
-    await controller.onDispose();
-  });
-
-  test('unauthenticated decision does not call invite accept endpoints',
-      () async {
-    final repository = _FakeInvitesRepository(
-      initialInvites: [_buildInvite('preview')],
-      previewInvite: _buildInvite('preview'),
-      materializedInviteId: 'preview',
-    );
-    final telemetry = _FakeTelemetryRepository();
-    final controller = InviteFlowScreenController(
-      repository: repository,
-      userEventsRepository: _FakeUserEventsRepository(),
-      telemetryRepository: telemetry,
-      authRepository: _FakeAuthRepository(authorized: false),
-    );
-
-    await controller.init(shareCode: 'SHARE-ABC');
-    await controller.requestDecision(InviteDecision.accepted);
-
-    expect(repository.previewedShareCodes, ['SHARE-ABC']);
-    expect(repository.acceptedShareCodes, isEmpty);
-    expect(repository.acceptedInviteIds, isEmpty);
-    expect(telemetry.loggedEvents, hasLength(1));
-    expect(
-      telemetry.loggedEvents.single.eventName,
-      'app_invite_acceptance_requested',
-    );
-    expect(
-      telemetry.loggedEvents.single.properties,
-      containsPair('auth_state', 'auth_required'),
-    );
-    expect(
-      telemetry.loggedEvents.single.properties,
-      containsPair('code', 'SHARE-ABC'),
-    );
     await controller.onDispose();
   });
 
   test(
-      'failed share materialization does not fall back to unrelated pending invites',
-      () async {
-    final repository = _FakeInvitesRepository(
-      initialInvites: [_buildInvite('unrelated')],
-      materializedInviteId: null,
-    );
-    final controller = InviteFlowScreenController(
-      repository: repository,
-      userEventsRepository: _FakeUserEventsRepository(),
-      telemetryRepository: _FakeTelemetryRepository(),
-      authRepository: _FakeAuthRepository(authorized: true),
-    );
+    'authenticated init resolves share-code preview without acceptance',
+    () async {
+      final repository = _FakeInvitesRepository(
+        initialInvites: [_buildInvite('preview')],
+        previewInvite: _buildInvite('preview'),
+        materializedInviteId: 'preview',
+      );
+      final controller = InviteFlowScreenController(
+        repository: repository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        telemetryRepository: _FakeTelemetryRepository(),
+      );
 
-    await controller.init(shareCode: 'SHARE-ABC');
+      await controller.init(shareCode: 'SHARE-ABC');
 
-    expect(repository.materializedShareCodes, ['SHARE-ABC']);
-    expect(controller.pendingInvitesStreamValue.value, isEmpty);
-    expect(controller.displayInvitesStreamValue.value, isEmpty);
-    await controller.onDispose();
-  });
+      expect(repository.materializedShareCodes, ['SHARE-ABC']);
+      expect(repository.previewedShareCodes, isEmpty);
+      expect(controller.pendingInvitesStreamValue.value, hasLength(1));
+      expect(controller.pendingInvitesStreamValue.value.first.id, 'preview');
+      expect(controller.displayInvitesStreamValue.value.first.id, 'preview');
+      expect(
+        repository.shareCodeSessionContextStreamValue.value?.shareCode,
+        'SHARE-ABC',
+      );
+      expect(controller.authRequiredForDecisionStreamValue.value, isFalse);
+      await controller.onDispose();
+    },
+  );
 
-  test('accepted decision uses canonical share-code accept after share entry',
-      () async {
-    final repository = _FakeInvitesRepository(
-      initialInvites: [_buildInvite('preview')],
-      materializedInviteId: 'preview',
-    );
-    final telemetry = _FakeTelemetryRepository();
-    final controller = InviteFlowScreenController(
-      repository: repository,
-      userEventsRepository: _FakeUserEventsRepository(),
-      telemetryRepository: telemetry,
-      authRepository: _FakeAuthRepository(authorized: true),
-    );
+  test(
+    'unauthenticated init resolves share-code preview without acceptance',
+    () async {
+      final repository = _FakeInvitesRepository(
+        initialInvites: [_buildInvite('1')],
+        previewInvite: _buildInvite('preview'),
+      );
+      final controller = InviteFlowScreenController(
+        repository: repository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        telemetryRepository: _FakeTelemetryRepository(),
+        authRepository: _FakeAuthRepository(authorized: false),
+      );
 
-    await controller.init(shareCode: 'SHARE-ABC');
-    await controller.requestDecision(InviteDecision.accepted);
+      await controller.init(shareCode: 'SHARE-ABC');
 
-    expect(repository.materializedShareCodes, ['SHARE-ABC']);
-    expect(repository.acceptedShareCodes, ['SHARE-ABC']);
-    expect(repository.acceptedInviteIds, isEmpty);
-    expect(telemetry.loggedEvents, hasLength(1));
-    expect(
-      telemetry.loggedEvents.single.eventName,
-      'app_invite_acceptance_requested',
-    );
-    expect(
-      telemetry.loggedEvents.single.properties,
-      containsPair('auth_state', 'authenticated'),
-    );
-    expect(
-      telemetry.loggedEvents.single.properties,
-      containsPair('code', 'SHARE-ABC'),
-    );
-    expect(
-      telemetry.loggedEvents.single.properties,
-      containsPair('occurrence_id', 'occurrence-preview'),
-    );
-    await controller.onDispose();
-  });
+      expect(repository.previewedShareCodes, ['SHARE-ABC']);
+      expect(repository.materializedShareCodes, isEmpty);
+      expect(controller.displayInvitesStreamValue.value, hasLength(1));
+      expect(controller.displayInvitesStreamValue.value.first.id, 'preview');
+      expect(
+        repository.shareCodeSessionContextStreamValue.value?.shareCode,
+        'SHARE-ABC',
+      );
+      expect(
+        repository.shareCodeSessionContextStreamValue.value?.invite.id,
+        'preview',
+      );
+      expect(controller.authRequiredForDecisionStreamValue.value, isTrue);
+      await controller.onDispose();
+    },
+  );
 
-  test('declined decision uses canonical invite decline after materialization',
-      () async {
-    final repository = _FakeInvitesRepository(
-      initialInvites: [_buildInvite('preview')],
-      materializedInviteId: 'preview',
-    );
-    final controller = InviteFlowScreenController(
-      repository: repository,
-      userEventsRepository: _FakeUserEventsRepository(),
-      telemetryRepository: _FakeTelemetryRepository(),
-      authRepository: _FakeAuthRepository(authorized: true),
-    );
+  test(
+    'unauthenticated decision does not call invite accept endpoints',
+    () async {
+      final repository = _FakeInvitesRepository(
+        initialInvites: [_buildInvite('preview')],
+        previewInvite: _buildInvite('preview'),
+        materializedInviteId: 'preview',
+      );
+      final telemetry = _FakeTelemetryRepository();
+      final controller = InviteFlowScreenController(
+        repository: repository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        telemetryRepository: telemetry,
+        authRepository: _FakeAuthRepository(authorized: false),
+      );
 
-    await controller.init(shareCode: 'SHARE-ABC');
-    await controller.requestDecision(InviteDecision.declined);
+      await controller.init(shareCode: 'SHARE-ABC');
+      await controller.requestDecision(InviteDecision.accepted);
 
-    expect(repository.materializedShareCodes, ['SHARE-ABC']);
-    expect(repository.declinedInviteIds, ['preview']);
-    expect(controller.displayInvitesStreamValue.value, isEmpty);
-    await controller.onDispose();
-  });
+      expect(repository.previewedShareCodes, ['SHARE-ABC']);
+      expect(repository.acceptedShareCodes, isEmpty);
+      expect(repository.acceptedInviteIds, isEmpty);
+      expect(telemetry.loggedEvents, hasLength(1));
+      expect(
+        telemetry.loggedEvents.single.eventName,
+        'app_invite_acceptance_requested',
+      );
+      expect(
+        telemetry.loggedEvents.single.properties,
+        containsPair('auth_state', 'auth_required'),
+      );
+      expect(
+        telemetry.loggedEvents.single.properties,
+        containsPair('code', 'SHARE-ABC'),
+      );
+      await controller.onDispose();
+    },
+  );
+
+  test(
+    'failed share materialization does not fall back to unrelated pending invites',
+    () async {
+      final repository = _FakeInvitesRepository(
+        initialInvites: [_buildInvite('unrelated')],
+        materializedInviteId: null,
+      );
+      final controller = InviteFlowScreenController(
+        repository: repository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        telemetryRepository: _FakeTelemetryRepository(),
+        authRepository: _FakeAuthRepository(authorized: true),
+      );
+
+      await controller.init(shareCode: 'SHARE-ABC');
+
+      expect(repository.materializedShareCodes, ['SHARE-ABC']);
+      expect(controller.pendingInvitesStreamValue.value, isEmpty);
+      expect(controller.displayInvitesStreamValue.value, isEmpty);
+      await controller.onDispose();
+    },
+  );
+
+  test(
+    'accepted decision uses canonical share-code accept after share entry',
+    () async {
+      final repository = _FakeInvitesRepository(
+        initialInvites: [_buildInvite('preview')],
+        materializedInviteId: 'preview',
+      );
+      final telemetry = _FakeTelemetryRepository();
+      final controller = InviteFlowScreenController(
+        repository: repository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        telemetryRepository: telemetry,
+        authRepository: _FakeAuthRepository(authorized: true),
+      );
+
+      await controller.init(shareCode: 'SHARE-ABC');
+      await controller.requestDecision(InviteDecision.accepted);
+
+      expect(repository.materializedShareCodes, ['SHARE-ABC']);
+      expect(repository.acceptedShareCodes, ['SHARE-ABC']);
+      expect(repository.acceptedInviteIds, isEmpty);
+      expect(telemetry.loggedEvents, hasLength(1));
+      expect(
+        telemetry.loggedEvents.single.eventName,
+        'app_invite_acceptance_requested',
+      );
+      expect(
+        telemetry.loggedEvents.single.properties,
+        containsPair('auth_state', 'authenticated'),
+      );
+      expect(
+        telemetry.loggedEvents.single.properties,
+        containsPair('code', 'SHARE-ABC'),
+      );
+      expect(
+        telemetry.loggedEvents.single.properties,
+        containsPair('occurrence_id', 'occurrence-preview'),
+      );
+      await controller.onDispose();
+    },
+  );
+
+  test(
+    'declined decision uses canonical invite decline after materialization',
+    () async {
+      final repository = _FakeInvitesRepository(
+        initialInvites: [_buildInvite('preview')],
+        materializedInviteId: 'preview',
+      );
+      final controller = InviteFlowScreenController(
+        repository: repository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        telemetryRepository: _FakeTelemetryRepository(),
+        authRepository: _FakeAuthRepository(authorized: true),
+      );
+
+      await controller.init(shareCode: 'SHARE-ABC');
+      await controller.requestDecision(InviteDecision.declined);
+
+      expect(repository.materializedShareCodes, ['SHARE-ABC']);
+      expect(repository.declinedInviteIds, ['preview']);
+      expect(controller.displayInvitesStreamValue.value, isEmpty);
+      await controller.onDispose();
+    },
+  );
 }

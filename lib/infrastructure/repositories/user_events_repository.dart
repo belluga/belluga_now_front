@@ -14,8 +14,9 @@ import 'package:stream_value/core/stream_value.dart';
 /// Implementation of UserEventsRepositoryContract
 /// Uses backend-authoritative attendance commitments for confirmation state.
 class UserEventsRepository implements UserEventsRepositoryContract {
-  static final Uri _localEventPlaceholderUri =
-      Uri.parse('asset://event-placeholder');
+  static final Uri _localEventPlaceholderUri = Uri.parse(
+    'asset://event-placeholder',
+  );
 
   UserEventsRepository({
     ScheduleRepositoryContract? scheduleRepository,
@@ -23,12 +24,21 @@ class UserEventsRepository implements UserEventsRepositoryContract {
     AppDataRepositoryContract? appDataRepository,
     AuthRepositoryContract? authRepository,
     InvitesRepositoryContract Function()? invitesRepositoryResolver,
-  })  : _scheduleRepository =
-            scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>(),
-        _backend = backend ?? LaravelUserEventsBackend(),
-        _appDataRepository = appDataRepository,
-        _authRepository = authRepository,
-        _invitesRepositoryResolver = invitesRepositoryResolver;
+  }) : this._internal(
+         scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>(),
+         backend ?? LaravelUserEventsBackend(),
+         appDataRepository,
+         authRepository,
+         invitesRepositoryResolver,
+       );
+
+  UserEventsRepository._internal(
+    this._scheduleRepository,
+    this._backend,
+    this._appDataRepository,
+    this._authRepository,
+    this._invitesRepositoryResolver,
+  );
 
   final ScheduleRepositoryContract _scheduleRepository;
   final UserEventsBackendContract _backend;
@@ -80,21 +90,22 @@ class UserEventsRepository implements UserEventsRepositoryContract {
         _resolvedAppDataRepository?.appData.mainLogoDarkUrl.value;
     final resolvedUri =
         (configured != null && configured.toString().trim().isNotEmpty)
-            ? configured
-            : _localEventPlaceholderUri;
-    final thumbUriValue =
-        ThumbUriValue(defaultValue: resolvedUri, isRequired: true)
-          ..parse(resolvedUri.toString());
+        ? configured
+        : _localEventPlaceholderUri;
+    final thumbUriValue = ThumbUriValue(
+      defaultValue: resolvedUri,
+      isRequired: true,
+    )..parse(resolvedUri.toString());
     return thumbUriValue;
   }
 
   /// Stream of confirmed occurrence IDs.
   @override
   final StreamValue<Set<UserEventsRepositoryContractPrimString>>
-      confirmedOccurrenceIdsStream =
+  confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(
-    defaultValue: const <UserEventsRepositoryContractPrimString>{},
-  );
+        defaultValue: const <UserEventsRepositoryContractPrimString>{},
+      );
 
   /// In-memory storage for confirmed occurrence IDs.
   /// We use the stream value as the source of truth
@@ -113,11 +124,8 @@ class UserEventsRepository implements UserEventsRepositoryContract {
 
     final next = occurrenceIdsRaw
         .map(
-          (item) => userEventsRepoString(
-            item,
-            defaultValue: '',
-            isRequired: true,
-          ),
+          (item) =>
+              userEventsRepoString(item, defaultValue: '', isRequired: true),
         )
         .where((value) => value.value.isNotEmpty)
         .toSet();
@@ -133,21 +141,12 @@ class UserEventsRepository implements UserEventsRepositoryContract {
 
     final fallbackImage = _resolveDefaultEventImage();
     final events = await _scheduleRepository.loadEventSearch(
-      showPastOnly: ScheduleRepoBool.fromRaw(
-        false,
-        defaultValue: false,
-      ),
-      confirmedOnly: ScheduleRepoBool.fromRaw(
-        true,
-        defaultValue: true,
-      ),
+      showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
+      confirmedOnly: ScheduleRepoBool.fromRaw(true, defaultValue: true),
     );
     return List<VenueEventResume>.unmodifiable(
       events.map(
-        (event) => VenueEventResume.fromScheduleEvent(
-          event,
-          fallbackImage,
-        ),
+        (event) => VenueEventResume.fromScheduleEvent(event, fallbackImage),
       ),
     );
   }
