@@ -13,8 +13,8 @@ typedef TenantAdminLoadedAccountWatchPrimDynamic = dynamic;
 class TenantAdminLoadedAccountWatch {
   TenantAdminLoadedAccountWatch({
     required this.streamValue,
-    required TenantAdminLoadedAccountDisposeAction onDispose,
-  }) : _onDispose = onDispose;
+    required this._onDispose,
+  });
 
   final StreamValue<TenantAdminAccount?> streamValue;
   final TenantAdminLoadedAccountDisposeAction _onDispose;

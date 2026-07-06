@@ -9,9 +9,8 @@ import 'package:belluga_now/application/router/guards/location_permission_gate_r
 class AnyLocationRouteGuard extends AutoRouteGuard {
   AnyLocationRouteGuard({
     LocationPermissionBlockerLoader? blockerLoader,
-    LocationPermissionGrantedDocumentReentry? documentReentry,
-  })  : _blockerLoader = blockerLoader ?? loadCurrentLocationPermissionBlocker,
-        _documentReentry = documentReentry;
+    this._documentReentry,
+  }) : _blockerLoader = blockerLoader ?? loadCurrentLocationPermissionBlocker;
 
   final LocationPermissionBlockerLoader _blockerLoader;
   final LocationPermissionGrantedDocumentReentry? _documentReentry;
@@ -47,10 +46,11 @@ class AnyLocationRouteGuard extends AutoRouteGuard {
 
           switch (result) {
             case LocationPermissionGateResult.granted:
-              final handledByDocumentReentry = (_documentReentry ??
+              final handledByDocumentReentry =
+                  (_documentReentry ??
                   performLocationPermissionGrantedDocumentReentry)(
-                pendingRedirectPath,
-              );
+                    pendingRedirectPath,
+                  );
               if (handledByDocumentReentry) {
                 resolver.next(false);
                 return;
@@ -103,27 +103,27 @@ class AnyLocationRouteGuard extends AutoRouteGuard {
 
     return switch (args) {
       final CityMapRouteArgs cityMapArgs => CityMapRouteArgs(
-          key: cityMapArgs.key,
-          poi: cityMapArgs.poi ?? queryPoi,
-          stack: cityMapArgs.stack ?? queryStack,
-          locationGateResult: result,
-        ),
+        key: cityMapArgs.key,
+        poi: cityMapArgs.poi ?? queryPoi,
+        stack: cityMapArgs.stack ?? queryStack,
+        locationGateResult: result,
+      ),
       final PoiDetailsRouteArgs poiDetailsArgs => PoiDetailsRouteArgs(
-          key: poiDetailsArgs.key,
-          poi: poiDetailsArgs.poi ?? queryPoi,
-          stack: poiDetailsArgs.stack ?? queryStack,
-          locationGateResult: result,
-        ),
+        key: poiDetailsArgs.key,
+        poi: poiDetailsArgs.poi ?? queryPoi,
+        stack: poiDetailsArgs.stack ?? queryStack,
+        locationGateResult: result,
+      ),
       _ when route.name == CityMapRoute.name => CityMapRouteArgs(
-          poi: queryPoi,
-          stack: queryStack,
-          locationGateResult: result,
-        ),
+        poi: queryPoi,
+        stack: queryStack,
+        locationGateResult: result,
+      ),
       _ when route.name == PoiDetailsRoute.name => PoiDetailsRouteArgs(
-          poi: queryPoi,
-          stack: queryStack,
-          locationGateResult: result,
-        ),
+        poi: queryPoi,
+        stack: queryStack,
+        locationGateResult: result,
+      ),
       _ => null,
     };
   }

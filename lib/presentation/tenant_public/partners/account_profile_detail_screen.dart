@@ -73,8 +73,9 @@ class _AccountProfileDetailScreenState
   @override
   void initState() {
     super.initState();
-    _controller =
-        RouteInstanceScope.read<AccountProfileDetailController>(context);
+    _controller = RouteInstanceScope.read<AccountProfileDetailController>(
+      context,
+    );
     unawaited(_controller.loadResolvedAccountProfile(widget.accountProfile));
   }
 
@@ -93,9 +94,7 @@ class _AccountProfileDetailScreenState
     super.didUpdateWidget(oldWidget);
     if (oldWidget.accountProfile.id != widget.accountProfile.id ||
         oldWidget.accountProfile.slug != widget.accountProfile.slug) {
-      unawaited(
-        _controller.loadResolvedAccountProfile(widget.accountProfile),
-      );
+      unawaited(_controller.loadResolvedAccountProfile(widget.accountProfile));
     }
   }
 
@@ -143,15 +142,18 @@ class _AccountProfileDetailScreenState
                                     _controller.agendaStatusRevisionStreamValue,
                                 builder: (context, _) {
                                   return StreamValueBuilder<
-                                      ProximityPreference?>(
+                                    ProximityPreference?
+                                  >(
                                     streamValue: _controller
                                         .proximityPreferenceStreamValue,
-                                    builder: (context, __) {
-                                      final isFav = favorites
-                                          .contains(resolvedAccountProfile.id);
-                                      final isFavoritable =
-                                          _controller.isFavoritable(
-                                              resolvedAccountProfile);
+                                    builder: (context, _) {
+                                      final isFav = favorites.contains(
+                                        resolvedAccountProfile.id,
+                                      );
+                                      final isFavoritable = _controller
+                                          .isFavoritable(
+                                            resolvedAccountProfile,
+                                          );
                                       final configTabs = _buildTabsFromConfig(
                                         resolvedAccountProfile,
                                         resolvedConfig,
@@ -186,8 +188,8 @@ class _AccountProfileDetailScreenState
                                         ),
                                         backPolicy:
                                             buildCanonicalCurrentRouteBackPolicy(
-                                          context,
-                                        ),
+                                              context,
+                                            ),
                                         tabs: effectiveTabs,
                                         betweenHeroAndTabs: null,
                                       );
@@ -247,15 +249,7 @@ class _AccountProfileDetailScreenState
                     colorScheme.surface.withValues(alpha: 0.9),
                     colorScheme.surface,
                   ],
-                  stops: const <double>[
-                    0,
-                    0.16,
-                    0.32,
-                    0.48,
-                    0.64,
-                    0.8,
-                    1,
-                  ],
+                  stops: const <double>[0, 0.16, 0.32, 0.48, 0.64, 0.8, 1],
                 ),
               ),
             ),
@@ -292,10 +286,10 @@ class _AccountProfileDetailScreenState
           titleSpacing: 10,
           supportingSpacing: 12,
           titleStyle: Theme.of(context).textTheme.displaySmall?.copyWith(
-                color: colorScheme.onSurface,
-                fontWeight: FontWeight.w900,
-                height: 0.95,
-              ),
+            color: colorScheme.onSurface,
+            fontWeight: FontWeight.w900,
+            height: 0.95,
+          ),
           titleTrailing: [
             if (accountProfile.isVerified)
               _buildVerifiedBadge(onDarkBackground: false),
@@ -316,9 +310,9 @@ class _AccountProfileDetailScreenState
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
         style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: colorScheme.onSurface,
-              fontWeight: FontWeight.w800,
-            ),
+          color: colorScheme.onSurface,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }
@@ -352,9 +346,8 @@ class _AccountProfileDetailScreenState
         label: 'WhatsApp',
         icon: BooraIcons.whatsapp,
         foregroundColor: const Color(0xFF25D366),
-        onPressed: () => unawaited(
-          _shareAccountProfileOnWhatsApp(accountProfile),
-        ),
+        onPressed: () =>
+            unawaited(_shareAccountProfileOnWhatsApp(accountProfile)),
       ),
     ];
   }
@@ -374,10 +367,7 @@ class _AccountProfileDetailScreenState
       );
     }
 
-    return _buildDefaultHeroFallback(
-      colorScheme: colorScheme,
-      visual: visual,
-    );
+    return _buildDefaultHeroFallback(colorScheme: colorScheme, visual: visual);
   }
 
   Widget _buildDefaultHeroFallback({
@@ -421,9 +411,9 @@ class _AccountProfileDetailScreenState
             Text(
               _distanceLabelFromMeters(accountProfile.distanceMeters!),
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
-                  ),
+                color: colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
@@ -449,19 +439,20 @@ class _AccountProfileDetailScreenState
                           color: chipBackground,
                           borderRadius: BorderRadius.circular(999),
                           border: Border.all(
-                            color: colorScheme.outlineVariant
-                                .withValues(alpha: 0.5),
+                            color: colorScheme.outlineVariant.withValues(
+                              alpha: 0.5,
+                            ),
                           ),
                         ),
                         child: Text(
                           tag.value,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style:
-                              Theme.of(context).textTheme.labelMedium?.copyWith(
-                                    color: chipForeground,
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                          style: Theme.of(context).textTheme.labelMedium
+                              ?.copyWith(
+                                color: chipForeground,
+                                fontWeight: FontWeight.w700,
+                              ),
                         ),
                       ),
                     ),
@@ -492,8 +483,9 @@ class _AccountProfileDetailScreenState
   Widget _buildHeroReferencePointAction(AccountProfileModel accountProfile) {
     final colorScheme = Theme.of(context).colorScheme;
     final isCurrent = _controller.isCurrentReferencePoint(accountProfile);
-    final backgroundColor =
-        isCurrent ? colorScheme.secondaryContainer : colorScheme.primary;
+    final backgroundColor = isCurrent
+        ? colorScheme.secondaryContainer
+        : colorScheme.primary;
     final foregroundColor = backgroundColor.computeIconColor(
       context,
       candidates: [
@@ -510,9 +502,7 @@ class _AccountProfileDetailScreenState
         key: const Key('accountProfileHeroReferencePointButton'),
         onPressed: isCurrent
             ? () {}
-            : () => unawaited(
-                  _handleReferencePointTap(accountProfile),
-                ),
+            : () => unawaited(_handleReferencePointTap(accountProfile)),
         icon: Icon(
           isCurrent ? Icons.check_circle_rounded : Icons.location_on_outlined,
         ),
@@ -526,9 +516,7 @@ class _AccountProfileDetailScreenState
           backgroundColor: backgroundColor,
           foregroundColor: foregroundColor,
           minimumSize: const Size.fromHeight(44),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       ),
     );
@@ -554,8 +542,9 @@ class _AccountProfileDetailScreenState
   Future<void> _handleReferencePointTap(
     AccountProfileModel accountProfile,
   ) async {
-    final confirmed =
-        await _showReferencePointConfirmationDialog(accountProfile);
+    final confirmed = await _showReferencePointConfirmationDialog(
+      accountProfile,
+    );
     if (!mounted || !confirmed) {
       return;
     }
@@ -634,10 +623,7 @@ class _AccountProfileDetailScreenState
                 style: Theme.of(dialogContext).textTheme.bodyLarge,
               ),
               const SizedBox(height: 16),
-              _buildReferencePointPreviewCard(
-                dialogContext,
-                accountProfile,
-              ),
+              _buildReferencePointPreviewCard(dialogContext, accountProfile),
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
@@ -678,9 +664,9 @@ class _AccountProfileDetailScreenState
             children: [
               Text(
                 'Cancelar ponto de referência?',
-                style: Theme.of(dialogContext).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+                style: Theme.of(
+                  dialogContext,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 8),
               Text(
@@ -692,7 +678,8 @@ class _AccountProfileDetailScreenState
                 width: double.infinity,
                 child: FilledButton.icon(
                   key: const Key(
-                      'accountProfileClearReferencePointConfirmButton'),
+                    'accountProfileClearReferencePointConfirmButton',
+                  ),
                   onPressed: () => dialogContext.router.maybePop(true),
                   icon: const Icon(Icons.location_off_outlined),
                   label: const Text('Cancelar ponto de referência'),
@@ -744,9 +731,9 @@ class _AccountProfileDetailScreenState
         typeAvatarIconSize: 14,
         titleMaxLines: 1,
         titleStyle: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: colorScheme.onSurface,
-              fontWeight: FontWeight.w800,
-            ),
+          color: colorScheme.onSurface,
+          fontWeight: FontWeight.w800,
+        ),
         supportingSpacing: 8,
         supporting: _buildReferencePointPreviewSupporting(
           context,
@@ -772,9 +759,9 @@ class _AccountProfileDetailScreenState
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
-              ),
+            color: colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       if (address != null)
         _buildReferencePointPreviewMetaRow(
@@ -813,11 +800,7 @@ class _AccountProfileDetailScreenState
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          icon,
-          size: 15,
-          color: colorScheme.onSurfaceVariant,
-        ),
+        Icon(icon, size: 15, color: colorScheme.onSurfaceVariant),
         const SizedBox(width: 5),
         Expanded(
           child: Text(
@@ -825,8 +808,8 @@ class _AccountProfileDetailScreenState
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
+              color: colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
       ],
@@ -907,10 +890,11 @@ class _AccountProfileDetailScreenState
   List<ImmersiveTabItem> _buildNestedProfileGroupTabs(
     AccountProfileModel accountProfile,
   ) {
-    final groups = accountProfile.nestedProfileGroups
-        .where((group) => group.isVisible)
-        .toList(growable: false)
-      ..sort((left, right) => left.order.compareTo(right.order));
+    final groups =
+        accountProfile.nestedProfileGroups
+            .where((group) => group.isVisible)
+            .toList(growable: false)
+          ..sort((left, right) => left.order.compareTo(right.order));
 
     return groups
         .map(
@@ -1013,10 +997,7 @@ class _AccountProfileDetailScreenState
 
     try {
       await PublicShareLauncher.launchSystemShare(
-        ShareParams(
-          text: payload.message,
-          subject: payload.subject,
-        ),
+        ShareParams(text: payload.message, subject: payload.subject),
         launcher: widget.shareLauncher,
       );
     } catch (_) {
@@ -1097,9 +1078,9 @@ class _AccountProfileDetailScreenState
             const SizedBox(height: 12),
             Text(
               'Perfil não encontrado',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 8),
             Text(
@@ -1125,9 +1106,9 @@ class _AccountProfileDetailScreenState
             const SizedBox(height: 12),
             Text(
               'Não foi possível abrir o perfil',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 8),
             Text(
@@ -1166,9 +1147,9 @@ class _AccountProfileDetailScreenState
               showFavoriteEmptyState
                   ? 'Favorite para ser avisado das novidades sobre ${accountProfile.name}.'
                   : 'Mais sobre este perfil',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
             ),
             if (!showFavoriteEmptyState) ...[
               const SizedBox(height: 12),
@@ -1176,9 +1157,9 @@ class _AccountProfileDetailScreenState
                 'Este $typeLabel ainda não publicou módulos adicionais por aqui. '
                 'Novas informações devem aparecer em breve.',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                      height: 1.45,
-                    ),
+                  color: colorScheme.onSurfaceVariant,
+                  height: 1.45,
+                ),
               ),
             ],
           ],
@@ -1191,8 +1172,9 @@ class _AccountProfileDetailScreenState
     final background = onDarkBackground
         ? Colors.white.withValues(alpha: 0.12)
         : Theme.of(context).colorScheme.surfaceContainerHighest;
-    final foreground =
-        onDarkBackground ? Colors.white : Theme.of(context).colorScheme.primary;
+    final foreground = onDarkBackground
+        ? Colors.white
+        : Theme.of(context).colorScheme.primary;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -1341,7 +1323,9 @@ class _AccountProfileDetailScreenState
                           Text(
                             e.title,
                             style: const TextStyle(
-                                fontWeight: FontWeight.w700, fontSize: 12),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -1394,7 +1378,7 @@ class _AccountProfileDetailScreenState
                           ? DecorationImage(
                               image: NetworkImage(product.imageUrl),
                               fit: BoxFit.cover,
-                              onError: (_, __) {},
+                              onError: (_, _) {},
                             )
                           : null,
                     ),
@@ -1446,9 +1430,9 @@ class _AccountProfileDetailScreenState
           if (featuredEvent != null) ...[
             Text(
               'Acontecendo Agora',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 14),
             _buildAgendaLiveHighlightCard(accountProfile, featuredEvent),
@@ -1457,9 +1441,9 @@ class _AccountProfileDetailScreenState
           if (upcomingEvents.isNotEmpty) ...[
             Text(
               'Próximos Eventos',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 14),
             ...upcomingEvents.map(
@@ -1497,8 +1481,9 @@ class _AccountProfileDetailScreenState
       distanceBadgeKey: const Key('accountProfileLocationDistanceBadge'),
       primaryWazeButtonKey: const Key('accountProfileMainWazeButton'),
       primaryUberButtonKey: const Key('accountProfileMainUberButton'),
-      primaryOtherButtonKey:
-          const Key('accountProfileMainOtherDirectionsButton'),
+      primaryOtherButtonKey: const Key(
+        'accountProfileMainOtherDirectionsButton',
+      ),
     );
   }
 
@@ -1597,9 +1582,9 @@ class _AccountProfileDetailScreenState
             Text(
               address?.isNotEmpty == true ? address! : 'Mapa do local',
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -1612,9 +1597,7 @@ class _AccountProfileDetailScreenState
   void _openProfileMap() {
     final path = Uri(
       path: '/mapa',
-      queryParameters: {
-        'poi': 'account_profile:${widget.accountProfile.id}',
-      },
+      queryParameters: {'poi': 'account_profile:${widget.accountProfile.id}'},
     ).toString();
     _safeRouterPushPath(path);
   }
@@ -1694,9 +1677,7 @@ class _AccountProfileDetailScreenState
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Widget _buildFooterShell({
-    required Widget child,
-  }) {
+  Widget _buildFooterShell({required Widget child}) {
     final colorScheme = Theme.of(context).colorScheme;
     return Container(
       decoration: BoxDecoration(
@@ -1725,13 +1706,11 @@ class _AccountProfileDetailScreenState
       backgroundColor: backgroundColor,
       foregroundColor: foregroundColor,
       minimumSize: const Size.fromHeight(60),
-      textStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w900,
-          ),
+      textStyle: Theme.of(
+        context,
+      ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       elevation: 0,
     );
   }
@@ -1781,9 +1760,7 @@ class _AccountProfileDetailScreenState
               if (statusTint != null)
                 Positioned.fill(
                   child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: statusTint,
-                    ),
+                    decoration: BoxDecoration(color: statusTint),
                   ),
                 ),
               Positioned.fill(
@@ -1824,9 +1801,9 @@ class _AccountProfileDetailScreenState
                       child: Text(
                         'AO VIVO',
                         style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                              color: colorScheme.onErrorContainer,
-                              fontWeight: FontWeight.w900,
-                            ),
+                          color: colorScheme.onErrorContainer,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ),
                   ],
@@ -1846,25 +1823,28 @@ class _AccountProfileDetailScreenState
                           'accountProfileAgendaLiveEyebrow_${event.uniqueId}',
                         ),
                         style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                              color: Colors.white70,
-                              fontWeight: FontWeight.w800,
-                            ),
+                          color: Colors.white70,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                       const SizedBox(height: 8),
                     ],
                     Text(
                       headline,
                       key: Key(
-                          'accountProfileAgendaLiveHeadline_${event.uniqueId}'),
-                      style:
-                          Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
-                                height: 0.95,
-                              ),
+                        'accountProfileAgendaLiveHeadline_${event.uniqueId}',
+                      ),
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            height: 0.95,
+                          ),
                     ),
-                    if (_agendaCounterparts(accountProfile, event)
-                        .isNotEmpty) ...[
+                    if (_agendaCounterparts(
+                      accountProfile,
+                      event,
+                    ).isNotEmpty) ...[
                       const SizedBox(height: 8),
                       _buildAgendaCounterpartsLine(
                         accountProfile,
@@ -1890,9 +1870,7 @@ class _AccountProfileDetailScreenState
                         Expanded(
                           child: Text(
                             event.expandedScheduleLabel,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleSmall
+                            style: Theme.of(context).textTheme.titleSmall
                                 ?.copyWith(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w800,
@@ -1902,11 +1880,11 @@ class _AccountProfileDetailScreenState
                       ],
                     ),
                     if (_buildAgendaVenueLine(
-                      accountProfile,
-                      event,
-                      keyPrefix: 'accountProfileAgendaLiveVenue',
-                      textColor: Colors.white,
-                    )
+                          accountProfile,
+                          event,
+                          keyPrefix: 'accountProfileAgendaLiveVenue',
+                          textColor: Colors.white,
+                        )
                         case final venueLine?) ...[
                       const SizedBox(height: 10),
                       venueLine,
@@ -1968,10 +1946,7 @@ class _AccountProfileDetailScreenState
       return Container(
         color: colorScheme.surfaceContainerHighest,
         alignment: Alignment.center,
-        child: Icon(
-          Icons.event_outlined,
-          color: colorScheme.onSurfaceVariant,
-        ),
+        child: Icon(Icons.event_outlined, color: colorScheme.onSurfaceVariant),
       );
     }
 
@@ -2022,10 +1997,7 @@ class _AccountProfileDetailScreenState
       }
       seen.add(normalized);
       counterparts.add(
-        _AgendaCounterpart(
-          label: title,
-          thumbUrl: counterpart.thumb,
-        ),
+        _AgendaCounterpart(label: title, thumbUrl: counterpart.thumb),
       );
     }
 
@@ -2085,9 +2057,9 @@ class _AccountProfileDetailScreenState
     required Color chipBackground,
   }) {
     final textStyle = Theme.of(context).textTheme.bodyLarge?.copyWith(
-          color: textColor,
-          fontWeight: FontWeight.w700,
-        );
+      color: textColor,
+      fontWeight: FontWeight.w700,
+    );
     final counterparts = _agendaCounterparts(accountProfile, event);
     final visibleCounterparts = counterparts.length > 1
         ? counterparts.take(1).toList(growable: false)
@@ -2100,14 +2072,14 @@ class _AccountProfileDetailScreenState
       runSpacing: 6,
       children: [
         ...visibleCounterparts.asMap().entries.map(
-              (entry) => _buildAgendaCounterpartBadge(
-                entry.value,
-                labelStyle: textStyle,
-                iconColor: iconColor,
-                chipBackground: chipBackground,
-                key: Key('$keyPrefix${entry.key}_${event.uniqueId}'),
-              ),
-            ),
+          (entry) => _buildAgendaCounterpartBadge(
+            entry.value,
+            labelStyle: textStyle,
+            iconColor: iconColor,
+            chipBackground: chipBackground,
+            key: Key('$keyPrefix${entry.key}_${event.uniqueId}'),
+          ),
+        ),
         if (hiddenCount > 0)
           _buildAgendaCounterpartOverflowBadge(
             hiddenCount,
@@ -2195,9 +2167,9 @@ class _AccountProfileDetailScreenState
           child: Text(
             buffer.toString(),
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: textColor,
-                  fontWeight: FontWeight.w600,
-                ),
+              color: textColor,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ],
@@ -2232,20 +2204,12 @@ class _AccountProfileDetailScreenState
           width: 18,
           height: 18,
           fit: BoxFit.cover,
-          errorWidget: Icon(
-            fallbackIcon,
-            size: 16,
-            color: iconColor,
-          ),
+          errorWidget: Icon(fallbackIcon, size: 16, color: iconColor),
         ),
       );
     }
 
-    return Icon(
-      fallbackIcon,
-      size: 16,
-      color: iconColor,
-    );
+    return Icon(fallbackIcon, size: 16, color: iconColor);
   }
 
   Color? _agendaStatusTint({
@@ -2348,7 +2312,7 @@ class _AccountProfileDetailScreenState
                             ? DecorationImage(
                                 image: NetworkImage(v.url),
                                 fit: BoxFit.cover,
-                                onError: (_, __) {},
+                                onError: (_, _) {},
                               )
                             : null,
                       ),
@@ -2371,7 +2335,8 @@ class _AccountProfileDetailScreenState
                     (l) => Card(
                       child: ListTile(
                         leading: Icon(
-                            l.icon == 'pix' ? Icons.pix : Icons.link_outlined),
+                          l.icon == 'pix' ? Icons.pix : Icons.link_outlined,
+                        ),
                         title: Text(l.title),
                         subtitle: Text(l.subtitle),
                         trailing: const Icon(Icons.chevron_right),
@@ -2408,7 +2373,7 @@ class _AccountProfileDetailScreenState
                         ? DecorationImage(
                             image: NetworkImage(photo.url),
                             fit: BoxFit.cover,
-                            onError: (_, __) {},
+                            onError: (_, _) {},
                           )
                         : null,
                   ),
@@ -2429,15 +2394,17 @@ class _AccountProfileDetailScreenState
         key: const Key('accountProfileGroupedGallery'),
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (var groupIndex = 0;
-              groupIndex < groups.length;
-              groupIndex++) ...[
+          for (
+            var groupIndex = 0;
+            groupIndex < groups.length;
+            groupIndex++
+          ) ...[
             if (groupIndex > 0) const SizedBox(height: 24),
             Text(
               groups[groupIndex].subtitle,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 12),
             GridView.builder(
@@ -2471,9 +2438,9 @@ class _AccountProfileDetailScreenState
                       child: Ink(
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(14),
-                          color: Theme.of(context)
-                              .colorScheme
-                              .surfaceContainerHighest,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
                         ),
                         child: BellugaNetworkImage(
                           item.previewUrl,
@@ -2523,9 +2490,9 @@ class _AccountProfileDetailScreenState
                             item.modalUrl,
                             fit: BoxFit.contain,
                             placeholder: Container(
-                              color: Theme.of(dialogContext)
-                                  .colorScheme
-                                  .surfaceContainerHighest,
+                              color: Theme.of(
+                                dialogContext,
+                              ).colorScheme.surfaceContainerHighest,
                               child: const Center(
                                 child: CircularProgressIndicator(),
                               ),
@@ -2552,12 +2519,8 @@ class _AccountProfileDetailScreenState
                       children: [
                         Text(
                           group.subtitle,
-                          style: Theme.of(dialogContext)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(
-                                fontWeight: FontWeight.w800,
-                              ),
+                          style: Theme.of(dialogContext).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w800),
                         ),
                         if (item.description?.trim().isNotEmpty == true) ...[
                           const SizedBox(height: 8),
@@ -2611,7 +2574,7 @@ class _AccountProfileDetailScreenState
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: recommendations.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                separatorBuilder: (_, _) => const SizedBox(width: 12),
                 itemBuilder: (context, index) {
                   final rec = recommendations[index];
                   return Container(
@@ -2636,7 +2599,9 @@ class _AccountProfileDetailScreenState
                         Text(
                           rec.type,
                           style: const TextStyle(
-                              fontSize: 11, color: Colors.black54),
+                            fontSize: 11,
+                            color: Colors.black54,
+                          ),
                         ),
                       ],
                     ),
@@ -2665,7 +2630,9 @@ class _AccountProfileDetailScreenState
   }
 
   Widget _supportedEntities(
-      String title, List<PartnerSupportedEntityView>? data) {
+    String title,
+    List<PartnerSupportedEntityView>? data,
+  ) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -2684,7 +2651,7 @@ class _AccountProfileDetailScreenState
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: data.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                separatorBuilder: (_, _) => const SizedBox(width: 12),
                 itemBuilder: (context, index) {
                   final entity = data[index];
                   return Container(
@@ -2771,8 +2738,9 @@ class _AccountProfileDetailScreenState
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
-        onTap:
-            memberPath == null ? null : () => _safeRouterPushPath(memberPath),
+        onTap: memberPath == null
+            ? null
+            : () => _safeRouterPushPath(memberPath),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Row(
@@ -2789,9 +2757,9 @@ class _AccountProfileDetailScreenState
                   typeAvatarIconSize: 14,
                   titleSpacing: 6,
                   titleStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: colorScheme.onSurface,
-                        fontWeight: FontWeight.w900,
-                      ),
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.w900,
+                  ),
                   supporting: labels.isEmpty
                       ? null
                       : Wrap(
@@ -2830,10 +2798,7 @@ class _AccountProfileDetailScreenState
               ),
               if (memberPath != null) ...[
                 const SizedBox(width: 10),
-                Icon(
-                  Icons.chevron_right,
-                  color: colorScheme.onSurfaceVariant,
-                ),
+                Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant),
               ],
             ],
           ),
@@ -2882,7 +2847,8 @@ class _AccountProfileDetailScreenState
             const Icon(Icons.handshake),
             const SizedBox(width: 8),
             Expanded(
-                child: Text('Oferecimento: ${sponsor ?? 'Parceiro local'}')),
+              child: Text('Oferecimento: ${sponsor ?? 'Parceiro local'}'),
+            ),
           ],
         ),
       ),
@@ -2891,10 +2857,7 @@ class _AccountProfileDetailScreenState
 
   Widget _richTextBlock(String? title, String body) {
     return _richTextBlocks([
-      AccountProfileRichTextBlock(
-        title: title,
-        html: body,
-      ),
+      AccountProfileRichTextBlock(title: title, html: body),
     ]);
   }
 
@@ -2927,8 +2890,8 @@ class _AccountProfileDetailScreenState
               Text(
                 visibleBlocks[index].title!,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
+                  fontWeight: FontWeight.w900,
+                ),
               ),
               const SizedBox(height: 8),
             ],
@@ -2945,16 +2908,12 @@ class _AccountProfileDetailScreenState
                     ),
                     lineHeight: const LineHeight(1.45),
                   ),
-                  'p': Style(
-                    margin: Margins.only(bottom: 12),
-                  ),
+                  'p': Style(margin: Margins.only(bottom: 12)),
                   'strong': Style(
                     color: colorScheme.onSurface,
                     fontWeight: FontWeight.w800,
                   ),
-                  'br': Style(
-                    display: Display.block,
-                  ),
+                  'br': Style(display: Display.block),
                 },
               )
             else
@@ -2966,8 +2925,10 @@ class _AccountProfileDetailScreenState
   }
 
   Widget _plainRichTextBody(String body, ColorScheme colorScheme) {
-    final normalized =
-        body.replaceAll('\r\n', '\n').replaceAll('\r', '\n').trim();
+    final normalized = body
+        .replaceAll('\r\n', '\n')
+        .replaceAll('\r', '\n')
+        .trim();
     final paragraphs = normalized
         .split(RegExp(r'\n\s*\n+'))
         .where((paragraph) => paragraph.trim().isNotEmpty)
@@ -2976,18 +2937,20 @@ class _AccountProfileDetailScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (var paragraphIndex = 0;
-            paragraphIndex < paragraphs.length;
-            paragraphIndex++) ...[
+        for (
+          var paragraphIndex = 0;
+          paragraphIndex < paragraphs.length;
+          paragraphIndex++
+        ) ...[
           if (paragraphIndex > 0) const SizedBox(height: 12),
           for (final line in paragraphs[paragraphIndex].split('\n'))
             if (line.trim().isNotEmpty)
               Text(
                 line.trimRight(),
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                      height: 1.45,
-                    ),
+                  color: colorScheme.onSurfaceVariant,
+                  height: 1.45,
+                ),
               ),
         ],
       ],
@@ -3009,33 +2972,23 @@ class _AccountProfileDetailScreenState
       case ProfileModuleId.socialScore:
         return const SizedBox.shrink();
       case ProfileModuleId.agendaCarousel:
-        return _artistHighlights(
-          data is List<PartnerEventView> ? data : null,
-        );
+        return _artistHighlights(data is List<PartnerEventView> ? data : null);
       case ProfileModuleId.agendaList:
         return _agendaList(
           widget.accountProfile,
           data is List<PartnerEventView> ? data : null,
         );
       case ProfileModuleId.musicPlayer:
-        return _musicPlayer(
-          data is List<PartnerMediaView> ? data : null,
-        );
+        return _musicPlayer(data is List<PartnerMediaView> ? data : null);
       case ProfileModuleId.productGrid:
-        return _productGrid(
-          data is List<PartnerProductView> ? data : null,
-        );
+        return _productGrid(data is List<PartnerProductView> ? data : null);
       case ProfileModuleId.photoGallery:
         if (data is List<AccountProfileGalleryGroup>) {
           return _groupedPhotoGallery(data);
         }
-        return _photoGrid(
-          data is List<PartnerMediaView> ? data : null,
-        );
+        return _photoGrid(data is List<PartnerMediaView> ? data : null);
       case ProfileModuleId.videoGallery:
-        return _videoGallery(
-          data is List<PartnerMediaView> ? data : null,
-        );
+        return _videoGallery(data is List<PartnerMediaView> ? data : null);
       case ProfileModuleId.experienceCards:
         return _experienceCards(
           data is List<PartnerExperienceView> ? data : null,
@@ -3059,13 +3012,9 @@ class _AccountProfileDetailScreenState
       case ProfileModuleId.locationInfo:
         return _locationInfo(data as PartnerLocationView?);
       case ProfileModuleId.externalLinks:
-        return _externalLinks(
-          data is List<PartnerLinkView> ? data : null,
-        );
+        return _externalLinks(data is List<PartnerLinkView> ? data : null);
       case ProfileModuleId.faq:
-        return _faqBlock(
-          data is List<PartnerFaqView> ? data : null,
-        );
+        return _faqBlock(data is List<PartnerFaqView> ? data : null);
       case ProfileModuleId.sponsorBanner:
         return _sponsorBanner(data is String ? data : null);
     }
@@ -3073,10 +3022,7 @@ class _AccountProfileDetailScreenState
 }
 
 class _AgendaCounterpart {
-  const _AgendaCounterpart({
-    required this.label,
-    this.thumbUrl,
-  });
+  const _AgendaCounterpart({required this.label, this.thumbUrl});
 
   final String label;
   final String? thumbUrl;

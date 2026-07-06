@@ -53,38 +53,42 @@ class _FakeAccountsRepository
 
   @override
   final StreamValue<TenantAdminAccountsRepositoryContractPrimBool>
-      hasMoreAccountsStreamValue =
+  hasMoreAccountsStreamValue =
       StreamValue<TenantAdminAccountsRepositoryContractPrimBool>(
-          defaultValue: TenantAdminAccountsRepositoryContractPrimBool.fromRaw(
-    false,
-    defaultValue: false,
-  ));
+        defaultValue: TenantAdminAccountsRepositoryContractPrimBool.fromRaw(
+          false,
+          defaultValue: false,
+        ),
+      );
 
   @override
   final StreamValue<TenantAdminAccountsRepositoryContractPrimBool>
-      isAccountsPageLoadingStreamValue =
+  isAccountsPageLoadingStreamValue =
       StreamValue<TenantAdminAccountsRepositoryContractPrimBool>(
-          defaultValue: TenantAdminAccountsRepositoryContractPrimBool.fromRaw(
-    false,
-    defaultValue: false,
-  ));
+        defaultValue: TenantAdminAccountsRepositoryContractPrimBool.fromRaw(
+          false,
+          defaultValue: false,
+        ),
+      );
 
   @override
   final StreamValue<TenantAdminAccountsRepositoryContractPrimString?>
-      accountsErrorStreamValue =
+  accountsErrorStreamValue =
       StreamValue<TenantAdminAccountsRepositoryContractPrimString?>();
 
   @override
-  Future<void> loadAccounts(
-      {TenantAdminAccountsRepositoryContractPrimInt? pageSize,
-      TenantAdminOwnershipState? ownershipState,
-      TenantAdminAccountsRepositoryContractPrimString? searchQuery}) async {}
+  Future<void> loadAccounts({
+    TenantAdminAccountsRepositoryContractPrimInt? pageSize,
+    TenantAdminOwnershipState? ownershipState,
+    TenantAdminAccountsRepositoryContractPrimString? searchQuery,
+  }) async {}
 
   @override
-  Future<void> loadNextAccountsPage(
-      {TenantAdminAccountsRepositoryContractPrimInt? pageSize,
-      TenantAdminOwnershipState? ownershipState,
-      TenantAdminAccountsRepositoryContractPrimString? searchQuery}) async {}
+  Future<void> loadNextAccountsPage({
+    TenantAdminAccountsRepositoryContractPrimInt? pageSize,
+    TenantAdminOwnershipState? ownershipState,
+    TenantAdminAccountsRepositoryContractPrimString? searchQuery,
+  }) async {}
 
   @override
   void resetAccountsState() {}
@@ -161,7 +165,8 @@ class _FakeAccountsRepository
 
   @override
   Future<void> deleteAccount(
-      TenantAdminAccountsRepositoryContractPrimString accountSlug) async {}
+    TenantAdminAccountsRepositoryContractPrimString accountSlug,
+  ) async {}
 
   @override
   Future<TenantAdminAccount> fetchAccountBySlug(
@@ -196,7 +201,8 @@ class _FakeAccountsRepository
 
   @override
   Future<void> forceDeleteAccount(
-      TenantAdminAccountsRepositoryContractPrimString accountSlug) async {}
+    TenantAdminAccountsRepositoryContractPrimString accountSlug,
+  ) async {}
 
   @override
   Future<TenantAdminAccount> restoreAccount(
@@ -235,24 +241,25 @@ class _FakeAccountProfilesRepository
     implements TenantAdminAccountProfilesRepositoryContract {
   _FakeAccountProfilesRepository({
     List<TenantAdminProfileTypeDefinition>? profileTypes,
-  }) : _profileTypes = profileTypes ??
-            [
-              tenantAdminProfileTypeDefinitionFromRaw(
-                type: 'venue',
-                label: 'Venue',
-                allowedTaxonomies: [],
-                capabilities: TenantAdminProfileTypeCapabilities(
-                  isFavoritable: TenantAdminFlagValue(true),
-                  isPoiEnabled: TenantAdminFlagValue(true),
-                  hasBio: TenantAdminFlagValue(false),
-                  hasContent: TenantAdminFlagValue(false),
-                  hasTaxonomies: TenantAdminFlagValue(false),
-                  hasAvatar: TenantAdminFlagValue(true),
-                  hasCover: TenantAdminFlagValue(true),
-                  hasEvents: TenantAdminFlagValue(false),
-                ),
-              ),
-            ];
+  }) : _profileTypes =
+           profileTypes ??
+           [
+             tenantAdminProfileTypeDefinitionFromRaw(
+               type: 'venue',
+               label: 'Venue',
+               allowedTaxonomies: [],
+               capabilities: TenantAdminProfileTypeCapabilities(
+                 isFavoritable: TenantAdminFlagValue(true),
+                 isPoiEnabled: TenantAdminFlagValue(true),
+                 hasBio: TenantAdminFlagValue(false),
+                 hasContent: TenantAdminFlagValue(false),
+                 hasTaxonomies: TenantAdminFlagValue(false),
+                 hasAvatar: TenantAdminFlagValue(true),
+                 hasCover: TenantAdminFlagValue(true),
+                 hasEvents: TenantAdminFlagValue(false),
+               ),
+             ),
+           ];
 
   List<TenantAdminProfileTypeDefinition> _profileTypes;
   List<TenantAdminAccountProfile> profilesToReturn = const [];
@@ -276,7 +283,7 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminProfileTypeDefinition>>
-      fetchProfileTypesPage({
+  fetchProfileTypesPage({
     required TenantAdminAccountProfilesRepoInt page,
     required TenantAdminAccountProfilesRepoInt pageSize,
   }) async {
@@ -319,8 +326,9 @@ class _FakeAccountProfilesRepository
       throw error;
     }
     lastCreateBio = bio?.value;
-    lastCreateTaxonomyTerms =
-        List<TenantAdminTaxonomyTerm>.from(taxonomyTerms.items);
+    lastCreateTaxonomyTerms = List<TenantAdminTaxonomyTerm>.from(
+      taxonomyTerms.items,
+    );
     return tenantAdminAccountProfileFromRaw(
       id: 'profile-1',
       accountId: accountId.value,
@@ -333,15 +341,18 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<void> deleteAccountProfile(
-      TenantAdminAccountProfilesRepoString accountProfileId) async {}
+    TenantAdminAccountProfilesRepoString accountProfileId,
+  ) async {}
 
   @override
   Future<void> forceDeleteAccountProfile(
-      TenantAdminAccountProfilesRepoString accountProfileId) async {}
+    TenantAdminAccountProfilesRepoString accountProfileId,
+  ) async {}
 
   @override
   Future<TenantAdminAccountProfile> fetchAccountProfile(
-      TenantAdminAccountProfilesRepoString accountProfileId) async {
+    TenantAdminAccountProfilesRepoString accountProfileId,
+  ) async {
     return tenantAdminAccountProfileFromRaw(
       id: 'profile-1',
       accountId: 'acc-1',
@@ -356,7 +367,43 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoBool? queryableOnly,
     TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async {
-    return profilesToReturn;
+    return _filterProfiles(
+      excludeAccountProfileId: excludeAccountProfileId?.value,
+    );
+  }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+  fetchAccountProfilesPage({
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
+    TenantAdminAccountProfilesRepoString? search,
+    TenantAdminAccountProfilesRepoString? accountId,
+    TenantAdminAccountProfilesRepoBool? queryableOnly,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
+  }) async {
+    final filtered = _filterProfiles(
+      search: search?.value,
+      excludeAccountProfileId: excludeAccountProfileId?.value,
+    );
+    final start = (page.value - 1) * pageSize.value;
+    if (page.value <= 0 || pageSize.value <= 0 || start >= filtered.length) {
+      return tenantAdminPagedResultFromRaw(
+        items: const <TenantAdminAccountProfile>[],
+        hasMore: false,
+        currentPage: page.value,
+        pageSize: pageSize.value,
+      );
+    }
+    final end = start + pageSize.value < filtered.length
+        ? start + pageSize.value
+        : filtered.length;
+    return tenantAdminPagedResultFromRaw(
+      items: filtered.sublist(start, end),
+      hasMore: end < filtered.length,
+      currentPage: page.value,
+      pageSize: pageSize.value,
+    );
   }
 
   @override
@@ -370,19 +417,22 @@ class _FakeAccountProfilesRepository
     return tenantAdminProfileTypeDefinitionFromRaw(
       type: type.value,
       label: label.value,
-      allowedTaxonomies:
-          allowedTaxonomies.map((entry) => entry.value).toList(growable: false),
+      allowedTaxonomies: allowedTaxonomies
+          .map((entry) => entry.value)
+          .toList(growable: false),
       capabilities: capabilities,
     );
   }
 
   @override
   Future<void> deleteProfileType(
-      TenantAdminAccountProfilesRepoString type) async {}
+    TenantAdminAccountProfilesRepoString type,
+  ) async {}
 
   @override
   Future<TenantAdminAccountProfile> restoreAccountProfile(
-      TenantAdminAccountProfilesRepoString accountProfileId) async {
+    TenantAdminAccountProfilesRepoString accountProfileId,
+  ) async {
     return tenantAdminAccountProfileFromRaw(
       id: 'profile-1',
       accountId: 'acc-1',
@@ -403,11 +453,13 @@ class _FakeAccountProfilesRepository
     return tenantAdminProfileTypeDefinitionFromRaw(
       type: type.value,
       label: label?.value ?? 'Venue',
-      allowedTaxonomies: allowedTaxonomies
+      allowedTaxonomies:
+          allowedTaxonomies
               ?.map((entry) => entry.value)
               .toList(growable: false) ??
           [],
-      capabilities: capabilities ??
+      capabilities:
+          capabilities ??
           TenantAdminProfileTypeCapabilities(
             isFavoritable: TenantAdminFlagValue(true),
             isPoiEnabled: TenantAdminFlagValue(true),
@@ -457,6 +509,29 @@ class _FakeAccountProfilesRepository
   }) async {
     return fetchAccountProfile(accountProfileId);
   }
+
+  List<TenantAdminAccountProfile> _filterProfiles({
+    String? search,
+    String? excludeAccountProfileId,
+  }) {
+    final normalizedSearch = search?.trim().toLowerCase() ?? '';
+    return profilesToReturn
+        .where((profile) {
+          if (excludeAccountProfileId != null &&
+              excludeAccountProfileId.isNotEmpty &&
+              profile.id == excludeAccountProfileId) {
+            return false;
+          }
+          if (normalizedSearch.isEmpty) {
+            return true;
+          }
+          final normalizedSlug = profile.slug?.toLowerCase() ?? '';
+          return profile.displayName.toLowerCase().contains(normalizedSearch) ||
+              profile.profileType.toLowerCase().contains(normalizedSearch) ||
+              normalizedSlug.contains(normalizedSearch);
+        })
+        .toList(growable: false);
+  }
 }
 
 class _FakeTaxonomiesRepository
@@ -465,8 +540,8 @@ class _FakeTaxonomiesRepository
   _FakeTaxonomiesRepository({
     List<TenantAdminTaxonomyDefinition>? taxonomies,
     Map<String, List<TenantAdminTaxonomyTermDefinition>>? termsByTaxonomyId,
-  })  : _taxonomies = taxonomies ?? [],
-        _termsByTaxonomyId = termsByTaxonomyId ?? {};
+  }) : _taxonomies = taxonomies ?? [],
+       _termsByTaxonomyId = termsByTaxonomyId ?? {};
 
   List<TenantAdminTaxonomyDefinition> _taxonomies;
   Map<String, List<TenantAdminTaxonomyTermDefinition>> _termsByTaxonomyId;
@@ -518,7 +593,7 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
-      fetchTaxonomiesPage({
+  fetchTaxonomiesPage({
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
   }) async {
@@ -547,14 +622,13 @@ class _FakeTaxonomiesRepository
   @override
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
     required TenantAdminTaxRepoString taxonomyId,
-  }) async =>
-      List<TenantAdminTaxonomyTermDefinition>.from(
-        _termsByTaxonomyId[taxonomyId.value] ?? [],
-      );
+  }) async => List<TenantAdminTaxonomyTermDefinition>.from(
+    _termsByTaxonomyId[taxonomyId.value] ?? [],
+  );
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
-      fetchTermsPage({
+  fetchTermsPage({
     required TenantAdminTaxRepoString taxonomyId,
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
@@ -621,17 +695,18 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   const pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
-  final fallbackTempDir =
-      Directory.systemTemp.createTempSync('tenant-admin-account-create-test');
+  final fallbackTempDir = Directory.systemTemp.createTempSync(
+    'tenant-admin-account-create-test',
+  );
 
   setUpAll(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(pathProviderChannel, (call) async {
-      if (call.method == 'getTemporaryDirectory') {
-        return fallbackTempDir.path;
-      }
-      return null;
-    });
+          if (call.method == 'getTemporaryDirectory') {
+            return fallbackTempDir.path;
+          }
+          return null;
+        });
   });
 
   setUp(() async {
@@ -676,52 +751,50 @@ void main() {
   });
 
   testWidgets(
-      'requires location and shows map pick for POI-enabled profile type',
-      (tester) async {
-    await _pumpWithAutoRoute(
-      tester,
-      Scaffold(
-        body: TenantAdminAccountCreateScreen(),
-      ),
-    );
+    'requires location and shows map pick for POI-enabled profile type',
+    (tester) async {
+      await _pumpWithAutoRoute(
+        tester,
+        Scaffold(body: TenantAdminAccountCreateScreen()),
+      );
 
-    final profileTypeDropdown = find.byType(DropdownButtonFormField<String>);
-    await tester.ensureVisible(profileTypeDropdown.last);
-    await tester.tap(profileTypeDropdown.last, warnIfMissed: false);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Venue').last);
-    await tester.pumpAndSettle();
+      final profileTypeDropdown = find.byType(DropdownButtonFormField<String>);
+      await tester.ensureVisible(profileTypeDropdown.last);
+      await tester.tap(profileTypeDropdown.last, warnIfMissed: false);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Venue').last);
+      await tester.pumpAndSettle();
 
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Nome'),
-      'Conta Teste',
-    );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Nome'),
+        'Conta Teste',
+      );
 
-    expect(
-      find.byKey(const ValueKey('tenant_admin_account_create_map_pick')),
-      findsOneWidget,
-    );
+      expect(
+        find.byKey(const ValueKey('tenant_admin_account_create_map_pick')),
+        findsOneWidget,
+      );
 
-    final saveButton =
-        find.byKey(const ValueKey('tenant_admin_account_create_save'));
-    await tester.ensureVisible(saveButton);
-    await tester.tap(saveButton, warnIfMissed: false);
-    await tester.pumpAndSettle();
+      final saveButton = find.byKey(
+        const ValueKey('tenant_admin_account_create_save'),
+      );
+      await tester.ensureVisible(saveButton);
+      await tester.tap(saveButton, warnIfMissed: false);
+      await tester.pumpAndSettle();
 
-    expect(
-      find.text('Localizacao e obrigatoria para este perfil.'),
-      findsOneWidget,
-    );
-  });
+      expect(
+        find.text('Localizacao e obrigatoria para este perfil.'),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('shows selected avatar and allows clear', (tester) async {
     final avatarFile = _createTempImageFile('avatar.png');
     final coverFile = _createTempImageFile('cover.png');
     await _pumpWithAutoRoute(
       tester,
-      Scaffold(
-        body: TenantAdminAccountCreateScreen(),
-      ),
+      Scaffold(body: TenantAdminAccountCreateScreen()),
     );
 
     expect(
@@ -778,52 +851,55 @@ void main() {
   });
 
   testWidgets(
-      'keeps avatar and cover files when web URLs are cleared pre-submit',
-      (tester) async {
-    final profilesRepository =
-        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
-            as _FakeAccountProfilesRepository;
-    profilesRepository._profileTypes = [
-      tenantAdminProfileTypeDefinitionFromRaw(
-        type: 'media',
-        label: 'Media',
-        allowedTaxonomies: const [],
-        capabilities: TenantAdminProfileTypeCapabilities(
-          isFavoritable: TenantAdminFlagValue(true),
-          isPoiEnabled: TenantAdminFlagValue(false),
-          hasBio: TenantAdminFlagValue(false),
-          hasContent: TenantAdminFlagValue(false),
-          hasTaxonomies: TenantAdminFlagValue(false),
-          hasAvatar: TenantAdminFlagValue(true),
-          hasCover: TenantAdminFlagValue(true),
-          hasEvents: TenantAdminFlagValue(false),
+    'keeps avatar and cover files when web URLs are cleared pre-submit',
+    (tester) async {
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+      profilesRepository._profileTypes = [
+        tenantAdminProfileTypeDefinitionFromRaw(
+          type: 'media',
+          label: 'Media',
+          allowedTaxonomies: const [],
+          capabilities: TenantAdminProfileTypeCapabilities(
+            isFavoritable: TenantAdminFlagValue(true),
+            isPoiEnabled: TenantAdminFlagValue(false),
+            hasBio: TenantAdminFlagValue(false),
+            hasContent: TenantAdminFlagValue(false),
+            hasTaxonomies: TenantAdminFlagValue(false),
+            hasAvatar: TenantAdminFlagValue(true),
+            hasCover: TenantAdminFlagValue(true),
+            hasEvents: TenantAdminFlagValue(false),
+          ),
         ),
-      ),
-    ];
-    final avatarFile = _createTempImageFile('avatar-submit.png');
-    final coverFile = _createTempImageFile('cover-submit.png');
-    final controller = GetIt.I.get<TenantAdminAccountCreateController>();
-    controller.profileTypesStreamValue.addValue(
-      List<TenantAdminProfileTypeDefinition>.from(
-        profilesRepository._profileTypes,
-      ),
-    );
-    controller.resetCreateState();
-    controller.updateCreateSelectedProfileType('media');
-    expect(
-        controller.createStateStreamValue.value.selectedProfileType, 'media');
-    controller.nameController.text = 'Conta com imagem';
-    controller.updateCreateAvatarFile(avatarFile);
-    controller.updateCreateCoverFile(coverFile);
-    expect(controller.createStateStreamValue.value.avatarFile, isNotNull);
-    expect(controller.createStateStreamValue.value.coverFile, isNotNull);
+      ];
+      final avatarFile = _createTempImageFile('avatar-submit.png');
+      final coverFile = _createTempImageFile('cover-submit.png');
+      final controller = GetIt.I.get<TenantAdminAccountCreateController>();
+      controller.profileTypesStreamValue.addValue(
+        List<TenantAdminProfileTypeDefinition>.from(
+          profilesRepository._profileTypes,
+        ),
+      );
+      controller.resetCreateState();
+      controller.updateCreateSelectedProfileType('media');
+      expect(
+        controller.createStateStreamValue.value.selectedProfileType,
+        'media',
+      );
+      controller.nameController.text = 'Conta com imagem';
+      controller.updateCreateAvatarFile(avatarFile);
+      controller.updateCreateCoverFile(coverFile);
+      expect(controller.createStateStreamValue.value.avatarFile, isNotNull);
+      expect(controller.createStateStreamValue.value.coverFile, isNotNull);
 
-    // Mimics screen submit flow that clears web URLs before creating.
-    controller.updateCreateAvatarWebUrl(null);
-    controller.updateCreateCoverWebUrl(null);
-    expect(controller.createStateStreamValue.value.avatarFile, isNotNull);
-    expect(controller.createStateStreamValue.value.coverFile, isNotNull);
-  });
+      // Mimics screen submit flow that clears web URLs before creating.
+      controller.updateCreateAvatarWebUrl(null);
+      controller.updateCreateCoverWebUrl(null);
+      expect(controller.createStateStreamValue.value.avatarFile, isNotNull);
+      expect(controller.createStateStreamValue.value.coverFile, isNotNull);
+    },
+  );
 
   test('createAccountFromForm forwards avatar and cover uploads', () async {
     final accountsRepository =
@@ -850,19 +926,22 @@ void main() {
     expect(accountsRepository.createOnboardingCallCount, 1);
     expect(accountsRepository.lastOnboardingAvatarUpload, isNotNull);
     expect(accountsRepository.lastOnboardingCoverUpload, isNotNull);
-    expect(accountsRepository.lastOnboardingAvatarUpload?.bytes.isNotEmpty,
-        isTrue);
     expect(
-        accountsRepository.lastOnboardingCoverUpload?.bytes.isNotEmpty, isTrue);
+      accountsRepository.lastOnboardingAvatarUpload?.bytes.isNotEmpty,
+      isTrue,
+    );
+    expect(
+      accountsRepository.lastOnboardingCoverUpload?.bytes.isNotEmpty,
+      isTrue,
+    );
   });
 
-  testWidgets('disables avatar pick and shows progress when busy',
-      (tester) async {
+  testWidgets('disables avatar pick and shows progress when busy', (
+    tester,
+  ) async {
     await _pumpWithAutoRoute(
       tester,
-      const Scaffold(
-        body: TenantAdminAccountCreateScreen(),
-      ),
+      const Scaffold(body: TenantAdminAccountCreateScreen()),
     );
 
     final profileTypeDropdown = find.byType(DropdownButtonFormField<String>);
@@ -879,8 +958,9 @@ void main() {
 
     expect(find.byType(LinearProgressIndicator), findsAtLeastNWidgets(1));
 
-    final pickButton =
-        find.byKey(const ValueKey('tenant_admin_account_create_avatar_pick'));
+    final pickButton = find.byKey(
+      const ValueKey('tenant_admin_account_create_avatar_pick'),
+    );
     final button = tester.widget<FilledButton>(pickButton);
     expect(button.onPressed, isNull);
   });
@@ -935,9 +1015,7 @@ void main() {
 
     await _pumpWithAutoRoute(
       tester,
-      const Scaffold(
-        body: TenantAdminAccountCreateScreen(),
-      ),
+      const Scaffold(body: TenantAdminAccountCreateScreen()),
     );
 
     await tester.tap(find.byType(DropdownButtonFormField<String>).last);
@@ -950,7 +1028,9 @@ void main() {
     expect(find.text('Urbana'), findsOneWidget);
 
     await tester.enterText(
-        find.widgetWithText(TextFormField, 'Nome'), 'Conta A');
+      find.widgetWithText(TextFormField, 'Nome'),
+      'Conta A',
+    );
     final controller = GetIt.I.get<TenantAdminAccountCreateController>();
     controller.bioController.text = '<p>Bio teste</p>';
     await tester.pump();
@@ -965,8 +1045,9 @@ void main() {
     );
   });
 
-  testWidgets('renders backend global validation inline without snackbar',
-      (tester) async {
+  testWidgets('renders backend global validation inline without snackbar', (
+    tester,
+  ) async {
     final accountsRepository =
         GetIt.I.get<TenantAdminAccountsRepositoryContract>()
             as _FakeAccountsRepository;
@@ -1000,9 +1081,7 @@ void main() {
 
     await _pumpWithAutoRoute(
       tester,
-      const Scaffold(
-        body: TenantAdminAccountCreateScreen(),
-      ),
+      const Scaffold(body: TenantAdminAccountCreateScreen()),
     );
 
     await _selectProfileType(tester, 'Venue');
@@ -1022,68 +1101,68 @@ void main() {
     expect(find.byType(SnackBar), findsNothing);
   });
 
-  testWidgets('renders backend profile_type validation inline without snackbar',
-      (tester) async {
-    final accountsRepository =
-        GetIt.I.get<TenantAdminAccountsRepositoryContract>()
-            as _FakeAccountsRepository;
-    final profilesRepository =
-        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
-            as _FakeAccountProfilesRepository;
-    profilesRepository._profileTypes = [
-      tenantAdminProfileTypeDefinitionFromRaw(
-        type: 'venue',
-        label: 'Venue',
-        allowedTaxonomies: [],
-        capabilities: TenantAdminProfileTypeCapabilities(
-          isFavoritable: TenantAdminFlagValue(true),
-          isPoiEnabled: TenantAdminFlagValue(false),
-          hasBio: TenantAdminFlagValue(false),
-          hasContent: TenantAdminFlagValue(false),
-          hasTaxonomies: TenantAdminFlagValue(false),
-          hasAvatar: TenantAdminFlagValue(false),
-          hasCover: TenantAdminFlagValue(false),
-          hasEvents: TenantAdminFlagValue(false),
+  testWidgets(
+    'renders backend profile_type validation inline without snackbar',
+    (tester) async {
+      final accountsRepository =
+          GetIt.I.get<TenantAdminAccountsRepositoryContract>()
+              as _FakeAccountsRepository;
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+      profilesRepository._profileTypes = [
+        tenantAdminProfileTypeDefinitionFromRaw(
+          type: 'venue',
+          label: 'Venue',
+          allowedTaxonomies: [],
+          capabilities: TenantAdminProfileTypeCapabilities(
+            isFavoritable: TenantAdminFlagValue(true),
+            isPoiEnabled: TenantAdminFlagValue(false),
+            hasBio: TenantAdminFlagValue(false),
+            hasContent: TenantAdminFlagValue(false),
+            hasTaxonomies: TenantAdminFlagValue(false),
+            hasAvatar: TenantAdminFlagValue(false),
+            hasCover: TenantAdminFlagValue(false),
+            hasEvents: TenantAdminFlagValue(false),
+          ),
         ),
-      ),
-    ];
-    accountsRepository.createAccountError = FormValidationFailure(
-      statusCode: 422,
-      message: 'The given data was invalid.',
-      fieldErrors: <String, List<String>>{
-        'profile_type': <String>['Tipo de perfil invalido.'],
-      },
-    );
+      ];
+      accountsRepository.createAccountError = FormValidationFailure(
+        statusCode: 422,
+        message: 'The given data was invalid.',
+        fieldErrors: <String, List<String>>{
+          'profile_type': <String>['Tipo de perfil invalido.'],
+        },
+      );
 
-    await _pumpWithAutoRoute(
-      tester,
-      const Scaffold(
-        body: TenantAdminAccountCreateScreen(),
-      ),
-    );
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(body: TenantAdminAccountCreateScreen()),
+      );
 
-    await _selectProfileType(tester, 'Venue');
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Nome'),
-      'Conta teste',
-    );
-    await tester.tap(
-      find.byKey(const ValueKey('tenant_admin_account_create_save')),
-      warnIfMissed: false,
-    );
-    await tester.pump();
-    await tester.pumpAndSettle();
+      await _selectProfileType(tester, 'Venue');
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Nome'),
+        'Conta teste',
+      );
+      await tester.tap(
+        find.byKey(const ValueKey('tenant_admin_account_create_save')),
+        warnIfMissed: false,
+      );
+      await tester.pump();
+      await tester.pumpAndSettle();
 
-    final controller = GetIt.I.get<TenantAdminAccountCreateController>();
-    expect(find.text('Tipo de perfil invalido.'), findsOneWidget);
-    expect(
-      controller.createValidationStreamValue.value.errorForField(
-        TenantAdminAccountCreateValidationTargets.profileType,
-      ),
-      'Tipo de perfil invalido.',
-    );
-    expect(find.byType(SnackBar), findsNothing);
-  });
+      final controller = GetIt.I.get<TenantAdminAccountCreateController>();
+      expect(find.text('Tipo de perfil invalido.'), findsOneWidget);
+      expect(
+        controller.createValidationStreamValue.value.errorForField(
+          TenantAdminAccountCreateValidationTargets.profileType,
+        ),
+        'Tipo de perfil invalido.',
+      );
+      expect(find.byType(SnackBar), findsNothing);
+    },
+  );
 
   testWidgets('shows operational submit failures in snackbar', (tester) async {
     final accountsRepository =
@@ -1113,9 +1192,7 @@ void main() {
 
     await _pumpWithAutoRoute(
       tester,
-      const Scaffold(
-        body: TenantAdminAccountCreateScreen(),
-      ),
+      const Scaffold(body: TenantAdminAccountCreateScreen()),
     );
 
     await _selectProfileType(tester, 'Venue');
@@ -1134,8 +1211,9 @@ void main() {
     expect(find.textContaining('backend exploded'), findsOneWidget);
   });
 
-  testWidgets('replaces create route with account detail on success',
-      (tester) async {
+  testWidgets('replaces create route with account detail on success', (
+    tester,
+  ) async {
     final profilesRepository =
         GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
             as _FakeAccountProfilesRepository;
@@ -1159,9 +1237,7 @@ void main() {
 
     await _pumpWithAutoRoute(
       tester,
-      const Scaffold(
-        body: TenantAdminAccountCreateScreen(),
-      ),
+      const Scaffold(body: TenantAdminAccountCreateScreen()),
     );
 
     await _selectProfileType(tester, 'Venue');
@@ -1180,76 +1256,118 @@ void main() {
     expect(find.text('Detail: acc-1'), findsOneWidget);
   });
 
-  testWidgets('shows nested group editor in canonical onboarding flow',
-      (tester) async {
-    final profilesRepository =
-        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
-            as _FakeAccountProfilesRepository;
-    profilesRepository._profileTypes = [
-      tenantAdminProfileTypeDefinitionFromRaw(
-        type: 'venue',
-        label: 'Venue',
-        allowedTaxonomies: [],
-        capabilities: TenantAdminProfileTypeCapabilities(
-          isFavoritable: TenantAdminFlagValue(true),
-          isPoiEnabled: TenantAdminFlagValue(false),
-          hasBio: TenantAdminFlagValue(false),
-          hasContent: TenantAdminFlagValue(false),
-          hasTaxonomies: TenantAdminFlagValue(false),
-          hasAvatar: TenantAdminFlagValue(false),
-          hasCover: TenantAdminFlagValue(false),
-          hasEvents: TenantAdminFlagValue(false),
-          hasNestedProfileGroups: TenantAdminFlagValue(true),
+  testWidgets(
+    'shows nested group editor in canonical onboarding flow with remote search and pagination',
+    (tester) async {
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+      profilesRepository._profileTypes = [
+        tenantAdminProfileTypeDefinitionFromRaw(
+          type: 'venue',
+          label: 'Venue',
+          allowedTaxonomies: [],
+          capabilities: TenantAdminProfileTypeCapabilities(
+            isFavoritable: TenantAdminFlagValue(true),
+            isPoiEnabled: TenantAdminFlagValue(false),
+            hasBio: TenantAdminFlagValue(false),
+            hasContent: TenantAdminFlagValue(false),
+            hasTaxonomies: TenantAdminFlagValue(false),
+            hasAvatar: TenantAdminFlagValue(false),
+            hasCover: TenantAdminFlagValue(false),
+            hasEvents: TenantAdminFlagValue(false),
+            hasNestedProfileGroups: TenantAdminFlagValue(true),
+          ),
         ),
-      ),
-    ];
-    profilesRepository.profilesToReturn = [
-      tenantAdminAccountProfileFromRaw(
-        id: 'profile-1',
-        accountId: 'acc-existing',
-        profileType: 'venue',
-        displayName: 'Conta Parceira',
-      ),
-      tenantAdminAccountProfileFromRaw(
-        id: 'profile-2',
-        accountId: 'acc-existing-2',
-        profileType: 'venue',
-        displayName: 'Conta Convidada',
-      ),
-    ];
+      ];
+      profilesRepository.profilesToReturn =
+          List<TenantAdminAccountProfile>.generate(21, (index) {
+            final itemNumber = index + 1;
+            if (itemNumber == 1) {
+              return tenantAdminAccountProfileFromRaw(
+                id: 'profile-1',
+                accountId: 'acc-existing',
+                profileType: 'venue',
+                displayName: 'Conta Parceira',
+                slug: 'conta-parceira',
+              );
+            }
+            if (itemNumber == 21) {
+              return tenantAdminAccountProfileFromRaw(
+                id: 'profile-21',
+                accountId: 'acc-existing-21',
+                profileType: 'venue',
+                displayName: 'Runtime Sender',
+                slug: 'runtime-sender',
+              );
+            }
+            return tenantAdminAccountProfileFromRaw(
+              id: 'profile-$itemNumber',
+              accountId: 'acc-existing-$itemNumber',
+              profileType: 'venue',
+              displayName: 'Conta $itemNumber',
+              slug: 'conta-$itemNumber',
+            );
+          });
 
-    await _pumpWithAutoRoute(
-      tester,
-      const Scaffold(
-        body: TenantAdminAccountCreateScreen(),
-      ),
-    );
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(body: TenantAdminAccountCreateScreen()),
+      );
 
-    await _selectProfileType(tester, 'Venue');
+      await _selectProfileType(tester, 'Venue');
 
-    final scrollable = find.byType(Scrollable).first;
-    await tester.scrollUntilVisible(
-      find.byKey(const Key('tenantAdminAccountCreateAddNestedGroupButton')),
-      300,
-      scrollable: scrollable,
-    );
+      final scrollable = find.byType(Scrollable).first;
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('tenantAdminAccountCreateAddNestedGroupButton')),
+        300,
+        scrollable: scrollable,
+      );
 
-    expect(find.text('Abas de contas vinculadas'), findsOneWidget);
-    await tester.tap(
-      find.byKey(const Key('tenantAdminAccountCreateAddNestedGroupButton')),
-    );
-    await tester.pumpAndSettle();
+      expect(find.text('Abas de contas vinculadas'), findsOneWidget);
+      await tester.tap(
+        find.byKey(const Key('tenantAdminAccountCreateAddNestedGroupButton')),
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.text('Selecionar Accounts'), findsOneWidget);
-    await tester.tap(find.text('Selecionar Accounts'));
-    await tester.pumpAndSettle();
+      expect(find.text('Selecionar Accounts'), findsOneWidget);
+      await tester.tap(find.text('Selecionar Accounts'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Conta Parceira'), findsOneWidget);
-    expect(find.text('Conta Convidada'), findsOneWidget);
-  });
+      expect(find.text('Conta Parceira'), findsOneWidget);
+      expect(find.text('Runtime Sender'), findsNothing);
 
-  testWidgets('submits nested groups through account onboarding',
-      (tester) async {
+      final searchField = find.byWidgetPredicate((widget) {
+        return widget is TextField &&
+            widget.decoration?.labelText == 'Buscar Account';
+      });
+      await tester.enterText(searchField, 'runtime');
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Runtime Sender'), findsOneWidget);
+      expect(find.text('Conta Parceira'), findsNothing);
+
+      await tester.enterText(searchField, '');
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Conta Parceira'), findsOneWidget);
+      expect(find.text('Runtime Sender'), findsNothing);
+
+      await tester.drag(
+        find.byType(SingleChildScrollView).last,
+        const Offset(0, -1200),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Runtime Sender'), findsOneWidget);
+    },
+  );
+
+  testWidgets('submits nested groups through account onboarding', (
+    tester,
+  ) async {
     final accountsRepository =
         GetIt.I.get<TenantAdminAccountsRepositoryContract>()
             as _FakeAccountsRepository;
@@ -1285,9 +1403,7 @@ void main() {
 
     await _pumpWithAutoRoute(
       tester,
-      const Scaffold(
-        body: TenantAdminAccountCreateScreen(),
-      ),
+      const Scaffold(body: TenantAdminAccountCreateScreen()),
     );
 
     await _selectProfileType(tester, 'Venue');
@@ -1307,7 +1423,9 @@ void main() {
     );
     await tester.pumpAndSettle();
     await tester.enterText(
-        find.widgetWithText(TextFormField, 'Nome da aba'), 'Integrantes');
+      find.widgetWithText(TextFormField, 'Nome da aba'),
+      'Integrantes',
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Selecionar Accounts'));
     await tester.pumpAndSettle();
@@ -1327,11 +1445,15 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(accountsRepository.lastOnboardingNestedGroups, hasLength(1));
-    expect(accountsRepository.lastOnboardingNestedGroups.single.label,
-        'Integrantes');
+    expect(
+      accountsRepository.lastOnboardingNestedGroups.single.label,
+      'Integrantes',
+    );
     expect(
       accountsRepository
-          .lastOnboardingNestedGroups.single.accountProfileIdValues
+          .lastOnboardingNestedGroups
+          .single
+          .accountProfileIdValues
           .map((entry) => entry.value)
           .toList(growable: false),
       ['profile-1'],
@@ -1339,10 +1461,7 @@ void main() {
   });
 }
 
-Future<void> _pumpWithAutoRoute(
-  WidgetTester tester,
-  Widget child,
-) async {
+Future<void> _pumpWithAutoRoute(WidgetTester tester, Widget child) async {
   final router = RootStackRouter.build(
     routes: [
       NamedRouteDef(

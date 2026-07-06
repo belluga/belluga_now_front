@@ -695,10 +695,9 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
 }
 
 class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
-  _FakeAuthRepository({required String userTokenValue, required this.deviceId})
-    : _userTokenValue = userTokenValue;
+  _FakeAuthRepository({required this.userTokenValue, required this.deviceId});
 
-  String _userTokenValue;
+  String userTokenValue;
   final String deviceId;
   final _backend = _NoopBackend();
 
@@ -706,10 +705,10 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   BackendContract get backend => _backend;
 
   @override
-  String get userToken => _userTokenValue;
+  String get userToken => userTokenValue;
 
   void authorize({required String userToken, UserContract? user}) {
-    _userTokenValue = userToken;
+    userTokenValue = userToken;
     userStreamValue.addValue(user ?? _buildUser('507f1f77bcf86cd799439011'));
   }
 
@@ -723,10 +722,10 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<String?> getUserId() async => null;
 
   @override
-  bool get isUserLoggedIn => _userTokenValue.isNotEmpty;
+  bool get isUserLoggedIn => userTokenValue.isNotEmpty;
 
   @override
-  bool get isAuthorized => _userTokenValue.isNotEmpty;
+  bool get isAuthorized => userTokenValue.isNotEmpty;
 
   @override
   Future<void> init() async {}

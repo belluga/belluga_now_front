@@ -30,7 +30,7 @@ void main() {
           ),
         ],
         canLaunchUrl: (_) async => true,
-        launchUrl: (_, __) async => true,
+        launchUrl: (_, _) async => true,
       );
 
       final options = await chooser.loadOptions(
@@ -64,7 +64,7 @@ void main() {
         platformProvider: () => TargetPlatform.iOS,
         availableMapsLoader: () async => const <AvailableMap>[],
         canLaunchUrl: (_) async => true,
-        launchUrl: (_, __) async => true,
+        launchUrl: (_, _) async => true,
       );
 
       final options = await chooser.loadOptions(
@@ -100,7 +100,7 @@ void main() {
           ),
         ],
         canLaunchUrl: (_) async => true,
-        launchUrl: (_, __) async => true,
+        launchUrl: (_, _) async => true,
       );
 
       final options = await chooser.loadOptions(
@@ -124,7 +124,7 @@ void main() {
       platformProvider: () => TargetPlatform.android,
       availableMapsLoader: () async => const <AvailableMap>[],
       canLaunchUrl: (_) async => true,
-      launchUrl: (uri, __) async {
+      launchUrl: (uri, _) async {
         launchedUris.add(uri);
         return true;
       },
@@ -165,7 +165,7 @@ void main() {
       platformProvider: () => TargetPlatform.android,
       availableMapsLoader: () async => const <AvailableMap>[],
       canLaunchUrl: (_) async => true,
-      launchUrl: (uri, __) async {
+      launchUrl: (uri, _) async {
         launchedUris.add(uri);
         return true;
       },

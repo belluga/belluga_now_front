@@ -13,11 +13,12 @@ import 'package:belluga_now/domain/app_data/environment_type.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 
-typedef _CanonicalRouteNoHistoryBuilder = RouteNoHistoryOutcome Function(
-  _CanonicalRouteContext context,
-  PageRouteInfo<dynamic>? explicitFallbackRoute,
-  RouteNoHistoryDelegate? requestExit,
-);
+typedef _CanonicalRouteNoHistoryBuilder =
+    RouteNoHistoryOutcome Function(
+      _CanonicalRouteContext context,
+      PageRouteInfo<dynamic>? explicitFallbackRoute,
+      RouteNoHistoryDelegate? requestExit,
+    );
 
 final class _CanonicalRouteContext {
   _CanonicalRouteContext._({
@@ -96,22 +97,20 @@ final class _CanonicalRouteDescriptor {
       family == CanonicalRouteFamily.tenantAdminDashboard;
 
   bool get isAdminSectionRoot => switch (family) {
-        CanonicalRouteFamily.tenantAdminEventsRoot ||
-        CanonicalRouteFamily.tenantAdminAccountsRoot ||
-        CanonicalRouteFamily.tenantAdminAssetsRoot ||
-        CanonicalRouteFamily.tenantAdminSettingsRoot =>
-          true,
-        _ => false,
-      };
+    CanonicalRouteFamily.tenantAdminEventsRoot ||
+    CanonicalRouteFamily.tenantAdminAccountsRoot ||
+    CanonicalRouteFamily.tenantAdminAssetsRoot ||
+    CanonicalRouteFamily.tenantAdminSettingsRoot => true,
+    _ => false,
+  };
 
   bool get isAdminInternal => switch (family) {
-        CanonicalRouteFamily.tenantAdminEventsInternal ||
-        CanonicalRouteFamily.tenantAdminAccountsInternal ||
-        CanonicalRouteFamily.tenantAdminAssetsInternal ||
-        CanonicalRouteFamily.tenantAdminSettingsInternal =>
-          true,
-        _ => false,
-      };
+    CanonicalRouteFamily.tenantAdminEventsInternal ||
+    CanonicalRouteFamily.tenantAdminAccountsInternal ||
+    CanonicalRouteFamily.tenantAdminAssetsInternal ||
+    CanonicalRouteFamily.tenantAdminSettingsInternal => true,
+    _ => false,
+  };
 }
 
 final class _CanonicalRouteClassification {
@@ -133,12 +132,10 @@ _CanonicalRouteClassification _resolveCanonicalRouteClassification(
       'Route ${routeData.name} is missing canonicalRouteMeta(family: ...).',
     );
   }
-  final chromeMode = resolveRouteChromeModeFromMeta(routeData.meta) ??
+  final chromeMode =
+      resolveRouteChromeModeFromMeta(routeData.meta) ??
       RouteChromeMode.standard;
-  return _CanonicalRouteClassification(
-    family: family,
-    chromeMode: chromeMode,
-  );
+  return _CanonicalRouteClassification(family: family, chromeMode: chromeMode);
 }
 
 RouteChromeMode resolveCanonicalRouteChromeMode(RouteData routeData) {
@@ -229,183 +226,181 @@ void performCanonicalCurrentRouteBack(
   ).handleBack();
 }
 
-final Map<CanonicalRouteFamily, _CanonicalRouteDescriptor> _descriptors =
-    <CanonicalRouteFamily, _CanonicalRouteDescriptor>{
+final Map<CanonicalRouteFamily, _CanonicalRouteDescriptor>
+_descriptors = <CanonicalRouteFamily, _CanonicalRouteDescriptor>{
   CanonicalRouteFamily.tenantHome: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.tenantHome,
     surfaceKind: BackSurfaceKind.rootOpenable,
-    buildNoHistoryOutcome: (_, __, requestExit) => requestExit == null
+    buildNoHistoryOutcome: (_, _, requestExit) => requestExit == null
         ? RouteNoHistoryOutcome.noop()
         : RouteNoHistoryOutcome.requestExit(requestExit),
   ),
   CanonicalRouteFamily.tenantPrivacyPolicy: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.tenantPrivacyPolicy,
     surfaceKind: BackSurfaceKind.rootOpenable,
-    buildNoHistoryOutcome: (_, explicitFallbackRoute, __) =>
+    buildNoHistoryOutcome: (_, explicitFallbackRoute, _) =>
         RouteNoHistoryOutcome.fallback(
-      explicitFallbackRoute ?? const TenantHomeRoute(),
-    ),
+          explicitFallbackRoute ?? const TenantHomeRoute(),
+        ),
   ),
   CanonicalRouteFamily.discoveryRoot: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.discoveryRoot,
     surfaceKind: BackSurfaceKind.rootOpenable,
-    buildNoHistoryOutcome: (_, explicitFallbackRoute, __) =>
+    buildNoHistoryOutcome: (_, explicitFallbackRoute, _) =>
         RouteNoHistoryOutcome.fallback(
-      explicitFallbackRoute ?? const TenantHomeRoute(),
-    ),
+          explicitFallbackRoute ?? const TenantHomeRoute(),
+        ),
   ),
   CanonicalRouteFamily.partnerDetail: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.partnerDetail,
     surfaceKind: BackSurfaceKind.rootOpenable,
-    buildNoHistoryOutcome: (_, explicitFallbackRoute, __) =>
+    buildNoHistoryOutcome: (_, explicitFallbackRoute, _) =>
         RouteNoHistoryOutcome.fallback(
-      explicitFallbackRoute ?? const DiscoveryRoute(),
-    ),
+          explicitFallbackRoute ?? const DiscoveryRoute(),
+        ),
   ),
   CanonicalRouteFamily.staticAssetDetail: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.staticAssetDetail,
     surfaceKind: BackSurfaceKind.rootOpenable,
-    buildNoHistoryOutcome: (_, explicitFallbackRoute, __) =>
+    buildNoHistoryOutcome: (_, explicitFallbackRoute, _) =>
         RouteNoHistoryOutcome.fallback(
-      explicitFallbackRoute ?? const DiscoveryRoute(),
-    ),
+          explicitFallbackRoute ?? const DiscoveryRoute(),
+        ),
   ),
   CanonicalRouteFamily.profileRoot: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.profileRoot,
     surfaceKind: BackSurfaceKind.rootOpenable,
-    buildNoHistoryOutcome: (_, explicitFallbackRoute, __) =>
+    buildNoHistoryOutcome: (_, explicitFallbackRoute, _) =>
         RouteNoHistoryOutcome.fallback(
-      explicitFallbackRoute ?? const TenantHomeRoute(),
-    ),
+          explicitFallbackRoute ?? const TenantHomeRoute(),
+        ),
   ),
   CanonicalRouteFamily.eventSearch: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.eventSearch,
     surfaceKind: BackSurfaceKind.rootOpenable,
-    buildNoHistoryOutcome: (_, explicitFallbackRoute, __) =>
+    buildNoHistoryOutcome: (_, explicitFallbackRoute, _) =>
         RouteNoHistoryOutcome.fallback(
-      explicitFallbackRoute ?? const ProfileRoute(),
-    ),
+          explicitFallbackRoute ?? const ProfileRoute(),
+        ),
   ),
   CanonicalRouteFamily.immersiveEventDetail: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.immersiveEventDetail,
     surfaceKind: BackSurfaceKind.rootOpenable,
-    buildNoHistoryOutcome: (_, explicitFallbackRoute, __) =>
+    buildNoHistoryOutcome: (_, explicitFallbackRoute, _) =>
         RouteNoHistoryOutcome.fallback(
-      explicitFallbackRoute ?? const TenantHomeRoute(),
-    ),
+          explicitFallbackRoute ?? const TenantHomeRoute(),
+        ),
   ),
   CanonicalRouteFamily.cityMap: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.cityMap,
     surfaceKind: BackSurfaceKind.rootOpenable,
-    buildNoHistoryOutcome: (_, explicitFallbackRoute, __) =>
+    buildNoHistoryOutcome: (_, explicitFallbackRoute, _) =>
         RouteNoHistoryOutcome.fallback(
-      explicitFallbackRoute ?? const TenantHomeRoute(),
-    ),
+          explicitFallbackRoute ?? const TenantHomeRoute(),
+        ),
   ),
   CanonicalRouteFamily.poiDetail: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.poiDetail,
     surfaceKind: BackSurfaceKind.rootOpenable,
-    buildNoHistoryOutcome: (_, explicitFallbackRoute, __) =>
-        RouteNoHistoryOutcome.fallback(
-      explicitFallbackRoute ?? CityMapRoute(),
-    ),
+    buildNoHistoryOutcome: (_, explicitFallbackRoute, _) =>
+        RouteNoHistoryOutcome.fallback(explicitFallbackRoute ?? CityMapRoute()),
   ),
   CanonicalRouteFamily.inviteFlow: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.inviteFlow,
     surfaceKind: BackSurfaceKind.rootOpenable,
-    buildNoHistoryOutcome: (_, explicitFallbackRoute, __) =>
+    buildNoHistoryOutcome: (_, explicitFallbackRoute, _) =>
         RouteNoHistoryOutcome.fallback(
-      explicitFallbackRoute ?? const TenantHomeRoute(),
-    ),
+          explicitFallbackRoute ?? const TenantHomeRoute(),
+        ),
   ),
   CanonicalRouteFamily.inviteEntry: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.inviteEntry,
     surfaceKind: BackSurfaceKind.rootOpenable,
-    buildNoHistoryOutcome: (_, explicitFallbackRoute, __) =>
+    buildNoHistoryOutcome: (_, explicitFallbackRoute, _) =>
         RouteNoHistoryOutcome.fallback(
-      explicitFallbackRoute ?? const TenantHomeRoute(),
-    ),
+          explicitFallbackRoute ?? const TenantHomeRoute(),
+        ),
   ),
   CanonicalRouteFamily.inviteShare: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.inviteShare,
     surfaceKind: BackSurfaceKind.internalOnly,
-    buildNoHistoryOutcome: (_, explicitFallbackRoute, __) =>
+    buildNoHistoryOutcome: (_, explicitFallbackRoute, _) =>
         RouteNoHistoryOutcome.fallback(
-      explicitFallbackRoute ?? const InviteFlowRoute(),
-    ),
+          explicitFallbackRoute ?? const InviteFlowRoute(),
+        ),
   ),
   CanonicalRouteFamily.appPromotion: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.appPromotion,
     surfaceKind: BackSurfaceKind.rootOpenable,
-    buildNoHistoryOutcome: (context, explicitFallbackRoute, __) =>
+    buildNoHistoryOutcome: (context, explicitFallbackRoute, _) =>
         RouteNoHistoryOutcome.fallback(
-      explicitFallbackRoute ?? _promotionDismissRoute(context),
-    ),
+          explicitFallbackRoute ?? _promotionDismissRoute(context),
+        ),
   ),
   CanonicalRouteFamily.authLogin: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.authLogin,
     surfaceKind: BackSurfaceKind.rootOpenable,
-    buildNoHistoryOutcome: (_, explicitFallbackRoute, __) =>
+    buildNoHistoryOutcome: (_, explicitFallbackRoute, _) =>
         RouteNoHistoryOutcome.fallback(
-      explicitFallbackRoute ?? const TenantHomeRoute(),
-    ),
+          explicitFallbackRoute ?? const TenantHomeRoute(),
+        ),
   ),
   CanonicalRouteFamily.recoveryPassword: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.recoveryPassword,
     surfaceKind: BackSurfaceKind.internalOnly,
-    buildNoHistoryOutcome: (_, explicitFallbackRoute, __) =>
+    buildNoHistoryOutcome: (_, explicitFallbackRoute, _) =>
         RouteNoHistoryOutcome.fallback(
-      explicitFallbackRoute ?? AuthLoginRoute(),
-    ),
+          explicitFallbackRoute ?? AuthLoginRoute(),
+        ),
   ),
   CanonicalRouteFamily.authCreateNewPassword: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.authCreateNewPassword,
     surfaceKind: BackSurfaceKind.internalOnly,
-    buildNoHistoryOutcome: (_, explicitFallbackRoute, __) =>
+    buildNoHistoryOutcome: (_, explicitFallbackRoute, _) =>
         RouteNoHistoryOutcome.fallback(
-      explicitFallbackRoute ?? const TenantHomeRoute(),
-    ),
+          explicitFallbackRoute ?? const TenantHomeRoute(),
+        ),
   ),
   CanonicalRouteFamily.landlordHome: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.landlordHome,
     surfaceKind: BackSurfaceKind.rootOpenable,
-    buildNoHistoryOutcome: (_, __, requestExit) => requestExit == null
+    buildNoHistoryOutcome: (_, _, requestExit) => requestExit == null
         ? RouteNoHistoryOutcome.noop()
         : RouteNoHistoryOutcome.requestExit(requestExit),
   ),
   CanonicalRouteFamily.accountWorkspaceHome: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.accountWorkspaceHome,
     surfaceKind: BackSurfaceKind.rootOpenable,
-    buildNoHistoryOutcome: (_, explicitFallbackRoute, __) =>
+    buildNoHistoryOutcome: (_, explicitFallbackRoute, _) =>
         RouteNoHistoryOutcome.fallback(
-      explicitFallbackRoute ?? const ProfileRoute(),
-    ),
+          explicitFallbackRoute ?? const ProfileRoute(),
+        ),
   ),
   CanonicalRouteFamily.accountWorkspaceScoped: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.accountWorkspaceScoped,
     surfaceKind: BackSurfaceKind.rootOpenable,
-    buildNoHistoryOutcome: (_, explicitFallbackRoute, __) =>
+    buildNoHistoryOutcome: (_, explicitFallbackRoute, _) =>
         RouteNoHistoryOutcome.fallback(
-      explicitFallbackRoute ?? const AccountWorkspaceHomeRoute(),
-    ),
+          explicitFallbackRoute ?? const AccountWorkspaceHomeRoute(),
+        ),
   ),
   CanonicalRouteFamily.accountWorkspaceCreateEvent: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.accountWorkspaceCreateEvent,
     surfaceKind: BackSurfaceKind.internalOnly,
-    buildNoHistoryOutcome: (_, explicitFallbackRoute, __) =>
+    buildNoHistoryOutcome: (_, explicitFallbackRoute, _) =>
         RouteNoHistoryOutcome.fallback(
-      explicitFallbackRoute ?? const AccountWorkspaceHomeRoute(),
-    ),
+          explicitFallbackRoute ?? const AccountWorkspaceHomeRoute(),
+        ),
   ),
   CanonicalRouteFamily.tenantAdminDashboard: _CanonicalRouteDescriptor(
     family: CanonicalRouteFamily.tenantAdminDashboard,
     surfaceKind: BackSurfaceKind.rootOpenable,
-    buildNoHistoryOutcome: (context, _, __) =>
+    buildNoHistoryOutcome: (context, _, _) =>
         RouteNoHistoryOutcome.delegateToShell(
-      () => context.rootRouter.replaceAll(<PageRouteInfo<dynamic>>[
-        _publicRootRoute(),
-      ]),
-    ),
+          () => context.rootRouter.replaceAll(<PageRouteInfo<dynamic>>[
+            _publicRootRoute(),
+          ]),
+        ),
     adminSection: AdminShellSection.dashboard,
   ),
   CanonicalRouteFamily.tenantAdminEventsRoot: _adminSectionRootDescriptor(
@@ -480,10 +475,10 @@ _CanonicalRouteDescriptor _adminSectionRootDescriptor({
     family: family,
     surfaceKind: BackSurfaceKind.rootOpenable,
     adminSection: section,
-    buildNoHistoryOutcome: (context, _, __) =>
+    buildNoHistoryOutcome: (context, _, _) =>
         RouteNoHistoryOutcome.delegateToShell(
-      () => context.router.replace(const TenantAdminDashboardRoute()),
-    ),
+          () => context.router.replace(const TenantAdminDashboardRoute()),
+        ),
   );
 }
 
@@ -497,10 +492,10 @@ _CanonicalRouteDescriptor _adminInternalDescriptor({
     family: family,
     surfaceKind: BackSurfaceKind.internalOnly,
     adminSection: section,
-    buildNoHistoryOutcome: (context, explicitFallbackRoute, __) =>
+    buildNoHistoryOutcome: (context, explicitFallbackRoute, _) =>
         RouteNoHistoryOutcome.replace(
-      explicitFallbackRoute ?? sectionRootRoute,
-    ),
+          explicitFallbackRoute ?? sectionRootRoute,
+        ),
   );
 }
 
@@ -512,8 +507,9 @@ PageRouteInfo<dynamic> _publicRootRoute() {
 }
 
 bool _isTenantEnvironment() {
-  final appData =
-      GetIt.I.isRegistered<AppData>() ? GetIt.I.get<AppData>() : null;
+  final appData = GetIt.I.isRegistered<AppData>()
+      ? GetIt.I.get<AppData>()
+      : null;
   if (appData == null) {
     return true;
   }

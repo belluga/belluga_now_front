@@ -61,7 +61,8 @@ class _FakeAccountsRepository
     TenantAdminOwnershipState? ownershipState,
     TenantAdminAccountsRepositoryContractPrimString? searchQuery,
   }) async {
-    final effectivePageSize = pageSize ??
+    final effectivePageSize =
+        pageSize ??
         TenantAdminAccountsRepositoryContractPrimInt.fromRaw(
           20,
           defaultValue: 20,
@@ -103,7 +104,8 @@ class _FakeAccountsRepository
     TenantAdminOwnershipState? ownershipState,
     TenantAdminAccountsRepositoryContractPrimString? searchQuery,
   }) async {
-    final effectivePageSize = pageSize ??
+    final effectivePageSize =
+        pageSize ??
         TenantAdminAccountsRepositoryContractPrimInt.fromRaw(
           20,
           defaultValue: 20,
@@ -174,19 +176,23 @@ class _FakeAccountsRepository
     final all = await fetchAccounts();
     final filteredByOwnership = ownershipState == null
         ? all
-        : all.where((account) {
-            return account.ownershipState == ownershipState;
-          }).toList(growable: false);
+        : all
+              .where((account) {
+                return account.ownershipState == ownershipState;
+              })
+              .toList(growable: false);
     final normalizedSearch = searchQuery?.value.trim().toLowerCase() ?? '';
     final filtered = normalizedSearch.isEmpty
         ? filteredByOwnership
-        : filteredByOwnership.where((account) {
-            return account.name.toLowerCase().contains(normalizedSearch) ||
-                account.slug.toLowerCase().contains(normalizedSearch) ||
-                account.document.number
-                    .toLowerCase()
-                    .contains(normalizedSearch);
-          }).toList(growable: false);
+        : filteredByOwnership
+              .where((account) {
+                return account.name.toLowerCase().contains(normalizedSearch) ||
+                    account.slug.toLowerCase().contains(normalizedSearch) ||
+                    account.document.number.toLowerCase().contains(
+                      normalizedSearch,
+                    );
+              })
+              .toList(growable: false);
     final startIndex = (page.value - 1) * pageSize.value;
     if (startIndex >= filtered.length ||
         page.value <= 0 ||
@@ -240,7 +246,8 @@ class _FakeAccountsRepository
     final loaded = accountsStreamValue.value;
     if (loaded != null) {
       accountsStreamValue.addValue(
-          List<TenantAdminAccount>.unmodifiable([...loaded, created]));
+        List<TenantAdminAccount>.unmodifiable([...loaded, created]),
+      );
     }
     return created;
   }
@@ -267,8 +274,9 @@ class _FakeAccountsRepository
     createOnboardingCalls += 1;
     lastOnboardingBio = bio?.value;
     lastOnboardingContent = content?.value;
-    lastOnboardingTaxonomyTerms =
-        List<TenantAdminTaxonomyTerm>.from(taxonomyTerms.items);
+    lastOnboardingTaxonomyTerms = List<TenantAdminTaxonomyTerm>.from(
+      taxonomyTerms.items,
+    );
     lastOnboardingNestedGroups = List<TenantAdminNestedProfileGroup>.from(
       nestedProfileGroups,
     );
@@ -340,6 +348,7 @@ class _FakeAccountProfilesRepository
   _FakeAccountProfilesRepository(this._types);
 
   final List<TenantAdminProfileTypeDefinition> _types;
+  List<TenantAdminAccountProfile> profilesToReturn = const [];
   int createProfileCalls = 0;
   String? lastCreateDisplayName;
   String? lastCreateBio;
@@ -349,6 +358,14 @@ class _FakeAccountProfilesRepository
   TenantAdminMediaUpload? lastCreateCoverUpload;
   List<TenantAdminTaxonomyTerm> lastCreateTaxonomyTerms = const [];
   Object? createProfileError;
+  bool? lastFetchQueryableOnly;
+  String? lastFetchExcludeAccountProfileId;
+  int? lastFetchPage;
+  int? lastFetchPageSize;
+  String? lastFetchSearch;
+  int fetchAccountProfilesPageCalls = 0;
+  final Map<String, Completer<void>> fetchPageGatesBySearch =
+      <String, Completer<void>>{};
 
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async =>
@@ -365,7 +382,7 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminProfileTypeDefinition>>
-      fetchProfileTypesPage({
+  fetchProfileTypesPage({
     required TenantAdminAccountProfilesRepoInt page,
     required TenantAdminAccountProfilesRepoInt pageSize,
   }) async {
@@ -414,8 +431,9 @@ class _FakeAccountProfilesRepository
     lastCreateCoverUrl = coverUrl?.value;
     lastCreateAvatarUpload = avatarUpload;
     lastCreateCoverUpload = coverUpload;
-    lastCreateTaxonomyTerms =
-        List<TenantAdminTaxonomyTerm>.from(taxonomyTerms.items);
+    lastCreateTaxonomyTerms = List<TenantAdminTaxonomyTerm>.from(
+      taxonomyTerms.items,
+    );
     return tenantAdminAccountProfileFromRaw(
       id: 'profile-$createProfileCalls',
       accountId: accountId,
@@ -431,18 +449,70 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? accountId,
     TenantAdminAccountProfilesRepoBool? queryableOnly,
     TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
-  }) async =>
-      [];
+  }) async {
+    lastFetchQueryableOnly = queryableOnly?.value;
+    lastFetchExcludeAccountProfileId = excludeAccountProfileId?.value;
+    return _filterProfiles(
+      excludeAccountProfileId: excludeAccountProfileId?.value,
+    );
+  }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+  fetchAccountProfilesPage({
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
+    TenantAdminAccountProfilesRepoString? search,
+    TenantAdminAccountProfilesRepoString? accountId,
+    TenantAdminAccountProfilesRepoBool? queryableOnly,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
+  }) async {
+    fetchAccountProfilesPageCalls += 1;
+    lastFetchQueryableOnly = queryableOnly?.value;
+    lastFetchExcludeAccountProfileId = excludeAccountProfileId?.value;
+    lastFetchPage = page.value;
+    lastFetchPageSize = pageSize.value;
+    lastFetchSearch = search?.value;
+    final gate = fetchPageGatesBySearch[search?.value ?? ''];
+    if (gate != null) {
+      await gate.future;
+    }
+    final filtered = _filterProfiles(
+      search: search?.value,
+      excludeAccountProfileId: excludeAccountProfileId?.value,
+    );
+    final start = (page.value - 1) * pageSize.value;
+    if (page.value <= 0 || pageSize.value <= 0 || start >= filtered.length) {
+      return tenantAdminPagedResultFromRaw(
+        items: const <TenantAdminAccountProfile>[],
+        hasMore: false,
+        currentPage: page.value,
+        pageSize: pageSize.value,
+      );
+    }
+    final end = start + pageSize.value < filtered.length
+        ? start + pageSize.value
+        : filtered.length;
+    return tenantAdminPagedResultFromRaw(
+      items: filtered.sublist(start, end),
+      hasMore: end < filtered.length,
+      currentPage: page.value,
+      pageSize: pageSize.value,
+    );
+  }
 
   @override
   Future<TenantAdminAccountProfile> fetchAccountProfile(
     TenantAdminAccountProfilesRepoString accountProfileId,
   ) async {
-    return tenantAdminAccountProfileFromRaw(
-      id: 'profile-1',
-      accountId: 'acc-1',
-      profileType: 'venue',
-      displayName: 'Perfil',
+    return profilesToReturn.firstWhere(
+      (profile) => profile.id == accountProfileId.value,
+      orElse: () => tenantAdminAccountProfileFromRaw(
+        id: 'profile-1',
+        accountId: 'acc-1',
+        profileType: 'venue',
+        displayName: 'Perfil',
+      ),
     );
   }
 
@@ -483,7 +553,8 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<void> deleteAccountProfile(
-      TenantAdminAccountProfilesRepoString accountProfileId) async {}
+    TenantAdminAccountProfilesRepoString accountProfileId,
+  ) async {}
 
   @override
   Future<TenantAdminAccountProfile> restoreAccountProfile(
@@ -499,7 +570,8 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<void> forceDeleteAccountProfile(
-      TenantAdminAccountProfilesRepoString accountProfileId) async {}
+    TenantAdminAccountProfilesRepoString accountProfileId,
+  ) async {}
 
   @override
   Future<TenantAdminProfileTypeDefinition> createProfileType({
@@ -530,7 +602,8 @@ class _FakeAccountProfilesRepository
       type: type,
       label: label ?? 'Updated',
       allowedTaxonomies: allowedTaxonomies ?? [],
-      capabilities: capabilities ??
+      capabilities:
+          capabilities ??
           TenantAdminProfileTypeCapabilities(
             isFavoritable: TenantAdminFlagValue(true),
             isPoiEnabled: TenantAdminFlagValue(true),
@@ -546,7 +619,31 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<void> deleteProfileType(
-      TenantAdminAccountProfilesRepoString type) async {}
+    TenantAdminAccountProfilesRepoString type,
+  ) async {}
+
+  List<TenantAdminAccountProfile> _filterProfiles({
+    String? search,
+    String? excludeAccountProfileId,
+  }) {
+    final normalizedSearch = search?.trim().toLowerCase() ?? '';
+    return profilesToReturn
+        .where((profile) {
+          if (excludeAccountProfileId != null &&
+              excludeAccountProfileId.isNotEmpty &&
+              profile.id == excludeAccountProfileId) {
+            return false;
+          }
+          if (normalizedSearch.isEmpty) {
+            return true;
+          }
+          final normalizedSlug = profile.slug?.toLowerCase() ?? '';
+          return profile.displayName.toLowerCase().contains(normalizedSearch) ||
+              profile.profileType.toLowerCase().contains(normalizedSearch) ||
+              normalizedSlug.contains(normalizedSearch);
+        })
+        .toList(growable: false);
+  }
 }
 
 class _FakeTaxonomiesRepository
@@ -557,7 +654,7 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
-      fetchTaxonomiesPage({
+  fetchTaxonomiesPage({
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
   }) async {
@@ -570,12 +667,11 @@ class _FakeTaxonomiesRepository
   @override
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
     required TenantAdminTaxRepoString taxonomyId,
-  }) async =>
-      [];
+  }) async => [];
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
-      fetchTermsPage({
+  fetchTermsPage({
     required TenantAdminTaxRepoString taxonomyId,
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
@@ -707,10 +803,7 @@ void main() {
       await controller.init();
 
       expect(controller.accountsStreamValue.value?.length, 1);
-      expect(
-        controller.accountsStreamValue.value?.first.slug,
-        'conta',
-      );
+      expect(controller.accountsStreamValue.value?.first.slug, 'conta');
     });
 
     test('switching segment reloads accounts with ownership filter', () async {
@@ -834,8 +927,7 @@ void main() {
           document: tenantAdminDocumentFromRaw(type: 'cpf', number: '000'),
           ownershipState: TenantAdminOwnershipState.tenantOwned,
         ),
-      ])
-        ..fetchAccountsGate = Completer<void>();
+      ])..fetchAccountsGate = Completer<void>();
       final controller = _buildListController(
         accountsRepository: accountsRepository,
       );
@@ -990,7 +1082,9 @@ void main() {
       expect(accountsRepository.lastOnboardingBio, '<p>Bio teste</p>');
       expect(accountsRepository.lastOnboardingTaxonomyTerms.length, 1);
       expect(
-          accountsRepository.lastOnboardingTaxonomyTerms.first.type, 'genre');
+        accountsRepository.lastOnboardingTaxonomyTerms.first.type,
+        'genre',
+      );
       expect(
         accountsRepository.lastOnboardingTaxonomyTerms.first.value,
         'urbana',
@@ -1044,176 +1138,227 @@ void main() {
         'Integrantes',
       );
       expect(
-        accountsRepository.lastOnboardingNestedGroups.single
-            .accountProfileIdValues.single.value,
+        accountsRepository
+            .lastOnboardingNestedGroups
+            .single
+            .accountProfileIdValues
+            .single
+            .value,
         'profile-1',
       );
     });
 
     test(
-        'createAccountFromForm submits media as upload and never as direct URL',
-        () async {
-      final accountsRepository = _FakeAccountsRepository([]);
-      final profilesRepository = _FakeAccountProfilesRepository([
-        tenantAdminProfileTypeDefinitionFromRaw(
-          type: 'venue',
-          label: 'Venue',
-          allowedTaxonomies: [],
-          capabilities: TenantAdminProfileTypeCapabilities(
-            isFavoritable: TenantAdminFlagValue(true),
-            isPoiEnabled: TenantAdminFlagValue(false),
-            hasBio: TenantAdminFlagValue(false),
-            hasContent: TenantAdminFlagValue(false),
-            hasTaxonomies: TenantAdminFlagValue(false),
-            hasAvatar: TenantAdminFlagValue(true),
-            hasCover: TenantAdminFlagValue(true),
-            hasEvents: TenantAdminFlagValue(false),
-          ),
-        ),
-      ]);
-      final controller = _buildCreateController(
-        accountsRepository: accountsRepository,
-        profilesRepository: profilesRepository,
-      );
-
-      controller.nameController.text = 'Conta com imagem';
-      controller.updateCreateSelectedProfileType('venue');
-      controller.updateCreateAvatarFile(_buildImageXFile('avatar.jpg'));
-      controller.updateCreateCoverFile(_buildImageXFile('cover.jpg'));
-
-      await controller.createAccountFromForm(location: null);
-
-      expect(accountsRepository.lastOnboardingAvatarUpload, isNotNull);
-      expect(accountsRepository.lastOnboardingCoverUpload, isNotNull);
-      expect(
-        accountsRepository.lastOnboardingAvatarUpload!.mimeType,
-        'image/jpeg',
-      );
-      expect(
-        accountsRepository.lastOnboardingCoverUpload!.mimeType,
-        'image/jpeg',
-      );
-    });
-
-    test('validateCreateBeforeSubmit writes local validation into shared state',
-        () async {
-      final controller = _buildCreateController();
-
-      final isValid = controller.validateCreateBeforeSubmit(location: null);
-
-      expect(isValid, isFalse);
-      expect(
-        controller.createValidationStreamValue.value
-            .errorForField('profile_type'),
-        'Tipo de perfil e obrigatorio.',
-      );
-      expect(
-        controller.createValidationStreamValue.value.errorForField('name'),
-        'Nome e obrigatorio.',
-      );
-      expect(
-        controller.createValidationStreamValue.value.firstInvalidTargetId,
-        'profile_type',
-      );
-    });
-
-    test(
-        'submitCreateAccountFromForm applies backend validation failures without global error text',
-        () async {
-      final accountsRepository = _FakeAccountsRepository([])
-        ..createAccountError = FormValidationFailure(
-          statusCode: 422,
-          message: 'The given data was invalid.',
-          fieldErrors: <String, List<String>>{
-            'location.lat': <String>['Latitude obrigatoria.'],
-          },
+      'loadNextNestedProfileCandidatesPage appends backend pages for onboarding picker',
+      () async {
+        final profilesRepository =
+            _FakeAccountProfilesRepository([
+                tenantAdminProfileTypeDefinitionFromRaw(
+                  type: 'venue',
+                  label: 'Venue',
+                  allowedTaxonomies: [],
+                  capabilities: TenantAdminProfileTypeCapabilities(
+                    isFavoritable: TenantAdminFlagValue(true),
+                    isPoiEnabled: TenantAdminFlagValue(false),
+                    hasBio: TenantAdminFlagValue(false),
+                    hasContent: TenantAdminFlagValue(false),
+                    hasTaxonomies: TenantAdminFlagValue(false),
+                    hasAvatar: TenantAdminFlagValue(false),
+                    hasCover: TenantAdminFlagValue(false),
+                    hasEvents: TenantAdminFlagValue(false),
+                    hasNestedProfileGroups: TenantAdminFlagValue(true),
+                  ),
+                ),
+              ])
+              ..profilesToReturn = List<TenantAdminAccountProfile>.generate(
+                25,
+                (index) => tenantAdminAccountProfileFromRaw(
+                  id: 'profile-${index + 1}',
+                  accountId: 'acc-${index + 1}',
+                  profileType: 'venue',
+                  displayName: 'Conta ${index + 1}',
+                  slug: 'conta-${index + 1}',
+                ),
+              );
+        final controller = _buildCreateController(
+          profilesRepository: profilesRepository,
         );
-      final profilesRepository = _FakeAccountProfilesRepository([
-        tenantAdminProfileTypeDefinitionFromRaw(
-          type: 'venue',
-          label: 'Venue',
-          allowedTaxonomies: [],
-          capabilities: TenantAdminProfileTypeCapabilities(
-            isFavoritable: TenantAdminFlagValue(true),
-            isPoiEnabled: TenantAdminFlagValue(false),
-            hasBio: TenantAdminFlagValue(false),
-            hasContent: TenantAdminFlagValue(false),
-            hasTaxonomies: TenantAdminFlagValue(false),
-            hasAvatar: TenantAdminFlagValue(false),
-            hasCover: TenantAdminFlagValue(false),
-            hasEvents: TenantAdminFlagValue(false),
-          ),
-        ),
-      ]);
-      final controller = _buildCreateController(
-        accountsRepository: accountsRepository,
-        profilesRepository: profilesRepository,
-      );
 
-      controller.nameController.text = 'Conta validada';
-      controller.updateCreateSelectedProfileType('venue');
+        await controller.loadNestedProfileCandidates();
 
-      final created = await controller.submitCreateAccountFromForm(
-        location: null,
-      );
+        expect(profilesRepository.fetchAccountProfilesPageCalls, 1);
+        expect(profilesRepository.lastFetchPage, 1);
+        expect(profilesRepository.lastFetchPageSize, 20);
+        expect(profilesRepository.lastFetchQueryableOnly, isTrue);
+        expect(
+          controller.nestedProfileCandidatesStreamValue.value,
+          hasLength(20),
+        );
+        expect(controller.nestedProfileSearchHasMoreStreamValue.value, isTrue);
 
-      expect(created, isFalse);
-      expect(
-        controller.createValidationStreamValue.value.errorsForGroup('location'),
-        <String>['Latitude obrigatoria.'],
-      );
-      expect(controller.createErrorMessageStreamValue.value, isNull);
-      expect(controller.createSuccessAccountStreamValue.value, isNull);
-    });
+        await controller.loadNextNestedProfileCandidatesPage();
+
+        expect(profilesRepository.fetchAccountProfilesPageCalls, 2);
+        expect(profilesRepository.lastFetchPage, 2);
+        expect(
+          controller.nestedProfileCandidatesStreamValue.value,
+          hasLength(25),
+        );
+        expect(
+          controller.nestedProfileCandidatesStreamValue.value.last.id,
+          'profile-25',
+        );
+        expect(controller.nestedProfileSearchHasMoreStreamValue.value, isFalse);
+      },
+    );
 
     test(
-        'submitCreateAccountFromForm keeps operational failures separate from validation state',
-        () async {
-      final accountsRepository = _FakeAccountsRepository([])
-        ..createAccountError = Exception('backend exploded');
-      final profilesRepository = _FakeAccountProfilesRepository([
-        tenantAdminProfileTypeDefinitionFromRaw(
-          type: 'venue',
-          label: 'Venue',
-          allowedTaxonomies: [],
-          capabilities: TenantAdminProfileTypeCapabilities(
-            isFavoritable: TenantAdminFlagValue(true),
-            isPoiEnabled: TenantAdminFlagValue(false),
-            hasBio: TenantAdminFlagValue(false),
-            hasContent: TenantAdminFlagValue(false),
-            hasTaxonomies: TenantAdminFlagValue(false),
-            hasAvatar: TenantAdminFlagValue(false),
-            hasCover: TenantAdminFlagValue(false),
-            hasEvents: TenantAdminFlagValue(false),
-          ),
-        ),
-      ]);
-      final controller = _buildCreateController(
-        accountsRepository: accountsRepository,
-        profilesRepository: profilesRepository,
-      );
+      'searchNestedProfileCandidates ignores stale in-flight results',
+      () async {
+        final profilesRepository =
+            _FakeAccountProfilesRepository([
+                tenantAdminProfileTypeDefinitionFromRaw(
+                  type: 'venue',
+                  label: 'Venue',
+                  allowedTaxonomies: [],
+                  capabilities: TenantAdminProfileTypeCapabilities(
+                    isFavoritable: TenantAdminFlagValue(true),
+                    isPoiEnabled: TenantAdminFlagValue(false),
+                    hasBio: TenantAdminFlagValue(false),
+                    hasContent: TenantAdminFlagValue(false),
+                    hasTaxonomies: TenantAdminFlagValue(false),
+                    hasAvatar: TenantAdminFlagValue(false),
+                    hasCover: TenantAdminFlagValue(false),
+                    hasEvents: TenantAdminFlagValue(false),
+                    hasNestedProfileGroups: TenantAdminFlagValue(true),
+                  ),
+                ),
+              ])
+              ..profilesToReturn = <TenantAdminAccountProfile>[
+                tenantAdminAccountProfileFromRaw(
+                  id: 'profile-alpha',
+                  accountId: 'acc-1',
+                  profileType: 'venue',
+                  displayName: 'Alpha Partner',
+                  slug: 'alpha-partner',
+                ),
+                tenantAdminAccountProfileFromRaw(
+                  id: 'profile-beta',
+                  accountId: 'acc-2',
+                  profileType: 'venue',
+                  displayName: 'Beta Partner',
+                  slug: 'beta-partner',
+                ),
+              ]
+              ..fetchPageGatesBySearch['alpha'] = Completer<void>()
+              ..fetchPageGatesBySearch['beta'] = Completer<void>();
+        final controller = _buildCreateController(
+          profilesRepository: profilesRepository,
+        );
 
-      controller.nameController.text = 'Conta falhou';
-      controller.updateCreateSelectedProfileType('venue');
+        controller.searchNestedProfileCandidates('alpha');
+        await Future<void>.delayed(const Duration(milliseconds: 260));
+        controller.searchNestedProfileCandidates('beta');
+        await Future<void>.delayed(const Duration(milliseconds: 260));
 
-      final created = await controller.submitCreateAccountFromForm(
-        location: null,
-      );
+        profilesRepository.fetchPageGatesBySearch['beta']!.complete();
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        profilesRepository.fetchPageGatesBySearch['alpha']!.complete();
+        await Future<void>.delayed(const Duration(milliseconds: 10));
 
-      expect(created, isFalse);
-      expect(controller.createValidationStreamValue.value.hasErrors, isFalse);
-      expect(
-        controller.createErrorMessageStreamValue.value,
-        contains('backend exploded'),
-      );
-    });
+        expect(profilesRepository.lastFetchSearch, 'beta');
+        expect(
+          controller.nestedProfileCandidatesStreamValue.value
+              .map((profile) => profile.id)
+              .toList(growable: false),
+          ['profile-beta'],
+        );
+      },
+    );
 
     test(
-        'submitCreateAccountFromForm emits success account and clears validation',
-        () async {
-      final controller = _buildCreateController(
-        accountsRepository: _FakeAccountsRepository([]),
-        profilesRepository: _FakeAccountProfilesRepository([
+      'createAccountFromForm submits media as upload and never as direct URL',
+      () async {
+        final accountsRepository = _FakeAccountsRepository([]);
+        final profilesRepository = _FakeAccountProfilesRepository([
+          tenantAdminProfileTypeDefinitionFromRaw(
+            type: 'venue',
+            label: 'Venue',
+            allowedTaxonomies: [],
+            capabilities: TenantAdminProfileTypeCapabilities(
+              isFavoritable: TenantAdminFlagValue(true),
+              isPoiEnabled: TenantAdminFlagValue(false),
+              hasBio: TenantAdminFlagValue(false),
+              hasContent: TenantAdminFlagValue(false),
+              hasTaxonomies: TenantAdminFlagValue(false),
+              hasAvatar: TenantAdminFlagValue(true),
+              hasCover: TenantAdminFlagValue(true),
+              hasEvents: TenantAdminFlagValue(false),
+            ),
+          ),
+        ]);
+        final controller = _buildCreateController(
+          accountsRepository: accountsRepository,
+          profilesRepository: profilesRepository,
+        );
+
+        controller.nameController.text = 'Conta com imagem';
+        controller.updateCreateSelectedProfileType('venue');
+        controller.updateCreateAvatarFile(_buildImageXFile('avatar.jpg'));
+        controller.updateCreateCoverFile(_buildImageXFile('cover.jpg'));
+
+        await controller.createAccountFromForm(location: null);
+
+        expect(accountsRepository.lastOnboardingAvatarUpload, isNotNull);
+        expect(accountsRepository.lastOnboardingCoverUpload, isNotNull);
+        expect(
+          accountsRepository.lastOnboardingAvatarUpload!.mimeType,
+          'image/jpeg',
+        );
+        expect(
+          accountsRepository.lastOnboardingCoverUpload!.mimeType,
+          'image/jpeg',
+        );
+      },
+    );
+
+    test(
+      'validateCreateBeforeSubmit writes local validation into shared state',
+      () async {
+        final controller = _buildCreateController();
+
+        final isValid = controller.validateCreateBeforeSubmit(location: null);
+
+        expect(isValid, isFalse);
+        expect(
+          controller.createValidationStreamValue.value.errorForField(
+            'profile_type',
+          ),
+          'Tipo de perfil e obrigatorio.',
+        );
+        expect(
+          controller.createValidationStreamValue.value.errorForField('name'),
+          'Nome e obrigatorio.',
+        );
+        expect(
+          controller.createValidationStreamValue.value.firstInvalidTargetId,
+          'profile_type',
+        );
+      },
+    );
+
+    test(
+      'submitCreateAccountFromForm applies backend validation failures without global error text',
+      () async {
+        final accountsRepository = _FakeAccountsRepository([])
+          ..createAccountError = FormValidationFailure(
+            statusCode: 422,
+            message: 'The given data was invalid.',
+            fieldErrors: <String, List<String>>{
+              'location.lat': <String>['Latitude obrigatoria.'],
+            },
+          );
+        final profilesRepository = _FakeAccountProfilesRepository([
           tenantAdminProfileTypeDefinitionFromRaw(
             type: 'venue',
             label: 'Venue',
@@ -1229,29 +1374,119 @@ void main() {
               hasEvents: TenantAdminFlagValue(false),
             ),
           ),
-        ]),
-      );
+        ]);
+        final controller = _buildCreateController(
+          accountsRepository: accountsRepository,
+          profilesRepository: profilesRepository,
+        );
 
-      controller.createValidationController.replaceWithResolved(
-        fieldErrors: const <String, List<String>>{
-          'name': <String>['Nome e obrigatorio.'],
-        },
-      );
-      controller.nameController.text = 'Conta ok';
-      controller.updateCreateSelectedProfileType('venue');
+        controller.nameController.text = 'Conta validada';
+        controller.updateCreateSelectedProfileType('venue');
 
-      final created = await controller.submitCreateAccountFromForm(
-        location: null,
-      );
+        final created = await controller.submitCreateAccountFromForm(
+          location: null,
+        );
 
-      expect(created, isTrue);
-      expect(controller.createValidationStreamValue.value.hasErrors, isFalse);
-      expect(controller.createErrorMessageStreamValue.value, isNull);
-      expect(
-        controller.createSuccessAccountStreamValue.value?.account.name,
-        'Conta ok',
-      );
-    });
+        expect(created, isFalse);
+        expect(
+          controller.createValidationStreamValue.value.errorsForGroup(
+            'location',
+          ),
+          <String>['Latitude obrigatoria.'],
+        );
+        expect(controller.createErrorMessageStreamValue.value, isNull);
+        expect(controller.createSuccessAccountStreamValue.value, isNull);
+      },
+    );
+
+    test(
+      'submitCreateAccountFromForm keeps operational failures separate from validation state',
+      () async {
+        final accountsRepository = _FakeAccountsRepository([])
+          ..createAccountError = Exception('backend exploded');
+        final profilesRepository = _FakeAccountProfilesRepository([
+          tenantAdminProfileTypeDefinitionFromRaw(
+            type: 'venue',
+            label: 'Venue',
+            allowedTaxonomies: [],
+            capabilities: TenantAdminProfileTypeCapabilities(
+              isFavoritable: TenantAdminFlagValue(true),
+              isPoiEnabled: TenantAdminFlagValue(false),
+              hasBio: TenantAdminFlagValue(false),
+              hasContent: TenantAdminFlagValue(false),
+              hasTaxonomies: TenantAdminFlagValue(false),
+              hasAvatar: TenantAdminFlagValue(false),
+              hasCover: TenantAdminFlagValue(false),
+              hasEvents: TenantAdminFlagValue(false),
+            ),
+          ),
+        ]);
+        final controller = _buildCreateController(
+          accountsRepository: accountsRepository,
+          profilesRepository: profilesRepository,
+        );
+
+        controller.nameController.text = 'Conta falhou';
+        controller.updateCreateSelectedProfileType('venue');
+
+        final created = await controller.submitCreateAccountFromForm(
+          location: null,
+        );
+
+        expect(created, isFalse);
+        expect(controller.createValidationStreamValue.value.hasErrors, isFalse);
+        expect(
+          controller.createErrorMessageStreamValue.value,
+          contains('backend exploded'),
+        );
+      },
+    );
+
+    test(
+      'submitCreateAccountFromForm emits success account and clears validation',
+      () async {
+        final controller = _buildCreateController(
+          accountsRepository: _FakeAccountsRepository([]),
+          profilesRepository: _FakeAccountProfilesRepository([
+            tenantAdminProfileTypeDefinitionFromRaw(
+              type: 'venue',
+              label: 'Venue',
+              allowedTaxonomies: [],
+              capabilities: TenantAdminProfileTypeCapabilities(
+                isFavoritable: TenantAdminFlagValue(true),
+                isPoiEnabled: TenantAdminFlagValue(false),
+                hasBio: TenantAdminFlagValue(false),
+                hasContent: TenantAdminFlagValue(false),
+                hasTaxonomies: TenantAdminFlagValue(false),
+                hasAvatar: TenantAdminFlagValue(false),
+                hasCover: TenantAdminFlagValue(false),
+                hasEvents: TenantAdminFlagValue(false),
+              ),
+            ),
+          ]),
+        );
+
+        controller.createValidationController.replaceWithResolved(
+          fieldErrors: const <String, List<String>>{
+            'name': <String>['Nome e obrigatorio.'],
+          },
+        );
+        controller.nameController.text = 'Conta ok';
+        controller.updateCreateSelectedProfileType('venue');
+
+        final created = await controller.submitCreateAccountFromForm(
+          location: null,
+        );
+
+        expect(created, isTrue);
+        expect(controller.createValidationStreamValue.value.hasErrors, isFalse);
+        expect(controller.createErrorMessageStreamValue.value, isNull);
+        expect(
+          controller.createSuccessAccountStreamValue.value?.account.name,
+          'Conta ok',
+        );
+      },
+    );
   });
 }
 
@@ -1265,8 +1500,9 @@ XFile _buildImageXFile(String name) {
 
 class _FakeTenantScope implements TenantAdminTenantScopeContract {
   _FakeTenantScope(String initialDomain)
-      : _selectedTenantDomainStreamValue =
-            StreamValue<String?>(defaultValue: initialDomain);
+    : _selectedTenantDomainStreamValue = StreamValue<String?>(
+        defaultValue: initialDomain,
+      );
 
   final StreamValue<String?> _selectedTenantDomainStreamValue;
 
@@ -1288,9 +1524,11 @@ class _FakeTenantScope implements TenantAdminTenantScopeContract {
 
   @override
   void selectTenantDomain(Object tenantDomain) {
-    _selectedTenantDomainStreamValue.addValue((tenantDomain is String
-            ? tenantDomain
-            : (tenantDomain as dynamic).value as String)
-        .trim());
+    _selectedTenantDomainStreamValue.addValue(
+      (tenantDomain is String
+              ? tenantDomain
+              : (tenantDomain as dynamic).value as String)
+          .trim(),
+    );
   }
 }

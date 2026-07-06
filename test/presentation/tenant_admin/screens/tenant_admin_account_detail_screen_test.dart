@@ -243,12 +243,12 @@ Future<void> _pumpScreen(WidgetTester tester, Widget child) async {
           family: CanonicalRouteFamily.tenantAdminAccountsInternal,
           chromeMode: RouteChromeMode.fullscreen,
         ),
-        builder: (_, __) => child,
+        builder: (_, _) => child,
       ),
       NamedRouteDef(
         name: TenantAdminAccountProfileEditRoute.name,
         path: '/accounts/:accountSlug/profile/:accountProfileId/edit',
-        builder: (_, __) => const _TestProfileEditRouteScreen(),
+        builder: (_, _) => const _TestProfileEditRouteScreen(),
       ),
     ],
   )..ignorePopCompleters = true;
@@ -570,6 +570,27 @@ class _FakeAccountProfilesRepository
         content: profileContent,
       ),
     ];
+  }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+      fetchAccountProfilesPage({
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
+    TenantAdminAccountProfilesRepoString? search,
+    TenantAdminAccountProfilesRepoString? accountId,
+    TenantAdminAccountProfilesRepoBool? queryableOnly,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
+  }) async {
+    final profiles = await fetchAccountProfiles(
+      accountId: accountId,
+      queryableOnly: queryableOnly,
+      excludeAccountProfileId: excludeAccountProfileId,
+    );
+    return tenantAdminPagedResultFromRaw(
+      items: profiles,
+      hasMore: false,
+    );
   }
 
   @override

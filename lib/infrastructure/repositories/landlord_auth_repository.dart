@@ -15,9 +15,9 @@ class LandlordAuthRepository implements LandlordAuthRepositoryContract {
     Dio? dio,
     Dio Function(String baseUrl)? dioFactory,
     FlutterSecureStorage? storage,
-  })  : _dio = dio,
-        _dioFactory = dioFactory,
-        _storage = storage ?? const FlutterSecureStorage();
+  }) : this._internal(dio, dioFactory, storage ?? const FlutterSecureStorage());
+
+  LandlordAuthRepository._internal(this._dio, this._dioFactory, this._storage);
 
   static const String _tokenStorageKey = 'landlord_token';
   static const String _userIdStorageKey = 'landlord_user_id';
@@ -46,11 +46,7 @@ class LandlordAuthRepository implements LandlordAuthRepositoryContract {
     final dioFactory = _dioFactory;
     _dio = dioFactory != null
         ? dioFactory(adminApiBaseUrl)
-        : Dio(
-            BaseOptions(
-              baseUrl: adminApiBaseUrl,
-            ),
-          );
+        : Dio(BaseOptions(baseUrl: adminApiBaseUrl));
     return _dio!;
   }
 
@@ -297,9 +293,7 @@ class LandlordAuthRepository implements LandlordAuthRepositoryContract {
     required Object error,
     required StackTrace stackTrace,
   }) {
-    debugPrint(
-      'LandlordAuthRepository.$operation failed: $error\n$stackTrace',
-    );
+    debugPrint('LandlordAuthRepository.$operation failed: $error\n$stackTrace');
   }
 }
 

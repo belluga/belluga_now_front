@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:belluga_form_validation/belluga_form_validation.dart';
+import 'package:belluga_now/application/tenant_admin/tenant_admin_account_profile_candidates_page_loader.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
@@ -34,62 +35,85 @@ class TenantAdminAccountCreateController implements Disposable {
     TenantAdminTaxonomiesRepositoryContract? taxonomiesRepository,
     TenantAdminLocationSelectionContract? locationSelectionService,
     TenantAdminImageIngestionService? imageIngestionService,
-  })  : _accountsRepository = accountsRepository ??
-            GetIt.I.get<TenantAdminAccountsRepositoryContract>(),
-        _profilesRepository = profilesRepository ??
-            GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>(),
-        _taxonomiesRepository = taxonomiesRepository ??
-            GetIt.I.get<TenantAdminTaxonomiesRepositoryContract>(),
-        _locationSelectionService = locationSelectionService ??
-            GetIt.I.get<TenantAdminLocationSelectionContract>(),
-        _imageIngestionService = imageIngestionService ??
-            (GetIt.I.isRegistered<TenantAdminImageIngestionService>()
-                ? GetIt.I.get<TenantAdminImageIngestionService>()
-                : TenantAdminImageIngestionService());
+    TenantAdminAccountProfileCandidatesPageLoader?
+    nestedProfileCandidatesPageLoader,
+  }) : _accountsRepository =
+           accountsRepository ??
+           GetIt.I.get<TenantAdminAccountsRepositoryContract>(),
+       _profilesRepository =
+           profilesRepository ??
+           GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>(),
+       _taxonomiesRepository =
+           taxonomiesRepository ??
+           GetIt.I.get<TenantAdminTaxonomiesRepositoryContract>(),
+       _locationSelectionService =
+           locationSelectionService ??
+           GetIt.I.get<TenantAdminLocationSelectionContract>(),
+       _imageIngestionService =
+           imageIngestionService ??
+           (GetIt.I.isRegistered<TenantAdminImageIngestionService>()
+               ? GetIt.I.get<TenantAdminImageIngestionService>()
+               : TenantAdminImageIngestionService()) {
+    _nestedProfileCandidatesPageLoader =
+        nestedProfileCandidatesPageLoader ??
+        TenantAdminAccountProfileCandidatesPageLoader(
+          profilesRepository: _profilesRepository,
+        );
+  }
 
   final TenantAdminAccountsRepositoryContract _accountsRepository;
   final TenantAdminAccountProfilesRepositoryContract _profilesRepository;
   final TenantAdminTaxonomiesRepositoryContract _taxonomiesRepository;
   final TenantAdminLocationSelectionContract _locationSelectionService;
   final TenantAdminImageIngestionService _imageIngestionService;
+  late final TenantAdminAccountProfileCandidatesPageLoader
+  _nestedProfileCandidatesPageLoader;
 
   final StreamValue<List<TenantAdminProfileTypeDefinition>>
-      profileTypesStreamValue =
-      StreamValue<List<TenantAdminProfileTypeDefinition>>(
+  profileTypesStreamValue = StreamValue<List<TenantAdminProfileTypeDefinition>>(
     defaultValue: const [],
   );
-  final StreamValue<bool> isProfileTypesLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> isProfileTypesLoadingStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
   final StreamValue<List<TenantAdminAccountProfile>>
-      nestedProfileCandidatesStreamValue =
+  nestedProfileCandidatesStreamValue =
       StreamValue<List<TenantAdminAccountProfile>>(defaultValue: const []);
-  final StreamValue<String?> errorStreamValue = StreamValue<String?>();
-  final StreamValue<bool> createSubmittingStreamValue =
+  final StreamValue<bool> nestedProfileSearchLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> nestedProfileSearchPageLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> nestedProfileSearchHasMoreStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<String?> errorStreamValue = StreamValue<String?>();
+  final StreamValue<bool> createSubmittingStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
   final StreamValue<String?> createErrorMessageStreamValue =
       StreamValue<String?>();
   final StreamValue<TenantAdminAccountOnboardingResult?>
-      createSuccessAccountStreamValue =
+  createSuccessAccountStreamValue =
       StreamValue<TenantAdminAccountOnboardingResult?>(defaultValue: null);
   final StreamValue<TenantAdminAccountCreateDraft> createStateStreamValue =
       StreamValue<TenantAdminAccountCreateDraft>(
-    defaultValue: TenantAdminAccountCreateDraft.initial(),
-  );
+        defaultValue: TenantAdminAccountCreateDraft.initial(),
+      );
   final FormValidationControllerAdapter createValidationController =
       FormValidationControllerAdapter(
-    config: tenantAdminAccountCreateValidationConfig,
-  );
+        config: tenantAdminAccountCreateValidationConfig,
+      );
   final StreamValue<List<TenantAdminTaxonomyDefinition>> taxonomiesStreamValue =
       StreamValue<List<TenantAdminTaxonomyDefinition>>(defaultValue: const []);
   final StreamValue<Map<String, List<TenantAdminTaxonomyTermDefinition>>>
-      taxonomyTermsStreamValue =
+  taxonomyTermsStreamValue =
       StreamValue<Map<String, List<TenantAdminTaxonomyTermDefinition>>>(
-    defaultValue: const {},
-  );
+        defaultValue: const {},
+      );
   final StreamValue<Map<String, Set<String>>> selectedTaxonomyTermsStreamValue =
       StreamValue<Map<String, Set<String>>>(defaultValue: const {});
-  final StreamValue<bool> taxonomiesLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> taxonomiesLoadingStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
   final StreamValue<String?> taxonomiesErrorStreamValue =
       StreamValue<String?>();
   final GlobalKey<FormState> createFormKey = GlobalKey<FormState>();
@@ -105,6 +129,17 @@ class TenantAdminAccountCreateController implements Disposable {
   bool _isDisposed = false;
   bool _createFieldListenersBound = false;
   StreamSubscription<TenantAdminLocation?>? _locationSelectionSubscription;
+  Timer? _nestedProfileSearchDebounce;
+  static const Duration _nestedProfileSearchDebounceDuration = Duration(
+    milliseconds: 250,
+  );
+  final List<TenantAdminAccountProfile> _nestedProfileCandidateWindow =
+      <TenantAdminAccountProfile>[];
+  final Map<String, TenantAdminAccountProfile> _selectedNestedProfileCache =
+      <String, TenantAdminAccountProfile>{};
+  int _nestedProfileCandidatesCurrentPage = 0;
+  int _nestedProfileCandidatesRequestToken = 0;
+  String _nestedProfileCandidatesQuery = '';
 
   void bindCreateFlow() {
     _bindLocationSelection();
@@ -113,22 +148,23 @@ class TenantAdminAccountCreateController implements Disposable {
 
   void _bindLocationSelection() {
     if (_locationSelectionSubscription != null) return;
-    _locationSelectionSubscription =
-        _locationSelectionService.confirmedLocationStreamValue.stream.listen(
-      (location) {
-        if (_isDisposed || location == null) return;
-        latitudeController.text = location.latitude.toStringAsFixed(6);
-        longitudeController.text = location.longitude.toStringAsFixed(6);
-        _locationSelectionService.clearConfirmedLocation();
-      },
-    );
+    _locationSelectionSubscription = _locationSelectionService
+        .confirmedLocationStreamValue
+        .stream
+        .listen((location) {
+          if (_isDisposed || location == null) return;
+          latitudeController.text = location.latitude.toStringAsFixed(6);
+          longitudeController.text = location.longitude.toStringAsFixed(6);
+          _locationSelectionService.clearConfirmedLocation();
+        });
   }
 
   Future<void> loadProfileTypes() async {
     isProfileTypesLoadingStreamValue.addValue(true);
     try {
       await _profilesRepository.loadAllProfileTypes();
-      final types = _profilesRepository.profileTypesStreamValue.value ??
+      final types =
+          _profilesRepository.profileTypesStreamValue.value ??
           const <TenantAdminProfileTypeDefinition>[];
       if (_isDisposed) return;
       profileTypesStreamValue.addValue(types);
@@ -147,7 +183,8 @@ class TenantAdminAccountCreateController implements Disposable {
     taxonomiesLoadingStreamValue.addValue(true);
     try {
       await _taxonomiesRepository.loadAllTaxonomies();
-      final taxonomies = _taxonomiesRepository.taxonomiesStreamValue.value ??
+      final taxonomies =
+          _taxonomiesRepository.taxonomiesStreamValue.value ??
           const <TenantAdminTaxonomyDefinition>[];
       if (_isDisposed) return;
       final filtered = taxonomies
@@ -168,28 +205,51 @@ class TenantAdminAccountCreateController implements Disposable {
   }
 
   Future<void> loadNestedProfileCandidates() async {
-    try {
-      final profiles = await _profilesRepository.fetchAccountProfiles(
-        queryableOnly: tenantAdminAccountProfilesRepoBool(
-          true,
-          defaultValue: true,
-        ),
-      );
-      if (_isDisposed) {
-        return;
-      }
-      nestedProfileCandidatesStreamValue.addValue(profiles);
-    } catch (_) {
-      if (_isDisposed) {
-        return;
-      }
-      nestedProfileCandidatesStreamValue.addValue(const []);
+    _nestedProfileSearchDebounce?.cancel();
+    _nestedProfileCandidatesQuery = '';
+    final requestToken = _nestedProfileCandidatesRequestToken + 1;
+    _nestedProfileCandidatesRequestToken = requestToken;
+    await _loadNestedProfileCandidatesPage(
+      isInitial: true,
+      requestToken: requestToken,
+    );
+  }
+
+  void searchNestedProfileCandidates(String query) {
+    final normalizedQuery = query.trim();
+    _nestedProfileCandidatesQuery = normalizedQuery;
+    final requestToken = _nestedProfileCandidatesRequestToken + 1;
+    _nestedProfileCandidatesRequestToken = requestToken;
+    _nestedProfileSearchDebounce?.cancel();
+    _nestedProfileSearchDebounce = Timer(
+      _nestedProfileSearchDebounceDuration,
+      () {
+        unawaited(
+          _loadNestedProfileCandidatesPage(
+            isInitial: true,
+            requestToken: requestToken,
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> loadNextNestedProfileCandidatesPage() async {
+    if (nestedProfileSearchLoadingStreamValue.value ||
+        nestedProfileSearchPageLoadingStreamValue.value ||
+        !nestedProfileSearchHasMoreStreamValue.value) {
+      return;
     }
+    await _loadNestedProfileCandidatesPage(
+      isInitial: false,
+      requestToken: _nestedProfileCandidatesRequestToken,
+    );
   }
 
   void updateCreateSelectedProfileType(String? profileType) {
-    final capabilities =
-        profileType == null ? null : _capabilitiesForProfileType(profileType);
+    final capabilities = profileType == null
+        ? null
+        : _capabilitiesForProfileType(profileType);
     _updateCreateState(
       createStateStreamValue.value.copyWith(
         selectedProfileType: profileType,
@@ -207,9 +267,7 @@ class TenantAdminAccountCreateController implements Disposable {
     clearCreateGroupValidation(
       TenantAdminAccountCreateValidationTargets.taxonomies,
     );
-    clearCreateGroupValidation(
-      TenantAdminAccountCreateValidationTargets.media,
-    );
+    clearCreateGroupValidation(TenantAdminAccountCreateValidationTargets.media);
     clearCreateFieldValidation(TenantAdminAccountCreateValidationTargets.bio);
     clearCreateFieldValidation(
       TenantAdminAccountCreateValidationTargets.content,
@@ -238,10 +296,7 @@ class TenantAdminAccountCreateController implements Disposable {
 
   void updateCreateCoverFile(XFile? file) {
     _updateCreateState(
-      createStateStreamValue.value.copyWith(
-        coverFile: file,
-        coverWebUrl: null,
-      ),
+      createStateStreamValue.value.copyWith(coverFile: file, coverWebUrl: null),
     );
     clearCreateGroupValidation(TenantAdminAccountCreateValidationTargets.media);
   }
@@ -264,8 +319,9 @@ class TenantAdminAccountCreateController implements Disposable {
     _updateCreateState(
       createStateStreamValue.value.copyWith(
         avatarWebUrl: normalized,
-        avatarFile:
-            normalized == null ? createStateStreamValue.value.avatarFile : null,
+        avatarFile: normalized == null
+            ? createStateStreamValue.value.avatarFile
+            : null,
       ),
     );
     clearCreateGroupValidation(TenantAdminAccountCreateValidationTargets.media);
@@ -277,8 +333,9 @@ class TenantAdminAccountCreateController implements Disposable {
     _updateCreateState(
       createStateStreamValue.value.copyWith(
         coverWebUrl: normalized,
-        coverFile:
-            normalized == null ? createStateStreamValue.value.coverFile : null,
+        coverFile: normalized == null
+            ? createStateStreamValue.value.coverFile
+            : null,
       ),
     );
     clearCreateGroupValidation(TenantAdminAccountCreateValidationTargets.media);
@@ -355,14 +412,17 @@ class TenantAdminAccountCreateController implements Disposable {
   }
 
   void removeCreateNestedProfileGroup(String groupId) {
-    _updateCreateState(
-      createStateStreamValue.value.copyWith(
-        nestedProfileGroups: TenantAdminNestedProfileGroupOperations.remove(
-          createStateStreamValue.value.nestedProfileGroups,
-          groupId: groupId,
-        ),
-      ),
+    final nextGroups = TenantAdminNestedProfileGroupOperations.remove(
+      createStateStreamValue.value.nestedProfileGroups,
+      groupId: groupId,
     );
+    _syncSelectedNestedProfileCache(
+      _selectedCreateNestedProfileIds(nextGroups),
+    );
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(nestedProfileGroups: nextGroups),
+    );
+    _publishNestedProfileCandidates();
   }
 
   void toggleCreateNestedProfileGroupMember({
@@ -370,6 +430,10 @@ class TenantAdminAccountCreateController implements Disposable {
     required String profileId,
     required bool selected,
   }) {
+    final profile = _findNestedProfileCandidateById(profileId);
+    if (selected && profile != null) {
+      _selectedNestedProfileCache[profileId] = profile;
+    }
     final next = TenantAdminNestedProfileGroupOperations.toggleMember(
       createStateStreamValue.value.nestedProfileGroups,
       groupId: groupId,
@@ -382,17 +446,15 @@ class TenantAdminAccountCreateController implements Disposable {
     _updateCreateState(
       createStateStreamValue.value.copyWith(nestedProfileGroups: next),
     );
+    _syncSelectedNestedProfileCache(_selectedCreateNestedProfileIds(next));
+    _publishNestedProfileCandidates();
   }
 
-  Future<XFile?> pickImageFromDevice({
-    required TenantAdminImageSlot slot,
-  }) {
+  Future<XFile?> pickImageFromDevice({required TenantAdminImageSlot slot}) {
     return _imageIngestionService.pickFromDevice(slot: slot);
   }
 
-  Future<XFile> fetchImageFromUrlForCrop({
-    required String imageUrl,
-  }) {
+  Future<XFile> fetchImageFromUrlForCrop({required String imageUrl}) {
     return _imageIngestionService.fetchFromUrlForCrop(imageUrl: imageUrl);
   }
 
@@ -503,9 +565,7 @@ class TenantAdminAccountCreateController implements Disposable {
     );
   }
 
-  bool validateCreateBeforeSubmit({
-    required TenantAdminLocation? location,
-  }) {
+  bool validateCreateBeforeSubmit({required TenantAdminLocation? location}) {
     final fieldErrors = <String, List<String>>{};
     final groupErrors = <String, List<String>>{};
     final selectedProfileType =
@@ -574,9 +634,7 @@ class TenantAdminAccountCreateController implements Disposable {
     createSubmittingStreamValue.addValue(true);
     clearCreateSuccessAccount();
     try {
-      final onboardingResult = await createAccountFromForm(
-        location: location,
-      );
+      final onboardingResult = await createAccountFromForm(location: location);
       if (_isDisposed) return false;
       clearCreateValidation();
       createErrorMessageStreamValue.addValue(null);
@@ -631,6 +689,7 @@ class TenantAdminAccountCreateController implements Disposable {
 
   void dispose() {
     _isDisposed = true;
+    _nestedProfileSearchDebounce?.cancel();
     _locationSelectionSubscription?.cancel();
     nameController.dispose();
     bioController.dispose();
@@ -640,6 +699,9 @@ class TenantAdminAccountCreateController implements Disposable {
     profileTypesStreamValue.dispose();
     isProfileTypesLoadingStreamValue.dispose();
     nestedProfileCandidatesStreamValue.dispose();
+    nestedProfileSearchLoadingStreamValue.dispose();
+    nestedProfileSearchPageLoadingStreamValue.dispose();
+    nestedProfileSearchHasMoreStreamValue.dispose();
     errorStreamValue.dispose();
     createStateStreamValue.dispose();
     taxonomiesStreamValue.dispose();
@@ -745,14 +807,16 @@ extension on TenantAdminAccountCreateController {
             isRequired: true,
           ),
         );
-        final terms = _taxonomiesRepository.termsStreamValue.value ??
+        final terms =
+            _taxonomiesRepository.termsStreamValue.value ??
             const <TenantAdminTaxonomyTermDefinition>[];
         if (_isDisposed) return;
         map[slug] = terms;
       } catch (error) {
         if (!_isDisposed) {
-          taxonomiesErrorStreamValue
-              .addValue('Falha ao carregar termos para taxonomia "$slug".');
+          taxonomiesErrorStreamValue.addValue(
+            'Falha ao carregar termos para taxonomia "$slug".',
+          );
         }
         map[slug] = const [];
       }
@@ -766,8 +830,9 @@ extension on TenantAdminAccountCreateController {
     final selected = selectedTaxonomyTermsStreamValue.value;
     for (final entry in selected.entries) {
       for (final value in entry.value) {
-        terms
-            .add(tenantAdminTaxonomyTermFromRaw(type: entry.key, value: value));
+        terms.add(
+          tenantAdminTaxonomyTermFromRaw(type: entry.key, value: value),
+        );
       }
     }
     final taxonomyTerms = TenantAdminTaxonomyTerms();
@@ -788,5 +853,128 @@ extension on TenantAdminAccountCreateController {
   void _updateCreateState(TenantAdminAccountCreateDraft state) {
     if (_isDisposed) return;
     createStateStreamValue.addValue(state);
+  }
+
+  Future<void> _loadNestedProfileCandidatesPage({
+    required bool isInitial,
+    required int requestToken,
+  }) async {
+    if (!isInitial &&
+        (nestedProfileSearchLoadingStreamValue.value ||
+            nestedProfileSearchPageLoadingStreamValue.value ||
+            !nestedProfileSearchHasMoreStreamValue.value)) {
+      return;
+    }
+
+    if (isInitial) {
+      nestedProfileSearchLoadingStreamValue.addValue(true);
+      nestedProfileSearchPageLoadingStreamValue.addValue(false);
+    } else {
+      nestedProfileSearchPageLoadingStreamValue.addValue(true);
+    }
+
+    try {
+      final requestedPage = isInitial
+          ? 1
+          : _nestedProfileCandidatesCurrentPage + 1;
+      final result = await _nestedProfileCandidatesPageLoader.loadPage(
+        pageNumber: requestedPage,
+        search: _nestedProfileCandidatesQuery,
+        queryableOnly: true,
+      );
+      if (_isDisposed || requestToken != _nestedProfileCandidatesRequestToken) {
+        return;
+      }
+      if (isInitial) {
+        _nestedProfileCandidateWindow
+          ..clear()
+          ..addAll(result.items);
+      } else {
+        final existingWindow = List<TenantAdminAccountProfile>.from(
+          _nestedProfileCandidateWindow,
+        );
+        _nestedProfileCandidateWindow
+          ..clear()
+          ..addAll(_mergeAccountProfiles(existingWindow, result.items));
+      }
+      _nestedProfileCandidatesCurrentPage =
+          result.pagination?.currentPage ?? requestedPage;
+      nestedProfileSearchHasMoreStreamValue.addValue(result.hasMore);
+      _syncSelectedNestedProfileCache(
+        _selectedCreateNestedProfileIds(
+          createStateStreamValue.value.nestedProfileGroups,
+        ),
+      );
+      _publishNestedProfileCandidates();
+    } catch (_) {
+      if (_isDisposed || requestToken != _nestedProfileCandidatesRequestToken) {
+        return;
+      }
+      if (isInitial) {
+        _nestedProfileCandidateWindow.clear();
+      }
+      _syncSelectedNestedProfileCache(
+        _selectedCreateNestedProfileIds(
+          createStateStreamValue.value.nestedProfileGroups,
+        ),
+      );
+      nestedProfileSearchHasMoreStreamValue.addValue(false);
+      _publishNestedProfileCandidates();
+    } finally {
+      if (!_isDisposed &&
+          requestToken == _nestedProfileCandidatesRequestToken) {
+        nestedProfileSearchLoadingStreamValue.addValue(false);
+        nestedProfileSearchPageLoadingStreamValue.addValue(false);
+      }
+    }
+  }
+
+  Set<String> _selectedCreateNestedProfileIds(
+    List<TenantAdminNestedProfileGroup> groups,
+  ) {
+    final selectedIds = <String>{};
+    for (final group in groups) {
+      for (final profileId in group.accountProfileIdValues) {
+        selectedIds.add(profileId.value);
+      }
+    }
+    return selectedIds;
+  }
+
+  void _syncSelectedNestedProfileCache(Set<String> selectedIds) {
+    _selectedNestedProfileCache.removeWhere(
+      (profileId, _) => !selectedIds.contains(profileId),
+    );
+  }
+
+  void _publishNestedProfileCandidates() {
+    final merged = _mergeAccountProfiles(
+      _nestedProfileCandidateWindow,
+      _selectedNestedProfileCache.values.toList(growable: false),
+    );
+    nestedProfileCandidatesStreamValue.addValue(merged);
+  }
+
+  TenantAdminAccountProfile? _findNestedProfileCandidateById(String profileId) {
+    for (final profile in nestedProfileCandidatesStreamValue.value) {
+      if (profile.id == profileId) {
+        return profile;
+      }
+    }
+    return null;
+  }
+
+  List<TenantAdminAccountProfile> _mergeAccountProfiles(
+    List<TenantAdminAccountProfile> current,
+    List<TenantAdminAccountProfile> incoming,
+  ) {
+    final merged = <TenantAdminAccountProfile>[];
+    final seenIds = <String>{};
+    for (final profile in [...current, ...incoming]) {
+      if (seenIds.add(profile.id)) {
+        merged.add(profile);
+      }
+    }
+    return List<TenantAdminAccountProfile>.unmodifiable(merged);
   }
 }

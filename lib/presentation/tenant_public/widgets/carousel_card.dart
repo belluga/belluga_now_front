@@ -74,8 +74,9 @@ class CarouselCard extends StatelessWidget {
                       if (loadingProgress == null) return child;
                       return Center(
                         child: CircularProgressIndicator(
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(scheme.primary),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            scheme.primary,
+                          ),
                         ),
                       );
                     },
@@ -109,21 +110,21 @@ class CarouselCard extends StatelessWidget {
                   bottom: overlayMode == CarouselCardOverlayMode.bottom
                       ? 0
                       : (overlayMode == CarouselCardOverlayMode.fill
-                          ? 0
-                          : null),
+                            ? 0
+                            : null),
                   child: isFullSize
                       ? AnimatedSwitcher(
                           duration: const Duration(milliseconds: 250),
                           switchInCurve: Curves.easeOut,
                           transitionBuilder: (child, animation) =>
                               FadeTransition(
-                            opacity: animation,
-                            child: SizeTransition(
-                              sizeFactor: animation,
-                              axisAlignment: -1,
-                              child: child,
-                            ),
-                          ),
+                                opacity: animation,
+                                child: SizeTransition(
+                                  sizeFactor: animation,
+                                  alignment: const Alignment(-1.0, -1.0),
+                                  child: child,
+                                ),
+                              ),
                           child: ConstrainedBox(
                             key: const ValueKey('details'),
                             constraints: const BoxConstraints(minWidth: 0),

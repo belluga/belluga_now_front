@@ -11,26 +11,17 @@ import 'package:push_handler/push_handler.dart';
 class PushActionDispatcher {
   PushActionDispatcher({
     UserLocationRepositoryContract? userLocationRepository,
-    Future<List<OptionItem>> Function(OptionSource source)? optionsBuilder,
-    Future<void> Function(AnswerPayload answer, StepData step)? onStepSubmit,
-    Future<List<dynamic>?> Function(PushOptionSelectorPayload payload)?
-    onOpenSelector,
-    void Function(String message)? onShowToast,
-    Future<PermissionStatus> Function()? contactsPermissionRequester,
-    Future<void> Function()? contactsSettingsOpener,
-    Future<LocationPermission> Function()? locationPermissionChecker,
-    Future<void> Function()? appSettingsOpener,
+    this._optionsBuilder,
+    this._onStepSubmit,
+    this._onOpenSelector,
+    this._onShowToast,
+    this._contactsPermissionRequester,
+    this._contactsSettingsOpener,
+    this._locationPermissionChecker,
+    this._appSettingsOpener,
   }) : _userLocationRepository =
            userLocationRepository ??
-           GetIt.I.get<UserLocationRepositoryContract>(),
-       _optionsBuilder = optionsBuilder,
-       _onStepSubmit = onStepSubmit,
-       _onOpenSelector = onOpenSelector,
-       _onShowToast = onShowToast,
-       _contactsPermissionRequester = contactsPermissionRequester,
-       _contactsSettingsOpener = contactsSettingsOpener,
-       _locationPermissionChecker = locationPermissionChecker,
-       _appSettingsOpener = appSettingsOpener;
+           GetIt.I.get<UserLocationRepositoryContract>();
 
   final UserLocationRepositoryContract _userLocationRepository;
   final Future<List<OptionItem>> Function(OptionSource source)? _optionsBuilder;

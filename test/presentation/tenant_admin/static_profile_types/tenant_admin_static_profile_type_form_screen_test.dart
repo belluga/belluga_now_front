@@ -34,70 +34,72 @@ void main() {
   });
 
   testWidgets(
-      'asks destructive confirmation when disabling POI and respects cancel/confirm',
-      (tester) async {
-    final controller = _TestStaticProfileTypesController(impactCount: 42);
-    await _pumpFormScreen(
-      tester,
-      controller: controller,
-      definition: tenantAdminStaticProfileTypeDefinitionFromRaw(
-        type: 'beach',
-        label: 'Beach',
-        allowedTaxonomies: const [],
-        visual: TenantAdminPoiVisual.image(
-          imageSource: TenantAdminPoiVisualImageSource.avatar,
+    'asks destructive confirmation when disabling POI and respects cancel/confirm',
+    (tester) async {
+      final controller = _TestStaticProfileTypesController(42);
+      await _pumpFormScreen(
+        tester,
+        controller: controller,
+        definition: tenantAdminStaticProfileTypeDefinitionFromRaw(
+          type: 'beach',
+          label: 'Beach',
+          allowedTaxonomies: const [],
+          visual: TenantAdminPoiVisual.image(
+            imageSource: TenantAdminPoiVisualImageSource.avatar,
+          ),
+          capabilities: TenantAdminStaticProfileTypeCapabilities(
+            isPoiEnabled: TenantAdminFlagValue(true),
+            hasBio: TenantAdminFlagValue(true),
+            hasTaxonomies: TenantAdminFlagValue(true),
+            hasAvatar: TenantAdminFlagValue(true),
+            hasCover: TenantAdminFlagValue(true),
+            hasContent: TenantAdminFlagValue(true),
+          ),
         ),
-        capabilities: TenantAdminStaticProfileTypeCapabilities(
-          isPoiEnabled: TenantAdminFlagValue(true),
-          hasBio: TenantAdminFlagValue(true),
-          hasTaxonomies: TenantAdminFlagValue(true),
-          hasAvatar: TenantAdminFlagValue(true),
-          hasCover: TenantAdminFlagValue(true),
-          hasContent: TenantAdminFlagValue(true),
-        ),
-      ),
-    );
+      );
 
-    await tester.tap(find.widgetWithText(SwitchListTile, 'POI habilitado'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(SwitchListTile, 'POI habilitado'));
+      await tester.pumpAndSettle();
 
-    final scrollable = find.byType(Scrollable).first;
-    await tester.scrollUntilVisible(
-      find.text('Salvar alteracoes'),
-      200,
-      scrollable: scrollable,
-    );
-    await tester.tap(find.text('Salvar alteracoes'));
-    await tester.pumpAndSettle();
+      final scrollable = find.byType(Scrollable).first;
+      await tester.scrollUntilVisible(
+        find.text('Salvar alteracoes'),
+        200,
+        scrollable: scrollable,
+      );
+      await tester.tap(find.text('Salvar alteracoes'));
+      await tester.pumpAndSettle();
 
-    expect(
-      find.text('Alerta: vamos deletar 42 projeções de Beach.'),
-      findsOneWidget,
-    );
+      expect(
+        find.text('Alerta: vamos deletar 42 projeções de Beach.'),
+        findsOneWidget,
+      );
 
-    await tester.tap(find.text('Cancelar'));
-    await tester.pumpAndSettle();
-    expect(controller.submitUpdateCalls, 0);
+      await tester.tap(find.text('Cancelar'));
+      await tester.pumpAndSettle();
+      expect(controller.submitUpdateCalls, 0);
 
-    await tester.scrollUntilVisible(
-      find.text('Salvar alteracoes'),
-      200,
-      scrollable: scrollable,
-    );
-    await tester.tap(find.text('Salvar alteracoes'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Confirmar'));
-    await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('Salvar alteracoes'),
+        200,
+        scrollable: scrollable,
+      );
+      await tester.tap(find.text('Salvar alteracoes'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Confirmar'));
+      await tester.pumpAndSettle();
 
-    expect(controller.submitUpdateCalls, 1);
-    expect(controller.lastCapabilities?.isPoiEnabled, isFalse);
-    expect(controller.lastVisual, isNotNull);
-    expect(controller.lastVisual?.mode, TenantAdminPoiVisualMode.image);
-  });
+      expect(controller.submitUpdateCalls, 1);
+      expect(controller.lastCapabilities?.isPoiEnabled, isFalse);
+      expect(controller.lastVisual, isNotNull);
+      expect(controller.lastVisual?.mode, TenantAdminPoiVisualMode.image);
+    },
+  );
 
-  testWidgets('renders shared marker icon picker in static POI visual editor',
-      (tester) async {
-    final controller = _TestStaticProfileTypesController(impactCount: 0);
+  testWidgets('renders shared marker icon picker in static POI visual editor', (
+    tester,
+  ) async {
+    final controller = _TestStaticProfileTypesController(0);
     await _pumpFormScreen(
       tester,
       controller: controller,
@@ -125,47 +127,49 @@ void main() {
   });
 
   testWidgets(
-      'shows canonical type image upload controls for static type_asset visuals',
-      (tester) async {
-    final controller = _TestStaticProfileTypesController(impactCount: 0);
-    await _pumpFormScreen(
-      tester,
-      controller: controller,
-      definition: tenantAdminStaticProfileTypeDefinitionFromRaw(
-        type: 'landmark',
-        label: 'Landmark',
-        allowedTaxonomies: const [],
-        visual: TenantAdminPoiVisual.image(
-          imageSource: TenantAdminPoiVisualImageSource.typeAsset,
-          colorValue: TenantAdminHexColorValue()..parse('#00897B'),
-          imageUrlValue: TenantAdminOptionalUrlValue()
-            ..parse(
-              'https://tenant.test/api/v1/media/static-profile-types/type-1/type_asset?v=123',
-            ),
+    'shows canonical type image upload controls for static type_asset visuals',
+    (tester) async {
+      final controller = _TestStaticProfileTypesController(0);
+      await _pumpFormScreen(
+        tester,
+        controller: controller,
+        definition: tenantAdminStaticProfileTypeDefinitionFromRaw(
+          type: 'landmark',
+          label: 'Landmark',
+          allowedTaxonomies: const [],
+          visual: TenantAdminPoiVisual.image(
+            imageSource: TenantAdminPoiVisualImageSource.typeAsset,
+            colorValue: TenantAdminHexColorValue()..parse('#00897B'),
+            imageUrlValue: TenantAdminOptionalUrlValue()
+              ..parse(
+                'https://tenant.test/api/v1/media/static-profile-types/type-1/type_asset?v=123',
+              ),
+          ),
+          capabilities: TenantAdminStaticProfileTypeCapabilities(
+            isPoiEnabled: TenantAdminFlagValue(true),
+            hasBio: TenantAdminFlagValue(true),
+            hasTaxonomies: TenantAdminFlagValue(true),
+            hasAvatar: TenantAdminFlagValue(true),
+            hasCover: TenantAdminFlagValue(true),
+            hasContent: TenantAdminFlagValue(true),
+          ),
         ),
-        capabilities: TenantAdminStaticProfileTypeCapabilities(
-          isPoiEnabled: TenantAdminFlagValue(true),
-          hasBio: TenantAdminFlagValue(true),
-          hasTaxonomies: TenantAdminFlagValue(true),
-          hasAvatar: TenantAdminFlagValue(true),
-          hasCover: TenantAdminFlagValue(true),
-          hasContent: TenantAdminFlagValue(true),
-        ),
-      ),
-    );
+      );
 
-    expect(find.text('Imagem canônica do tipo'), findsOneWidget);
-    expect(
-      find.widgetWithText(TextFormField, 'Cor do marcador'),
-      findsOneWidget,
-    );
-    expect(find.byType(TenantAdminImageUploadField), findsOneWidget);
-    expect(find.text('Enviar imagem canônica'), findsOneWidget);
-  });
+      expect(find.text('Imagem canônica do tipo'), findsOneWidget);
+      expect(
+        find.widgetWithText(TextFormField, 'Cor do marcador'),
+        findsOneWidget,
+      );
+      expect(find.byType(TenantAdminImageUploadField), findsOneWidget);
+      expect(find.text('Enviar imagem canônica'), findsOneWidget);
+    },
+  );
 
-  testWidgets('static type_asset upload uses canonical image source sheet',
-      (tester) async {
-    final controller = _TestStaticProfileTypesController(impactCount: 0);
+  testWidgets('static type_asset upload uses canonical image source sheet', (
+    tester,
+  ) async {
+    final controller = _TestStaticProfileTypesController(0);
     await _pumpFormScreen(
       tester,
       controller: controller,
@@ -230,13 +234,11 @@ Future<void> _pumpFormScreen(
 
 class _TestStaticProfileTypesController
     extends TenantAdminStaticProfileTypesController {
-  _TestStaticProfileTypesController({
-    required int impactCount,
-  })  : _impactCount = impactCount,
-        super(
-          repository: _FakeStaticAssetsRepository(),
-          taxonomiesRepository: _FakeTaxonomiesRepository(),
-        );
+  _TestStaticProfileTypesController(this._impactCount)
+    : super(
+        repository: _FakeStaticAssetsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+      );
 
   final int _impactCount;
   int submitUpdateCalls = 0;
@@ -296,7 +298,8 @@ class _FakeStaticAssetsRepository
     return tenantAdminStaticProfileTypeDefinitionFromRaw(
       type: type.value,
       label: label.value,
-      allowedTaxonomies: allowedTaxonomies
+      allowedTaxonomies:
+          allowedTaxonomies
               ?.map((entry) => entry.value)
               .toList(growable: false) ??
           const [],
@@ -306,11 +309,13 @@ class _FakeStaticAssetsRepository
 
   @override
   Future<void> deleteStaticAsset(
-      TenantAdminStaticAssetsRepoString assetId) async {}
+    TenantAdminStaticAssetsRepoString assetId,
+  ) async {}
 
   @override
   Future<void> deleteStaticProfileType(
-      TenantAdminStaticAssetsRepoString type) async {}
+    TenantAdminStaticAssetsRepoString type,
+  ) async {}
 
   @override
   Future<TenantAdminStaticAsset> fetchStaticAsset(
@@ -337,13 +342,13 @@ class _FakeStaticAssetsRepository
 
   @override
   Future<List<TenantAdminStaticProfileTypeDefinition>>
-      fetchStaticProfileTypes() async {
+  fetchStaticProfileTypes() async {
     return const <TenantAdminStaticProfileTypeDefinition>[];
   }
 
   @override
   Future<TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>>
-      fetchStaticProfileTypesPage({
+  fetchStaticProfileTypesPage({
     required TenantAdminStaticAssetsRepoInt page,
     required TenantAdminStaticAssetsRepoInt pageSize,
   }) async {
@@ -396,11 +401,13 @@ class _FakeStaticAssetsRepository
     return tenantAdminStaticProfileTypeDefinitionFromRaw(
       type: newType?.value ?? type.value,
       label: label?.value ?? type.value,
-      allowedTaxonomies: allowedTaxonomies
+      allowedTaxonomies:
+          allowedTaxonomies
               ?.map((entry) => entry.value)
               .toList(growable: false) ??
           const [],
-      capabilities: capabilities ??
+      capabilities:
+          capabilities ??
           TenantAdminStaticProfileTypeCapabilities(
             isPoiEnabled: TenantAdminFlagValue(false),
             hasBio: TenantAdminFlagValue(false),
@@ -452,7 +459,7 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
-      fetchTaxonomiesPage({
+  fetchTaxonomiesPage({
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
   }) async {
@@ -471,7 +478,7 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
-      fetchTermsPage({
+  fetchTermsPage({
     required TenantAdminTaxRepoString taxonomyId,
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,

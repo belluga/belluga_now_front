@@ -26,8 +26,9 @@ class TenantAdminSettingsRepository
   TenantAdminSettingsRepository({
     Dio? dio,
     TenantAdminTenantScopeContract? tenantScope,
-  })  : _dio = dio ?? Dio(),
-        _tenantScope = tenantScope;
+  }) : this._internal(dio ?? Dio(), tenantScope);
+
+  TenantAdminSettingsRepository._internal(this._dio, [this._tenantScope]);
 
   final Dio _dio;
   final TenantAdminTenantScopeContract? _tenantScope;
@@ -93,7 +94,7 @@ class TenantAdminSettingsRepository
 
   @override
   Future<TenantAdminDiscoveryFiltersSettingsValue>
-      fetchDiscoveryFiltersSettings() async {
+  fetchDiscoveryFiltersSettings() async {
     try {
       final response = await _dio.getUri(
         _buildTenantSettingsValuesUri(),
@@ -110,7 +111,7 @@ class TenantAdminSettingsRepository
 
   @override
   Future<TenantAdminDiscoveryFiltersSettingsValue>
-      updateDiscoveryFiltersSettings({
+  updateDiscoveryFiltersSettings({
     required TenantAdminDiscoveryFiltersSettingsValue settings,
   }) async {
     try {
@@ -225,9 +226,7 @@ class TenantAdminSettingsRepository
   }
 
   @override
-  Future<void> deleteDomain(
-    TenantAdminRequiredTextValue domainId,
-  ) async {
+  Future<void> deleteDomain(TenantAdminRequiredTextValue domainId) async {
     try {
       await _dio.deleteUri(
         _buildTenantDomainsUri(domainId: domainId.value),
@@ -245,14 +244,8 @@ class TenantAdminSettingsRepository
   }) async {
     final normalizedKey = key.value.trim();
     try {
-      final payload = FormData.fromMap({
-        'key': normalizedKey,
-      });
-      _appendUpload(
-        payload,
-        fieldName: 'image',
-        upload: upload,
-      );
+      final payload = FormData.fromMap({'key': normalizedKey});
+      _appendUpload(payload, fieldName: 'image', upload: upload);
 
       final response = await _dio.post(
         '$_apiBaseUrl/v1/media/map-filter-image',
@@ -278,10 +271,7 @@ class TenantAdminSettingsRepository
 
   Map<String, String> _buildHeaders() {
     final token = GetIt.I.get<LandlordAuthRepositoryContract>().token;
-    return {
-      'Authorization': 'Bearer $token',
-      'Accept': 'application/json',
-    };
+    return {'Authorization': 'Bearer $token', 'Accept': 'application/json'};
   }
 
   @override
@@ -291,9 +281,7 @@ class TenantAdminSettingsRepository
         _buildTenantPublicApiUri('/settings/firebase'),
         options: Options(headers: _buildHeaders()),
       );
-      return _responseDecoder.decodeFirebaseSettings(
-        response.data,
-      );
+      return _responseDecoder.decodeFirebaseSettings(response.data);
     } on DioException catch (error) {
       throw _wrapError(error, 'load firebase settings');
     }
@@ -309,9 +297,7 @@ class TenantAdminSettingsRepository
         data: _requestEncoder.encodeFirebaseSettingsPatch(settings),
         options: Options(headers: _buildHeaders()),
       );
-      final mapped = _responseDecoder.decodeFirebaseSettings(
-        response.data,
-      );
+      final mapped = _responseDecoder.decodeFirebaseSettings(response.data);
       if (mapped == null) {
         throw Exception('Firebase settings response is empty.');
       }
@@ -433,15 +419,13 @@ class TenantAdminSettingsRepository
 
   @override
   Future<TenantAdminOutboundIntegrationsSettings>
-      fetchOutboundIntegrationsSettings() async {
+  fetchOutboundIntegrationsSettings() async {
     try {
       final response = await _dio.getUri(
         _buildTenantSettingsValuesUri(),
         options: Options(headers: _buildHeaders()),
       );
-      return _responseDecoder.decodeOutboundIntegrationsSettings(
-        response.data,
-      );
+      return _responseDecoder.decodeOutboundIntegrationsSettings(response.data);
     } on DioException catch (error) {
       throw _wrapError(error, 'load outbound_integrations settings');
     }
@@ -449,20 +433,16 @@ class TenantAdminSettingsRepository
 
   @override
   Future<TenantAdminOutboundIntegrationsSettings>
-      updateOutboundIntegrationsSettings({
+  updateOutboundIntegrationsSettings({
     required TenantAdminOutboundIntegrationsSettings settings,
   }) async {
     try {
       final response = await _dio.patchUri(
         _buildTenantSettingsValuesUri(namespace: 'outbound_integrations'),
-        data: _requestEncoder.encodeOutboundIntegrationsSettingsPatch(
-          settings,
-        ),
+        data: _requestEncoder.encodeOutboundIntegrationsSettingsPatch(settings),
         options: Options(headers: _buildHeaders()),
       );
-      return _responseDecoder.decodeOutboundIntegrationsSettings(
-        response.data,
-      );
+      return _responseDecoder.decodeOutboundIntegrationsSettings(response.data);
     } on DioException catch (error) {
       throw _wrapError(error, 'update outbound_integrations settings');
     }
@@ -470,15 +450,13 @@ class TenantAdminSettingsRepository
 
   @override
   Future<TenantAdminPhoneOtpReviewAccessSettings>
-      fetchPhoneOtpReviewAccessSettings() async {
+  fetchPhoneOtpReviewAccessSettings() async {
     try {
       final response = await _dio.getUri(
         _buildTenantSettingsValuesUri(),
         options: Options(headers: _buildHeaders()),
       );
-      return _responseDecoder.decodePhoneOtpReviewAccessSettings(
-        response.data,
-      );
+      return _responseDecoder.decodePhoneOtpReviewAccessSettings(response.data);
     } on DioException catch (error) {
       throw _wrapError(error, 'load phone_otp_review_access settings');
     }
@@ -486,20 +464,16 @@ class TenantAdminSettingsRepository
 
   @override
   Future<TenantAdminPhoneOtpReviewAccessSettings>
-      updatePhoneOtpReviewAccessSettings({
+  updatePhoneOtpReviewAccessSettings({
     required TenantAdminPhoneOtpReviewAccessSettings settings,
   }) async {
     try {
       final response = await _dio.patchUri(
         _buildTenantSettingsValuesUri(namespace: 'phone_otp_review_access'),
-        data: _requestEncoder.encodePhoneOtpReviewAccessSettingsPatch(
-          settings,
-        ),
+        data: _requestEncoder.encodePhoneOtpReviewAccessSettingsPatch(settings),
         options: Options(headers: _buildHeaders()),
       );
-      return _responseDecoder.decodePhoneOtpReviewAccessSettings(
-        response.data,
-      );
+      return _responseDecoder.decodePhoneOtpReviewAccessSettings(response.data);
     } on DioException catch (error) {
       throw _wrapError(error, 'update phone_otp_review_access settings');
     }
@@ -520,9 +494,7 @@ class TenantAdminSettingsRepository
         ),
         options: Options(headers: _buildHeaders()),
       );
-      return _responseDecoder.decodePhoneOtpReviewAccessCodeHash(
-        response.data,
-      );
+      return _responseDecoder.decodePhoneOtpReviewAccessCodeHash(response.data);
     } on DioException catch (error) {
       throw _wrapError(error, 'generate phone_otp_review_access code hash');
     }
@@ -595,12 +567,8 @@ class TenantAdminSettingsRepository
     final requestSequence = ++_brandingFetchSequence;
     try {
       final response = await _dio.getUri(
-        _buildEnvironmentEndpointUri(
-          apiBaseUrl: requestedApiBaseUrl,
-        ),
-        options: Options(
-          headers: _buildBrandingReadHeaders(),
-        ),
+        _buildEnvironmentEndpointUri(apiBaseUrl: requestedApiBaseUrl),
+        options: Options(headers: _buildBrandingReadHeaders()),
       );
       final payload = _envelopeDecoder.decodeEnvironmentMap(
         _jsonObjectResponseDecoder.decode(
@@ -611,9 +579,7 @@ class TenantAdminSettingsRepository
       );
       final settings = _responseDecoder.decodeBrandingFromEnvironment(
         payload,
-        tenantOrigin: _resolveTenantOriginUri(
-          apiBaseUrl: requestedApiBaseUrl,
-        ),
+        tenantOrigin: _resolveTenantOriginUri(apiBaseUrl: requestedApiBaseUrl),
       );
       if (_shouldPublishBrandingResponse(
         requestSequence: requestSequence,
@@ -701,9 +667,7 @@ class TenantAdminSettingsRepository
   }
 
   Uri _buildEnvironmentEndpointUri({String? apiBaseUrl}) {
-    final origin = _resolveTenantOriginUri(
-      apiBaseUrl: apiBaseUrl,
-    );
+    final origin = _resolveTenantOriginUri(apiBaseUrl: apiBaseUrl);
     return origin.replace(
       path: '/api/v1/environment',
       queryParameters: {
@@ -714,14 +678,10 @@ class TenantAdminSettingsRepository
 
   Uri _buildTenantPublicApiUri(String path) {
     final normalizedPath = path.startsWith('/') ? path : '/$path';
-    return _resolveTenantOriginUri().replace(
-      path: '/api/v1$normalizedPath',
-    );
+    return _resolveTenantOriginUri().replace(path: '/api/v1$normalizedPath');
   }
 
-  Uri _buildTenantSettingsValuesUri({
-    String? namespace,
-  }) {
+  Uri _buildTenantSettingsValuesUri({String? namespace}) {
     final origin = _resolveTenantOriginUri();
     final encodedNamespace = namespace == null || namespace.trim().isEmpty
         ? null
@@ -740,8 +700,7 @@ class TenantAdminSettingsRepository
     final encodedNamespace = Uri.encodeComponent(namespace.trim());
     final encodedAction = Uri.encodeComponent(action.trim());
     return origin.replace(
-      path:
-          '/admin/api/v1/settings/values/$encodedNamespace/$encodedAction',
+      path: '/admin/api/v1/settings/values/$encodedNamespace/$encodedAction',
     );
   }
 
@@ -750,9 +709,7 @@ class TenantAdminSettingsRepository
     return origin.replace(path: '/admin/api/v1/appdomains');
   }
 
-  Uri _buildTenantDomainsUri({
-    String? domainId,
-  }) {
+  Uri _buildTenantDomainsUri({String? domainId}) {
     final origin = _resolveTenantOriginUri();
     final encodedDomainId = domainId == null || domainId.trim().isEmpty
         ? null
@@ -806,9 +763,7 @@ class TenantAdminSettingsRepository
   }
 
   Map<String, String> _buildBrandingReadHeaders() {
-    return {
-      'Accept': 'application/json',
-    };
+    return {'Accept': 'application/json'};
   }
 
   void _appendUpload(
@@ -884,10 +839,7 @@ class TenantAdminSettingsRepository
   }) async {
     final response = await _dio.postUri(
       _buildTenantAppDomainsUri(),
-      data: {
-        'platform': platform,
-        'identifier': identifier,
-      },
+      data: {'platform': platform, 'identifier': identifier},
       options: Options(headers: _buildHeaders()),
     );
     return _responseDecoder.decodeAppDomainIdentifiers(response.data);
@@ -898,9 +850,7 @@ class TenantAdminSettingsRepository
   }) async {
     final response = await _dio.deleteUri(
       _buildTenantAppDomainsUri(),
-      data: {
-        'platform': platform,
-      },
+      data: {'platform': platform},
       options: Options(headers: _buildHeaders()),
     );
     return _responseDecoder.decodeAppDomainIdentifiers(response.data);

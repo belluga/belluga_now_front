@@ -9,9 +9,8 @@ import 'package:belluga_now/application/router/support/route_redirect_path.dart'
 class LiveLocationRouteGuard extends AutoRouteGuard {
   LiveLocationRouteGuard({
     LocationPermissionBlockerLoader? blockerLoader,
-    LocationPermissionGrantedDocumentReentry? documentReentry,
-  })  : _blockerLoader = blockerLoader ?? loadCurrentLocationPermissionBlocker,
-        _documentReentry = documentReentry;
+    this._documentReentry,
+  }) : _blockerLoader = blockerLoader ?? loadCurrentLocationPermissionBlocker;
 
   final LocationPermissionBlockerLoader _blockerLoader;
   final LocationPermissionGrantedDocumentReentry? _documentReentry;
@@ -41,10 +40,11 @@ class LiveLocationRouteGuard extends AutoRouteGuard {
           didResolveGate = true;
 
           if (result == LocationPermissionGateResult.granted) {
-            final handledByDocumentReentry = (_documentReentry ??
+            final handledByDocumentReentry =
+                (_documentReentry ??
                 performLocationPermissionGrantedDocumentReentry)(
-              pendingRedirectPath,
-            );
+                  pendingRedirectPath,
+                );
             if (handledByDocumentReentry) {
               resolver.next(false);
               return;

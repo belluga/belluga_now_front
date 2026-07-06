@@ -2333,7 +2333,7 @@ Widget _buildAutoRouteTestApp({
         meta: canonicalRouteMeta(
           family: CanonicalRouteFamily.partnerDetail,
         ),
-        builder: (_, __) => RouteInstanceScope(child: child),
+        builder: (_, _) => RouteInstanceScope(child: child),
       ),
     ],
   )..ignorePopCompleters = true;

@@ -27,10 +27,8 @@ class TenantAdminFaviconPreview extends StatelessWidget {
         height: _previewSize,
         fit: BoxFit.contain,
         gaplessPlayback: true,
-        errorBuilder: (_, __, ___) => Icon(
-          Icons.broken_image_outlined,
-          color: placeholderColor,
-        ),
+        errorBuilder: (_, _, _) =>
+            Icon(Icons.broken_image_outlined, color: placeholderColor),
       );
     }
 
@@ -42,16 +40,11 @@ class TenantAdminFaviconPreview extends StatelessWidget {
         height: _previewSize,
         fit: BoxFit.contain,
         gaplessPlayback: true,
-        errorBuilder: (_, __, ___) => Icon(
-          Icons.broken_image_outlined,
-          color: placeholderColor,
-        ),
+        errorBuilder: (_, _, _) =>
+            Icon(Icons.broken_image_outlined, color: placeholderColor),
       );
     }
 
-    return Icon(
-      Icons.image_outlined,
-      color: placeholderColor,
-    );
+    return Icon(Icons.image_outlined, color: placeholderColor);
   }
 }

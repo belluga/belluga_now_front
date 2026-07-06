@@ -175,7 +175,7 @@ class _MapScreenState extends State<MapScreen> {
       builder: (_, hasSelectedPoi) {
         return StreamValueBuilder<int>(
           streamValue: _controller.poiDeckHeightRevisionStreamValue,
-          builder: (_, __) {
+          builder: (_, _) {
             final selectedPoi = _controller.selectedPoiStreamValue.value;
             final selectedDeckHeight = selectedPoi == null
                 ? 0.0

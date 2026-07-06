@@ -19,11 +19,8 @@ class RouteBackScope extends StatelessWidget {
     final navigationHistory = kIsWeb ? _tryGetNavigationHistory(router) : null;
     final listenables = kIsWeb
         ? <Listenable>[
-            if (_usableListenable(router) case final routerListenable?)
-              routerListenable,
-            if (_usableListenable(navigationHistory)
-                case final historyListenable?)
-              historyListenable,
+            ?_usableListenable(router),
+            ?_usableListenable(navigationHistory),
           ]
         : const <Listenable>[];
 

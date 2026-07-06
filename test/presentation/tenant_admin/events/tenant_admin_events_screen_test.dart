@@ -531,14 +531,14 @@ Future<void> _pumpEventsRouter(
       NamedRouteDef(
         name: 'events-test-root',
         path: '/',
-        builder: (_, __) => const Scaffold(
+        builder: (_, _) => const Scaffold(
           body: TenantAdminEventsScreen(),
         ),
       ),
       NamedRouteDef(
         name: TenantAdminEventCreateRoute.name,
         path: '/events/create',
-        builder: (_, __) => const Scaffold(
+        builder: (_, _) => const Scaffold(
           body: Center(child: Text('CREATE-EVENT-ROUTE')),
         ),
       ),
@@ -558,7 +558,7 @@ Future<void> _pumpEventsRouter(
       NamedRouteDef(
         name: TenantAdminEventTypesRoute.name,
         path: '/events/types',
-        builder: (_, __) => const Scaffold(
+        builder: (_, _) => const Scaffold(
           body: Center(child: Text('EVENT-TYPES-ROUTE')),
         ),
       ),

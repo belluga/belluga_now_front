@@ -21,10 +21,7 @@ class TenantAdminAccountsRequestEncoder {
         'organization_id': organizationId.trim(),
     };
     if (document != null) {
-      payload['document'] = {
-        'type': document.type,
-        'number': document.number,
-      };
+      payload['document'] = {'type': document.type, 'number': document.number};
     }
     return payload;
   }
@@ -46,16 +43,13 @@ class TenantAdminAccountsRequestEncoder {
       'ownership_state': ownershipState.apiValue,
       'profile_type': profileType,
       if (location != null)
-        'location': {
-          'lat': location.latitude,
-          'lng': location.longitude,
-        },
+        'location': {'lat': location.latitude, 'lng': location.longitude},
       if (taxonomyTerms.isNotEmpty)
         'taxonomy_terms': taxonomyTerms
             .map((term) => {'type': term.type, 'value': term.value})
             .toList(growable: false),
-      if (bio != null) 'bio': bio,
-      if (content != null) 'content': content,
+      'bio': ?bio,
+      'content': ?content,
       if (nestedProfileGroups.isNotEmpty)
         'nested_profile_groups': encodeTenantAdminNestedProfileGroups(
           nestedProfileGroups,
@@ -77,10 +71,7 @@ class TenantAdminAccountsRequestEncoder {
       payload['slug'] = slug.trim();
     }
     if (document != null) {
-      payload['document'] = {
-        'type': document.type,
-        'number': document.number,
-      };
+      payload['document'] = {'type': document.type, 'number': document.number};
     }
     if (ownershipState != null) {
       payload['ownership_state'] = ownershipState.apiValue;

@@ -147,29 +147,31 @@ class DeferredLinkRepository implements DeferredLinkRepositoryContract {
   }
 
   Future<bool> _writeLocalStateBestEffort(String key, String value) async {
+    var success = false;
     try {
       await _localStateStorage.write(key, value);
-      return true;
+      success = true;
     } catch (error, stackTrace) {
       debugPrint(
         'DeferredLinkRepository local-state write failed for $key: '
         '$error\n$stackTrace',
       );
-      return false;
     }
+    return success;
   }
 
   Future<bool> _deleteLocalStateBestEffort(String key) async {
+    var success = false;
     try {
       await _localStateStorage.delete(key);
-      return true;
+      success = true;
     } catch (error, stackTrace) {
       debugPrint(
         'DeferredLinkRepository local-state delete failed for $key: '
         '$error\n$stackTrace',
       );
-      return false;
     }
+    return success;
   }
 
   Future<_DeferredLinkCaptureAttempt> _captureFromPayload({

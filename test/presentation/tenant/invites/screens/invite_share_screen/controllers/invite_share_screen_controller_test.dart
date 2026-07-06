@@ -46,8 +46,8 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
   _FakeContactsRepository({
     this.throwOnRequestPermission = false,
     this.contacts = const <ContactModel>[],
-    List<ContactModel>? cachedContacts,
-  }) : _cachedContacts = cachedContacts;
+    this._cachedContacts,
+  });
 
   bool permissionGranted = true;
   bool throwOnRequestPermission;
@@ -59,8 +59,9 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
   int refreshContactsCalls = 0;
   Completer<void>? loadCachedContactsGate;
   @override
-  final contactsStreamValue =
-      StreamValue<List<ContactModel>?>(defaultValue: null);
+  final contactsStreamValue = StreamValue<List<ContactModel>?>(
+    defaultValue: null,
+  );
 
   @override
   Future<bool> requestPermission() async {
@@ -144,10 +145,10 @@ class _FakeInvitesRepository extends InvitesRepositoryContract
       StreamValue<List<InviteableRecipient>?>(defaultValue: null);
 
   @override
-  Future<List<InviteModel>> fetchInvites(
-          {InvitesRepositoryContractPrimInt? page,
-          InvitesRepositoryContractPrimInt? pageSize}) async =>
-      const [];
+  Future<List<InviteModel>> fetchInvites({
+    InvitesRepositoryContractPrimInt? page,
+    InvitesRepositoryContractPrimInt? pageSize,
+  }) async => const [];
 
   @override
   Future<InviteRuntimeSettings> fetchSettings() async =>
@@ -160,39 +161,40 @@ class _FakeInvitesRepository extends InvitesRepositoryContract
 
   @override
   Future<InviteAcceptResult> acceptInvite(
-          InvitesRepositoryContractPrimString inviteId) async =>
-      buildInviteAcceptResult(
-        inviteId: inviteId.value,
-        status: 'accepted',
-        creditedAcceptance: true,
-        attendancePolicy: 'free_confirmation_only',
-        nextStep: InviteNextStep.freeConfirmationCreated,
-        supersededInviteIds: const [],
-      );
+    InvitesRepositoryContractPrimString inviteId,
+  ) async => buildInviteAcceptResult(
+    inviteId: inviteId.value,
+    status: 'accepted',
+    creditedAcceptance: true,
+    attendancePolicy: 'free_confirmation_only',
+    nextStep: InviteNextStep.freeConfirmationCreated,
+    supersededInviteIds: const [],
+  );
 
   @override
   Future<InviteAcceptResult> acceptInviteByCode(
-          InvitesRepositoryContractPrimString code) async =>
-      buildInviteAcceptResult(
-        inviteId: 'mock-${code.value}',
-        status: 'accepted',
-        creditedAcceptance: true,
-        attendancePolicy: 'free_confirmation_only',
-        nextStep: InviteNextStep.freeConfirmationCreated,
-        supersededInviteIds: const [],
-      );
+    InvitesRepositoryContractPrimString code,
+  ) async => buildInviteAcceptResult(
+    inviteId: 'mock-${code.value}',
+    status: 'accepted',
+    creditedAcceptance: true,
+    attendancePolicy: 'free_confirmation_only',
+    nextStep: InviteNextStep.freeConfirmationCreated,
+    supersededInviteIds: const [],
+  );
 
   @override
   Future<InviteDeclineResult> declineInvite(
-          InvitesRepositoryContractPrimString inviteId) async =>
-      buildInviteDeclineResult(
-        inviteId: inviteId.value,
-        status: 'declined',
-        groupHasOtherPending: false,
-      );
+    InvitesRepositoryContractPrimString inviteId,
+  ) async => buildInviteDeclineResult(
+    inviteId: inviteId.value,
+    status: 'declined',
+    groupHasOtherPending: false,
+  );
   @override
   Future<List<InviteContactMatch>> importContacts(
-      InviteContacts contacts) async {
+    InviteContacts contacts,
+  ) async {
     importContactsCalls += 1;
     await importContactsGate?.future;
     if (throwOnImportContacts) {
@@ -368,8 +370,9 @@ class _FakeInvitesRepository extends InvitesRepositoryContract
     Iterable<InvitesRepositoryContractPrimString> recipientAccountProfileIds =
         const <InvitesRepositoryContractPrimString>[],
   }) async {
-    final recipientFilter =
-        recipientAccountProfileIds.map((value) => value.value).toSet();
+    final recipientFilter = recipientAccountProfileIds
+        .map((value) => value.value)
+        .toSet();
     sentStatusRefreshes.add({
       'occurrence_id': occurrenceId.value,
       'event_id': eventId?.value,
@@ -467,10 +470,7 @@ AppData _buildAppData() {
         'type': 'personal',
         'label': 'Personal',
         'allowed_taxonomies': [],
-        'capabilities': {
-          'is_favoritable': true,
-          'is_poi_enabled': false,
-        },
+        'capabilities': {'is_favoritable': true, 'is_poi_enabled': false},
       },
     ],
     'domains': const ['https://tenant.test'],
@@ -760,7 +760,9 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(
-          controller.sendingInviteRecipientKeysStreamValue.value, isNotEmpty);
+        controller.sendingInviteRecipientKeysStreamValue.value,
+        isNotEmpty,
+      );
 
       await controller.init(
         _buildInvite(eventId: 'event-2', occurrenceId: 'occurrence-2'),
@@ -816,10 +818,7 @@ void main() {
       expect(invitesRepository.sendInvitesCalls, 1);
       expect(controller.inviteSendFailedStreamValue.value, isFalse);
       expect(controller.sentInvitesStreamValue.value, isEmpty);
-      expect(
-        _friendSuggestions(controller).single.inviteStatus,
-        isNull,
-      );
+      expect(_friendSuggestions(controller).single.inviteStatus, isNull);
 
       await controller.onDispose();
     },
@@ -830,8 +829,10 @@ void main() {
     () async {
       final syncGate = Completer<void>();
       final invitesRepository = _FakeInvitesRepository()
-        ..sentSummariesByOccurrence['occurrence-1'] =
-            _sentSummary(pending: 1, accepted: 0)
+        ..sentSummariesByOccurrence['occurrence-1'] = _sentSummary(
+          pending: 1,
+          accepted: 0,
+        )
         ..inviteableRecipients = <InviteableRecipient>[
           buildInviteableRecipient(
             userId: 'user-1',
@@ -880,10 +881,7 @@ void main() {
       expect(controller.sendingInviteRecipientKeysStreamValue.value, isEmpty);
       expect(controller.sentInvitesStreamValue.value, isEmpty);
       expect(controller.sentInviteSummaryStreamValue.value.pending, 0);
-      expect(
-        _friendSuggestions(controller).single.inviteStatus,
-        isNull,
-      );
+      expect(_friendSuggestions(controller).single.inviteStatus, isNull);
 
       await controller.onDispose();
     },
@@ -955,10 +953,7 @@ void main() {
 
       expect(invitesRepository.sendInvitesCalls, 1);
       expect(controller.inviteSendFailedStreamValue.value, isTrue);
-      expect(
-        _friendSuggestions(controller).single.inviteStatus,
-        isNull,
-      );
+      expect(_friendSuggestions(controller).single.inviteStatus, isNull);
       expect(controller.sentInvitesStreamValue.value, isEmpty);
 
       await controller.onDispose();
@@ -1016,8 +1011,10 @@ void main() {
         },
       ]);
       expect(controller.sentInviteSummaryStreamValue.value.accepted, 1);
-      expect(_friendSuggestions(controller).single.inviteStatus,
-          InviteStatus.accepted);
+      expect(
+        _friendSuggestions(controller).single.inviteStatus,
+        InviteStatus.accepted,
+      );
 
       await controller.onDispose();
     },
@@ -1124,10 +1121,7 @@ void main() {
 
       expect(controller.isPhoneContactsRefreshingStreamValue.value, isFalse);
       expect(invitesRepository.fetchInviteableRecipientsCalls, 2);
-      expect(
-        _friendSuggestions(controller).single.friend.name,
-        'Bia Favorita',
-      );
+      expect(_friendSuggestions(controller).single.friend.name, 'Bia Favorita');
 
       await controller.onDispose();
     },
@@ -1155,10 +1149,9 @@ void main() {
 
       await controller.init(_buildInvite());
 
-      expect(
-        _friendSuggestions(controller).map((item) => item.friend.name),
-        ['Bia Favorita'],
-      );
+      expect(_friendSuggestions(controller).map((item) => item.friend.name), [
+        'Bia Favorita',
+      ]);
 
       contactsRepository.contacts = <ContactModel>[
         buildContactModel(
@@ -1204,8 +1197,10 @@ void main() {
       expect(contactsRepository.loadCachedContactsCalls, 1);
       expect(contactsRepository.refreshCachedContactsCalls, 0);
       expect(contactsRepository.refreshContactsCalls, 0);
-      expect(_friendSuggestions(controller).map((item) => item.friend.name),
-          isEmpty);
+      expect(
+        _friendSuggestions(controller).map((item) => item.friend.name),
+        isEmpty,
+      );
 
       await controller.onDispose();
     },
@@ -1315,7 +1310,11 @@ void main() {
 
       expect(
         reopenedController
-            .friendsSuggestionsStreamValue.value?.single.friend.name,
+            .friendsSuggestionsStreamValue
+            .value
+            ?.single
+            .friend
+            .name,
         'Ana Contato',
       );
 
@@ -1324,7 +1323,11 @@ void main() {
 
       expect(
         reopenedController
-            .friendsSuggestionsStreamValue.value?.single.friend.name,
+            .friendsSuggestionsStreamValue
+            .value
+            ?.single
+            .friend
+            .name,
         'Bia Favorita',
       );
 
@@ -1354,8 +1357,9 @@ void main() {
       final invitesRepository = _FakeInvitesRepository()
         ..inviteableRecipients = cachedInviteables
         ..throwOnSentSummary = true;
-      invitesRepository.inviteableRecipientsStreamValue
-          .addValue(cachedInviteables);
+      invitesRepository.inviteableRecipientsStreamValue.addValue(
+        cachedInviteables,
+      );
       final controller = InviteShareScreenController(
         invitesRepository: invitesRepository,
         contactsRepository: _FakeContactsRepository(),
@@ -1450,10 +1454,7 @@ void main() {
       final initFuture = controller.init(_buildInvite());
       await Future<void>.delayed(Duration.zero);
 
-      expect(
-        invitesRepository.hydrateImportedContactMatchesFromCacheCalls,
-        1,
-      );
+      expect(invitesRepository.hydrateImportedContactMatchesFromCacheCalls, 1);
       expect(invitesRepository.fetchInviteableRecipientsCalls, 1);
 
       hydrateGate.complete();
@@ -1510,10 +1511,7 @@ void main() {
       final initFuture = controller.init(_buildInvite());
       await Future<void>.delayed(Duration.zero);
 
-      expect(
-        invitesRepository.hydrateImportedContactMatchesFromCacheCalls,
-        1,
-      );
+      expect(invitesRepository.hydrateImportedContactMatchesFromCacheCalls, 1);
       expect(controller.friendsSuggestionsStreamValue.value, isNull);
 
       importGate.complete();
@@ -1677,7 +1675,8 @@ void main() {
       expect(invitesRepository.sentSummaryRefreshes, hasLength(1));
       expect(
         invitesRepository
-            .sentStatusRefreshes.single['recipient_account_profile_ids'],
+            .sentStatusRefreshes
+            .single['recipient_account_profile_ids'],
         ['profile-1', 'profile-2'],
       );
       expect(_friendSuggestions(controller), hasLength(2));
@@ -1770,10 +1769,7 @@ void main() {
       expect(contactsRepository.refreshCachedContactsCalls, 0);
       expect(contactsRepository.refreshContactsCalls, 0);
       expect(invitesRepository.importContactsCalls, 0);
-      expect(
-        _friendSuggestions(controller).single.friend.name,
-        'Bruna',
-      );
+      expect(_friendSuggestions(controller).single.friend.name, 'Bruna');
 
       await controller.onDispose();
     },
@@ -1866,8 +1862,9 @@ void main() {
       );
 
       await controller.init(_buildInvite());
-      controller.externalContactShareTargetsStreamValue
-          .addValue(const <InviteExternalContactShareTarget>[]);
+      controller.externalContactShareTargetsStreamValue.addValue(
+        const <InviteExternalContactShareTarget>[],
+      );
 
       await controller.init(_buildInvite());
       await controller.selectPane(InviteSharePane.phone);
@@ -1964,10 +1961,7 @@ void main() {
         contains('Matched Contact'),
       );
       expect(_externalTargets(controller), hasLength(1));
-      expect(
-        _externalTargets(controller).single.displayName,
-        'Mae',
-      );
+      expect(_externalTargets(controller).single.displayName, 'Mae');
 
       await controller.onDispose();
     },
@@ -2030,9 +2024,9 @@ void main() {
         contains('Matched Backend'),
       );
       expect(
-        _externalTargets(controller)
-            .map((target) => target.displayName)
-            .toList(),
+        _externalTargets(
+          controller,
+        ).map((target) => target.displayName).toList(),
         ['Mae'],
       );
 
@@ -2076,59 +2070,53 @@ void main() {
       await controller.init(_buildInvite());
       await controller.selectPane(InviteSharePane.phone);
 
-      expect(
-        _friendSuggestions(controller).single.friend.name,
-        'Bruna',
-      );
+      expect(_friendSuggestions(controller).single.friend.name, 'Bruna');
 
       await controller.onDispose();
     },
   );
 
-  test(
-    'Pessoas keeps account name before agenda fallback',
-    () async {
-      final matchedContact = buildContactModel(
-        id: 'matched-contact',
-        displayName: 'Nome da Agenda',
-        phones: <String>['+55 27 99886-9802'],
-      );
-      final matchedHash = InviteContactImportHashes.contactHashes(
-        matchedContact,
-        regionCode: 'BR',
-      ).first;
-      final contactsRepository = _FakeContactsRepository(
-        contacts: <ContactModel>[matchedContact],
-      );
-      final invitesRepository = _FakeInvitesRepository()
-        ..importContactMatches = const <InviteContactMatch>[]
-        ..inviteableRecipients = <InviteableRecipient>[
-          _buildContactMatchedInviteableRecipient(
-            userId: 'user-1',
-            accountProfileId: 'profile-1',
-            displayName: 'Nome da Account',
-            contactHash: matchedHash,
-          ),
-        ];
-      final controller = InviteShareScreenController(
-        invitesRepository: invitesRepository,
-        contactsRepository: contactsRepository,
-        appData: _buildAppData(),
-        isWebRuntime: false,
-        contactRegionCode: 'BR',
-      );
+  test('Pessoas keeps account name before agenda fallback', () async {
+    final matchedContact = buildContactModel(
+      id: 'matched-contact',
+      displayName: 'Nome da Agenda',
+      phones: <String>['+55 27 99886-9802'],
+    );
+    final matchedHash = InviteContactImportHashes.contactHashes(
+      matchedContact,
+      regionCode: 'BR',
+    ).first;
+    final contactsRepository = _FakeContactsRepository(
+      contacts: <ContactModel>[matchedContact],
+    );
+    final invitesRepository = _FakeInvitesRepository()
+      ..importContactMatches = const <InviteContactMatch>[]
+      ..inviteableRecipients = <InviteableRecipient>[
+        _buildContactMatchedInviteableRecipient(
+          userId: 'user-1',
+          accountProfileId: 'profile-1',
+          displayName: 'Nome da Account',
+          contactHash: matchedHash,
+        ),
+      ];
+    final controller = InviteShareScreenController(
+      invitesRepository: invitesRepository,
+      contactsRepository: contactsRepository,
+      appData: _buildAppData(),
+      isWebRuntime: false,
+      contactRegionCode: 'BR',
+    );
 
-      await controller.init(_buildInvite());
-      await controller.selectPane(InviteSharePane.phone);
+    await controller.init(_buildInvite());
+    await controller.selectPane(InviteSharePane.phone);
 
-      expect(
-        _friendSuggestions(controller).single.friend.name,
-        'Nome da Account',
-      );
+    expect(
+      _friendSuggestions(controller).single.friend.name,
+      'Nome da Account',
+    );
 
-      await controller.onDispose();
-    },
-  );
+    await controller.onDispose();
+  });
 
   test(
     'Pessoas falls back to linked phone when neither account nor agenda has name',
@@ -2175,34 +2163,31 @@ void main() {
     },
   );
 
-  test(
-    'does not expose external phone contacts on web runtime',
-    () async {
-      final contactsRepository = _FakeContactsRepository(
-        contacts: <ContactModel>[
-          buildContactModel(
-            id: 'external-contact',
-            displayName: 'Mae',
-            phones: <String>['+55 27 98888-7777'],
-          ),
-        ],
-      );
-      final controller = InviteShareScreenController(
-        invitesRepository: _FakeInvitesRepository()
-          ..importContactMatches = const <InviteContactMatch>[],
-        contactsRepository: contactsRepository,
-        appData: _buildAppData(),
-        isWebRuntime: true,
-      );
+  test('does not expose external phone contacts on web runtime', () async {
+    final contactsRepository = _FakeContactsRepository(
+      contacts: <ContactModel>[
+        buildContactModel(
+          id: 'external-contact',
+          displayName: 'Mae',
+          phones: <String>['+55 27 98888-7777'],
+        ),
+      ],
+    );
+    final controller = InviteShareScreenController(
+      invitesRepository: _FakeInvitesRepository()
+        ..importContactMatches = const <InviteContactMatch>[],
+      contactsRepository: contactsRepository,
+      appData: _buildAppData(),
+      isWebRuntime: true,
+    );
 
-      await controller.init(_buildInvite());
-      await controller.selectPane(InviteSharePane.phone);
+    await controller.init(_buildInvite());
+    await controller.selectPane(InviteSharePane.phone);
 
-      expect(_externalTargets(controller), isEmpty);
+    expect(_externalTargets(controller), isEmpty);
 
-      await controller.onDispose();
-    },
-  );
+    await controller.onDispose();
+  });
 
   test(
     'does not expose external phone contacts when import classification fails',
@@ -2433,10 +2418,7 @@ InviteableRecipient _buildContactMatchedInviteableRecipient({
   );
 }
 
-SentInviteSummary _sentSummary({
-  required int pending,
-  required int accepted,
-}) {
+SentInviteSummary _sentSummary({required int pending, required int accepted}) {
   return SentInviteSummary(
     pendingValue: SentInviteSummaryCountValue()..parse(pending.toString()),
     acceptedValue: SentInviteSummaryCountValue()..parse(accepted.toString()),

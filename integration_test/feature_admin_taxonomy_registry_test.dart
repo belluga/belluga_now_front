@@ -560,6 +560,27 @@ class _FakeAccountProfilesRepository
       [];
 
   @override
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+      fetchAccountProfilesPage({
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
+    TenantAdminAccountProfilesRepoString? search,
+    TenantAdminAccountProfilesRepoString? accountId,
+    TenantAdminAccountProfilesRepoBool? queryableOnly,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
+  }) async {
+    final profiles = await fetchAccountProfiles(
+      accountId: accountId,
+      queryableOnly: queryableOnly,
+      excludeAccountProfileId: excludeAccountProfileId,
+    );
+    return tenantAdminPagedResultFromRaw(
+      items: profiles,
+      hasMore: false,
+    );
+  }
+
+  @override
   Future<TenantAdminAccountProfile> fetchAccountProfile(
     TenantAdminAccountProfilesRepoString accountProfileId,
   ) async {

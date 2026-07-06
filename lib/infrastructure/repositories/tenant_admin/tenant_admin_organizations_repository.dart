@@ -16,8 +16,9 @@ class TenantAdminOrganizationsRepository
   TenantAdminOrganizationsRepository({
     Dio? dio,
     TenantAdminTenantScopeContract? tenantScope,
-  })  : _dio = dio ?? Dio(),
-        _tenantScope = tenantScope;
+  }) : this._internal(dio ?? Dio(), tenantScope);
+
+  TenantAdminOrganizationsRepository._internal(this._dio, [this._tenantScope]);
 
   final Dio _dio;
   final TenantAdminTenantScopeContract? _tenantScope;
@@ -32,10 +33,7 @@ class TenantAdminOrganizationsRepository
 
   Map<String, String> _buildHeaders() {
     final token = GetIt.I.get<LandlordAuthRepositoryContract>().token;
-    return {
-      'Authorization': 'Bearer $token',
-      'Accept': 'application/json',
-    };
+    return {'Authorization': 'Bearer $token', 'Accept': 'application/json'};
   }
 
   @override
@@ -66,17 +64,14 @@ class TenantAdminOrganizationsRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminOrganization>>
-      fetchOrganizationsPage({
+  fetchOrganizationsPage({
     required TenantAdminOrganizationsRepositoryContractPrimInt page,
     required TenantAdminOrganizationsRepositoryContractPrimInt pageSize,
   }) async {
     try {
       final response = await _dio.get(
         '$_apiBaseUrl/v1/organizations',
-        queryParameters: {
-          'page': page.value,
-          'page_size': pageSize.value,
-        },
+        queryParameters: {'page': page.value, 'page_size': pageSize.value},
         options: Options(headers: _buildHeaders()),
       );
       final dtos = _responseDecoder.decodeOrganizationList(response.data);
@@ -94,8 +89,8 @@ class TenantAdminOrganizationsRepository
 
   @override
   Future<TenantAdminOrganization> fetchOrganization(
-      TenantAdminOrganizationsRepositoryContractPrimString
-          organizationId) async {
+    TenantAdminOrganizationsRepositoryContractPrimString organizationId,
+  ) async {
     try {
       final response = await _dio.get(
         '$_apiBaseUrl/v1/organizations/${organizationId.value}',
@@ -133,7 +128,7 @@ class TenantAdminOrganizationsRepository
   @override
   Future<TenantAdminOrganization> updateOrganization({
     required TenantAdminOrganizationsRepositoryContractPrimString
-        organizationId,
+    organizationId,
     TenantAdminOrganizationsRepositoryContractPrimString? name,
     TenantAdminOrganizationsRepositoryContractPrimString? slug,
     TenantAdminOrganizationsRepositoryContractPrimString? description,

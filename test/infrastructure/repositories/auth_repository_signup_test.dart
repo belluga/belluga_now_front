@@ -45,9 +45,7 @@ void main() {
 
   test('signup merges anonymous identity and persists user id', () async {
     final authBackend = _CaptureAuthBackend();
-    GetIt.I.registerSingleton<BackendContract>(
-      _FakeBackend(auth: authBackend),
-    );
+    GetIt.I.registerSingleton<BackendContract>(_FakeBackend(auth: authBackend));
     final telemetry = _CaptureTelemetryRepository();
     GetIt.I.registerSingleton<TelemetryRepositoryContract>(telemetry);
     GetIt.I.registerSingleton<AuthRepositoryContract<UserContract>>(
@@ -65,9 +63,7 @@ void main() {
     expect(authBackend.lastAnonymousUserIds, ['507f1f77bcf86cd799439012']);
     expect(telemetry.mergeCalls, ['507f1f77bcf86cd799439012']);
 
-    final storedToken = await AuthRepository.storage.read(
-      key: 'user_token',
-    );
+    final storedToken = await AuthRepository.storage.read(key: 'user_token');
     final storedUserId = await AuthRepository.storage.read(key: 'user_id');
     expect(storedToken, 'token-registered');
     expect(storedUserId, '507f1f77bcf86cd799439011');
@@ -89,9 +85,7 @@ void main() {
         'token-registered',
       ),
     );
-    GetIt.I.registerSingleton<BackendContract>(
-      _FakeBackend(auth: authBackend),
-    );
+    GetIt.I.registerSingleton<BackendContract>(_FakeBackend(auth: authBackend));
     final telemetry = _CaptureTelemetryRepository();
     GetIt.I.registerSingleton<TelemetryRepositoryContract>(telemetry);
     GetIt.I.registerSingleton<AuthRepositoryContract<UserContract>>(
@@ -105,53 +99,49 @@ void main() {
     );
 
     expect(telemetry.mergeCalls, ['507f1f77bcf86cd799439012']);
-    final storedToken = await AuthRepository.storage.read(
-      key: 'user_token',
-    );
+    final storedToken = await AuthRepository.storage.read(key: 'user_token');
     final storedUserId = await AuthRepository.storage.read(key: 'user_id');
     expect(storedToken, 'token-registered');
     expect(storedUserId, '507f1f77bcf86cd799439011');
   });
 
-  test('phone otp verification merges anonymous identity and persists user id',
-      () async {
-    final authBackend = _CaptureAuthBackend();
-    GetIt.I.registerSingleton<BackendContract>(
-      _FakeBackend(auth: authBackend),
-    );
-    final telemetry = _CaptureTelemetryRepository();
-    GetIt.I.registerSingleton<TelemetryRepositoryContract>(telemetry);
-    GetIt.I.registerSingleton<AuthRepositoryContract<UserContract>>(
-      AuthRepository(),
-    );
+  test(
+    'phone otp verification merges anonymous identity and persists user id',
+    () async {
+      final authBackend = _CaptureAuthBackend();
+      GetIt.I.registerSingleton<BackendContract>(
+        _FakeBackend(auth: authBackend),
+      );
+      final telemetry = _CaptureTelemetryRepository();
+      GetIt.I.registerSingleton<TelemetryRepositoryContract>(telemetry);
+      GetIt.I.registerSingleton<AuthRepositoryContract<UserContract>>(
+        AuthRepository(),
+      );
 
-    final repository = GetIt.I.get<AuthRepositoryContract<UserContract>>();
-    final challenge = await repository.requestPhoneOtpChallenge(
-      authRepoString('+55 27 99999-0000'),
-    );
-    await repository.verifyPhoneOtpChallenge(
-      challengeId: authRepoString(challenge.challengeId),
-      phone: authRepoString(challenge.phone),
-      code: authRepoString('123456'),
-    );
+      final repository = GetIt.I.get<AuthRepositoryContract<UserContract>>();
+      final challenge = await repository.requestPhoneOtpChallenge(
+        authRepoString('+55 27 99999-0000'),
+      );
+      await repository.verifyPhoneOtpChallenge(
+        challengeId: authRepoString(challenge.challengeId),
+        phone: authRepoString(challenge.phone),
+        code: authRepoString('123456'),
+      );
 
-    expect(authBackend.lastOtpPhone, '+55 27 99999-0000');
-    expect(authBackend.lastOtpAnonymousUserIds, ['507f1f77bcf86cd799439012']);
-    expect(telemetry.mergeCalls, ['507f1f77bcf86cd799439012']);
+      expect(authBackend.lastOtpPhone, '+55 27 99999-0000');
+      expect(authBackend.lastOtpAnonymousUserIds, ['507f1f77bcf86cd799439012']);
+      expect(telemetry.mergeCalls, ['507f1f77bcf86cd799439012']);
 
-    final storedToken = await AuthRepository.storage.read(
-      key: 'user_token',
-    );
-    final storedUserId = await AuthRepository.storage.read(key: 'user_id');
-    expect(storedToken, 'token-phone-otp');
-    expect(storedUserId, '507f1f77bcf86cd799439011');
-  });
+      final storedToken = await AuthRepository.storage.read(key: 'user_token');
+      final storedUserId = await AuthRepository.storage.read(key: 'user_id');
+      expect(storedToken, 'token-phone-otp');
+      expect(storedUserId, '507f1f77bcf86cd799439011');
+    },
+  );
 
   test('phone otp challenge forwards requested delivery channel', () async {
     final authBackend = _CaptureAuthBackend();
-    GetIt.I.registerSingleton<BackendContract>(
-      _FakeBackend(auth: authBackend),
-    );
+    GetIt.I.registerSingleton<BackendContract>(_FakeBackend(auth: authBackend));
     GetIt.I.registerSingleton<AuthRepositoryContract<UserContract>>(
       AuthRepository(),
     );
@@ -191,7 +181,8 @@ class _CaptureTelemetryRepository implements TelemetryRepositoryContract {
 
   @override
   Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
-      EventTrackerTimedEventHandle handle) async {
+    EventTrackerTimedEventHandle handle,
+  ) async {
     return telemetryRepoBool(true);
   }
 
@@ -207,28 +198,26 @@ class _CaptureTelemetryRepository implements TelemetryRepositoryContract {
   EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
 
   @override
-  Future<TelemetryRepositoryContractPrimBool> mergeIdentity(
-      {required TelemetryRepositoryContractPrimString previousUserId}) async {
+  Future<TelemetryRepositoryContractPrimBool> mergeIdentity({
+    required TelemetryRepositoryContractPrimString previousUserId,
+  }) async {
     mergeCalls.add(previousUserId.value);
     return telemetryRepoBool(true);
   }
 }
 
 class _FakeBackend extends BackendContract {
-  _FakeBackend({required this.auth, BackendContext? context})
-      : _context = context;
+  _FakeBackend({required this.auth});
 
   @override
   final AuthBackendContract auth;
 
-  BackendContext? _context;
-
   @override
-  BackendContext? get context => _context;
+  BackendContext? context;
 
   @override
   void setContext(BackendContext context) {
-    _context = context;
+    this.context = context;
   }
 
   @override
@@ -370,8 +359,7 @@ class _UnsupportedAccountProfilesBackend
     int pageSize = 10,
     List<String>? typeFilters,
     List<dynamic>? taxonomyFilters,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
   Future<PagedAccountProfilesResult> fetchAccountProfilesPage({
@@ -382,8 +370,7 @@ class _UnsupportedAccountProfilesBackend
     List<String>? typeFilters,
     List<dynamic>? taxonomyFilters,
     List<String>? allowedTypes,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 }
 
 class _UnsupportedFavoriteBackend extends FavoriteBackendContract {
@@ -415,8 +402,7 @@ class _UnsupportedScheduleBackend extends ScheduleBackendContract {
   Future<EventDTO?> fetchEventDetail({
     required String eventIdOrSlug,
     String? occurrenceId,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
   Future<EventPageDTO> fetchEventsPage({
@@ -432,8 +418,7 @@ class _UnsupportedScheduleBackend extends ScheduleBackendContract {
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
   Stream<EventDeltaDTO> watchEventsStream({
@@ -447,6 +432,5 @@ class _UnsupportedScheduleBackend extends ScheduleBackendContract {
     double? maxDistanceMeters,
     String? lastEventId,
     bool showPastOnly = false,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 }

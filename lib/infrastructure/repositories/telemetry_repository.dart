@@ -17,11 +17,10 @@ class TelemetryRepository implements TelemetryRepositoryContract {
   TelemetryRepository({
     AppDataRepositoryContract? appDataRepository,
     TelemetryQueue? queue,
-    EventTrackerHandlerContract? handler,
-  })  : _appDataRepository =
-            appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
-        _queue = queue ?? TelemetryQueue(),
-        _handler = handler;
+    this._handler,
+  }) : _appDataRepository =
+           appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
+       _queue = queue ?? TelemetryQueue();
 
   final AppDataRepositoryContract _appDataRepository;
   final TelemetryQueue _queue;
@@ -75,8 +74,7 @@ class TelemetryRepository implements TelemetryRepositoryContract {
     }
 
     final normalizedProperties = _normalizePropertiesMap(properties);
-    final idempotencyKey =
-        TelemetryPropertiesCodec.readString(
+    final idempotencyKey = TelemetryPropertiesCodec.readString(
       normalizedProperties,
       'idempotency_key',
     );
@@ -90,25 +88,26 @@ class TelemetryRepository implements TelemetryRepositoryContract {
     final user = authRepository.userStreamValue.value;
     final tenantId = _appDataRepository.appData.tenantIdValue.value;
     final userId = user?.uuidValue.value ?? storedUserId;
-    final userData = await _buildUserData(
-      deviceId,
-      storedUserId: storedUserId,
+    final userData = await _buildUserData(deviceId, storedUserId: storedUserId);
+    final mergedProperties = await _mergeContextProperties(
+      normalizedProperties,
     );
-    final mergedProperties =
-        await _mergeContextProperties(normalizedProperties);
     final payload = EventTrackerData(
       eventName: eventName?.value,
       insertId: idempotencyKey,
       customData: {
         if (tenantId.isNotEmpty) 'tenant_id': tenantId,
-        if (userId != null) 'user_id': userId,
+        'user_id': ?userId,
         ...TelemetryPropertiesCodec.toRawMap(mergedProperties),
       },
     );
 
     final success = await _queue.enqueue(() async {
       final outcomes = await handler.logEvent(
-          type: event, userData: userData, data: payload);
+        type: event,
+        userData: userData,
+        data: payload,
+      );
       final hasFailures = outcomes.any((outcome) => outcome.isFailure);
       if (hasFailures) {
         throw Exception('Telemetry delivery failed');
@@ -137,22 +136,21 @@ class TelemetryRepository implements TelemetryRepositoryContract {
     final tenantId = _appDataRepository.appData.tenantIdValue.value;
     final userId = user?.uuidValue.value ?? storedUserId;
     final normalizedProperties = _normalizePropertiesMap(properties);
-    final mergedProperties =
-        await _mergeContextProperties(normalizedProperties);
-    final mergedScreenContext =
-        TelemetryPropertiesCodec.toRawMap(mergedProperties)['screen_context'];
-    _debugWebTelemetry(
-      'timed start',
-      {
-        'event': event.name,
-        'name': eventName?.value ?? event.name,
-        'screen_context': mergedScreenContext,
-        'insert_id': TelemetryPropertiesCodec.readString(
-          normalizedProperties,
-          'idempotency_key',
-        ),
-      },
+    final mergedProperties = await _mergeContextProperties(
+      normalizedProperties,
     );
+    final mergedScreenContext = TelemetryPropertiesCodec.toRawMap(
+      mergedProperties,
+    )['screen_context'];
+    _debugWebTelemetry('timed start', {
+      'event': event.name,
+      'name': eventName?.value ?? event.name,
+      'screen_context': mergedScreenContext,
+      'insert_id': TelemetryPropertiesCodec.readString(
+        normalizedProperties,
+        'idempotency_key',
+      ),
+    });
     final payload = EventTrackerData(
       eventName: eventName?.value,
       insertId: TelemetryPropertiesCodec.readString(
@@ -161,7 +159,7 @@ class TelemetryRepository implements TelemetryRepositoryContract {
       ),
       customData: {
         if (tenantId.isNotEmpty) 'tenant_id': tenantId,
-        if (userId != null) 'user_id': userId,
+        'user_id': ?userId,
         ...TelemetryPropertiesCodec.toRawMap(mergedProperties),
       },
     );
@@ -184,17 +182,19 @@ class TelemetryRepository implements TelemetryRepositoryContract {
       return Future.value(telemetryRepoBool(false));
     }
     _debugWebTelemetry('timed finish', handle.id);
-    unawaited(_queue.enqueue(() async {
-      final outcomes = await manager.finish(handle);
-      if (outcomes.isEmpty) {
-        return;
-      }
-      final hasFailures = outcomes.any((outcome) => outcome.isFailure);
-      if (hasFailures) {
-        throw Exception('Telemetry delivery failed');
-      }
-      _idempotencyKeys.add(handle.id);
-    }));
+    unawaited(
+      _queue.enqueue(() async {
+        final outcomes = await manager.finish(handle);
+        if (outcomes.isEmpty) {
+          return;
+        }
+        final hasFailures = outcomes.any((outcome) => outcome.isFailure);
+        if (hasFailures) {
+          throw Exception('Telemetry delivery failed');
+        }
+        _idempotencyKeys.add(handle.id);
+      }),
+    );
     return Future.value(telemetryRepoBool(true));
   }
 
@@ -205,16 +205,18 @@ class TelemetryRepository implements TelemetryRepositoryContract {
       return Future.value(telemetryRepoBool(false));
     }
     _debugWebTelemetry('timed flush');
-    unawaited(_queue.enqueue(() async {
-      final outcomes = await manager.flush();
-      if (outcomes.isEmpty) {
-        return;
-      }
-      final hasFailures = outcomes.any((outcome) => outcome.isFailure);
-      if (hasFailures) {
-        throw Exception('Telemetry delivery failed');
-      }
-    }));
+    unawaited(
+      _queue.enqueue(() async {
+        final outcomes = await manager.flush();
+        if (outcomes.isEmpty) {
+          return;
+        }
+        final hasFailures = outcomes.any((outcome) => outcome.isFailure);
+        if (hasFailures) {
+          throw Exception('Telemetry delivery failed');
+        }
+      }),
+    );
     return Future.value(telemetryRepoBool(true));
   }
 
@@ -229,8 +231,9 @@ class TelemetryRepository implements TelemetryRepositoryContract {
     if (manager == null) {
       return null;
     }
-    _lifecycleObserver ??=
-        EventTrackerLifecycleObserver(timedEventManager: manager);
+    _lifecycleObserver ??= EventTrackerLifecycleObserver(
+      timedEventManager: manager,
+    );
     return _lifecycleObserver;
   }
 
@@ -259,10 +262,7 @@ class TelemetryRepository implements TelemetryRepositoryContract {
     final authRepository = GetIt.I.get<AuthRepositoryContract>();
     final deviceId = await authRepository.getDeviceId();
     final storedUserId = await authRepository.getUserId();
-    return _buildUserData(
-      deviceId,
-      storedUserId: storedUserId,
-    );
+    return _buildUserData(deviceId, storedUserId: storedUserId);
   }
 
   Future<TelemetryRepositoryContractProperties?> _mergeContextProperties(
@@ -307,7 +307,7 @@ class TelemetryRepository implements TelemetryRepositoryContract {
     return telemetryRepoMap({
       'lat': coordinate.latitude,
       'lng': coordinate.longitude,
-      if (accuracy != null) 'accuracy_m': accuracy,
+      'accuracy_m': ?accuracy,
       'timestamp': capturedAt.toIso8601String(),
     });
   }

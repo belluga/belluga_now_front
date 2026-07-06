@@ -37,10 +37,7 @@ void main() {
     );
   }
 
-  Future<void> _pumpFor(
-    WidgetTester tester,
-    Duration duration,
-  ) async {
+  Future<void> _pumpFor(WidgetTester tester, Duration duration) async {
     final end = DateTime.now().add(duration);
     while (DateTime.now().isBefore(end)) {
       await tester.pump(const Duration(milliseconds: 100));
@@ -84,8 +81,9 @@ void main() {
     });
   }
 
-  const ValueKey<String> ownershipSegmentedKey =
-      ValueKey<String>('tenant_admin_accounts_segmented_filter');
+  const ValueKey<String> ownershipSegmentedKey = ValueKey<String>(
+    'tenant_admin_accounts_segmented_filter',
+  );
 
   testWidgets('Admin accounts list/detail/create routes', (tester) async {
     if (GetIt.I.isRegistered<ApplicationContract>()) {
@@ -133,39 +131,26 @@ void main() {
     });
 
     app.appRouter.replaceAll([
-      const TenantAdminShellRoute(
-        children: [TenantAdminAccountsListRoute()],
-      ),
+      const TenantAdminShellRoute(children: [TenantAdminAccountsListRoute()]),
     ]);
     await _pumpFor(tester, const Duration(seconds: 2));
 
-    await _waitForFinder(
-      tester,
-      _tenantAdminShellRouterFinder(),
-    );
+    await _waitForFinder(tester, _tenantAdminShellRouterFinder());
     app.appRouter.navigate(
-      const TenantAdminShellRoute(
-        children: [TenantAdminAccountsListRoute()],
-      ),
+      const TenantAdminShellRoute(children: [TenantAdminAccountsListRoute()]),
     );
     await _pumpFor(tester, const Duration(seconds: 2));
     await _waitForFinder(tester, find.byKey(ownershipSegmentedKey));
     await _waitForFinder(tester, find.text('Do tenant'));
-    await _waitForAny(
-      tester,
-      [
-        find.byType(ListTile),
-        find.text('Nenhuma conta neste segmento ainda.'),
-      ],
-    );
+    await _waitForAny(tester, [
+      find.byType(ListTile),
+      find.text('Nenhuma conta neste segmento ainda.'),
+    ]);
 
-    await _tapFirstMatch(
-      tester,
-      [
-        find.widgetWithText(FloatingActionButton, 'Criar conta'),
-        find.text('Criar Conta'),
-      ],
-    );
+    await _tapFirstMatch(tester, [
+      find.widgetWithText(FloatingActionButton, 'Criar conta'),
+      find.text('Criar Conta'),
+    ]);
     await _pumpFor(tester, const Duration(seconds: 1));
     await _waitForFinder(
       tester,
@@ -174,18 +159,12 @@ void main() {
 
     await tester.tap(find.byIcon(Icons.close));
     await _pumpFor(tester, const Duration(seconds: 1));
-    await _waitForFinder(
-      tester,
-      _tenantAdminShellRouterFinder(),
-    );
+    await _waitForFinder(tester, _tenantAdminShellRouterFinder());
     app.appRouter.push(
       TenantAdminAccountDetailRoute(accountSlug: 'detalhes-tecnicos'),
     );
     await _pumpFor(tester, const Duration(seconds: 1));
-    expect(
-      app.appRouter.currentPath,
-      '/admin/accounts/detalhes-tecnicos',
-    );
+    expect(app.appRouter.currentPath, '/admin/accounts/detalhes-tecnicos');
     expect(app.appRouter.currentPath.contains(':'), isFalse);
     await _waitForFinder(tester, find.textContaining('Conta:'));
 
@@ -202,28 +181,24 @@ void main() {
     );
     expect(app.appRouter.currentPath.contains(':'), isFalse);
     app.appRouter.replaceAll([
-      const TenantAdminShellRoute(
-        children: [TenantAdminAccountsListRoute()],
-      ),
+      const TenantAdminShellRoute(children: [TenantAdminAccountsListRoute()]),
     ]);
     await _pumpFor(tester, const Duration(seconds: 2));
     await _waitForFinder(tester, find.byKey(ownershipSegmentedKey));
 
     await tester.tap(find.text('Nao gerenciadas'));
     await _pumpFor(tester, const Duration(seconds: 1));
-    await _waitForAny(
-      tester,
-      [
-        find.byType(ListTile),
-        find.text('Nenhuma conta neste segmento ainda.'),
-      ],
-    );
+    await _waitForAny(tester, [
+      find.byType(ListTile),
+      find.text('Nenhuma conta neste segmento ainda.'),
+    ]);
   });
 }
 
 class _InMemoryAdminModeRepository implements AdminModeRepositoryContract {
-  final StreamValue<AdminMode> _modeStreamValue =
-      StreamValue<AdminMode>(defaultValue: AdminMode.user);
+  final StreamValue<AdminMode> _modeStreamValue = StreamValue<AdminMode>(
+    defaultValue: AdminMode.user,
+  );
 
   @override
   StreamValue<AdminMode> get modeStreamValue => _modeStreamValue;
@@ -249,30 +224,28 @@ class _InMemoryAdminModeRepository implements AdminModeRepositoryContract {
 }
 
 class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
-  _FakeLandlordAuthRepository({required bool hasValidSession})
-      : _hasValidSession = hasValidSession;
-
-  bool _hasValidSession;
+  _FakeLandlordAuthRepository({required this.hasValidSession});
 
   @override
-  bool get hasValidSession => _hasValidSession;
+  bool hasValidSession;
 
   @override
-  String get token => _hasValidSession ? 'token' : '';
+  String get token => hasValidSession ? 'token' : '';
 
   @override
   Future<void> init() async {}
 
   @override
   Future<void> loginWithEmailPassword(
-      LandlordAuthRepositoryContractPrimString email,
-      LandlordAuthRepositoryContractPrimString password) async {
-    _hasValidSession = true;
+    LandlordAuthRepositoryContractPrimString email,
+    LandlordAuthRepositoryContractPrimString password,
+  ) async {
+    hasValidSession = true;
   }
 
   @override
   Future<void> logout() async {
-    _hasValidSession = false;
+    hasValidSession = false;
   }
 }
 

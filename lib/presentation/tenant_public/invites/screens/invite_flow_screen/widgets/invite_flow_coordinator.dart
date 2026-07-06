@@ -26,7 +26,6 @@ class InviteFlowCoordinator extends StatefulWidget {
     required this.decisionResult,
     required this.requiresAuthentication,
     required this.isInitialized,
-    this.fallbackPath,
     this.isWebRuntime = kIsWeb,
   });
 
@@ -34,7 +33,6 @@ class InviteFlowCoordinator extends StatefulWidget {
   final InviteDecisionResult? decisionResult;
   final bool requiresAuthentication;
   final bool isInitialized;
-  final String? fallbackPath;
   final bool isWebRuntime;
 
   @override
@@ -42,8 +40,8 @@ class InviteFlowCoordinator extends StatefulWidget {
 }
 
 class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
-  final InviteFlowScreenController _controller =
-      GetIt.I.get<InviteFlowScreenController>();
+  final InviteFlowScreenController _controller = GetIt.I
+      .get<InviteFlowScreenController>();
   int _precacheToken = 0;
   String? _lastPrecacheKey;
   bool _exitHandled = false;
@@ -76,9 +74,7 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
     final backPolicy = _buildBackPolicy(context);
     return RouteBackScope(
       backPolicy: backPolicy,
-      child: Scaffold(
-        body: _buildContent(backPolicy),
-      ),
+      child: Scaffold(body: _buildContent(backPolicy)),
     );
   }
 
@@ -162,8 +158,9 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
     if (eventSlug.isEmpty) {
       ScaffoldMessenger.maybeOf(context)?.showSnackBar(
         const SnackBar(
-          content:
-              Text('Os detalhes deste evento ainda não estão disponíveis.'),
+          content: Text(
+            'Os detalhes deste evento ainda não estão disponíveis.',
+          ),
         ),
       );
       return;
@@ -181,15 +178,13 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
     InviteDecision decision,
   ) async {
     if (widget.isWebRuntime && !_controller.isAuthorized) {
-      await _showWebInviteDecisionPromotion(
-        invite: invite,
-        decision: decision,
-      );
+      await _showWebInviteDecisionPromotion(invite: invite, decision: decision);
       return;
     }
 
-    final hasSelectableCandidate = invite.inviters
-        .any((candidate) => candidate.inviteId.trim().isNotEmpty);
+    final hasSelectableCandidate = invite.inviters.any(
+      (candidate) => candidate.inviteId.trim().isNotEmpty,
+    );
     if (invite.hasMultipleInviters && !hasSelectableCandidate) {
       await _controller.requestDecision(decision);
       return;
@@ -228,8 +223,9 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
       return;
     }
     final pendingPath = _controller.redirectPath?.trim();
-    final normalizedPath =
-        pendingPath == null || pendingPath.isEmpty ? '/invite' : pendingPath;
+    final normalizedPath = pendingPath == null || pendingPath.isEmpty
+        ? '/invite'
+        : pendingPath;
     final encodedRedirect = Uri.encodeQueryComponent(normalizedPath);
     context.router.pushPath('/auth/login?redirect=$encodedRedirect');
   }
@@ -277,7 +273,7 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
   }
 
   Future<String?> _resolveFallbackNavigationPath() async {
-    return _controller.resolveFallbackNavigationPath(widget.fallbackPath);
+    return _controller.resolveFallbackNavigationPath();
   }
 
   void _showOfflineAcceptToast(InviteModel? invite) {
@@ -333,13 +329,15 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
     for (final invite in toPrecache) {
       final url = invite.eventImageUrl;
       if (_controller.isImageLoaded(url)) continue;
-      precacheImage(NetworkImage(url), ctx).then((_) {
-        if (token != _precacheToken || !mounted) return;
-        _controller.markImageLoaded(url);
-      }).catchError((_) {
-        if (token != _precacheToken || !mounted) return;
-        _controller.markImageLoaded(url); // avoid blocking on errors
-      });
+      precacheImage(NetworkImage(url), ctx)
+          .then((_) {
+            if (token != _precacheToken || !mounted) return;
+            _controller.markImageLoaded(url);
+          })
+          .catchError((_) {
+            if (token != _precacheToken || !mounted) return;
+            _controller.markImageLoaded(url); // avoid blocking on errors
+          });
     }
   }
 

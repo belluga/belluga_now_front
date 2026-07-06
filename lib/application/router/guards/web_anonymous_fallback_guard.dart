@@ -10,11 +10,10 @@ class WebAnonymousFallbackGuard extends AutoRouteGuard {
   WebAnonymousFallbackGuard({
     bool? isWebRuntime,
     AuthRepositoryContract? authRepository,
-    AnonymousWebRouteAllowance? allowAnonymousWeb,
-  })  : _isWebRuntime = isWebRuntime ?? kIsWeb,
-        _authRepository =
-            authRepository ?? GetIt.I.get<AuthRepositoryContract>(),
-        _allowAnonymousWeb = allowAnonymousWeb;
+    this._allowAnonymousWeb,
+  }) : _isWebRuntime = isWebRuntime ?? kIsWeb,
+       _authRepository =
+           authRepository ?? GetIt.I.get<AuthRepositoryContract>();
 
   final bool _isWebRuntime;
   final AuthRepositoryContract _authRepository;

@@ -345,7 +345,7 @@ Future<void> _pumpWithAutoRoute(WidgetTester tester, Widget child) async {
       NamedRouteDef(
         name: 'crop-sheet-test',
         path: '/',
-        builder: (_, __) => child,
+        builder: (_, _) => child,
       ),
     ],
   );

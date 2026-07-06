@@ -377,7 +377,7 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
                                     controller: _controller
                                         .accountProfilePickerScrollController,
                                     itemCount: itemCount,
-                                    separatorBuilder: (_, __) =>
+                                    separatorBuilder: (_, _) =>
                                         const SizedBox(height: 8),
                                     itemBuilder: (context, index) {
                                       if (index >= searchResults.length) {

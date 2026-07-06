@@ -270,17 +270,17 @@ Widget _buildTestApp(Widget child) {
       NamedRouteDef(
         name: 'accounts-list-test',
         path: '/',
-        builder: (_, __) => child,
+        builder: (_, _) => child,
       ),
       NamedRouteDef(
         name: TenantAdminAccountDetailRoute.name,
         path: '/accounts/:accountSlug',
-        builder: (_, __) => const _TestAccountDetailRouteScreen(),
+        builder: (_, _) => const _TestAccountDetailRouteScreen(),
       ),
       NamedRouteDef(
         name: TenantAdminAccountCreateRoute.name,
         path: '/accounts/create',
-        builder: (_, __) => const _TestAccountCreateRouteScreen(),
+        builder: (_, _) => const _TestAccountCreateRouteScreen(),
       ),
     ],
   )..ignorePopCompleters = true;

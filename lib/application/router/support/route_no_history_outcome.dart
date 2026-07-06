@@ -7,26 +7,19 @@ typedef RouteNoHistoryHandler = FutureOr<void> Function(StackRouter router);
 typedef RouteNoHistoryDelegate = FutureOr<void> Function();
 
 final class RouteNoHistoryOutcome {
-  RouteNoHistoryOutcome._({
-    required this.kind,
-    required RouteNoHistoryHandler handler,
-  }) : _handler = handler;
+  RouteNoHistoryOutcome._({required this.kind, required this._handler});
 
   final RouteNoHistoryOutcomeKind kind;
   final RouteNoHistoryHandler _handler;
 
-  factory RouteNoHistoryOutcome.fallback(
-    PageRouteInfo<dynamic> route,
-  ) {
+  factory RouteNoHistoryOutcome.fallback(PageRouteInfo<dynamic> route) {
     return RouteNoHistoryOutcome._(
       kind: RouteNoHistoryOutcomeKind.fallbackRoute,
       handler: (router) => router.replaceAll([route]),
     );
   }
 
-  factory RouteNoHistoryOutcome.replace(
-    PageRouteInfo<dynamic> route,
-  ) {
+  factory RouteNoHistoryOutcome.replace(PageRouteInfo<dynamic> route) {
     return RouteNoHistoryOutcome._(
       kind: RouteNoHistoryOutcomeKind.replaceRoute,
       handler: (router) => router.replace(route),
@@ -42,9 +35,7 @@ final class RouteNoHistoryOutcome {
     );
   }
 
-  factory RouteNoHistoryOutcome.requestExit(
-    RouteNoHistoryDelegate delegate,
-  ) {
+  factory RouteNoHistoryOutcome.requestExit(RouteNoHistoryDelegate delegate) {
     return RouteNoHistoryOutcome._(
       kind: RouteNoHistoryOutcomeKind.requestExit,
       handler: (_) => delegate(),
