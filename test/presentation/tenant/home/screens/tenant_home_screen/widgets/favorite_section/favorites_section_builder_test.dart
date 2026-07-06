@@ -73,7 +73,7 @@ class _FakeFavoriteRepository extends FavoriteRepositoryContract
     }
 
     return pagedResultsByPage[page] ??
-        const PagedFavoriteResumesResult(
+        PagedFavoriteResumesResult(
           items: <FavoriteResume>[],
           hasMore: false,
         );

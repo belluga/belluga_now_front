@@ -100,6 +100,7 @@ mixin FavoriteRepositoryPagingMixin on FavoriteRepositoryContract {
   }
 
   Future<bool> _recoverInitialFavoriteResumesDirectRead() async {
+    var recovered = false;
     try {
       final favorites = await fetchFavoriteResumes();
       final pageItems = favorites
@@ -112,10 +113,11 @@ mixin FavoriteRepositoryPagingMixin on FavoriteRepositoryContract {
       _currentFavoriteResumesPage = pageItems.isEmpty ? 0 : 1;
       isFavoriteResumesPageLoadingStreamValue.addValue(false);
       _isFetchingFavoriteResumesPage = false;
-      return true;
+      recovered = true;
     } catch (_) {
-      return false;
+      recovered = false;
     }
+    return recovered;
   }
 
   Future<void> _reloadFavoriteResumesWindow({

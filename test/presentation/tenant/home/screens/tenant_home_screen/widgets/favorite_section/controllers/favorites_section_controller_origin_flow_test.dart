@@ -110,7 +110,7 @@ void main() {
           _favoriteResume(title: 'Fav 2', slug: 'fav-2'),
         ],
         pagedResultsByPage: {
-          1: const PagedFavoriteResumesResult(
+          1: PagedFavoriteResumesResult(
             items: <FavoriteResume>[],
             hasMore: false,
           ),
@@ -928,7 +928,7 @@ class _FakeFavoriteRepository extends FavoriteRepositoryContract
     }
 
     return pagedResultsByPage[page] ??
-        const PagedFavoriteResumesResult(
+        PagedFavoriteResumesResult(
           items: <FavoriteResume>[],
           hasMore: false,
         );
