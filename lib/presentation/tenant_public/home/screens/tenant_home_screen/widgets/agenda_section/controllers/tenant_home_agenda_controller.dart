@@ -1178,8 +1178,15 @@ class TenantHomeAgendaController extends Object
     if (_isDisposed) {
       return;
     }
+    final shouldBootstrapOrigin =
+        _effectiveOriginLat == null || _effectiveOriginLng == null;
     try {
-      await _resolveEffectiveOrigin(warmUpIfPossible: false);
+      await _resolveEffectiveOrigin(
+        warmUpIfPossible: shouldBootstrapOrigin,
+      );
+      if (shouldBootstrapOrigin) {
+        await _awaitPendingInitialEffectiveOriginIfNeeded();
+      }
     } catch (error) {
       debugPrint(
         'TenantHomeAgendaController._revalidateRestoredHomeAgendaCache '

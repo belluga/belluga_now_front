@@ -706,6 +706,62 @@ void main() {
     );
 
     test(
+      'cache restore without tenant default still bootstraps live origin before revalidation fetch',
+      () async {
+        final appData = _buildAppData(
+          minKm: 1,
+          defaultKm: 5,
+          maxKm: 10,
+          includeDefaultOrigin: false,
+        );
+        final appDataRepository = _FakeAppDataRepository(appData);
+        final scheduleRepository = _FakeScheduleRepository()
+          ..writeHomeAgendaCache(
+            events: const <EventModel>[],
+            hasMore: false,
+            maxDistanceMeters: 5000,
+          );
+        final liveCoordinate = CityCoordinate(
+          latitudeValue: LatitudeValue()..parse('-20.671339'),
+          longitudeValue: LongitudeValue()..parse('-40.495395'),
+        );
+        final locationRepository = _FakeUserLocationRepository()
+          ..warmUpResult = false
+          ..resolvedCoordinateAfterPermission = liveCoordinate
+          ..resolvedCoordinateEmitDelay = const Duration(milliseconds: 20);
+        final controller = _buildAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: locationRepository,
+          appDataRepository: appDataRepository,
+          locationWarmUpTimeout: const Duration(milliseconds: 20),
+          locationPermissionTimeout: const Duration(milliseconds: 100),
+        );
+
+        await controller.init();
+        await Future<void>.delayed(const Duration(milliseconds: 60));
+
+        expect(locationRepository.resolveUserLocationCallCount, 1);
+        expect(
+          scheduleRepository.getEventsPageCallCount,
+          greaterThanOrEqualTo(1),
+        );
+        expect(scheduleRepository.requestOriginHistory, isNotEmpty);
+        expect(
+          scheduleRepository.requestOriginHistory.every(
+            (sample) => sample.lat != null && sample.lng != null,
+          ),
+          isTrue,
+          reason:
+              'Restored cache without canonical origin must request the live coordinate before any revalidation fetch issues a null-origin agenda request.',
+        );
+
+        controller.onDispose();
+      },
+    );
+
+    test(
       'ignores stale empty cache when effective origin differs from snapshot origin',
       () async {
         final appData = _buildAppData(minKm: 1, defaultKm: 5, maxKm: 10);
@@ -6371,7 +6427,6 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
     defaultValue: null,
   );
 
-  @override
   @override
   final StreamValue<LocationResolutionPhase>
   locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
