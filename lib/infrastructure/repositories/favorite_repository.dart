@@ -33,7 +33,7 @@ class FavoriteRepository extends FavoriteRepositoryContract
       pageSize: pageSize,
     );
 
-    return PagedFavoriteResumesResult(
+    return pagedFavoriteResumesResultFromRaw(
       items: pageDto.items.map((dto) => dto.toResume()).toList(growable: false),
       hasMore: pageDto.hasMore,
     );

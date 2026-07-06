@@ -110,7 +110,7 @@ void main() {
           _favoriteResume(title: 'Fav 2', slug: 'fav-2'),
         ],
         pagedResultsByPage: {
-          1: PagedFavoriteResumesResult(
+          1: pagedFavoriteResumesResultFromRaw(
             items: <FavoriteResume>[],
             hasMore: false,
           ),
@@ -188,14 +188,14 @@ void main() {
     () async {
       final favoriteRepository = _FakeFavoriteRepository(
         pagedResultsByPage: {
-          1: PagedFavoriteResumesResult(
+          1: pagedFavoriteResumesResultFromRaw(
             items: [
               _favoriteResume(title: 'Primeiro', slug: 'primeiro'),
               _favoriteResume(title: 'Segundo', slug: 'segundo'),
             ],
             hasMore: true,
           ),
-          2: PagedFavoriteResumesResult(
+          2: pagedFavoriteResumesResultFromRaw(
             items: [_favoriteResume(title: 'Terceiro', slug: 'terceiro')],
             hasMore: false,
           ),
@@ -226,14 +226,14 @@ void main() {
   test('favorites section appends the next page when requested', () async {
     final favoriteRepository = _FakeFavoriteRepository(
       pagedResultsByPage: {
-        1: PagedFavoriteResumesResult(
+        1: pagedFavoriteResumesResultFromRaw(
           items: [
             _favoriteResume(title: 'Primeiro', slug: 'primeiro'),
             _favoriteResume(title: 'Segundo', slug: 'segundo'),
           ],
           hasMore: true,
         ),
-        2: PagedFavoriteResumesResult(
+        2: pagedFavoriteResumesResultFromRaw(
           items: [_favoriteResume(title: 'Terceiro', slug: 'terceiro')],
           hasMore: false,
         ),
@@ -262,14 +262,14 @@ void main() {
     'favorites section preserves loaded pages when home re-enters and refreshes cached data',
     () async {
       final pagedResultsByPage = <int, PagedFavoriteResumesResult>{
-        1: PagedFavoriteResumesResult(
+        1: pagedFavoriteResumesResultFromRaw(
           items: [
             _favoriteResume(title: 'Primeiro', slug: 'primeiro'),
             _favoriteResume(title: 'Segundo', slug: 'segundo'),
           ],
           hasMore: true,
         ),
-        2: PagedFavoriteResumesResult(
+        2: pagedFavoriteResumesResultFromRaw(
           items: [_favoriteResume(title: 'Terceiro', slug: 'terceiro')],
           hasMore: false,
         ),
@@ -291,14 +291,14 @@ void main() {
         ['Primeiro', 'Segundo', 'Terceiro'],
       );
 
-      pagedResultsByPage[1] = PagedFavoriteResumesResult(
+      pagedResultsByPage[1] = pagedFavoriteResumesResultFromRaw(
         items: [
           _favoriteResume(title: 'Primeiro Atualizado', slug: 'primeiro'),
           _favoriteResume(title: 'Segundo Atualizado', slug: 'segundo'),
         ],
         hasMore: true,
       );
-      pagedResultsByPage[2] = PagedFavoriteResumesResult(
+      pagedResultsByPage[2] = pagedFavoriteResumesResultFromRaw(
         items: [
           _favoriteResume(title: 'Terceiro Atualizado', slug: 'terceiro'),
         ],
@@ -330,7 +330,7 @@ void main() {
     () async {
       final favoriteRepository = _FakeFavoriteRepository(
         pagedResultsByPage: {
-          1: PagedFavoriteResumesResult(
+          1: pagedFavoriteResumesResultFromRaw(
             items: [_favoriteResume(title: 'Primeiro', slug: 'primeiro')],
             hasMore: false,
           ),
@@ -355,7 +355,7 @@ void main() {
     final pageTwoCompleter = Completer<PagedFavoriteResumesResult>();
     final favoriteRepository = _FakeFavoriteRepository(
       pagedResultsByPage: {
-        1: PagedFavoriteResumesResult(
+        1: pagedFavoriteResumesResultFromRaw(
           items: [_favoriteResume(title: 'Primeiro', slug: 'primeiro')],
           hasMore: true,
         ),
@@ -378,7 +378,7 @@ void main() {
     expect(favoriteRepository.fetchFavoriteResumesPageCallCount, 2);
 
     pageTwoCompleter.complete(
-      PagedFavoriteResumesResult(
+      pagedFavoriteResumesResultFromRaw(
         items: [_favoriteResume(title: 'Segundo', slug: 'segundo')],
         hasMore: false,
       ),
@@ -399,15 +399,15 @@ void main() {
     () async {
       final favoriteRepository = _FakeFavoriteRepository(
         pagedResultsByPage: {
-          1: PagedFavoriteResumesResult(
+          1: pagedFavoriteResumesResultFromRaw(
             items: [_favoriteResume(title: 'Primeiro', slug: 'primeiro')],
             hasMore: true,
           ),
-          2: PagedFavoriteResumesResult(
+          2: pagedFavoriteResumesResultFromRaw(
             items: [_favoriteResume(title: 'Segundo', slug: 'segundo')],
             hasMore: true,
           ),
-          3: PagedFavoriteResumesResult(
+          3: pagedFavoriteResumesResultFromRaw(
             items: [_favoriteResume(title: 'Terceiro', slug: 'terceiro')],
             hasMore: false,
           ),
@@ -451,7 +451,7 @@ void main() {
     () async {
       final pageTwoCompleter = Completer<PagedFavoriteResumesResult>();
       final pagedResultsByPage = <int, PagedFavoriteResumesResult>{
-        1: PagedFavoriteResumesResult(
+        1: pagedFavoriteResumesResultFromRaw(
           items: [_favoriteResume(title: 'Primeiro', slug: 'primeiro')],
           hasMore: true,
         ),
@@ -468,14 +468,14 @@ void main() {
       await controller.init();
       final staleNextPageLoad = controller.loadNextPage();
 
-      pagedResultsByPage[1] = PagedFavoriteResumesResult(
+      pagedResultsByPage[1] = pagedFavoriteResumesResultFromRaw(
         items: [_favoriteResume(title: 'Atualizado', slug: 'atualizado')],
         hasMore: false,
       );
 
       await controller.init();
       pageTwoCompleter.complete(
-        PagedFavoriteResumesResult(
+        pagedFavoriteResumesResultFromRaw(
           items: [_favoriteResume(title: 'Stale', slug: 'stale')],
           hasMore: false,
         ),
@@ -928,7 +928,7 @@ class _FakeFavoriteRepository extends FavoriteRepositoryContract
     }
 
     return pagedResultsByPage[page] ??
-        PagedFavoriteResumesResult(
+        pagedFavoriteResumesResultFromRaw(
           items: <FavoriteResume>[],
           hasMore: false,
         );

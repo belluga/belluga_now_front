@@ -41,7 +41,7 @@ mixin FavoriteRepositoryPagingMixin on FavoriteRepositoryContract {
         .take(resolvedPageSize)
         .toList(growable: false);
 
-    return PagedFavoriteResumesResult(
+    return pagedFavoriteResumesResultFromRaw(
       items: items,
       hasMore: (startIndex + resolvedPageSize) < favorites.length,
     );

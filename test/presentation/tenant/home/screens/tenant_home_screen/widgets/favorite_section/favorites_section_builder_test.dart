@@ -73,7 +73,7 @@ class _FakeFavoriteRepository extends FavoriteRepositoryContract
     }
 
     return pagedResultsByPage[page] ??
-        PagedFavoriteResumesResult(
+        pagedFavoriteResumesResultFromRaw(
           items: <FavoriteResume>[],
           hasMore: false,
         );
@@ -568,14 +568,14 @@ void main() {
     (tester) async {
       final favoriteRepository = _FakeFavoriteRepository(
         pagedResultsByPage: {
-          1: PagedFavoriteResumesResult(
+          1: pagedFavoriteResumesResultFromRaw(
             items: List<FavoriteResume>.generate(
               10,
               (index) => _favoriteResume(title: 'Item ${index + 1}'),
             ),
             hasMore: true,
           ),
-          2: PagedFavoriteResumesResult(
+          2: pagedFavoriteResumesResultFromRaw(
             items: [_favoriteResume(title: 'Item 11')],
             hasMore: false,
           ),
