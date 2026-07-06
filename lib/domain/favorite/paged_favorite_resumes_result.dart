@@ -12,15 +12,3 @@ class PagedFavoriteResumesResult {
 
   bool get hasMore => hasMoreValue.value;
 }
-
-PagedFavoriteResumesResult pagedFavoriteResumesResultFromRaw({
-  required List<FavoriteResume> items,
-  required Object? hasMore,
-}) {
-  return PagedFavoriteResumesResult(
-    items: items,
-    hasMoreValue:
-        (DomainBooleanValue(defaultValue: false, isRequired: false)
-          ..parse(hasMore?.toString())),
-  );
-}

@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/favorite/paged_favorite_resumes_result.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
 import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
+import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 mixin FavoriteRepositoryPagingMixin on FavoriteRepositoryContract {
@@ -41,9 +42,11 @@ mixin FavoriteRepositoryPagingMixin on FavoriteRepositoryContract {
         .take(resolvedPageSize)
         .toList(growable: false);
 
-    return pagedFavoriteResumesResultFromRaw(
+    return PagedFavoriteResumesResult(
       items: items,
-      hasMore: (startIndex + resolvedPageSize) < favorites.length,
+      hasMoreValue:
+          (DomainBooleanValue(defaultValue: false, isRequired: false)
+            ..parse(((startIndex + resolvedPageSize) < favorites.length).toString())),
     );
   }
 

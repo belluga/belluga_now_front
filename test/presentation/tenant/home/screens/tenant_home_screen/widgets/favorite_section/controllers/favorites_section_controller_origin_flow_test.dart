@@ -22,6 +22,7 @@ import 'package:belluga_now/domain/repositories/favorite_repository_contract.dar
 import 'package:belluga_now/domain/tenant/value_objects/icon_url_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/main_color_value.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
+import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
@@ -110,7 +111,7 @@ void main() {
           _favoriteResume(title: 'Fav 2', slug: 'fav-2'),
         ],
         pagedResultsByPage: {
-          1: pagedFavoriteResumesResultFromRaw(
+          1: _pagedFavoriteResumesResultFromRaw(
             items: <FavoriteResume>[],
             hasMore: false,
           ),
@@ -188,14 +189,14 @@ void main() {
     () async {
       final favoriteRepository = _FakeFavoriteRepository(
         pagedResultsByPage: {
-          1: pagedFavoriteResumesResultFromRaw(
+          1: _pagedFavoriteResumesResultFromRaw(
             items: [
               _favoriteResume(title: 'Primeiro', slug: 'primeiro'),
               _favoriteResume(title: 'Segundo', slug: 'segundo'),
             ],
             hasMore: true,
           ),
-          2: pagedFavoriteResumesResultFromRaw(
+          2: _pagedFavoriteResumesResultFromRaw(
             items: [_favoriteResume(title: 'Terceiro', slug: 'terceiro')],
             hasMore: false,
           ),
@@ -226,14 +227,14 @@ void main() {
   test('favorites section appends the next page when requested', () async {
     final favoriteRepository = _FakeFavoriteRepository(
       pagedResultsByPage: {
-        1: pagedFavoriteResumesResultFromRaw(
+        1: _pagedFavoriteResumesResultFromRaw(
           items: [
             _favoriteResume(title: 'Primeiro', slug: 'primeiro'),
             _favoriteResume(title: 'Segundo', slug: 'segundo'),
           ],
           hasMore: true,
         ),
-        2: pagedFavoriteResumesResultFromRaw(
+        2: _pagedFavoriteResumesResultFromRaw(
           items: [_favoriteResume(title: 'Terceiro', slug: 'terceiro')],
           hasMore: false,
         ),
@@ -262,14 +263,14 @@ void main() {
     'favorites section preserves loaded pages when home re-enters and refreshes cached data',
     () async {
       final pagedResultsByPage = <int, PagedFavoriteResumesResult>{
-        1: pagedFavoriteResumesResultFromRaw(
+        1: _pagedFavoriteResumesResultFromRaw(
           items: [
             _favoriteResume(title: 'Primeiro', slug: 'primeiro'),
             _favoriteResume(title: 'Segundo', slug: 'segundo'),
           ],
           hasMore: true,
         ),
-        2: pagedFavoriteResumesResultFromRaw(
+        2: _pagedFavoriteResumesResultFromRaw(
           items: [_favoriteResume(title: 'Terceiro', slug: 'terceiro')],
           hasMore: false,
         ),
@@ -291,14 +292,14 @@ void main() {
         ['Primeiro', 'Segundo', 'Terceiro'],
       );
 
-      pagedResultsByPage[1] = pagedFavoriteResumesResultFromRaw(
+      pagedResultsByPage[1] = _pagedFavoriteResumesResultFromRaw(
         items: [
           _favoriteResume(title: 'Primeiro Atualizado', slug: 'primeiro'),
           _favoriteResume(title: 'Segundo Atualizado', slug: 'segundo'),
         ],
         hasMore: true,
       );
-      pagedResultsByPage[2] = pagedFavoriteResumesResultFromRaw(
+      pagedResultsByPage[2] = _pagedFavoriteResumesResultFromRaw(
         items: [
           _favoriteResume(title: 'Terceiro Atualizado', slug: 'terceiro'),
         ],
@@ -330,7 +331,7 @@ void main() {
     () async {
       final favoriteRepository = _FakeFavoriteRepository(
         pagedResultsByPage: {
-          1: pagedFavoriteResumesResultFromRaw(
+          1: _pagedFavoriteResumesResultFromRaw(
             items: [_favoriteResume(title: 'Primeiro', slug: 'primeiro')],
             hasMore: false,
           ),
@@ -355,7 +356,7 @@ void main() {
     final pageTwoCompleter = Completer<PagedFavoriteResumesResult>();
     final favoriteRepository = _FakeFavoriteRepository(
       pagedResultsByPage: {
-        1: pagedFavoriteResumesResultFromRaw(
+        1: _pagedFavoriteResumesResultFromRaw(
           items: [_favoriteResume(title: 'Primeiro', slug: 'primeiro')],
           hasMore: true,
         ),
@@ -378,7 +379,7 @@ void main() {
     expect(favoriteRepository.fetchFavoriteResumesPageCallCount, 2);
 
     pageTwoCompleter.complete(
-      pagedFavoriteResumesResultFromRaw(
+      _pagedFavoriteResumesResultFromRaw(
         items: [_favoriteResume(title: 'Segundo', slug: 'segundo')],
         hasMore: false,
       ),
@@ -399,15 +400,15 @@ void main() {
     () async {
       final favoriteRepository = _FakeFavoriteRepository(
         pagedResultsByPage: {
-          1: pagedFavoriteResumesResultFromRaw(
+          1: _pagedFavoriteResumesResultFromRaw(
             items: [_favoriteResume(title: 'Primeiro', slug: 'primeiro')],
             hasMore: true,
           ),
-          2: pagedFavoriteResumesResultFromRaw(
+          2: _pagedFavoriteResumesResultFromRaw(
             items: [_favoriteResume(title: 'Segundo', slug: 'segundo')],
             hasMore: true,
           ),
-          3: pagedFavoriteResumesResultFromRaw(
+          3: _pagedFavoriteResumesResultFromRaw(
             items: [_favoriteResume(title: 'Terceiro', slug: 'terceiro')],
             hasMore: false,
           ),
@@ -451,7 +452,7 @@ void main() {
     () async {
       final pageTwoCompleter = Completer<PagedFavoriteResumesResult>();
       final pagedResultsByPage = <int, PagedFavoriteResumesResult>{
-        1: pagedFavoriteResumesResultFromRaw(
+        1: _pagedFavoriteResumesResultFromRaw(
           items: [_favoriteResume(title: 'Primeiro', slug: 'primeiro')],
           hasMore: true,
         ),
@@ -468,14 +469,14 @@ void main() {
       await controller.init();
       final staleNextPageLoad = controller.loadNextPage();
 
-      pagedResultsByPage[1] = pagedFavoriteResumesResultFromRaw(
+      pagedResultsByPage[1] = _pagedFavoriteResumesResultFromRaw(
         items: [_favoriteResume(title: 'Atualizado', slug: 'atualizado')],
         hasMore: false,
       );
 
       await controller.init();
       pageTwoCompleter.complete(
-        pagedFavoriteResumesResultFromRaw(
+        _pagedFavoriteResumesResultFromRaw(
           items: [_favoriteResume(title: 'Stale', slug: 'stale')],
           hasMore: false,
         ),
@@ -826,6 +827,18 @@ void main() {
   );
 }
 
+PagedFavoriteResumesResult _pagedFavoriteResumesResultFromRaw({
+  required List<FavoriteResume> items,
+  required Object? hasMore,
+}) {
+  return PagedFavoriteResumesResult(
+    items: items,
+    hasMoreValue:
+        (DomainBooleanValue(defaultValue: false, isRequired: false)
+          ..parse(hasMore?.toString())),
+  );
+}
+
 FavoriteResume _favoriteResume({
   required String title,
   required String? slug,
@@ -928,7 +941,7 @@ class _FakeFavoriteRepository extends FavoriteRepositoryContract
     }
 
     return pagedResultsByPage[page] ??
-        pagedFavoriteResumesResultFromRaw(
+        _pagedFavoriteResumesResultFromRaw(
           items: <FavoriteResume>[],
           hasMore: false,
         );

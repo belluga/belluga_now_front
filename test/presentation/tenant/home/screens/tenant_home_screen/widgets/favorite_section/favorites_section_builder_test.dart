@@ -73,11 +73,23 @@ class _FakeFavoriteRepository extends FavoriteRepositoryContract
     }
 
     return pagedResultsByPage[page] ??
-        pagedFavoriteResumesResultFromRaw(
+        _pagedFavoriteResumesResultFromRaw(
           items: <FavoriteResume>[],
           hasMore: false,
         );
   }
+}
+
+PagedFavoriteResumesResult _pagedFavoriteResumesResultFromRaw({
+  required List<FavoriteResume> items,
+  required Object? hasMore,
+}) {
+  return PagedFavoriteResumesResult(
+    items: items,
+    hasMoreValue:
+        (DomainBooleanValue(defaultValue: false, isRequired: false)
+          ..parse(hasMore?.toString())),
+  );
 }
 
 class _FakeAppData extends Fake implements AppData {
@@ -568,14 +580,14 @@ void main() {
     (tester) async {
       final favoriteRepository = _FakeFavoriteRepository(
         pagedResultsByPage: {
-          1: pagedFavoriteResumesResultFromRaw(
+          1: _pagedFavoriteResumesResultFromRaw(
             items: List<FavoriteResume>.generate(
               10,
               (index) => _favoriteResume(title: 'Item ${index + 1}'),
             ),
             hasMore: true,
           ),
-          2: pagedFavoriteResumesResultFromRaw(
+          2: _pagedFavoriteResumesResultFromRaw(
             items: [_favoriteResume(title: 'Item 11')],
             hasMore: false,
           ),
