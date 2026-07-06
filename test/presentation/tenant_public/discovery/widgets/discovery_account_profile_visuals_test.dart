@@ -26,20 +26,18 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 240,
-            child: DiscoveryPartnerCard(
-              partner: partner,
-              isFavorite: false,
-              isFavoritable: true,
-              onFavoriteTap: () {},
-              onTap: () {},
-              resolvedVisual: AccountProfileVisualResolver.resolve(
-                accountProfile: partner,
-                registry: registry,
-              ),
+      _buildTestApp(
+        child: SizedBox(
+          width: 240,
+          child: DiscoveryPartnerCard(
+            partner: partner,
+            isFavorite: false,
+            isFavoritable: true,
+            onFavoriteTap: () {},
+            onTap: () {},
+            resolvedVisual: AccountProfileVisualResolver.resolve(
+              accountProfile: partner,
+              registry: registry,
             ),
           ),
         ),
@@ -268,20 +266,18 @@ void main() {
       var tapCount = 0;
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: SizedBox(
-              width: 240,
-              child: DiscoveryPartnerCard(
-                partner: partner,
-                isFavorite: false,
-                isFavoritable: true,
-                onFavoriteTap: () {},
-                onTap: () => tapCount += 1,
-                resolvedVisual: AccountProfileVisualResolver.resolve(
-                  accountProfile: partner,
-                  registry: registry,
-                ),
+        _buildTestApp(
+          child: SizedBox(
+            width: 240,
+            child: DiscoveryPartnerCard(
+              partner: partner,
+              isFavorite: false,
+              isFavoritable: true,
+              onFavoriteTap: () {},
+              onTap: () => tapCount += 1,
+              resolvedVisual: AccountProfileVisualResolver.resolve(
+                accountProfile: partner,
+                registry: registry,
               ),
             ),
           ),
@@ -313,20 +309,18 @@ void main() {
       var favoriteTapCount = 0;
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: SizedBox(
-              width: 240,
-              child: DiscoveryPartnerCard(
-                partner: partner,
-                isFavorite: false,
-                isFavoritable: true,
-                onFavoriteTap: () => favoriteTapCount += 1,
-                onTap: () {},
-                resolvedVisual: AccountProfileVisualResolver.resolve(
-                  accountProfile: partner,
-                  registry: registry,
-                ),
+        _buildTestApp(
+          child: SizedBox(
+            width: 240,
+            child: DiscoveryPartnerCard(
+              partner: partner,
+              isFavorite: false,
+              isFavoritable: true,
+              onFavoriteTap: () => favoriteTapCount += 1,
+              onTap: () {},
+              resolvedVisual: AccountProfileVisualResolver.resolve(
+                accountProfile: partner,
+                registry: registry,
               ),
             ),
           ),
@@ -620,6 +614,13 @@ void main() {
       findsWidgets,
     );
   });
+}
+
+Widget _buildTestApp({required Widget child}) {
+  return MaterialApp(
+    theme: ThemeData(splashFactory: NoSplash.splashFactory),
+    home: Scaffold(body: child),
+  );
 }
 
 List<double> _distinctVerticalRows(List<double> centers) {
