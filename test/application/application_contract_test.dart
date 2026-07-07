@@ -12,11 +12,17 @@ import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
+import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
+import 'package:belluga_now/domain/favorite/favorite.dart';
+import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
 import 'package:belluga_now/infrastructure/services/telemetry/telemetry_properties_codec.dart';
 import 'package:belluga_now/domain/tenant/tenant.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
+import 'package:belluga_now/domain/user/user_belluga.dart';
+import 'package:belluga_now/domain/user/user_profile_contract.dart';
+import 'package:belluga_now/domain/user/value_objects/user_identity_state_value.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/auth_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
@@ -43,6 +49,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 import 'package:intl/intl.dart';
+import 'package:stream_value/core/stream_value.dart';
+import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -186,6 +194,38 @@ void main() {
     expect(materialApp.locale, const Locale('pt', 'BR'));
     expect(materialApp.supportedLocales, const <Locale>[Locale('pt', 'BR')]);
   });
+
+  testWidgets(
+    'app retries post-auth hydration when auth repository appears after init',
+    (tester) async {
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(
+        _FakeAppDataRepository(appData: _buildAppData()),
+      );
+      GetIt.I.registerSingleton<TelemetryRepositoryContract>(
+        _FakeTelemetryRepository(appInitResults: Queue<bool>.from([true])),
+      );
+      final favoriteRepository = _FakeFavoriteRepository();
+      GetIt.I.registerSingleton<FavoriteRepositoryContract>(favoriteRepository);
+
+      final app = _TestApplication();
+      app.appRouter.setChildModules([_TestModule()]);
+      await tester.pumpWidget(app);
+      await tester.pump();
+
+      final authRepository = _FakeAuthRepository();
+      GetIt.I.registerSingleton<AuthRepositoryContract>(authRepository);
+      authRepository.emit(_registeredUser());
+      await tester.pump(const Duration(milliseconds: 150));
+
+      expect(
+        favoriteRepository.refreshFavoriteResumesCalls,
+        1,
+        reason:
+            'Application bootstrap must still bind post-auth hydration when '
+            'auth registration completes after initState.',
+      );
+    },
+  );
 }
 
 class _TestApplication extends ApplicationContract {
@@ -317,6 +357,10 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   @override
   bool get isAuthorized => false;
 
+  void emit(UserContract? user) {
+    userStreamValue.addValue(user);
+  }
+
   @override
   Future<void> init() async {}
 
@@ -358,6 +402,52 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> updateUser(UserCustomData data) async {}
+}
+
+class _FakeFavoriteRepository implements FavoriteRepositoryContract {
+  @override
+  final favoriteResumesStreamValue = StreamValue<List<FavoriteResume>?>(
+    defaultValue: null,
+  );
+
+  @override
+  final hasMoreFavoriteResumesStreamValue =
+      StreamValue<bool>(defaultValue: false);
+
+  @override
+  final isFavoriteResumesPageLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+
+  int refreshFavoriteResumesCalls = 0;
+
+  @override
+  Future<List<Favorite>> fetchFavorites() async => const <Favorite>[];
+
+  @override
+  Future<List<FavoriteResume>> fetchFavoriteResumes() async =>
+      const <FavoriteResume>[];
+
+  @override
+  Future<void> initializeFavoriteResumes() async {}
+
+  @override
+  Future<void> loadNextFavoriteResumesPage() async {}
+
+  @override
+  Future<void> refreshFavoriteResumes() async {
+    refreshFavoriteResumesCalls += 1;
+  }
+}
+
+UserBelluga _registeredUser() {
+  const userId = '507f1f77bcf86cd799439012';
+  return UserBelluga(
+    uuidValue: MongoIDValue(defaultValue: userId)..parse(userId),
+    profile: UserProfileContract(),
+    customData: UserCustomData(
+      identityStateValue: UserIdentityStateValue.fromRaw('registered'),
+    ),
+  );
 }
 
 class _FakeAppDataRepository extends AppDataRepository {

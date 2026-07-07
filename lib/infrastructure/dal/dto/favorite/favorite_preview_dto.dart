@@ -12,6 +12,7 @@ import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
+import 'package:belluga_now/infrastructure/dal/dto/schedule/support/public_media_url_normalizer.dart';
 
 class FavoritePreviewDTO {
   const FavoritePreviewDTO({
@@ -99,6 +100,12 @@ class FavoritePreviewDTO {
     final canOpenPublicDetail =
         navigation['can_open_public_detail'] == true ||
         target['can_open_public_detail'] == true;
+    final normalizedAvatarUrl = normalizeTenantPublicMediaUrl(
+      target['avatar_url']?.toString(),
+    );
+    final normalizedCoverUrl = normalizeTenantPublicMediaUrl(
+      target['cover_url']?.toString(),
+    );
 
     DateTime? parseDate(dynamic value) {
       if (value is String && value.trim().isNotEmpty) {
@@ -129,8 +136,8 @@ class FavoritePreviewDTO {
       liveNowEventOccurrenceAt: parseDate(
         occurrenceState['live_now_event_occurrence_at'],
       ),
-      imageUrl: target['avatar_url']?.toString(),
-      coverUrl: target['cover_url']?.toString(),
+      imageUrl: normalizedAvatarUrl,
+      coverUrl: normalizedCoverUrl,
       profileType: target['profile_type']?.toString().trim(),
       canOpenPublicDetail: canOpenPublicDetail,
       publicDetailPath: publicDetailPath?.isNotEmpty == true
