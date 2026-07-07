@@ -79,29 +79,42 @@ class PostAuthIdentityHydrationCoordinator {
       _runHydrationStep(
         label: 'favorite-resumes',
         action: () async {
-          await _favoriteRepository?.refreshFavoriteResumes();
+          await _resolvedFavoriteRepository?.refreshFavoriteResumes();
         },
       ),
       _runHydrationStep(
         label: 'account-profile-favorite-ids',
         action: () async {
-          await _accountProfilesRepository?.refreshFavoriteAccountProfileIds();
+          await _resolvedAccountProfilesRepository
+              ?.refreshFavoriteAccountProfileIds();
         },
       ),
       _runHydrationStep(
         label: 'confirmed-occurrences',
         action: () async {
-          await _userEventsRepository?.refreshConfirmedOccurrenceIds();
+          await _resolvedUserEventsRepository?.refreshConfirmedOccurrenceIds();
         },
       ),
       _runHydrationStep(
         label: 'pending-invites',
         action: () async {
-          await _invitesRepository?.refreshPendingInvites();
+          await _resolvedInvitesRepository?.refreshPendingInvites();
         },
       ),
     ]);
   }
+
+  FavoriteRepositoryContract? get _resolvedFavoriteRepository =>
+      _favoriteRepository ?? _tryResolve<FavoriteRepositoryContract>();
+
+  AccountProfilesRepositoryContract? get _resolvedAccountProfilesRepository =>
+      _accountProfilesRepository ?? _tryResolve<AccountProfilesRepositoryContract>();
+
+  UserEventsRepositoryContract? get _resolvedUserEventsRepository =>
+      _userEventsRepository ?? _tryResolve<UserEventsRepositoryContract>();
+
+  InvitesRepositoryContract? get _resolvedInvitesRepository =>
+      _invitesRepository ?? _tryResolve<InvitesRepositoryContract>();
 
   Future<void> _runHydrationStep({
     required String label,
