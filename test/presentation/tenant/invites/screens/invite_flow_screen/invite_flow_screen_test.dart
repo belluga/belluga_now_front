@@ -75,10 +75,10 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   final List<String> declinedInviteIds = <String>[];
 
   @override
-  Future<List<InviteModel>> fetchInvites(
-          {InvitesRepositoryContractPrimInt? page,
-          InvitesRepositoryContractPrimInt? pageSize}) async =>
-      List<InviteModel>.from(_invites);
+  Future<List<InviteModel>> fetchInvites({
+    InvitesRepositoryContractPrimInt? page,
+    InvitesRepositoryContractPrimInt? pageSize,
+  }) async => List<InviteModel>.from(_invites);
 
   @override
   Future<InviteRuntimeSettings> fetchSettings() async =>
@@ -91,24 +91,25 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteAcceptResult> acceptInvite(
-          InvitesRepositoryContractPrimString inviteId) async =>
-      (() {
-        acceptedInviteIds.add(inviteId.value);
-        _removeInvite(inviteId.value);
-        pendingInvitesStreamValue.addValue(List<InviteModel>.from(_invites));
-        return buildInviteAcceptResult(
-          inviteId: inviteId.value,
-          status: 'accepted',
-          creditedAcceptance: true,
-          attendancePolicy: 'free_confirmation_only',
-          nextStep: InviteNextStep.freeConfirmationCreated,
-          supersededInviteIds: const [],
-        );
-      })();
+    InvitesRepositoryContractPrimString inviteId,
+  ) async => (() {
+    acceptedInviteIds.add(inviteId.value);
+    _removeInvite(inviteId.value);
+    pendingInvitesStreamValue.addValue(List<InviteModel>.from(_invites));
+    return buildInviteAcceptResult(
+      inviteId: inviteId.value,
+      status: 'accepted',
+      creditedAcceptance: true,
+      attendancePolicy: 'free_confirmation_only',
+      nextStep: InviteNextStep.freeConfirmationCreated,
+      supersededInviteIds: const [],
+    );
+  })();
 
   @override
   Future<InviteAcceptResult> acceptInviteByCode(
-      InvitesRepositoryContractPrimString code) async {
+    InvitesRepositoryContractPrimString code,
+  ) async {
     acceptedShareCodes.add(code.value);
     return buildInviteAcceptResult(
       inviteId: 'mock-${code.value}',
@@ -122,21 +123,22 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteDeclineResult> declineInvite(
-          InvitesRepositoryContractPrimString inviteId) async =>
-      (() {
-        declinedInviteIds.add(inviteId.value);
-        _removeInvite(inviteId.value);
-        pendingInvitesStreamValue.addValue(List<InviteModel>.from(_invites));
-        return buildInviteDeclineResult(
-          inviteId: inviteId.value,
-          status: 'declined',
-          groupHasOtherPending: false,
-        );
-      })();
+    InvitesRepositoryContractPrimString inviteId,
+  ) async => (() {
+    declinedInviteIds.add(inviteId.value);
+    _removeInvite(inviteId.value);
+    pendingInvitesStreamValue.addValue(List<InviteModel>.from(_invites));
+    return buildInviteDeclineResult(
+      inviteId: inviteId.value,
+      status: 'declined',
+      groupHasOtherPending: false,
+    );
+  })();
 
   @override
   Future<InviteMaterializeResult> materializeShareCode(
-      InvitesRepositoryContractPrimString code) async {
+    InvitesRepositoryContractPrimString code,
+  ) async {
     materializedShareCodes.add(code.value);
     return buildInviteMaterializeResult(
       inviteId: materializedInviteId ?? '',
@@ -148,7 +150,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteModel?> previewShareCode(
-      InvitesRepositoryContractPrimString code) async {
+    InvitesRepositoryContractPrimString code,
+  ) async {
     previewedShareCodes.add(code.value);
     if (_invites.isEmpty) {
       return null;
@@ -166,31 +169,32 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<List<InviteContactMatch>> importContacts(
-          InviteContacts contacts) async =>
-      const [];
+    InviteContacts contacts,
+  ) async => const [];
 
   @override
   Future<InviteShareCodeResult> createShareCode({
     required InvitesRepositoryContractPrimString eventId,
     InvitesRepositoryContractPrimString? occurrenceId,
     InvitesRepositoryContractPrimString? accountProfileId,
-  }) async =>
-      buildInviteShareCodeResult(
-        code: 'CODE123',
-        eventId: eventId.value,
-        occurrenceId: occurrenceId?.value ?? 'occurrence-1',
-      );
+  }) async => buildInviteShareCodeResult(
+    code: 'CODE123',
+    eventId: eventId.value,
+    occurrenceId: occurrenceId?.value ?? 'occurrence-1',
+  );
 
   @override
-  Future<void> sendInvites(InvitesRepositoryContractPrimString eventSlug,
-      InviteRecipients recipients,
-      {InvitesRepositoryContractPrimString? occurrenceId,
-      InvitesRepositoryContractPrimString? message}) async {}
+  Future<void> sendInvites(
+    InvitesRepositoryContractPrimString eventSlug,
+    InviteRecipients recipients, {
+    InvitesRepositoryContractPrimString? occurrenceId,
+    InvitesRepositoryContractPrimString? message,
+  }) async {}
 
   @override
   Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
-          InvitesRepositoryContractPrimString eventSlug) async =>
-      const [];
+    InvitesRepositoryContractPrimString eventSlug,
+  ) async => const [];
 }
 
 class _FakeTelemetryRepository implements TelemetryRepositoryContract {
@@ -199,21 +203,19 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
     EventTrackerEvents event, {
     TelemetryRepositoryContractPrimString? eventName,
     TelemetryRepositoryContractPrimMap? properties,
-  }) async =>
-      telemetryRepoBool(true);
+  }) async => telemetryRepoBool(true);
 
   @override
   Future<EventTrackerTimedEventHandle?> startTimedEvent(
     EventTrackerEvents event, {
     TelemetryRepositoryContractPrimString? eventName,
     TelemetryRepositoryContractPrimMap? properties,
-  }) async =>
-      const EventTrackerTimedEventHandle('handle');
+  }) async => const EventTrackerTimedEventHandle('handle');
 
   @override
   Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
-          EventTrackerTimedEventHandle handle) async =>
-      telemetryRepoBool(true);
+    EventTrackerTimedEventHandle handle,
+  ) async => telemetryRepoBool(true);
 
   @override
   Future<TelemetryRepositoryContractPrimBool> flushTimedEvents() async =>
@@ -226,18 +228,18 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
   EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
 
   @override
-  Future<TelemetryRepositoryContractPrimBool> mergeIdentity(
-          {required TelemetryRepositoryContractPrimString
-              previousUserId}) async =>
-      telemetryRepoBool(true);
+  Future<TelemetryRepositoryContractPrimBool> mergeIdentity({
+    required TelemetryRepositoryContractPrimString previousUserId,
+  }) async => telemetryRepoBool(true);
 }
 
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   @override
   final StreamValue<Set<UserEventsRepositoryContractPrimString>>
-      confirmedOccurrenceIdsStream =
+  confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(
-          defaultValue: const {});
+        defaultValue: const {},
+      );
 
   @override
   Future<List<VenueEventResume>> fetchMyEvents() async => const [];
@@ -262,8 +264,8 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
 
   @override
   UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
-          UserEventsRepositoryContractPrimString eventId) =>
-      userEventsRepoBool(false, defaultValue: false, isRequired: true);
+    UserEventsRepositoryContractPrimString eventId,
+  ) => userEventsRepoBool(false, defaultValue: false, isRequired: true);
 }
 
 class _RecordingStackRouter extends Mock implements StackRouter {
@@ -385,9 +387,7 @@ EventModel _buildResolvedEvent(String id) {
 
 class _FakeScheduleRepository extends Fake
     implements ScheduleRepositoryContract {
-  _FakeScheduleRepository({
-    Map<String, EventModel?> eventsBySlug = const <String, EventModel?>{},
-  }) : _eventsBySlug = eventsBySlug;
+  _FakeScheduleRepository({this._eventsBySlug = const <String, EventModel?>{}});
 
   final Map<String, EventModel?> _eventsBySlug;
 
@@ -456,8 +456,9 @@ void main() {
     expect(router.lastPushed, isA<InviteShareRoute>());
   });
 
-  testWidgets('Authenticated invite shows decline/accept contract',
-      (tester) async {
+  testWidgets('Authenticated invite shows decline/accept contract', (
+    tester,
+  ) async {
     final invite = _buildInvite('1');
     final controller = InviteFlowScreenController(
       repository: _FakeInvitesRepository(initialInvites: [invite]),
@@ -515,6 +516,44 @@ void main() {
 
     final router = _RecordingStackRouter(canPopValue: false);
     final routeData = _buildRouteData(router, queryParams: const {});
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: const InviteFlowScreen(),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+
+    expect(router.lastReplacedPath, '/');
+  });
+
+  testWidgets('Invite flow ignores legacy public fallback query input', (
+    tester,
+  ) async {
+    final controller = InviteFlowScreenController(
+      repository: _FakeInvitesRepository(initialInvites: const []),
+      userEventsRepository: _FakeUserEventsRepository(),
+      telemetryRepository: _FakeTelemetryRepository(),
+    );
+    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
+
+    final router = _RecordingStackRouter(canPopValue: false);
+    final routeData = _buildRouteData(
+      router,
+      path: '/invite',
+      queryParams: const {
+        'fallback': '/agenda/evento/event-1?occurrence=occ-1',
+      },
+    );
 
     await tester.pumpWidget(
       StackRouterScope(
@@ -647,8 +686,9 @@ void main() {
     },
   );
 
-  testWidgets('Invite flow shows loading state before initialization',
-      (tester) async {
+  testWidgets('Invite flow shows loading state before initialization', (
+    tester,
+  ) async {
     final controller = InviteFlowScreenController(
       repository: _FakeInvitesRepository(initialInvites: const []),
       userEventsRepository: _FakeUserEventsRepository(),
@@ -681,56 +721,60 @@ void main() {
   });
 
   testWidgets(
-      'Invite flow renders grouped participants and avoids duplicate host metadata',
-      (tester) async {
-    final invite = _buildInviteWithParticipantGroups('grouped-1');
-    final controller = InviteFlowScreenController(
-      repository: _FakeInvitesRepository(initialInvites: [invite]),
-      userEventsRepository: _FakeUserEventsRepository(),
-      telemetryRepository: _FakeTelemetryRepository(),
-    );
-    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
+    'Invite flow renders grouped participants and avoids duplicate host metadata',
+    (tester) async {
+      final invite = _buildInviteWithParticipantGroups('grouped-1');
+      final controller = InviteFlowScreenController(
+        repository: _FakeInvitesRepository(initialInvites: [invite]),
+        userEventsRepository: _FakeUserEventsRepository(),
+        telemetryRepository: _FakeTelemetryRepository(),
+      );
+      GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
 
-    final router = _RecordingStackRouter(canPopValue: true);
-    final routeData = _buildRouteData(
-      router,
-      path: '/invite',
-      queryParams: const {},
-    );
+      final router = _RecordingStackRouter(canPopValue: true);
+      final routeData = _buildRouteData(
+        router,
+        path: '/invite',
+        queryParams: const {},
+      );
 
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: RouteDataScope(
-            routeData: routeData,
-            child: const InviteFlowScreen(),
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: RouteDataScope(
+              routeData: routeData,
+              child: const InviteFlowScreen(),
+            ),
           ),
         ),
-      ),
-    );
+      );
 
-    await tester.pump();
-    controller.markImageLoaded(invite.eventImageUrl);
-    await tester.pump();
-    for (var i = 0; i < 20; i++) {
-      await tester.pump(const Duration(milliseconds: 150));
-      if (find.text('Participantes').evaluate().isNotEmpty) {
-        break;
+      await tester.pump();
+      controller.markImageLoaded(invite.eventImageUrl);
+      await tester.pump();
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 150));
+        if (find.text('Participantes').evaluate().isNotEmpty) {
+          break;
+        }
       }
-    }
 
-    expect(find.text('Promotion Smoke Perfil Público'), findsOneWidget);
-    expect(find.text('Participantes'), findsOneWidget);
-    expect(find.textContaining('Bandas: Du Jorge'), findsOneWidget);
-    expect(find.textContaining('Expositores: QA Discovery Tag Sem Tags'),
-        findsOneWidget);
-    expect(find.byIcon(Icons.storefront_outlined), findsNothing);
-  });
+      expect(find.text('Promotion Smoke Perfil Público'), findsOneWidget);
+      expect(find.text('Participantes'), findsOneWidget);
+      expect(find.textContaining('Bandas: Du Jorge'), findsOneWidget);
+      expect(
+        find.textContaining('Expositores: QA Discovery Tag Sem Tags'),
+        findsOneWidget,
+      );
+      expect(find.byIcon(Icons.storefront_outlined), findsNothing);
+    },
+  );
 
-  testWidgets('Invite flow web anonymous irrecoverable fallback routes home',
-      (tester) async {
+  testWidgets('Invite flow web anonymous irrecoverable fallback routes home', (
+    tester,
+  ) async {
     final controller = InviteFlowScreenController(
       repository: _FakeInvitesRepository(initialInvites: const []),
       userEventsRepository: _FakeUserEventsRepository(),
@@ -767,568 +811,626 @@ void main() {
   });
 
   testWidgets(
-      'Invite flow renders the invite immediately without waiting for image precache',
-      (tester) async {
-    final invite = _buildInviteWithPrimaryInviter('1');
-    final controller = InviteFlowScreenController(
-      repository: _FakeInvitesRepository(initialInvites: [invite]),
-      userEventsRepository: _FakeUserEventsRepository(),
-      telemetryRepository: _FakeTelemetryRepository(),
-    );
-    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
+    'Invite flow renders the invite immediately without waiting for image precache',
+    (tester) async {
+      final invite = _buildInviteWithPrimaryInviter('1');
+      final controller = InviteFlowScreenController(
+        repository: _FakeInvitesRepository(initialInvites: [invite]),
+        userEventsRepository: _FakeUserEventsRepository(),
+        telemetryRepository: _FakeTelemetryRepository(),
+      );
+      GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
 
-    final router = _RecordingStackRouter(canPopValue: false);
-    final routeData = _buildRouteData(router, queryParams: const {});
+      final router = _RecordingStackRouter(canPopValue: false);
+      final routeData = _buildRouteData(router, queryParams: const {});
 
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: RouteDataScope(
-            routeData: routeData,
-            child: InviteFlowCoordinator(
-              invites: [invite],
-              decisionResult: null,
-              requiresAuthentication: false,
-              isInitialized: true,
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: RouteDataScope(
+              routeData: routeData,
+              child: InviteFlowCoordinator(
+                invites: [invite],
+                decisionResult: null,
+                requiresAuthentication: false,
+                isInitialized: true,
+              ),
             ),
           ),
         ),
-      ),
-    );
+      );
 
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
-
-    expect(find.text('Event 1'), findsOneWidget);
-    expect(find.byType(CircularProgressIndicator), findsNothing);
-  });
-
-  testWidgets(
-      'Invite flow falls back home when invite is empty and no fallback path is available',
-      (tester) async {
-    final controller = InviteFlowScreenController(
-      repository: _FakeInvitesRepository(initialInvites: const []),
-      userEventsRepository: _FakeUserEventsRepository(),
-      telemetryRepository: _FakeTelemetryRepository(),
-    );
-    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
-
-    final router = _RecordingStackRouter(canPopValue: false);
-
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: RouteDataScope(
-            routeData: _buildRouteData(router, queryParams: const {}),
-            child: const InviteFlowCoordinator(
-              invites: [],
-              decisionResult: null,
-              requiresAuthentication: false,
-              isInitialized: true,
-            ),
-          ),
-        ),
-      ),
-    );
-
-    await tester.pump();
-    await tester.pump();
-
-    expect(router.lastReplacedPath, '/');
-  });
-
-  testWidgets(
-      'Invite flow falls back to event when invite is empty and event still resolves',
-      (tester) async {
-    final scheduleRepository = _FakeScheduleRepository(
-      eventsBySlug: <String, EventModel?>{
-        'event-1': _buildResolvedEvent('event-1'),
-      },
-    );
-    final controller = InviteFlowScreenController(
-      repository: _FakeInvitesRepository(initialInvites: const []),
-      userEventsRepository: _FakeUserEventsRepository(),
-      telemetryRepository: _FakeTelemetryRepository(),
-      scheduleRepository: scheduleRepository,
-    );
-    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
-
-    final router = _RecordingStackRouter(canPopValue: false);
-
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: RouteDataScope(
-            routeData: _buildRouteData(router, queryParams: const {}),
-            child: InviteFlowCoordinator(
-              invites: const [],
-              decisionResult: null,
-              requiresAuthentication: false,
-              isInitialized: true,
-              fallbackPath: '/agenda/evento/event-1?occurrence=occ-1',
-            ),
-          ),
-        ),
-      ),
-    );
-
-    await tester.pump();
-    await tester.pump();
-
-    expect(router.lastReplacedPath, '/agenda/evento/event-1?occurrence=occ-1');
-  });
-
-  testWidgets(
-      'Invite flow falls back home when invite is empty and event no longer resolves',
-      (tester) async {
-    final scheduleRepository = _FakeScheduleRepository(
-      eventsBySlug: const <String, EventModel?>{
-        'event-ended': null,
-      },
-    );
-    final controller = InviteFlowScreenController(
-      repository: _FakeInvitesRepository(initialInvites: const []),
-      userEventsRepository: _FakeUserEventsRepository(),
-      telemetryRepository: _FakeTelemetryRepository(),
-      scheduleRepository: scheduleRepository,
-    );
-    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
-
-    final router = _RecordingStackRouter(canPopValue: false);
-
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: RouteDataScope(
-            routeData: _buildRouteData(router, queryParams: const {}),
-            child: InviteFlowCoordinator(
-              invites: const [],
-              decisionResult: null,
-              requiresAuthentication: false,
-              isInitialized: true,
-              fallbackPath: '/agenda/evento/event-ended?occurrence=occ-ended',
-            ),
-          ),
-        ),
-      ),
-    );
-
-    await tester.pump();
-    await tester.pump();
-
-    expect(router.lastReplacedPath, '/');
-  });
-
-  testWidgets(
-      'Unauthenticated app invite asks for authentication before accept',
-      (tester) async {
-    final invite = _buildInviteWithPrimaryInviter('1');
-    final repository = _FakeInvitesRepository(initialInvites: [invite]);
-    final controller = InviteFlowScreenController(
-      repository: repository,
-      userEventsRepository: _FakeUserEventsRepository(),
-      telemetryRepository: _FakeTelemetryRepository(),
-      authRepository: _FakeAuthRepository(authorized: false),
-    );
-    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
-
-    final router = _RecordingStackRouter(canPopValue: true);
-    final routeData = _buildRouteData(
-      router,
-      path: '/invite',
-      queryParams: const {'code': '31F8RN5QJ9'},
-    );
-
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: RouteDataScope(
-            routeData: routeData,
-            child: const InviteFlowScreen(),
-          ),
-        ),
-      ),
-    );
-
-    await tester.pump();
-    controller.markImageLoaded(invite.eventImageUrl);
-    await tester.pump();
-    for (var i = 0; i < 20; i++) {
-      await tester.pump(const Duration(milliseconds: 150));
-      if (find.text('Entre para Aceitar ou Recusar').evaluate().isNotEmpty) {
-        break;
-      }
-    }
-
-    expect(find.text('Aceitar'), findsNothing);
-    expect(find.text('Recusar'), findsNothing);
-    expect(find.text('Ver detalhes'), findsOneWidget);
-    expect(find.text('Entre para Aceitar ou Recusar'), findsOneWidget);
-
-    await tester.tap(find.text('Entre para Aceitar ou Recusar'));
-    await tester.pump();
-    for (var i = 0; i < 20; i++) {
+      await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
-      if (router.lastPushed != null) {
-        break;
-      }
-    }
 
-    expect(router.lastPushedPath,
-        '/auth/login?redirect=%2Finvite%3Fcode%3D31F8RN5QJ9');
-    expect(router.lastPushed, isNull);
-    expect(repository.acceptedShareCodes, isEmpty);
-    expect(repository.acceptedInviteIds, isEmpty);
-  });
-
-  testWidgets('Authenticated share invite accept uses canonical invite action',
-      (tester) async {
-    final invite = _buildInvite('1');
-    final repository = _FakeInvitesRepository(
-      initialInvites: [invite],
-      materializedInviteId: '1',
-    );
-    final controller = InviteFlowScreenController(
-      repository: repository,
-      userEventsRepository: _FakeUserEventsRepository(),
-      telemetryRepository: _FakeTelemetryRepository(),
-      authRepository: _FakeAuthRepository(authorized: true),
-    );
-    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
-
-    final router = _RecordingStackRouter(canPopValue: true);
-    final routeData = _buildRouteData(
-      router,
-      path: '/invite',
-      queryParams: const {'code': '31F8RN5QJ9'},
-    );
-
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: RouteDataScope(
-            routeData: routeData,
-            child: const InviteFlowScreen(),
-          ),
-        ),
-      ),
-    );
-
-    await tester.pump();
-    controller.markImageLoaded(invite.eventImageUrl);
-    await tester.pump();
-    for (var i = 0; i < 20; i++) {
-      await tester.pump(const Duration(milliseconds: 150));
-      if (find.text('Aceitar').evaluate().isNotEmpty) {
-        break;
-      }
-    }
-
-    await tester.tap(find.text('Aceitar'));
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.pump(const Duration(milliseconds: 300));
-
-    expect(repository.materializedShareCodes, ['31F8RN5QJ9']);
-    expect(repository.acceptedInviteIds, ['1']);
-  });
+      expect(find.text('Event 1'), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+    },
+  );
 
   testWidgets(
-      'Authenticated share invite with inviteId accepts through invite contract',
-      (tester) async {
-    final invite = _buildInviteWithPrimaryInviter('accept-1');
-    final repository = _FakeInvitesRepository(
-      initialInvites: [invite],
-      materializedInviteId: 'accept-1',
-    );
-    final controller = InviteFlowScreenController(
-      repository: repository,
-      userEventsRepository: _FakeUserEventsRepository(),
-      telemetryRepository: _FakeTelemetryRepository(),
-      authRepository: _FakeAuthRepository(authorized: true),
-    );
-    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
+    'Invite flow falls back home when invite is empty and no fallback path is available',
+    (tester) async {
+      final controller = InviteFlowScreenController(
+        repository: _FakeInvitesRepository(initialInvites: const []),
+        userEventsRepository: _FakeUserEventsRepository(),
+        telemetryRepository: _FakeTelemetryRepository(),
+      );
+      GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
 
-    final router = _RecordingStackRouter(canPopValue: true);
-    final routeData = _buildRouteData(
-      router,
-      path: '/invite',
-      queryParams: const {'code': '31F8RN5QJ9'},
-    );
+      final router = _RecordingStackRouter(canPopValue: false);
 
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: RouteDataScope(
-            routeData: routeData,
-            child: const InviteFlowScreen(),
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: RouteDataScope(
+              routeData: _buildRouteData(router, queryParams: const {}),
+              child: const InviteFlowCoordinator(
+                invites: [],
+                decisionResult: null,
+                requiresAuthentication: false,
+                isInitialized: true,
+              ),
+            ),
           ),
         ),
-      ),
-    );
+      );
 
-    await tester.pump();
-    controller.markImageLoaded(invite.eventImageUrl);
-    await tester.pump();
-    for (var i = 0; i < 20; i++) {
-      await tester.pump(const Duration(milliseconds: 150));
-      if (find.text('Aceitar').evaluate().isNotEmpty) {
-        break;
-      }
-    }
+      await tester.pump();
+      await tester.pump();
 
-    await tester.tap(find.text('Aceitar'));
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.pump(const Duration(milliseconds: 300));
-
-    expect(repository.acceptedInviteIds, ['accept-1']);
-    expect(repository.materializedShareCodes, ['31F8RN5QJ9']);
-  });
+      expect(router.lastReplacedPath, '/');
+    },
+  );
 
   testWidgets(
-      'Authenticated share invite with inviteId declines through invite contract',
-      (tester) async {
-    final invite = _buildInviteWithPrimaryInviter('decline-1');
-    final repository = _FakeInvitesRepository(
-      initialInvites: [invite],
-      materializedInviteId: 'decline-1',
-    );
-    final controller = InviteFlowScreenController(
-      repository: repository,
-      userEventsRepository: _FakeUserEventsRepository(),
-      telemetryRepository: _FakeTelemetryRepository(),
-      authRepository: _FakeAuthRepository(authorized: true),
-    );
-    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
+    'Invite flow falls back to event when invite is empty and session continuity still resolves',
+    (tester) async {
+      final scheduleRepository = _FakeScheduleRepository(
+        eventsBySlug: <String, EventModel?>{
+          'event-1': _buildResolvedEvent('event-1'),
+        },
+      );
+      final repository = _FakeInvitesRepository(initialInvites: const []);
+      repository.setShareCodeSessionContext(
+        code: invitesRepoString(
+          'SHARE-CODE-123',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        invite: buildInviteModelFromPrimitives(
+          id: 'invite-1',
+          eventId: 'event-1',
+          eventSlug: 'event-1',
+          eventName: 'Invite Event',
+          eventDateTime: DateTime(2026, 1, 1, 18),
+          eventImageUrl: 'https://example.com/event.jpg',
+          location: 'Guarapari',
+          hostName: 'Belluga',
+          message: 'Bora?',
+          tags: const ['music'],
+          occurrenceId: 'occ-1',
+        ),
+      );
+      final controller = InviteFlowScreenController(
+        repository: repository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        telemetryRepository: _FakeTelemetryRepository(),
+        scheduleRepository: scheduleRepository,
+      );
+      GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
 
-    final router = _RecordingStackRouter(canPopValue: true);
-    final routeData = _buildRouteData(
-      router,
-      path: '/invite',
-      queryParams: const {'code': '31F8RN5QJ9'},
-    );
+      final router = _RecordingStackRouter(canPopValue: false);
 
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: RouteDataScope(
-            routeData: routeData,
-            child: const InviteFlowScreen(),
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: RouteDataScope(
+              routeData: _buildRouteData(router, queryParams: const {}),
+              child: InviteFlowCoordinator(
+                invites: const [],
+                decisionResult: null,
+                requiresAuthentication: false,
+                isInitialized: true,
+              ),
+            ),
           ),
         ),
-      ),
-    );
+      );
 
-    await tester.pump();
-    controller.markImageLoaded(invite.eventImageUrl);
-    await tester.pump();
-    for (var i = 0; i < 20; i++) {
-      await tester.pump(const Duration(milliseconds: 150));
-      if (find.text('Recusar').evaluate().isNotEmpty) {
-        break;
-      }
-    }
+      await tester.pump();
+      await tester.pump();
 
-    await tester.tap(find.text('Recusar'));
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.pump(const Duration(milliseconds: 300));
-
-    expect(repository.declinedInviteIds, ['decline-1']);
-    expect(repository.materializedShareCodes, ['31F8RN5QJ9']);
-  });
+      expect(
+        router.lastReplacedPath,
+        '/agenda/evento/event-1?occurrence=occ-1',
+      );
+    },
+  );
 
   testWidgets(
-      'Closing invite flow without decision routes home and keeps invite pending',
-      (tester) async {
-    final invite = _buildInviteWithPrimaryInviter('pending-1');
-    final repository = _FakeInvitesRepository(
-      initialInvites: [invite],
-      materializedInviteId: 'pending-1',
-    );
-    final controller = InviteFlowScreenController(
-      repository: repository,
-      userEventsRepository: _FakeUserEventsRepository(),
-      telemetryRepository: _FakeTelemetryRepository(),
-      authRepository: _FakeAuthRepository(authorized: true),
-    );
-    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
+    'Invite flow falls back home when invite is empty and session continuity no longer resolves',
+    (tester) async {
+      final scheduleRepository = _FakeScheduleRepository(
+        eventsBySlug: const <String, EventModel?>{'event-ended': null},
+      );
+      final repository = _FakeInvitesRepository(initialInvites: const []);
+      repository.setShareCodeSessionContext(
+        code: invitesRepoString(
+          'SHARE-CODE-123',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        invite: buildInviteModelFromPrimitives(
+          id: 'invite-ended',
+          eventId: 'event-ended',
+          eventSlug: 'event-ended',
+          eventName: 'Ended Event',
+          eventDateTime: DateTime(2026, 1, 1, 18),
+          eventImageUrl: 'https://example.com/event-ended.jpg',
+          location: 'Guarapari',
+          hostName: 'Belluga',
+          message: 'Bora?',
+          tags: const ['music'],
+          occurrenceId: 'occ-ended',
+        ),
+      );
+      final controller = InviteFlowScreenController(
+        repository: repository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        telemetryRepository: _FakeTelemetryRepository(),
+        scheduleRepository: scheduleRepository,
+      );
+      GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
 
-    final router = _RecordingStackRouter(canPopValue: false);
-    final routeData = _buildRouteData(
-      router,
-      path: '/invite',
-      queryParams: const {'code': '31F8RN5QJ9'},
-    );
+      final router = _RecordingStackRouter(canPopValue: false);
 
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: RouteDataScope(
-            routeData: routeData,
-            child: const InviteFlowScreen(),
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: RouteDataScope(
+              routeData: _buildRouteData(router, queryParams: const {}),
+              child: InviteFlowCoordinator(
+                invites: const [],
+                decisionResult: null,
+                requiresAuthentication: false,
+                isInitialized: true,
+              ),
+            ),
           ),
         ),
-      ),
-    );
+      );
 
-    await tester.pump();
-    controller.markImageLoaded(invite.eventImageUrl);
-    await tester.pump();
-    for (var i = 0; i < 20; i++) {
-      await tester.pump(const Duration(milliseconds: 150));
-      if (find.byTooltip('Fechar').evaluate().isNotEmpty) {
-        break;
-      }
-    }
+      await tester.pump();
+      await tester.pump();
 
-    await tester.tap(find.byTooltip('Fechar'));
-    await tester.pump();
-
-    expect(router.replaceAllCalled, isTrue);
-    expect(router.lastReplaced?.first, isA<TenantHomeRoute>());
-    expect(controller.pendingInvitesStreamValue.value, hasLength(1));
-    expect(controller.pendingInvitesStreamValue.value.first.id, 'pending-1');
-    expect(controller.pendingInvitesStreamValue.value.first.eventId,
-        'event-pending-1');
-  });
+      expect(router.lastReplacedPath, '/');
+    },
+  );
 
   testWidgets(
-      'Invite flow system back routes home and keeps invite pending when there is no stack',
-      (tester) async {
-    final invite = _buildInviteWithPrimaryInviter('pending-system-back');
-    final repository = _FakeInvitesRepository(
-      initialInvites: [invite],
-      materializedInviteId: 'pending-system-back',
-    );
-    final controller = InviteFlowScreenController(
-      repository: repository,
-      userEventsRepository: _FakeUserEventsRepository(),
-      telemetryRepository: _FakeTelemetryRepository(),
-      authRepository: _FakeAuthRepository(authorized: true),
-    );
-    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
+    'Unauthenticated app invite asks for authentication before accept',
+    (tester) async {
+      final invite = _buildInviteWithPrimaryInviter('1');
+      final repository = _FakeInvitesRepository(initialInvites: [invite]);
+      final controller = InviteFlowScreenController(
+        repository: repository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        telemetryRepository: _FakeTelemetryRepository(),
+        authRepository: _FakeAuthRepository(authorized: false),
+      );
+      GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
 
-    final router = _RecordingStackRouter(canPopValue: false);
-    final routeData = _buildRouteData(
-      router,
-      path: '/invite',
-      queryParams: const {'code': '31F8RN5QJ9'},
-    );
+      final router = _RecordingStackRouter(canPopValue: true);
+      final routeData = _buildRouteData(
+        router,
+        path: '/invite',
+        queryParams: const {'code': '31F8RN5QJ9'},
+      );
 
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: RouteDataScope(
-            routeData: routeData,
-            child: const InviteFlowScreen(),
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: RouteDataScope(
+              routeData: routeData,
+              child: const InviteFlowScreen(),
+            ),
           ),
         ),
-      ),
-    );
+      );
 
-    await tester.pump();
-    controller.markImageLoaded(invite.eventImageUrl);
-    await tester.pump();
-    for (var i = 0; i < 20; i++) {
-      await tester.pump(const Duration(milliseconds: 150));
-      if (find.byType(PopScope<dynamic>).evaluate().isNotEmpty) {
-        break;
+      await tester.pump();
+      controller.markImageLoaded(invite.eventImageUrl);
+      await tester.pump();
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 150));
+        if (find.text('Entre para Aceitar ou Recusar').evaluate().isNotEmpty) {
+          break;
+        }
       }
-    }
 
-    final popScope = tester.widget<PopScope<dynamic>>(
-      find.byWidgetPredicate((widget) => widget is PopScope),
-    );
-    popScope.onPopInvokedWithResult?.call(false, null);
-    await tester.pump();
+      expect(find.text('Aceitar'), findsNothing);
+      expect(find.text('Recusar'), findsNothing);
+      expect(find.text('Ver detalhes'), findsOneWidget);
+      expect(find.text('Entre para Aceitar ou Recusar'), findsOneWidget);
 
-    expect(router.replaceAllCalled, isTrue);
-    expect(router.lastReplaced?.first, isA<TenantHomeRoute>());
-    expect(controller.pendingInvitesStreamValue.value, hasLength(1));
-    expect(
-      controller.pendingInvitesStreamValue.value.first.id,
-      'pending-system-back',
-    );
-  });
+      await tester.tap(find.text('Entre para Aceitar ou Recusar'));
+      await tester.pump();
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+        if (router.lastPushed != null) {
+          break;
+        }
+      }
+
+      expect(
+        router.lastPushedPath,
+        '/auth/login?redirect=%2Finvite%3Fcode%3D31F8RN5QJ9',
+      );
+      expect(router.lastPushed, isNull);
+      expect(repository.acceptedShareCodes, isEmpty);
+      expect(repository.acceptedInviteIds, isEmpty);
+    },
+  );
 
   testWidgets(
-      'Authenticated multi-inviter share invite with empty picker id still uses canonical decision',
-      (tester) async {
-    final invite = _buildInviteWithEmptyCandidateIds('multi-1');
-    final repository = _FakeInvitesRepository(
-      initialInvites: [invite],
-      materializedInviteId: 'multi-1',
-    );
-    final controller = InviteFlowScreenController(
-      repository: repository,
-      userEventsRepository: _FakeUserEventsRepository(),
-      telemetryRepository: _FakeTelemetryRepository(),
-      authRepository: _FakeAuthRepository(authorized: true),
-    );
-    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
+    'Authenticated share invite accept uses canonical invite action',
+    (tester) async {
+      final invite = _buildInvite('1');
+      final repository = _FakeInvitesRepository(
+        initialInvites: [invite],
+        materializedInviteId: '1',
+      );
+      final controller = InviteFlowScreenController(
+        repository: repository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        telemetryRepository: _FakeTelemetryRepository(),
+        authRepository: _FakeAuthRepository(authorized: true),
+      );
+      GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
 
-    final router = _RecordingStackRouter(canPopValue: true);
-    final routeData = _buildRouteData(
-      router,
-      path: '/invite',
-      queryParams: const {'code': '31F8RN5QJ9'},
-    );
+      final router = _RecordingStackRouter(canPopValue: true);
+      final routeData = _buildRouteData(
+        router,
+        path: '/invite',
+        queryParams: const {'code': '31F8RN5QJ9'},
+      );
 
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: RouteDataScope(
-            routeData: routeData,
-            child: const InviteFlowScreen(),
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: RouteDataScope(
+              routeData: routeData,
+              child: const InviteFlowScreen(),
+            ),
           ),
         ),
-      ),
-    );
+      );
 
-    await tester.pump();
-    controller.markImageLoaded(invite.eventImageUrl);
-    await tester.pump();
-    for (var i = 0; i < 20; i++) {
-      await tester.pump(const Duration(milliseconds: 150));
-      if (find.text('Aceitar').evaluate().isNotEmpty) {
-        break;
+      await tester.pump();
+      controller.markImageLoaded(invite.eventImageUrl);
+      await tester.pump();
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 150));
+        if (find.text('Aceitar').evaluate().isNotEmpty) {
+          break;
+        }
       }
-    }
 
-    await tester.tap(find.text('Aceitar'));
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('Aceitar'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 300));
 
-    expect(repository.materializedShareCodes, ['31F8RN5QJ9']);
-    expect(repository.acceptedInviteIds, ['multi-1']);
-  });
+      expect(repository.materializedShareCodes, ['31F8RN5QJ9']);
+      expect(repository.acceptedInviteIds, ['1']);
+    },
+  );
+
+  testWidgets(
+    'Authenticated share invite with inviteId accepts through invite contract',
+    (tester) async {
+      final invite = _buildInviteWithPrimaryInviter('accept-1');
+      final repository = _FakeInvitesRepository(
+        initialInvites: [invite],
+        materializedInviteId: 'accept-1',
+      );
+      final controller = InviteFlowScreenController(
+        repository: repository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        telemetryRepository: _FakeTelemetryRepository(),
+        authRepository: _FakeAuthRepository(authorized: true),
+      );
+      GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
+
+      final router = _RecordingStackRouter(canPopValue: true);
+      final routeData = _buildRouteData(
+        router,
+        path: '/invite',
+        queryParams: const {'code': '31F8RN5QJ9'},
+      );
+
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: RouteDataScope(
+              routeData: routeData,
+              child: const InviteFlowScreen(),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      controller.markImageLoaded(invite.eventImageUrl);
+      await tester.pump();
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 150));
+        if (find.text('Aceitar').evaluate().isNotEmpty) {
+          break;
+        }
+      }
+
+      await tester.tap(find.text('Aceitar'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(repository.acceptedInviteIds, ['accept-1']);
+      expect(repository.materializedShareCodes, ['31F8RN5QJ9']);
+    },
+  );
+
+  testWidgets(
+    'Authenticated share invite with inviteId declines through invite contract',
+    (tester) async {
+      final invite = _buildInviteWithPrimaryInviter('decline-1');
+      final repository = _FakeInvitesRepository(
+        initialInvites: [invite],
+        materializedInviteId: 'decline-1',
+      );
+      final controller = InviteFlowScreenController(
+        repository: repository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        telemetryRepository: _FakeTelemetryRepository(),
+        authRepository: _FakeAuthRepository(authorized: true),
+      );
+      GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
+
+      final router = _RecordingStackRouter(canPopValue: true);
+      final routeData = _buildRouteData(
+        router,
+        path: '/invite',
+        queryParams: const {'code': '31F8RN5QJ9'},
+      );
+
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: RouteDataScope(
+              routeData: routeData,
+              child: const InviteFlowScreen(),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      controller.markImageLoaded(invite.eventImageUrl);
+      await tester.pump();
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 150));
+        if (find.text('Recusar').evaluate().isNotEmpty) {
+          break;
+        }
+      }
+
+      await tester.tap(find.text('Recusar'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(repository.declinedInviteIds, ['decline-1']);
+      expect(repository.materializedShareCodes, ['31F8RN5QJ9']);
+    },
+  );
+
+  testWidgets(
+    'Closing invite flow without decision routes home and keeps invite pending',
+    (tester) async {
+      final invite = _buildInviteWithPrimaryInviter('pending-1');
+      final repository = _FakeInvitesRepository(
+        initialInvites: [invite],
+        materializedInviteId: 'pending-1',
+      );
+      final controller = InviteFlowScreenController(
+        repository: repository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        telemetryRepository: _FakeTelemetryRepository(),
+        authRepository: _FakeAuthRepository(authorized: true),
+      );
+      GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
+
+      final router = _RecordingStackRouter(canPopValue: false);
+      final routeData = _buildRouteData(
+        router,
+        path: '/invite',
+        queryParams: const {'code': '31F8RN5QJ9'},
+      );
+
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: RouteDataScope(
+              routeData: routeData,
+              child: const InviteFlowScreen(),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      controller.markImageLoaded(invite.eventImageUrl);
+      await tester.pump();
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 150));
+        if (find.byTooltip('Fechar').evaluate().isNotEmpty) {
+          break;
+        }
+      }
+
+      await tester.tap(find.byTooltip('Fechar'));
+      await tester.pump();
+
+      expect(router.replaceAllCalled, isTrue);
+      expect(router.lastReplaced?.first, isA<TenantHomeRoute>());
+      expect(controller.pendingInvitesStreamValue.value, hasLength(1));
+      expect(controller.pendingInvitesStreamValue.value.first.id, 'pending-1');
+      expect(
+        controller.pendingInvitesStreamValue.value.first.eventId,
+        'event-pending-1',
+      );
+    },
+  );
+
+  testWidgets(
+    'Invite flow system back routes home and keeps invite pending when there is no stack',
+    (tester) async {
+      final invite = _buildInviteWithPrimaryInviter('pending-system-back');
+      final repository = _FakeInvitesRepository(
+        initialInvites: [invite],
+        materializedInviteId: 'pending-system-back',
+      );
+      final controller = InviteFlowScreenController(
+        repository: repository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        telemetryRepository: _FakeTelemetryRepository(),
+        authRepository: _FakeAuthRepository(authorized: true),
+      );
+      GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
+
+      final router = _RecordingStackRouter(canPopValue: false);
+      final routeData = _buildRouteData(
+        router,
+        path: '/invite',
+        queryParams: const {'code': '31F8RN5QJ9'},
+      );
+
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: RouteDataScope(
+              routeData: routeData,
+              child: const InviteFlowScreen(),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      controller.markImageLoaded(invite.eventImageUrl);
+      await tester.pump();
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 150));
+        if (find.byType(PopScope<dynamic>).evaluate().isNotEmpty) {
+          break;
+        }
+      }
+
+      final popScope = tester.widget<PopScope<dynamic>>(
+        find.byWidgetPredicate((widget) => widget is PopScope),
+      );
+      popScope.onPopInvokedWithResult?.call(false, null);
+      await tester.pump();
+
+      expect(router.replaceAllCalled, isTrue);
+      expect(router.lastReplaced?.first, isA<TenantHomeRoute>());
+      expect(controller.pendingInvitesStreamValue.value, hasLength(1));
+      expect(
+        controller.pendingInvitesStreamValue.value.first.id,
+        'pending-system-back',
+      );
+    },
+  );
+
+  testWidgets(
+    'Authenticated multi-inviter share invite with empty picker id still uses canonical decision',
+    (tester) async {
+      final invite = _buildInviteWithEmptyCandidateIds('multi-1');
+      final repository = _FakeInvitesRepository(
+        initialInvites: [invite],
+        materializedInviteId: 'multi-1',
+      );
+      final controller = InviteFlowScreenController(
+        repository: repository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        telemetryRepository: _FakeTelemetryRepository(),
+        authRepository: _FakeAuthRepository(authorized: true),
+      );
+      GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
+
+      final router = _RecordingStackRouter(canPopValue: true);
+      final routeData = _buildRouteData(
+        router,
+        path: '/invite',
+        queryParams: const {'code': '31F8RN5QJ9'},
+      );
+
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: RouteDataScope(
+              routeData: routeData,
+              child: const InviteFlowScreen(),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      controller.markImageLoaded(invite.eventImageUrl);
+      await tester.pump();
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 150));
+        if (find.text('Aceitar').evaluate().isNotEmpty) {
+          break;
+        }
+      }
+
+      await tester.tap(find.text('Aceitar'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(repository.materializedShareCodes, ['31F8RN5QJ9']);
+      expect(repository.acceptedInviteIds, ['multi-1']);
+    },
+  );
 }
 
 InviteModel _buildInvite(String id) {
   return buildInviteModelFromPrimitives(
     id: id,
     eventId: 'event-$id',
+    eventSlug: 'event-$id',
     eventName: 'Event $id',
     eventDateTime: DateTime(2026, 1, 1, 18),
     eventImageUrl: 'https://example.com/$id.jpg',
@@ -1375,11 +1477,7 @@ InviteModel _buildInviteWithParticipantGroups(String id) {
         name: 'Promotion Smoke Perfil Público',
         profileType: 'venue',
       ),
-      _linkedProfile(
-        id: bandId,
-        name: 'Du Jorge',
-        profileType: 'artist',
-      ),
+      _linkedProfile(id: bandId, name: 'Du Jorge', profileType: 'artist'),
       _linkedProfile(
         id: exhibitorId,
         name: 'QA Discovery Tag Sem Tags',
@@ -1391,9 +1489,7 @@ InviteModel _buildInviteWithParticipantGroups(String id) {
         idValue: EventLinkedAccountProfileTextValue('bandas'),
         labelValue: EventLinkedAccountProfileTextValue('Bandas'),
         orderValue: EventProfileGroupOrderValue(0),
-        accountProfileIdValues: [
-          EventLinkedAccountProfileTextValue(bandId),
-        ],
+        accountProfileIdValues: [EventLinkedAccountProfileTextValue(bandId)],
       ),
       EventProfileGroup(
         idValue: EventLinkedAccountProfileTextValue('expositores'),
@@ -1422,14 +1518,18 @@ InviteModel _buildInviteWithEmptyCandidateIds(String id) {
     inviterName: 'Convidador A',
     inviters: [
       InviteInviter(
-        inviteIdValue:
-            InviteInviterIdValue(defaultValue: '', isRequired: false),
+        inviteIdValue: InviteInviterIdValue(
+          defaultValue: '',
+          isRequired: false,
+        ),
         type: InviteInviterType.user,
         nameValue: InviteInviterNameValue()..parse('Convidador A'),
       ),
       InviteInviter(
-        inviteIdValue:
-            InviteInviterIdValue(defaultValue: '', isRequired: false),
+        inviteIdValue: InviteInviterIdValue(
+          defaultValue: '',
+          isRequired: false,
+        ),
         type: InviteInviterType.user,
         nameValue: InviteInviterNameValue()..parse('Convidador B'),
       ),
@@ -1522,8 +1622,10 @@ class _FakeAuthRepository extends AuthRepositoryContract {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
-      AuthRepositoryContractParamString password) async {}
+  Future<void> loginWithEmailPassword(
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
+  ) async {}
 
   @override
   Future<void> signUpWithEmailPassword(
@@ -1534,8 +1636,9 @@ class _FakeAuthRepository extends AuthRepositoryContract {
 
   @override
   Future<void> sendTokenRecoveryPassword(
-      AuthRepositoryContractParamString email,
-      AuthRepositoryContractParamString codigoEnviado) async {}
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString codigoEnviado,
+  ) async {}
 
   @override
   Future<void> logout() async {}
@@ -1548,7 +1651,8 @@ class _FakeAuthRepository extends AuthRepositoryContract {
 
   @override
   Future<void> sendPasswordResetEmail(
-      AuthRepositoryContractParamString email) async {}
+    AuthRepositoryContractParamString email,
+  ) async {}
 
   @override
   Future<void> updateUser(UserCustomData data) async {}

@@ -276,10 +276,7 @@ void main() {
     (tester) async {
       _takeAllExceptions(tester);
       _registerTenantBootstrapDependencies(
-        invitesRepository: _FakeInvitesRepository(
-          hasPendingInvites: false,
-          previewInvite: null,
-        ),
+        invitesRepository: _FakeInvitesRepository(false, previewInvite: null),
         authRepository: _FakeAuthRepository(authorized: false),
       );
 
@@ -340,7 +337,7 @@ void _registerTenantBootstrapDependencies({
 }) {
   final appData = _buildAppData(environmentType: EnvironmentType.tenant);
   final resolvedInvitesRepository =
-      invitesRepository ?? _FakeInvitesRepository(hasPendingInvites: false);
+      invitesRepository ?? _FakeInvitesRepository(false);
   final friendsRepository = _FakeFriendsRepository();
   final userEventsRepository = _FakeUserEventsRepository();
   final telemetryRepository = _FakeTelemetryRepository();
@@ -475,8 +472,7 @@ void _registerTenantBootstrapDependencies({
 }
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
-  _FakeInvitesRepository({required bool hasPendingInvites, this.previewInvite})
-    : _hasPendingInvites = hasPendingInvites;
+  _FakeInvitesRepository(this._hasPendingInvites, {this.previewInvite});
 
   @override
   InvitesRepositoryContractPrimBool get hasPendingInvites =>

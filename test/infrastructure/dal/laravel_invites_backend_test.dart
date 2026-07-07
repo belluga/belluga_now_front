@@ -33,17 +33,15 @@ void main() {
   });
 
   test('fetchInvites bootstraps auth token when initially missing', () async {
-    final authRepository = GetIt.I.get<AuthRepositoryContract<UserContract>>()
-        as _FakeAuthRepository;
+    final authRepository =
+        GetIt.I.get<AuthRepositoryContract<UserContract>>()
+            as _FakeAuthRepository;
     authRepository.setUserToken(authRepoString(''));
     authRepository.tokenAfterInit = 'refreshed-token';
 
     final adapter = _RecordingAdapter(
       response: const {
-        'data': {
-          'invites': [],
-          'has_more': false,
-        },
+        'data': {'invites': [], 'has_more': false},
       },
     );
     final dio = Dio()..httpClientAdapter = adapter;
@@ -61,34 +59,34 @@ void main() {
   });
 
   test(
-      'fetchSettings revalidates persisted token before tenant-public invite requests',
-      () async {
-    final authRepository = GetIt.I.get<AuthRepositoryContract<UserContract>>()
-        as _FakeAuthRepository;
-    authRepository.setUserToken(authRepoString('stale-token'));
-    authRepository.tokenAfterInit = 'refreshed-token';
-    authRepository.refreshTokenOnInit = true;
+    'fetchSettings revalidates persisted token before tenant-public invite requests',
+    () async {
+      final authRepository =
+          GetIt.I.get<AuthRepositoryContract<UserContract>>()
+              as _FakeAuthRepository;
+      authRepository.setUserToken(authRepoString('stale-token'));
+      authRepository.tokenAfterInit = 'refreshed-token';
+      authRepository.refreshTokenOnInit = true;
 
-    final adapter = _RecordingAdapter(
-      response: const {
-        'data': {
-          'invite_settings': {},
+      final adapter = _RecordingAdapter(
+        response: const {
+          'data': {'invite_settings': {}},
         },
-      },
-    );
-    final dio = Dio()..httpClientAdapter = adapter;
-    final backend = LaravelInvitesBackend(dio: dio);
+      );
+      final dio = Dio()..httpClientAdapter = adapter;
+      final backend = LaravelInvitesBackend(dio: dio);
 
-    await backend.fetchSettings();
+      await backend.fetchSettings();
 
-    expect(authRepository.ensureTenantPublicIdentityReadyCallCount, 1);
-    expect(authRepository.initCallCount, 0);
-    expect(
-      adapter.lastRequest?.headers['Authorization'],
-      'Bearer refreshed-token',
-    );
-    expect(adapter.lastRequest?.uri.path, '/api/v1/invites/settings');
-  });
+      expect(authRepository.ensureTenantPublicIdentityReadyCallCount, 1);
+      expect(authRepository.initCallCount, 0);
+      expect(
+        adapter.lastRequest?.headers['Authorization'],
+        'Bearer refreshed-token',
+      );
+      expect(adapter.lastRequest?.uri.path, '/api/v1/invites/settings');
+    },
+  );
 
   test('fetchSettings fails closed when auth repository is missing', () async {
     await GetIt.I.reset();
@@ -96,9 +94,7 @@ void main() {
 
     final adapter = _RecordingAdapter(
       response: const {
-        'data': {
-          'invite_settings': {},
-        },
+        'data': {'invite_settings': {}},
       },
     );
     final dio = Dio()..httpClientAdapter = adapter;
@@ -134,35 +130,37 @@ void main() {
   });
 
   test(
-      'watchInvitesStream revalidates persisted token before tenant-public invite streams',
-      () async {
-    final authRepository = GetIt.I.get<AuthRepositoryContract<UserContract>>()
-        as _FakeAuthRepository;
-    authRepository.setUserToken(authRepoString('stale-token'));
-    authRepository.tokenAfterInit = 'refreshed-token';
-    authRepository.refreshTokenOnInit = true;
+    'watchInvitesStream revalidates persisted token before tenant-public invite streams',
+    () async {
+      final authRepository =
+          GetIt.I.get<AuthRepositoryContract<UserContract>>()
+              as _FakeAuthRepository;
+      authRepository.setUserToken(authRepoString('stale-token'));
+      authRepository.tokenAfterInit = 'refreshed-token';
+      authRepository.refreshTokenOnInit = true;
 
-    final sseClient = _RecordingSseClient();
-    final backend = LaravelInvitesBackend(
-      dio: Dio()..httpClientAdapter = _RecordingAdapter(response: const {}),
-      sseClient: sseClient,
-    );
+      final sseClient = _RecordingSseClient();
+      final backend = LaravelInvitesBackend(
+        dio: Dio()..httpClientAdapter = _RecordingAdapter(response: const {}),
+        sseClient: sseClient,
+      );
 
-    await backend.watchInvitesStream(lastEventId: 'cursor-1').drain<void>();
+      await backend.watchInvitesStream(lastEventId: 'cursor-1').drain<void>();
 
-    expect(authRepository.ensureTenantPublicIdentityReadyCallCount, 1);
-    expect(authRepository.initCallCount, 0);
-    expect(sseClient.lastUri?.queryParameters['access_token'],
-        'refreshed-token');
-    expect(sseClient.lastHeaders?['Authorization'], 'Bearer refreshed-token');
-  });
+      expect(authRepository.ensureTenantPublicIdentityReadyCallCount, 1);
+      expect(authRepository.initCallCount, 0);
+      expect(
+        sseClient.lastUri?.queryParameters['access_token'],
+        'refreshed-token',
+      );
+      expect(sseClient.lastHeaders?['Authorization'], 'Bearer refreshed-token');
+    },
+  );
 
   test('fetchSentInviteStatuses targets occurrence-scoped endpoint', () async {
     final adapter = _RecordingAdapter(
       response: const {
-        'data': {
-          'items': [],
-        },
+        'data': {'items': []},
       },
     );
     final backend = LaravelInvitesBackend(
@@ -178,11 +176,15 @@ void main() {
     );
 
     expect(adapter.lastRequest?.uri.path, '/api/v1/invites/sent-statuses');
-    expect(adapter.lastRequest?.uri.queryParameters['occurrence_id'],
-        'occurrence-1');
+    expect(
+      adapter.lastRequest?.uri.queryParameters['occurrence_id'],
+      'occurrence-1',
+    );
     expect(adapter.lastRequest?.uri.queryParameters['event_id'], 'event-1');
     expect(
-      adapter.lastRequest?.uri
+      adapter
+          .lastRequest
+          ?.uri
           .queryParametersAll['recipient_account_profile_ids[]'],
       ['profile-1', 'profile-2'],
     );
@@ -217,32 +219,31 @@ void main() {
     );
 
     expect(adapter.lastRequest?.uri.path, '/api/v1/invites/sent-summary');
-    expect(adapter.lastRequest?.uri.queryParameters['occurrence_id'],
-        'occurrence-1');
+    expect(
+      adapter.lastRequest?.uri.queryParameters['occurrence_id'],
+      'occurrence-1',
+    );
     expect(adapter.lastRequest?.uri.queryParameters['event_id'], 'event-1');
     expect(adapter.lastRequest?.uri.queryParameters['preview_limit'], '5');
   });
 
   test(
-      'fetchInviteableContacts targets bounded event-agnostic inviteables endpoint',
-      () async {
-    final adapter = _RecordingAdapter(
-      response: const {
-        'items': [],
-      },
-    );
-    final backend = LaravelInvitesBackend(
-      dio: Dio()..httpClientAdapter = adapter,
-    );
+    'fetchInviteableContacts targets bounded event-agnostic inviteables endpoint',
+    () async {
+      final adapter = _RecordingAdapter(response: const {'items': []});
+      final backend = LaravelInvitesBackend(
+        dio: Dio()..httpClientAdapter = adapter,
+      );
 
-    await backend.fetchInviteableContacts(
-      const InviteableContactsRequest(page: 1, pageSize: 50),
-    );
+      await backend.fetchInviteableContacts(
+        const InviteableContactsRequest(page: 1, pageSize: 50),
+      );
 
-    expect(adapter.lastRequest?.uri.path, '/api/v1/contacts/inviteables');
-    expect(adapter.lastRequest?.uri.queryParameters['page'], '1');
-    expect(adapter.lastRequest?.uri.queryParameters['page_size'], '50');
-  });
+      expect(adapter.lastRequest?.uri.path, '/api/v1/contacts/inviteables');
+      expect(adapter.lastRequest?.uri.queryParameters['page'], '1');
+      expect(adapter.lastRequest?.uri.queryParameters['page_size'], '50');
+    },
+  );
 
   test('watchInvitesStream decodes canonical upsert payload', () async {
     final sseClient = _RecordingSseClient(
@@ -346,8 +347,10 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
-      AuthRepositoryContractParamString password) async {}
+  Future<void> loginWithEmailPassword(
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
+  ) async {}
 
   @override
   Future<void> signUpWithEmailPassword(
@@ -358,8 +361,9 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> sendTokenRecoveryPassword(
-      AuthRepositoryContractParamString email,
-      AuthRepositoryContractParamString codigoEnviado) async {}
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString codigoEnviado,
+  ) async {}
 
   @override
   Future<void> logout() async {}
@@ -372,17 +376,17 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> sendPasswordResetEmail(
-      AuthRepositoryContractParamString email) async {}
+    AuthRepositoryContractParamString email,
+  ) async {}
 
   @override
   Future<void> updateUser(UserCustomData data) async {}
 }
 
 class _RecordingAdapter implements HttpClientAdapter {
-  _RecordingAdapter({required Map<String, dynamic> response})
-      : _response = response;
+  _RecordingAdapter({required this.response});
 
-  final Map<String, dynamic> _response;
+  final Map<String, dynamic> response;
   RequestOptions? lastRequest;
 
   @override
@@ -396,7 +400,7 @@ class _RecordingAdapter implements HttpClientAdapter {
   ) async {
     lastRequest = options;
     return ResponseBody.fromString(
-      jsonEncode(_response),
+      jsonEncode(response),
       200,
       headers: {
         Headers.contentTypeHeader: [Headers.jsonContentType],
@@ -406,9 +410,8 @@ class _RecordingAdapter implements HttpClientAdapter {
 }
 
 class _RecordingSseClient implements SseClient {
-  _RecordingSseClient({
-    Stream<SseMessage>? stream,
-  }) : _stream = stream ?? const Stream<SseMessage>.empty();
+  _RecordingSseClient({Stream<SseMessage>? stream})
+    : _stream = stream ?? const Stream<SseMessage>.empty();
 
   final Stream<SseMessage> _stream;
   Uri? lastUri;
@@ -438,10 +441,7 @@ AppData _buildAppData() {
         'type': 'artist',
         'label': 'Artist',
         'allowed_taxonomies': [],
-        'capabilities': {
-          'is_favoritable': true,
-          'is_poi_enabled': false,
-        },
+        'capabilities': {'is_favoritable': true, 'is_poi_enabled': false},
       },
     ],
     'domains': const ['https://tenant.test'],

@@ -87,13 +87,9 @@ void main() {
         await adminModeRepo.setLandlordMode();
       });
 
-      app.appRouter.replaceAll(
-        [
-          TenantAdminShellRoute(
-            children: [TenantAdminEventsRoute()],
-          ),
-        ],
-      );
+      app.appRouter.replaceAll([
+        TenantAdminShellRoute(children: [TenantAdminEventsRoute()]),
+      ]);
 
       await tester.pumpWidget(app);
       await tester.pumpAndSettle(const Duration(seconds: 2));
@@ -141,8 +137,9 @@ void main() {
 }
 
 class _InMemoryAdminModeRepository implements AdminModeRepositoryContract {
-  final StreamValue<AdminMode> _modeStreamValue =
-      StreamValue<AdminMode>(defaultValue: AdminMode.user);
+  final StreamValue<AdminMode> _modeStreamValue = StreamValue<AdminMode>(
+    defaultValue: AdminMode.user,
+  );
 
   @override
   StreamValue<AdminMode> get modeStreamValue => _modeStreamValue;
@@ -168,30 +165,28 @@ class _InMemoryAdminModeRepository implements AdminModeRepositoryContract {
 }
 
 class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
-  _FakeLandlordAuthRepository({required bool hasValidSession})
-      : _hasValidSession = hasValidSession;
-
-  bool _hasValidSession;
+  _FakeLandlordAuthRepository({required this.hasValidSession});
 
   @override
-  bool get hasValidSession => _hasValidSession;
+  bool hasValidSession;
 
   @override
-  String get token => _hasValidSession ? 'token' : '';
+  String get token => hasValidSession ? 'token' : '';
 
   @override
   Future<void> init() async {}
 
   @override
   Future<void> loginWithEmailPassword(
-      LandlordAuthRepositoryContractPrimString email,
-      LandlordAuthRepositoryContractPrimString password) async {
-    _hasValidSession = true;
+    LandlordAuthRepositoryContractPrimString email,
+    LandlordAuthRepositoryContractPrimString password,
+  ) async {
+    hasValidSession = true;
   }
 
   @override
   Future<void> logout() async {
-    _hasValidSession = false;
+    hasValidSession = false;
   }
 }
 
@@ -213,30 +208,29 @@ class _FakeTenantAdminEventsRepository
     extends TenantAdminEventsRepositoryContract
     with TenantAdminEventsPaginationMixin {
   _FakeTenantAdminEventsRepository()
-      : _events = <TenantAdminEvent>[
-          TenantAdminEvent(
-            eventIdValue: tenantAdminRequiredText('event-delete-1'),
-            slugValue: tenantAdminRequiredText('delete-visibility-event'),
-            titleValue: tenantAdminRequiredText('Delete Visibility Event'),
-            contentValue: tenantAdminOptionalText(
-              'Event used to validate soft delete visibility.',
-            ),
-            type: TenantAdminEventType(
-              nameValue: tenantAdminRequiredText('Show'),
-              slugValue: tenantAdminRequiredText('show'),
-            ),
-            occurrences: [
-              TenantAdminEventOccurrence(
-                dateTimeStartValue:
-                    tenantAdminDateTime(DateTime(2026, 3, 5, 20)),
-              ),
-            ],
-            publication: TenantAdminEventPublication(
-              statusValue: tenantAdminRequiredText('published'),
-            ),
-            deletedAtValue: tenantAdminOptionalDateTime(null),
+    : _events = <TenantAdminEvent>[
+        TenantAdminEvent(
+          eventIdValue: tenantAdminRequiredText('event-delete-1'),
+          slugValue: tenantAdminRequiredText('delete-visibility-event'),
+          titleValue: tenantAdminRequiredText('Delete Visibility Event'),
+          contentValue: tenantAdminOptionalText(
+            'Event used to validate soft delete visibility.',
           ),
-        ];
+          type: TenantAdminEventType(
+            nameValue: tenantAdminRequiredText('Show'),
+            slugValue: tenantAdminRequiredText('show'),
+          ),
+          occurrences: [
+            TenantAdminEventOccurrence(
+              dateTimeStartValue: tenantAdminDateTime(DateTime(2026, 3, 5, 20)),
+            ),
+          ],
+          publication: TenantAdminEventPublication(
+            statusValue: tenantAdminRequiredText('published'),
+          ),
+          deletedAtValue: tenantAdminOptionalDateTime(null),
+        ),
+      ];
 
   final List<TenantAdminEvent> _events;
 
@@ -338,20 +332,23 @@ class _FakeTenantAdminEventsRepository
   }
 
   List<TenantAdminEvent> _filterEvents() {
-    return _events.where((event) {
-      return event.deletedAt == null;
-    }).toList(growable: false);
+    return _events
+        .where((event) {
+          return event.deletedAt == null;
+        })
+        .toList(growable: false);
   }
 
   @override
   Future<TenantAdminEvent> fetchEvent(
-      TenantAdminEventsRepoString eventIdOrSlug) async {
+    TenantAdminEventsRepoString eventIdOrSlug,
+  ) async {
     return _events.first;
   }
 
   @override
   Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-      fetchEventAccountProfileCandidatesPage({
+  fetchEventAccountProfileCandidatesPage({
     required TenantAdminEventAccountProfileCandidateType candidateType,
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
@@ -366,7 +363,7 @@ class _FakeTenantAdminEventsRepository
 
   @override
   Future<TenantAdminLegacyEventPartiesSummary>
-      fetchLegacyEventPartiesSummary() async {
+  fetchLegacyEventPartiesSummary() async {
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(0),
       invalidValue: TenantAdminCountValue(0),
@@ -378,7 +375,7 @@ class _FakeTenantAdminEventsRepository
 
   @override
   Future<TenantAdminLegacyEventPartiesSummary>
-      repairLegacyEventParties() async {
+  repairLegacyEventParties() async {
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(0),
       invalidValue: TenantAdminCountValue(0),
@@ -428,7 +425,7 @@ class _NoopTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
-      fetchTaxonomiesPage({
+  fetchTaxonomiesPage({
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
   }) async {
@@ -447,7 +444,7 @@ class _NoopTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
-      fetchTermsPage({
+  fetchTermsPage({
     required TenantAdminTaxRepoString taxonomyId,
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,

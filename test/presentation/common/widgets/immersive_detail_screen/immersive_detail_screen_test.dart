@@ -757,7 +757,7 @@ Future<void> _pumpImmersiveScreen(
         meta: canonicalRouteMeta(
           family: CanonicalRouteFamily.immersiveEventDetail,
         ),
-        builder: (_, __) => child,
+        builder: (_, _) => child,
       ),
     ],
   )..ignorePopCompleters = true;

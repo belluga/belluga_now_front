@@ -192,7 +192,7 @@ class PoiMarker extends StatelessWidget {
                         child: Image(
                           image: imageProvider,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => MarkerFallbackIcon(
+                          errorBuilder: (_, _, _) => MarkerFallbackIcon(
                             color: scheme.primary,
                           ),
                         ),

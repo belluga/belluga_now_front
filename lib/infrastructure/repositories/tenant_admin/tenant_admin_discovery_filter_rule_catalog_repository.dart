@@ -21,23 +21,17 @@ class TenantAdminDiscoveryFilterRuleCatalogRepository
   static const int _termsPerTaxonomyBudget = 200;
 
   TenantAdminDiscoveryFilterRuleCatalogRepository({
-    required TenantAdminAccountProfilesRepositoryContract
-        accountProfilesRepository,
-    required TenantAdminStaticAssetsRepositoryContract staticAssetsRepository,
+    required this._accountProfilesRepository,
+    required this._staticAssetsRepository,
     required TenantAdminTaxonomiesRepositoryContract taxonomiesRepository,
     TenantAdminTaxonomiesBatchTermsRepositoryContract? batchTermsRepository,
-    required TenantAdminEventsRepositoryContract eventsRepository,
-    TenantAdminDiscoveryFilterRuleCatalogBuilder catalogBuilder =
-        const TenantAdminDiscoveryFilterRuleCatalogBuilder(),
-  })  : _accountProfilesRepository = accountProfilesRepository,
-        _staticAssetsRepository = staticAssetsRepository,
-        _taxonomiesRepository = taxonomiesRepository,
-        _batchTermsRepository = _resolveBatchTermsRepository(
-          taxonomiesRepository: taxonomiesRepository,
-          batchTermsRepository: batchTermsRepository,
-        ),
-        _eventsRepository = eventsRepository,
-        _catalogBuilder = catalogBuilder;
+    required this._eventsRepository,
+    this._catalogBuilder = const TenantAdminDiscoveryFilterRuleCatalogBuilder(),
+  }) : _taxonomiesRepository = taxonomiesRepository,
+       _batchTermsRepository = _resolveBatchTermsRepository(
+         taxonomiesRepository: taxonomiesRepository,
+         batchTermsRepository: batchTermsRepository,
+       );
 
   final TenantAdminAccountProfilesRepositoryContract _accountProfilesRepository;
   final TenantAdminStaticAssetsRepositoryContract _staticAssetsRepository;
@@ -47,7 +41,7 @@ class TenantAdminDiscoveryFilterRuleCatalogRepository
   final TenantAdminDiscoveryFilterRuleCatalogBuilder _catalogBuilder;
 
   static TenantAdminTaxonomiesBatchTermsRepositoryContract
-      _resolveBatchTermsRepository({
+  _resolveBatchTermsRepository({
     required TenantAdminTaxonomiesRepositoryContract taxonomiesRepository,
     TenantAdminTaxonomiesBatchTermsRepositoryContract? batchTermsRepository,
   }) {
@@ -75,12 +69,13 @@ class TenantAdminDiscoveryFilterRuleCatalogRepository
 
     final accountTypes =
         _accountProfilesRepository.profileTypesStreamValue.value ??
-            const <TenantAdminProfileTypeDefinition>[];
+        const <TenantAdminProfileTypeDefinition>[];
     final staticTypes =
         _staticAssetsRepository.staticProfileTypesStreamValue.value ??
-            const <TenantAdminStaticProfileTypeDefinition>[];
+        const <TenantAdminStaticProfileTypeDefinition>[];
     final eventTypes = await eventTypesFuture;
-    final taxonomies = _taxonomiesRepository.taxonomiesStreamValue.value ??
+    final taxonomies =
+        _taxonomiesRepository.taxonomiesStreamValue.value ??
         const <TenantAdminTaxonomyDefinition>[];
     final relevantTaxonomies = _relevantTaxonomies(
       taxonomies: taxonomies,
@@ -88,8 +83,9 @@ class TenantAdminDiscoveryFilterRuleCatalogRepository
       staticTypes: staticTypes,
       eventTypes: eventTypes,
     );
-    final termsByTaxonomySlug =
-        await _loadTermsByTaxonomySlug(relevantTaxonomies);
+    final termsByTaxonomySlug = await _loadTermsByTaxonomySlug(
+      relevantTaxonomies,
+    );
 
     return _catalogBuilder.build(
       accountTypes: accountTypes,
@@ -108,14 +104,17 @@ class TenantAdminDiscoveryFilterRuleCatalogRepository
   }) {
     final referencedSlugs = <String>{
       for (final type in accountTypes)
-        ...type.allowedTaxonomies.value
-            .map((slug) => slug.trim().toLowerCase()),
+        ...type.allowedTaxonomies.value.map(
+          (slug) => slug.trim().toLowerCase(),
+        ),
       for (final type in staticTypes)
-        ...type.allowedTaxonomies.value
-            .map((slug) => slug.trim().toLowerCase()),
+        ...type.allowedTaxonomies.value.map(
+          (slug) => slug.trim().toLowerCase(),
+        ),
       for (final type in eventTypes)
-        ...type.allowedTaxonomies.value
-            .map((slug) => slug.trim().toLowerCase()),
+        ...type.allowedTaxonomies.value.map(
+          (slug) => slug.trim().toLowerCase(),
+        ),
     }..remove('');
 
     if (referencedSlugs.isEmpty) {
@@ -123,14 +122,15 @@ class TenantAdminDiscoveryFilterRuleCatalogRepository
     }
 
     final relevant = taxonomies
-        .where((taxonomy) =>
-            referencedSlugs.contains(taxonomy.slug.trim().toLowerCase()) &&
-            taxonomy.id.trim().isNotEmpty)
+        .where(
+          (taxonomy) =>
+              referencedSlugs.contains(taxonomy.slug.trim().toLowerCase()) &&
+              taxonomy.id.trim().isNotEmpty,
+        )
         .toList(growable: false);
     relevant.sort(
-      (left, right) => left.slug.toLowerCase().compareTo(
-            right.slug.toLowerCase(),
-          ),
+      (left, right) =>
+          left.slug.toLowerCase().compareTo(right.slug.toLowerCase()),
     );
 
     return relevant.take(_taxonomyGroupBudget).toList(growable: false);
@@ -140,8 +140,10 @@ class TenantAdminDiscoveryFilterRuleCatalogRepository
     List<TenantAdminTaxonomyDefinition> taxonomies,
   ) async {
     final requestedTaxonomies = taxonomies
-        .where((taxonomy) =>
-            taxonomy.id.trim().isNotEmpty && taxonomy.slug.trim().isNotEmpty)
+        .where(
+          (taxonomy) =>
+              taxonomy.id.trim().isNotEmpty && taxonomy.slug.trim().isNotEmpty,
+        )
         .toList(growable: false);
     final fetchedEntries = <TenantAdminTaxonomyTermsForTaxonomyId>[];
     final requestedIds = requestedTaxonomies
@@ -153,9 +155,11 @@ class TenantAdminDiscoveryFilterRuleCatalogRepository
           ),
         )
         .toList(growable: false);
-    for (var offset = 0;
-        offset < requestedIds.length;
-        offset += _taxonomyBatchSize) {
+    for (
+      var offset = 0;
+      offset < requestedIds.length;
+      offset += _taxonomyBatchSize
+    ) {
       final chunk = requestedIds
           .skip(offset)
           .take(_taxonomyBatchSize)

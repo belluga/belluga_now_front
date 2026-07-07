@@ -273,7 +273,7 @@ Future<void> _pumpWithAutoRoute(
           family: CanonicalRouteFamily.tenantAdminEventsInternal,
           chromeMode: RouteChromeMode.fullscreen,
         ),
-        builder: (_, __) => child,
+        builder: (_, _) => child,
       ),
     ],
   )..ignorePopCompleters = true;

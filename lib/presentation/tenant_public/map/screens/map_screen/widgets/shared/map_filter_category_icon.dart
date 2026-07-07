@@ -86,7 +86,7 @@ class _ImageFallbackIcon extends StatelessWidget {
         key: ValueKey(imageUri),
         imageUri,
         fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) => Icon(
+        errorBuilder: (_, _, _) => Icon(
           fallbackIcon,
           size: size - 2,
           color: fallbackColor,

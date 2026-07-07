@@ -169,7 +169,7 @@ class _DirectionsAppChooserSheetState extends State<DirectionsAppChooserSheet> {
                       return ListView.separated(
                         shrinkWrap: true,
                         itemCount: _options.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
+                        separatorBuilder: (_, _) => const SizedBox(height: 8),
                         itemBuilder: (context, index) {
                           final option = _options[index];
                           return _DirectionsAppChoiceTile(

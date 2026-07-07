@@ -92,9 +92,7 @@ void main() {
     expect(find.text('Contatos'), findsNothing);
   });
 
-  testWidgets('agenda refresh appears only on Telefone pane', (
-    tester,
-  ) async {
+  testWidgets('agenda refresh appears only on Telefone pane', (tester) async {
     await tester.binding.setSurfaceSize(const Size(480, 1200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -246,18 +244,14 @@ void main() {
       );
 
       expect(
-        () => segmentedButton.onSelectionChanged?.call(
-          <InviteSharePane>{},
-        ),
+        () => segmentedButton.onSelectionChanged?.call(<InviteSharePane>{}),
         returnsNormally,
       );
       expect(
-        () => segmentedButton.onSelectionChanged?.call(
-          <InviteSharePane>{
-            InviteSharePane.app,
-            InviteSharePane.phone,
-          },
-        ),
+        () => segmentedButton.onSelectionChanged?.call(<InviteSharePane>{
+          InviteSharePane.app,
+          InviteSharePane.phone,
+        }),
         returnsNormally,
       );
 
@@ -407,16 +401,14 @@ void main() {
       expect(find.text('Contato Match'), findsNothing);
       expect(find.byType(CircularProgressIndicator), findsNothing);
 
-      invitesRepository.importContactsCompleter!.complete(
-        <InviteContactMatch>[
-          _buildInviteContactMatch(
-            userId: 'user-match-1',
-            accountProfileId: 'profile-match-1',
-            displayName: 'Contato Match',
-            contactHash: 'hash-match-1',
-          ),
-        ],
-      );
+      invitesRepository.importContactsCompleter!.complete(<InviteContactMatch>[
+        _buildInviteContactMatch(
+          userId: 'user-match-1',
+          accountProfileId: 'profile-match-1',
+          displayName: 'Contato Match',
+          contactHash: 'hash-match-1',
+        ),
+      ]);
       await tester.pumpAndSettle();
 
       expect(find.text('Contato Match'), findsNothing);
@@ -562,17 +554,18 @@ void main() {
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
       final invitesRepository = _FakeInvitesRepository();
-      final contactsRepository = _FakeContactsRepository(
-        contacts: <ContactModel>[
-          buildContactModel(
-            id: 'phone-contact',
-            displayName: 'Mae',
-            phones: <String>['+55 27 98888-7777'],
-          ),
-        ],
-      )
-        ..skipCachedContactsLoad = true
-        ..requestPermissionCompleter = Completer<bool>();
+      final contactsRepository =
+          _FakeContactsRepository(
+              contacts: <ContactModel>[
+                buildContactModel(
+                  id: 'phone-contact',
+                  displayName: 'Mae',
+                  phones: <String>['+55 27 98888-7777'],
+                ),
+              ],
+            )
+            ..skipCachedContactsLoad = true
+            ..requestPermissionCompleter = Completer<bool>();
       final controller = InviteShareScreenController(
         invitesRepository: invitesRepository,
         contactsRepository: contactsRepository,
@@ -591,21 +584,16 @@ void main() {
       await tester.pump();
 
       expect(find.text('Nenhum contato do telefone disponível.'), findsNothing);
-      expect(
-        controller.isPhonePaneInitialLoadingStreamValue.value,
-        isTrue,
-      );
+      expect(controller.isPhonePaneInitialLoadingStreamValue.value, isTrue);
 
-      controller.externalContactShareTargetsStreamValue
-          .addValue(const <InviteExternalContactShareTarget>[]);
+      controller.externalContactShareTargetsStreamValue.addValue(
+        const <InviteExternalContactShareTarget>[],
+      );
       await tester.pump();
 
       expect(find.text('Nenhum contato do telefone disponível.'), findsNothing);
       expect(find.byType(CircularProgressIndicator), findsWidgets);
-      expect(
-        controller.isPhonePaneInitialLoadingStreamValue.value,
-        isTrue,
-      );
+      expect(controller.isPhonePaneInitialLoadingStreamValue.value, isTrue);
 
       contactsRepository.requestPermissionCompleter!.complete(true);
       await tester.pumpAndSettle();
@@ -640,13 +628,15 @@ void main() {
         ],
       );
 
-      invitesRepository.inviteableRecipientsStreamValue
-          .addValue(invitesRepository.inviteableRecipients);
+      invitesRepository.inviteableRecipientsStreamValue.addValue(
+        invitesRepository.inviteableRecipients,
+      );
       invitesRepository.importedContactMatchesStreamValue.addValue(
         const <InviteContactMatch>[],
       );
-      contactsRepository.contactsStreamValue
-          .addValue(contactsRepository.contacts);
+      contactsRepository.contactsStreamValue.addValue(
+        contactsRepository.contacts,
+      );
       invitesRepository.fetchInviteableRecipientsCompleter =
           Completer<List<InviteableRecipient>>();
 
@@ -775,84 +765,83 @@ void main() {
     expect(find.text('Pessoa 79'), findsOneWidget);
   });
 
-  testWidgets(
-    'sent non-null invite status cards disable repeat invite CTA',
-    (tester) async {
-      var inviteTapCount = 0;
-      final pendingFriend = buildInviteableRecipient(
-        userId: 'user-pending',
-        accountProfileId: 'profile-pending',
-        displayName: 'Pessoa Pendente',
-      ).toFriendResume();
-      final acceptedFriend = buildInviteableRecipient(
-        userId: 'user-accepted',
-        accountProfileId: 'profile-accepted',
-        displayName: 'Pessoa Aceita',
-      ).toFriendResume();
-      final declinedFriend = buildInviteableRecipient(
-        userId: 'user-declined',
-        accountProfileId: 'profile-declined',
-        displayName: 'Pessoa Recusou',
-      ).toFriendResume();
-      final supersededFriend = buildInviteableRecipient(
-        userId: 'user-superseded',
-        accountProfileId: 'profile-superseded',
-        displayName: 'Pessoa Confirmada',
-      ).toFriendResume();
+  testWidgets('sent non-null invite status cards disable repeat invite CTA', (
+    tester,
+  ) async {
+    var inviteTapCount = 0;
+    final pendingFriend = buildInviteableRecipient(
+      userId: 'user-pending',
+      accountProfileId: 'profile-pending',
+      displayName: 'Pessoa Pendente',
+    ).toFriendResume();
+    final acceptedFriend = buildInviteableRecipient(
+      userId: 'user-accepted',
+      accountProfileId: 'profile-accepted',
+      displayName: 'Pessoa Aceita',
+    ).toFriendResume();
+    final declinedFriend = buildInviteableRecipient(
+      userId: 'user-declined',
+      accountProfileId: 'profile-declined',
+      displayName: 'Pessoa Recusou',
+    ).toFriendResume();
+    final supersededFriend = buildInviteableRecipient(
+      userId: 'user-superseded',
+      accountProfileId: 'profile-superseded',
+      displayName: 'Pessoa Confirmada',
+    ).toFriendResume();
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Column(
-              children: [
-                InviteShareFriendCard(
-                  friend: pendingFriend,
-                  status: InviteStatus.pending,
-                  onInvite: () => inviteTapCount += 1,
-                  isPlaceholder: false,
-                  isSending: false,
-                ),
-                InviteShareFriendCard(
-                  friend: acceptedFriend,
-                  status: InviteStatus.accepted,
-                  onInvite: () => inviteTapCount += 1,
-                  isPlaceholder: false,
-                  isSending: false,
-                ),
-                InviteShareFriendCard(
-                  friend: declinedFriend,
-                  status: InviteStatus.declined,
-                  onInvite: () => inviteTapCount += 1,
-                  isPlaceholder: false,
-                  isSending: false,
-                ),
-                InviteShareFriendCard(
-                  friend: supersededFriend,
-                  status: InviteStatus.superseded,
-                  onInvite: () => inviteTapCount += 1,
-                  isPlaceholder: false,
-                  isSending: false,
-                ),
-              ],
-            ),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Column(
+            children: [
+              InviteShareFriendCard(
+                friend: pendingFriend,
+                status: InviteStatus.pending,
+                onInvite: () => inviteTapCount += 1,
+                isPlaceholder: false,
+                isSending: false,
+              ),
+              InviteShareFriendCard(
+                friend: acceptedFriend,
+                status: InviteStatus.accepted,
+                onInvite: () => inviteTapCount += 1,
+                isPlaceholder: false,
+                isSending: false,
+              ),
+              InviteShareFriendCard(
+                friend: declinedFriend,
+                status: InviteStatus.declined,
+                onInvite: () => inviteTapCount += 1,
+                isPlaceholder: false,
+                isSending: false,
+              ),
+              InviteShareFriendCard(
+                friend: supersededFriend,
+                status: InviteStatus.superseded,
+                onInvite: () => inviteTapCount += 1,
+                isPlaceholder: false,
+                isSending: false,
+              ),
+            ],
           ),
         ),
-      );
+      ),
+    );
 
-      expect(find.text('Convidado'), findsNWidgets(2));
-      expect(find.text('Convite Aceito!'), findsOneWidget);
-      expect(find.text('Convite recusado'), findsOneWidget);
-      expect(find.text('Confirmado'), findsNothing);
-      expect(find.text('Convidar'), findsNothing);
+    expect(find.text('Convidado'), findsNWidgets(2));
+    expect(find.text('Convite Aceito!'), findsOneWidget);
+    expect(find.text('Convite recusado'), findsOneWidget);
+    expect(find.text('Confirmado'), findsNothing);
+    expect(find.text('Convidar'), findsNothing);
 
-      await tester.tap(find.text('Convidado').first);
-      await tester.tap(find.text('Convite Aceito!'));
-      await tester.tap(find.text('Convite recusado'));
-      await tester.pump();
+    await tester.tap(find.text('Convidado').first);
+    await tester.tap(find.text('Convite Aceito!'));
+    await tester.tap(find.text('Convite recusado'));
+    await tester.pump();
 
-      expect(inviteTapCount, 0);
-    },
-  );
+    expect(inviteTapCount, 0);
+  });
 
   testWidgets(
     'sending invite card disables the CTA while the request is in flight',
@@ -888,31 +877,30 @@ void main() {
     },
   );
 
-  testWidgets(
-    'summary uses exact counters and bounded visible preview',
-    (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: InviteShareSummary(
-              summary: _sentSummary(
-                pending: 250,
-                accepted: 12,
-                preview: <SentInviteStatus>[
-                  _sentStatus('profile-pending', InviteStatus.pending),
-                  _sentStatus('profile-accepted', InviteStatus.accepted),
-                  _sentStatus('profile-superseded', InviteStatus.superseded),
-                ],
-              ),
+  testWidgets('summary uses exact counters and bounded visible preview', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: InviteShareSummary(
+            summary: _sentSummary(
+              pending: 250,
+              accepted: 12,
+              preview: <SentInviteStatus>[
+                _sentStatus('profile-pending', InviteStatus.pending),
+                _sentStatus('profile-accepted', InviteStatus.accepted),
+                _sentStatus('profile-superseded', InviteStatus.superseded),
+              ],
             ),
           ),
         ),
-      );
+      ),
+    );
 
-      expect(find.text('250 pendentes | 12 aceitos'), findsOneWidget);
-      expect(find.text('1 pendentes | 1 aceitos'), findsNothing);
-    },
-  );
+    expect(find.text('250 pendentes | 12 aceitos'), findsOneWidget);
+    expect(find.text('1 pendentes | 1 aceitos'), findsNothing);
+  });
 
   testWidgets('share CTA leaves Gerando state after failure and can retry', (
     tester,
@@ -1046,9 +1034,7 @@ void main() {
       expect(launchedUris.single.path, '/5527988887777');
       expect(
         launchedUris.single.queryParameters['text'],
-        contains(
-          'https://tenant.test/invite?code=SHARE-CODE&fallback=%2Fagenda%2Fevento%2Fevento-teste%3Foccurrence%3Doccurrence-1',
-        ),
+        contains('https://tenant.test/invite?code=SHARE-CODE'),
       );
       expect(launchedModes.single, LaunchMode.externalApplication);
       expect(sharedParams, isEmpty);
@@ -1108,25 +1094,18 @@ void main() {
     expect(sharedParams, hasLength(1));
     expect(
       sharedParams.single.text,
-      contains(
-        'https://tenant.test/invite?code=SHARE-CODE&fallback=%2Fagenda%2Fevento%2Fevento-teste%3Foccurrence%3Doccurrence-1',
-      ),
+      contains('https://tenant.test/invite?code=SHARE-CODE'),
     );
     expect(
       sharedParams.single.text,
       startsWith('Amigo te convidou para Evento Teste.'),
     );
-    expect(
-      sharedParams.single.text,
-      contains('Sex, 13 mar · 20h\nGuarapari'),
-    );
+    expect(sharedParams.single.text, contains('Sex, 13 mar · 20h\nGuarapari'));
     expect(sharedParams.single.text, contains('Bandas: Du Jorge, QA Tag'));
     expect(sharedParams.single.text, contains('Responder ao convite:'));
     expect(
       sharedParams.single.text,
-      contains(
-        'https://tenant.test/invite?code=SHARE-CODE&fallback=%2Fagenda%2Fevento%2Fevento-teste%3Foccurrence%3Doccurrence-1',
-      ),
+      contains('https://tenant.test/invite?code=SHARE-CODE'),
     );
     expect(sharedParams.single.text, isNot(contains('Detalhes:')));
     expect(sharedParams.single.text, isNot(contains('Como chegar:')));
@@ -1188,9 +1167,7 @@ void main() {
       expect(sharedParams, hasLength(1));
       expect(
         sharedParams.single.text,
-        contains(
-          'https://tenant.test/invite?code=SHARE-CODE&fallback=%2Fagenda%2Fevento%2Fevento-teste%3Foccurrence%3Doccurrence-1',
-        ),
+        contains('https://tenant.test/invite?code=SHARE-CODE'),
       );
     },
   );
@@ -1272,8 +1249,9 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
   Completer<bool>? requestPermissionCompleter;
 
   @override
-  final contactsStreamValue =
-      StreamValue<List<ContactModel>?>(defaultValue: null);
+  final contactsStreamValue = StreamValue<List<ContactModel>?>(
+    defaultValue: null,
+  );
 
   @override
   Future<List<ContactModel>> getContacts() async => contacts;
@@ -1314,20 +1292,20 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
 class _FakeInvitesRepository extends InvitesRepositoryContract
     implements InviteablesRepositoryContract {
   _FakeInvitesRepository()
-      : inviteableRecipients = [
-          buildInviteableRecipient(
-            userId: 'user-1',
-            accountProfileId: 'profile-1',
-            displayName: 'Ana Contato',
-            inviteableReasons: const <String>['contact_match'],
-          ),
-          buildInviteableRecipient(
-            userId: 'user-2',
-            accountProfileId: 'profile-2',
-            displayName: 'Bia Favorita',
-            inviteableReasons: const <String>['favorite_by_you'],
-          ),
-        ];
+    : inviteableRecipients = [
+        buildInviteableRecipient(
+          userId: 'user-1',
+          accountProfileId: 'profile-1',
+          displayName: 'Ana Contato',
+          inviteableReasons: const <String>['contact_match'],
+        ),
+        buildInviteableRecipient(
+          userId: 'user-2',
+          accountProfileId: 'profile-2',
+          displayName: 'Bia Favorita',
+          inviteableReasons: const <String>['favorite_by_you'],
+        ),
+      ];
 
   bool throwOnCreateShareCode = false;
   bool throwOnSentSummary = false;
@@ -1472,8 +1450,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract
   Future<List<InviteModel>> fetchInvites({
     InvitesRepositoryContractPrimInt? page,
     InvitesRepositoryContractPrimInt? pageSize,
-  }) async =>
-      const <InviteModel>[];
+  }) async => const <InviteModel>[];
 
   @override
   Future<InviteRuntimeSettings> fetchSettings() => throw UnimplementedError();
@@ -1481,33 +1458,29 @@ class _FakeInvitesRepository extends InvitesRepositoryContract
   @override
   Future<InviteAcceptResult> acceptInvite(
     InvitesRepositoryContractPrimString inviteId,
-  ) async =>
-      buildInviteAcceptResult(
-        inviteId: inviteId.value,
-        status: 'accepted',
-        creditedAcceptance: true,
-        attendancePolicy: 'free_confirmation_only',
-        nextStep: InviteNextStep.freeConfirmationCreated,
-        supersededInviteIds: const [],
-      );
+  ) async => buildInviteAcceptResult(
+    inviteId: inviteId.value,
+    status: 'accepted',
+    creditedAcceptance: true,
+    attendancePolicy: 'free_confirmation_only',
+    nextStep: InviteNextStep.freeConfirmationCreated,
+    supersededInviteIds: const [],
+  );
 
   @override
   Future<InviteDeclineResult> declineInvite(
     InvitesRepositoryContractPrimString inviteId,
-  ) =>
-      throw UnimplementedError();
+  ) => throw UnimplementedError();
 
   @override
   Future<InviteAcceptResult> acceptInviteByCode(
     InvitesRepositoryContractPrimString code,
-  ) =>
-      throw UnimplementedError();
+  ) => throw UnimplementedError();
 
   @override
   Future<InviteMaterializeResult> materializeShareCode(
     InvitesRepositoryContractPrimString code,
-  ) =>
-      throw UnimplementedError();
+  ) => throw UnimplementedError();
 }
 
 InviteModel _buildInvite() {

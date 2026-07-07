@@ -48,40 +48,41 @@ class TenantHomeAgendaController extends Object
     ProximityPreferencesRepositoryContract? proximityPreferencesRepository,
     LocationOriginServiceContract? locationOriginService,
     TelemetryRepositoryContract? telemetryRepository,
-    bool isWebRuntime = kIsWeb,
-    Duration locationWarmUpTimeout = const Duration(seconds: 4),
-    Duration locationPermissionTimeout = const Duration(seconds: 8),
-    Duration radiusRefreshDebounce = const Duration(milliseconds: 250),
-  })  : _scheduleRepository =
-            scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>(),
-        _userEventsRepository =
-            userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>(),
-        _discoveryFiltersRepository = discoveryFiltersRepository ??
-            (GetIt.I.isRegistered<DiscoveryFiltersRepositoryContract>()
-                ? GetIt.I.get<DiscoveryFiltersRepositoryContract>()
-                : null),
-        _invitesRepository =
-            invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
-        _appDataRepository =
-            appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
-        _authRepository = authRepository ??
-            (GetIt.I.isRegistered<AuthRepositoryContract>()
-                ? GetIt.I.get<AuthRepositoryContract>()
-                : null),
-        _proximityPreferencesRepository = proximityPreferencesRepository ??
-            (GetIt.I.isRegistered<ProximityPreferencesRepositoryContract>()
-                ? GetIt.I.get<ProximityPreferencesRepositoryContract>()
-                : null),
-        _locationOriginService = locationOriginService ??
-            GetIt.I.get<LocationOriginServiceContract>(),
-        _telemetryRepository = telemetryRepository ??
-            (GetIt.I.isRegistered<TelemetryRepositoryContract>()
-                ? GetIt.I.get<TelemetryRepositoryContract>()
-                : null),
-        _isWebRuntime = isWebRuntime,
-        _locationWarmUpTimeout = locationWarmUpTimeout,
-        _locationPermissionTimeout = locationPermissionTimeout,
-        _radiusRefreshDebounce = radiusRefreshDebounce;
+    this._isWebRuntime = kIsWeb,
+    this._locationWarmUpTimeout = const Duration(seconds: 4),
+    this._locationPermissionTimeout = const Duration(seconds: 8),
+    this._radiusRefreshDebounce = const Duration(milliseconds: 250),
+  }) : _scheduleRepository =
+           scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>(),
+       _userEventsRepository =
+           userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>(),
+       _discoveryFiltersRepository =
+           discoveryFiltersRepository ??
+           (GetIt.I.isRegistered<DiscoveryFiltersRepositoryContract>()
+               ? GetIt.I.get<DiscoveryFiltersRepositoryContract>()
+               : null),
+       _invitesRepository =
+           invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
+       _appDataRepository =
+           appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
+       _authRepository =
+           authRepository ??
+           (GetIt.I.isRegistered<AuthRepositoryContract>()
+               ? GetIt.I.get<AuthRepositoryContract>()
+               : null),
+       _proximityPreferencesRepository =
+           proximityPreferencesRepository ??
+           (GetIt.I.isRegistered<ProximityPreferencesRepositoryContract>()
+               ? GetIt.I.get<ProximityPreferencesRepositoryContract>()
+               : null),
+       _locationOriginService =
+           locationOriginService ??
+           GetIt.I.get<LocationOriginServiceContract>(),
+       _telemetryRepository =
+           telemetryRepository ??
+           (GetIt.I.isRegistered<TelemetryRepositoryContract>()
+               ? GetIt.I.get<TelemetryRepositoryContract>()
+               : null);
 
   final ScheduleRepositoryContract _scheduleRepository;
   final UserEventsRepositoryContract _userEventsRepository;
@@ -102,36 +103,41 @@ class TenantHomeAgendaController extends Object
   static const double _radiusCompactScrollEpsilon = 0.5;
   static const double _locationRefreshMinJumpMeters = 1000.0;
   static const Duration _firstPageRetryDelay = Duration(milliseconds: 350);
-  static const Duration _initialCanonicalOriginSettleTimeout =
-      Duration(milliseconds: 350);
-  static const Duration _preservedFirstPageEmptyRetryDelay =
-      Duration(milliseconds: 250);
+  static const Duration _initialCanonicalOriginSettleTimeout = Duration(
+    milliseconds: 350,
+  );
+  static const Duration _preservedFirstPageEmptyRetryDelay = Duration(
+    milliseconds: 250,
+  );
   static const String _homeEventsFilterSurface = 'home.events';
   static const DiscoveryFilterPolicy _homeEventsFilterPolicy =
       DiscoveryFilterPolicy(
-    primarySelectionMode: DiscoveryFilterSelectionMode.single,
-    taxonomySelectionMode: DiscoveryFilterSelectionMode.multiple,
-    primaryLayoutMode: DiscoveryFilterLayoutMode.row,
-    taxonomyLayoutMode: DiscoveryFilterLayoutMode.row,
-  );
+        primarySelectionMode: DiscoveryFilterSelectionMode.single,
+        taxonomySelectionMode: DiscoveryFilterSelectionMode.multiple,
+        primaryLayoutMode: DiscoveryFilterLayoutMode.row,
+        taxonomyLayoutMode: DiscoveryFilterLayoutMode.row,
+      );
   static const String _loadingLocationLabel = 'Encontrando sua localização...';
   static const String _loadingNearbyEventsLabel =
       'Buscando eventos perto de você...';
   static const String _radiusChangedEventName = 'agenda_radius_changed';
   static const String _radiusChangedSurface = 'home';
-  static final Uri _localEventPlaceholderUri =
-      Uri.parse('asset://event-placeholder');
+  static final Uri _localEventPlaceholderUri = Uri.parse(
+    'asset://event-placeholder',
+  );
 
   @override
   final searchController = TextEditingController();
   @override
   final focusNode = FocusNode();
 
-  final displayStateStreamValue =
-      StreamValue<TenantHomeAgendaDisplayState?>(defaultValue: null);
+  final displayStateStreamValue = StreamValue<TenantHomeAgendaDisplayState?>(
+    defaultValue: null,
+  );
   final isInitialLoadingStreamValue = StreamValue<bool>(defaultValue: true);
-  final initialLoadingLabelStreamValue =
-      StreamValue<String>(defaultValue: _loadingLocationLabel);
+  final initialLoadingLabelStreamValue = StreamValue<String>(
+    defaultValue: _loadingLocationLabel,
+  );
   final isPageLoadingStreamValue = StreamValue<bool>(defaultValue: false);
   final hasMoreStreamValue = StreamValue<bool>(defaultValue: true);
   @override
@@ -139,19 +145,24 @@ class TenantHomeAgendaController extends Object
   @override
   final searchActiveStreamValue = StreamValue<bool>(defaultValue: false);
   @override
-  final inviteFilterStreamValue =
-      StreamValue<InviteFilter>(defaultValue: InviteFilter.none);
+  final inviteFilterStreamValue = StreamValue<InviteFilter>(
+    defaultValue: InviteFilter.none,
+  );
   @override
-  final radiusMetersStreamValue =
-      StreamValue<double>(defaultValue: _fallbackRadiusMeters);
+  final radiusMetersStreamValue = StreamValue<double>(
+    defaultValue: _fallbackRadiusMeters,
+  );
   @override
-  final isRadiusRefreshLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  final isRadiusRefreshLoadingStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
   @override
-  final isRadiusActionCompactStreamValue =
-      StreamValue<bool>(defaultValue: false);
-  final StreamValue<double> _maxRadiusMetersStreamValue =
-      StreamValue<double>(defaultValue: _fallbackRadiusMeters);
+  final isRadiusActionCompactStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
+  final StreamValue<double> _maxRadiusMetersStreamValue = StreamValue<double>(
+    defaultValue: _fallbackRadiusMeters,
+  );
   @override
   final discoveryFilterCatalogStreamValue = StreamValue<DiscoveryFilterCatalog>(
     defaultValue: const DiscoveryFilterCatalog(
@@ -161,16 +172,19 @@ class TenantHomeAgendaController extends Object
   @override
   final discoveryFilterSelectionStreamValue =
       StreamValue<DiscoveryFilterSelection>(
-    defaultValue: const DiscoveryFilterSelection(),
+        defaultValue: const DiscoveryFilterSelection(),
+      );
+  @override
+  final isDiscoveryFilterPanelVisibleStreamValue = StreamValue<bool>(
+    defaultValue: false,
   );
   @override
-  final isDiscoveryFilterPanelVisibleStreamValue =
-      StreamValue<bool>(defaultValue: false);
-  @override
-  final isDiscoveryFilterCatalogLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
-  final hasCanonicalDiscoveryFilterCatalogStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  final isDiscoveryFilterCatalogLoadingStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
+  final hasCanonicalDiscoveryFilterCatalogStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
 
   @override
   StreamValue<double> get maxRadiusMetersStreamValue =>
@@ -317,24 +331,15 @@ class TenantHomeAgendaController extends Object
   }
 
   ScheduleRepoBool _toScheduleBool(bool value) {
-    return ScheduleRepoBool.fromRaw(
-      value,
-      defaultValue: value,
-    );
+    return ScheduleRepoBool.fromRaw(value, defaultValue: value);
   }
 
   ScheduleRepoString _toScheduleText(String value) {
-    return ScheduleRepoString.fromRaw(
-      value,
-      defaultValue: value,
-    );
+    return ScheduleRepoString.fromRaw(value, defaultValue: value);
   }
 
   ScheduleRepoDouble _toScheduleDouble(double value) {
-    return ScheduleRepoDouble.fromRaw(
-      value,
-      defaultValue: value,
-    );
+    return ScheduleRepoDouble.fromRaw(value, defaultValue: value);
   }
 
   ScheduleRepoDouble? _toNullableScheduleDouble(double? value) {
@@ -350,10 +355,10 @@ class TenantHomeAgendaController extends Object
       return inFlight;
     }
 
-    final initFuture =
-        _initInternal(startWithHistory: startWithHistory).whenComplete(() {
-      _initInFlight = null;
-    });
+    final initFuture = _initInternal(startWithHistory: startWithHistory)
+        .whenComplete(() {
+          _initInFlight = null;
+        });
     _initInFlight = initFuture;
     return initFuture;
   }
@@ -361,7 +366,8 @@ class TenantHomeAgendaController extends Object
   Future<void> _initInternal({required bool startWithHistory}) async {
     _ifAlive(() => showHistoryStreamValue.addValue(startWithHistory));
     _ifAlive(
-        () => radiusMetersStreamValue.addValue(_resolveDefaultRadiusMeters()));
+      () => radiusMetersStreamValue.addValue(_resolveDefaultRadiusMeters()),
+    );
     _listenForStatusChanges();
     _listenForRadiusChanges();
     final restoredSelection =
@@ -375,13 +381,15 @@ class TenantHomeAgendaController extends Object
         () => discoveryFilterSelectionStreamValue.addValue(restoredSelection),
       );
     }
-    final mustAwaitCatalogBeforeResults = restoredSelection?.isEmpty == false ||
+    final mustAwaitCatalogBeforeResults =
+        restoredSelection?.isEmpty == false ||
         discoveryFilterSelectionStreamValue.value.isNotEmpty;
-    final catalogFuture = loadPublicDiscoveryFilterCatalog(
-      restoredSelection: restoredSelection,
-    ).then((_) {
-      _reconcileRuntimeDiscoveryFilterCatalog();
-    });
+    final catalogFuture =
+        loadPublicDiscoveryFilterCatalog(
+          restoredSelection: restoredSelection,
+        ).then((_) {
+          _reconcileRuntimeDiscoveryFilterCatalog();
+        });
     if (mustAwaitCatalogBeforeResults) {
       await catalogFuture;
     } else {
@@ -428,7 +436,8 @@ class TenantHomeAgendaController extends Object
 
     try {
       final resolution = await _locationOriginService
-          .effectiveOriginStreamValue.stream
+          .effectiveOriginStreamValue
+          .stream
           .firstWhere((value) => value?.effectiveCoordinate != null)
           .timeout(_initialCanonicalOriginSettleTimeout);
       if (resolution != null) {
@@ -444,9 +453,7 @@ class TenantHomeAgendaController extends Object
     bool resolveOrigin = true,
   }) async {
     if (_isRefreshing) {
-      _queueRefreshRequest(
-        preserveCurrentResults: preserveCurrentResults,
-      );
+      _queueRefreshRequest(preserveCurrentResults: preserveCurrentResults);
       return;
     }
     _isRefreshing = true;
@@ -467,7 +474,8 @@ class TenantHomeAgendaController extends Object
     try {
       final stopwatch = Stopwatch()..start();
       int locationElapsed = 0;
-      final shouldResolveOrigin = resolveOrigin &&
+      final shouldResolveOrigin =
+          resolveOrigin &&
           (shouldShowInitialLoading ||
               _effectiveOriginLat == null ||
               _effectiveOriginLng == null);
@@ -492,8 +500,9 @@ class TenantHomeAgendaController extends Object
 
       if (shouldShowInitialLoading) {
         _ifAlive(
-          () => initialLoadingLabelStreamValue
-              .addValue(_loadingNearbyEventsLabel),
+          () => initialLoadingLabelStreamValue.addValue(
+            _loadingNearbyEventsLabel,
+          ),
         );
       }
       _hasMore = true;
@@ -504,10 +513,12 @@ class TenantHomeAgendaController extends Object
         previousCanonicalEvents: previousCanonicalEvents,
       );
       final totalElapsed = stopwatch.elapsedMilliseconds;
-      debugPrint('TenantHomeAgendaController._refresh: '
-          'Location resolution took ${locationElapsed}ms, '
-          'API fetch took ${totalElapsed - locationElapsed}ms. '
-          'Total: ${totalElapsed}ms.');
+      debugPrint(
+        'TenantHomeAgendaController._refresh: '
+        'Location resolution took ${locationElapsed}ms, '
+        'API fetch took ${totalElapsed - locationElapsed}ms. '
+        'Total: ${totalElapsed}ms.',
+      );
     } catch (error) {
       if (_isDisposed) {
         return;
@@ -578,9 +589,7 @@ class TenantHomeAgendaController extends Object
   bool get _hasEffectiveOriginForAgendaQuery =>
       _effectiveOriginLat != null && _effectiveOriginLng != null;
 
-  void _publishUnavailableOriginState({
-    required bool preserveCurrentResults,
-  }) {
+  void _publishUnavailableOriginState({required bool preserveCurrentResults}) {
     if (_isDisposed) {
       return;
     }
@@ -601,9 +610,7 @@ class TenantHomeAgendaController extends Object
     await _fetchAgenda(append: true);
   }
 
-  void _queueRefreshRequest({
-    required bool preserveCurrentResults,
-  }) {
+  void _queueRefreshRequest({required bool preserveCurrentResults}) {
     _hasQueuedRefresh = true;
     _queuedRefreshPreserveCurrentResults =
         _queuedRefreshPreserveCurrentResults && preserveCurrentResults;
@@ -616,11 +623,7 @@ class TenantHomeAgendaController extends Object
     final preserveCurrentResults = _queuedRefreshPreserveCurrentResults;
     _hasQueuedRefresh = false;
     _queuedRefreshPreserveCurrentResults = true;
-    unawaited(
-      _refresh(
-        preserveCurrentResults: preserveCurrentResults,
-      ),
-    );
+    unawaited(_refresh(preserveCurrentResults: preserveCurrentResults));
   }
 
   Future<void> _fetchAgenda({
@@ -642,8 +645,9 @@ class TenantHomeAgendaController extends Object
       );
       final originLat = _toNullableScheduleDouble(_effectiveOriginLat);
       final originLng = _toNullableScheduleDouble(_effectiveOriginLng);
-      final maxDistanceMeters =
-          _toScheduleDouble(radiusMetersStreamValue.value);
+      final maxDistanceMeters = _toScheduleDouble(
+        radiusMetersStreamValue.value,
+      );
       final categories = _selectedEventCategories();
       final taxonomy = _selectedEventTaxonomyEntries();
       final previousCanonicalEventCount = previousCanonicalEvents.isNotEmpty
@@ -794,8 +798,9 @@ class TenantHomeAgendaController extends Object
     final normalized = query?.trim() ?? '';
     if (normalized.isEmpty) return;
     searchController.text = normalized;
-    searchController.selection =
-        TextSelection.fromPosition(TextPosition(offset: normalized.length));
+    searchController.selection = TextSelection.fromPosition(
+      TextPosition(offset: normalized.length),
+    );
     _refresh();
   }
 
@@ -881,18 +886,15 @@ class TenantHomeAgendaController extends Object
 
   bool isOccurrenceConfirmed(String occurrenceId) => _userEventsRepository
       .isOccurrenceConfirmed(
-        userEventsRepoString(
-          occurrenceId,
-          defaultValue: '',
-          isRequired: true,
-        ),
+        userEventsRepoString(occurrenceId, defaultValue: '', isRequired: true),
       )
       .value;
 
-  int pendingInviteCount(String occurrenceId) =>
-      _invitesRepository.pendingInvitesStreamValue.value
-          .where((invite) => invite.occurrenceId == occurrenceId)
-          .length;
+  int pendingInviteCount(String occurrenceId) => _invitesRepository
+      .pendingInvitesStreamValue
+      .value
+      .where((invite) => invite.occurrenceId == occurrenceId)
+      .length;
 
   String _eventOccurrenceIdentity(EventModel event) =>
       event.selectedOccurrenceId?.trim() ?? '';
@@ -984,7 +986,8 @@ class TenantHomeAgendaController extends Object
       runtimeCatalog,
     )) {
       _ifAlive(
-          () => discoveryFilterCatalogStreamValue.addValue(runtimeCatalog));
+        () => discoveryFilterCatalogStreamValue.addValue(runtimeCatalog),
+      );
     }
 
     final selection = discoveryFilterSelectionStreamValue.value;
@@ -992,10 +995,7 @@ class TenantHomeAgendaController extends Object
       selection,
       catalogOverride: runtimeCatalog,
     );
-    if (samePublicDiscoveryFilterSelection(
-      selection,
-      repairedSelection,
-    )) {
+    if (samePublicDiscoveryFilterSelection(selection, repairedSelection)) {
       if (!hasCanonicalDiscoveryFilterCatalogStreamValue.value) {
         _ifAlive(
           () => hasCanonicalDiscoveryFilterCatalogStreamValue.addValue(true),
@@ -1028,24 +1028,28 @@ class TenantHomeAgendaController extends Object
     _confirmedEventsSubscription?.cancel();
     _pendingInvitesSubscription?.cancel();
 
-    _confirmedEventsSubscription =
-        _userEventsRepository.confirmedOccurrenceIdsStream.stream.listen((_) {
-      _applyFiltersAndPublish();
-    });
-    _pendingInvitesSubscription =
-        _invitesRepository.pendingInvitesStreamValue.stream.listen((_) {
-      _applyFiltersAndPublish();
-    });
+    _confirmedEventsSubscription = _userEventsRepository
+        .confirmedOccurrenceIdsStream
+        .stream
+        .listen((_) {
+          _applyFiltersAndPublish();
+        });
+    _pendingInvitesSubscription = _invitesRepository
+        .pendingInvitesStreamValue
+        .stream
+        .listen((_) {
+          _applyFiltersAndPublish();
+        });
   }
 
   void _listenForCanonicalOriginChanges() {
     _effectiveOriginSubscription?.cancel();
-    _effectiveOriginSubscription =
-        _locationOriginService.effectiveOriginStreamValue.stream.listen((
-      resolution,
-    ) {
-      unawaited(_handleEffectiveOriginUpdate(resolution));
-    });
+    _effectiveOriginSubscription = _locationOriginService
+        .effectiveOriginStreamValue
+        .stream
+        .listen((resolution) {
+          unawaited(_handleEffectiveOriginUpdate(resolution));
+        });
   }
 
   void _listenForRadiusChanges() {
@@ -1060,28 +1064,30 @@ class TenantHomeAgendaController extends Object
         proximityRepository.proximityPreference?.maxDistanceMetersValue.value,
       );
       _proximityPreferenceSubscription = proximityRepository
-          .proximityPreferenceStreamValue.stream
+          .proximityPreferenceStreamValue
+          .stream
           .listen((preference) {
-        _ifAlive(
-          () => _maxRadiusMetersStreamValue.addValue(
-            _configuredMaxRadiusMeters(),
-          ),
-        );
-        _applyExternalRadiusPreference(
-          preference?.maxDistanceMetersValue.value,
-        );
-      });
+            _ifAlive(
+              () => _maxRadiusMetersStreamValue.addValue(
+                _configuredMaxRadiusMeters(),
+              ),
+            );
+            _applyExternalRadiusPreference(
+              preference?.maxDistanceMetersValue.value,
+            );
+          });
       return;
     }
 
-    _radiusSubscription =
-        _appDataRepository.maxRadiusMetersStreamValue.stream.listen((value) {
-      _ifAlive(
-        () =>
-            _maxRadiusMetersStreamValue.addValue(_configuredMaxRadiusMeters()),
-      );
-      _applyExternalRadiusPreference(value.value);
-    });
+    _radiusSubscription = _appDataRepository.maxRadiusMetersStreamValue.stream
+        .listen((value) {
+          _ifAlive(
+            () => _maxRadiusMetersStreamValue.addValue(
+              _configuredMaxRadiusMeters(),
+            ),
+          );
+          _applyExternalRadiusPreference(value.value);
+        });
   }
 
   void _applyExternalRadiusPreference(double? meters) {
@@ -1105,9 +1111,8 @@ class TenantHomeAgendaController extends Object
   }
 
   Future<void> _persistSelectedRadiusPreference(double meters) async {
-    final value = DistanceInMetersValue(
-      defaultValue: meters,
-    )..parse(meters.toString());
+    final value = DistanceInMetersValue(defaultValue: meters)
+      ..parse(meters.toString());
     try {
       final repository = _proximityPreferencesRepository;
       if (repository != null) {
@@ -1173,8 +1178,15 @@ class TenantHomeAgendaController extends Object
     if (_isDisposed) {
       return;
     }
+    final shouldBootstrapOrigin =
+        _effectiveOriginLat == null || _effectiveOriginLng == null;
     try {
-      await _resolveEffectiveOrigin(warmUpIfPossible: false);
+      await _resolveEffectiveOrigin(
+        warmUpIfPossible: shouldBootstrapOrigin,
+      );
+      if (shouldBootstrapOrigin) {
+        await _awaitPendingInitialEffectiveOriginIfNeeded();
+      }
     } catch (error) {
       debugPrint(
         'TenantHomeAgendaController._revalidateRestoredHomeAgendaCache '
@@ -1184,10 +1196,7 @@ class TenantHomeAgendaController extends Object
     if (_isDisposed) {
       return;
     }
-    await _refresh(
-      preserveCurrentResults: true,
-      resolveOrigin: false,
-    );
+    await _refresh(preserveCurrentResults: true, resolveOrigin: false);
   }
 
   bool _shouldRefreshForOriginChange({
@@ -1229,9 +1238,7 @@ class TenantHomeAgendaController extends Object
   LongitudeValue _parseLongitude(double raw) =>
       LongitudeValue()..parse(raw.toString());
 
-  Future<bool> _resolveEffectiveOrigin({
-    required bool warmUpIfPossible,
-  }) async {
+  Future<bool> _resolveEffectiveOrigin({required bool warmUpIfPossible}) async {
     final shouldRequestPermission =
         warmUpIfPossible && !_locationPermissionRequested;
     if (shouldRequestPermission) {

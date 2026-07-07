@@ -10,9 +10,10 @@ import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class MapLayers extends StatelessWidget {
-  const MapLayers({super.key, required MapScreenController controller})
-      : _controller = controller,
-        _markerBuilder = const PoiMarkerBuilder();
+  const MapLayers({Key? key, required MapScreenController controller})
+    : this._internal(controller, const PoiMarkerBuilder(), key: key);
+
+  const MapLayers._internal(this._controller, this._markerBuilder, {super.key});
 
   static const double _minZoom = 14.5;
   static const double _maxZoom = 17.0;

@@ -2,6 +2,7 @@ export 'invite_decision_result.dart';
 
 import 'dart:async';
 
+import 'package:belluga_now/application/router/support/tenant_public_event_path.dart';
 import 'package:belluga_now/domain/invites/invite_decision.dart';
 import 'package:belluga_now/domain/invites/invite_inviter_type.dart';
 import 'package:belluga_now/domain/invites/invite_materialize_result.dart';
@@ -28,19 +29,21 @@ class InviteFlowScreenController with Disposable {
     CardStackSwiperController? cardStackSwiperController,
     AuthRepositoryContract? authRepository,
     ScheduleRepositoryContract? scheduleRepository,
-  })  : _repository = repository ?? GetIt.I.get<InvitesRepositoryContract>(),
-        _telemetryRepository =
-            telemetryRepository ?? GetIt.I.get<TelemetryRepositoryContract>(),
-        _authRepository = authRepository ??
-            (GetIt.I.isRegistered<AuthRepositoryContract>()
-                ? GetIt.I.get<AuthRepositoryContract>()
-                : null),
-        _scheduleRepository = scheduleRepository ??
-            (GetIt.I.isRegistered<ScheduleRepositoryContract>()
-                ? GetIt.I.get<ScheduleRepositoryContract>()
-                : null),
-        swiperController =
-            cardStackSwiperController ?? CardStackSwiperController();
+  }) : _repository = repository ?? GetIt.I.get<InvitesRepositoryContract>(),
+       _telemetryRepository =
+           telemetryRepository ?? GetIt.I.get<TelemetryRepositoryContract>(),
+       _authRepository =
+           authRepository ??
+           (GetIt.I.isRegistered<AuthRepositoryContract>()
+               ? GetIt.I.get<AuthRepositoryContract>()
+               : null),
+       _scheduleRepository =
+           scheduleRepository ??
+           (GetIt.I.isRegistered<ScheduleRepositoryContract>()
+               ? GetIt.I.get<ScheduleRepositoryContract>()
+               : null),
+       swiperController =
+           cardStackSwiperController ?? CardStackSwiperController();
 
   final InvitesRepositoryContract _repository;
   final TelemetryRepositoryContract _telemetryRepository;
@@ -49,12 +52,14 @@ class InviteFlowScreenController with Disposable {
 
   final CardStackSwiperController swiperController;
 
-  final decisionsStreamValue =
-      StreamValue<Map<String, InviteDecision>>(defaultValue: const {});
+  final decisionsStreamValue = StreamValue<Map<String, InviteDecision>>(
+    defaultValue: const {},
+  );
   StreamValue<List<InviteModel>> get displayInvitesStreamValue =>
       _repository.inviteFlowDisplayInvitesStreamValue;
-  final authRequiredForDecisionStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  final authRequiredForDecisionStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
   final initializedStreamValue = StreamValue<bool>(defaultValue: false);
   final redirectPathStreamValue = StreamValue<String?>(defaultValue: null);
 
@@ -75,10 +80,12 @@ class InviteFlowScreenController with Disposable {
 
   final confirmingPresenceStreamValue = StreamValue<bool>(defaultValue: false);
   final topCardIndexStreamValue = StreamValue<int>(defaultValue: 0);
-  final loadedImagesStreamValue =
-      StreamValue<Set<String>>(defaultValue: const {});
-  final decisionResultStreamValue =
-      StreamValue<InviteDecisionResult?>(defaultValue: null);
+  final loadedImagesStreamValue = StreamValue<Set<String>>(
+    defaultValue: const {},
+  );
+  final decisionResultStreamValue = StreamValue<InviteDecisionResult?>(
+    defaultValue: null,
+  );
   final Set<String> _openedInviteIds = <String>{};
   Future<EventTrackerTimedEventHandle?>? _activeInviteTimedEventFuture;
   String? _activeInviteId;
@@ -181,14 +188,11 @@ class InviteFlowScreenController with Disposable {
   }
 
   Future<InviteMaterializeResult?> _materializeShareCode(
-      String shareCode) async {
+    String shareCode,
+  ) async {
     try {
       return await _repository.materializeShareCode(
-        invitesRepoString(
-          shareCode,
-          defaultValue: '',
-          isRequired: true,
-        ),
+        invitesRepoString(shareCode, defaultValue: '', isRequired: true),
       );
     } catch (_) {
       return null;
@@ -213,7 +217,8 @@ class InviteFlowScreenController with Disposable {
   }
 
   Future<List<InviteModel>> _fetchAnonymousPreviewInvites(
-      String shareCode) async {
+    String shareCode,
+  ) async {
     final normalizedCode = shareCode.trim();
     if (normalizedCode.isEmpty) {
       _repository.clearShareCodePreview();
@@ -222,11 +227,7 @@ class InviteFlowScreenController with Disposable {
 
     try {
       await _repository.loadShareCodePreview(
-        invitesRepoString(
-          normalizedCode,
-          defaultValue: '',
-          isRequired: true,
-        ),
+        invitesRepoString(normalizedCode, defaultValue: '', isRequired: true),
       );
       final preview = _repository.shareCodePreviewInviteStreamValue.value;
       if (preview == null) {
@@ -242,8 +243,9 @@ class InviteFlowScreenController with Disposable {
   Future<void> fetchPendingInvites() async {
     try {
       await _repository.refreshPendingInvites();
-      final invites =
-          List<InviteModel>.from(_repository.pendingInvitesStreamValue.value);
+      final invites = List<InviteModel>.from(
+        _repository.pendingInvitesStreamValue.value,
+      );
       _setPendingInvites(invites);
       _syncDisplayInvitesWithPending();
       _ensureTopIndexBounds(invites.length);
@@ -254,15 +256,15 @@ class InviteFlowScreenController with Disposable {
     }
   }
 
-  Future<String?> resolveFallbackNavigationPath(String? rawFallbackPath) async {
-    final fallbackPath = rawFallbackPath?.trim();
+  Future<String?> resolveFallbackNavigationPath() async {
+    final fallbackPath = _buildSessionFallbackPath();
     if (fallbackPath == null || fallbackPath.isEmpty) {
       return '/';
     }
 
     final eventFallback = _parseEventFallbackPath(fallbackPath);
     if (eventFallback == null) {
-      return fallbackPath;
+      return '/';
     }
 
     final scheduleRepository = _scheduleRepository;
@@ -295,8 +297,17 @@ class InviteFlowScreenController with Disposable {
     if (authRequiredForDecisionStreamValue.value) {
       return;
     }
-    _setDisplayInvites(
-      List<InviteModel>.from(pendingInvitesStreamValue.value),
+    _setDisplayInvites(List<InviteModel>.from(pendingInvitesStreamValue.value));
+  }
+
+  String? _buildSessionFallbackPath() {
+    final context = _repository.shareCodeSessionContextStreamValue.value;
+    if (context == null) {
+      return null;
+    }
+    return buildTenantPublicEventPath(
+      eventSlug: context.invite.eventSlug,
+      occurrenceId: context.occurrenceId,
     );
   }
 
@@ -329,8 +340,9 @@ class InviteFlowScreenController with Disposable {
   void _prioritizeInvite(String inviteId) {
     final inviteIdValue = _inviteIdValue(inviteId);
     final invites = List<InviteModel>.from(pendingInvitesStreamValue.value);
-    final index =
-        invites.indexWhere((invite) => invite.containsInviteId(inviteIdValue));
+    final index = invites.indexWhere(
+      (invite) => invite.containsInviteId(inviteIdValue),
+    );
     if (index < 0) {
       return;
     }
@@ -343,8 +355,9 @@ class InviteFlowScreenController with Disposable {
   }
 
   void removeInvite() {
-    final pendingInvites =
-        List<InviteModel>.from(pendingInvitesStreamValue.value);
+    final pendingInvites = List<InviteModel>.from(
+      pendingInvitesStreamValue.value,
+    );
 
     if (pendingInvites.isEmpty) {
       return;
@@ -357,8 +370,9 @@ class InviteFlowScreenController with Disposable {
   }
 
   void addInvite(InviteModel invite) {
-    final pendingInvites =
-        List<InviteModel>.from(pendingInvitesStreamValue.value)..add(invite);
+    final pendingInvites = List<InviteModel>.from(
+      pendingInvitesStreamValue.value,
+    )..add(invite);
 
     _setPendingInvites(pendingInvites);
     _syncDisplayInvitesWithPending();
@@ -457,8 +471,9 @@ class InviteFlowScreenController with Disposable {
                 isRequired: true,
               ),
             );
-      final updatedInvites =
-          List<InviteModel>.from(_repository.pendingInvitesStreamValue.value);
+      final updatedInvites = List<InviteModel>.from(
+        _repository.pendingInvitesStreamValue.value,
+      );
       _setPendingInvites(updatedInvites);
       _syncDisplayInvitesWithPending();
       _ensureTopIndexBounds(updatedInvites.length);
@@ -471,14 +486,11 @@ class InviteFlowScreenController with Disposable {
     }
 
     await _repository.declineInvite(
-      invitesRepoString(
-        resolvedInviteId,
-        defaultValue: '',
-        isRequired: true,
-      ),
+      invitesRepoString(resolvedInviteId, defaultValue: '', isRequired: true),
     );
-    final updatedInvites =
-        List<InviteModel>.from(_repository.pendingInvitesStreamValue.value);
+    final updatedInvites = List<InviteModel>.from(
+      _repository.pendingInvitesStreamValue.value,
+    );
     _setPendingInvites(updatedInvites);
     _syncDisplayInvitesWithPending();
     _ensureTopIndexBounds(updatedInvites.length);
@@ -567,8 +579,10 @@ class InviteFlowScreenController with Disposable {
       return;
     }
 
-    final nextIndex =
-        (currentIndex ?? previousIndex).clamp(0, invitesLength - 1);
+    final nextIndex = (currentIndex ?? previousIndex).clamp(
+      0,
+      invitesLength - 1,
+    );
     if (nextIndex != topCardIndexStreamValue.value) {
       topCardIndexStreamValue.addValue(nextIndex);
     }
@@ -606,8 +620,9 @@ class InviteFlowScreenController with Disposable {
     if (_pendingInvitesSubscription != null) {
       return;
     }
-    _pendingInvitesSubscription =
-        pendingInvitesStreamValue.stream.listen(_handleInviteStreamUpdate);
+    _pendingInvitesSubscription = pendingInvitesStreamValue.stream.listen(
+      _handleInviteStreamUpdate,
+    );
     _handleInviteStreamUpdate(pendingInvitesStreamValue.value);
   }
 
@@ -686,10 +701,7 @@ class InviteFlowScreenController with Disposable {
     return properties;
   }
 
-  void _seedShareCodeSessionContext(
-    String shareCode, {
-    String? inviteId,
-  }) {
+  void _seedShareCodeSessionContext(String shareCode, {String? inviteId}) {
     final normalizedCode = shareCode.trim();
     if (normalizedCode.isEmpty) {
       _repository.clearShareCodeSessionContext();
@@ -770,9 +782,7 @@ class InviteFlowScreenController with Disposable {
     decisionResultStreamValue.dispose();
   }
 
-  void _finishActiveInviteTimedEvent({
-    String? expectedInviteId,
-  }) {
+  void _finishActiveInviteTimedEvent({String? expectedInviteId}) {
     final handleFuture = _activeInviteTimedEventFuture;
     if (handleFuture == null) {
       return;
@@ -782,11 +792,13 @@ class InviteFlowScreenController with Disposable {
     }
     _activeInviteTimedEventFuture = null;
     _activeInviteId = null;
-    unawaited(handleFuture.then<void>((handle) async {
-      if (handle != null) {
-        await _telemetryRepository.finishTimedEvent(handle);
-      }
-    }));
+    unawaited(
+      handleFuture.then<void>((handle) async {
+        if (handle != null) {
+          await _telemetryRepository.finishTimedEvent(handle);
+        }
+      }),
+    );
   }
 }
 

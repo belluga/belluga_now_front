@@ -24,7 +24,7 @@ Future<void> pumpAutoRouteTestApp(
         meta: routeFamily == null
             ? const <String, dynamic>{}
             : canonicalRouteMeta(family: routeFamily),
-        builder: (_, __) => child,
+        builder: (_, _) => child,
       ),
     ],
   )..ignorePopCompleters = true;

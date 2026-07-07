@@ -40,13 +40,11 @@ class DiscoveryFilterHeaderDelegate extends SliverPersistentHeaderDelegate {
                   Expanded(
                     child: Text(
                       title,
-                      style:
-                          Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(fontWeight: FontWeight.w700),
                     ),
                   ),
-                  if (action != null) action!,
+                  ?action,
                 ],
               ),
             ),

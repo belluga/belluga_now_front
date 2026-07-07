@@ -41,7 +41,7 @@ void main() {
         NamedRouteDef(
           name: 'event-types-test',
           path: '/',
-          builder: (_, __) => TenantAdminEventTypesListScreen(),
+          builder: (_, _) => TenantAdminEventTypesListScreen(),
         ),
       ],
     )..ignorePopCompleters = true;

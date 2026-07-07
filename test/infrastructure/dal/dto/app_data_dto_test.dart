@@ -201,10 +201,10 @@ void main() {
         ),
       ).toDomain(localInfo: _localInfo());
 
-      expect(
-        appData.mapFilterCatalogKeys.toList(),
-        <String>['override-first', 'button-only'],
-      );
+      expect(appData.mapFilterCatalogKeys.toList(), <String>[
+        'override-first',
+        'button-only',
+      ]);
     });
 
     test('does not use legacy map_ui filters after public map cutoff', () {
@@ -232,9 +232,7 @@ void main() {
           profileTypes: const [],
           settings: const {
             'tenant_public_auth': {
-              'phone_otp': {
-                'sms_fallback_enabled': true,
-              },
+              'phone_otp': {'sms_fallback_enabled': true},
             },
           },
         ),
@@ -243,23 +241,23 @@ void main() {
       expect(appData.phoneOtpSmsFallbackEnabled, isTrue);
     });
 
-    test('does not infer SMS fallback from webhook URLs in public app data',
-        () {
-      final appData = AppDataDTO.fromJson(
-        _basePayload(
-          profileTypes: const [],
-          settings: const {
-            'outbound_integrations': {
-              'otp': {
-                'webhook_url': 'https://integrations.example/sms',
+    test(
+      'does not infer SMS fallback from webhook URLs in public app data',
+      () {
+        final appData = AppDataDTO.fromJson(
+          _basePayload(
+            profileTypes: const [],
+            settings: const {
+              'outbound_integrations': {
+                'otp': {'webhook_url': 'https://integrations.example/sms'},
               },
             },
-          },
-        ),
-      ).toDomain(localInfo: _localInfo());
+          ),
+        ).toDomain(localInfo: _localInfo());
 
-      expect(appData.phoneOtpSmsFallbackEnabled, isFalse);
-    });
+        expect(appData.phoneOtpSmsFallbackEnabled, isFalse);
+      },
+    );
   });
 }
 
@@ -277,7 +275,7 @@ Map<String, dynamic> _basePayload({
       'primary_seed_color': '#4FA0E3',
       'secondary_seed_color': '#E80D5D',
     },
-    if (settings != null) 'settings': settings,
+    ...?(settings == null ? null : <String, dynamic>{'settings': settings}),
   };
 }
 

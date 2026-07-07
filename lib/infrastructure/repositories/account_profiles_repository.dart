@@ -25,19 +25,26 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
     FavoriteRepositoryContract? favoriteRepository,
     AppDataRepositoryContract? appDataRepository,
     TelemetryRepositoryContract? telemetryRepository,
-  })  : _backend = backend ??
-            (backendContract ?? GetIt.I.get<BackendContract>()).accountProfiles,
-        _favoriteBackend = favoriteBackend ??
-            _resolveFavoriteBackend(
-              backendContract: backendContract,
-            ),
-        _favoriteAccountProfileIds =
-            Set<String>.from(favoriteAccountProfileIds ?? const <String>{}),
-        _favoriteRepository =
-            favoriteRepository ?? _resolveFavoriteRepositoryOrNull(),
-        _appDataRepository = appDataRepository,
-        _telemetryRepository =
-            telemetryRepository ?? GetIt.I.get<TelemetryRepositoryContract>();
+  }) : this._internal(
+         backend ??
+             (backendContract ?? GetIt.I.get<BackendContract>())
+                 .accountProfiles,
+         favoriteBackend ??
+             _resolveFavoriteBackend(backendContract: backendContract),
+         Set<String>.from(favoriteAccountProfileIds ?? const <String>{}),
+         favoriteRepository ?? _resolveFavoriteRepositoryOrNull(),
+         appDataRepository,
+         telemetryRepository ?? GetIt.I.get<TelemetryRepositoryContract>(),
+       );
+
+  AccountProfilesRepository._internal(
+    this._backend,
+    this._favoriteBackend,
+    this._favoriteAccountProfileIds,
+    this._favoriteRepository,
+    this._appDataRepository,
+    this._telemetryRepository,
+  );
 
   final AccountProfilesBackendContract _backend;
   final FavoriteBackendContract _favoriteBackend;
@@ -83,8 +90,9 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
       typeFilter: normalizedTypeFilters.length == 1
           ? normalizedTypeFilters.single
           : null,
-      typeFilters:
-          normalizedTypeFilters.length > 1 ? normalizedTypeFilters : null,
+      typeFilters: normalizedTypeFilters.length > 1
+          ? normalizedTypeFilters
+          : null,
       taxonomyFilters: _normalizeTaxonomyFilters(taxonomyFilters),
     );
     final filtered = _filterByRegistry(result.profiles);
@@ -102,11 +110,7 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
     List<AccountProfilesRepositoryContractPrimString>? typeFilters,
     List<AccountProfilesRepositoryTaxonomyFilter>? taxonomyFilters,
   }) async {
-    final effectivePageSize = pageSize ??
-        _toIntValue(
-          10,
-          defaultValue: 10,
-        );
+    final effectivePageSize = pageSize ?? _toIntValue(10, defaultValue: 10);
     final profiles = await _backend.fetchNearbyAccountProfiles(
       pageSize: effectivePageSize.value,
       typeFilters: _normalizeTypeFilters(typeFilters: typeFilters),
@@ -138,8 +142,9 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
     if (normalizedProfileId.isEmpty) {
       return;
     }
-    final wasFavorite =
-        _favoriteAccountProfileIds.contains(normalizedProfileId);
+    final wasFavorite = _favoriteAccountProfileIds.contains(
+      normalizedProfileId,
+    );
     if (wasFavorite) {
       _favoriteAccountProfileIds.remove(normalizedProfileId);
     } else {
@@ -166,7 +171,8 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
         _toFavoriteIdValues(_favoriteAccountProfileIds),
       );
       debugPrint(
-          'Failed to persist favorite mutation for $normalizedProfileId: $error');
+        'Failed to persist favorite mutation for $normalizedProfileId: $error',
+      );
     }
     if (!persistenceSucceeded) {
       return;
@@ -175,7 +181,8 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
       await _favoriteRepository?.refreshFavoriteResumes();
     } catch (error) {
       debugPrint(
-          'Failed to refresh favorite resumes after mutation for $normalizedProfileId: $error');
+        'Failed to refresh favorite resumes after mutation for $normalizedProfileId: $error',
+      );
     }
     try {
       await _telemetryRepository.logEvent(
@@ -188,7 +195,8 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
       );
     } catch (error) {
       debugPrint(
-          'Failed to log favorite mutation telemetry for $normalizedProfileId: $error');
+        'Failed to log favorite mutation telemetry for $normalizedProfileId: $error',
+      );
     }
   }
 
@@ -216,7 +224,8 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
   }
 
   List<AccountProfileModel> _filterByRegistry(
-      List<AccountProfileModel> profiles) {
+    List<AccountProfileModel> profiles,
+  ) {
     final registry = _resolveRegistry();
     if (registry == null || registry.isEmpty) {
       return profiles;
@@ -226,9 +235,7 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
         .toList(growable: false);
   }
 
-  bool _shouldKeepProfileForPublicSurface(
-    AccountProfileModel profile,
-  ) {
+  bool _shouldKeepProfileForPublicSurface(AccountProfileModel profile) {
     final registry = _resolveRegistry();
     if (registry == null || registry.isEmpty) {
       return true;
@@ -250,7 +257,8 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
   bool _isAccountProfileTypePubliclyDiscoverable(AccountProfileModel profile) {
     final registry = _resolveRegistry();
     return registry?.isPubliclyDiscoverableFor(
-            ProfileTypeKeyValue(profile.profileType)) ??
+          ProfileTypeKeyValue(profile.profileType),
+        ) ??
         false;
   }
 
@@ -329,11 +337,7 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
   Set<AccountProfilesRepositoryContractPrimString> _toFavoriteIdValues(
     Iterable<String> values,
   ) {
-    return values
-        .map(
-          (value) => _toTextValue(value),
-        )
-        .toSet();
+    return values.map((value) => _toTextValue(value)).toSet();
   }
 
   AccountProfilesRepositoryContractPrimString _toTextValue(

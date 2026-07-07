@@ -195,7 +195,7 @@ class _TenantAdminTaxonomyTermsScreenState
       controller: _controller.termsListScrollController,
       padding: const EdgeInsets.only(bottom: 112),
       itemCount: itemCount,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         if (index >= loadedTerms.length) {
           if (isPageLoading) {

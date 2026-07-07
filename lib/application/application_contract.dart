@@ -210,6 +210,9 @@ abstract class ApplicationContract extends ModularAppContract {
       );
       return;
     }
+    if (!_canUseFirebaseMessagingRuntime()) {
+      return;
+    }
     final authRepository =
         authRepositoryOverride ?? GetIt.I.get<AuthRepositoryContract>();
     final invitePushTapSource =
@@ -313,6 +316,9 @@ abstract class ApplicationContract extends ModularAppContract {
       debugPrint(
         '[Push] Web registration skipped; Firebase web config/VAPID not configured.',
       );
+      return false;
+    }
+    if (!_canUseFirebaseMessagingRuntime()) {
       return false;
     }
     final resolvedPlatform =
@@ -524,6 +530,25 @@ abstract class ApplicationContract extends ModularAppContract {
     });
   }
 
+  bool _canUseFirebaseMessagingRuntime() {
+    if (Firebase.apps.isNotEmpty) {
+      return true;
+    }
+    if (!GetIt.I.isRegistered<AppDataRepositoryContract>()) {
+      return true;
+    }
+    final settings = GetIt.I
+        .get<AppDataRepositoryContract>()
+        .appData
+        .firebaseSettings;
+    if (settings != null) {
+      return true;
+    }
+
+    debugPrint('[Push] Firebase settings missing; skipping push registration.');
+    return false;
+  }
+
   void _listenForInvitePushUpdates(
     PushHandlerRepositoryContract repository,
     InvitePushRuntimeCoordinator coordinator,
@@ -666,8 +691,14 @@ class _ApplicationContractState extends State<ApplicationContract>
   static const Duration _lifecycleDebounceWindow = Duration(milliseconds: 400);
   static const int _appInitMaxRetries = 10;
   static const Duration _appInitRetryDelay = Duration(milliseconds: 500);
+  static const Duration _postAuthHydrationRetryDelay = Duration(
+    milliseconds: 100,
+  );
+  static const int _postAuthHydrationMaxRetries = 20;
   int _appInitRetryCount = 0;
   Timer? _appInitRetryTimer;
+  int _postAuthHydrationRetryCount = 0;
+  Timer? _postAuthHydrationRetryTimer;
   bool _didMarkPushPresentationReady = false;
   PostAuthIdentityHydrationCoordinator? _postAuthIdentityHydrationCoordinator;
 
@@ -711,6 +742,7 @@ class _ApplicationContractState extends State<ApplicationContract>
       _routerListener = null;
     }
     _appInitRetryTimer?.cancel();
+    _postAuthHydrationRetryTimer?.cancel();
     _lifecycleDebounceTimer?.cancel();
     _postAuthIdentityHydrationCoordinator?.dispose();
     _postAuthIdentityHydrationCoordinator = null;
@@ -719,12 +751,34 @@ class _ApplicationContractState extends State<ApplicationContract>
   }
 
   void _initializePostAuthIdentityHydration() {
-    if (!GetIt.I.isRegistered<AuthRepositoryContract>()) {
+    if (_postAuthIdentityHydrationCoordinator != null) {
       return;
     }
+    if (!GetIt.I.isRegistered<AuthRepositoryContract>()) {
+      _schedulePostAuthIdentityHydrationRetry();
+      return;
+    }
+    _postAuthHydrationRetryTimer?.cancel();
+    _postAuthHydrationRetryTimer = null;
+    _postAuthHydrationRetryCount = 0;
     final coordinator = PostAuthIdentityHydrationCoordinator();
     coordinator.bind();
     _postAuthIdentityHydrationCoordinator = coordinator;
+  }
+
+  void _schedulePostAuthIdentityHydrationRetry() {
+    if (_postAuthHydrationRetryTimer != null ||
+        _postAuthHydrationRetryCount >= _postAuthHydrationMaxRetries) {
+      return;
+    }
+    _postAuthHydrationRetryCount += 1;
+    _postAuthHydrationRetryTimer = Timer(_postAuthHydrationRetryDelay, () {
+      _postAuthHydrationRetryTimer = null;
+      if (!mounted) {
+        return;
+      }
+      _initializePostAuthIdentityHydration();
+    });
   }
 
   void _registerRouterTelemetryObserver() {

@@ -76,16 +76,17 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
       builder: (_, poi) {
         return StreamValueBuilder<int>(
           streamValue: _controller.poiDeckContentRevisionStreamValue,
-          builder: (_, __) {
+          builder: (_, _) {
             return StreamValueBuilder<ProximityPreference?>(
               streamValue: _controller.proximityPreferenceStreamValue,
-              builder: (_, __) {
+              builder: (_, _) {
                 return StreamValueBuilder<int>(
                   streamValue: _controller.poiDeckHeightRevisionStreamValue,
-                  builder: (_, __) {
+                  builder: (_, _) {
                     final selectedPoi = poi!;
-                    final deckPois =
-                        _controller.deckPoisForSelectedPoi(selectedPoi);
+                    final deckPois = _controller.deckPoisForSelectedPoi(
+                      selectedPoi,
+                    );
                     final useFilteredDeck = deckPois.length > 1;
                     final deckIndex = _controller.deckIndexForSelectedPoi(
                       selectedPoi,
@@ -93,11 +94,7 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
                     );
                     _syncPageController(deckIndex);
                     final resolvedDeckHeight = useFilteredDeck
-                        ? _heightForDeck(
-                            context,
-                            deckPois,
-                            deckIndex,
-                          )
+                        ? _heightForDeck(context, deckPois, deckIndex)
                         : _heightForPoi(context, selectedPoi);
                     return Align(
                       alignment: Alignment.bottomCenter,
@@ -123,24 +120,26 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
                                         _referencePointActionForPoi,
                                     onClose: _controller.clearSelectedPoi,
                                     onChanged: (index) => unawaited(
-                                      _controller
-                                          .handleFilteredDeckPageChanged(index),
+                                      _controller.handleFilteredDeckPageChanged(
+                                        index,
+                                      ),
                                     ),
                                     deckHeight: resolvedDeckHeight,
                                     onCardHeightChanged: (poiId, height) =>
                                         _handleMeasuredHeight(
-                                      context,
-                                      poiId,
-                                      height,
-                                    ),
+                                          context,
+                                          poiId,
+                                          height,
+                                        ),
                                     deckMeasurementPadding:
                                         _kDeckMeasurementPadding,
                                   ),
                                 ],
                               )
                             : ConstrainedBox(
-                                constraints:
-                                    const BoxConstraints(maxWidth: 372),
+                                constraints: const BoxConstraints(
+                                  maxWidth: 372,
+                                ),
                                 child: Stack(
                                   clipBehavior: Clip.none,
                                   children: [
@@ -150,24 +149,22 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
                                       cardBuilder: _cardBuilder,
                                       onPrimaryAction: _handlePoiAction,
                                       showPrimaryAction:
-                                          _showPrimaryActionForPoi(
-                                        selectedPoi,
-                                      ),
+                                          _showPrimaryActionForPoi(selectedPoi),
                                       secondaryAction: _secondaryActionForPoi(
                                         selectedPoi,
                                       ),
                                       onRoute: _handleRoute,
                                       referencePointAction:
                                           _referencePointActionForPoi(
-                                        selectedPoi,
-                                      ),
+                                            selectedPoi,
+                                          ),
                                       onClose: _controller.clearSelectedPoi,
                                       onCardHeightChanged: (poiId, height) =>
                                           _handleMeasuredHeight(
-                                        context,
-                                        poiId,
-                                        height,
-                                      ),
+                                            context,
+                                            poiId,
+                                            height,
+                                          ),
                                       deckHeight: resolvedDeckHeight,
                                       deckMeasurementPadding:
                                           _kDeckMeasurementPadding,
@@ -282,9 +279,9 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
         typeAvatarIconSize: 14,
         titleMaxLines: 1,
         titleStyle: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: colorScheme.onSurface,
-              fontWeight: FontWeight.w800,
-            ),
+          color: colorScheme.onSurface,
+          fontWeight: FontWeight.w800,
+        ),
         supportingSpacing: 8,
         supporting: _buildReferencePointPreviewSupporting(
           context,
@@ -310,9 +307,9 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
-              ),
+            color: colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       if (address != null)
         _buildReferencePointPreviewMetaRow(
@@ -351,11 +348,7 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          icon,
-          size: 15,
-          color: colorScheme.onSurfaceVariant,
-        ),
+        Icon(icon, size: 15, color: colorScheme.onSurfaceVariant),
         const SizedBox(width: 5),
         Expanded(
           child: Text(
@@ -363,8 +356,8 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
+              color: colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
       ],
@@ -398,8 +391,9 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
     if (_isEventPoi(poi)) {
       final eventSlug = _resolveEventSlug(poi);
       if (eventSlug.isNotEmpty) {
-        final occurrenceId =
-            _controller.hydratedEventForPoi(poi)?.selectedOccurrenceId;
+        final occurrenceId = _controller
+            .hydratedEventForPoi(poi)
+            ?.selectedOccurrenceId;
         context.router.push(
           ImmersiveEventDetailRoute(
             eventSlug: eventSlug,
@@ -462,8 +456,9 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
     _controller.logDirectionsOpened(poi);
     final target = _directionsTargetFromPoi(poi);
     if (target == null) {
-      _controller.statusMessageStreamValue
-          .addValue('Localização indisponível para ${poi.name}.');
+      _controller.statusMessageStreamValue.addValue(
+        'Localização indisponível para ${poi.name}.',
+      );
       return;
     }
     final resolvedTarget = await RouteStartPointResolution.resolve(
@@ -561,8 +556,7 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
       return '';
     }
     try {
-      final segments = Uri.parse(path)
-          .pathSegments
+      final segments = Uri.parse(path).pathSegments
           .where((segment) => segment.trim().isNotEmpty)
           .toList(growable: false);
       if (segments.isEmpty) {
@@ -606,8 +600,9 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
     final sharePath = _resolvePartnerSharePath(poi);
     final publicUri = _controller.buildTenantPublicUriFromPath(sharePath);
     if (publicUri == null) {
-      _controller.statusMessageStreamValue
-          .addValue('Não foi possível compartilhar ${poi.name}.');
+      _controller.statusMessageStreamValue.addValue(
+        'Não foi possível compartilhar ${poi.name}.',
+      );
       return;
     }
 
@@ -622,29 +617,29 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
 
     try {
       await SharePlus.instance.share(
-        ShareParams(
-          text: payload.message,
-          subject: payload.subject,
-        ),
+        ShareParams(text: payload.message, subject: payload.subject),
       );
     } catch (_) {
-      _controller.statusMessageStreamValue
-          .addValue('Não foi possível compartilhar ${poi.name}.');
+      _controller.statusMessageStreamValue.addValue(
+        'Não foi possível compartilhar ${poi.name}.',
+      );
     }
   }
 
   Future<void> _openEventInvite(CityPoiModel poi) async {
     final event = _controller.hydratedEventForPoi(poi);
     if (event == null) {
-      _controller.statusMessageStreamValue
-          .addValue('Detalhes do evento ainda não estão prontos para convite.');
+      _controller.statusMessageStreamValue.addValue(
+        'Detalhes do evento ainda não estão prontos para convite.',
+      );
       return;
     }
 
     final eventPath = _resolveEventSharePath(event);
     if (eventPath == null || eventPath.isEmpty) {
-      _controller.statusMessageStreamValue
-          .addValue('Evento sem referência para convidar.');
+      _controller.statusMessageStreamValue.addValue(
+        'Evento sem referência para convidar.',
+      );
       return;
     }
 
@@ -668,8 +663,9 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
     final publicPath = _resolveStaticAssetSharePath(poi);
     final publicUri = _controller.buildTenantPublicUriFromPath(publicPath);
     if (publicUri == null) {
-      _controller.statusMessageStreamValue
-          .addValue('Não foi possível compartilhar ${poi.name}.');
+      _controller.statusMessageStreamValue.addValue(
+        'Não foi possível compartilhar ${poi.name}.',
+      );
       return;
     }
 
@@ -684,14 +680,12 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
 
     try {
       await SharePlus.instance.share(
-        ShareParams(
-          text: payload.message,
-          subject: payload.subject,
-        ),
+        ShareParams(text: payload.message, subject: payload.subject),
       );
     } catch (_) {
-      _controller.statusMessageStreamValue
-          .addValue('Não foi possível compartilhar ${poi.name}.');
+      _controller.statusMessageStreamValue.addValue(
+        'Não foi possível compartilhar ${poi.name}.',
+      );
     }
   }
 
@@ -868,15 +862,11 @@ class _AsyncReferencePointDialogState
     );
   }
 
-  Future<void> _handleConfirm() =>
-      _submissionNotifier.submit(widget.onConfirm);
+  Future<void> _handleConfirm() => _submissionNotifier.submit(widget.onConfirm);
 }
 
 class _AsyncClearReferencePointDialog extends StatefulWidget {
-  const _AsyncClearReferencePointDialog({
-    super.key,
-    required this.onConfirm,
-  });
+  const _AsyncClearReferencePointDialog({super.key, required this.onConfirm});
 
   final Future<bool> Function() onConfirm;
 
@@ -912,9 +902,9 @@ class _AsyncClearReferencePointDialogState
             children: [
               Text(
                 'Cancelar ponto de referência?',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 8),
               Text(
@@ -955,16 +945,13 @@ class _AsyncClearReferencePointDialogState
     );
   }
 
-  Future<void> _handleConfirm() =>
-      _submissionNotifier.submit(widget.onConfirm);
+  Future<void> _handleConfirm() => _submissionNotifier.submit(widget.onConfirm);
 }
 
 final class _AsyncDialogSubmissionNotifier extends ChangeNotifier {
-  _AsyncDialogSubmissionNotifier({
-    required VoidCallback onSuccess,
-  }) : _onSuccess = onSuccess;
+  _AsyncDialogSubmissionNotifier({required this.onSuccess});
 
-  final VoidCallback _onSuccess;
+  final VoidCallback onSuccess;
   bool _isDisposed = false;
   bool _isSubmitting = false;
 
@@ -986,7 +973,7 @@ final class _AsyncDialogSubmissionNotifier extends ChangeNotifier {
     _isSubmitting = false;
     _notifyListenersSafely();
     if (didSucceed) {
-      _onSuccess();
+      onSuccess();
     }
   }
 
@@ -1005,9 +992,7 @@ final class _AsyncDialogSubmissionNotifier extends ChangeNotifier {
 }
 
 class _DialogProgressIcon extends StatelessWidget {
-  const _DialogProgressIcon({
-    required this.color,
-  });
+  const _DialogProgressIcon({required this.color});
 
   final Color color;
 

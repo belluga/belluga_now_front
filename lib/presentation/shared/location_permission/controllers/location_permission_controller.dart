@@ -17,14 +17,21 @@ class LocationPermissionController implements Disposable {
     bool? isWeb,
     LocationPermissionBlockerLoader? initialStateLoader,
     UserLocationRepositoryContract? userLocationRepository,
-  })  : _isWeb = isWeb ?? kIsWeb,
-        _initialStateLoader =
-            initialStateLoader ?? loadCurrentLocationPermissionBlocker,
-        _userLocationRepository = userLocationRepository,
-        initialStateStreamValue =
-            StreamValue<LocationPermissionState?>(defaultValue: null),
-        loading = StreamValue<bool>(defaultValue: false),
-        resultStreamValue = StreamValue<bool?>(defaultValue: null);
+  }) : this._internal(
+         isWeb ?? kIsWeb,
+         initialStateLoader ?? loadCurrentLocationPermissionBlocker,
+         userLocationRepository,
+       );
+
+  LocationPermissionController._internal(
+    this._isWeb,
+    this._initialStateLoader, [
+    this._userLocationRepository,
+  ]) : initialStateStreamValue = StreamValue<LocationPermissionState?>(
+         defaultValue: null,
+       ),
+       loading = StreamValue<bool>(defaultValue: false),
+       resultStreamValue = StreamValue<bool?>(defaultValue: null);
 
   final bool _isWeb;
   final LocationPermissionBlockerLoader _initialStateLoader;
@@ -80,8 +87,10 @@ class LocationPermissionController implements Disposable {
         final repositoryAvailable = _resolvedUserLocationRepository != null;
         final canonicalLocationResolved =
             await _primeCanonicalLocationAfterPermissionGrant(
-          requestPermissionIfNeeded: !_isPermissionGranted(currentPermission),
-        );
+              requestPermissionIfNeeded: !_isPermissionGranted(
+                currentPermission,
+              ),
+            );
         if (canonicalLocationResolved) {
           resultStreamValue.addValue(true);
           return;
@@ -152,9 +161,9 @@ class LocationPermissionController implements Disposable {
     final resolutionError = await repository.resolveUserLocation(
       requestPermissionIfNeededValue:
           UserLocationRepositoryContractBoolValue.fromRaw(
-        requestPermissionIfNeeded,
-        defaultValue: requestPermissionIfNeeded,
-      ),
+            requestPermissionIfNeeded,
+            defaultValue: requestPermissionIfNeeded,
+          ),
       timeout: UserLocationRepositoryContractDurationValue.fromRaw(
         _postGrantLocationBootstrapTimeout,
         defaultValue: _postGrantLocationBootstrapTimeout,

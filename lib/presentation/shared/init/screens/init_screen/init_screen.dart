@@ -49,7 +49,7 @@ class _InitScreenState extends State<InitScreen> {
           width: 220,
           height: 96,
           fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) => Icon(
+          errorBuilder: (_, _, _) => Icon(
             Icons.waves,
             size: 72,
             color: onBackgroundColor,

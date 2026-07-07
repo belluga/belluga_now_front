@@ -83,8 +83,9 @@ class InviteDto {
     final targetRef = json['target_ref'];
     final targetRefMap = targetRef is Map<String, dynamic> ? targetRef : null;
     final inviterPrincipal = json['inviter_principal'];
-    final inviterPrincipalMap =
-        inviterPrincipal is Map<String, dynamic> ? inviterPrincipal : null;
+    final inviterPrincipalMap = inviterPrincipal is Map<String, dynamic>
+        ? inviterPrincipal
+        : null;
     final candidatesRaw = json['inviter_candidates'];
     final candidates = <InviteInviterCandidateDto>[];
 
@@ -114,16 +115,16 @@ class InviteDto {
       );
     }
 
-    final eventId =
-        (json['event_id'] ?? targetRefMap?['event_id'] ?? '').toString();
+    final eventId = (json['event_id'] ?? targetRefMap?['event_id'] ?? '')
+        .toString();
     final occurrenceId =
         (json['occurrence_id'] ?? targetRefMap?['occurrence_id'] ?? '')
             .toString()
             .trim();
     final linkedAccountProfiles =
         EventPublicProfilePayloadDecoder.resolveLinkedAccountProfiles(
-      linkedProfilesRaw: json['linked_account_profiles'],
-    );
+          linkedProfilesRaw: json['linked_account_profiles'],
+        );
     final profileGroups = EventPublicProfilePayloadDecoder.resolveProfileGroups(
       json['profile_groups'],
       linkedAccountProfiles: linkedAccountProfiles,
@@ -149,14 +150,15 @@ class InviteDto {
       message: (json['message'] ?? '').toString(),
       tags: _resolveCanonicalTaxonomyLabels(taxonomyTerms),
       taxonomyTerms: taxonomyTerms,
-      attendancePolicy:
-          (json['attendance_policy'] ?? 'free_confirmation_only').toString(),
+      attendancePolicy: (json['attendance_policy'] ?? 'free_confirmation_only')
+          .toString(),
       linkedAccountProfiles: linkedAccountProfiles,
       profileGroups: profileGroups,
       venueAccountProfileId: json['venue_account_profile_id']?.toString(),
       inviterName: legacyInviterName,
       inviterAvatarUrl: json['inviter_avatar_url']?.toString(),
-      additionalInviters: (json['additional_inviters'] as List<dynamic>?)
+      additionalInviters:
+          (json['additional_inviters'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList(growable: false) ??
           const <String>[],
@@ -169,17 +171,11 @@ class InviteDto {
   Map<String, dynamic> toJson() {
     final inviterPrincipal = inviterPrincipalId == null
         ? null
-        : {
-            'kind': inviterPrincipalKind,
-            'id': inviterPrincipalId,
-          };
+        : {'kind': inviterPrincipalKind, 'id': inviterPrincipalId};
 
     return {
       'id': id,
-      'target_ref': {
-        'event_id': eventId,
-        'occurrence_id': occurrenceId,
-      },
+      'target_ref': {'event_id': eventId, 'occurrence_id': occurrenceId},
       'event_id': eventId,
       'event_slug': eventSlug,
       'occurrence_id': occurrenceId,
@@ -238,9 +234,10 @@ class InviteDto {
       'inviter_name': inviterName,
       'inviter_avatar_url': inviterAvatarUrl,
       'additional_inviters': additionalInviters,
-      'inviter_candidates':
-          inviterCandidates.map((candidate) => candidate.toJson()).toList(),
-      if (inviterPrincipal != null) 'inviter_principal': inviterPrincipal,
+      'inviter_candidates': inviterCandidates
+          .map((candidate) => candidate.toJson())
+          .toList(),
+      'inviter_principal': ?inviterPrincipal,
     };
   }
 
@@ -252,34 +249,37 @@ class InviteDto {
     final inviters = inviterCandidates
         .where((candidate) => candidate.inviteId.trim().isNotEmpty)
         .map((candidate) {
-      final avatarValue = InviteInviterAvatarValue();
-      final normalizedAvatarUrl = candidate.avatarUrl?.trim();
-      if (normalizedAvatarUrl != null && normalizedAvatarUrl.isNotEmpty) {
-        avatarValue.parse(normalizedAvatarUrl);
-      }
+          final avatarValue = InviteInviterAvatarValue();
+          final normalizedAvatarUrl = candidate.avatarUrl?.trim();
+          if (normalizedAvatarUrl != null && normalizedAvatarUrl.isNotEmpty) {
+            avatarValue.parse(normalizedAvatarUrl);
+          }
 
-      final statusValue = InviteAcceptanceStatusValue(
-        defaultValue: 'pending',
-        isRequired: false,
-      )..parse(
-          candidate.status.trim().isEmpty ? 'pending' : candidate.status,
-        );
+          final statusValue =
+              InviteAcceptanceStatusValue(
+                defaultValue: 'pending',
+                isRequired: false,
+              )..parse(
+                candidate.status.trim().isEmpty ? 'pending' : candidate.status,
+              );
 
-      return InviteInviter(
-        inviteIdValue: InviteInviterIdValue()..parse(candidate.inviteId),
-        type: InviteInviterTypeApiMapper.tryParse(
-              InviteInviterTypeRawValue()..parse(candidate.principalKind),
-            ) ??
-            InviteInviterType.user,
-        nameValue: InviteInviterNameValue()..parse(candidate.displayName),
-        principal: _parseInviterPrincipal(
-          inviterKind: candidate.principalKind,
-          inviterId: candidate.principalId,
-        ),
-        avatarValue: avatarValue,
-        statusValue: statusValue,
-      );
-    }).toList(growable: false);
+          return InviteInviter(
+            inviteIdValue: InviteInviterIdValue()..parse(candidate.inviteId),
+            type:
+                InviteInviterTypeApiMapper.tryParse(
+                  InviteInviterTypeRawValue()..parse(candidate.principalKind),
+                ) ??
+                InviteInviterType.user,
+            nameValue: InviteInviterNameValue()..parse(candidate.displayName),
+            principal: _parseInviterPrincipal(
+              inviterKind: candidate.principalKind,
+              inviterId: candidate.principalId,
+            ),
+            avatarValue: avatarValue,
+            statusValue: statusValue,
+          );
+        })
+        .toList(growable: false);
 
     final parsedEventDate = DateTime.parse(eventDate);
     final parsedTags = tags
@@ -288,40 +288,44 @@ class InviteDto {
         .toList(growable: false);
     final resolvedInviterName =
         inviterName ?? (inviters.isNotEmpty ? inviters.first.name : null);
-    final resolvedInviterAvatarUrl = inviterAvatarUrl ??
+    final resolvedInviterAvatarUrl =
+        inviterAvatarUrl ??
         (inviters.isNotEmpty ? inviters.first.avatarUrl : null);
-    final resolvedInviterPrincipal = inviterPrincipal ??
+    final resolvedInviterPrincipal =
+        inviterPrincipal ??
         (inviters.isNotEmpty ? inviters.first.principal : null);
     final resolvedInviters = inviters.isNotEmpty
         ? inviters
         : (resolvedInviterName != null && resolvedInviterName.trim().isNotEmpty
-            ? <InviteInviter>[
-                (() {
-                  final avatarValue = InviteInviterAvatarValue();
-                  final normalizedAvatarUrl = resolvedInviterAvatarUrl?.trim();
-                  if (normalizedAvatarUrl != null &&
-                      normalizedAvatarUrl.isNotEmpty) {
-                    avatarValue.parse(normalizedAvatarUrl);
-                  }
+              ? <InviteInviter>[
+                  (() {
+                    final avatarValue = InviteInviterAvatarValue();
+                    final normalizedAvatarUrl = resolvedInviterAvatarUrl
+                        ?.trim();
+                    if (normalizedAvatarUrl != null &&
+                        normalizedAvatarUrl.isNotEmpty) {
+                      avatarValue.parse(normalizedAvatarUrl);
+                    }
 
-                  return InviteInviter(
-                    inviteIdValue: InviteInviterIdValue()..parse(id),
-                    type: resolvedInviterPrincipal?.type ??
-                        InviteInviterType.user,
-                    nameValue: InviteInviterNameValue()
-                      ..parse(resolvedInviterName),
-                    principal: resolvedInviterPrincipal,
-                    avatarValue: avatarValue,
-                  );
-                })(),
-              ]
-            : const <InviteInviter>[]);
+                    return InviteInviter(
+                      inviteIdValue: InviteInviterIdValue()..parse(id),
+                      type:
+                          resolvedInviterPrincipal?.type ??
+                          InviteInviterType.user,
+                      nameValue: InviteInviterNameValue()
+                        ..parse(resolvedInviterName),
+                      principal: resolvedInviterPrincipal,
+                      avatarValue: avatarValue,
+                    );
+                  })(),
+                ]
+              : const <InviteInviter>[]);
     final resolvedAdditionalInviters = additionalInviters.isNotEmpty
         ? additionalInviters
         : resolvedInviters
-            .skip(1)
-            .map((inviter) => inviter.name)
-            .toList(growable: false);
+              .skip(1)
+              .map((inviter) => inviter.name)
+              .toList(growable: false);
 
     InviteInviterNameValue? inviterNameVo;
     if (resolvedInviterName != null && resolvedInviterName.trim().isNotEmpty) {
@@ -336,11 +340,13 @@ class InviteDto {
     }
 
     final occurrenceIdValue = InviteOccurrenceIdValue()..parse(occurrenceId);
-    final attendancePolicyValue = InviteAttendancePolicyValue(
-      defaultValue: 'free_confirmation_only',
-    )..parse(attendancePolicy.trim().isEmpty
-        ? 'free_confirmation_only'
-        : attendancePolicy.trim());
+    final attendancePolicyValue =
+        InviteAttendancePolicyValue(defaultValue: 'free_confirmation_only')
+          ..parse(
+            attendancePolicy.trim().isEmpty
+                ? 'free_confirmation_only'
+                : attendancePolicy.trim(),
+          );
     final eventImageUri = _resolveEventImageUri(
       eventImageUrl: eventImageUrl,
       linkedAccountProfiles: linkedAccountProfiles,
@@ -375,10 +381,8 @@ class InviteDto {
       profileGroups: profileGroups,
       venueAccountProfileIdValue:
           venueAccountProfileId == null || venueAccountProfileId!.trim().isEmpty
-              ? null
-              : EventLinkedAccountProfileTextValue(
-                  venueAccountProfileId!.trim(),
-                ),
+          ? null
+          : EventLinkedAccountProfileTextValue(venueAccountProfileId!.trim()),
     );
   }
 
@@ -409,7 +413,8 @@ class InviteDto {
   }
 
   static List<Map<String, dynamic>> _resolveCanonicalTaxonomyTerms(
-      Object? raw) {
+    Object? raw,
+  ) {
     if (raw is! List) {
       return const <Map<String, dynamic>>[];
     }
@@ -424,9 +429,7 @@ class InviteDto {
       if (entry is Map) {
         terms.add(
           Map<String, dynamic>.unmodifiable(
-            entry.map(
-              (key, value) => MapEntry(key.toString(), value),
-            ),
+            entry.map((key, value) => MapEntry(key.toString(), value)),
           ),
         );
       }

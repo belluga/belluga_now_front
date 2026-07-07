@@ -189,7 +189,7 @@ class FavoriteChip extends StatelessWidget {
             width: 64,
             height: 64,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => _fallbackVisual(
+            errorBuilder: (_, _, _) => _fallbackVisual(
               colorScheme,
               badgeGlyph,
             ),

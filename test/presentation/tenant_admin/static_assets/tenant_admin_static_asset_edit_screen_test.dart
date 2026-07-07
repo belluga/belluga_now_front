@@ -340,7 +340,7 @@ RootStackRouter _buildTestRouter(
           family: CanonicalRouteFamily.tenantAdminAssetsInternal,
           chromeMode: RouteChromeMode.fullscreen,
         ),
-        builder: (_, __) => child,
+        builder: (_, _) => child,
       ),
     ],
   )..ignorePopCompleters = true;

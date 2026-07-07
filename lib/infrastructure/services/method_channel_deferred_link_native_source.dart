@@ -5,7 +5,9 @@ import 'package:flutter/services.dart';
 class MethodChannelDeferredLinkNativeSource
     implements DeferredLinkNativeSourceContract {
   MethodChannelDeferredLinkNativeSource({required MethodChannel channel})
-    : _channel = channel;
+    : this._internal(channel);
+
+  MethodChannelDeferredLinkNativeSource._internal(this._channel);
 
   final MethodChannel _channel;
 

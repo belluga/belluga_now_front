@@ -149,7 +149,7 @@ class _HeroBackdrop extends StatelessWidget {
           Image.network(
             heroImageUrl,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+            errorBuilder: (_, _, _) => const SizedBox.shrink(),
           ),
         DecoratedBox(
           decoration: BoxDecoration(

@@ -162,17 +162,17 @@ Widget _buildTestApp(Widget child) {
       NamedRouteDef(
         name: 'static-assets-list-test',
         path: '/',
-        builder: (_, __) => child,
+        builder: (_, _) => child,
       ),
       NamedRouteDef(
         name: TenantAdminStaticAssetDetailRoute.name,
         path: '/static-assets/:assetId',
-        builder: (_, __) => const _TestStaticAssetDetailRouteScreen(),
+        builder: (_, _) => const _TestStaticAssetDetailRouteScreen(),
       ),
       NamedRouteDef(
         name: TenantAdminStaticAssetCreateRoute.name,
         path: '/static-assets/create',
-        builder: (_, __) => const _TestStaticAssetCreateRouteScreen(),
+        builder: (_, _) => const _TestStaticAssetCreateRouteScreen(),
       ),
     ],
   )..ignorePopCompleters = true;

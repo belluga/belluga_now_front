@@ -689,7 +689,7 @@ class _TenantAdminAccountProfileEditScreenState
     final stream = NetworkImage(url).resolve(const ImageConfiguration());
     late final ImageStreamListener listener;
     listener = ImageStreamListener(
-      (_, __) {
+      (_, _) {
         if (isAvatar) {
           _controller.updateAvatarRemoteError(false);
           _controller.updateAvatarFile(null);
@@ -701,7 +701,7 @@ class _TenantAdminAccountProfileEditScreenState
         }
         stream.removeListener(listener);
       },
-      onError: (_, __) {
+      onError: (_, _) {
         if (isAvatar) {
           _controller.updateAvatarRemoteError(true);
         } else {
@@ -856,6 +856,17 @@ class _TenantAdminAccountProfileEditScreenState
                                               profileTypes: _controller
                                                   .profileTypesStreamValue
                                                   .value,
+                                              onSearchChanged: _controller
+                                                  .searchNestedProfileCandidates,
+                                              onLoadMore: _controller
+                                                  .loadNextNestedProfileCandidatesPage,
+                                              searchLoadingStreamValue: _controller
+                                                  .nestedProfileSearchLoadingStreamValue,
+                                              searchPageLoadingStreamValue:
+                                                  _controller
+                                                      .nestedProfileSearchPageLoadingStreamValue,
+                                              searchHasMoreStreamValue: _controller
+                                                  .nestedProfileSearchHasMoreStreamValue,
                                               addButtonKey: const Key(
                                                 'tenantAdminEditAddNestedGroupButton',
                                               ),

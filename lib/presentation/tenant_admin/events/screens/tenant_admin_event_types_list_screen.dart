@@ -103,7 +103,7 @@ class _TenantAdminEventTypesListScreenState
                       : ListView.separated(
                           padding: const EdgeInsets.only(bottom: 112),
                           itemCount: loadedTypes.length,
-                          separatorBuilder: (_, __) =>
+                          separatorBuilder: (_, _) =>
                               const SizedBox(height: 12),
                           itemBuilder: (context, index) {
                             final type = loadedTypes[index];

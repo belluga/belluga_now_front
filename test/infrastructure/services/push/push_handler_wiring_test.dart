@@ -15,11 +15,13 @@ import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dar
 import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_bool_value.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/tenant/tenant.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/user/user_profile_contract.dart';
@@ -183,6 +185,34 @@ void main() {
     expect(capture.factoryCalled, isFalse);
     expect(capture.initCalled, isFalse);
   });
+
+  test(
+    'ApplicationContract skips mobile push wiring when Firebase settings are missing',
+    () async {
+      final appData = _buildTestAppData();
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(
+        _FakeAppDataRepository(appData),
+      );
+      final authRepository = _FakeAuthRepository(
+        userTokenValue: 'token-123',
+        deviceId: 'device-1',
+      );
+      GetIt.I.registerSingleton<AuthRepositoryContract>(authRepository);
+
+      final app = _TestApplication();
+      GetIt.I.registerSingleton<ApplicationContract>(app);
+
+      final capture = _RepositoryCapture();
+      await app.initializePushHandlerForTesting(
+        isWebOverride: false,
+        repositoryFactory: capture.factory,
+        invitePushTapSourceOverride: _ThrowingInvitePushTapSource(),
+      );
+
+      expect(capture.factoryCalled, isFalse);
+      expect(capture.initCalled, isFalse);
+    },
+  );
 
   test(
     'ApplicationContract reports recoverable push init failures to Sentry',
@@ -455,6 +485,18 @@ class _FakeInvitePushTapSource extends InvitePushTapSource {
       const Stream<RemoteMessage>.empty();
 }
 
+class _ThrowingInvitePushTapSource extends InvitePushTapSource {
+  @override
+  Future<RemoteMessage?> getInitialMessage() {
+    throw StateError('Firebase tap source should not be touched.');
+  }
+
+  @override
+  Stream<RemoteMessage> get onMessageOpenedApp {
+    throw StateError('Firebase tap stream should not be touched.');
+  }
+}
+
 class _FakeInvitePushRuntimeCoordinator extends InvitePushRuntimeCoordinator {
   _FakeInvitePushRuntimeCoordinator({required this.preparedPath})
     : super(navigatePath: (_) async {});
@@ -604,6 +646,49 @@ class _FakePushHandlerRepository extends PushHandlerRepositoryContract {
   }
 }
 
+class _FakeAppDataRepository extends AppDataRepositoryContract {
+  _FakeAppDataRepository(this._appData);
+
+  final AppData _appData;
+  final StreamValue<ThemeMode?> _themeModeStreamValue = StreamValue<ThemeMode?>(
+    defaultValue: ThemeMode.light,
+  );
+  final StreamValue<DistanceInMetersValue> _maxRadiusMetersStreamValue =
+      StreamValue<DistanceInMetersValue>(
+        defaultValue: DistanceInMetersValue.fromRaw(50000, defaultValue: 50000),
+      );
+
+  @override
+  AppData get appData => _appData;
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  StreamValue<ThemeMode?> get themeModeStreamValue => _themeModeStreamValue;
+
+  @override
+  ThemeMode get themeMode => _themeModeStreamValue.value ?? ThemeMode.light;
+
+  @override
+  Future<void> setThemeMode(AppThemeModeValue mode) async {
+    _themeModeStreamValue.addValue(mode.value);
+  }
+
+  @override
+  StreamValue<DistanceInMetersValue> get maxRadiusMetersStreamValue =>
+      _maxRadiusMetersStreamValue;
+
+  @override
+  DistanceInMetersValue get maxRadiusMeters =>
+      _maxRadiusMetersStreamValue.value;
+
+  @override
+  Future<void> setMaxRadiusMeters(DistanceInMetersValue meters) async {
+    _maxRadiusMetersStreamValue.addValue(meters);
+  }
+}
+
 class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   @override
   final StreamValue<CityCoordinate?> userLocationStreamValue =
@@ -695,10 +780,9 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
 }
 
 class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
-  _FakeAuthRepository({required String userTokenValue, required this.deviceId})
-    : _userTokenValue = userTokenValue;
+  _FakeAuthRepository({required this.userTokenValue, required this.deviceId});
 
-  String _userTokenValue;
+  String userTokenValue;
   final String deviceId;
   final _backend = _NoopBackend();
 
@@ -706,10 +790,10 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   BackendContract get backend => _backend;
 
   @override
-  String get userToken => _userTokenValue;
+  String get userToken => userTokenValue;
 
   void authorize({required String userToken, UserContract? user}) {
-    _userTokenValue = userToken;
+    userTokenValue = userToken;
     userStreamValue.addValue(user ?? _buildUser('507f1f77bcf86cd799439011'));
   }
 
@@ -723,10 +807,10 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<String?> getUserId() async => null;
 
   @override
-  bool get isUserLoggedIn => _userTokenValue.isNotEmpty;
+  bool get isUserLoggedIn => userTokenValue.isNotEmpty;
 
   @override
-  bool get isAuthorized => _userTokenValue.isNotEmpty;
+  bool get isAuthorized => userTokenValue.isNotEmpty;
 
   @override
   Future<void> init() async {}

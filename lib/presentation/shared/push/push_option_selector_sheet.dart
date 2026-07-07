@@ -162,7 +162,7 @@ class _PushOptionSelectorSheetState extends State<PushOptionSelectorSheet> {
   Widget _buildList(BuildContext context, Set<dynamic> selectedValues) {
     return ListView.separated(
       itemCount: widget.options.length,
-      separatorBuilder: (_, __) => const Divider(height: 1),
+      separatorBuilder: (_, _) => const Divider(height: 1),
       itemBuilder: (context, index) {
         final option = widget.options[index];
         final selected = selectedValues.contains(option.value);

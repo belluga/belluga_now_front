@@ -34,7 +34,7 @@ import 'package:belluga_now/testing/invite_model_factory.dart';
 void main() {
   test('tenant without pending invites resolves tenant home stack', () async {
     final controller = InitScreenController(
-      invitesRepository: _FakeInvitesRepository(hasPendingInvites: false),
+      invitesRepository: _FakeInvitesRepository(false),
       appDataRepository: _FakeAppDataRepository(
         _buildAppData(environmentType: EnvironmentType.tenant),
       ),
@@ -51,50 +51,51 @@ void main() {
     expect(controller.startupNavigationPlan.hasOverride, isFalse);
   });
 
-  test('tenant with pending invites stacks invite flow on top of home',
-      () async {
-    final controller = InitScreenController(
-      invitesRepository: _FakeInvitesRepository(hasPendingInvites: true),
-      appDataRepository: _FakeAppDataRepository(
-        _buildAppData(environmentType: EnvironmentType.tenant),
-      ),
-    );
+  test(
+    'tenant with pending invites stacks invite flow on top of home',
+    () async {
+      final controller = InitScreenController(
+        invitesRepository: _FakeInvitesRepository(true),
+        appDataRepository: _FakeAppDataRepository(
+          _buildAppData(environmentType: EnvironmentType.tenant),
+        ),
+      );
 
-    await controller.initialize();
+      await controller.initialize();
 
-    expect(controller.initialRoute, isA<InviteFlowRoute>());
-    expect(
-      controller.initialRouteStack.map((route) => route.routeName).toList(),
-      [
-        TenantHomeRoute.name,
-        InviteFlowRoute.name,
-      ],
-    );
-    expect(controller.startupNavigationPlan.hasOverride, isTrue);
-  });
+      expect(controller.initialRoute, isA<InviteFlowRoute>());
+      expect(
+        controller.initialRouteStack.map((route) => route.routeName).toList(),
+        [TenantHomeRoute.name, InviteFlowRoute.name],
+      );
+      expect(controller.startupNavigationPlan.hasOverride, isTrue);
+    },
+  );
 
-  test('landlord ignores tenant invite flow and resolves landlord home',
-      () async {
-    final controller = InitScreenController(
-      invitesRepository: _FakeInvitesRepository(hasPendingInvites: true),
-      appDataRepository: _FakeAppDataRepository(
-        _buildAppData(environmentType: EnvironmentType.landlord),
-      ),
-    );
+  test(
+    'landlord ignores tenant invite flow and resolves landlord home',
+    () async {
+      final controller = InitScreenController(
+        invitesRepository: _FakeInvitesRepository(true),
+        appDataRepository: _FakeAppDataRepository(
+          _buildAppData(environmentType: EnvironmentType.landlord),
+        ),
+      );
 
-    await controller.initialize();
+      await controller.initialize();
 
-    expect(controller.initialRoute, isA<LandlordHomeRoute>());
-    expect(
-      controller.initialRouteStack.map((route) => route.routeName).toList(),
-      [LandlordHomeRoute.name],
-    );
-    expect(controller.startupNavigationPlan.hasOverride, isFalse);
-  });
+      expect(controller.initialRoute, isA<LandlordHomeRoute>());
+      expect(
+        controller.initialRouteStack.map((route) => route.routeName).toList(),
+        [LandlordHomeRoute.name],
+      );
+      expect(controller.startupNavigationPlan.hasOverride, isFalse);
+    },
+  );
 
   test('initialize bootstraps auth before loading invites', () async {
     final authRepository = _FakeAuthRepository();
-    final invitesRepository = _FakeInvitesRepository(hasPendingInvites: false);
+    final invitesRepository = _FakeInvitesRepository(false);
     final controller = InitScreenController(
       authRepository: authRepository,
       invitesRepository: invitesRepository,
@@ -109,39 +110,34 @@ void main() {
     expect(invitesRepository.initCallCount, 1);
   });
 
-  test('initialize retries transient startup failures before resolving route',
-      () async {
-    final authRepository = _FakeAuthRepository();
-    final invitesRepository = _FlakyInvitesRepository(
-      hasPendingInvites: true,
-      failuresBeforeSuccess: 2,
-    );
-    final controller = InitScreenController(
-      authRepository: authRepository,
-      invitesRepository: invitesRepository,
-      appDataRepository: _FakeAppDataRepository(
-        _buildAppData(environmentType: EnvironmentType.tenant),
-      ),
-      startupRetryDelays: const [
-        Duration.zero,
-        Duration.zero,
-        Duration.zero,
-      ],
-    );
+  test(
+    'initialize retries transient startup failures before resolving route',
+    () async {
+      final authRepository = _FakeAuthRepository();
+      final invitesRepository = _FlakyInvitesRepository(
+        hasPendingInvites: true,
+        failuresBeforeSuccess: 2,
+      );
+      final controller = InitScreenController(
+        authRepository: authRepository,
+        invitesRepository: invitesRepository,
+        appDataRepository: _FakeAppDataRepository(
+          _buildAppData(environmentType: EnvironmentType.tenant),
+        ),
+        startupRetryDelays: const [Duration.zero, Duration.zero, Duration.zero],
+      );
 
-    await controller.initialize();
+      await controller.initialize();
 
-    expect(authRepository.initCallCount, 3);
-    expect(invitesRepository.initCallCount, 3);
-    expect(controller.initialRoute, isA<InviteFlowRoute>());
-    expect(
-      controller.initialRouteStack.map((route) => route.routeName).toList(),
-      [
-        TenantHomeRoute.name,
-        InviteFlowRoute.name,
-      ],
-    );
-  });
+      expect(authRepository.initCallCount, 3);
+      expect(invitesRepository.initCallCount, 3);
+      expect(controller.initialRoute, isA<InviteFlowRoute>());
+      expect(
+        controller.initialRouteStack.map((route) => route.routeName).toList(),
+        [TenantHomeRoute.name, InviteFlowRoute.name],
+      );
+    },
+  );
 
   test('initialize rethrows after exhausting startup retries', () async {
     final authRepository = _FakeAuthRepository();
@@ -156,11 +152,7 @@ void main() {
       appDataRepository: _FakeAppDataRepository(
         _buildAppData(environmentType: EnvironmentType.tenant),
       ),
-      startupRetryDelays: const [
-        Duration.zero,
-        Duration.zero,
-        Duration.zero,
-      ],
+      startupRetryDelays: const [Duration.zero, Duration.zero, Duration.zero],
     );
 
     await expectLater(
@@ -178,47 +170,54 @@ void main() {
     expect(invitesRepository.initCallCount, 4);
   });
 
-  test('captured deferred share code overrides first route path to invite',
-      () async {
-    final telemetry = _FakeTelemetryRepository();
-    final controller = InitScreenController(
-      invitesRepository: _FakeInvitesRepository(hasPendingInvites: false),
-      appDataRepository: _FakeAppDataRepository(
-        _buildAppData(environmentType: EnvironmentType.tenant),
-      ),
-      deferredLinkRepository: _FakeDeferredLinkRepository(
-        DeferredLinkCaptureResult(
-          status: DeferredLinkCaptureStatus.captured,
-          codeValue: DeferredLinkCaptureCodeValue(defaultValue: 'ABCD1234'),
-          targetPathValue: DeferredLinkTargetPathValue(
-              defaultValue: '/invite?code=ABCD1234'),
-          storeChannelValue:
-              DeferredLinkStoreChannelValue(defaultValue: 'play'),
+  test(
+    'captured deferred share code overrides first route path to invite',
+    () async {
+      final telemetry = _FakeTelemetryRepository();
+      final controller = InitScreenController(
+        invitesRepository: _FakeInvitesRepository(false),
+        appDataRepository: _FakeAppDataRepository(
+          _buildAppData(environmentType: EnvironmentType.tenant),
         ),
-      ),
-      telemetryRepository: telemetry,
-    );
+        deferredLinkRepository: _FakeDeferredLinkRepository(
+          DeferredLinkCaptureResult(
+            status: DeferredLinkCaptureStatus.captured,
+            codeValue: DeferredLinkCaptureCodeValue(defaultValue: 'ABCD1234'),
+            targetPathValue: DeferredLinkTargetPathValue(
+              defaultValue: '/invite?code=ABCD1234',
+            ),
+            storeChannelValue: DeferredLinkStoreChannelValue(
+              defaultValue: 'play',
+            ),
+          ),
+        ),
+        telemetryRepository: telemetry,
+      );
 
-    await controller.initialize();
+      await controller.initialize();
 
-    expect(controller.initialRoutePath, '/invite?code=ABCD1234');
-    expect(controller.startupNavigationPlan.hasOverride, isTrue);
-    expect(telemetry.loggedEvents, hasLength(1));
-    expect(
-      telemetry.loggedEvents.single.eventName,
-      'app_deferred_deep_link_captured',
-    );
-    expect(telemetry.loggedEvents.single.properties?['store_channel'], 'play');
-    expect(
-      telemetry.loggedEvents.single.properties?['target_path'],
-      '/invite?code=ABCD1234',
-    );
-  });
+      expect(controller.initialRoutePath, '/invite?code=ABCD1234');
+      expect(controller.startupNavigationPlan.hasOverride, isTrue);
+      expect(telemetry.loggedEvents, hasLength(1));
+      expect(
+        telemetry.loggedEvents.single.eventName,
+        'app_deferred_deep_link_captured',
+      );
+      expect(
+        telemetry.loggedEvents.single.properties?['store_channel'],
+        'play',
+      );
+      expect(
+        telemetry.loggedEvents.single.properties?['target_path'],
+        '/invite?code=ABCD1234',
+      );
+    },
+  );
 
   test('captured deferred target path overrides first route path', () async {
     final telemetry = _FakeTelemetryRepository();
     final controller = InitScreenController(
-      invitesRepository: _FakeInvitesRepository(hasPendingInvites: false),
+      invitesRepository: _FakeInvitesRepository(false),
       appDataRepository: _FakeAppDataRepository(
         _buildAppData(environmentType: EnvironmentType.tenant),
       ),
@@ -228,8 +227,9 @@ void main() {
           targetPathValue: DeferredLinkTargetPathValue(
             defaultValue: '/agenda/evento/forro?occurrence=occ-1',
           ),
-          storeChannelValue:
-              DeferredLinkStoreChannelValue(defaultValue: 'play'),
+          storeChannelValue: DeferredLinkStoreChannelValue(
+            defaultValue: 'play',
+          ),
         ),
       ),
       telemetryRepository: telemetry,
@@ -247,13 +247,15 @@ void main() {
       '/agenda/evento/forro?occurrence=occ-1',
     );
     expect(
-        telemetry.loggedEvents.single.properties?.containsKey('code'), isFalse);
+      telemetry.loggedEvents.single.properties?.containsKey('code'),
+      isFalse,
+    );
   });
 
   test('deferred capture telemetry includes fallback store_channel', () async {
     final telemetry = _FakeTelemetryRepository();
     final controller = InitScreenController(
-      invitesRepository: _FakeInvitesRepository(hasPendingInvites: false),
+      invitesRepository: _FakeInvitesRepository(false),
       appDataRepository: _FakeAppDataRepository(
         _buildAppData(environmentType: EnvironmentType.tenant),
       ),
@@ -262,7 +264,8 @@ void main() {
           status: DeferredLinkCaptureStatus.captured,
           codeValue: DeferredLinkCaptureCodeValue(defaultValue: 'ABCD1234'),
           targetPathValue: DeferredLinkTargetPathValue(
-              defaultValue: '/invite?code=ABCD1234'),
+            defaultValue: '/invite?code=ABCD1234',
+          ),
         ),
       ),
       telemetryRepository: telemetry,
@@ -276,13 +279,15 @@ void main() {
       'app_deferred_deep_link_captured',
     );
     expect(
-        telemetry.loggedEvents.single.properties?['store_channel'], 'unknown');
+      telemetry.loggedEvents.single.properties?['store_channel'],
+      'unknown',
+    );
   });
 
   test('deferred failure telemetry includes fallback store_channel', () async {
     final telemetry = _FakeTelemetryRepository();
     final controller = InitScreenController(
-      invitesRepository: _FakeInvitesRepository(hasPendingInvites: false),
+      invitesRepository: _FakeInvitesRepository(false),
       appDataRepository: _FakeAppDataRepository(
         _buildAppData(environmentType: EnvironmentType.tenant),
       ),
@@ -290,7 +295,8 @@ void main() {
         DeferredLinkCaptureResult(
           status: DeferredLinkCaptureStatus.notCaptured,
           failureReasonValue: DeferredLinkFailureReasonValue(
-              defaultValue: 'resolver_not_captured'),
+            defaultValue: 'resolver_not_captured',
+          ),
         ),
       ),
       telemetryRepository: telemetry,
@@ -304,48 +310,54 @@ void main() {
       'app_deferred_deep_link_capture_failed',
     );
     expect(
-        telemetry.loggedEvents.single.properties?['store_channel'], 'unknown');
-  });
-
-  test('initialize ignores deferred capture failures and keeps bootstrap alive',
-      () async {
-    final controller = InitScreenController(
-      invitesRepository: _FakeInvitesRepository(hasPendingInvites: false),
-      appDataRepository: _FakeAppDataRepository(
-        _buildAppData(environmentType: EnvironmentType.tenant),
-      ),
-      deferredLinkRepository: const _ThrowingDeferredLinkRepository(),
+      telemetry.loggedEvents.single.properties?['store_channel'],
+      'unknown',
     );
-
-    await controller.initialize();
-
-    expect(controller.initialRoute, isA<TenantHomeRoute>());
-    expect(controller.initialRoutePath, isNull);
   });
 
-  test('initialize ignores startup telemetry failures after deferred capture',
-      () async {
-    final controller = InitScreenController(
-      invitesRepository: _FakeInvitesRepository(hasPendingInvites: false),
-      appDataRepository: _FakeAppDataRepository(
-        _buildAppData(environmentType: EnvironmentType.tenant),
-      ),
-      deferredLinkRepository: _FakeDeferredLinkRepository(
-        DeferredLinkCaptureResult(
-          status: DeferredLinkCaptureStatus.captured,
-          targetPathValue: DeferredLinkTargetPathValue(
-            defaultValue: '/invite?code=ABCD1234',
+  test(
+    'initialize ignores deferred capture failures and keeps bootstrap alive',
+    () async {
+      final controller = InitScreenController(
+        invitesRepository: _FakeInvitesRepository(false),
+        appDataRepository: _FakeAppDataRepository(
+          _buildAppData(environmentType: EnvironmentType.tenant),
+        ),
+        deferredLinkRepository: const _ThrowingDeferredLinkRepository(),
+      );
+
+      await controller.initialize();
+
+      expect(controller.initialRoute, isA<TenantHomeRoute>());
+      expect(controller.initialRoutePath, isNull);
+    },
+  );
+
+  test(
+    'initialize ignores startup telemetry failures after deferred capture',
+    () async {
+      final controller = InitScreenController(
+        invitesRepository: _FakeInvitesRepository(false),
+        appDataRepository: _FakeAppDataRepository(
+          _buildAppData(environmentType: EnvironmentType.tenant),
+        ),
+        deferredLinkRepository: _FakeDeferredLinkRepository(
+          DeferredLinkCaptureResult(
+            status: DeferredLinkCaptureStatus.captured,
+            targetPathValue: DeferredLinkTargetPathValue(
+              defaultValue: '/invite?code=ABCD1234',
+            ),
           ),
         ),
-      ),
-      telemetryRepository: _ThrowingTelemetryRepository(),
-    );
+        telemetryRepository: _ThrowingTelemetryRepository(),
+      );
 
-    await controller.initialize();
+      await controller.initialize();
 
-    expect(controller.initialRoutePath, '/invite?code=ABCD1234');
-    expect(controller.startupNavigationPlan.hasOverride, isTrue);
-  });
+      expect(controller.initialRoutePath, '/invite?code=ABCD1234');
+      expect(controller.startupNavigationPlan.hasOverride, isTrue);
+    },
+  );
 }
 
 class _LoggedTelemetryEvent {
@@ -361,8 +373,7 @@ class _LoggedTelemetryEvent {
 }
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
-  _FakeInvitesRepository({required bool hasPendingInvites})
-      : _hasPendingInvites = hasPendingInvites;
+  _FakeInvitesRepository(this._hasPendingInvites);
 
   @override
   InvitesRepositoryContractPrimBool get hasPendingInvites =>
@@ -383,9 +394,10 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   }
 
   @override
-  Future<List<InviteModel>> fetchInvites(
-      {InvitesRepositoryContractPrimInt? page,
-      InvitesRepositoryContractPrimInt? pageSize}) async {
+  Future<List<InviteModel>> fetchInvites({
+    InvitesRepositoryContractPrimInt? page,
+    InvitesRepositoryContractPrimInt? pageSize,
+  }) async {
     return _hasPendingInvites ? [_buildInvite()] : const [];
   }
 
@@ -545,10 +557,11 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserBelluga> {
 
 class _FlakyInvitesRepository extends _FakeInvitesRepository {
   _FlakyInvitesRepository({
-    required super.hasPendingInvites,
+    required bool hasPendingInvites,
     required int failuresBeforeSuccess,
     this.errorMessage = 'transient invites startup failure',
-  }) : _remainingFailures = failuresBeforeSuccess;
+  }) : _remainingFailures = failuresBeforeSuccess,
+       super(hasPendingInvites);
 
   final String errorMessage;
   int _remainingFailures;
@@ -576,7 +589,8 @@ class _FakeDeferredLinkRepository implements DeferredLinkRepositoryContract {
       result;
 }
 
-class _ThrowingDeferredLinkRepository implements DeferredLinkRepositoryContract {
+class _ThrowingDeferredLinkRepository
+    implements DeferredLinkRepositoryContract {
   const _ThrowingDeferredLinkRepository();
 
   @override
@@ -591,8 +605,7 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
   @override
   Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
     EventTrackerTimedEventHandle handle,
-  ) async =>
-      telemetryRepoBool(true);
+  ) async => telemetryRepoBool(true);
 
   @override
   Future<TelemetryRepositoryContractPrimBool> flushTimedEvents() async =>
@@ -622,8 +635,7 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
   @override
   Future<TelemetryRepositoryContractPrimBool> mergeIdentity({
     required TelemetryRepositoryContractPrimString previousUserId,
-  }) async =>
-      telemetryRepoBool(true);
+  }) async => telemetryRepoBool(true);
 
   @override
   void setScreenContext(TelemetryRepositoryContractPrimMap? screenContext) {}
@@ -633,16 +645,14 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
     EventTrackerEvents event, {
     TelemetryRepositoryContractPrimString? eventName,
     TelemetryRepositoryContractPrimMap? properties,
-  }) async =>
-      null;
+  }) async => null;
 }
 
 class _ThrowingTelemetryRepository implements TelemetryRepositoryContract {
   @override
   Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
     EventTrackerTimedEventHandle handle,
-  ) async =>
-      telemetryRepoBool(true);
+  ) async => telemetryRepoBool(true);
 
   @override
   Future<TelemetryRepositoryContractPrimBool> flushTimedEvents() async =>
@@ -663,8 +673,7 @@ class _ThrowingTelemetryRepository implements TelemetryRepositoryContract {
   @override
   Future<TelemetryRepositoryContractPrimBool> mergeIdentity({
     required TelemetryRepositoryContractPrimString previousUserId,
-  }) async =>
-      telemetryRepoBool(true);
+  }) async => telemetryRepoBool(true);
 
   @override
   void setScreenContext(TelemetryRepositoryContractPrimMap? screenContext) {}
@@ -674,8 +683,7 @@ class _ThrowingTelemetryRepository implements TelemetryRepositoryContract {
     EventTrackerEvents event, {
     TelemetryRepositoryContractPrimString? eventName,
     TelemetryRepositoryContractPrimMap? properties,
-  }) async =>
-      null;
+  }) async => null;
 }
 
 class _FakeAppDataRepository extends AppDataRepositoryContract {
@@ -729,9 +737,7 @@ InviteModel _buildInvite() {
   );
 }
 
-AppData _buildAppData({
-  required EnvironmentType environmentType,
-}) {
+AppData _buildAppData({required EnvironmentType environmentType}) {
   final platformType = PlatformTypeValue()..parse(AppType.web.name);
   final hostname = environmentType == EnvironmentType.landlord
       ? 'landlord.belluga.space'

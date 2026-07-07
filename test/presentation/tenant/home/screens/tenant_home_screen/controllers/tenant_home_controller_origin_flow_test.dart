@@ -43,25 +43,24 @@ void main() {
 
     GetIt.I.registerSingleton<AppData>(appData);
 
-    final scheduleRepository = ScheduleRepository(
-      backend: backend,
-    );
+    final scheduleRepository = ScheduleRepository(backend: backend);
     final userEventsRepository = UserEventsRepository(
       scheduleRepository: scheduleRepository,
       backend: _FakeUserEventsBackend(),
-      authRepository: _FakeAuthRepository(authorized: true),
+      authRepository: _FakeAuthRepository(true),
     );
     await userEventsRepository.confirmEventAttendance(
       userEventsRepoString(_CapturingScheduleBackend.eventId),
-      occurrenceId:
-          userEventsRepoString(_CapturingScheduleBackend.occurrenceId),
+      occurrenceId: userEventsRepoString(
+        _CapturingScheduleBackend.occurrenceId,
+      ),
     );
 
     final controller = _buildTenantHomeController(
       userEventsRepository: userEventsRepository,
       userLocationRepository: userLocationRepository,
       appDataRepository: appDataRepository,
-      authRepository: _FakeAuthRepository(authorized: true),
+      authRepository: _FakeAuthRepository(true),
     );
 
     await controller.init();
@@ -77,47 +76,48 @@ void main() {
     controller.onDispose();
   });
 
-  test('my-events home flow no longer depends on origin availability',
-      () async {
-    final appData = _buildAppData(defaultOrigin: null);
-    final appDataRepository = _FakeAppDataRepository(appData);
-    final userLocationRepository = _FakeUserLocationRepository();
-    final backend = _CapturingScheduleBackend();
+  test(
+    'my-events home flow no longer depends on origin availability',
+    () async {
+      final appData = _buildAppData(defaultOrigin: null);
+      final appDataRepository = _FakeAppDataRepository(appData);
+      final userLocationRepository = _FakeUserLocationRepository();
+      final backend = _CapturingScheduleBackend();
 
-    GetIt.I.registerSingleton<AppData>(appData);
+      GetIt.I.registerSingleton<AppData>(appData);
 
-    final scheduleRepository = ScheduleRepository(
-      backend: backend,
-    );
-    final userEventsRepository = UserEventsRepository(
-      scheduleRepository: scheduleRepository,
-      backend: _FakeUserEventsBackend(),
-      authRepository: _FakeAuthRepository(authorized: true),
-    );
-    await userEventsRepository.confirmEventAttendance(
-      userEventsRepoString(_CapturingScheduleBackend.eventId),
-      occurrenceId:
-          userEventsRepoString(_CapturingScheduleBackend.occurrenceId),
-    );
+      final scheduleRepository = ScheduleRepository(backend: backend);
+      final userEventsRepository = UserEventsRepository(
+        scheduleRepository: scheduleRepository,
+        backend: _FakeUserEventsBackend(),
+        authRepository: _FakeAuthRepository(true),
+      );
+      await userEventsRepository.confirmEventAttendance(
+        userEventsRepoString(_CapturingScheduleBackend.eventId),
+        occurrenceId: userEventsRepoString(
+          _CapturingScheduleBackend.occurrenceId,
+        ),
+      );
 
-    final controller = _buildTenantHomeController(
-      userEventsRepository: userEventsRepository,
-      userLocationRepository: userLocationRepository,
-      appDataRepository: appDataRepository,
-      authRepository: _FakeAuthRepository(authorized: true),
-    );
+      final controller = _buildTenantHomeController(
+        userEventsRepository: userEventsRepository,
+        userLocationRepository: userLocationRepository,
+        appDataRepository: appDataRepository,
+        authRepository: _FakeAuthRepository(true),
+      );
 
-    await controller.init();
+      await controller.init();
 
-    expect(backend.requests, isNotEmpty);
-    expect(backend.requests.first.confirmedOnly, isTrue);
-    expect(
-      controller.myEventsFilteredStreamValue.value.map((event) => event.id),
-      contains(_CapturingScheduleBackend.eventId),
-    );
+      expect(backend.requests, isNotEmpty);
+      expect(backend.requests.first.confirmedOnly, isTrue);
+      expect(
+        controller.myEventsFilteredStreamValue.value.map((event) => event.id),
+        contains(_CapturingScheduleBackend.eventId),
+      );
 
-    controller.onDispose();
-  });
+      controller.onDispose();
+    },
+  );
 
   test('my-events home flow uses the confirmed preview slice only', () async {
     final tenantDefaultOrigin = _buildCoordinate(
@@ -129,13 +129,11 @@ void main() {
 
     GetIt.I.registerSingleton<AppData>(appData);
 
-    final scheduleRepository = ScheduleRepository(
-      backend: backend,
-    );
+    final scheduleRepository = ScheduleRepository(backend: backend);
     final userEventsRepository = UserEventsRepository(
       scheduleRepository: scheduleRepository,
       backend: _FakeUserEventsBackend(),
-      authRepository: _FakeAuthRepository(authorized: true),
+      authRepository: _FakeAuthRepository(true),
     );
 
     final events = await userEventsRepository.fetchMyEvents();
@@ -157,20 +155,18 @@ void main() {
 
     GetIt.I.registerSingleton<AppData>(appData);
 
-    final scheduleRepository = ScheduleRepository(
-      backend: backend,
-    );
+    final scheduleRepository = ScheduleRepository(backend: backend);
     final userEventsRepository = UserEventsRepository(
       scheduleRepository: scheduleRepository,
       backend: _FakeUserEventsBackend(),
-      authRepository: _FakeAuthRepository(authorized: false),
+      authRepository: _FakeAuthRepository(false),
     );
 
     final controller = _buildTenantHomeController(
       userEventsRepository: userEventsRepository,
       userLocationRepository: userLocationRepository,
       appDataRepository: appDataRepository,
-      authRepository: _FakeAuthRepository(authorized: false),
+      authRepository: _FakeAuthRepository(false),
     );
 
     await controller.init();
@@ -201,9 +197,7 @@ TenantHomeController _buildTenantHomeController({
 }
 
 class _CapturingScheduleBackend implements ScheduleBackendContract {
-  _CapturingScheduleBackend({
-    this.hasMoreFirstPage = false,
-  });
+  _CapturingScheduleBackend({this.hasMoreFirstPage = false});
 
   static const String eventId = '507f1f77bcf86cd799439011';
   static const String occurrenceId = '507f1f77bcf86cd799439012';
@@ -215,8 +209,7 @@ class _CapturingScheduleBackend implements ScheduleBackendContract {
   Future<EventDTO?> fetchEventDetail({
     required String eventIdOrSlug,
     String? occurrenceId,
-  }) async =>
-      null;
+  }) async => null;
 
   @override
   Future<EventPageDTO> fetchEventsPage({
@@ -249,10 +242,7 @@ class _CapturingScheduleBackend implements ScheduleBackendContract {
       }
       return EventPageDTO(events: const [], hasMore: false);
     }
-    return EventPageDTO(
-      events: [_buildEventDto()],
-      hasMore: hasMoreFirstPage,
-    );
+    return EventPageDTO(events: [_buildEventDto()], hasMore: hasMoreFirstPage);
   }
 
   @override
@@ -267,8 +257,7 @@ class _CapturingScheduleBackend implements ScheduleBackendContract {
     double? maxDistanceMeters,
     String? lastEventId,
     bool showPastOnly = false,
-  }) =>
-      const Stream<EventDeltaDTO>.empty();
+  }) => const Stream<EventDeltaDTO>.empty();
 }
 
 class _FakeUserEventsBackend implements UserEventsBackendContract {
@@ -309,7 +298,7 @@ class _FakeUserEventsBackend implements UserEventsBackendContract {
 }
 
 class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
-  _FakeAuthRepository({required bool authorized}) : _authorized = authorized;
+  _FakeAuthRepository(this._authorized);
 
   bool _authorized;
 
@@ -396,10 +385,12 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   _FakeUserLocationRepository({
     CityCoordinate? userCoordinate,
     CityCoordinate? lastKnownCoordinate,
-  })  : userLocationStreamValue =
-            StreamValue<CityCoordinate?>(defaultValue: userCoordinate),
-        lastKnownLocationStreamValue =
-            StreamValue<CityCoordinate?>(defaultValue: lastKnownCoordinate);
+  }) : userLocationStreamValue = StreamValue<CityCoordinate?>(
+         defaultValue: userCoordinate,
+       ),
+       lastKnownLocationStreamValue = StreamValue<CityCoordinate?>(
+         defaultValue: lastKnownCoordinate,
+       );
 
   @override
   final StreamValue<CityCoordinate?> userLocationStreamValue;
@@ -416,13 +407,14 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
       StreamValue<double?>(defaultValue: null);
 
   @override
-  final StreamValue<String?> lastKnownAddressStreamValue =
-      StreamValue<String?>(defaultValue: null);
+  final StreamValue<String?> lastKnownAddressStreamValue = StreamValue<String?>(
+    defaultValue: null,
+  );
 
   @override
   @override
   final StreamValue<LocationResolutionPhase>
-      locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
+  locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
     defaultValue: LocationResolutionPhase.unknown,
   );
 
@@ -441,23 +433,18 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   }
 
   @override
-  Future<bool> refreshIfPermitted({
-    Object? minInterval,
-  }) async =>
-      false;
+  Future<bool> refreshIfPermitted({Object? minInterval}) async => false;
 
   @override
   Future<String?> resolveUserLocation({
     Object? timeout,
     UserLocationRepositoryContractBoolValue? requestPermissionIfNeededValue,
-  }) async =>
-      null;
+  }) async => null;
 
   @override
   Future<bool> startTracking({
     LocationTrackingMode mode = LocationTrackingMode.mapForeground,
-  }) async =>
-      false;
+  }) async => false;
 
   @override
   Future<void> stopTracking() async {}
@@ -465,12 +452,12 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
 
 class _FakeAppDataRepository extends AppDataRepositoryContract {
   _FakeAppDataRepository(this._appData)
-      : maxRadiusMetersStreamValue = StreamValue<DistanceInMetersValue>(
-          defaultValue: DistanceInMetersValue.fromRaw(
-            _appData.mapRadiusMaxMeters,
-            defaultValue: _appData.mapRadiusMaxMeters,
-          ),
-        );
+    : maxRadiusMetersStreamValue = StreamValue<DistanceInMetersValue>(
+        defaultValue: DistanceInMetersValue.fromRaw(
+          _appData.mapRadiusMaxMeters,
+          defaultValue: _appData.mapRadiusMaxMeters,
+        ),
+      );
 
   final AppData _appData;
 
@@ -481,8 +468,9 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
   Future<void> init() async {}
 
   @override
-  final StreamValue<ThemeMode?> themeModeStreamValue =
-      StreamValue<ThemeMode?>(defaultValue: ThemeMode.light);
+  final StreamValue<ThemeMode?> themeModeStreamValue = StreamValue<ThemeMode?>(
+    defaultValue: ThemeMode.light,
+  );
 
   @override
   ThemeMode get themeMode => themeModeStreamValue.value ?? ThemeMode.light;
@@ -507,15 +495,9 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
   }
 }
 
-AppData _buildAppData({
-  required CityCoordinate? defaultOrigin,
-}) {
+AppData _buildAppData({required CityCoordinate? defaultOrigin}) {
   final mapUi = <String, dynamic>{
-    'radius': const {
-      'min_km': 1,
-      'default_km': 5,
-      'max_km': 50,
-    },
+    'radius': const {'min_km': 1, 'default_km': 5, 'max_km': 50},
   };
   if (defaultOrigin != null) {
     mapUi['default_origin'] = {
@@ -534,10 +516,7 @@ AppData _buildAppData({
         'type': 'artist',
         'label': 'Artist',
         'allowed_taxonomies': [],
-        'capabilities': {
-          'is_favoritable': true,
-          'is_poi_enabled': true,
-        },
+        'capabilities': {'is_favoritable': true, 'is_poi_enabled': true},
       },
     ],
     'domains': const ['https://tenant.test'],
@@ -553,9 +532,7 @@ AppData _buildAppData({
     'telemetry_context': const {'location_freshness_minutes': 5},
     'firebase': null,
     'push': null,
-    'settings': {
-      'map_ui': mapUi,
-    },
+    'settings': {'map_ui': mapUi},
   };
 
   final localInfo = {
@@ -578,15 +555,10 @@ CityCoordinate _buildCoordinate({
 }) {
   final lat = LatitudeValue()..parse(latitude.toString());
   final lng = LongitudeValue()..parse(longitude.toString());
-  return CityCoordinate(
-    latitudeValue: lat,
-    longitudeValue: lng,
-  );
+  return CityCoordinate(latitudeValue: lat, longitudeValue: lng);
 }
 
-EventDTO _buildEventDto({
-  String eventId = _CapturingScheduleBackend.eventId,
-}) {
+EventDTO _buildEventDto({String eventId = _CapturingScheduleBackend.eventId}) {
   return EventDTO.fromJson({
     'event_id': eventId,
     'occurrence_id': _CapturingScheduleBackend.occurrenceId,

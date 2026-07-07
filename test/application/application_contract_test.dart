@@ -12,11 +12,17 @@ import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
+import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
+import 'package:belluga_now/domain/favorite/favorite.dart';
+import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
 import 'package:belluga_now/infrastructure/services/telemetry/telemetry_properties_codec.dart';
 import 'package:belluga_now/domain/tenant/tenant.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
+import 'package:belluga_now/domain/user/user_belluga.dart';
+import 'package:belluga_now/domain/user/user_profile_contract.dart';
+import 'package:belluga_now/domain/user/value_objects/user_identity_state_value.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/auth_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
@@ -43,6 +49,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 import 'package:intl/intl.dart';
+import 'package:stream_value/core/stream_value.dart';
+import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -55,8 +63,9 @@ void main() {
     await GetIt.I.reset();
   });
 
-  testWidgets('app init retries until telemetry logging succeeds',
-      (tester) async {
+  testWidgets('app init retries until telemetry logging succeeds', (
+    tester,
+  ) async {
     GetIt.I.registerSingleton<AppDataRepositoryContract>(
       _FakeAppDataRepository(appData: _buildAppData()),
     );
@@ -109,17 +118,15 @@ void main() {
     expect(telemetry.appInitCalls, 2);
     await tester.pump(const Duration(milliseconds: 450));
     expect(telemetry.lifecycleEvents.length, 1);
-    expect(
-      telemetry.lifecycleEvents.single,
-      {
-        'state': 'resumed',
-        'sequence': ['paused', 'resumed'],
-      },
-    );
+    expect(telemetry.lifecycleEvents.single, {
+      'state': 'resumed',
+      'sequence': ['paused', 'resumed'],
+    });
   });
 
-  testWidgets('app router consumes runtime pushRouteInformation for /mapa',
-      (tester) async {
+  testWidgets('app router consumes runtime pushRouteInformation for /mapa', (
+    tester,
+  ) async {
     GetIt.I.registerSingleton<AppDataRepositoryContract>(
       _FakeAppDataRepository(appData: _buildAppData()),
     );
@@ -187,6 +194,38 @@ void main() {
     expect(materialApp.locale, const Locale('pt', 'BR'));
     expect(materialApp.supportedLocales, const <Locale>[Locale('pt', 'BR')]);
   });
+
+  testWidgets(
+    'app retries post-auth hydration when auth repository appears after init',
+    (tester) async {
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(
+        _FakeAppDataRepository(appData: _buildAppData()),
+      );
+      GetIt.I.registerSingleton<TelemetryRepositoryContract>(
+        _FakeTelemetryRepository(appInitResults: Queue<bool>.from([true])),
+      );
+      final favoriteRepository = _FakeFavoriteRepository();
+      GetIt.I.registerSingleton<FavoriteRepositoryContract>(favoriteRepository);
+
+      final app = _TestApplication();
+      app.appRouter.setChildModules([_TestModule()]);
+      await tester.pumpWidget(app);
+      await tester.pump();
+
+      final authRepository = _FakeAuthRepository();
+      GetIt.I.registerSingleton<AuthRepositoryContract>(authRepository);
+      authRepository.emit(_registeredUser());
+      await tester.pump(const Duration(milliseconds: 150));
+
+      expect(
+        favoriteRepository.refreshFavoriteResumesCalls,
+        1,
+        reason:
+            'Application bootstrap must still bind post-auth hydration when '
+            'auth registration completes after initState.',
+      );
+    },
+  );
 }
 
 class _TestApplication extends ApplicationContract {
@@ -202,14 +241,14 @@ class _TestModule extends ModuleContract {
 
   @override
   List<AutoRoute> get routes => [
-        AutoRoute(
-          page: PageInfo.builder(
-            'TestRoute',
-            builder: (_, __) => const SizedBox.shrink(),
-          ),
-          path: '/',
-        ),
-      ];
+    AutoRoute(
+      page: PageInfo.builder(
+        'TestRoute',
+        builder: (_, _) => const SizedBox.shrink(),
+      ),
+      path: '/',
+    ),
+  ];
 }
 
 class _DeepLinkTestModule extends ModuleContract {
@@ -218,28 +257,24 @@ class _DeepLinkTestModule extends ModuleContract {
 
   @override
   List<AutoRoute> get routes => [
-        AutoRoute(
-          page: PageInfo.builder(
-            'HomeRoute',
-            builder: (_, __) => const Text('home'),
-          ),
-          path: '/',
-        ),
-        AutoRoute(
-          page: PageInfo.builder(
-            'MapRoute',
-            builder: (_, __) => const Text('mapa'),
-          ),
-          path: '/mapa',
-        ),
-      ];
+    AutoRoute(
+      page: PageInfo.builder(
+        'HomeRoute',
+        builder: (_, _) => const Text('home'),
+      ),
+      path: '/',
+    ),
+    AutoRoute(
+      page: PageInfo.builder('MapRoute', builder: (_, _) => const Text('mapa')),
+      path: '/mapa',
+    ),
+  ];
 }
 
 class _FakeTelemetryRepository implements TelemetryRepositoryContract {
-  _FakeTelemetryRepository({required Queue<bool> appInitResults})
-      : _appInitResults = appInitResults;
+  _FakeTelemetryRepository({required this.appInitResults});
 
-  final Queue<bool> _appInitResults;
+  final Queue<bool> appInitResults;
   int appInitCalls = 0;
   final List<Map<String, Object?>> lifecycleEvents = <Map<String, Object?>>[];
 
@@ -251,18 +286,15 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
   }) async {
     if (eventName?.value == 'app_init') {
       appInitCalls += 1;
-      if (_appInitResults.isNotEmpty) {
-        return telemetryRepoBool(_appInitResults.removeFirst());
+      if (appInitResults.isNotEmpty) {
+        return telemetryRepoBool(appInitResults.removeFirst());
       }
     } else if (eventName?.value == 'app_lifecycle') {
       final payload = TelemetryPropertiesCodec.toRawMap(properties);
       final state = payload['state'];
       final sequence = payload['sequence'];
       if (state is String && sequence is List) {
-        lifecycleEvents.add({
-          'state': state,
-          'sequence': sequence,
-        });
+        lifecycleEvents.add({'state': state, 'sequence': sequence});
       }
     }
     return telemetryRepoBool(true);
@@ -279,7 +311,8 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
 
   @override
   Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
-      EventTrackerTimedEventHandle handle) async {
+    EventTrackerTimedEventHandle handle,
+  ) async {
     return telemetryRepoBool(true);
   }
 
@@ -295,8 +328,9 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
   EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
 
   @override
-  Future<TelemetryRepositoryContractPrimBool> mergeIdentity(
-      {required TelemetryRepositoryContractPrimString previousUserId}) async {
+  Future<TelemetryRepositoryContractPrimBool> mergeIdentity({
+    required TelemetryRepositoryContractPrimString previousUserId,
+  }) async {
     return telemetryRepoBool(true);
   }
 }
@@ -323,6 +357,10 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   @override
   bool get isAuthorized => false;
 
+  void emit(UserContract? user) {
+    userStreamValue.addValue(user);
+  }
+
   @override
   Future<void> init() async {}
 
@@ -330,8 +368,10 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
-      AuthRepositoryContractParamString password) async {}
+  Future<void> loginWithEmailPassword(
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
+  ) async {}
 
   @override
   Future<void> signUpWithEmailPassword(
@@ -342,8 +382,9 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> sendTokenRecoveryPassword(
-      AuthRepositoryContractParamString email,
-      AuthRepositoryContractParamString codigoEnviado) async {}
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString codigoEnviado,
+  ) async {}
 
   @override
   Future<void> logout() async {}
@@ -356,18 +397,65 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> sendPasswordResetEmail(
-      AuthRepositoryContractParamString email) async {}
+    AuthRepositoryContractParamString email,
+  ) async {}
 
   @override
   Future<void> updateUser(UserCustomData data) async {}
 }
 
+class _FakeFavoriteRepository implements FavoriteRepositoryContract {
+  @override
+  final favoriteResumesStreamValue = StreamValue<List<FavoriteResume>?>(
+    defaultValue: null,
+  );
+
+  @override
+  final hasMoreFavoriteResumesStreamValue =
+      StreamValue<bool>(defaultValue: false);
+
+  @override
+  final isFavoriteResumesPageLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+
+  int refreshFavoriteResumesCalls = 0;
+
+  @override
+  Future<List<Favorite>> fetchFavorites() async => const <Favorite>[];
+
+  @override
+  Future<List<FavoriteResume>> fetchFavoriteResumes() async =>
+      const <FavoriteResume>[];
+
+  @override
+  Future<void> initializeFavoriteResumes() async {}
+
+  @override
+  Future<void> loadNextFavoriteResumesPage() async {}
+
+  @override
+  Future<void> refreshFavoriteResumes() async {
+    refreshFavoriteResumesCalls += 1;
+  }
+}
+
+UserBelluga _registeredUser() {
+  const userId = '507f1f77bcf86cd799439012';
+  return UserBelluga(
+    uuidValue: MongoIDValue(defaultValue: userId)..parse(userId),
+    profile: UserProfileContract(),
+    customData: UserCustomData(
+      identityStateValue: UserIdentityStateValue.fromRaw('registered'),
+    ),
+  );
+}
+
 class _FakeAppDataRepository extends AppDataRepository {
   _FakeAppDataRepository({required AppData appData})
-      : super(
-          backend: _NoopAppDataBackend(),
-          localInfoSource: _NoopLocalInfoSource(),
-        ) {
+    : super(
+        backend: _NoopAppDataBackend(),
+        localInfoSource: _NoopLocalInfoSource(),
+      ) {
     this.appData = appData;
   }
 }
@@ -382,12 +470,12 @@ class _NoopAppDataBackend extends AppDataBackendContract {
 class _NoopLocalInfoSource extends AppDataLocalInfoSource {
   @override
   Future<AppDataLocalInfoDTO> getInfo() async => AppDataLocalInfoDTO(
-        platformTypeValue: PlatformTypeValue(defaultValue: AppType.mobile),
-        port: null,
-        hostname: '',
-        href: '',
-        device: '',
-      );
+    platformTypeValue: PlatformTypeValue(defaultValue: AppType.mobile),
+    port: null,
+    hostname: '',
+    href: '',
+    device: '',
+  );
 }
 
 class _NoopBackend extends BackendContract {
@@ -434,8 +522,7 @@ class _NoopAccountProfilesBackend implements AccountProfilesBackendContract {
     List<String>? typeFilters,
     List<dynamic>? taxonomyFilters,
     List<String>? allowedTypes,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
   Future<AccountProfileModel?> fetchAccountProfileBySlug(String slug) =>
@@ -446,8 +533,7 @@ class _NoopAccountProfilesBackend implements AccountProfilesBackendContract {
     int pageSize = 10,
     List<String>? typeFilters,
     List<dynamic>? taxonomyFilters,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 }
 
 class _NoopAuthBackend extends AuthBackendContract {
@@ -482,8 +568,7 @@ class _NoopAuthBackend extends AuthBackendContract {
     required String email,
     required String password,
     List<String>? anonymousUserIds,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 }
 
 class _NoopTenantBackend extends TenantBackendContract {
@@ -520,8 +605,7 @@ class _NoopScheduleBackend extends ScheduleBackendContract {
   Future<EventDTO?> fetchEventDetail({
     required String eventIdOrSlug,
     String? occurrenceId,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
   Future<EventPageDTO> fetchEventsPage({
@@ -537,8 +621,7 @@ class _NoopScheduleBackend extends ScheduleBackendContract {
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
   Stream<EventDeltaDTO> watchEventsStream({
@@ -552,8 +635,7 @@ class _NoopScheduleBackend extends ScheduleBackendContract {
     double? maxDistanceMeters,
     String? lastEventId,
     bool showPastOnly = false,
-  }) =>
-      const Stream.empty();
+  }) => const Stream.empty();
 }
 
 AppData _buildAppData() {

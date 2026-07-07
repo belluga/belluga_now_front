@@ -1008,7 +1008,7 @@ class _SearchSuggestionVisual extends StatelessWidget {
           width: _kSearchPreviewVisualSize,
           height: _kSearchPreviewVisualSize,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _buildPlaceholder(scheme),
+          errorBuilder: (_, _, _) => _buildPlaceholder(scheme),
         ),
       );
     } else {
