@@ -28,10 +28,19 @@ import 'package:belluga_now/domain/user/value_objects/user_identity_state_value.
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 void main() {
+  setUp(() async {
+    await GetIt.I.reset();
+  });
+
+  tearDown(() async {
+    await GetIt.I.reset();
+  });
+
   test('hydrates identity-owned streams only after registered auth', () async {
     final authRepository = _FakeAuthRepository();
     final favoriteRepository = _FakeFavoriteRepository();
@@ -120,6 +129,34 @@ void main() {
         2,
         reason:
             'Logout/anonymous reset must clear the per-user hydration guard.',
+      );
+
+      coordinator.dispose();
+    },
+  );
+
+  test(
+    'hydrates favorites when repository becomes available before auth transition',
+    () async {
+      final authRepository = _FakeAuthRepository();
+      final coordinator = PostAuthIdentityHydrationCoordinator(
+        authRepository: authRepository,
+      );
+
+      coordinator.bind();
+
+      final favoriteRepository = _FakeFavoriteRepository();
+      GetIt.I.registerSingleton<FavoriteRepositoryContract>(favoriteRepository);
+
+      authRepository.emit(_user(_registeredUserId, 'registered'));
+      await pumpEventQueue();
+
+      expect(
+        favoriteRepository.refreshFavoriteResumesCalls,
+        1,
+        reason:
+            'Post-auth hydration must resolve and refresh favorites even when '
+            'the repository was not available at coordinator construction.',
       );
 
       coordinator.dispose();
