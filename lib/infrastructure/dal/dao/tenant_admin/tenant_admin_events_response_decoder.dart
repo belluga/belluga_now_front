@@ -461,7 +461,7 @@ class TenantAdminEventsResponseDecoder {
   }
 
   List<TenantAdminEventProgrammingItem> _mapProgrammingItems(Object? raw) {
-    return _asList(raw)
+    return _asOrderedList(raw)
         .map(_asMap)
         .where((item) => item.isNotEmpty)
         .map((item) {
@@ -484,7 +484,7 @@ class TenantAdminEventsResponseDecoder {
                     )
                     .toList(growable: false);
           return TenantAdminEventProgrammingItem(
-            timeValue: tenantAdminRequiredText(_asString(item['time']) ?? ''),
+            timeValue: tenantAdminOptionalText(_asString(item['time'])),
             endTimeValue: tenantAdminOptionalText(_asString(item['end_time'])),
             titleValue: tenantAdminOptionalText(_asString(item['title'])),
             accountProfileIdValues: profileIds,
@@ -493,7 +493,6 @@ class TenantAdminEventsResponseDecoder {
             placeRef: _mapProgrammingPlaceRef(item['place_ref']),
           );
         })
-        .where((item) => item.time.isNotEmpty)
         .toList(growable: false);
   }
 
@@ -731,6 +730,19 @@ class TenantAdminEventsResponseDecoder {
   List<Object?> _asList(Object? value) {
     if (value is List) {
       return value;
+    }
+    return const <Object?>[];
+  }
+
+  List<Object?> _asOrderedList(Object? value) {
+    if (value is List) {
+      return value;
+    }
+    if (value is Map) {
+      return value.values.toList(growable: false);
+    }
+    if (value is Iterable) {
+      return value.toList(growable: false);
     }
     return const <Object?>[];
   }

@@ -312,7 +312,7 @@ void main() {
               ],
               programmingItems: [
                 TenantAdminEventProgrammingItem(
-                  timeValue: tenantAdminRequiredText('17:00'),
+                  timeValue: tenantAdminOptionalText('17:00'),
                   titleValue: tenantAdminOptionalText('Show com a banda'),
                   accountProfileIdValues: [
                     TenantAdminAccountProfileIdValue(
@@ -1467,6 +1467,10 @@ class _StubAccountAuthRepo implements AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> ensureTenantPublicIdentityReady() async {}
+
+  @override
+  Future<void>
+  recoverTenantPublicIdentityAfterUnauthorizedPublicRequest() async {}
 
   @override
   Future<void> autoLogin() async {}

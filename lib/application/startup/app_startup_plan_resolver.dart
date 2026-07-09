@@ -54,7 +54,7 @@ final class AppStartupPlanResolver {
       await authRepository.init();
     }
 
-    await _invitesRepository.init();
+    await _initializeInvitesBestEffort();
 
     final deferredInvitePath = await _resolveDeferredInviteFirstOpenPath();
     if (deferredInvitePath != null && deferredInvitePath.isNotEmpty) {
@@ -73,6 +73,17 @@ final class AppStartupPlanResolver {
     }
 
     return const AppStartupNavigationPlan.none();
+  }
+
+  Future<void> _initializeInvitesBestEffort() async {
+    try {
+      await _invitesRepository.init();
+    } catch (error, stackTrace) {
+      debugPrint(
+        'AppStartupPlanResolver invites bootstrap failed; '
+        'continuing without pending invites: $error\n$stackTrace',
+      );
+    }
   }
 
   Future<String?> _resolveDeferredInviteFirstOpenPath() async {

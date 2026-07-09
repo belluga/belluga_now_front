@@ -20,22 +20,25 @@ class LaravelDeferredLinkBackend implements DeferredLinkBackendContract {
     String? storeChannel,
   }) async {
     try {
-      final headers = await TenantPublicAuthHeaders.build(
-        includeJsonAccept: true,
-        bootstrapIfEmpty: true,
-      );
-      final response = await _dio.post(
-        '$_apiBaseUrl/v1/deep-links/deferred/resolve',
-        data: <String, dynamic>{
-          'platform': platform,
-          if (resolverPayload != null && resolverPayload.trim().isNotEmpty)
-            (platform == 'android' ? 'install_referrer' : 'deferred_payload'):
-                resolverPayload.trim(),
-          if (storeChannel != null && storeChannel.trim().isNotEmpty)
-            'store_channel': storeChannel.trim(),
-        },
-        options: Options(headers: headers),
-      );
+      final response =
+          await TenantPublicAuthHeaders.retryOnceOnUnauthorized<Response>(
+            includeJsonAccept: true,
+            action: (headers) => _dio.post(
+              '$_apiBaseUrl/v1/deep-links/deferred/resolve',
+              data: <String, dynamic>{
+                'platform': platform,
+                if (resolverPayload != null &&
+                    resolverPayload.trim().isNotEmpty)
+                  (platform == 'android'
+                      ? 'install_referrer'
+                      : 'deferred_payload'): resolverPayload
+                      .trim(),
+                if (storeChannel != null && storeChannel.trim().isNotEmpty)
+                  'store_channel': storeChannel.trim(),
+              },
+              options: Options(headers: headers),
+            ),
+          );
       return _normalizeResponse(response.data);
     } on DioException catch (error) {
       throw Exception(

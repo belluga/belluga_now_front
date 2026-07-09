@@ -20,6 +20,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms_by_t
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
+import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_occurrence_editor_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/models/tenant_admin_event_form_validation_config.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/screens/tenant_admin_event_form_screen.dart';
@@ -197,6 +198,105 @@ void main() {
         ),
         isTrue,
       );
+    },
+  );
+
+  testWidgets(
+    'single occurrence edit hydrates legacy event-level profile groups into occurrence programming',
+    (tester) async {
+      final eventsRepository = _FakeEventsRepository();
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+
+      final eventType = TenantAdminEventType(
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439141'),
+        nameValue: tenantAdminRequiredText('Show'),
+        slugValue: tenantAdminRequiredText('show'),
+      );
+      final preservedProfile = tenantAdminAccountProfileFromRaw(
+        id: 'artist-zulu',
+        accountId: 'acc-artist-zulu',
+        profileType: 'artist',
+        displayName: 'Zulu Artist',
+      );
+      final existingEvent = TenantAdminEvent(
+        eventIdValue: tenantAdminRequiredText('evt-single-occurrence-profiles'),
+        slugValue: tenantAdminRequiredText('evt-single-occurrence-profiles'),
+        titleValue: tenantAdminRequiredText('Evento com perfil legado'),
+        contentValue: tenantAdminOptionalText('<p>Conteudo</p>'),
+        type: eventType,
+        occurrences: <TenantAdminEventOccurrence>[
+          TenantAdminEventOccurrence(
+            dateTimeStartValue: tenantAdminDateTime(
+              DateTime.utc(2026, 4, 20, 20),
+            ),
+          ),
+        ],
+        publication: TenantAdminEventPublication(
+          statusValue: tenantAdminRequiredText('draft'),
+        ),
+        relatedAccountProfiles: [preservedProfile],
+        relatedAccountProfileIdValues: [
+          TenantAdminAccountProfileIdValue('artist-zulu'),
+        ],
+        profileGroups: [
+          TenantAdminNestedProfileGroup(
+            idValue: TenantAdminNestedProfileGroupTextValue('artists'),
+            labelValue: TenantAdminNestedProfileGroupTextValue('Artistas'),
+            orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+            accountProfileIdValues: [
+              TenantAdminNestedProfileGroupTextValue('artist-zulu'),
+            ],
+          ),
+        ],
+      );
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        Scaffold(
+          body: TenantAdminEventFormScreen(existingEvent: existingEvent),
+        ),
+      );
+
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('tenantAdminEventEditPrimaryOccurrenceButton')),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('tenantAdminEventEditPrimaryOccurrenceButton')),
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
+        250,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
+      );
+      await tester.pumpAndSettle();
+
+      final linkOccurrenceProfileButton = tester.widget<OutlinedButton>(
+        find.byKey(
+          const Key('tenantAdminProgrammingLinkOccurrenceProfileButton'),
+        ),
+      );
+      expect(linkOccurrenceProfileButton.onPressed, isNotNull);
+
+      final addOccurrenceProfileButton = tester.widget<OutlinedButton>(
+        find.byKey(
+          const Key('tenantAdminProgrammingAddOccurrenceProfileButton_artists'),
+        ),
+      );
+      expect(addOccurrenceProfileButton.onPressed, isNotNull);
     },
   );
 
@@ -955,22 +1055,35 @@ void main() {
         scrollable: find.byType(Scrollable).last,
       );
       await tester.pumpAndSettle();
+      await tester.ensureVisible(
+        find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
+      );
+      await tester.pumpAndSettle();
       await tester.tap(
         find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(
+        find.byKey(const Key('tenantAdminProgrammingTimeField')),
       );
       await tester.pumpAndSettle();
       await tester.enterText(
         find.byKey(const Key('tenantAdminProgrammingTimeField')),
         '17:00',
       );
+      await tester.ensureVisible(
+        find.byKey(const Key('tenantAdminProgrammingEndTimeField')),
+      );
+      await tester.pumpAndSettle();
       await tester.enterText(
         find.byKey(const Key('tenantAdminProgrammingEndTimeField')),
         '18:30',
       );
-      await tester.enterText(
-        find.byKey(const Key('tenantAdminProgrammingTitleField')),
-        'Show com encerramento',
+      await tester.ensureVisible(
+        find.byKey(const Key('tenantAdminProgrammingTitleEditor')),
       );
+      await tester.pumpAndSettle();
+      await _enterProgrammingTitle(tester, 'Show com encerramento');
       await _tapProgrammingSaveButton(tester);
       await tester.pumpAndSettle();
       await _closeOccurrenceSheet(tester);
@@ -991,7 +1104,10 @@ void main() {
           .single;
       expect(programmingItem?.time, '17:00');
       expect(programmingItem?.endTime, '18:30');
-      expect(programmingItem?.title, 'Show com encerramento');
+      expect(
+        programmingItem?.title,
+        _programmingTitleContains('Show com encerramento'),
+      );
     },
   );
 
@@ -1142,7 +1258,7 @@ void main() {
             relatedAccountProfiles: [occurrenceProfile],
             programmingItems: [
               TenantAdminEventProgrammingItem(
-                timeValue: tenantAdminRequiredText('17:00'),
+                timeValue: tenantAdminOptionalText('17:00'),
                 titleValue: tenantAdminOptionalText('Show com a banda'),
                 accountProfileIdValues: [
                   TenantAdminAccountProfileIdValue('artist-1'),
@@ -1211,6 +1327,45 @@ void main() {
         submittedOccurrence?.programmingItems.single.placeRef?.id,
         'venue-1',
       );
+    },
+  );
+
+  test(
+    'occurrence draft preserves programming end time when removing a related profile',
+    () {
+      final relatedProfile = tenantAdminAccountProfileFromRaw(
+        id: 'artist-1',
+        accountId: 'acc-artist-1',
+        profileType: 'artist',
+        displayName: 'Artist A',
+      );
+      final draft = TenantAdminEventOccurrenceEditorDraft(
+        existing: null,
+        startAt: DateTime.utc(2026, 4, 20, 20),
+        endAt: null,
+        relatedProfileIds: [TenantAdminAccountProfileIdValue('artist-1')],
+        relatedProfiles: [relatedProfile],
+        programmingItems: [
+          TenantAdminEventProgrammingItem(
+            timeValue: tenantAdminOptionalText('17:00'),
+            endTimeValue: tenantAdminOptionalText('18:30'),
+            titleValue: tenantAdminOptionalText('Show com encerramento'),
+            accountProfileIdValues: [
+              TenantAdminAccountProfileIdValue('artist-1'),
+            ],
+            linkedAccountProfiles: [relatedProfile],
+          ),
+        ],
+      );
+
+      draft.removeRelatedProfile('artist-1');
+
+      final programmingItem = draft.programmingItems.single;
+      expect(programmingItem.accountProfileIds, isEmpty);
+      expect(programmingItem.linkedAccountProfiles, isEmpty);
+      expect(programmingItem.time, '17:00');
+      expect(programmingItem.endTime, '18:30');
+      expect(programmingItem.title, 'Show com encerramento');
     },
   );
 
@@ -1342,10 +1497,7 @@ void main() {
         find.byKey(const Key('tenantAdminProgrammingTimeField')),
         '13:00',
       );
-      await tester.enterText(
-        find.byKey(const Key('tenantAdminProgrammingTitleField')),
-        'Apresentação especial',
-      );
+      await _enterProgrammingTitle(tester, 'Apresentação especial');
       final linkOccurrenceProfileButton = tester.widget<OutlinedButton>(
         find.byKey(
           const Key('tenantAdminProgrammingLinkOccurrenceProfileButton'),
@@ -1366,15 +1518,19 @@ void main() {
         ),
       );
       expect(addOccurrenceProfileButton.onPressed, isNotNull);
-      await tester.tap(
-        find.byKey(
-          Key(
-            'tenantAdminProgrammingAddOccurrenceProfileButton_$occurrenceGroupId',
-          ),
+      final addOccurrenceProfileButtonFinder = find.byKey(
+        Key(
+          'tenantAdminProgrammingAddOccurrenceProfileButton_$occurrenceGroupId',
         ),
       );
+      await tester.ensureVisible(addOccurrenceProfileButtonFinder);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Artist A').last);
+      await tester.tap(addOccurrenceProfileButtonFinder);
+      await tester.pumpAndSettle();
+      final artistAChoice = find.text('Artist A').last;
+      await tester.ensureVisible(artistAChoice);
+      await tester.pumpAndSettle();
+      await tester.tap(artistAChoice);
       await tester.pumpAndSettle();
       expect(
         find.byKey(const Key('tenantAdminProgrammingProfile_artist-1')),
@@ -1418,7 +1574,10 @@ void main() {
         contains('artist-1'),
       );
       expect(occurrence.programmingItems.single.time, '13:00');
-      expect(occurrence.programmingItems.single.title, 'Apresentação especial');
+      expect(
+        occurrence.programmingItems.single.title,
+        _programmingTitleContains('Apresentação especial'),
+      );
       expect(
         occurrence.programmingItems.single.accountProfileIds.map(
           (value) => value.value,
@@ -1514,6 +1673,10 @@ void main() {
         scrollable: find.byType(Scrollable).last,
       );
       await tester.pumpAndSettle();
+      await tester.ensureVisible(
+        find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
+      );
+      await tester.pumpAndSettle();
       await tester.tap(
         find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
       );
@@ -1522,17 +1685,18 @@ void main() {
         find.byKey(const Key('tenantAdminProgrammingTimeField')),
         '13:00',
       );
-      await tester.enterText(
-        find.byKey(const Key('tenantAdminProgrammingTitleField')),
-        'Apresentação especial',
+      await _enterProgrammingTitle(tester, 'Apresentação especial');
+      final linkOccurrenceProfileButton = find.byKey(
+        const Key('tenantAdminProgrammingLinkOccurrenceProfileButton'),
       );
-      await tester.tap(
-        find.byKey(
-          const Key('tenantAdminProgrammingLinkOccurrenceProfileButton'),
-        ),
-      );
+      await tester.ensureVisible(linkOccurrenceProfileButton);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Artist A').last);
+      await tester.tap(linkOccurrenceProfileButton);
+      await tester.pumpAndSettle();
+      final artistAChoice = find.text('Artist A').last;
+      await tester.ensureVisible(artistAChoice);
+      await tester.pumpAndSettle();
+      await tester.tap(artistAChoice);
       await tester.pumpAndSettle();
       await _tapProgrammingSaveButton(tester);
       await tester.pumpAndSettle();
@@ -1565,7 +1729,10 @@ void main() {
       final occurrence =
           controller.eventFormStateStreamValue.value.occurrences[1];
       expect(occurrence.relatedAccountProfileIds, isEmpty);
-      expect(occurrence.programmingItems.single.title, 'Apresentação especial');
+      expect(
+        occurrence.programmingItems.single.title,
+        _programmingTitleContains('Apresentação especial'),
+      );
       expect(occurrence.programmingItems.single.accountProfileIds, isEmpty);
     },
   );
@@ -1616,10 +1783,7 @@ void main() {
       find.byKey(const Key('tenantAdminProgrammingTimeField')),
       '13:00',
     );
-    await tester.enterText(
-      find.byKey(const Key('tenantAdminProgrammingTitleField')),
-      'Apresentação especial',
-    );
+    await _enterProgrammingTitle(tester, 'Apresentação especial');
     await tester.ensureVisible(
       find.byKey(const Key('tenantAdminProgrammingLocationProfileDropdown')),
     );
@@ -1746,10 +1910,7 @@ void main() {
       find.byKey(const Key('tenantAdminProgrammingTimeField')),
       '13:00',
     );
-    await tester.enterText(
-      find.byKey(const Key('tenantAdminProgrammingTitleField')),
-      'Apresentação especial',
-    );
+    await _enterProgrammingTitle(tester, 'Apresentação especial');
     await tester.ensureVisible(
       find.byKey(const Key('tenantAdminProgrammingLocationProfileDropdown')),
     );
@@ -1843,10 +2004,7 @@ void main() {
         find.byKey(const Key('tenantAdminProgrammingTimeField')),
         '13:00',
       );
-      await tester.enterText(
-        find.byKey(const Key('tenantAdminProgrammingTitleField')),
-        'Apresentação especial',
-      );
+      await _enterProgrammingTitle(tester, 'Apresentação especial');
       await tester.ensureVisible(
         find.byKey(const Key('tenantAdminProgrammingLocationProfileDropdown')),
       );
@@ -1922,10 +2080,7 @@ void main() {
       find.byKey(const Key('tenantAdminProgrammingTimeField')),
       '13:00',
     );
-    await tester.enterText(
-      find.byKey(const Key('tenantAdminProgrammingTitleField')),
-      'Apresentação especial',
-    );
+    await _enterProgrammingTitle(tester, 'Apresentação especial');
     await tester.ensureVisible(
       find.byKey(const Key('tenantAdminProgrammingLocationProfileDropdown')),
     );
@@ -1995,7 +2150,7 @@ void main() {
             ),
             programmingItems: [
               TenantAdminEventProgrammingItem(
-                timeValue: tenantAdminRequiredText('19:00'),
+                timeValue: tenantAdminOptionalText('19:00'),
                 titleValue: tenantAdminOptionalText('Pocket show'),
                 accountProfileIdValues: [
                   TenantAdminAccountProfileIdValue('artist-1'),
@@ -2049,15 +2204,15 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(
-        find.bySemanticsLabel('Local da programação. Casa do Jazz'),
-        findsOneWidget,
-      );
+      expect(find.bySemanticsLabel('Local da programação'), findsOneWidget);
+      expect(find.text('Casa do Jazz'), findsWidgets);
 
-      await tester.tap(
-        find.byKey(const Key('tenantAdminProgrammingLocationProfileDropdown')),
-        warnIfMissed: false,
+      final locationDropdown = find.byKey(
+        const Key('tenantAdminProgrammingLocationProfileDropdown'),
       );
+      await tester.ensureVisible(locationDropdown);
+      await tester.pumpAndSettle();
+      await tester.tap(locationDropdown, warnIfMissed: false);
       await tester.pumpAndSettle();
 
       expect(
@@ -2126,10 +2281,7 @@ void main() {
         find.byKey(const Key('tenantAdminProgrammingTimeField')),
         '19:00',
       );
-      await tester.enterText(
-        find.byKey(const Key('tenantAdminProgrammingTitleField')),
-        'Abertura principal',
-      );
+      await _enterProgrammingTitle(tester, 'Abertura principal');
       await _tapProgrammingSaveButton(tester);
       await tester.pumpAndSettle();
 
@@ -2137,7 +2289,7 @@ void main() {
         find.byKey(const Key('tenantAdminPrimaryOccurrenceProgrammingItem_0')),
         findsOneWidget,
       );
-      expect(find.text('Abertura principal'), findsOneWidget);
+      expect(find.textContaining('Abertura principal'), findsOneWidget);
 
       await tester.tap(
         find.byKey(const Key('tenantAdminEventAddOccurrenceButton')),
@@ -2171,7 +2323,7 @@ void main() {
         find.byKey(const Key('tenantAdminOccurrenceProgrammingItem_0')),
         findsOneWidget,
       );
-      expect(find.text('Abertura principal'), findsOneWidget);
+      expect(find.textContaining('Abertura principal'), findsOneWidget);
 
       await _closeOccurrenceSheet(tester);
 
@@ -2185,11 +2337,17 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(eventsRepository.lastCreateDraft?.occurrences, hasLength(2));
+      final createdRootProgrammingTitles = eventsRepository
+          .lastCreateDraft
+          ?.occurrences
+          .first
+          .programmingItems
+          .map((item) => item.title)
+          .toList(growable: false);
+      expect(createdRootProgrammingTitles, hasLength(1));
       expect(
-        eventsRepository.lastCreateDraft?.occurrences.first.programmingItems
-            .map((item) => item.title)
-            .toList(growable: false),
-        ['Abertura principal'],
+        createdRootProgrammingTitles?.single,
+        _programmingTitleContains('Abertura principal'),
       );
     },
   );
@@ -2268,14 +2426,11 @@ void main() {
         find.byKey(const Key('tenantAdminProgrammingTimeField')),
         '09:30',
       );
-      await tester.enterText(
-        find.byKey(const Key('tenantAdminProgrammingTitleField')),
-        'Programação raiz',
-      );
+      await _enterProgrammingTitle(tester, 'Programação raiz');
       await _tapProgrammingSaveButton(tester);
       await tester.pumpAndSettle();
 
-      expect(find.text('Programação raiz'), findsOneWidget);
+      expect(find.textContaining('Programação raiz'), findsOneWidget);
 
       await tester.ensureVisible(
         find.byKey(const Key('tenantAdminEventAddOccurrenceButton')),
@@ -2300,10 +2455,7 @@ void main() {
         find.byKey(const Key('tenantAdminProgrammingTimeField')),
         '13:00',
       );
-      await tester.enterText(
-        find.byKey(const Key('tenantAdminProgrammingTitleField')),
-        'Programação local',
-      );
+      await _enterProgrammingTitle(tester, 'Programação local');
       await tester.ensureVisible(
         find.byKey(const Key('tenantAdminProgrammingLocationProfileDropdown')),
       );
@@ -2354,7 +2506,7 @@ void main() {
         find.byKey(const Key('tenantAdminEventOccurrenceCard_0')),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Programação raiz'), findsOneWidget);
+      expect(find.textContaining('Programação raiz'), findsOneWidget);
       expect(find.text('Programação local'), findsNothing);
       await _closeOccurrenceSheet(tester);
 
@@ -2366,17 +2518,28 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(eventsRepository.lastUpdateDraft?.occurrences, hasLength(2));
+      final updatedRootProgrammingTitles = eventsRepository
+          .lastUpdateDraft
+          ?.occurrences
+          .first
+          .programmingItems
+          .map((item) => item.title)
+          .toList(growable: false);
+      expect(updatedRootProgrammingTitles, hasLength(1));
       expect(
-        eventsRepository.lastUpdateDraft?.occurrences.first.programmingItems
-            .map((item) => item.title)
-            .toList(growable: false),
-        ['Programação raiz'],
+        updatedRootProgrammingTitles?.single,
+        _programmingTitleContains('Programação raiz'),
       );
+      final updatedSecondOccurrenceProgrammingTitles = eventsRepository
+          .lastUpdateDraft
+          ?.occurrences[1]
+          .programmingItems
+          .map((item) => item.title)
+          .toList(growable: false);
+      expect(updatedSecondOccurrenceProgrammingTitles, hasLength(1));
       expect(
-        eventsRepository.lastUpdateDraft?.occurrences[1].programmingItems
-            .map((item) => item.title)
-            .toList(growable: false),
-        ['Programação local'],
+        updatedSecondOccurrenceProgrammingTitles?.single,
+        _programmingTitleContains('Programação local'),
       );
       expect(
         eventsRepository
@@ -2425,7 +2588,7 @@ void main() {
             ),
             programmingItems: [
               TenantAdminEventProgrammingItem(
-                timeValue: tenantAdminRequiredText('13:00'),
+                timeValue: tenantAdminOptionalText('13:00'),
                 titleValue: tenantAdminOptionalText('Programação local'),
               ),
             ],
@@ -2441,7 +2604,7 @@ void main() {
             ),
             programmingItems: [
               TenantAdminEventProgrammingItem(
-                timeValue: tenantAdminRequiredText('09:30'),
+                timeValue: tenantAdminOptionalText('09:30'),
                 titleValue: tenantAdminOptionalText('Programação raiz'),
               ),
             ],
@@ -2481,17 +2644,28 @@ void main() {
             .toList(growable: false),
         ['occ-2', 'occ-1'],
       );
+      final reorderedFirstOccurrenceProgrammingTitles = eventsRepository
+          .lastUpdateDraft
+          ?.occurrences
+          .first
+          .programmingItems
+          .map((item) => item.title)
+          .toList(growable: false);
+      expect(reorderedFirstOccurrenceProgrammingTitles, hasLength(1));
       expect(
-        eventsRepository.lastUpdateDraft?.occurrences.first.programmingItems
-            .map((item) => item.title)
-            .toList(growable: false),
-        ['Programação local'],
+        reorderedFirstOccurrenceProgrammingTitles?.single,
+        _programmingTitleContains('Programação local'),
       );
+      final reorderedSecondOccurrenceProgrammingTitles = eventsRepository
+          .lastUpdateDraft
+          ?.occurrences[1]
+          .programmingItems
+          .map((item) => item.title)
+          .toList(growable: false);
+      expect(reorderedSecondOccurrenceProgrammingTitles, hasLength(1));
       expect(
-        eventsRepository.lastUpdateDraft?.occurrences[1].programmingItems
-            .map((item) => item.title)
-            .toList(growable: false),
-        ['Programação raiz'],
+        reorderedSecondOccurrenceProgrammingTitles?.single,
+        _programmingTitleContains('Programação raiz'),
       );
     },
   );
@@ -2625,8 +2799,8 @@ void main() {
       final occurrence =
           controller.eventFormStateStreamValue.value.occurrences[1];
       expect(occurrence.programmingItems.map((item) => item.title), [
-        'Primeira atividade',
-        'Segunda atividade',
+        _programmingTitleContains('Primeira atividade'),
+        _programmingTitleContains('Segunda atividade'),
       ]);
     },
   );
@@ -3381,18 +3555,9 @@ void main() {
         find.byKey(const Key('tenantAdminProgrammingTimeField')),
         '10:00',
       );
-      await tester.tap(
-        find.byWidgetPredicate(
-          (widget) =>
-              widget is OutlinedButton &&
-              widget.key.toString().contains(
-                'tenantAdminProgrammingAddOccurrenceProfileButton_',
-              ),
-        ),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Artist A').last);
-      await tester.pumpAndSettle();
+      await _setProgrammingTimedState(tester, isTimed: true);
+      await _tapFirstProgrammingAddOccurrenceProfileButton(tester);
+      await _tapVisibleText(tester, 'Artist A');
 
       expect(find.text('Artist A'), findsWidgets);
       expect(
@@ -3408,6 +3573,192 @@ void main() {
         find.byKey(const Key('tenantAdminProgrammingProfile_artist-1')),
         findsOneWidget,
       );
+    },
+  );
+
+  testWidgets(
+    'turning off timed programming submits a sequenced item without time or end time',
+    (tester) async {
+      final eventsRepository = _FakeEventsRepository();
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+
+      final eventType = TenantAdminEventType(
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439199'),
+        nameValue: tenantAdminRequiredText('Feira'),
+        slugValue: tenantAdminRequiredText('feira'),
+      );
+      eventsRepository.eventTypes = [eventType];
+
+      final existingEvent = TenantAdminEvent(
+        eventIdValue: tenantAdminRequiredText(
+          'evt-existing-programming-untimed',
+        ),
+        slugValue: tenantAdminRequiredText(
+          'event-existing-programming-untimed',
+        ),
+        titleValue: tenantAdminRequiredText('Evento existente'),
+        contentValue: tenantAdminOptionalText('Conteúdo'),
+        type: eventType,
+        occurrences: <TenantAdminEventOccurrence>[
+          TenantAdminEventOccurrence(
+            occurrenceIdValue: tenantAdminOptionalText('occ-1'),
+            occurrenceSlugValue: tenantAdminOptionalText('occ-1'),
+            dateTimeStartValue: tenantAdminDateTime(
+              DateTime.utc(2026, 4, 20, 20),
+            ),
+          ),
+        ],
+        publication: TenantAdminEventPublication(
+          statusValue: tenantAdminRequiredText('draft'),
+        ),
+        location: TenantAdminEventLocation(
+          modeValue: tenantAdminRequiredText('physical'),
+        ),
+        placeRef: TenantAdminEventPlaceRef(
+          typeValue: tenantAdminRequiredText('account_profile'),
+          idValue: tenantAdminRequiredText('venue-1'),
+        ),
+      );
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        Scaffold(
+          body: TenantAdminEventFormScreen(existingEvent: existingEvent),
+        ),
+      );
+
+      await tester.ensureVisible(
+        find.byKey(const Key('tenantAdminEventEditPrimaryOccurrenceButton')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('tenantAdminEventEditPrimaryOccurrenceButton')),
+      );
+      await tester.pumpAndSettle();
+
+      await _addOccurrenceProgrammingUntimedTitleOnly(
+        tester,
+        time: '10:00',
+        title: 'Logo após o bloco anterior',
+      );
+
+      expect(
+        find.byKey(const Key('tenantAdminOccurrenceProgrammingItem_0')),
+        findsOneWidget,
+      );
+
+      await _closeOccurrenceSheet(tester);
+
+      await tester.scrollUntilVisible(
+        find.widgetWithText(FilledButton, 'Salvar alterações'),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Salvar alterações'));
+      await tester.pumpAndSettle();
+
+      final submittedOccurrence =
+          eventsRepository.lastUpdateDraft?.occurrences.single;
+      final submittedProgrammingItem =
+          submittedOccurrence?.programmingItems.single;
+      expect(submittedProgrammingItem?.isSequential, isTrue);
+      expect(submittedProgrammingItem?.time, isEmpty);
+      expect(submittedProgrammingItem?.endTime, isNull);
+      expect(
+        submittedProgrammingItem?.title,
+        _programmingTitleContains('Logo após o bloco anterior'),
+      );
+    },
+  );
+
+  testWidgets(
+    'programming item editor uses rich text editor and renders sequencial label in occurrence sheet',
+    (tester) async {
+      final eventsRepository = _FakeEventsRepository();
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+
+      eventsRepository.eventTypes = [
+        TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439197'),
+          nameValue: tenantAdminRequiredText('Feira'),
+          slugValue: tenantAdminRequiredText('feira'),
+        ),
+      ];
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(body: TenantAdminEventFormScreen()),
+      );
+
+      await _fillRequiredFields(tester, controller: controller);
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('tenantAdminEventAddOccurrenceButton')),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
+        250,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(_programmingTitleEditorFinder(), findsOneWidget);
+      expect(find.text('Item com horário'), findsOneWidget);
+      expect(find.text('Usa faixa de horário explícita.'), findsOneWidget);
+      expect(
+        find.byKey(const Key('tenantAdminProgrammingCloseButton')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('tenantAdminProgrammingTimeField')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('tenantAdminProgrammingEndTimeField')),
+        findsOneWidget,
+      );
+
+      await tester.enterText(
+        find.byKey(const Key('tenantAdminProgrammingTimeField')),
+        '09:00',
+      );
+      await _enterProgrammingTitle(tester, 'Abertura sequencial');
+      await _setProgrammingTimedState(tester, isTimed: false);
+
+      expect(find.text('Item sequencial sem horário.'), findsOneWidget);
+      expect(
+        find.byKey(const Key('tenantAdminProgrammingTimeField')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const Key('tenantAdminProgrammingEndTimeField')),
+        findsNothing,
+      );
+
+      await _tapProgrammingSaveButton(tester);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sequencial'), findsOneWidget);
+      expect(find.text('Abertura sequencial'), findsOneWidget);
     },
   );
 
@@ -5047,32 +5398,33 @@ void main() {
     'mounted own-create reuse ignores stale dependency loads when account slug changes',
     (tester) async {
       final eventsRepository = _AccountScopedDelayedCandidatesEventsRepository(
-        physicalHostCandidatesByAccountSlug: <String, List<TenantAdminAccountProfile>>{
-          'school-a': <TenantAdminAccountProfile>[
-            tenantAdminAccountProfileFromRaw(
-              id: 'venue-school-a',
-              accountId: 'acc-venue-school-a',
-              profileType: 'venue',
-              displayName: 'Venue School A',
-              location: tenantAdminLocationFromRaw(
-                latitude: -20.611121,
-                longitude: -40.498617,
-              ),
-            ),
-          ],
-          'school-b': <TenantAdminAccountProfile>[
-            tenantAdminAccountProfileFromRaw(
-              id: 'venue-school-b',
-              accountId: 'acc-venue-school-b',
-              profileType: 'venue',
-              displayName: 'Venue School B',
-              location: tenantAdminLocationFromRaw(
-                latitude: -20.612121,
-                longitude: -40.499617,
-              ),
-            ),
-          ],
-        },
+        physicalHostCandidatesByAccountSlug:
+            <String, List<TenantAdminAccountProfile>>{
+              'school-a': <TenantAdminAccountProfile>[
+                tenantAdminAccountProfileFromRaw(
+                  id: 'venue-school-a',
+                  accountId: 'acc-venue-school-a',
+                  profileType: 'venue',
+                  displayName: 'Venue School A',
+                  location: tenantAdminLocationFromRaw(
+                    latitude: -20.611121,
+                    longitude: -40.498617,
+                  ),
+                ),
+              ],
+              'school-b': <TenantAdminAccountProfile>[
+                tenantAdminAccountProfileFromRaw(
+                  id: 'venue-school-b',
+                  accountId: 'acc-venue-school-b',
+                  profileType: 'venue',
+                  displayName: 'Venue School B',
+                  location: tenantAdminLocationFromRaw(
+                    latitude: -20.612121,
+                    longitude: -40.499617,
+                  ),
+                ),
+              ],
+            },
         delayByAccountSlug: <String, Duration>{
           'school-a': const Duration(milliseconds: 200),
           'school-b': Duration.zero,
@@ -5632,6 +5984,8 @@ Future<void> _selectProfileInGroup(
       groupId: groupId,
     );
   }
+  await tester.ensureVisible(candidate);
+  await tester.pumpAndSettle();
   await tester.tap(candidate);
   await tester.pumpAndSettle();
 }
@@ -5660,19 +6014,91 @@ Future<void> _addOccurrenceProgrammingTitleOnly(
     scrollable: find.byType(Scrollable).last,
   );
   await tester.pumpAndSettle();
+  await tester.ensureVisible(
+    find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
+  );
+  await tester.pumpAndSettle();
   await tester.tap(
     find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
   );
   await tester.pumpAndSettle();
+  await _setProgrammingTimedState(tester, isTimed: true);
   await tester.enterText(
     find.byKey(const Key('tenantAdminProgrammingTimeField')),
     time,
   );
-  await tester.enterText(
-    find.byKey(const Key('tenantAdminProgrammingTitleField')),
-    title,
-  );
+  await _enterProgrammingTitle(tester, title);
   await _tapProgrammingSaveButton(tester);
+}
+
+Future<void> _addOccurrenceProgrammingUntimedTitleOnly(
+  WidgetTester tester, {
+  required String time,
+  required String title,
+}) async {
+  await tester.scrollUntilVisible(
+    find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
+    250,
+    scrollable: find.byType(Scrollable).last,
+  );
+  await tester.pumpAndSettle();
+  await tester.ensureVisible(
+    find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(
+    find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
+  );
+  await tester.pumpAndSettle();
+  await _setProgrammingTimedState(tester, isTimed: true);
+  await tester.enterText(
+    find.byKey(const Key('tenantAdminProgrammingTimeField')),
+    time,
+  );
+  await _enterProgrammingTitle(tester, title);
+  await _setProgrammingTimedState(tester, isTimed: false);
+  await _tapProgrammingSaveButton(tester);
+}
+
+Future<void> _enterProgrammingTitle(WidgetTester tester, String title) async {
+  final editor = _programmingTitleEditorFinder();
+  final editorWidget = tester.widget(editor) as dynamic;
+  editorWidget.controller.text = title;
+  await tester.pumpAndSettle();
+}
+
+Finder _programmingTitleEditorFinder() {
+  return find.byWidgetPredicate(
+    (widget) =>
+        widget is TenantAdminRichTextEditor &&
+        widget.key == const Key('tenantAdminProgrammingTitleEditor'),
+    description:
+        'TenantAdminRichTextEditor keyed tenantAdminProgrammingTitleEditor',
+  );
+}
+
+Matcher _programmingTitleContains(String expected) {
+  return predicate<String?>(
+    (value) => _programmingTitlePlainText(value).contains(expected),
+    'programming title containing "$expected" after HTML normalization',
+  );
+}
+
+String _programmingTitlePlainText(String? title) {
+  final normalized = title?.trim();
+  if (normalized == null || normalized.isEmpty) {
+    return '';
+  }
+  return normalized
+      .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n')
+      .replaceAll(RegExp(r'</p\s*>', caseSensitive: false), '\n')
+      .replaceAll(RegExp(r'<[^>]+>'), '')
+      .replaceAll('&nbsp;', ' ')
+      .replaceAll('&amp;', '&')
+      .replaceAll('&lt;', '<')
+      .replaceAll('&gt;', '>')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
 }
 
 Future<void> _ensureOccurrenceProgrammingGroup(
@@ -5723,23 +6149,59 @@ Future<void> _addOccurrenceProgrammingWithNewProfile(
     find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
   );
   await tester.pumpAndSettle();
+  await _setProgrammingTimedState(tester, isTimed: true);
   await tester.enterText(
     find.byKey(const Key('tenantAdminProgrammingTimeField')),
     time,
   );
-  await tester.tap(
-    find.byWidgetPredicate(
-      (widget) =>
-          widget is OutlinedButton &&
-          widget.key.toString().contains(
-            'tenantAdminProgrammingAddOccurrenceProfileButton_',
-          ),
-    ),
+  await _tapFirstProgrammingAddOccurrenceProfileButton(tester);
+  await _tapVisibleText(tester, profileName);
+  await _tapProgrammingSaveButton(tester);
+}
+
+Future<void> _tapFirstProgrammingAddOccurrenceProfileButton(
+  WidgetTester tester,
+) async {
+  final addProfileButton = find
+      .byWidgetPredicate(
+        (widget) =>
+            widget is OutlinedButton &&
+            widget.key.toString().contains(
+              'tenantAdminProgrammingAddOccurrenceProfileButton_',
+            ),
+      )
+      .first;
+  await tester.scrollUntilVisible(
+    addProfileButton,
+    200,
+    scrollable: find.byType(Scrollable).last,
   );
   await tester.pumpAndSettle();
-  await tester.tap(find.text(profileName).last);
+  await tester.ensureVisible(addProfileButton);
   await tester.pumpAndSettle();
-  await _tapProgrammingSaveButton(tester);
+  await tester.tap(addProfileButton);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _tapVisibleText(WidgetTester tester, String text) async {
+  final textFinder = find.text(text).last;
+  final tappableAncestor = find.ancestor(
+    of: textFinder,
+    matching: find.byWidgetPredicate(
+      (widget) =>
+          widget is ListTile ||
+          widget is InkWell ||
+          widget is OutlinedButton ||
+          widget is FilledButton,
+    ),
+  );
+  final choice = tappableAncestor.evaluate().isNotEmpty
+      ? tappableAncestor.last
+      : textFinder;
+  await _bringIntoView(tester, choice);
+  await tester.pumpAndSettle();
+  await tester.tap(choice.hitTestable().last, warnIfMissed: false);
+  await tester.pumpAndSettle();
 }
 
 Future<void> _addOccurrenceProgrammingWithExistingProfile(
@@ -5757,17 +6219,52 @@ Future<void> _addOccurrenceProgrammingWithExistingProfile(
     find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
   );
   await tester.pumpAndSettle();
+  await _setProgrammingTimedState(tester, isTimed: true);
   await tester.enterText(
     find.byKey(const Key('tenantAdminProgrammingTimeField')),
     time,
   );
-  await tester.tap(
-    find.byKey(const Key('tenantAdminProgrammingLinkOccurrenceProfileButton')),
+  final linkProfileButton = find.byKey(
+    const Key('tenantAdminProgrammingLinkOccurrenceProfileButton'),
   );
+  await _bringIntoView(tester, linkProfileButton);
   await tester.pumpAndSettle();
-  await tester.tap(find.text(profileName).last);
+  await tester.tap(linkProfileButton.hitTestable().last, warnIfMissed: false);
   await tester.pumpAndSettle();
+  await _tapVisibleText(tester, profileName);
   await _tapProgrammingSaveButton(tester);
+}
+
+Future<void> _bringIntoView(WidgetTester tester, Finder finder) async {
+  for (var attempt = 0; attempt < 8; attempt++) {
+    await tester.pumpAndSettle();
+    final hitTestable = finder.hitTestable();
+    if (hitTestable.evaluate().isNotEmpty) {
+      return;
+    }
+    final rect = tester.getRect(finder);
+    final scrollable = find.byType(Scrollable).last;
+    final dy = rect.bottom > 560 ? -160.0 : 160.0;
+    await tester.drag(scrollable, Offset(0, dy));
+  }
+  await tester.pumpAndSettle();
+}
+
+Future<void> _setProgrammingTimedState(
+  WidgetTester tester, {
+  required bool isTimed,
+}) async {
+  final timedToggle = find.byKey(
+    const Key('tenantAdminProgrammingTimedToggle'),
+  );
+  await tester.ensureVisible(timedToggle);
+  await tester.pumpAndSettle();
+  final toggle = tester.widget<SwitchListTile>(timedToggle);
+  if (toggle.value == isTimed) {
+    return;
+  }
+  await tester.tap(timedToggle);
+  await tester.pumpAndSettle();
 }
 
 TenantAdminTaxonomyTerms _tenantAdminTaxonomyTerms(

@@ -2,7 +2,7 @@ part of '../tenant_admin_event.dart';
 
 class TenantAdminEventProgrammingItem {
   TenantAdminEventProgrammingItem({
-    required this.timeValue,
+    TenantAdminOptionalTextValue? timeValue,
     TenantAdminOptionalTextValue? endTimeValue,
     TenantAdminOptionalTextValue? titleValue,
     List<TenantAdminAccountProfileIdValue> accountProfileIdValues =
@@ -11,7 +11,8 @@ class TenantAdminEventProgrammingItem {
         const <TenantAdminAccountProfile>[],
     this.locationProfile,
     this.placeRef,
-  }) : endTimeValue = endTimeValue ?? TenantAdminOptionalTextValue(),
+  }) : timeValue = timeValue ?? TenantAdminOptionalTextValue(),
+       endTimeValue = endTimeValue ?? TenantAdminOptionalTextValue(),
        titleValue = titleValue ?? TenantAdminOptionalTextValue(),
        accountProfileIdValues =
            List<TenantAdminAccountProfileIdValue>.unmodifiable(
@@ -21,7 +22,7 @@ class TenantAdminEventProgrammingItem {
          linkedAccountProfiles,
        );
 
-  final TenantAdminRequiredTextValue timeValue;
+  final TenantAdminOptionalTextValue timeValue;
   final TenantAdminOptionalTextValue endTimeValue;
   final TenantAdminOptionalTextValue titleValue;
   final List<TenantAdminAccountProfileIdValue> accountProfileIdValues;
@@ -30,6 +31,8 @@ class TenantAdminEventProgrammingItem {
   final TenantAdminEventPlaceRef? placeRef;
 
   String get time => timeValue.value;
+  bool get hasTime => time.trim().isNotEmpty;
+  bool get isSequential => !hasTime;
   String? get endTime => endTimeValue.nullableValue;
   String? get title => titleValue.nullableValue;
   List<TenantAdminAccountProfileIdValue> get accountProfileIds =>

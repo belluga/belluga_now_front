@@ -236,7 +236,7 @@ void main() {
             ],
             programmingItems: [
               TenantAdminEventProgrammingItem(
-                timeValue: tenantAdminRequiredText('17:00'),
+                timeValue: tenantAdminOptionalText('17:00'),
                 endTimeValue: tenantAdminOptionalText('18:30'),
                 titleValue: tenantAdminOptionalText('Abertura'),
                 accountProfileIdValues: [

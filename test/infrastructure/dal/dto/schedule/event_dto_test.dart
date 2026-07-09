@@ -1195,6 +1195,44 @@ void main() {
     );
   });
 
+  test('preserves untimed programming items at the DTO boundary', () {
+    final dto = EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439081',
+      'occurrence_id': '507f1f77bcf86cd799439083',
+      'slug': 'festival-de-verao',
+      'type': {'id': 'show', 'name': 'Show', 'slug': 'show', 'description': ''},
+      'title': 'Festival de Verao',
+      'content': 'Descricao',
+      'location': 'Praca Central',
+      'date_time_start': '2026-03-04T17:00:00+00:00',
+      'linked_account_profiles': const [],
+      'programming_items': [
+        {
+          'time': null,
+          'end_time': null,
+          'title': '<p>Entrada da corte</p>',
+          'linked_account_profiles': const [],
+        },
+        {
+          'title': '<p>Apresentacao final</p>',
+          'linked_account_profiles': const [],
+        },
+      ],
+    });
+
+    final domain = dto.toDomain();
+
+    expect(domain.programmingItems, hasLength(2));
+    expect(domain.programmingItems[0].hasTime, isFalse);
+    expect(domain.programmingItems[0].isSequential, isTrue);
+    expect(domain.programmingItems[0].time, isEmpty);
+    expect(domain.programmingItems[0].endTime, isNull);
+    expect(domain.programmingItems[0].displayTitle, '<p>Entrada da corte</p>');
+    expect(domain.programmingItems[1].hasTime, isFalse);
+    expect(domain.programmingItems[1].time, isEmpty);
+    expect(domain.programmingItems[1].displayTitle, '<p>Apresentacao final</p>');
+  });
+
   test(
     'maps online occurrence location label into non-empty domain location',
     () {

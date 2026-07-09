@@ -21,13 +21,14 @@ class LaravelSelfProfileBackend implements SelfProfileBackendContract {
 
   @override
   Future<SelfProfileDto> fetchCurrentProfile() async {
-    final headers = await TenantPublicAuthHeaders.build(
-      includeJsonAccept: true,
-    );
-    final response = await _dio.get(
-      '$_apiBaseUrl/v1/me',
-      options: Options(headers: headers),
-    );
+    final response =
+        await TenantPublicAuthHeaders.retryOnceOnUnauthorized<Response>(
+          includeJsonAccept: true,
+          action: (headers) => _dio.get(
+            '$_apiBaseUrl/v1/me',
+            options: Options(headers: headers),
+          ),
+        );
     final raw = response.data;
     if (raw is! Map<String, dynamic>) {
       throw Exception('Unexpected self-profile response shape.');
@@ -47,9 +48,6 @@ class LaravelSelfProfileBackend implements SelfProfileBackendContract {
     UserProfileMediaUpload? avatarUpload,
     DomainBooleanValue? removeAvatarValue,
   }) async {
-    final headers = await TenantPublicAuthHeaders.build(
-      includeJsonAccept: true,
-    );
     final payload = <String, dynamic>{};
     if (displayNameValue != null) {
       payload['name'] = displayNameValue.value;
@@ -67,35 +65,38 @@ class LaravelSelfProfileBackend implements SelfProfileBackendContract {
     final hasMediaMutation =
         avatarUpload != null || removeAvatarValue?.value == true;
     if (!hasMediaMutation) {
-      await _dio.patch(
-        '$_apiBaseUrl/v1/profile',
-        data: payload,
-        options: Options(headers: headers),
+      await TenantPublicAuthHeaders.retryOnceOnUnauthorized<void>(
+        includeJsonAccept: true,
+        action: (headers) => _dio.patch(
+          '$_apiBaseUrl/v1/profile',
+          data: payload,
+          options: Options(headers: headers),
+        ),
       );
       return;
     }
 
-    final body = FormData.fromMap(
-      <String, dynamic>{
-        ...payload,
-        '_method': 'PATCH',
-        if (avatarUpload != null)
-          'avatar': MultipartFile.fromBytes(
-            avatarUpload.bytes,
-            filename: avatarUpload.fileName,
-            contentType: _resolveMediaType(
-              avatarUpload.mimeType,
-              avatarUpload.fileName,
-            ),
+    final body = FormData.fromMap(<String, dynamic>{
+      ...payload,
+      '_method': 'PATCH',
+      if (avatarUpload != null)
+        'avatar': MultipartFile.fromBytes(
+          avatarUpload.bytes,
+          filename: avatarUpload.fileName,
+          contentType: _resolveMediaType(
+            avatarUpload.mimeType,
+            avatarUpload.fileName,
           ),
-      },
-      ListFormat.multiCompatible,
-    );
+        ),
+    }, ListFormat.multiCompatible);
 
-    await _dio.post(
-      '$_apiBaseUrl/v1/profile',
-      data: body,
-      options: Options(headers: headers),
+    await TenantPublicAuthHeaders.retryOnceOnUnauthorized<void>(
+      includeJsonAccept: true,
+      action: (headers) => _dio.post(
+        '$_apiBaseUrl/v1/profile',
+        data: body,
+        options: Options(headers: headers),
+      ),
     );
   }
 

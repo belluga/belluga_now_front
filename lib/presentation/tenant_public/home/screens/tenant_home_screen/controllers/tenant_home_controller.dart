@@ -57,6 +57,7 @@ class TenantHomeController implements Disposable {
 
   StreamSubscription? _confirmedEventsSubscription;
   StreamSubscription? _homeLocationStatusSubscription;
+  StreamSubscription? _authUserSubscription;
   bool _isDisposed = false;
   bool _initialized = false;
 
@@ -66,6 +67,7 @@ class TenantHomeController implements Disposable {
     await loadMyEvents();
     _listenLocationOrigin();
     _listenConfirmedEvents();
+    _listenAuthChanges();
   }
 
   Future<void> loadMyEvents() async {
@@ -90,6 +92,17 @@ class TenantHomeController implements Disposable {
     _confirmedEventsSubscription?.cancel();
     _confirmedEventsSubscription =
         _userEventsRepository.confirmedOccurrenceIdsStream.stream.listen((_) {
+      unawaited(loadMyEvents());
+    });
+  }
+
+  void _listenAuthChanges() {
+    final authRepository = _authRepository;
+    if (authRepository == null) {
+      return;
+    }
+    _authUserSubscription?.cancel();
+    _authUserSubscription = authRepository.userStreamValue.stream.listen((_) {
       unawaited(loadMyEvents());
     });
   }
@@ -185,6 +198,7 @@ class TenantHomeController implements Disposable {
     _isDisposed = true;
     _confirmedEventsSubscription?.cancel();
     _homeLocationStatusSubscription?.cancel();
+    _authUserSubscription?.cancel();
     _scrollController.dispose();
     homeLocationStatusStreamValue.dispose();
     myEventsFilteredStreamValue.dispose();

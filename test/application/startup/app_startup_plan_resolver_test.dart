@@ -135,6 +135,29 @@ void main() {
       expect(plan.hasOverride, isTrue);
     },
   );
+
+  test(
+    'resolvePlan tolerates invite bootstrap failure and keeps tenant home startup on the public surface',
+    () async {
+      final authRepository = _FakeAuthRepository();
+      final invitesRepository = _ThrowingInvitesRepository();
+      final resolver = AppStartupPlanResolver(
+        authRepository: authRepository,
+        invitesRepository: invitesRepository,
+        appDataRepository: _FakeAppDataRepository(_buildTenantAppData()),
+        deferredLinkRepository: null,
+        telemetryRepository: null,
+      );
+
+      final plan = await resolver.resolvePlan();
+
+      expect(plan.hasOverride, isFalse);
+      expect(plan.path, isNull);
+      expect(plan.routes, isEmpty);
+      expect(authRepository.initCallCount, 1);
+      expect(invitesRepository.initCallCount, 1);
+    },
+  );
 }
 
 class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
@@ -207,6 +230,14 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 }
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
+  int initCallCount = 0;
+
+  @override
+  Future<void> init() async {
+    initCallCount += 1;
+    await super.init();
+  }
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 
@@ -224,6 +255,14 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       limitValues: InviteRateLimitsValue(),
       cooldownValues: InviteCooldownsValue(),
     );
+  }
+}
+
+class _ThrowingInvitesRepository extends _FakeInvitesRepository {
+  @override
+  Future<void> init() async {
+    initCallCount += 1;
+    throw Exception('invites bootstrap unavailable');
   }
 }
 

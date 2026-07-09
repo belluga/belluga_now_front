@@ -12,22 +12,14 @@ import 'package:get_it/get_it.dart';
 
 class LaravelScheduleBackend implements ScheduleBackendContract {
   LaravelScheduleBackend({Dio? dio, SseClient? sseClient})
-      : _dio = dio ?? Dio(),
-        _sseClient = sseClient ?? createSseClient();
+    : _dio = dio ?? Dio(),
+      _sseClient = sseClient ?? createSseClient();
 
   final Dio _dio;
   final SseClient _sseClient;
 
   String get _apiBaseUrl =>
       '${GetIt.I.get<AppData>().mainDomainValue.value.origin}/api';
-  Future<Map<String, String>> _buildHeaders({
-    bool includeJsonAccept = false,
-  }) async {
-    return TenantPublicAuthHeaders.build(
-      includeJsonAccept: includeJsonAccept,
-      bootstrapIfEmpty: true,
-    );
-  }
 
   Future<Map<String, String>> _buildStreamHeaders({
     bool includeJsonAccept = false,
@@ -44,25 +36,29 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
     String? occurrenceId,
   }) async {
     try {
-      final headers = await _buildHeaders(includeJsonAccept: true);
       final uri = Uri.parse('$_apiBaseUrl/v1/events/$eventIdOrSlug').replace(
         queryParameters: occurrenceId == null || occurrenceId.trim().isEmpty
             ? null
             : {'occurrence': occurrenceId.trim()},
       );
-      final response = await _dio.getUri(
-        uri,
-        options: Options(headers: headers),
+      return await TenantPublicAuthHeaders.retryOnceOnUnauthorized(
+        includeJsonAccept: true,
+        action: (headers) async {
+          final response = await _dio.getUri(
+            uri,
+            options: Options(headers: headers),
+          );
+          final raw = response.data;
+          final Map<String, dynamic> json;
+          if (raw is Map<String, dynamic>) {
+            final data = raw['data'];
+            json = data is Map<String, dynamic> ? data : raw;
+          } else {
+            throw Exception('Unexpected event detail response shape.');
+          }
+          return EventDTO.fromJson(json);
+        },
       );
-      final raw = response.data;
-      final Map<String, dynamic> json;
-      if (raw is Map<String, dynamic>) {
-        final data = raw['data'];
-        json = data is Map<String, dynamic> ? data : raw;
-      } else {
-        throw Exception('Unexpected event detail response shape.');
-      }
-      return EventDTO.fromJson(json);
     } on DioException catch (error) {
       final statusCode = error.response?.statusCode;
       if (statusCode == 404) {
@@ -140,24 +136,28 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
     }
 
     try {
-      final headers = await _buildHeaders(includeJsonAccept: true);
-      final response = await _dio.get(
-        '$_apiBaseUrl/v1/agenda',
-        queryParameters: params,
-        options: Options(
-          headers: headers,
-          listFormat: ListFormat.multiCompatible,
-        ),
+      return await TenantPublicAuthHeaders.retryOnceOnUnauthorized(
+        includeJsonAccept: true,
+        action: (headers) async {
+          final response = await _dio.get(
+            '$_apiBaseUrl/v1/agenda',
+            queryParameters: params,
+            options: Options(
+              headers: headers,
+              listFormat: ListFormat.multiCompatible,
+            ),
+          );
+          final raw = response.data;
+          final Map<String, dynamic> json;
+          if (raw is Map<String, dynamic>) {
+            final data = raw['data'];
+            json = data is Map<String, dynamic> ? data : raw;
+          } else {
+            throw Exception('Unexpected agenda response shape.');
+          }
+          return EventPageDTO.fromJson(json);
+        },
       );
-      final raw = response.data;
-      final Map<String, dynamic> json;
-      if (raw is Map<String, dynamic>) {
-        final data = raw['data'];
-        json = data is Map<String, dynamic> ? data : raw;
-      } else {
-        throw Exception('Unexpected agenda response shape.');
-      }
-      return EventPageDTO.fromJson(json);
     } on DioException catch (error) {
       final statusCode = error.response?.statusCode;
       final data = error.response?.data;
@@ -236,11 +236,7 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
       _buildStreamHeaders(),
     ).asyncExpand(
       (headers) => _sseClient
-          .connect(
-            uri,
-            lastEventId: lastEventId,
-            headers: headers,
-          )
+          .connect(uri, lastEventId: lastEventId, headers: headers)
           .map((message) => _parseDelta(message.data, message.id)),
     );
   }

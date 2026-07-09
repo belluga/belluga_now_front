@@ -28,9 +28,8 @@ import 'package:stream_value/main.dart';
 import 'package:uuid/uuid.dart';
 
 final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
-  AuthRepository({
-    FlutterSecureStorage? storage,
-  }) : _storage = storage ?? const FlutterSecureStorage() {
+  AuthRepository({FlutterSecureStorage? storage})
+    : _storage = storage ?? const FlutterSecureStorage() {
     _userTokenStreamValue.stream.listen(_onUpdateUserTokenOnLocalStorage);
   }
 
@@ -103,25 +102,23 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
 
     final completer = Completer<void>();
     _initInFlight = completer.future;
-    unawaited(
-      () async {
-        try {
-          await ensureTenantPublicIdentityReady();
-          if (isAuthorized) {
-            await _syncProximityPreferencesIfAvailable();
-          }
-          _hasCompletedBootstrap = true;
-          completer.complete();
-        } catch (error, stackTrace) {
-          _hasCompletedBootstrap = false;
-          completer.completeError(error, stackTrace);
-        } finally {
-          if (identical(_initInFlight, completer.future)) {
-            _initInFlight = null;
-          }
+    unawaited(() async {
+      try {
+        await ensureTenantPublicIdentityReady();
+        if (isAuthorized) {
+          await _syncProximityPreferencesIfAvailable();
         }
-      }(),
-    );
+        _hasCompletedBootstrap = true;
+        completer.complete();
+      } catch (error, stackTrace) {
+        _hasCompletedBootstrap = false;
+        completer.completeError(error, stackTrace);
+      } finally {
+        if (identical(_initInFlight, completer.future)) {
+          _initInFlight = null;
+        }
+      }
+    }());
 
     return completer.future;
   }
@@ -139,34 +136,37 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
 
     final completer = Completer<void>();
     _tenantPublicIdentityReadyInFlight = completer.future;
-    unawaited(
-      () async {
-        try {
-          final tokenLoadedFromStorage =
-              await _getUserTokenFromLocalStorage();
-          await _getUserIdFromLocalStorage();
-          await _autoLoginAfterInit(
-            tokenLoadedFromStorage:
-                tokenLoadedFromStorage || userToken.trim().isNotEmpty,
-          );
-          await _ensureIdentityToken();
-          _hasCompletedTenantPublicIdentityReadiness = true;
-          completer.complete();
-        } catch (error, stackTrace) {
-          _hasCompletedTenantPublicIdentityReadiness = false;
-          completer.completeError(error, stackTrace);
-        } finally {
-          if (identical(
-            _tenantPublicIdentityReadyInFlight,
-            completer.future,
-          )) {
-            _tenantPublicIdentityReadyInFlight = null;
-          }
+    unawaited(() async {
+      try {
+        final tokenLoadedFromStorage = await _getUserTokenFromLocalStorage();
+        await _getUserIdFromLocalStorage();
+        await _autoLoginAfterInit(
+          tokenLoadedFromStorage:
+              tokenLoadedFromStorage || userToken.trim().isNotEmpty,
+        );
+        await _ensureIdentityToken();
+        _hasCompletedTenantPublicIdentityReadiness = true;
+        completer.complete();
+      } catch (error, stackTrace) {
+        _hasCompletedTenantPublicIdentityReadiness = false;
+        completer.completeError(error, stackTrace);
+      } finally {
+        if (identical(_tenantPublicIdentityReadyInFlight, completer.future)) {
+          _tenantPublicIdentityReadyInFlight = null;
         }
-      }(),
-    );
+      }
+    }());
 
     return completer.future;
+  }
+
+  @override
+  Future<void>
+  recoverTenantPublicIdentityAfterUnauthorizedPublicRequest() async {
+    await _resetStaleIdentity(
+      StateError('Tenant-public request returned unauthorized.'),
+    );
+    await ensureTenantPublicIdentityReady();
   }
 
   @override
@@ -209,11 +209,8 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
     AuthRepositoryContractTextValue password,
   ) async {
     final previousUserId = await getUserId();
-    var (UserDto _user, String _token) =
-        await backend.auth.loginWithEmailPassword(
-      email.value,
-      password.value,
-    );
+    var (UserDto _user, String _token) = await backend.auth
+        .loginWithEmailPassword(email.value, password.value);
 
     await _finalizeAuthenticatedUser(
       _user,
@@ -328,8 +325,10 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
     }
 
     try {
-      final loginResult = await backend.auth
-          .loginWithEmailPassword(email.value, password.value);
+      final loginResult = await backend.auth.loginWithEmailPassword(
+        email.value,
+        password.value,
+      );
       userDto = loginResult.$1;
       resolvedToken = loginResult.$2;
     } catch (_) {
@@ -383,10 +382,7 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
   }
 
   Future<void> _saveUserTokenOnLocalStorage(String token) async {
-    await _storage.write(
-      key: _userTokenStorageKey,
-      value: token,
-    );
+    await _storage.write(key: _userTokenStorageKey, value: token);
   }
 
   Future<bool> _getUserTokenFromLocalStorage() async {
@@ -468,10 +464,7 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
         await _storage.delete(key: _userIdStorageKey);
         return;
       }
-      await _storage.write(
-        key: _userIdStorageKey,
-        value: userId,
-      );
+      await _storage.write(key: _userIdStorageKey, value: userId);
     } catch (error, stackTrace) {
       _logStorageFailure(
         operation: 'setUserId',
@@ -716,9 +709,7 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
     required Object error,
     required StackTrace stackTrace,
   }) {
-    debugPrint(
-      'AuthRepository.$operation failed: $error\n$stackTrace',
-    );
+    debugPrint('AuthRepository.$operation failed: $error\n$stackTrace');
   }
 
   static Future<String> _ensureDeviceId() async =>

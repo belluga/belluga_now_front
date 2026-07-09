@@ -183,7 +183,11 @@ class AppDataRepository implements AppDataRepositoryContract {
       ),
     );
     _hasPersistedMaxRadiusPreference = true;
-    await _storage.write(key: _maxRadiusStorageKey, value: clamped.toString());
+    await _storage.write(
+      key: _scopedStorageKey(_maxRadiusStorageKey),
+      value: clamped.toString(),
+    );
+    await _storage.delete(key: _maxRadiusStorageKey);
   }
 
   @override
@@ -198,27 +202,35 @@ class AppDataRepository implements AppDataRepositoryContract {
     locationOriginSettingsStreamValue.addValue(settings);
     _hasPersistedLocationOriginPreference = true;
     await _storage.write(
-      key: _locationOriginUsesLiveStorageKey,
+      key: _scopedStorageKey(_locationOriginUsesLiveStorageKey),
       value: settings.usesUserLiveLocation.toString(),
     );
     await _storage.write(
-      key: _locationOriginReasonStorageKey,
+      key: _scopedStorageKey(_locationOriginReasonStorageKey),
       value: settings.reason.name,
     );
+    await _storage.delete(key: _locationOriginUsesLiveStorageKey);
+    await _storage.delete(key: _locationOriginReasonStorageKey);
 
     final fixedReference = settings.fixedLocationReference;
     if (fixedReference == null) {
       await _storage.delete(key: _locationOriginFixedReferenceLatStorageKey);
       await _storage.delete(key: _locationOriginFixedReferenceLngStorageKey);
+      await _storage.delete(
+        key: _scopedStorageKey(_locationOriginFixedReferenceLatStorageKey),
+      );
+      await _storage.delete(
+        key: _scopedStorageKey(_locationOriginFixedReferenceLngStorageKey),
+      );
       return;
     }
 
     await _storage.write(
-      key: _locationOriginFixedReferenceLatStorageKey,
+      key: _scopedStorageKey(_locationOriginFixedReferenceLatStorageKey),
       value: fixedReference.latitude.toString(),
     );
     await _storage.write(
-      key: _locationOriginFixedReferenceLngStorageKey,
+      key: _scopedStorageKey(_locationOriginFixedReferenceLngStorageKey),
       value: fixedReference.longitude.toString(),
     );
   }
@@ -266,7 +278,9 @@ class AppDataRepository implements AppDataRepositoryContract {
   }
 
   Future<double?> _loadMaxRadiusMeters() async {
-    final stored = await _storage.read(key: _maxRadiusStorageKey);
+    final stored =
+        await _storage.read(key: _scopedStorageKey(_maxRadiusStorageKey)) ??
+        await _storage.read(key: _maxRadiusStorageKey);
     if (stored == null || stored.trim().isEmpty) return null;
     final parsed = double.tryParse(stored);
     if (parsed == null || parsed <= 0) return null;
@@ -289,9 +303,17 @@ class AppDataRepository implements AppDataRepositoryContract {
   String _discoveryFilterSelectionStorageKey(
     AppDataDiscoveryFilterTokenValue surface,
   ) {
-    final tenantKey = _storageSafeToken(appData.mainDomainValue.value.host);
+    final tenantKey = _storageTenantKey();
     final surfaceKey = _storageSafeToken(surface.value);
     return '${_discoveryFilterSelectionStoragePrefix}_${tenantKey}_$surfaceKey';
+  }
+
+  String _scopedStorageKey(String baseKey) {
+    return '${baseKey}_${_storageTenantKey()}';
+  }
+
+  String _storageTenantKey() {
+    return _storageSafeToken(appData.mainDomainValue.value.host);
   }
 
   String _storageSafeToken(String raw) {
@@ -303,9 +325,11 @@ class AppDataRepository implements AppDataRepositoryContract {
   }
 
   Future<LocationOriginSettings?> _loadLocationOriginSettings() async {
-    final rawUseLive = await _storage.read(
-      key: _locationOriginUsesLiveStorageKey,
-    );
+    final rawUseLive =
+        await _storage.read(
+          key: _scopedStorageKey(_locationOriginUsesLiveStorageKey),
+        ) ??
+        await _storage.read(key: _locationOriginUsesLiveStorageKey);
     if (rawUseLive == null || rawUseLive.trim().isEmpty) {
       return null;
     }
@@ -315,12 +339,16 @@ class AppDataRepository implements AppDataRepositoryContract {
       return LocationOriginSettings.userLiveLocation();
     }
 
-    final rawLat = await _storage.read(
-      key: _locationOriginFixedReferenceLatStorageKey,
-    );
-    final rawLng = await _storage.read(
-      key: _locationOriginFixedReferenceLngStorageKey,
-    );
+    final rawLat =
+        await _storage.read(
+          key: _scopedStorageKey(_locationOriginFixedReferenceLatStorageKey),
+        ) ??
+        await _storage.read(key: _locationOriginFixedReferenceLatStorageKey);
+    final rawLng =
+        await _storage.read(
+          key: _scopedStorageKey(_locationOriginFixedReferenceLngStorageKey),
+        ) ??
+        await _storage.read(key: _locationOriginFixedReferenceLngStorageKey);
     if (rawLat == null || rawLng == null) {
       return null;
     }
@@ -331,7 +359,11 @@ class AppDataRepository implements AppDataRepositoryContract {
       return null;
     }
 
-    final reasonRaw = await _storage.read(key: _locationOriginReasonStorageKey);
+    final reasonRaw =
+        await _storage.read(
+          key: _scopedStorageKey(_locationOriginReasonStorageKey),
+        ) ??
+        await _storage.read(key: _locationOriginReasonStorageKey);
     final reason = switch (reasonRaw?.trim()) {
       'outsideRange' => LocationOriginReason.outsideRange,
       'unavailable' => LocationOriginReason.unavailable,

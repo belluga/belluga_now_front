@@ -96,6 +96,28 @@ void main() {
     expect(controller.text, isNot(contains('<img')));
   });
 
+  testWidgets('renders the rich editor body with the configured label',
+      (tester) async {
+    final controller = TextEditingController(text: '<p>Conteúdo curto</p>');
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      _buildEditorHost(
+        children: [
+          TenantAdminRichTextEditor(
+            controller: controller,
+            label: 'Título / copy do item',
+            placeholder: 'Escreva o conteúdo do item de programação',
+          ),
+        ],
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Título / copy do item'), findsOneWidget);
+    expect(find.byType(TenantAdminRichTextEditor), findsOneWidget);
+  });
+
   test(
     'safe rich html unwraps unsupported containers while removing dangerous content',
     () {
