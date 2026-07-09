@@ -7,21 +7,12 @@ import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
 class LaravelStaticAssetsBackend implements StaticAssetsBackendContract {
-  LaravelStaticAssetsBackend({
-    Dio? dio,
-  }) : _dio = dio ?? Dio();
+  LaravelStaticAssetsBackend({Dio? dio}) : _dio = dio ?? Dio();
 
   final Dio _dio;
 
   String get _apiBaseUrl =>
       '${GetIt.I.get<AppData>().mainDomainValue.value.origin}/api';
-
-  Future<Map<String, String>> _buildHeaders({bool includeJsonAccept = false}) {
-    return TenantPublicAuthHeaders.build(
-      includeJsonAccept: includeJsonAccept,
-      bootstrapIfEmpty: true,
-    );
-  }
 
   @override
   Future<PublicStaticAssetModel?> fetchStaticAssetByRef(String assetRef) async {
@@ -31,11 +22,14 @@ class LaravelStaticAssetsBackend implements StaticAssetsBackendContract {
     }
 
     try {
-      final headers = await _buildHeaders(includeJsonAccept: true);
-      final response = await _dio.get(
-        '$_apiBaseUrl/v1/static_assets/${Uri.encodeComponent(normalizedRef)}',
-        options: Options(headers: headers),
-      );
+      final response =
+          await TenantPublicAuthHeaders.retryOnceOnUnauthorized<Response>(
+            includeJsonAccept: true,
+            action: (headers) => _dio.get(
+              '$_apiBaseUrl/v1/static_assets/${Uri.encodeComponent(normalizedRef)}',
+              options: Options(headers: headers),
+            ),
+          );
       final raw = response.data;
       if (raw is! Map<String, dynamic>) {
         throw Exception('Unexpected static asset detail response shape.');
@@ -44,8 +38,9 @@ class LaravelStaticAssetsBackend implements StaticAssetsBackendContract {
       if (data is! Map) {
         throw Exception('Static asset detail payload missing data object.');
       }
-      return PublicStaticAssetDto.fromJson(Map<String, dynamic>.from(data))
-          .toDomain();
+      return PublicStaticAssetDto.fromJson(
+        Map<String, dynamic>.from(data),
+      ).toDomain();
     } on DioException catch (error) {
       if (error.response?.statusCode == 404) {
         return null;

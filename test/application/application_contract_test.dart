@@ -4,6 +4,8 @@ import 'dart:collection';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/application_contract.dart';
+import 'package:belluga_now/application/router/modular_app/module_settings.dart';
+import 'package:belluga_now/application/router/modular_app/modules/initialization_module.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/app_type.dart';
@@ -226,6 +228,41 @@ void main() {
       );
     },
   );
+
+  test(
+    'bootstrap retry on the same application instance does not re-register initialization module',
+    () async {
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(
+        _FakeAppDataRepository(appData: _buildAppData()),
+      );
+      GetIt.I.registerSingleton<TelemetryRepositoryContract>(
+        _FakeTelemetryRepository(appInitResults: Queue<bool>.from([true])),
+      );
+      GetIt.I.registerSingleton<AuthRepositoryContract<UserContract>>(
+        _FakeAuthRepository(),
+      );
+      final moduleSettings = _BootstrapRetryTestModuleSettings();
+      final app = _BootstrapRetryTestApplication(moduleSettings);
+
+      await expectLater(
+        app.init(),
+        throwsA(isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          'post-bootstrap failure',
+        )),
+      );
+
+      await app.init();
+
+      expect(moduleSettings.initializeSubmodulesCalls, 2);
+      expect(GetIt.I.isRegistered<InitializationModule>(), isTrue);
+      expect(
+        moduleSettings.childModules.whereType<InitializationModule>().length,
+        1,
+      );
+    },
+  );
 }
 
 class _TestApplication extends ApplicationContract {
@@ -233,6 +270,28 @@ class _TestApplication extends ApplicationContract {
 
   @override
   Future<void> initialSettingsPlatform() async {}
+}
+
+class _BootstrapRetryTestApplication extends ApplicationContract {
+  _BootstrapRetryTestApplication(this._testModuleSettings);
+
+  final _BootstrapRetryTestModuleSettings _testModuleSettings;
+  bool _shouldFailAfterFirstBootstrap = true;
+
+  @override
+  ModuleSettings get moduleSettings => _testModuleSettings;
+
+  @override
+  Future<void> initialSettingsPlatform() async {}
+
+  @override
+  Future<void> init() async {
+    await super.init();
+    if (_shouldFailAfterFirstBootstrap) {
+      _shouldFailAfterFirstBootstrap = false;
+      throw StateError('post-bootstrap failure');
+    }
+  }
 }
 
 class _TestModule extends ModuleContract {
@@ -249,6 +308,19 @@ class _TestModule extends ModuleContract {
       path: '/',
     ),
   ];
+}
+
+class _BootstrapRetryTestModuleSettings extends ModuleSettings {
+  int initializeSubmodulesCalls = 0;
+
+  @override
+  Future<void> registerGlobalDependencies() async {}
+
+  @override
+  Future<void> initializeSubmodules() async {
+    initializeSubmodulesCalls += 1;
+    await registerSubModuleIfAbsent(InitializationModule());
+  }
 }
 
 class _DeepLinkTestModule extends ModuleContract {

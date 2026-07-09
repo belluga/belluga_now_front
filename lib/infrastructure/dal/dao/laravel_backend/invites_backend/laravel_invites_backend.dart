@@ -23,13 +23,6 @@ class LaravelInvitesBackend implements InvitesBackendContract {
   String get _apiBaseUrl =>
       '${GetIt.I.get<AppData>().mainDomainValue.value.origin}/api';
 
-  Future<Map<String, String>> _headers({bool includeJsonAccept = false}) {
-    return TenantPublicAuthHeaders.build(
-      includeJsonAccept: includeJsonAccept,
-      bootstrapIfEmpty: true,
-    );
-  }
-
   Future<Map<String, String>> _streamHeaders({bool includeJsonAccept = false}) {
     return TenantPublicAuthHeaders.build(
       includeJsonAccept: includeJsonAccept,
@@ -217,13 +210,17 @@ class LaravelInvitesBackend implements InvitesBackendContract {
     Map<String, dynamic>? queryParameters,
   }) async {
     try {
-      final headers = await _headers(includeJsonAccept: true);
-      final response = await _dio.get(
-        url,
-        queryParameters: queryParameters,
-        options: Options(headers: headers),
+      return await TenantPublicAuthHeaders.retryOnceOnUnauthorized(
+        includeJsonAccept: true,
+        action: (headers) async {
+          final response = await _dio.get(
+            url,
+            queryParameters: queryParameters,
+            options: Options(headers: headers),
+          );
+          return _normalizeResponse(response.data);
+        },
       );
-      return _normalizeResponse(response.data);
     } on DioException catch (error) {
       throw _wrapException('GET', error);
     }
@@ -234,13 +231,17 @@ class LaravelInvitesBackend implements InvitesBackendContract {
     Map<String, dynamic>? data,
   }) async {
     try {
-      final headers = await _headers(includeJsonAccept: true);
-      final response = await _dio.post(
-        url,
-        data: data,
-        options: Options(headers: headers),
+      return await TenantPublicAuthHeaders.retryOnceOnUnauthorized(
+        includeJsonAccept: true,
+        action: (headers) async {
+          final response = await _dio.post(
+            url,
+            data: data,
+            options: Options(headers: headers),
+          );
+          return _normalizeResponse(response.data);
+        },
       );
-      return _normalizeResponse(response.data);
     } on DioException catch (error) {
       throw _wrapException('POST', error);
     }
@@ -251,13 +252,17 @@ class LaravelInvitesBackend implements InvitesBackendContract {
     Map<String, dynamic>? data,
   }) async {
     try {
-      final headers = await _headers(includeJsonAccept: true);
-      final response = await _dio.patch(
-        url,
-        data: data,
-        options: Options(headers: headers),
+      return await TenantPublicAuthHeaders.retryOnceOnUnauthorized(
+        includeJsonAccept: true,
+        action: (headers) async {
+          final response = await _dio.patch(
+            url,
+            data: data,
+            options: Options(headers: headers),
+          );
+          return _normalizeResponse(response.data);
+        },
       );
-      return _normalizeResponse(response.data);
     } on DioException catch (error) {
       throw _wrapException('PATCH', error);
     }
@@ -265,12 +270,16 @@ class LaravelInvitesBackend implements InvitesBackendContract {
 
   Future<Map<String, dynamic>> _delete(String url) async {
     try {
-      final headers = await _headers(includeJsonAccept: true);
-      final response = await _dio.delete(
-        url,
-        options: Options(headers: headers),
+      return await TenantPublicAuthHeaders.retryOnceOnUnauthorized(
+        includeJsonAccept: true,
+        action: (headers) async {
+          final response = await _dio.delete(
+            url,
+            options: Options(headers: headers),
+          );
+          return _normalizeResponse(response.data);
+        },
       );
-      return _normalizeResponse(response.data);
     } on DioException catch (error) {
       throw _wrapException('DELETE', error);
     }

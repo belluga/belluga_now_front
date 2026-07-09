@@ -12,13 +12,6 @@ class LaravelUserEventsBackend implements UserEventsBackendContract {
   String get _apiBaseUrl =>
       '${GetIt.I.get<AppData>().mainDomainValue.value.origin}/api';
 
-  Future<Map<String, String>> _headers({bool includeJsonAccept = false}) {
-    return TenantPublicAuthHeaders.build(
-      includeJsonAccept: includeJsonAccept,
-      bootstrapIfEmpty: true,
-    );
-  }
-
   @override
   Future<Map<String, dynamic>> fetchConfirmedOccurrenceIds() {
     return _get('$_apiBaseUrl/v1/events/attendance/confirmed');
@@ -29,9 +22,7 @@ class LaravelUserEventsBackend implements UserEventsBackendContract {
     required String eventId,
     required String occurrenceId,
   }) {
-    final payload = <String, dynamic>{
-      'occurrence_id': occurrenceId.trim(),
-    };
+    final payload = <String, dynamic>{'occurrence_id': occurrenceId.trim()};
 
     return _post(
       '$_apiBaseUrl/v1/events/$eventId/attendance/confirm',
@@ -44,9 +35,7 @@ class LaravelUserEventsBackend implements UserEventsBackendContract {
     required String eventId,
     required String occurrenceId,
   }) {
-    final payload = <String, dynamic>{
-      'occurrence_id': occurrenceId.trim(),
-    };
+    final payload = <String, dynamic>{'occurrence_id': occurrenceId.trim()};
 
     return _post(
       '$_apiBaseUrl/v1/events/$eventId/attendance/unconfirm',
@@ -59,12 +48,15 @@ class LaravelUserEventsBackend implements UserEventsBackendContract {
     Map<String, dynamic>? queryParameters,
   }) async {
     try {
-      final headers = await _headers(includeJsonAccept: true);
-      final response = await _dio.get(
-        url,
-        queryParameters: queryParameters,
-        options: Options(headers: headers),
-      );
+      final response =
+          await TenantPublicAuthHeaders.retryOnceOnUnauthorized<Response>(
+            includeJsonAccept: true,
+            action: (headers) => _dio.get(
+              url,
+              queryParameters: queryParameters,
+              options: Options(headers: headers),
+            ),
+          );
       return _normalizeResponse(response.data);
     } on DioException catch (error) {
       throw _wrapException('GET', error);
@@ -76,12 +68,15 @@ class LaravelUserEventsBackend implements UserEventsBackendContract {
     Map<String, dynamic>? data,
   }) async {
     try {
-      final headers = await _headers(includeJsonAccept: true);
-      final response = await _dio.post(
-        url,
-        data: data,
-        options: Options(headers: headers),
-      );
+      final response =
+          await TenantPublicAuthHeaders.retryOnceOnUnauthorized<Response>(
+            includeJsonAccept: true,
+            action: (headers) => _dio.post(
+              url,
+              data: data,
+              options: Options(headers: headers),
+            ),
+          );
       return _normalizeResponse(response.data);
     } on DioException catch (error) {
       throw _wrapException('POST', error);

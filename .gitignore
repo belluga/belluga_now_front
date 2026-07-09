@@ -35,6 +35,8 @@ migrate_working_dir/
 .pub/
 /build/
 tool/belluga_custom_lint/build/
+/packages/*/build/
+/packages/*/pubspec.lock
 
 # Symbolication related
 app.*.symbols

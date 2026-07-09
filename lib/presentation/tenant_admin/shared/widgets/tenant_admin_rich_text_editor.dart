@@ -241,6 +241,24 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
     );
   }
 
+  void _replaceWithPlainText(String text) {
+    final normalized = text.replaceAll('\r\n', '\n');
+    final document = Document();
+    document.insert(0, normalized.isEmpty ? '\n' : '$normalized\n');
+    _replaceQuillController(
+      QuillController(
+        document: document,
+        selection: TextSelection.collapsed(
+          offset: _clampSelectionOffset(
+            normalized.length,
+            maxOffset: document.length - 1,
+          ),
+        ),
+      ),
+    );
+    _syncHtmlControllerFromDocument();
+  }
+
   Delta _canonicalizeDelta(Delta delta) {
     final canonical = Delta();
     for (final op in delta.toJson()) {
@@ -416,13 +434,25 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
                 ),
                 SizedBox(
                   height: widget.minHeight,
-                  child: QuillEditor.basic(
-                    controller: _quillController,
-                    focusNode: _focusNode,
-                    scrollController: _scrollController,
-                    config: QuillEditorConfig(
-                      placeholder: widget.placeholder,
-                      padding: const EdgeInsets.all(12),
+                  child: Semantics(
+                    container: true,
+                    textField: true,
+                    multiline: true,
+                    focusable: true,
+                    label: widget.label,
+                    value: _quillController.document.toPlainText().trim(),
+                    onTap: _focusNode.requestFocus,
+                    onSetText: _replaceWithPlainText,
+                    child: ExcludeSemantics(
+                      child: QuillEditor.basic(
+                        controller: _quillController,
+                        focusNode: _focusNode,
+                        scrollController: _scrollController,
+                        config: QuillEditorConfig(
+                          placeholder: widget.placeholder,
+                          padding: const EdgeInsets.all(12),
+                        ),
+                      ),
                     ),
                   ),
                 ),

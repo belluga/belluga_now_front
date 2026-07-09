@@ -6,12 +6,15 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_grou
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
+import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_occurrence_editor_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_programming_item_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/widgets/tenant_admin_account_profile_location_picker_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_nested_profile_groups_editor.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_html/flutter_html.dart' hide Marker;
 import 'package:stream_value/core/stream_value_builder.dart';
 
 typedef TenantAdminEventDateTimePicker =
@@ -556,12 +559,59 @@ class _TenantAdminEventProgrammingItemEditorSheetState
     extends State<_TenantAdminEventProgrammingItemEditorSheet> {
   late final TenantAdminEventProgrammingItemDraft _draft =
       TenantAdminEventProgrammingItemDraft(existing: widget.existing);
+  late final TextEditingController _timeController = TextEditingController(
+    text: _draft.time,
+  );
+  late final TextEditingController _endTimeController = TextEditingController(
+    text: _draft.endTime,
+  );
+  late final TextEditingController _titleController = TextEditingController(
+    text: _draft.title,
+  );
   String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
     _synchronizeDraftWithOccurrence();
+    if (widget.existing == null && !_draft.isTimed) {
+      _draft.setTimed(true);
+    }
+    _timeController.addListener(_syncTimeFromEditor);
+    _endTimeController.addListener(_syncEndTimeFromEditor);
+    _titleController.addListener(_syncTitleFromEditor);
+  }
+
+  @override
+  void dispose() {
+    _timeController.removeListener(_syncTimeFromEditor);
+    _timeController.dispose();
+    _endTimeController.removeListener(_syncEndTimeFromEditor);
+    _endTimeController.dispose();
+    _titleController.removeListener(_syncTitleFromEditor);
+    _titleController.dispose();
+    super.dispose();
+  }
+
+  void _syncTimeFromEditor() {
+    if (_timeController.text.trim().isNotEmpty && !_draft.isTimed) {
+      _draft.setTimed(true);
+    }
+    _draft.time = _timeController.text;
+    _errorMessage = null;
+  }
+
+  void _syncEndTimeFromEditor() {
+    if (_endTimeController.text.trim().isNotEmpty && !_draft.isTimed) {
+      _draft.setTimed(true);
+    }
+    _draft.endTime = _endTimeController.text;
+    _errorMessage = null;
+  }
+
+  void _syncTitleFromEditor() {
+    _draft.title = _titleController.text;
+    _errorMessage = null;
   }
 
   void _synchronizeDraftWithOccurrence() {
@@ -770,51 +820,78 @@ class _TenantAdminEventProgrammingItemEditorSheetState
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              widget.existing == null
-                  ? 'Adicionar item de programação'
-                  : 'Editar item de programação',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.existing == null
+                        ? 'Adicionar item de programação'
+                        : 'Editar item de programação',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  key: const Key('tenantAdminProgrammingCloseButton'),
+                  tooltip: 'Fechar',
+                  onPressed: () => unawaited(widget.closeModalSheet(context)),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
-            TextFormField(
-              key: const Key('tenantAdminProgrammingTimeField'),
-              initialValue: _draft.time,
-              decoration: const InputDecoration(
-                labelText: 'Horário',
-                hintText: '13:00',
+            SwitchListTile.adaptive(
+              key: const Key('tenantAdminProgrammingTimedToggle'),
+              contentPadding: EdgeInsets.zero,
+              value: _draft.isTimed,
+              title: const Text('Item com horário'),
+              subtitle: Text(
+                _draft.isTimed
+                    ? 'Usa faixa de horário explícita.'
+                    : 'Item sequencial sem horário.',
               ),
-              keyboardType: TextInputType.datetime,
               onChanged: (value) {
-                _draft.time = value;
-                _errorMessage = null;
+                setState(() {
+                  _draft.setTimed(value);
+                  if (!value) {
+                    _timeController.text = '';
+                    _endTimeController.text = '';
+                  }
+                  _errorMessage = null;
+                });
               },
             ),
-            const SizedBox(height: 12),
-            TextFormField(
-              key: const Key('tenantAdminProgrammingEndTimeField'),
-              initialValue: _draft.endTime,
-              decoration: const InputDecoration(
-                labelText: 'Horário de fim (opcional)',
-                hintText: '18:00',
+            if (_draft.isTimed) ...[
+              const SizedBox(height: 12),
+              TextFormField(
+                key: const Key('tenantAdminProgrammingTimeField'),
+                controller: _timeController,
+                decoration: const InputDecoration(
+                  labelText: 'Horário inicial',
+                  hintText: '13:00',
+                ),
+                keyboardType: TextInputType.datetime,
               ),
-              keyboardType: TextInputType.datetime,
-              onChanged: (value) {
-                _draft.endTime = value;
-                _errorMessage = null;
-              },
-            ),
+              const SizedBox(height: 12),
+              TextFormField(
+                key: const Key('tenantAdminProgrammingEndTimeField'),
+                controller: _endTimeController,
+                decoration: const InputDecoration(
+                  labelText: 'Horário de fim (opcional)',
+                  hintText: '18:00',
+                ),
+                keyboardType: TextInputType.datetime,
+              ),
+            ],
             const SizedBox(height: 12),
-            TextFormField(
-              key: const Key('tenantAdminProgrammingTitleField'),
-              initialValue: _draft.title,
-              decoration: const InputDecoration(labelText: 'Título (opcional)'),
-              onChanged: (value) {
-                _draft.title = value;
-                _errorMessage = null;
-              },
+            TenantAdminRichTextEditor(
+              key: const Key('tenantAdminProgrammingTitleEditor'),
+              controller: _titleController,
+              label: 'Título / copy do item',
+              placeholder: 'Escreva o conteúdo do item de programação',
+              minHeight: 220,
             ),
             const SizedBox(height: 16),
             Text(
@@ -932,8 +1009,13 @@ class _TenantAdminEventProgrammingItemEditorSheetState
                 ),
                 const SizedBox(height: 8),
                 Semantics(
+                  container: true,
                   button: true,
-                  label: 'Local da programação. $_selectedLocationLabel',
+                  enabled: true,
+                  identifier: 'tenant_admin_programming_location_trigger',
+                  label: 'Local da programação',
+                  value: _selectedLocationLabel,
+                  onTap: _pickProgrammingLocation,
                   child: ExcludeSemantics(
                     child: SizedBox(
                       width: double.infinity,
@@ -971,16 +1053,31 @@ class _TenantAdminEventProgrammingItemEditorSheetState
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => unawaited(widget.closeModalSheet(context)),
-                    child: const Text('Cancelar'),
+                  child: Semantics(
+                    container: true,
+                    button: true,
+                    enabled: true,
+                    identifier: 'tenant_admin_programming_cancel_button',
+                    label: 'Cancelar item',
+                    onTap: () => unawaited(widget.closeModalSheet(context)),
+                    child: ExcludeSemantics(
+                      child: OutlinedButton(
+                        onPressed: () =>
+                            unawaited(widget.closeModalSheet(context)),
+                        child: const Text('Cancelar'),
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: FilledButton(
-                    key: const Key('tenantAdminProgrammingSaveButton'),
-                    onPressed: () {
+                  child: Semantics(
+                    container: true,
+                    button: true,
+                    enabled: true,
+                    identifier: 'tenant_admin_programming_save_button',
+                    label: 'Salvar item',
+                    onTap: () {
                       final validationError = _draft.validate();
                       if (validationError != null) {
                         setState(() {
@@ -1003,7 +1100,35 @@ class _TenantAdminEventProgrammingItemEditorSheetState
                       }
                       unawaited(widget.closeModalSheet(context));
                     },
-                    child: const Text('Salvar item'),
+                    child: ExcludeSemantics(
+                      child: FilledButton(
+                        key: const Key('tenantAdminProgrammingSaveButton'),
+                        onPressed: () {
+                          final validationError = _draft.validate();
+                          if (validationError != null) {
+                            setState(() {
+                              _errorMessage = validationError;
+                            });
+                            return;
+                          }
+                          final item = _draft.toProgrammingItem();
+                          if (widget.itemKey == null) {
+                            widget.controller.addOccurrenceProgrammingItem(
+                              widget.occurrenceKey,
+                              item,
+                            );
+                          } else {
+                            widget.controller.updateOccurrenceProgrammingItem(
+                              occurrenceKey: widget.occurrenceKey,
+                              itemKey: widget.itemKey!,
+                              item: item,
+                            );
+                          }
+                          unawaited(widget.closeModalSheet(context));
+                        },
+                        child: const Text('Salvar item'),
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -1031,29 +1156,47 @@ class _ProgrammingItemListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      onTap: onTap,
-      leading: Text(
-        item.endTime == null ? item.time : '${item.time} às ${item.endTime}',
-      ),
-      title: Text(
-        item.title ??
-            TenantAdminEventOccurrenceEditorDraft.firstProgrammingProfileName(
-              item,
-            ) ??
-            'Item sem título',
-      ),
-      subtitle: _buildProgrammingItemSubtitle(item, venues),
-      trailing: IconButton(
-        tooltip: 'Remover item de programação',
-        onPressed: onRemove,
-        icon: const Icon(Icons.close),
+    final titleHtml = SafeRichHtml.canonicalize(item.title?.trim() ?? '');
+    final hasHtmlTitle = !SafeRichHtml.isEffectivelyEmpty(titleHtml);
+    final titleText =
+        !hasHtmlTitle
+            ? TenantAdminEventOccurrenceEditorDraft.firstProgrammingProfileName(
+                  item,
+                ) ??
+                'Item sem título'
+            : _plainTextFromHtml(titleHtml);
+    final subtitleLines = _buildProgrammingItemSubtitleLines(item, venues);
+    final semanticLabel = [titleText, ...subtitleLines].join('\n');
+    return Semantics(
+      button: true,
+      label: semanticLabel,
+      child: ExcludeSemantics(
+        excluding: false,
+        child: ListTile(
+          contentPadding: EdgeInsets.zero,
+          onTap: onTap,
+          leading: Text(
+            item.hasTime
+                ? (item.endTime == null
+                      ? item.time
+                      : '${item.time} às ${item.endTime}')
+                : 'Sequencial',
+          ),
+          title: !hasHtmlTitle
+              ? Text(titleText)
+              : _ProgrammingItemHtmlPreview(html: titleHtml),
+          subtitle: _buildProgrammingItemSubtitle(subtitleLines),
+          trailing: IconButton(
+            tooltip: 'Remover item de programação',
+            onPressed: onRemove,
+            icon: const Icon(Icons.close),
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildProgrammingItemSubtitle(
+  List<String> _buildProgrammingItemSubtitleLines(
     TenantAdminEventProgrammingItem item,
     List<TenantAdminAccountProfile> venues,
   ) {
@@ -1066,12 +1209,53 @@ class _ProgrammingItemListTile extends StatelessWidget {
       '${item.accountProfileIds.length} perfil(is) vinculado(s)',
       if (locationLabel != null) 'Local: $locationLabel',
     ];
+    return lines;
+  }
+
+  Widget _buildProgrammingItemSubtitle(List<String> lines) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: lines
           .map((line) => Text(line, overflow: TextOverflow.ellipsis))
           .toList(growable: false),
+    );
+  }
+
+  String _plainTextFromHtml(String html) {
+    return html
+        .replaceAll(RegExp(r'<[^>]+>'), ' ')
+        .replaceAll('&nbsp;', ' ')
+        .replaceAll('\u00a0', ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+}
+
+class _ProgrammingItemHtmlPreview extends StatelessWidget {
+  const _ProgrammingItemHtmlPreview({required this.html});
+
+  final String html;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Html(
+      data: html,
+      style: {
+        'body': Style(
+          margin: Margins.zero,
+          padding: HtmlPaddings.zero,
+          color: colorScheme.onSurface,
+          fontSize: FontSize(
+            Theme.of(context).textTheme.bodyLarge?.fontSize ?? 16,
+          ),
+          lineHeight: const LineHeight(1.35),
+        ),
+        'p': Style(margin: Margins.only(bottom: 8)),
+        'strong': Style(fontWeight: FontWeight.w800),
+        'br': Style(display: Display.block),
+      },
     );
   }
 }

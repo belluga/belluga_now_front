@@ -77,10 +77,7 @@ void main() {
         find.byKey(const Key('tenantAdminProgrammingTimeField')),
         '13:00',
       );
-      await tester.enterText(
-        find.byKey(const Key('tenantAdminProgrammingTitleField')),
-        'Apresentacao especial',
-      );
+      await _enterProgrammingTitle(tester, 'Apresentacao especial');
       await _dismissKeyboard(tester);
       await _tapVisibleByKey(
         tester,
@@ -232,10 +229,7 @@ void main() {
         find.byKey(const Key('tenantAdminProgrammingEndTimeField')),
         '18:30',
       );
-      await tester.enterText(
-        find.byKey(const Key('tenantAdminProgrammingTitleField')),
-        'Show com encerramento',
-      );
+      await _enterProgrammingTitle(tester, 'Show com encerramento');
       await _dismissKeyboard(tester);
       await _tapProgrammingSaveButton(tester);
       await _closeOccurrenceSheet(tester);
@@ -255,6 +249,71 @@ void main() {
       expect(programmingItem.time, '17:00');
       expect(programmingItem.endTime, '18:30');
       expect(programmingItem.title, 'Show com encerramento');
+    },
+    timeout: const Timeout(Duration(minutes: 3)),
+  );
+
+  testWidgets(
+    'tenant admin occurrence editor saves sequenced programming item through local mutation',
+    (tester) async {
+      final eventsRepository = _FakeEventsRepository();
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+
+      eventsRepository.eventTypes = [_eventType()];
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(body: TenantAdminEventFormScreen()),
+      );
+      await _fillRequiredFields(tester, controller: controller);
+
+      await _tapAddOccurrenceFab(tester);
+
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
+        250,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('tenantAdminProgrammingTitleEditor')),
+        findsOneWidget,
+      );
+      expect(find.text('Item com horário'), findsOneWidget);
+
+      await tester.enterText(
+        find.byKey(const Key('tenantAdminProgrammingTimeField')),
+        '10:00',
+      );
+      await _enterProgrammingTitle(tester, 'Logo após o bloco anterior');
+      await _setProgrammingTimedState(tester, isTimed: false);
+
+      expect(find.text('Item sequencial sem horário.'), findsOneWidget);
+
+      await _tapProgrammingSaveButton(tester);
+      expect(find.text('Sequencial'), findsOneWidget);
+
+      await _closeOccurrenceSheet(tester);
+      await _tapFormSubmitButton(tester, 'Criar evento');
+
+      final submittedOccurrence =
+          eventsRepository.lastCreateDraft?.occurrences[1];
+      expect(submittedOccurrence, isNotNull);
+      final programmingItem = submittedOccurrence!.programmingItems.single;
+      expect(programmingItem.isSequential, isTrue);
+      expect(programmingItem.time, isEmpty);
+      expect(programmingItem.endTime, isNull);
+      expect(programmingItem.title, 'Logo após o bloco anterior');
     },
     timeout: const Timeout(Duration(minutes: 3)),
   );
@@ -381,6 +440,30 @@ Future<void> _tapProgrammingSaveButton(WidgetTester tester) async {
     tester,
     const Key('tenantAdminProgrammingSaveButton'),
   );
+}
+
+Future<void> _enterProgrammingTitle(WidgetTester tester, String title) async {
+  final editor = find.byKey(const Key('tenantAdminProgrammingTitleEditor'));
+  final editorWidget = tester.widget(editor) as dynamic;
+  editorWidget.controller.text = title;
+  await tester.pumpAndSettle();
+}
+
+Future<void> _setProgrammingTimedState(
+  WidgetTester tester, {
+  required bool isTimed,
+}) async {
+  final timedToggle = find.byKey(
+    const Key('tenantAdminProgrammingTimedToggle'),
+  );
+  await tester.ensureVisible(timedToggle);
+  await tester.pumpAndSettle();
+  final toggle = tester.widget<SwitchListTile>(timedToggle);
+  if (toggle.value == isTimed) {
+    return;
+  }
+  await tester.tap(timedToggle);
+  await tester.pumpAndSettle();
 }
 
 TenantAdminEventType _eventType() {

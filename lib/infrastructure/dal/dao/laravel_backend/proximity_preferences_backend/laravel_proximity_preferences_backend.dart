@@ -16,23 +16,15 @@ class LaravelProximityPreferencesBackend
 
   @override
   Future<ProximityPreferenceDTO?> fetch() async {
-    final token = await TenantPublicAuthHeaders.resolveToken(
-      bootstrapIfEmpty: true,
-    );
-    if (token.isEmpty) {
-      return null;
-    }
-
     try {
-      final response = await _dio.get(
-        '$_apiBaseUrl/v1/profile/proximity-preferences',
-        options: Options(
-          headers: <String, String>{
-            'Authorization': 'Bearer $token',
-            'Accept': 'application/json',
-          },
-        ),
-      );
+      final response =
+          await TenantPublicAuthHeaders.retryOnceOnUnauthorized<Response>(
+            includeJsonAccept: true,
+            action: (headers) => _dio.get(
+              '$_apiBaseUrl/v1/profile/proximity-preferences',
+              options: Options(headers: headers),
+            ),
+          );
 
       final raw = response.data;
       if (raw is! Map<String, dynamic>) {
@@ -45,7 +37,7 @@ class LaravelProximityPreferencesBackend
       return ProximityPreferenceDTO.fromJson(data);
     } on DioException catch (error) {
       final statusCode = error.response?.statusCode;
-      if (statusCode == 404 || statusCode == 401) {
+      if (statusCode == 404) {
         return null;
       }
 
@@ -61,26 +53,16 @@ class LaravelProximityPreferencesBackend
   Future<ProximityPreferenceDTO> upsert(
     ProximityPreferenceDTO preference,
   ) async {
-    final token = await TenantPublicAuthHeaders.resolveToken(
-      bootstrapIfEmpty: true,
-    );
-    if (token.isEmpty) {
-      throw Exception(
-        'Cannot persist proximity preferences without an identity token.',
-      );
-    }
-
     try {
-      final response = await _dio.put(
-        '$_apiBaseUrl/v1/profile/proximity-preferences',
-        data: preference.toJson(),
-        options: Options(
-          headers: <String, String>{
-            'Authorization': 'Bearer $token',
-            'Accept': 'application/json',
-          },
-        ),
-      );
+      final response =
+          await TenantPublicAuthHeaders.retryOnceOnUnauthorized<Response>(
+            includeJsonAccept: true,
+            action: (headers) => _dio.put(
+              '$_apiBaseUrl/v1/profile/proximity-preferences',
+              data: preference.toJson(),
+              options: Options(headers: headers),
+            ),
+          );
 
       final raw = response.data;
       if (raw is! Map<String, dynamic>) {

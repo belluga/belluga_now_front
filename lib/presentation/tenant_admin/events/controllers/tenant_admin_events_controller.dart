@@ -581,11 +581,14 @@ class TenantAdminEventsController implements Disposable {
     _eventTypeTaxonomyFallbackAllowedSlugs = Set<String>.unmodifiable(
       fallbackAllowedSlugs,
     );
-    final localOccurrences =
-        existingEvent?.occurrences
-            .map(_toLocalOccurrence)
-            .toList(growable: false) ??
-        const <TenantAdminEventOccurrence>[];
+    final localOccurrences = _hydrateLegacySingleOccurrenceOccurrences(
+      existingEvent: existingEvent,
+      occurrences:
+          existingEvent?.occurrences
+              .map(_toLocalOccurrence)
+              .toList(growable: false) ??
+          const <TenantAdminEventOccurrence>[],
+    );
     final occurrenceLocalIds = localOccurrences
         .map(_eventFormOccurrenceKeyFor)
         .toList(growable: false);
@@ -3166,6 +3169,47 @@ class TenantAdminEventsController implements Disposable {
     );
   }
 
+  List<TenantAdminEventOccurrence> _hydrateLegacySingleOccurrenceOccurrences({
+    required TenantAdminEvent? existingEvent,
+    required List<TenantAdminEventOccurrence> occurrences,
+  }) {
+    if (existingEvent == null || occurrences.length != 1) {
+      return occurrences;
+    }
+
+    final firstOccurrence = occurrences.first;
+    final relatedAccountProfileIds = firstOccurrence.relatedAccountProfileIds
+            .isNotEmpty
+        ? firstOccurrence.relatedAccountProfileIds
+        : existingEvent.relatedAccountProfileIds;
+    final relatedAccountProfiles = firstOccurrence.relatedAccountProfiles
+            .isNotEmpty
+        ? firstOccurrence.relatedAccountProfiles
+        : existingEvent.relatedAccountProfiles;
+    final profileGroups = firstOccurrence.profileGroups.isNotEmpty
+        ? firstOccurrence.profileGroups
+        : existingEvent.profileGroups;
+
+    final requiresHydration =
+        relatedAccountProfileIds.length !=
+            firstOccurrence.relatedAccountProfileIds.length ||
+        relatedAccountProfiles.length !=
+            firstOccurrence.relatedAccountProfiles.length ||
+        profileGroups.length != firstOccurrence.profileGroups.length;
+    if (!requiresHydration) {
+      return occurrences;
+    }
+
+    return <TenantAdminEventOccurrence>[
+      _copyOccurrence(
+        firstOccurrence,
+        relatedAccountProfileIds: relatedAccountProfileIds,
+        relatedAccountProfiles: relatedAccountProfiles,
+        profileGroups: profileGroups,
+      ),
+    ];
+  }
+
   TenantAdminEventFormState _replacePrimaryOccurrenceInState(
     TenantAdminEventFormState current, {
     required DateTime? startAt,
@@ -3366,7 +3410,7 @@ class TenantAdminEventsController implements Disposable {
     return items
         .map(
           (item) => TenantAdminEventProgrammingItem(
-            timeValue: tenantAdminRequiredText(item.time),
+            timeValue: tenantAdminOptionalText(item.time),
             endTimeValue: tenantAdminOptionalText(item.endTime),
             titleValue: tenantAdminOptionalText(item.title),
             accountProfileIdValues: item.accountProfileIds
@@ -3488,7 +3532,7 @@ class TenantAdminEventsController implements Disposable {
     String profileId,
   ) {
     return TenantAdminEventProgrammingItem(
-      timeValue: tenantAdminRequiredText(item.time),
+      timeValue: tenantAdminOptionalText(item.time),
       endTimeValue: tenantAdminOptionalText(item.endTime),
       titleValue: tenantAdminOptionalText(item.title),
       accountProfileIdValues: item.accountProfileIds

@@ -60,13 +60,6 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     return _locationOriginService;
   }
 
-  Future<Map<String, String>> _buildHeaders({bool includeJsonAccept = false}) {
-    return TenantPublicAuthHeaders.build(
-      includeJsonAccept: includeJsonAccept,
-      bootstrapIfEmpty: true,
-    );
-  }
-
   @override
   Future<PagedAccountProfilesResult> fetchAccountProfilesPage({
     required int page,
@@ -101,12 +94,15 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       }
       _appendTaxonomyQueryParameters(queryParameters, taxonomyFilters);
 
-      final headers = await _buildHeaders(includeJsonAccept: true);
-      final response = await _dio.get(
-        '$_apiBaseUrl/v1/account_profiles',
-        queryParameters: queryParameters,
-        options: Options(headers: headers),
-      );
+      final response =
+          await TenantPublicAuthHeaders.retryOnceOnUnauthorized<Response>(
+            includeJsonAccept: true,
+            action: (headers) => _dio.get(
+              '$_apiBaseUrl/v1/account_profiles',
+              queryParameters: queryParameters,
+              options: Options(headers: headers),
+            ),
+          );
       final raw = response.data;
       if (raw is! Map<String, dynamic>) {
         throw Exception('Unexpected account profiles response shape.');
@@ -158,19 +154,22 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
 
     final safePageSize = pageSize <= 0 ? 10 : pageSize.clamp(1, 50);
     try {
-      final headers = await _buildHeaders(includeJsonAccept: true);
-      final response = await _dio.get(
-        '$_apiBaseUrl/v1/account_profiles/near',
-        queryParameters: _nearQueryParameters(
-          originLat: origin.latitude,
-          originLng: origin.longitude,
-          page: 1,
-          pageSize: safePageSize,
-          typeFilters: typeFilters,
-          taxonomyFilters: taxonomyFilters,
-        ),
-        options: Options(headers: headers),
-      );
+      final response =
+          await TenantPublicAuthHeaders.retryOnceOnUnauthorized<Response>(
+            includeJsonAccept: true,
+            action: (headers) => _dio.get(
+              '$_apiBaseUrl/v1/account_profiles/near',
+              queryParameters: _nearQueryParameters(
+                originLat: origin.latitude,
+                originLng: origin.longitude,
+                page: 1,
+                pageSize: safePageSize,
+                typeFilters: typeFilters,
+                taxonomyFilters: taxonomyFilters,
+              ),
+              options: Options(headers: headers),
+            ),
+          );
       final raw = response.data;
       if (raw is! Map<String, dynamic>) {
         throw Exception('Unexpected account profiles near response shape.');
@@ -277,12 +276,15 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     }
 
     try {
-      final headers = await _buildHeaders(includeJsonAccept: true);
-      final response = await _dio.get(
-        '$_apiBaseUrl/v1/account_profiles/'
-        '${Uri.encodeComponent(normalizedSlug)}',
-        options: Options(headers: headers),
-      );
+      final response =
+          await TenantPublicAuthHeaders.retryOnceOnUnauthorized<Response>(
+            includeJsonAccept: true,
+            action: (headers) => _dio.get(
+              '$_apiBaseUrl/v1/account_profiles/'
+              '${Uri.encodeComponent(normalizedSlug)}',
+              options: Options(headers: headers),
+            ),
+          );
       final raw = response.data;
       if (raw is! Map<String, dynamic>) {
         throw Exception('Unexpected account profile detail response shape.');

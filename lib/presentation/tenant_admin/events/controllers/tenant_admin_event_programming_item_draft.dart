@@ -6,7 +6,8 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value
 class TenantAdminEventProgrammingItemDraft {
   TenantAdminEventProgrammingItemDraft({
     required TenantAdminEventProgrammingItem? existing,
-  }) : time = existing?.time ?? '',
+  }) : isTimed = existing?.hasTime ?? false,
+       time = existing?.time ?? '',
        endTime = existing?.endTime ?? '',
        title = existing?.title ?? '',
        selectedLocationProfileId = existing?.placeRef?.id,
@@ -23,8 +24,17 @@ class TenantAdminEventProgrammingItemDraft {
   String title;
   String? selectedLocationProfileId;
   TenantAdminAccountProfile? selectedLocationProfile;
+  bool isTimed;
   final List<TenantAdminAccountProfileIdValue> linkedProfileIds;
   final List<TenantAdminAccountProfile> linkedProfiles;
+
+  void setTimed(bool value) {
+    isTimed = value;
+    if (!value) {
+      time = '';
+      endTime = '';
+    }
+  }
 
   void upsertLinkedProfile(TenantAdminAccountProfile profile) {
     if (!linkedProfileIds.any((entry) => entry.value == profile.id)) {
@@ -55,7 +65,7 @@ class TenantAdminEventProgrammingItemDraft {
     final normalizedTime = time.trim();
     final normalizedEndTime = endTime.trim();
     final normalizedTitle = title.trim();
-    if (!_isValidProgrammingTime(normalizedTime)) {
+    if (isTimed && !_isValidProgrammingTime(normalizedTime)) {
       return 'Horário deve estar no formato HH:mm.';
     }
     if (normalizedEndTime.isNotEmpty &&
@@ -63,7 +73,8 @@ class TenantAdminEventProgrammingItemDraft {
       return 'Horário de fim deve estar no formato HH:mm.';
     }
     if (normalizedEndTime.isNotEmpty &&
-        normalizedEndTime.compareTo(normalizedTime) <= 0) {
+        (normalizedTime.isEmpty ||
+            normalizedEndTime.compareTo(normalizedTime) <= 0)) {
       return 'Horário de fim deve ser posterior ao horário inicial.';
     }
     if (normalizedTitle.isEmpty && linkedProfileIds.isEmpty) {
@@ -78,7 +89,9 @@ class TenantAdminEventProgrammingItemDraft {
   TenantAdminEventProgrammingItem toProgrammingItem() {
     final normalizedTitle = title.trim();
     return TenantAdminEventProgrammingItem(
-      timeValue: tenantAdminRequiredText(time.trim()),
+      timeValue: tenantAdminOptionalText(
+        isTimed ? time.trim() : null,
+      ),
       endTimeValue: tenantAdminOptionalText(
         endTime.trim().isEmpty ? null : endTime.trim(),
       ),

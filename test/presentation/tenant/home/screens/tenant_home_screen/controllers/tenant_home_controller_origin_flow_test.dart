@@ -12,6 +12,7 @@ import 'package:belluga_now/domain/repositories/user_location_repository_contrac
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_bool_value.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
+import 'package:belluga_now/domain/user/user_profile_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
@@ -25,6 +26,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 void main() {
   tearDown(() async {
@@ -173,6 +175,58 @@ void main() {
 
     expect(backend.requests, isEmpty);
     expect(controller.myEventsFilteredStreamValue.value, isEmpty);
+
+    controller.onDispose();
+  });
+
+  test('home reloads my events after late authenticated identity hydration',
+      () async {
+    final tenantDefaultOrigin = _buildCoordinate(
+      latitude: -20.671339,
+      longitude: -40.495395,
+    );
+    final appData = _buildAppData(defaultOrigin: tenantDefaultOrigin);
+    final appDataRepository = _FakeAppDataRepository(appData);
+    final userLocationRepository = _FakeUserLocationRepository();
+    final backend = _CapturingScheduleBackend();
+    final authRepository = _FakeAuthRepository(false);
+
+    GetIt.I.registerSingleton<AppData>(appData);
+
+    final scheduleRepository = ScheduleRepository(backend: backend);
+    final userEventsRepository = UserEventsRepository(
+      scheduleRepository: scheduleRepository,
+      backend: _FakeUserEventsBackend(),
+      authRepository: authRepository,
+    );
+    await userEventsRepository.confirmEventAttendance(
+      userEventsRepoString(_CapturingScheduleBackend.eventId),
+      occurrenceId: userEventsRepoString(
+        _CapturingScheduleBackend.occurrenceId,
+      ),
+    );
+
+    final controller = _buildTenantHomeController(
+      userEventsRepository: userEventsRepository,
+      userLocationRepository: userLocationRepository,
+      appDataRepository: appDataRepository,
+      authRepository: authRepository,
+    );
+
+    await controller.init();
+
+    expect(backend.requests, isEmpty);
+    expect(controller.myEventsFilteredStreamValue.value, isEmpty);
+
+    authRepository.authenticate();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(backend.requests, isNotEmpty);
+    expect(backend.requests.first.confirmedOnly, isTrue);
+    expect(
+      controller.myEventsFilteredStreamValue.value.map((event) => event.id),
+      contains(_CapturingScheduleBackend.eventId),
+    );
 
     controller.onDispose();
   });
@@ -326,6 +380,11 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   @override
   Future<void> init() async {}
 
+  void authenticate() {
+    _authorized = true;
+    userStreamValue.addValue(_FakeUser(id: '507f1f77bcf86cd799439011'));
+  }
+
   @override
   Future<void> autoLogin() async {}
 
@@ -367,6 +426,14 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> updateUser(UserCustomData data) async {}
+}
+
+class _FakeUser extends UserContract {
+  _FakeUser({required String id})
+      : super(
+          uuidValue: MongoIDValue()..parse(id),
+          profile: UserProfileContract(),
+        );
 }
 
 class _AgendaRequestSample {

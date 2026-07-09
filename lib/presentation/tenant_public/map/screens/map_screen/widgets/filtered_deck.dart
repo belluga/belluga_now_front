@@ -36,10 +36,10 @@ class FilteredDeck extends StatelessWidget {
   final ValueChanged<CityPoiModel> onPrimaryAction;
   final bool Function(CityPoiModel poi) showPrimaryActionForPoi;
   final PoiCardSecondaryAction? Function(CityPoiModel poi)
-      secondaryActionForPoi;
+  secondaryActionForPoi;
   final ValueChanged<CityPoiModel> onRoute;
   final PoiCardReferencePointAction? Function(CityPoiModel poi)
-      referencePointActionForPoi;
+  referencePointActionForPoi;
   final VoidCallback onClose;
   final ValueChanged<int> onChanged;
   final double deckHeight;
@@ -134,10 +134,10 @@ class _FilteredDeckPage extends StatefulWidget {
   final ValueChanged<CityPoiModel> onPrimaryAction;
   final bool Function(CityPoiModel poi) showPrimaryActionForPoi;
   final PoiCardSecondaryAction? Function(CityPoiModel poi)
-      secondaryActionForPoi;
+  secondaryActionForPoi;
   final ValueChanged<CityPoiModel> onRoute;
   final PoiCardReferencePointAction? Function(CityPoiModel poi)
-      referencePointActionForPoi;
+  referencePointActionForPoi;
   final VoidCallback onClose;
   final void Function(String poiId, double height) onCardHeightChanged;
   final double deckMeasurementPadding;
@@ -166,35 +166,46 @@ class _FilteredDeckPageState extends State<_FilteredDeckPage> {
     final poi = widget.poi;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final heroMaxHeight = (constraints.maxHeight * 0.20).clamp(
-          80.0,
-          84.0,
-        );
+        final heroMaxHeight = (constraints.maxHeight * 0.20).clamp(80.0, 84.0);
         return Align(
           alignment: Alignment.bottomCenter,
           child: Padding(
             padding: EdgeInsets.symmetric(
               horizontal: FilteredDeck._kCarouselPageInset,
             ),
-            child: SizeReportingWidget(
-              onSizeChanged: (size) => widget.onCardHeightChanged(
-                poi.id,
-                size.height + widget.deckMeasurementPadding,
-              ),
-              child: widget.cardBuilder.build(
-                context: context,
-                poi: poi,
-                colorScheme: widget.colorScheme,
-                onPrimaryAction: () {
-                  widget.controller.selectPoi(poi);
-                  widget.onPrimaryAction(poi);
-                },
-                showPrimaryAction: widget.showPrimaryActionForPoi(poi),
-                secondaryAction: widget.secondaryActionForPoi(poi),
-                onRoute: () => widget.onRoute(poi),
-                referencePointAction: widget.referencePointActionForPoi(poi),
-                onClose: widget.onClose,
-                heroMaxHeight: heroMaxHeight,
+            child: ClipRect(
+              child: SingleChildScrollView(
+                key: ValueKey<String>('poi-deck-scroll-${poi.id}'),
+                primary: false,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: Align(
+                    alignment: Alignment.bottomCenter,
+                    child: SizeReportingWidget(
+                      onSizeChanged: (size) => widget.onCardHeightChanged(
+                        poi.id,
+                        size.height + widget.deckMeasurementPadding,
+                      ),
+                      child: widget.cardBuilder.build(
+                        context: context,
+                        poi: poi,
+                        colorScheme: widget.colorScheme,
+                        onPrimaryAction: () {
+                          widget.controller.selectPoi(poi);
+                          widget.onPrimaryAction(poi);
+                        },
+                        showPrimaryAction: widget.showPrimaryActionForPoi(poi),
+                        secondaryAction: widget.secondaryActionForPoi(poi),
+                        onRoute: () => widget.onRoute(poi),
+                        referencePointAction: widget.referencePointActionForPoi(
+                          poi,
+                        ),
+                        onClose: widget.onClose,
+                        heroMaxHeight: heroMaxHeight,
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
