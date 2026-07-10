@@ -68,6 +68,21 @@ import 'package:belluga_now/testing/invite_model_factory.dart';
 List<EventModel>? _displayedEvents(TenantHomeAgendaController controller) =>
     controller.displayStateStreamValue.value?.events;
 
+Future<void> _waitForScheduleCallCount(
+  _FakeScheduleRepository scheduleRepository,
+  int expectedCount, {
+  Duration timeout = const Duration(milliseconds: 250),
+  Duration pollInterval = const Duration(milliseconds: 10),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (scheduleRepository.getEventsPageCallCount < expectedCount) {
+    if (DateTime.now().isAfter(deadline)) {
+      break;
+    }
+    await Future<void>.delayed(pollInterval);
+  }
+}
+
 void main() {
   group('TenantHomeAgendaController radius bounds', () {
     test(
@@ -411,7 +426,7 @@ void main() {
         );
         expect(controller.isRadiusRefreshLoadingStreamValue.value, isTrue);
 
-        await Future<void>.delayed(const Duration(milliseconds: 40));
+        await _waitForScheduleCallCount(scheduleRepository, 2);
         expect(scheduleRepository.getEventsPageCallCount, 2);
         expect(controller.isRadiusRefreshLoadingStreamValue.value, isTrue);
 
@@ -448,7 +463,7 @@ void main() {
         expect(controller.radiusMetersStreamValue.value, 7000);
 
         proximityRepository.setCurrentPreference(_proximityPreference(4000));
-        await Future<void>.delayed(const Duration(milliseconds: 40));
+        await _waitForScheduleCallCount(scheduleRepository, 2);
 
         expect(controller.radiusMetersStreamValue.value, 4000);
         expect(scheduleRepository.getEventsPageCallCount, 2);

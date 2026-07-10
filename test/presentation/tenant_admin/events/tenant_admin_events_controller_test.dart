@@ -156,7 +156,7 @@ void main() {
       controller.addOccurrenceProgrammingItem(
         primaryKey!,
         TenantAdminEventProgrammingItem(
-          timeValue: tenantAdminRequiredText('09:30'),
+          timeValue: tenantAdminOptionalText('09:30'),
           titleValue: tenantAdminOptionalText('Programação raiz'),
         ),
       );
@@ -165,7 +165,7 @@ void main() {
       controller.addOccurrenceProgrammingItem(
         secondOccurrenceKey,
         TenantAdminEventProgrammingItem(
-          timeValue: tenantAdminRequiredText('13:00'),
+          timeValue: tenantAdminOptionalText('13:00'),
           titleValue: tenantAdminOptionalText('Programação local'),
         ),
       );
@@ -215,7 +215,7 @@ void main() {
               ),
               programmingItems: [
                 TenantAdminEventProgrammingItem(
-                  timeValue: tenantAdminRequiredText('13:00'),
+                  timeValue: tenantAdminOptionalText('13:00'),
                   titleValue: tenantAdminOptionalText('Programação local'),
                 ),
               ],
@@ -228,7 +228,7 @@ void main() {
               ),
               programmingItems: [
                 TenantAdminEventProgrammingItem(
-                  timeValue: tenantAdminRequiredText('09:30'),
+                  timeValue: tenantAdminOptionalText('09:30'),
                   titleValue: tenantAdminOptionalText('Programação raiz'),
                 ),
               ],
@@ -438,9 +438,9 @@ void main() {
                 TenantAdminAccountProfileIdValue('artist-1'),
               ]),
           relatedAccountProfiles: [occurrenceProfile],
-          programmingItems: List<TenantAdminEventProgrammingItem>.of([
+            programmingItems: List<TenantAdminEventProgrammingItem>.of([
             TenantAdminEventProgrammingItem(
-              timeValue: tenantAdminRequiredText('20:00'),
+              timeValue: tenantAdminOptionalText('20:00'),
               accountProfileIdValues: List<TenantAdminAccountProfileIdValue>.of(
                 [TenantAdminAccountProfileIdValue('artist-1')],
               ),
@@ -523,7 +523,7 @@ void main() {
           ],
           programmingItems: List<TenantAdminEventProgrammingItem>.of([
             TenantAdminEventProgrammingItem(
-              timeValue: tenantAdminRequiredText('20:00'),
+              timeValue: tenantAdminOptionalText('20:00'),
               titleValue: tenantAdminOptionalText('Show principal'),
               accountProfileIdValues: List<TenantAdminAccountProfileIdValue>.of(
                 [TenantAdminAccountProfileIdValue('artist-1')],

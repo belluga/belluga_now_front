@@ -578,10 +578,11 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
     }
 
     if (_isEventPoi(poi)) {
+      final isHydrated = _controller.hydratedEventForPoi(poi) != null;
       return PoiCardSecondaryAction(
         icon: BooraIcons.inviteSolid,
         tooltip: 'Convidar',
-        onTap: () => unawaited(_openEventInvite(poi)),
+        onTap: isHydrated ? () => unawaited(_openEventInvite(poi)) : null,
       );
     }
 
@@ -628,12 +629,7 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
 
   Future<void> _openEventInvite(CityPoiModel poi) async {
     final event = _controller.hydratedEventForPoi(poi);
-    if (event == null) {
-      _controller.statusMessageStreamValue.addValue(
-        'Detalhes do evento ainda não estão prontos para convite.',
-      );
-      return;
-    }
+    if (event == null) return;
 
     final eventPath = _resolveEventSharePath(event);
     if (eventPath == null || eventPath.isEmpty) {

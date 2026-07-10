@@ -9,5 +9,5 @@ class PoiCardSecondaryAction {
 
   final IconData icon;
   final String tooltip;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 }

@@ -20,6 +20,8 @@ class EventProgrammingItem {
   final EventLinkedAccountProfile? locationProfile;
 
   String get time => timeValue.value;
+  bool get hasTime => time.trim().isNotEmpty;
+  bool get isSequential => !hasTime;
   String? get endTime => endTimeValue?.value;
   String? get title => titleValue?.value;
   String get displayTitle {

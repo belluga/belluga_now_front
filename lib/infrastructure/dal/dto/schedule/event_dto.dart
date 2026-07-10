@@ -608,17 +608,15 @@ class EventDTO {
   }
 
   static List<EventProgrammingItem> _resolveProgrammingItems(Object? raw) {
-    if (raw is! List) {
+    final entries = _asOrderedList(raw);
+    if (entries.isEmpty) {
       return const [];
     }
 
     final resolved = <EventProgrammingItem>[];
-    for (final entry in raw) {
+    for (final entry in entries) {
       final item = _asMap(entry);
       final time = _asNullableString(item['time'])?.trim() ?? '';
-      if (time.isEmpty) {
-        continue;
-      }
 
       final title = _asNullableString(item['title'])?.trim() ?? '';
       final endTime = _asNullableString(item['end_time'])?.trim() ?? '';
@@ -647,6 +645,19 @@ class EventDTO {
     }
 
     return List<EventProgrammingItem>.unmodifiable(resolved);
+  }
+
+  static List<Object?> _asOrderedList(dynamic value) {
+    if (value is List) {
+      return value;
+    }
+    if (value is Map) {
+      return value.values.toList(growable: false);
+    }
+    if (value is Iterable) {
+      return value.toList(growable: false);
+    }
+    return const <Object?>[];
   }
 
   static EventLinkedAccountProfile? _toLinkedAccountProfile(

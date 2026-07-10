@@ -75,7 +75,6 @@ class TenantAdminEventOccurrenceEditorDraft {
 
   void addProgrammingItem(TenantAdminEventProgrammingItem item) {
     programmingItems.add(item);
-    _sortProgrammingItems();
   }
 
   void updateProgrammingItem(int index, TenantAdminEventProgrammingItem item) {
@@ -83,7 +82,6 @@ class TenantAdminEventOccurrenceEditorDraft {
       return;
     }
     programmingItems[index] = item;
-    _sortProgrammingItems();
   }
 
   void removeProgrammingItem(int index) {
@@ -119,16 +117,13 @@ class TenantAdminEventOccurrenceEditorDraft {
     );
   }
 
-  void _sortProgrammingItems() {
-    programmingItems.sort((left, right) => left.time.compareTo(right.time));
-  }
-
   static TenantAdminEventProgrammingItem withoutProgrammingProfile(
     TenantAdminEventProgrammingItem item,
     String profileId,
   ) {
     return TenantAdminEventProgrammingItem(
-      timeValue: tenantAdminRequiredText(item.time),
+      timeValue: tenantAdminOptionalText(item.time),
+      endTimeValue: tenantAdminOptionalText(item.endTime),
       titleValue: tenantAdminOptionalText(item.title),
       accountProfileIdValues: item.accountProfileIds
           .where((entry) => entry.value != profileId)

@@ -187,9 +187,10 @@ class TenantAdminEventsRequestEncoder {
     payload['programming_items'] = occurrence.programmingItems
         .map(
           (item) => <String, dynamic>{
-            'time': item.time,
+            if (item.time.trim().isNotEmpty) 'time': item.time.trim(),
             if (item.endTime != null) 'end_time': item.endTime,
-            if (item.title != null) 'title': item.title,
+            if (item.title != null && item.title!.trim().isNotEmpty)
+              'title': item.title,
             if (item.accountProfileIds.isNotEmpty)
               'account_profile_ids': item.accountProfileIds
                   .map((profileId) => profileId.value)

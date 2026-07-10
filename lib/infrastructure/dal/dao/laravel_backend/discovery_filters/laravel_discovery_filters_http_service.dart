@@ -8,24 +8,24 @@ import 'package:get_it/get_it.dart';
 
 class LaravelDiscoveryFiltersHttpService
     implements DiscoveryFiltersBackendContract {
-  LaravelDiscoveryFiltersHttpService({
-    BackendContext? context,
-    Dio? dio,
-  }) : _dio = dio ??
-            Dio(
-              BaseOptions(
-                baseUrl: _resolveBaseUrl(context),
-                connectTimeout: const Duration(seconds: 5),
-                receiveTimeout: const Duration(seconds: 12),
-                sendTimeout: const Duration(seconds: 12),
-                listFormat: ListFormat.multiCompatible,
-              ),
-            );
+  LaravelDiscoveryFiltersHttpService({BackendContext? context, Dio? dio})
+    : _dio =
+          dio ??
+          Dio(
+            BaseOptions(
+              baseUrl: _resolveBaseUrl(context),
+              connectTimeout: const Duration(seconds: 5),
+              receiveTimeout: const Duration(seconds: 12),
+              sendTimeout: const Duration(seconds: 12),
+              listFormat: ListFormat.multiCompatible,
+            ),
+          );
 
   final Dio _dio;
 
   static String _resolveBaseUrl(BackendContext? context) {
-    final resolved = context ??
+    final resolved =
+        context ??
         (GetIt.I.isRegistered<BackendContract>()
             ? GetIt.I.get<BackendContract>().context
             : null);
@@ -44,13 +44,17 @@ class LaravelDiscoveryFiltersHttpService
       return DiscoveryFilterCatalogDTO.fromJson(const <String, dynamic>{});
     }
 
-    final response = await _dio.get(
-      '/v1/discovery-filters/${Uri.encodeComponent(normalizedSurface)}',
-      options: Options(
-        headers: await _buildHeaders(),
-        listFormat: ListFormat.multiCompatible,
-      ),
-    );
+    final response =
+        await TenantPublicAuthHeaders.retryOnceOnUnauthorized<Response>(
+          includeJsonAccept: true,
+          action: (headers) => _dio.get(
+            '/v1/discovery-filters/${Uri.encodeComponent(normalizedSurface)}',
+            options: Options(
+              headers: headers,
+              listFormat: ListFormat.multiCompatible,
+            ),
+          ),
+        );
 
     final payload = _normalizeMap(response.data);
     if (payload == null) {
@@ -62,20 +66,11 @@ class LaravelDiscoveryFiltersHttpService
     return DiscoveryFilterCatalogDTO.fromJson(payload);
   }
 
-  Future<Map<String, String>> _buildHeaders() {
-    return TenantPublicAuthHeaders.build(
-      includeJsonAccept: true,
-      bootstrapIfEmpty: true,
-    );
-  }
-
   Map<String, dynamic>? _normalizeMap(Object? raw) {
     if (raw is! Map) {
       return null;
     }
 
-    return raw.map(
-      (key, value) => MapEntry(key.toString(), value),
-    );
+    return raw.map((key, value) => MapEntry(key.toString(), value));
   }
 }

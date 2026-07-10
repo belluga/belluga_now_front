@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'dart:io';
+import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
 import 'package:belluga_now/testing/invite_materialize_result_builder.dart';
 
@@ -40,6 +42,7 @@ import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.da
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/invite_flow_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/widgets/invite_flow_coordinator.dart';
+import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -51,6 +54,7 @@ import 'package:belluga_now/testing/invite_model_factory.dart';
 import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 import 'package:value_object_pattern/domain/value_objects/html_content_value.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
+import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
@@ -411,6 +415,7 @@ void main() {
 
   setUp(() async {
     await GetIt.I.reset();
+    GetIt.I.registerSingleton<AppData>(_buildAppData());
   });
 
   tearDown(() async {
@@ -1422,6 +1427,34 @@ void main() {
 
       expect(repository.materializedShareCodes, ['31F8RN5QJ9']);
       expect(repository.acceptedInviteIds, ['multi-1']);
+    },
+  );
+}
+
+AppData _buildAppData() {
+  final platformType = PlatformTypeValue()..parse(AppType.mobile.name);
+  return buildAppDataFromInitialization(
+    remoteData: {
+      'name': 'Guarappari',
+      'type': 'tenant',
+      'main_domain': 'https://guarappari.com.br',
+      'domains': ['https://guarappari.com.br'],
+      'app_domains': [],
+      'theme_data_settings': {
+        'primary_seed_color': '#4FA0E3',
+        'secondary_seed_color': '#E80D5D',
+        'brightness_default': 'light',
+      },
+      'main_color': '#4FA0E3',
+      'tenant_id': 'tenant-1',
+      'telemetry': {'trackers': []},
+    },
+    localInfo: {
+      'platformType': platformType,
+      'hostname': 'guarappari.com.br',
+      'href': 'https://guarappari.com.br',
+      'port': null,
+      'device': 'test-device',
     },
   );
 }

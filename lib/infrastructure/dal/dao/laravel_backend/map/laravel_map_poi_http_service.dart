@@ -8,24 +8,24 @@ import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
 class LaravelMapPoiHttpService {
-  LaravelMapPoiHttpService({
-    BackendContext? context,
-    Dio? dio,
-  }) : _dio = dio ??
-            Dio(
-              BaseOptions(
-                baseUrl: _resolveBaseUrl(context),
-                connectTimeout: const Duration(seconds: 5),
-                receiveTimeout: const Duration(seconds: 12),
-                sendTimeout: const Duration(seconds: 12),
-                listFormat: ListFormat.multiCompatible,
-              ),
-            );
+  LaravelMapPoiHttpService({BackendContext? context, Dio? dio})
+    : _dio =
+          dio ??
+          Dio(
+            BaseOptions(
+              baseUrl: _resolveBaseUrl(context),
+              connectTimeout: const Duration(seconds: 5),
+              receiveTimeout: const Duration(seconds: 12),
+              sendTimeout: const Duration(seconds: 12),
+              listFormat: ListFormat.multiCompatible,
+            ),
+          );
 
   final Dio _dio;
 
   static String _resolveBaseUrl(BackendContext? context) {
-    final resolved = context ??
+    final resolved =
+        context ??
         (GetIt.I.isRegistered<BackendContract>()
             ? GetIt.I.get<BackendContract>().context
             : null);
@@ -37,23 +37,21 @@ class LaravelMapPoiHttpService {
     return resolved.baseUrl;
   }
 
-  Future<List<CityPoiDTO>> getPois(
-    PoiQuery query, {
-    String? stackKey,
-  }) async {
-    final params = _buildMapQueryParams(
-      query,
-      stackKey: stackKey,
-    );
+  Future<List<CityPoiDTO>> getPois(PoiQuery query, {String? stackKey}) async {
+    final params = _buildMapQueryParams(query, stackKey: stackKey);
 
-    final response = await _dio.get(
-      '/v1/map/pois',
-      queryParameters: params,
-      options: Options(
-        headers: await _buildHeaders(),
-        listFormat: ListFormat.multiCompatible,
-      ),
-    );
+    final response =
+        await TenantPublicAuthHeaders.retryOnceOnUnauthorized<Response>(
+          includeJsonAccept: true,
+          action: (headers) => _dio.get(
+            '/v1/map/pois',
+            queryParameters: params,
+            options: Options(
+              headers: headers,
+              listFormat: ListFormat.multiCompatible,
+            ),
+          ),
+        );
 
     final raw = response.data;
     final payload = _normalizeMap(raw);
@@ -90,17 +88,21 @@ class LaravelMapPoiHttpService {
     }
 
     try {
-      final response = await _dio.get(
-        '/v1/map/pois/lookup',
-        queryParameters: <String, dynamic>{
-          'ref_type': normalizedRefType,
-          'ref_id': normalizedRefId,
-        },
-        options: Options(
-          headers: await _buildHeaders(),
-          listFormat: ListFormat.multiCompatible,
-        ),
-      );
+      final response =
+          await TenantPublicAuthHeaders.retryOnceOnUnauthorized<Response>(
+            includeJsonAccept: true,
+            action: (headers) => _dio.get(
+              '/v1/map/pois/lookup',
+              queryParameters: <String, dynamic>{
+                'ref_type': normalizedRefType,
+                'ref_id': normalizedRefId,
+              },
+              options: Options(
+                headers: headers,
+                listFormat: ListFormat.multiCompatible,
+              ),
+            ),
+          );
 
       final raw = response.data;
       final payload = _normalizeMap(raw);
@@ -123,14 +125,18 @@ class LaravelMapPoiHttpService {
   }
 
   Future<MapFiltersDTO> getFilters(PoiQuery query) async {
-    final response = await _dio.get(
-      '/v1/map/filters',
-      queryParameters: _buildMapQueryParams(query),
-      options: Options(
-        headers: await _buildHeaders(),
-        listFormat: ListFormat.multiCompatible,
-      ),
-    );
+    final response =
+        await TenantPublicAuthHeaders.retryOnceOnUnauthorized<Response>(
+          includeJsonAccept: true,
+          action: (headers) => _dio.get(
+            '/v1/map/filters',
+            queryParameters: _buildMapQueryParams(query),
+            options: Options(
+              headers: headers,
+              listFormat: ListFormat.multiCompatible,
+            ),
+          ),
+        );
 
     final raw = response.data;
     final payload = _normalizeMap(raw);
@@ -144,10 +150,7 @@ class LaravelMapPoiHttpService {
     PoiQuery query, {
     String? stackKey,
   }) {
-    final params = _buildQueryParams(
-      query,
-      stackKey: stackKey,
-    );
+    final params = _buildQueryParams(query, stackKey: stackKey);
     final originLat = params['origin_lat'];
     final originLng = params['origin_lng'];
     if (originLat == null || originLng == null) {
@@ -158,10 +161,7 @@ class LaravelMapPoiHttpService {
     return params;
   }
 
-  Map<String, dynamic> _buildQueryParams(
-    PoiQuery query, {
-    String? stackKey,
-  }) {
+  Map<String, dynamic> _buildQueryParams(PoiQuery query, {String? stackKey}) {
     final params = <String, dynamic>{};
 
     if (query.hasBounds) {
@@ -232,20 +232,11 @@ class LaravelMapPoiHttpService {
     return params;
   }
 
-  Future<Map<String, String>> _buildHeaders() {
-    return TenantPublicAuthHeaders.build(
-      includeJsonAccept: true,
-      bootstrapIfEmpty: true,
-    );
-  }
-
   Map<String, dynamic>? _normalizeMap(Object? raw) {
     if (raw is! Map) {
       return null;
     }
 
-    return raw.map(
-      (key, value) => MapEntry(key.toString(), value),
-    );
+    return raw.map((key, value) => MapEntry(key.toString(), value));
   }
 }
