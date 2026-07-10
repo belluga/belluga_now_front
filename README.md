@@ -19,6 +19,7 @@ Contrato Android aprovado para este repositório:
 - Arquivo público versionado: `android/flavors/<flavor>.public.properties`
 - Arquivo secreto ignorado: `android/keystores/<flavor>.signing.properties`
 - Keystore fixo ignorado: `android/keystores/<flavor>.jks`
+- Fallback oficial de CI suportado: `CM_KEYSTORE_PATH`, `CM_KEYSTORE_PASSWORD`, `CM_KEY_ALIAS`, `CM_KEY_PASSWORD`
 - The build must fail closed if the public file is missing, if required public properties are missing, or if the required secret signing file is absent.
 
 1.  **Gerar Keystore:** No terminal, gere o arquivo de chave para o novo tenant.
@@ -45,13 +46,13 @@ Contrato Android aprovado para este repositório:
     ```
     * Para referência/base, use o template genérico `android/keystores/tenant.signing.properties.example`.
 
-5.  **Validação esperada:** Não mova `applicationId` ou `appLinkHosts` para segredos/variáveis opacas de CI. The build must fail closed when `android/flavors/<flavor>.public.properties` is missing, when `applicationId` or `appLinkHosts` is missing from that public file, or when `android/keystores/<flavor>.signing.properties` is missing.
+5.  **Validação esperada:** Não mova `applicationId` ou `appLinkHosts` para segredos/variáveis opacas de CI. The build must fail closed when `android/flavors/<flavor>.public.properties` is missing, when `applicationId` or `appLinkHosts` is missing from that public file, and when neither a local signing pair (`android/keystores/<flavor>.signing.properties` + `android/keystores/<flavor>.jks`) nor the official Codemagic signing environment (`CM_KEYSTORE_PATH`, `CM_KEYSTORE_PASSWORD`, `CM_KEY_ALIAS`, `CM_KEY_PASSWORD`) is available.
 
 ## Passo 2: Configuração do Projeto Android
 
 1.  **Configurar `build.gradle.kts`:** Abra o arquivo `android/app/build.gradle.kts`.
     * **Adicionar Flavor:** O Gradle descobre cada flavor Android a partir dos arquivos `android/flavors/*.public.properties`. Não adicione blocos manuais `create("<novo_tenant>")` no `productFlavors`; o nome do novo flavor nasce do arquivo `android/flavors/<novo_tenant>.public.properties` e da pasta Android correspondente em `android/app/src/<novo_tenant>/`.
-    * **Configurar Assinatura (IMPORTANTE):** Mantenha o Gradle alinhado ao contrato de dois arquivos. Os dados públicos do flavor devem vir de `android/flavors/<novo_tenant>.public.properties`, enquanto os segredos devem vir de `android/keystores/<novo_tenant>.signing.properties`, usando `android/keystores/<novo_tenant>.jks` como caminho fixo do keystore. The build must fail closed if the public file is missing, if `applicationId` or `appLinkHosts` is missing from that file, or if the required secret signing file is absent.
+    * **Configurar Assinatura (IMPORTANTE):** Mantenha o Gradle alinhado ao contrato de dois arquivos. Os dados públicos do flavor devem vir de `android/flavors/<novo_tenant>.public.properties`, enquanto os segredos devem vir de `android/keystores/<novo_tenant>.signing.properties`, usando `android/keystores/<novo_tenant>.jks` como caminho fixo do keystore para o fluxo local. Em Codemagic, o mesmo release também pode consumir o Android code signing nativo via `CM_KEYSTORE_PATH`, `CM_KEYSTORE_PASSWORD`, `CM_KEY_ALIAS` e `CM_KEY_PASSWORD`. The build must fail closed if the public file is missing, if `applicationId` or `appLinkHosts` is missing from that file, or if no valid local/Codemagic signing surface is available.
         ```kotlin
         android {
             // ...

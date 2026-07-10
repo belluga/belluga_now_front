@@ -15,6 +15,8 @@ Validates the Android public-vs-secret flavor contract by checking:
   * missing appLinkHosts
   * missing release signing properties file
   * missing release keystore file
+  * incomplete Codemagic signing environment
+  * missing Codemagic keystore file
 
 This script runs the fail-closed mutations inside a temporary sandbox copy of the
 Flutter checkout so the principal working tree stays untouched.
@@ -42,6 +44,19 @@ file_sha256() {
   sha256sum "$1" | awk '{print $1}'
 }
 
+read_property_file_value() {
+  local file="$1"
+  local key="$2"
+
+  awk -F= -v key="$key" '
+    $1 == key {
+      sub(/^[^=]*=/, "")
+      print
+      exit
+    }
+  ' "$file"
+}
+
 run_expect_failure() {
   local expected="$1"
   shift
@@ -56,6 +71,19 @@ run_expect_failure() {
   fi
   require_contains "$output" "$expected"
   log "observed expected failure: $expected"
+}
+
+run_expect_success() {
+  local output
+  set +e
+  output="$("$@" 2>&1)"
+  local status=$?
+  set -e
+  if [[ $status -ne 0 ]]; then
+    echo "$output"
+    fail "command unexpectedly failed: $*"
+  fi
+  log "observed expected success: $*"
 }
 
 flavor="guarappari"
@@ -177,7 +205,45 @@ restore_keystore_file() {
 run_gradle() {
   (
     cd "$workspace_dir"
-    ./android/gradlew --no-daemon -p android "$@" --dry-run
+    env \
+      -u CM_KEYSTORE_PATH \
+      -u CM_KEYSTORE_PASSWORD \
+      -u CM_KEY_ALIAS \
+      -u CM_KEY_PASSWORD \
+      ./android/gradlew --no-daemon -p android "$@" --dry-run
+  )
+}
+
+run_gradle_with_codemagic_signing_env() {
+  local key_alias
+  local key_password
+  local store_password
+
+  key_alias="$(read_property_file_value "${backup_dir}/signing.properties" "keyAlias")"
+  key_password="$(read_property_file_value "${backup_dir}/signing.properties" "keyPassword")"
+  store_password="$(read_property_file_value "${backup_dir}/signing.properties" "storePassword")"
+
+  (
+    cd "$workspace_dir"
+    env \
+      CM_KEYSTORE_PATH="$workspace_keystore_file" \
+      CM_KEYSTORE_PASSWORD="$store_password" \
+      CM_KEY_ALIAS="$key_alias" \
+      CM_KEY_PASSWORD="$key_password" \
+      ./android/gradlew --no-daemon -p android "$@" --dry-run
+  )
+}
+
+run_gradle_with_incomplete_codemagic_env() {
+  local store_password
+  store_password="$(read_property_file_value "${backup_dir}/signing.properties" "storePassword")"
+
+  (
+    cd "$workspace_dir"
+    env \
+      CM_KEYSTORE_PATH="$workspace_keystore_file" \
+      CM_KEYSTORE_PASSWORD="$store_password" \
+      ./android/gradlew --no-daemon -p android "$@" --dry-run
   )
 }
 
@@ -200,12 +266,21 @@ run_expect_failure \
 restore_public_file
 
 rm -f "$workspace_signing_file"
+run_expect_success run_gradle_with_codemagic_signing_env "$release_task"
+run_expect_failure \
+  "Incomplete Codemagic signing environment for release flavor \`${flavor}\`: missing CM_KEY_ALIAS, CM_KEY_PASSWORD." \
+  run_gradle_with_incomplete_codemagic_env "$release_task"
 run_expect_failure \
   "Missing signing properties for release flavor \`${flavor}\`" \
   run_gradle "$release_task"
 restore_signing_file
 
 rm -f "$workspace_keystore_file"
+rm -f "$workspace_signing_file"
+run_expect_failure \
+  "Missing Codemagic keystore file for release flavor \`${flavor}\`" \
+  run_gradle_with_codemagic_signing_env "$release_task"
+restore_signing_file
 run_expect_failure \
   "Missing keystore file for release flavor \`${flavor}\`" \
   run_gradle "$release_task"

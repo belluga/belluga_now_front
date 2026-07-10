@@ -13,6 +13,13 @@ import java.net.URI
 import java.util.Locale
 import java.util.Properties
 
+private data class ReleaseSigningInputs(
+    val storeFile: File,
+    val storePassword: String,
+    val keyAlias: String,
+    val keyPassword: String,
+)
+
 private val appLinkRoutePathPrefixes = listOf(
     "/invite",
     "/convites",
@@ -123,6 +130,87 @@ private fun loadPropertiesFile(file: File, context: String): Properties {
         properties.load(stream)
     }
     return properties
+}
+
+private fun optionalEnvironment(name: String): String? =
+    System.getenv(name)?.trim()?.takeIf { it.isNotEmpty() }
+
+private fun loadLocalReleaseSigningInputs(
+    flavorName: String,
+    keystoresDir: File,
+): ReleaseSigningInputs? {
+    val signingPropertiesFile = rootProject.file("keystores/$flavorName.signing.properties")
+    if (!signingPropertiesFile.exists()) {
+        return null
+    }
+
+    val signingProperties = loadPropertiesFile(
+        signingPropertiesFile,
+        "Signing properties for `$flavorName`",
+    )
+    val keystoreFile = keystoresDir.resolve("$flavorName.jks")
+    if (!keystoreFile.exists()) {
+        throw GradleException(
+            "Missing keystore file for release flavor `$flavorName`: ${keystoreFile.path}",
+        )
+    }
+
+    return ReleaseSigningInputs(
+        storeFile = keystoreFile,
+        storePassword =
+            signingProperties.requireProperty(
+                "storePassword",
+                "Signing properties for `$flavorName`",
+            ),
+        keyAlias =
+            signingProperties.requireProperty(
+                "keyAlias",
+                "Signing properties for `$flavorName`",
+            ),
+        keyPassword =
+            signingProperties.requireProperty(
+                "keyPassword",
+                "Signing properties for `$flavorName`",
+            ),
+    )
+}
+
+private fun loadCodemagicReleaseSigningInputs(flavorName: String): ReleaseSigningInputs? {
+    val keystorePath = optionalEnvironment("CM_KEYSTORE_PATH")
+    val keystorePassword = optionalEnvironment("CM_KEYSTORE_PASSWORD")
+    val keyAlias = optionalEnvironment("CM_KEY_ALIAS")
+    val keyPassword = optionalEnvironment("CM_KEY_PASSWORD")
+
+    if (keystorePath == null && keystorePassword == null && keyAlias == null && keyPassword == null) {
+        return null
+    }
+
+    val missingVariables =
+        buildList {
+            if (keystorePath == null) add("CM_KEYSTORE_PATH")
+            if (keystorePassword == null) add("CM_KEYSTORE_PASSWORD")
+            if (keyAlias == null) add("CM_KEY_ALIAS")
+            if (keyPassword == null) add("CM_KEY_PASSWORD")
+        }
+    if (missingVariables.isNotEmpty()) {
+        throw GradleException(
+            "Incomplete Codemagic signing environment for release flavor `$flavorName`: missing ${missingVariables.joinToString(", ")}.",
+        )
+    }
+
+    val storeFile = File(keystorePath)
+    if (!storeFile.exists()) {
+        throw GradleException(
+            "Missing Codemagic keystore file for release flavor `$flavorName`: ${storeFile.path}",
+        )
+    }
+
+    return ReleaseSigningInputs(
+        storeFile = storeFile,
+        storePassword = keystorePassword!!,
+        keyAlias = keyAlias!!,
+        keyPassword = keyPassword!!,
+    )
 }
 
 private fun requestedTaskNames(): List<String> = gradle.startParameter.taskNames
@@ -243,37 +331,19 @@ android {
             flavor.applicationId = applicationId
             flavor.applicationIdSuffix = null
 
-            val signingPropertiesFile = rootProject.file("keystores/$flavorName.signing.properties")
-            if (signingPropertiesFile.exists()) {
-                val signingProperties = loadPropertiesFile(
-                    signingPropertiesFile,
-                    "Signing properties for `$flavorName`",
-                )
+            if (isReleaseTaskRequested(flavorName)) {
+                val releaseSigningInputs =
+                    loadLocalReleaseSigningInputs(flavorName, keystoresDir)
+                        ?: loadCodemagicReleaseSigningInputs(flavorName)
+                        ?: throw GradleException(
+                            "Missing signing properties for release flavor `$flavorName`: ${rootProject.file("keystores/$flavorName.signing.properties").path}. Alternatively, provide Codemagic signing environment variables CM_KEYSTORE_PATH, CM_KEYSTORE_PASSWORD, CM_KEY_ALIAS, and CM_KEY_PASSWORD.",
+                        )
                 val signingConfig = signingConfigs.findByName(flavorName) ?: signingConfigs.create(flavorName)
-                signingConfig.keyAlias = signingProperties.requireProperty(
-                    "keyAlias",
-                    "Signing properties for `$flavorName`",
-                )
-                signingConfig.keyPassword = signingProperties.requireProperty(
-                    "keyPassword",
-                    "Signing properties for `$flavorName`",
-                )
-                signingConfig.storePassword = signingProperties.requireProperty(
-                    "storePassword",
-                    "Signing properties for `$flavorName`",
-                )
-                signingConfig.storeFile = keystoresDir.resolve("$flavorName.jks")
+                signingConfig.keyAlias = releaseSigningInputs.keyAlias
+                signingConfig.keyPassword = releaseSigningInputs.keyPassword
+                signingConfig.storePassword = releaseSigningInputs.storePassword
+                signingConfig.storeFile = releaseSigningInputs.storeFile
                 flavor.signingConfig = signingConfig
-            } else if (isReleaseTaskRequested(flavorName)) {
-                throw GradleException(
-                    "Missing signing properties for release flavor `$flavorName`: ${signingPropertiesFile.path}",
-                )
-            }
-
-            if (isReleaseTaskRequested(flavorName) && !keystoresDir.resolve("$flavorName.jks").exists()) {
-                throw GradleException(
-                    "Missing keystore file for release flavor `$flavorName`: ${keystoresDir.resolve("$flavorName.jks").path}",
-                )
             }
 
             if (appLinkHosts.isNotEmpty()) {

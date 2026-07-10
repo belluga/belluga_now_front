@@ -44,6 +44,12 @@ void main() {
     expect(gradle, contains('Missing committed public flavor properties'));
     expect(gradle, contains('Missing signing properties for release flavor'));
     expect(gradle, contains('Missing keystore file for release flavor'));
+    expect(gradle, contains('Incomplete Codemagic signing environment'));
+    expect(gradle, contains('Missing Codemagic keystore file'));
+    expect(gradle, contains('CM_KEYSTORE_PATH'));
+    expect(gradle, contains('CM_KEYSTORE_PASSWORD'));
+    expect(gradle, contains('CM_KEY_ALIAS'));
+    expect(gradle, contains('CM_KEY_PASSWORD'));
     expect(gradle, contains('normalizeAppLinkHosts'));
     expect(gradle, contains('generateAppLinksManifest'));
     expect(gradle, contains('sourceSets'));
@@ -93,6 +99,10 @@ void main() {
         contains('android/keystores/<flavor>.signing.properties'),
       );
       expect(content, contains('android/keystores/<flavor>.jks'));
+      expect(content, contains('CM_KEYSTORE_PATH'));
+      expect(content, contains('CM_KEYSTORE_PASSWORD'));
+      expect(content, contains('CM_KEY_ALIAS'));
+      expect(content, contains('CM_KEY_PASSWORD'));
       expect(content.toLowerCase(), contains('fail'));
       expect(content.toLowerCase(), contains('closed'));
       expect(content, contains('applicationId'));
@@ -260,6 +270,12 @@ void main() {
     expect(script, contains('appLinkHosts'));
     expect(script, contains('Missing signing properties for release flavor'));
     expect(script, contains('Missing keystore file for release flavor'));
+    expect(script, contains('Incomplete Codemagic signing environment'));
+    expect(script, contains('Missing Codemagic keystore file'));
+    expect(script, contains('CM_KEYSTORE_PATH'));
+    expect(script, contains('CM_KEYSTORE_PASSWORD'));
+    expect(script, contains('CM_KEY_ALIAS'));
+    expect(script, contains('CM_KEY_PASSWORD'));
   });
 
   test('build lane helper validates Android public and release signing files', () {
