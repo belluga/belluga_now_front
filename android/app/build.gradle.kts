@@ -8,6 +8,7 @@ plugins {
 
 // Imports essenciais para as classes Java
 import java.io.FileInputStream
+import java.io.File
 import java.net.URI
 import java.util.Locale
 import java.util.Properties
@@ -104,6 +105,62 @@ private fun String.toGradleTaskSegment(): String =
         if (char.isLowerCase()) char.titlecase(Locale.ROOT) else char.toString()
     }
 
+private fun Properties.requireProperty(key: String, context: String): String {
+    val value = getProperty(key)?.trim()
+    if (value.isNullOrBlank()) {
+        throw GradleException("$context is missing required property `$key`.")
+    }
+    return value
+}
+
+private fun loadPropertiesFile(file: File, context: String): Properties {
+    if (!file.exists()) {
+        throw GradleException("$context file is missing: ${file.path}")
+    }
+
+    val properties = Properties()
+    FileInputStream(file).use { stream ->
+        properties.load(stream)
+    }
+    return properties
+}
+
+private fun requestedTaskNames(): List<String> = gradle.startParameter.taskNames
+
+private fun isFlavorRequested(flavorName: String): Boolean {
+    val taskSegment = flavorName.toGradleTaskSegment()
+    return requestedTaskNames().any { taskName ->
+        taskName.contains(taskSegment, ignoreCase = true)
+    }
+}
+
+private fun isReleaseTaskRequested(flavorName: String): Boolean {
+    val taskSegment = flavorName.toGradleTaskSegment()
+    return requestedTaskNames().any { taskName ->
+        taskName.contains(taskSegment, ignoreCase = true) &&
+            (
+                taskName.contains("Release", ignoreCase = true) ||
+                    taskName.contains("Bundle", ignoreCase = true) ||
+                    taskName.contains("Publish", ignoreCase = true)
+            )
+    }
+}
+
+private fun discoverFlavorNames(sourceDir: File): Set<String> {
+    if (!sourceDir.exists()) {
+        return emptySet()
+    }
+
+    return sourceDir
+        .listFiles()
+        ?.asSequence()
+        ?.filter { it.isDirectory }
+        ?.map { it.name }
+        ?.filterNot { it in setOf("main", "debug", "profile") }
+        ?.toSet()
+        .orEmpty()
+}
+
 val appLinkHostsByFlavor = mutableMapOf<String, List<String>>()
 
 android {
@@ -141,34 +198,86 @@ android {
     flavorDimensions.add("tenant")
 
     productFlavors {
+        val flavorsDir = rootProject.file("flavors")
         val keystoresDir = rootProject.file("keystores")
-        if (keystoresDir.exists() && keystoresDir.isDirectory()) {
-            keystoresDir.listFiles { _, name -> name.endsWith(".properties") }?.forEach { propertiesFile ->
-                val flavorName = propertiesFile.nameWithoutExtension
-                val flavorProperties = Properties()
-                FileInputStream(propertiesFile).use { stream ->
-                    flavorProperties.load(stream)
-                }
-                val appLinkHosts =
-                    normalizeAppLinkHosts(flavorProperties.getProperty("appLinkHosts"))
+        val sourceFlavorNames = discoverFlavorNames(rootProject.file("app/src"))
 
-                signingConfigs.create(flavorName) {
-                    keyAlias = flavorProperties["keyAlias"] as String
-                    keyPassword = flavorProperties["keyPassword"] as String
-                    storePassword = flavorProperties["storePassword"] as String
-                    storeFile = rootProject.file("keystores/${flavorProperties["storeFile"]}")
+        sourceFlavorNames.forEach { flavorName ->
+            if (isFlavorRequested(flavorName)) {
+                val publicPropertiesFile = rootProject.file("flavors/$flavorName.public.properties")
+                if (!publicPropertiesFile.exists()) {
+                    throw GradleException(
+                        "Missing committed public flavor properties for `$flavorName`: ${publicPropertiesFile.path}",
+                    )
                 }
+            }
+        }
 
-                val flavor = findByName(flavorName) ?: create(flavorName) {
-                    dimension = "tenant"
-                }
-                flavor.applicationId = flavorProperties["applicationId"] as String
-                flavor.applicationIdSuffix = null
-                flavor.signingConfig = signingConfigs.getByName(flavorName)
+        val publicPropertiesFiles =
+            flavorsDir
+                .listFiles { _, name -> name.endsWith(".public.properties") }
+                ?.sortedBy { it.name }
+                .orEmpty()
 
-                if (appLinkHosts.isNotEmpty()) {
-                    appLinkHostsByFlavor[flavorName] = appLinkHosts
-                }
+        publicPropertiesFiles.forEach { propertiesFile ->
+            val flavorName = propertiesFile.name.removeSuffix(".public.properties")
+            val publicProperties = loadPropertiesFile(
+                propertiesFile,
+                "Public flavor properties for `$flavorName`",
+            )
+            val applicationId = publicProperties.requireProperty(
+                "applicationId",
+                "Public flavor properties for `$flavorName`",
+            )
+            val appLinkHosts =
+                normalizeAppLinkHosts(
+                    publicProperties.requireProperty(
+                        "appLinkHosts",
+                        "Public flavor properties for `$flavorName`",
+                    ),
+                )
+
+            val flavor = findByName(flavorName) ?: create(flavorName) {
+                dimension = "tenant"
+            }
+            flavor.applicationId = applicationId
+            flavor.applicationIdSuffix = null
+
+            val signingPropertiesFile = rootProject.file("keystores/$flavorName.signing.properties")
+            if (signingPropertiesFile.exists()) {
+                val signingProperties = loadPropertiesFile(
+                    signingPropertiesFile,
+                    "Signing properties for `$flavorName`",
+                )
+                val signingConfig = signingConfigs.findByName(flavorName) ?: signingConfigs.create(flavorName)
+                signingConfig.keyAlias = signingProperties.requireProperty(
+                    "keyAlias",
+                    "Signing properties for `$flavorName`",
+                )
+                signingConfig.keyPassword = signingProperties.requireProperty(
+                    "keyPassword",
+                    "Signing properties for `$flavorName`",
+                )
+                signingConfig.storePassword = signingProperties.requireProperty(
+                    "storePassword",
+                    "Signing properties for `$flavorName`",
+                )
+                signingConfig.storeFile = keystoresDir.resolve("$flavorName.jks")
+                flavor.signingConfig = signingConfig
+            } else if (isReleaseTaskRequested(flavorName)) {
+                throw GradleException(
+                    "Missing signing properties for release flavor `$flavorName`: ${signingPropertiesFile.path}",
+                )
+            }
+
+            if (isReleaseTaskRequested(flavorName) && !keystoresDir.resolve("$flavorName.jks").exists()) {
+                throw GradleException(
+                    "Missing keystore file for release flavor `$flavorName`: ${keystoresDir.resolve("$flavorName.jks").path}",
+                )
+            }
+
+            if (appLinkHosts.isNotEmpty()) {
+                appLinkHostsByFlavor[flavorName] = appLinkHosts
             }
         }
     }

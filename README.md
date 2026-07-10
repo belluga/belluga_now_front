@@ -15,82 +15,50 @@ Usaremos os seguintes placeholders:
 
 Cada app precisa de uma chave única para a Google Play.
 
+Contrato Android aprovado para este repositório:
+- Arquivo público versionado: `android/flavors/<flavor>.public.properties`
+- Arquivo secreto ignorado: `android/keystores/<flavor>.signing.properties`
+- Keystore fixo ignorado: `android/keystores/<flavor>.jks`
+- The build must fail closed if the public file is missing, if required public properties are missing, or if the required secret signing file is absent.
+
 1.  **Gerar Keystore:** No terminal, gere o arquivo de chave para o novo tenant.
     ```bash
-    keytool -genkey -v -keystore <novo_tenant>-release-key.jks -keyalg RSA -keysize 2048 -validity 10000 -alias <novo_tenant>-alias
+    keytool -genkey -v -keystore <novo_tenant>.jks -keyalg RSA -keysize 2048 -validity 10000 -alias <novo_tenant>-alias
     ```
 
-2.  **Mover Arquivo:** Mova o arquivo `<novo_tenant>-release-key.jks` gerado para a pasta `android/keystores/`.
+2.  **Mover Arquivo:** Mova o arquivo `<novo_tenant>.jks` gerado para `android/keystores/<novo_tenant>.jks`.
 
-3.  **Criar Propriedades:** Crie o arquivo `android/keystores/<novo_tenant>.properties`. Preencha com as senhas e informações da chave gerada.
+3.  **Criar Configuração Pública:** Crie o arquivo versionado `android/flavors/<novo_tenant>.public.properties` com os dados não secretos do flavor.
     ```properties
-    # android/keystores/<novo_tenant>.properties
+    # android/flavors/<novo_tenant>.public.properties
+    applicationId=<com.empresa.novoapp>
+    appLinkHosts=tenant.example.com,tenant-app.example.com
+    ```
+    * Para referência/base de novos tenants, use o template genérico `android/flavors/tenant.public.properties.example`.
+
+4.  **Criar Configuração Secreta:** Crie o arquivo ignorado `android/keystores/<novo_tenant>.signing.properties` com os segredos de assinatura.
+    ```properties
+    # android/keystores/<novo_tenant>.signing.properties
     storePassword=[SENHA_DO_KEYSTORE]
     keyPassword=[SENHA_DA_CHAVE]
     keyAlias=<novo_tenant>-alias
-    storeFile=<novo_tenant>-release-key.jks
     ```
+    * Para referência/base, use o template genérico `android/keystores/tenant.signing.properties.example`.
+
+5.  **Validação esperada:** Não mova `applicationId` ou `appLinkHosts` para segredos/variáveis opacas de CI. The build must fail closed when `android/flavors/<flavor>.public.properties` is missing, when `applicationId` or `appLinkHosts` is missing from that public file, or when `android/keystores/<flavor>.signing.properties` is missing.
 
 ## Passo 2: Configuração do Projeto Android
 
 1.  **Configurar `build.gradle.kts`:** Abra o arquivo `android/app/build.gradle.kts`.
-    * **Adicionar Flavor:** Dentro do bloco `productFlavors`, adicione o novo tenant.
+    * **Adicionar Flavor:** O Gradle descobre cada flavor Android a partir dos arquivos `android/flavors/*.public.properties`. Não adicione blocos manuais `create("<novo_tenant>")` no `productFlavors`; o nome do novo flavor nasce do arquivo `android/flavors/<novo_tenant>.public.properties` e da pasta Android correspondente em `android/app/src/<novo_tenant>/`.
+    * **Configurar Assinatura (IMPORTANTE):** Mantenha o Gradle alinhado ao contrato de dois arquivos. Os dados públicos do flavor devem vir de `android/flavors/<novo_tenant>.public.properties`, enquanto os segredos devem vir de `android/keystores/<novo_tenant>.signing.properties`, usando `android/keystores/<novo_tenant>.jks` como caminho fixo do keystore. The build must fail closed if the public file is missing, if `applicationId` or `appLinkHosts` is missing from that file, or if the required secret signing file is absent.
         ```kotlin
-        // ...
-        create("guarappari") { /* ... */ }
-        create("belluga") { /* ... */ }
-        
-        // Adicione este bloco para o novo tenant
-        create("<novo_tenant>") {
-            dimension = "tenant"
-            applicationId = "<com.empresa.novoapp>"
-        }
-        // ...
-        ```
-    * **Configurar Assinatura (IMPORTANTE):** Se esta é a primeira vez configurando um flavor de release, substitua o bloco `buildTypes` e adicione a lógica de `signingConfigs` para habilitar a assinatura correta.
-        ```kotlin
-        // No topo do arquivo, depois de 'plugins { ... }'
-        val keyProperties = java.util.Properties()
-
         android {
             // ...
-            
-            // Adicione este bloco se não existir
-            signingConfigs {
-            }
-
-            buildTypes {
-                getByName("release") {
-                    // Garante que a assinatura seja definida por flavor
-                    signingConfig = signingConfigs.findByName(name)
-                }
-            }
-            
-            flavorDimensions.add("tenant")
 
             productFlavors {
-                // Itera sobre cada flavor para configurar a assinatura dinamicamente
-                forEach { flavor ->
-                    val flavorPropertiesFile = rootProject.file("keystores/${flavor.name}.properties")
-                    if (flavorPropertiesFile.exists()) {
-                        keyProperties.load(java.io.FileInputStream(flavorPropertiesFile))
-                        signingConfigs.create(flavor.name) {
-                            keyAlias = keyProperties["keyAlias"] as String
-                            keyPassword = keyProperties["keyPassword"] as String
-                            storePassword = keyProperties["storePassword"] as String
-                            storeFile = file("../keystores/${keyProperties["storeFile"]}")
-                        }
-                        flavor.signingConfig = signingConfigs.getByName(flavor.name)
-                    }
-                }
-                
-                // Definições dos seus flavors
-                create("guarappari") { /* ... */ }
-                create("belluga") { /* ... */ }
-                create("<novo_tenant>") {
-                    dimension = "tenant"
-                    applicationId = "<com.empresa.novoapp>"
-                }
+                // Os flavors são descobertos a partir de android/flavors/*.public.properties
+                // e das pastas android/app/src/<flavor>/.
             }
         }
         ```
@@ -108,6 +76,12 @@ Cada app precisa de uma chave única para a Google Play.
 3.  **Definir Ícone do App:**
     * Crie a estrutura de pastas: `android/app/src/<novo_tenant>/res/`.
     * Dentro dela, crie as pastas `mipmap-hdpi`, `mipmap-mdpi`, etc., e coloque os arquivos `ic_launcher.png` correspondentes.
+
+4.  **Executar a verificação do contrato Android:**
+    * Rode `./tool/verify_android_flavor_contract.sh --flavor <novo_tenant>` para validar:
+      * os arquivos públicos versionados do flavor;
+      * os arquivos secretos ignorados;
+      * as falhas fechadas para arquivo público ausente, propriedades públicas ausentes, signing file ausente e keystore ausente.
 
 ## Passo 3: Configuração do Projeto iOS (Xcode)
 
