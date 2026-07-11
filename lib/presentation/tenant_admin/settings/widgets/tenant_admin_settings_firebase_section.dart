@@ -13,15 +13,14 @@ class TenantAdminSettingsFirebaseSection extends StatelessWidget {
   final TenantAdminSettingsController controller;
 
   Listenable _controllersListenable() {
-    return Listenable.merge(
-      [
-        controller.firebaseProjectIdController,
-        controller.firebaseAppIdController,
-        controller.firebaseApiKeyController,
-        controller.firebaseMessagingSenderIdController,
-        controller.firebaseStorageBucketController,
-      ],
-    );
+    return Listenable.merge([
+      controller.firebaseProjectIdController,
+      controller.firebaseAndroidAppIdController,
+      controller.firebaseIosAppIdController,
+      controller.firebaseApiKeyController,
+      controller.firebaseMessagingSenderIdController,
+      controller.firebaseStorageBucketController,
+    ]);
   }
 
   Future<void> _editRequiredField({
@@ -78,27 +77,42 @@ class TenantAdminSettingsFirebaseSection extends StatelessWidget {
                 onEdit: isSaving
                     ? null
                     : () => _editRequiredField(
-                          context: context,
-                          fieldController:
-                              controller.firebaseProjectIdController,
-                          title: 'Editar Project ID',
-                          label: 'Project ID',
-                        ),
+                        context: context,
+                        fieldController: controller.firebaseProjectIdController,
+                        title: 'Editar Project ID',
+                        label: 'Project ID',
+                      ),
               ),
               TenantAdminSettingsEditableValueRow(
                 key: const ValueKey(
-                  'tenant_admin_settings_firebase_app_id_edit',
+                  'tenant_admin_settings_firebase_android_app_id_edit',
                 ),
-                label: 'App ID',
-                value: controller.firebaseAppIdController.text,
+                label: 'Android App ID',
+                value: controller.firebaseAndroidAppIdController.text,
                 onEdit: isSaving
                     ? null
                     : () => _editRequiredField(
-                          context: context,
-                          fieldController: controller.firebaseAppIdController,
-                          title: 'Editar App ID',
-                          label: 'App ID',
-                        ),
+                        context: context,
+                        fieldController:
+                            controller.firebaseAndroidAppIdController,
+                        title: 'Editar Android App ID',
+                        label: 'Android App ID',
+                      ),
+              ),
+              TenantAdminSettingsEditableValueRow(
+                key: const ValueKey(
+                  'tenant_admin_settings_firebase_ios_app_id_edit',
+                ),
+                label: 'iOS App ID',
+                value: controller.firebaseIosAppIdController.text,
+                onEdit: isSaving
+                    ? null
+                    : () => _editRequiredField(
+                        context: context,
+                        fieldController: controller.firebaseIosAppIdController,
+                        title: 'Editar iOS App ID',
+                        label: 'iOS App ID',
+                      ),
               ),
               TenantAdminSettingsEditableValueRow(
                 key: const ValueKey(
@@ -109,11 +123,11 @@ class TenantAdminSettingsFirebaseSection extends StatelessWidget {
                 onEdit: isSaving
                     ? null
                     : () => _editRequiredField(
-                          context: context,
-                          fieldController: controller.firebaseApiKeyController,
-                          title: 'Editar API Key',
-                          label: 'API Key',
-                        ),
+                        context: context,
+                        fieldController: controller.firebaseApiKeyController,
+                        title: 'Editar API Key',
+                        label: 'API Key',
+                      ),
               ),
               TenantAdminSettingsEditableValueRow(
                 key: const ValueKey(
@@ -124,12 +138,12 @@ class TenantAdminSettingsFirebaseSection extends StatelessWidget {
                 onEdit: isSaving
                     ? null
                     : () => _editRequiredField(
-                          context: context,
-                          fieldController:
-                              controller.firebaseMessagingSenderIdController,
-                          title: 'Editar Messaging Sender ID',
-                          label: 'Messaging Sender ID',
-                        ),
+                        context: context,
+                        fieldController:
+                            controller.firebaseMessagingSenderIdController,
+                        title: 'Editar Messaging Sender ID',
+                        label: 'Messaging Sender ID',
+                      ),
               ),
               TenantAdminSettingsEditableValueRow(
                 key: const ValueKey(
@@ -140,12 +154,12 @@ class TenantAdminSettingsFirebaseSection extends StatelessWidget {
                 onEdit: isSaving
                     ? null
                     : () => _editRequiredField(
-                          context: context,
-                          fieldController:
-                              controller.firebaseStorageBucketController,
-                          title: 'Editar Storage Bucket',
-                          label: 'Storage Bucket',
-                        ),
+                        context: context,
+                        fieldController:
+                            controller.firebaseStorageBucketController,
+                        title: 'Editar Storage Bucket',
+                        label: 'Storage Bucket',
+                      ),
               ),
               const SizedBox(height: 10),
               FilledButton.icon(
