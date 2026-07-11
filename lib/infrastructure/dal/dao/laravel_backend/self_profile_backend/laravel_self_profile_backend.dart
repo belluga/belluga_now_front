@@ -76,7 +76,24 @@ class LaravelSelfProfileBackend implements SelfProfileBackendContract {
       return;
     }
 
-    final body = FormData.fromMap(<String, dynamic>{
+    await TenantPublicAuthHeaders.retryOnceOnUnauthorized<void>(
+      includeJsonAccept: true,
+      action: (headers) => _dio.post(
+        '$_apiBaseUrl/v1/profile',
+        data: _buildMultipartBody(
+          payload: payload,
+          avatarUpload: avatarUpload,
+        ),
+        options: Options(headers: headers),
+      ),
+    );
+  }
+
+  FormData _buildMultipartBody({
+    required Map<String, dynamic> payload,
+    required UserProfileMediaUpload? avatarUpload,
+  }) {
+    return FormData.fromMap(<String, dynamic>{
       ...payload,
       '_method': 'PATCH',
       if (avatarUpload != null)
@@ -89,15 +106,6 @@ class LaravelSelfProfileBackend implements SelfProfileBackendContract {
           ),
         ),
     }, ListFormat.multiCompatible);
-
-    await TenantPublicAuthHeaders.retryOnceOnUnauthorized<void>(
-      includeJsonAccept: true,
-      action: (headers) => _dio.post(
-        '$_apiBaseUrl/v1/profile',
-        data: body,
-        options: Options(headers: headers),
-      ),
-    );
   }
 
   MediaType _resolveMediaType(String? mimeType, String fileName) {
