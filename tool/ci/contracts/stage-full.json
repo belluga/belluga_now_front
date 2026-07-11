@@ -24,8 +24,8 @@
       "repo": "flutter-app",
       "kind": "workflow-parity",
       "cwd": "../../..",
-      "command": ["bash", "tool/ci/run_workspace_test_contract.sh", "config/defines/stage.json"],
-      "description": "Run the repo-owned workspace Flutter test contract using the stage define file."
+      "command": ["bash", "tool/ci/run_workspace_test_contract.sh", "config/defines/dev.json"],
+      "description": "Run the repo-owned workspace Flutter test contract using the canonical local/dev define file."
     }
   ]
 }
