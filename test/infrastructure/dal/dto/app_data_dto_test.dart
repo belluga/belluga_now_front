@@ -175,6 +175,57 @@ void main() {
     });
   });
 
+  group('AppDataDTO Firebase settings', () {
+    test('parses platform app ids and resolves iOS app id explicitly', () {
+      final appData = AppDataDTO.fromJson(
+        _basePayload(
+          profileTypes: const [],
+          firebase: const {
+            'apiKey': 'firebase-api-key',
+            'androidAppId': '1:249193301334:android:f73db77742a1b07f2302f7',
+            'iosAppId': '1:249193301334:ios:ce4aca6dbb545ca02302f7',
+            'projectId': 'guarappari',
+            'messagingSenderId': '249193301334',
+            'storageBucket': 'guarappari.firebasestorage.app',
+          },
+        ),
+      ).toDomain(localInfo: _localInfo());
+
+      final settings = appData.firebaseSettings;
+
+      expect(settings, isNotNull);
+      expect(
+        settings!.androidBootstrapAppId,
+        '1:249193301334:android:f73db77742a1b07f2302f7',
+      );
+      expect(
+        settings.iosBootstrapAppId,
+        '1:249193301334:ios:ce4aca6dbb545ca02302f7',
+      );
+    });
+
+    test('treats legacy appId as Android-only fallback', () {
+      final appData = AppDataDTO.fromJson(
+        _basePayload(
+          profileTypes: const [],
+          firebase: const {
+            'apiKey': 'firebase-api-key',
+            'appId': '1:249193301334:android:f73db77742a1b07f2302f7',
+            'projectId': 'guarappari',
+            'messagingSenderId': '249193301334',
+            'storageBucket': 'guarappari.firebasestorage.app',
+          },
+        ),
+      ).toDomain(localInfo: _localInfo());
+
+      expect(appData.firebaseSettings!.iosBootstrapAppId, isNull);
+      expect(
+        appData.firebaseSettings!.androidBootstrapAppId,
+        '1:249193301334:android:f73db77742a1b07f2302f7',
+      );
+    });
+  });
+
   group('AppDataDTO map filter catalog keys', () {
     test('prefers canonical public map discovery filter ordering', () {
       final appData = AppDataDTO.fromJson(
@@ -263,6 +314,7 @@ void main() {
 
 Map<String, dynamic> _basePayload({
   required List<Map<String, dynamic>> profileTypes,
+  Map<String, dynamic>? firebase,
   Map<String, dynamic>? settings,
 }) {
   return {
@@ -271,6 +323,7 @@ Map<String, dynamic> _basePayload({
     'type': 'tenant',
     'main_domain': 'https://tenant.test',
     'profile_types': profileTypes,
+    ...?(firebase == null ? null : <String, dynamic>{'firebase': firebase}),
     'theme_data_settings': const <String, dynamic>{
       'primary_seed_color': '#4FA0E3',
       'secondary_seed_color': '#E80D5D',

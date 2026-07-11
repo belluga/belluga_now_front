@@ -33,10 +33,7 @@ class TenantAdminSettingsResponseDecoder {
     required Uri tenantOrigin,
   }) {
     final mapUi = _extractMapUiPayload(rawResponse);
-    return _mapMapUiSettings(
-      mapUi,
-      tenantOrigin: tenantOrigin,
-    );
+    return _mapMapUiSettings(mapUi, tenantOrigin: tenantOrigin);
   }
 
   TenantAdminDiscoveryFiltersSettingsValue decodeDiscoveryFiltersSettings(
@@ -114,7 +111,8 @@ class TenantAdminSettingsResponseDecoder {
       label: 'map filter image upload',
       fallbackToRoot: false,
     );
-    final imageUri = _normalizeMapFilterImageUri(
+    final imageUri =
+        _normalizeMapFilterImageUri(
           key: key,
           rawImageUri: payloadMap['image_uri'],
           tenantOrigin: tenantOrigin,
@@ -135,7 +133,8 @@ class TenantAdminSettingsResponseDecoder {
   }
 
   TenantAdminResendEmailSettings decodeResendEmailSettings(
-      Object? rawResponse) {
+    Object? rawResponse,
+  ) {
     final payload = _envelopeDecoder.decodeDataMap(
       rawResponse,
       label: 'resend_email settings',
@@ -144,9 +143,7 @@ class TenantAdminSettingsResponseDecoder {
     if (payload.containsKey('resend_email')) {
       final resendRaw = payload['resend_email'];
       if (resendRaw is Map) {
-        return _mapResendEmailSettings(
-          Map<String, dynamic>.from(resendRaw),
-        );
+        return _mapResendEmailSettings(Map<String, dynamic>.from(resendRaw));
       }
       return TenantAdminResendEmailSettings.empty();
     }
@@ -157,8 +154,9 @@ class TenantAdminSettingsResponseDecoder {
   TenantAdminOutboundIntegrationsSettings decodeOutboundIntegrationsSettings(
     Object? rawResponse,
   ) {
-    final outboundIntegrations =
-        _extractOutboundIntegrationsPayload(rawResponse);
+    final outboundIntegrations = _extractOutboundIntegrationsPayload(
+      rawResponse,
+    );
     return _mapOutboundIntegrationsSettings(outboundIntegrations);
   }
 
@@ -175,10 +173,7 @@ class TenantAdminSettingsResponseDecoder {
     }
 
     return _mapPhoneOtpReviewAccessSettings(
-      _extractNamedMap(
-        payload,
-        namespace: 'phone_otp_review_access',
-      ),
+      _extractNamedMap(payload, namespace: 'phone_otp_review_access'),
     );
   }
 
@@ -216,9 +211,7 @@ class TenantAdminSettingsResponseDecoder {
     if (status == null || status.isEmpty) {
       throw Exception('Push status response is empty.');
     }
-    return TenantAdminPushStatus(
-      statusValue: _requiredTextValue(status),
-    );
+    return TenantAdminPushStatus(statusValue: _requiredTextValue(status));
   }
 
   TenantAdminPushCredentials? decodePushCredentials(Object? rawResponse) {
@@ -267,10 +260,9 @@ class TenantAdminSettingsResponseDecoder {
       label: 'telemetry settings',
     );
 
-    final integrations =
-        _extractDataList(rawMap['data']).map(_mapTelemetry).toList(
-              growable: false,
-            );
+    final integrations = _extractDataList(
+      rawMap['data'],
+    ).map(_mapTelemetry).toList(growable: false);
     final availableEvents = _extractStringList(rawMap['available_events']);
     return TenantAdminTelemetrySettingsSnapshot(
       integrations: integrations,
@@ -329,15 +321,20 @@ class TenantAdminSettingsResponseDecoder {
       primarySeedColor: _hexColorValue(primarySeedColor),
       secondarySeedColor: _hexColorValue(secondarySeedColor),
       lightLogoUrl: _optionalUrlValue(
-          _buildTenantAssetUrl(tenantOrigin, 'logo-light.png')),
+        _buildTenantAssetUrl(tenantOrigin, 'logo-light.png'),
+      ),
       darkLogoUrl: _optionalUrlValue(
-          _buildTenantAssetUrl(tenantOrigin, 'logo-dark.png')),
+        _buildTenantAssetUrl(tenantOrigin, 'logo-dark.png'),
+      ),
       lightIconUrl: _optionalUrlValue(
-          _buildTenantAssetUrl(tenantOrigin, 'icon-light.png')),
+        _buildTenantAssetUrl(tenantOrigin, 'icon-light.png'),
+      ),
       darkIconUrl: _optionalUrlValue(
-          _buildTenantAssetUrl(tenantOrigin, 'icon-dark.png')),
-      faviconUrl:
-          _optionalUrlValue(_buildTenantAssetUrl(tenantOrigin, 'favicon.ico')),
+        _buildTenantAssetUrl(tenantOrigin, 'icon-dark.png'),
+      ),
+      faviconUrl: _optionalUrlValue(
+        _buildTenantAssetUrl(tenantOrigin, 'favicon.ico'),
+      ),
       pwaIconUrl: (() {
         final pwaIcon = _resolvePwaIconUrl(payload, tenantOrigin: tenantOrigin);
         if (pwaIcon == null || pwaIcon.isEmpty) {
@@ -379,12 +376,12 @@ class TenantAdminSettingsResponseDecoder {
         }
         return _optionalUrlValue(resolvedImage);
       })(),
-      hasDedicatedFaviconValue: _booleanValue(_parseBool(
-        faviconAsset['has_dedicated_asset'],
-      )),
-      usesPwaFaviconFallbackValue: _booleanValue(_parseBool(
-        faviconAsset['uses_pwa_fallback'],
-      )),
+      hasDedicatedFaviconValue: _booleanValue(
+        _parseBool(faviconAsset['has_dedicated_asset']),
+      ),
+      usesPwaFaviconFallbackValue: _booleanValue(
+        _parseBool(faviconAsset['uses_pwa_fallback']),
+      ),
     );
   }
 
@@ -433,10 +430,7 @@ class TenantAdminSettingsResponseDecoder {
   Map<String, dynamic> _extractDiscoveryFiltersPayload(
     Map<String, dynamic> payload,
   ) {
-    final named = _extractNamedMap(
-      payload,
-      namespace: 'discovery_filters',
-    );
+    final named = _extractNamedMap(payload, namespace: 'discovery_filters');
     if (named.isNotEmpty || payload.containsKey('discovery_filters')) {
       return named;
     }
@@ -508,14 +502,12 @@ class TenantAdminSettingsResponseDecoder {
         ? Map<String, dynamic>.from(iosRaw)
         : const <String, dynamic>{};
 
-    final androidFingerprintValues =
-        _extractStringList(android['sha256_cert_fingerprints'])
-            .map((entry) => entry.toUpperCase())
-            .toSet()
-            .toList(growable: false);
-    final iosPaths = _extractStringList(ios['paths']).toSet().toList(
-          growable: false,
-        );
+    final androidFingerprintValues = _extractStringList(
+      android['sha256_cert_fingerprints'],
+    ).map((entry) => entry.toUpperCase()).toSet().toList(growable: false);
+    final iosPaths = _extractStringList(
+      ios['paths'],
+    ).toSet().toList(growable: false);
 
     TenantAdminAndroidAppIdentifierValue? androidAppIdentifierValue;
     final androidAppIdentifier = appDomainIdentifiers.androidAppIdentifier;
@@ -544,16 +536,12 @@ class TenantAdminSettingsResponseDecoder {
       ),
       androidAppIdentifierValue: androidAppIdentifierValue,
       androidSha256CertFingerprintValues: androidFingerprintValues
-          .map(
-            (entry) => TenantAdminSha256FingerprintValue()..parse(entry),
-          )
+          .map((entry) => TenantAdminSha256FingerprintValue()..parse(entry))
           .toList(growable: false),
       iosTeamIdValue: iosTeamIdValue,
       iosBundleIdValue: iosBundleIdValue,
       iosPathValues: iosPaths
-          .map(
-            (entry) => TenantAdminAppLinkPathValue()..parse(entry),
-          )
+          .map((entry) => TenantAdminAppLinkPathValue()..parse(entry))
           .toList(growable: false),
     );
   }
@@ -689,8 +677,9 @@ class TenantAdminSettingsResponseDecoder {
     } on Object {
       return null;
     }
-    final mode =
-        tenantAdminMapFilterMarkerOverrideModeFromValue(modeTokenValue);
+    final mode = tenantAdminMapFilterMarkerOverrideModeFromValue(
+      modeTokenValue,
+    );
     if (mode == null) {
       return null;
     }
@@ -736,17 +725,21 @@ class TenantAdminSettingsResponseDecoder {
 
   TenantAdminFirebaseSettings? _mapFirebaseSettings(Map<String, dynamic> map) {
     final apiKey = map['apiKey']?.toString().trim();
-    final appId = map['appId']?.toString().trim();
+    final androidAppId =
+        map['androidAppId']?.toString().trim().isNotEmpty == true
+        ? map['androidAppId']?.toString().trim()
+        : null;
+    final iosAppId = map['iosAppId']?.toString().trim();
     final projectId = map['projectId']?.toString().trim();
     final sender = map['messagingSenderId']?.toString().trim();
     final storageBucket = map['storageBucket']?.toString().trim();
     if (apiKey == null ||
-        appId == null ||
+        androidAppId == null ||
         projectId == null ||
         sender == null ||
         storageBucket == null ||
         apiKey.isEmpty ||
-        appId.isEmpty ||
+        androidAppId.isEmpty ||
         projectId.isEmpty ||
         sender.isEmpty ||
         storageBucket.isEmpty) {
@@ -754,7 +747,10 @@ class TenantAdminSettingsResponseDecoder {
     }
     return TenantAdminFirebaseSettings(
       apiKey: _requiredTextValue(apiKey),
-      appId: _requiredTextValue(appId),
+      androidAppId: _requiredTextValue(androidAppId),
+      iosAppId: iosAppId == null || iosAppId.isEmpty
+          ? null
+          : _requiredTextValue(iosAppId),
       projectId: _requiredTextValue(projectId),
       messagingSenderId: _requiredTextValue(sender),
       storageBucket: _requiredTextValue(storageBucket),
@@ -834,10 +830,9 @@ class TenantAdminSettingsResponseDecoder {
     final otpWebhookUrl = _normalizeOptionalText(otp['webhook_url']);
     final deliveryChannelRaw =
         _normalizeOptionalText(otp['delivery_channel']) ??
-            TenantAdminOutboundIntegrationsSettings.deliveryChannelWhatsapp;
-    final deliveryChannel = _isValidOutboundOtpDeliveryChannel(
-      deliveryChannelRaw,
-    )
+        TenantAdminOutboundIntegrationsSettings.deliveryChannelWhatsapp;
+    final deliveryChannel =
+        _isValidOutboundOtpDeliveryChannel(deliveryChannelRaw)
         ? deliveryChannelRaw.toLowerCase()
         : TenantAdminOutboundIntegrationsSettings.deliveryChannelWhatsapp;
 
@@ -845,8 +840,9 @@ class TenantAdminSettingsResponseDecoder {
       whatsappWebhookUrlValue: whatsappWebhookUrl == null
           ? null
           : _optionalUrlValue(whatsappWebhookUrl),
-      otpWebhookUrlValue:
-          otpWebhookUrl == null ? null : _optionalUrlValue(otpWebhookUrl),
+      otpWebhookUrlValue: otpWebhookUrl == null
+          ? null
+          : _optionalUrlValue(otpWebhookUrl),
       otpUseWhatsappWebhookValue: _booleanValue(
         _parseBool(otp['use_whatsapp_webhook'] ?? true),
       ),
@@ -1004,15 +1000,10 @@ class TenantAdminSettingsResponseDecoder {
   TenantAdminResendEmailRecipients _resendEmailRecipients(
     Iterable<String> rawValues,
   ) {
-    return TenantAdminResendEmailRecipients(
-      rawValues.map(_emailAddressValue),
-    );
+    return TenantAdminResendEmailRecipients(rawValues.map(_emailAddressValue));
   }
 
-  String _requireNonEmptyString(
-    Object? raw, {
-    required String fieldName,
-  }) {
+  String _requireNonEmptyString(Object? raw, {required String fieldName}) {
     final value = raw?.toString().trim();
     if (value == null || value.isEmpty) {
       throw Exception('Missing required environment field: $fieldName');
@@ -1020,10 +1011,7 @@ class TenantAdminSettingsResponseDecoder {
     return value;
   }
 
-  String _requireHexColor(
-    Object? raw, {
-    required String fieldName,
-  }) {
+  String _requireHexColor(Object? raw, {required String fieldName}) {
     final value = _normalizeHexColor(raw);
     if (value == null) {
       throw Exception('Invalid or missing color field: $fieldName');
@@ -1074,10 +1062,7 @@ class TenantAdminSettingsResponseDecoder {
     required Uri tenantOrigin,
   }) {
     if (node is String) {
-      return _resolveAssetUrl(
-        node,
-        tenantOrigin: tenantOrigin,
-      );
+      return _resolveAssetUrl(node, tenantOrigin: tenantOrigin);
     }
     if (node is! Map) {
       return null;
@@ -1092,10 +1077,7 @@ class TenantAdminSettingsResponseDecoder {
       return direct;
     }
 
-    final uri = _resolveAssetUrl(
-      map['uri'],
-      tenantOrigin: tenantOrigin,
-    );
+    final uri = _resolveAssetUrl(map['uri'], tenantOrigin: tenantOrigin);
     if (uri != null) {
       return uri;
     }
@@ -1110,18 +1092,12 @@ class TenantAdminSettingsResponseDecoder {
 
     final nested = map['pwa_icon'];
     if (nested != null && !identical(nested, node)) {
-      return _extractPwaIconUrlFromNode(
-        nested,
-        tenantOrigin: tenantOrigin,
-      );
+      return _extractPwaIconUrlFromNode(nested, tenantOrigin: tenantOrigin);
     }
     return null;
   }
 
-  String? _resolveAssetUrl(
-    Object? raw, {
-    required Uri tenantOrigin,
-  }) {
+  String? _resolveAssetUrl(Object? raw, {required Uri tenantOrigin}) {
     final value = raw?.toString().trim();
     if (value == null || value.isEmpty) {
       return null;
@@ -1155,10 +1131,7 @@ class TenantAdminSettingsResponseDecoder {
     final resolved = parsed.host.trim().isNotEmpty
         ? parsed
         : tenantOrigin.resolveUri(parsed);
-    return _rewriteLegacyMapFilterImageUri(
-      key: normalizedKey,
-      uri: resolved,
-    );
+    return _rewriteLegacyMapFilterImageUri(key: normalizedKey, uri: resolved);
   }
 
   String _rewriteLegacyMapFilterImageUri({

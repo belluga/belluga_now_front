@@ -258,6 +258,53 @@ void main() {
     );
   });
 
+  test('fetchFavorites retries once after unauthorized', () async {
+    final adapter = _FavoritesApiAdapter(unauthorizedFirstGet: true);
+    final dio = Dio()..httpClientAdapter = adapter;
+
+    final authRepository = _FakeAuthRepository(userTokenValue: 'test-token');
+    GetIt.I.registerSingleton<AuthRepositoryContract<UserContract>>(
+      authRepository,
+    );
+    GetIt.I.registerSingleton<AppData>(_buildAppData());
+
+    final backend = LaravelFavoriteBackend(dio: dio);
+    final favorites = await backend.fetchFavorites();
+
+    expect(favorites, hasLength(2));
+    expect(adapter.requests, hasLength(3));
+    expect(adapter.requests.first.headers['Authorization'], 'Bearer test-token');
+    expect(
+      adapter.requests[1].headers['Authorization'],
+      'Bearer refreshed-token',
+    );
+    expect(authRepository.recoverCalls, 1);
+  });
+
+  test('fetchFavoritesPage retries once after unauthorized', () async {
+    final adapter = _FavoritesApiAdapter(unauthorizedFirstGet: true);
+    final dio = Dio()..httpClientAdapter = adapter;
+
+    final authRepository = _FakeAuthRepository(userTokenValue: 'test-token');
+    GetIt.I.registerSingleton<AuthRepositoryContract<UserContract>>(
+      authRepository,
+    );
+    GetIt.I.registerSingleton<AppData>(_buildAppData());
+
+    final backend = LaravelFavoriteBackend(dio: dio);
+    final page = await backend.fetchFavoritesPage(page: 2, pageSize: 10);
+
+    expect(page.items, hasLength(1));
+    expect(adapter.requests, hasLength(2));
+    expect(adapter.requests.first.queryParameters['page'], 2);
+    expect(adapter.requests.first.headers['Authorization'], 'Bearer test-token');
+    expect(
+      adapter.requests.last.headers['Authorization'],
+      'Bearer refreshed-token',
+    );
+    expect(authRepository.recoverCalls, 1);
+  });
+
   test('favoriteAccountProfile posts canonical payload', () async {
     final adapter = _FavoritesApiAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
@@ -335,6 +382,7 @@ class _FavoritesApiAdapter implements HttpClientAdapter {
     this.firstPageNavigationOverrides = const <String, Object?>{},
     this.firstPageTargetRemovals = const <String>{},
     this.firstPageNavigationRemovals = const <String>{},
+    this.unauthorizedFirstGet = false,
   });
 
   final List<_RecordedRequest> requests = <_RecordedRequest>[];
@@ -343,6 +391,7 @@ class _FavoritesApiAdapter implements HttpClientAdapter {
   final Map<String, Object?> firstPageNavigationOverrides;
   final Set<String> firstPageTargetRemovals;
   final Set<String> firstPageNavigationRemovals;
+  final bool unauthorizedFirstGet;
 
   @override
   void close({bool force = false}) {}
@@ -375,6 +424,18 @@ class _FavoritesApiAdapter implements HttpClientAdapter {
         headers: {
           Headers.contentTypeHeader: [Headers.jsonContentType],
         },
+      );
+    }
+
+    if (unauthorizedFirstGet && requests.where((request) => request.method == 'GET').length == 1) {
+      throw DioException.badResponse(
+        statusCode: 401,
+        requestOptions: options,
+        response: Response<dynamic>(
+          requestOptions: options,
+          statusCode: 401,
+          data: const {'message': 'Unauthorized'},
+        ),
       );
     }
 
@@ -491,6 +552,7 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   String userTokenValue;
   final String? tokenAfterInit;
   int initCallCount = 0;
+  int recoverCalls = 0;
 
   @override
   BackendContract get backend => throw UnimplementedError();
@@ -528,6 +590,12 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   @override
   Future<void> ensureTenantPublicIdentityReady() async {
     await init();
+  }
+
+  @override
+  Future<void> recoverTenantPublicIdentityAfterUnauthorizedPublicRequest() async {
+    recoverCalls += 1;
+    userTokenValue = 'refreshed-token';
   }
 
   @override

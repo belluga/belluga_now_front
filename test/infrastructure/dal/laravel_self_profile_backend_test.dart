@@ -131,10 +131,63 @@ void main() {
       );
     },
   );
+
+  test(
+    'avatar multipart updates rebuild the request body after unauthorized retry',
+    () async {
+      final authRepository = _FakeAuthRepository();
+      await GetIt.I.reset();
+      GetIt.I.registerSingleton<AuthRepositoryContract<UserContract>>(
+        authRepository,
+      );
+      GetIt.I.registerSingleton<AppData>(_buildAppData());
+
+      final adapter = _UnauthorizedThenSuccessAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final backend = LaravelSelfProfileBackend(dio: dio);
+
+      final upload = UserProfileMediaUpload(
+        bytesValue: UserProfileMediaBytesValue()
+          ..set(Uint8List.fromList([1, 2, 3])),
+        fileNameValue: GenericStringValue(isRequired: true, minLenght: null)
+          ..parse('avatar.png'),
+        mimeTypeValue: GenericStringValue(isRequired: false, minLenght: null)
+          ..parse('image/png'),
+      );
+
+      await backend.updateCurrentProfile(avatarUpload: upload);
+
+      expect(adapter.requests, hasLength(2));
+      expect(adapter.requests.first.method, 'POST');
+      expect(adapter.requests.last.method, 'POST');
+      expect(adapter.requests.first.headers['Authorization'], 'Bearer test-token');
+      expect(
+        adapter.requests.last.headers['Authorization'],
+        'Bearer refreshed-token',
+      );
+      expect(authRepository.recoverCalls, 1);
+      expect(adapter.requests.first.data, isA<FormData>());
+      expect(adapter.requests.last.data, isA<FormData>());
+      expect(identical(adapter.requests.first.data, adapter.requests.last.data), isFalse);
+
+      final retriedBody = adapter.requests.last.data as FormData;
+      expect(
+        retriedBody.fields.any(
+          (entry) => entry.key == '_method' && entry.value == 'PATCH',
+        ),
+        isTrue,
+      );
+      expect(
+        retriedBody.files.any((entry) => entry.key == 'avatar'),
+        isTrue,
+      );
+    },
+  );
 }
 
 class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   String _token = 'test-token';
+  int recoverCalls = 0;
 
   @override
   BackendContract get backend => throw UnimplementedError();
@@ -165,6 +218,12 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   @override
   Future<void> ensureTenantPublicIdentityReady() async {
     await init();
+  }
+
+  @override
+  Future<void> recoverTenantPublicIdentityAfterUnauthorizedPublicRequest() async {
+    recoverCalls += 1;
+    _token = 'refreshed-token';
   }
 
   @override
@@ -225,6 +284,41 @@ class _RecordingAdapter implements HttpClientAdapter {
     lastRequest = options;
     return ResponseBody.fromString(
       jsonEncode(response),
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+  }
+}
+
+class _UnauthorizedThenSuccessAdapter implements HttpClientAdapter {
+  final List<RequestOptions> requests = [];
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requests.add(options);
+    if (requests.length == 1) {
+      throw DioException.badResponse(
+        statusCode: 401,
+        requestOptions: options,
+        response: Response<dynamic>(
+          requestOptions: options,
+          statusCode: 401,
+          data: const {'message': 'Unauthorized'},
+        ),
+      );
+    }
+
+    return ResponseBody.fromString(
+      jsonEncode(const {'ok': true}),
       200,
       headers: {
         Headers.contentTypeHeader: [Headers.jsonContentType],

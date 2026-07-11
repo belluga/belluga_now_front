@@ -187,6 +187,9 @@ class LaravelFavoriteBackend implements FavoriteBackendContract {
 
       throw Exception('Unexpected favorites response shape.');
     } on DioException catch (error) {
+      if (error.response?.statusCode == 401) {
+        rethrow;
+      }
       final statusCode = error.response?.statusCode;
       final data = error.response?.data;
       throw Exception(
