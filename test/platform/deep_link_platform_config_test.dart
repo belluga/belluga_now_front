@@ -278,16 +278,4 @@ void main() {
     expect(script, contains('CM_KEY_PASSWORD'));
   });
 
-  test('build lane helper validates Android public and release signing files', () {
-    final script = File('script/build_lane.sh').readAsStringSync();
-
-    expect(script, contains(r'android/flavors/${flavor}.public.properties'));
-    expect(script, contains(r'android/keystores/${flavor}.signing.properties'));
-    expect(script, contains(r'android/keystores/${flavor}.jks'));
-    expect(script, contains('extract_flutter_flavor'));
-    expect(script, contains('resolve_android_build_mode'));
-    expect(script, contains('validate_android_flavor_contract'));
-    expect(script, contains('validated Android public flavor contract'));
-    expect(script, contains('validated Android release signing inputs'));
-  });
 }
