@@ -1,0 +1,6 @@
+# Recovery template for an Android tenant flavor
+# Copy to `<flavor>.signing.properties` only after replacing every placeholder.
+
+keyAlias=<flavor>-alias
+keyPassword=RECOVER_ME
+storePassword=RECOVER_ME

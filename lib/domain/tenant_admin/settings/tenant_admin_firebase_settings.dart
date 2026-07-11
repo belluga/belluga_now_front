@@ -4,35 +4,44 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynam
 class TenantAdminFirebaseSettings {
   TenantAdminFirebaseSettings({
     required TenantAdminRequiredTextValue apiKey,
-    required TenantAdminRequiredTextValue appId,
+    required TenantAdminRequiredTextValue androidAppId,
+    TenantAdminRequiredTextValue? iosAppId,
     required TenantAdminRequiredTextValue projectId,
     required TenantAdminRequiredTextValue messagingSenderId,
     required TenantAdminRequiredTextValue storageBucket,
-  })  : apiKeyValue = apiKey,
-        appIdValue = appId,
-        projectIdValue = projectId,
-        messagingSenderIdValue = messagingSenderId,
-        storageBucketValue = storageBucket;
+  }) : apiKeyValue = apiKey,
+       androidAppIdValue = androidAppId,
+       iosAppIdValue = iosAppId,
+       projectIdValue = projectId,
+       messagingSenderIdValue = messagingSenderId,
+       storageBucketValue = storageBucket;
 
   final TenantAdminRequiredTextValue apiKeyValue;
-  final TenantAdminRequiredTextValue appIdValue;
+  final TenantAdminRequiredTextValue androidAppIdValue;
+  final TenantAdminRequiredTextValue? iosAppIdValue;
   final TenantAdminRequiredTextValue projectIdValue;
   final TenantAdminRequiredTextValue messagingSenderIdValue;
   final TenantAdminRequiredTextValue storageBucketValue;
 
   String get apiKey => apiKeyValue.value;
-  String get appId => appIdValue.value;
+  String get androidAppId => androidAppIdValue.value;
+  String? get iosAppId => iosAppIdValue?.value;
   String get projectId => projectIdValue.value;
   String get messagingSenderId => messagingSenderIdValue.value;
   String get storageBucket => storageBucketValue.value;
 
   TenantAdminDynamicMapValue toJson() {
-    return TenantAdminDynamicMapValue({
+    final raw = <String, dynamic>{
       'apiKey': apiKey,
-      'appId': appId,
+      'androidAppId': androidAppId,
       'projectId': projectId,
       'messagingSenderId': messagingSenderId,
       'storageBucket': storageBucket,
-    });
+    };
+    final resolvedIosAppId = iosAppId;
+    if (resolvedIosAppId != null && resolvedIosAppId.trim().isNotEmpty) {
+      raw['iosAppId'] = resolvedIosAppId;
+    }
+    return TenantAdminDynamicMapValue(raw);
   }
 }

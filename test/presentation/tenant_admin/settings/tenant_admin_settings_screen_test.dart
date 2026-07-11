@@ -4086,7 +4086,8 @@ class _FakeTenantAdminSettingsRepository
   Future<TenantAdminFirebaseSettings?> fetchFirebaseSettings() async {
     return TenantAdminFirebaseSettings(
       apiKey: _requiredText('apikey'),
-      appId: _requiredText('appid'),
+      androidAppId: _requiredText('android-appid'),
+      iosAppId: _requiredText('ios-appid'),
       projectId: _requiredText('project-test'),
       messagingSenderId: _requiredText('sender'),
       storageBucket: _requiredText('bucket'),
@@ -4412,7 +4413,8 @@ AppData _buildAppData({String mainDomain = 'https://guarappari.test'}) {
     'telemetry_context': {'location_freshness_minutes': 5},
     'firebase': {
       'apiKey': 'apikey',
-      'appId': 'appid',
+      'androidAppId': 'android-appid',
+      'iosAppId': 'ios-appid',
       'projectId': 'project-test',
       'messagingSenderId': 'sender',
       'storageBucket': 'bucket',

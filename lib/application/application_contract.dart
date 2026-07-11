@@ -13,6 +13,7 @@ import 'package:belluga_now/application/router/modular_app/module_settings.dart'
 import 'package:belluga_now/application/startup/app_startup_navigation_coordinator.dart';
 import 'package:belluga_now/application/startup/app_startup_navigation_plan.dart';
 import 'package:belluga_now/application/startup/app_startup_plan_resolver.dart';
+import 'package:belluga_now/domain/app_data/firebase_settings.dart';
 import 'package:belluga_now/domain/push/push_presentation_gate_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
@@ -210,7 +211,7 @@ abstract class ApplicationContract extends ModularAppContract {
       );
       return;
     }
-    if (!_canUseFirebaseMessagingRuntime()) {
+    if (!_canUseFirebaseMessagingRuntime(resolvedPlatform)) {
       return;
     }
     final authRepository =
@@ -318,11 +319,11 @@ abstract class ApplicationContract extends ModularAppContract {
       );
       return false;
     }
-    if (!_canUseFirebaseMessagingRuntime()) {
-      return false;
-    }
     final resolvedPlatform =
         platformOverride ?? BellugaConstants.settings.platform;
+    if (!_canUseFirebaseMessagingRuntime(resolvedPlatform)) {
+      return false;
+    }
     final authRepository =
         authRepositoryOverride ?? GetIt.I.get<AuthRepositoryContract>();
     final transportConfig = PushTransportConfigurator.build(
@@ -530,7 +531,7 @@ abstract class ApplicationContract extends ModularAppContract {
     });
   }
 
-  bool _canUseFirebaseMessagingRuntime() {
+  bool _canUseFirebaseMessagingRuntime(String platform) {
     if (Firebase.apps.isNotEmpty) {
       return true;
     }
@@ -541,12 +542,23 @@ abstract class ApplicationContract extends ModularAppContract {
         .get<AppDataRepositoryContract>()
         .appData
         .firebaseSettings;
-    if (settings != null) {
-      return true;
+    if (settings == null) {
+      debugPrint(
+        '[Push] Firebase settings missing; skipping push registration.',
+      );
+      return false;
     }
 
-    debugPrint('[Push] Firebase settings missing; skipping push registration.');
-    return false;
+    final appId = _firebaseAppIdForPlatform(settings, platform);
+    if (appId == null || appId.isEmpty) {
+      debugPrint(
+        '[Push] Firebase app id missing for platform '
+        '$platform; skipping push registration.',
+      );
+      return false;
+    }
+
+    return true;
   }
 
   void _listenForInvitePushUpdates(
@@ -625,31 +637,73 @@ abstract class ApplicationContract extends ModularAppContract {
     await _pushRepository?.debugInjectMessageId(messageId);
   }
 
+  @visibleForTesting
+  FirebaseOptions? firebaseOptionsForTesting({required String platform}) =>
+      _firebaseOptionsForPlatform(platform);
+
   Future<void> _initializeFirebaseIfAvailable() async {
+    if (Firebase.apps.isNotEmpty) {
+      debugPrint('[Push] Firebase already initialized; skipping runtime init.');
+      return;
+    }
+
+    final options = _firebaseOptionsForPlatform(
+      BellugaConstants.settings.platform,
+    );
+    if (options == null) {
+      return;
+    }
+
+    debugPrint('[Push] Firebase init for project ${options.projectId}.');
+    await Firebase.initializeApp(options: options);
+  }
+
+  FirebaseOptions? _firebaseOptionsForPlatform(String platform) {
     final settings = GetIt.I
         .get<AppDataRepositoryContract>()
         .appData
         .firebaseSettings;
     if (settings == null) {
       debugPrint('[Push] Firebase settings missing; skipping init.');
-      return;
+      return null;
     }
 
-    if (Firebase.apps.isNotEmpty) {
-      debugPrint('[Push] Firebase already initialized; skipping runtime init.');
-      return;
+    final appId = _firebaseAppIdForPlatform(settings, platform);
+    if (appId == null || appId.isEmpty) {
+      debugPrint(
+        '[Push] Firebase app id missing for platform '
+        '$platform; skipping init.',
+      );
+      return null;
     }
 
-    debugPrint('[Push] Firebase init for project ${settings.projectId}.');
-    await Firebase.initializeApp(
-      options: FirebaseOptions(
-        apiKey: settings.apiKey,
-        appId: settings.appId,
-        messagingSenderId: settings.messagingSenderId,
-        projectId: settings.projectId,
-        storageBucket: settings.storageBucket,
-      ),
+    return FirebaseOptions(
+      apiKey: settings.apiKey,
+      appId: appId,
+      messagingSenderId: settings.messagingSenderId,
+      projectId: settings.projectId,
+      storageBucket: settings.storageBucket,
     );
+  }
+
+  String? _firebaseAppIdForPlatform(
+    FirebaseSettings settings,
+    String platform,
+  ) {
+    final normalizedPlatform = platform.trim().toLowerCase();
+    if (normalizedPlatform == 'ios') {
+      return settings.iosBootstrapAppId;
+    }
+    if (normalizedPlatform == 'android') {
+      return settings.androidBootstrapAppId;
+    }
+
+    final resolvedLegacyAppId = settings.appId?.trim();
+    if (resolvedLegacyAppId != null && resolvedLegacyAppId.isNotEmpty) {
+      return resolvedLegacyAppId;
+    }
+
+    return settings.androidBootstrapAppId ?? settings.iosBootstrapAppId;
   }
 
   ThemeData getThemeData() => GetIt.I
