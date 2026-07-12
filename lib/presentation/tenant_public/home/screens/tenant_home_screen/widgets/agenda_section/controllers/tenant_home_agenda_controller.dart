@@ -491,7 +491,7 @@ class TenantHomeAgendaController extends Object
         locationElapsed = stopwatch.elapsedMilliseconds;
       }
 
-      if (!_hasEffectiveOriginForAgendaQuery) {
+      if (_effectiveOriginLat == null || _effectiveOriginLng == null) {
         _publishUnavailableOriginState(
           preserveCurrentResults: preserveCurrentResults,
         );
@@ -556,7 +556,7 @@ class TenantHomeAgendaController extends Object
 
     try {
       await _resolveEffectiveOrigin(warmUpIfPossible: false);
-      if (!_hasEffectiveOriginForAgendaQuery) {
+      if (_effectiveOriginLat == null || _effectiveOriginLng == null) {
         return false;
       }
       _ifAlive(
@@ -585,9 +585,6 @@ class TenantHomeAgendaController extends Object
       ),
     );
   }
-
-  bool get _hasEffectiveOriginForAgendaQuery =>
-      _effectiveOriginLat != null && _effectiveOriginLng != null;
 
   void _publishUnavailableOriginState({required bool preserveCurrentResults}) {
     if (_isDisposed) {

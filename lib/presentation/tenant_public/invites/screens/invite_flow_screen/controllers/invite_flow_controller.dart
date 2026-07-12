@@ -2,6 +2,7 @@ export 'invite_decision_result.dart';
 
 import 'dart:async';
 
+import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/application/router/support/tenant_public_event_path.dart';
 import 'package:belluga_now/domain/invites/invite_decision.dart';
 import 'package:belluga_now/domain/invites/invite_inviter_type.dart';
@@ -23,13 +24,17 @@ import 'package:stream_value/core/stream_value.dart';
 
 class InviteFlowScreenController with Disposable {
   InviteFlowScreenController({
+    AppData? appData,
     InvitesRepositoryContract? repository,
     UserEventsRepositoryContract? userEventsRepository,
     TelemetryRepositoryContract? telemetryRepository,
     CardStackSwiperController? cardStackSwiperController,
     AuthRepositoryContract? authRepository,
     ScheduleRepositoryContract? scheduleRepository,
-  }) : _repository = repository ?? GetIt.I.get<InvitesRepositoryContract>(),
+  }) : _appData =
+           appData ??
+           (GetIt.I.isRegistered<AppData>() ? GetIt.I.get<AppData>() : null),
+       _repository = repository ?? GetIt.I.get<InvitesRepositoryContract>(),
        _telemetryRepository =
            telemetryRepository ?? GetIt.I.get<TelemetryRepositoryContract>(),
        _authRepository =
@@ -45,6 +50,7 @@ class InviteFlowScreenController with Disposable {
        swiperController =
            cardStackSwiperController ?? CardStackSwiperController();
 
+  final AppData? _appData;
   final InvitesRepositoryContract _repository;
   final TelemetryRepositoryContract _telemetryRepository;
   final AuthRepositoryContract? _authRepository;
@@ -74,6 +80,7 @@ class InviteFlowScreenController with Disposable {
       authRequiredForDecisionStreamValue.value;
   bool get isAuthorized => _isAuthorized;
   String? get redirectPath => redirectPathStreamValue.value;
+  String get tenantName => _appData?.nameValue.value ?? '';
 
   final Map<String, InviteDecision> _decisions = <String, InviteDecision>{};
   Map<String, InviteDecision> get decisions => Map.unmodifiable(_decisions);

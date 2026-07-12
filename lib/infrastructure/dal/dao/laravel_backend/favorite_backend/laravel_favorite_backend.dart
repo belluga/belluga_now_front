@@ -19,51 +19,32 @@ class LaravelFavoriteBackend implements FavoriteBackendContract {
   String get _apiBaseUrl =>
       '${GetIt.I.get<AppData>().mainDomainValue.value.origin}/api';
 
-  Map<String, String> _headers({
-    required String token,
-    bool includeJsonAccept = false,
-  }) {
-    final headers = <String, String>{};
-
-    if (token.isNotEmpty) {
-      headers['Authorization'] = 'Bearer $token';
-    }
-
-    if (includeJsonAccept) {
-      headers['Accept'] = 'application/json';
-    }
-
-    return headers;
-  }
-
   @override
   Future<List<FavoritePreviewDTO>> fetchFavorites() async {
-    final token = await TenantPublicAuthHeaders.resolveToken(
-      bootstrapIfEmpty: true,
+    return TenantPublicAuthHeaders.retryOnceOnUnauthorized(
+      includeJsonAccept: true,
+      action: (headers) async {
+        final favorites = <FavoritePreviewDTO>[];
+        var page = 1;
+        var hasMore = true;
+
+        while (hasMore) {
+          final pagePayload = await _fetchFavoritesPageWithHeaders(
+            headers: headers,
+            page: page,
+            pageSize: _defaultPageSize,
+          );
+          favorites.addAll(pagePayload.items);
+          hasMore = pagePayload.hasMore;
+          if (pagePayload.items.isEmpty) {
+            break;
+          }
+          page += 1;
+        }
+
+        return favorites;
+      },
     );
-    if (token.trim().isEmpty) {
-      return const <FavoritePreviewDTO>[];
-    }
-
-    final favorites = <FavoritePreviewDTO>[];
-    var page = 1;
-    var hasMore = true;
-
-    while (hasMore) {
-      final pagePayload = await _fetchFavoritesPageWithToken(
-        token: token,
-        page: page,
-        pageSize: _defaultPageSize,
-      );
-      favorites.addAll(pagePayload.items);
-      hasMore = pagePayload.hasMore;
-      if (pagePayload.items.isEmpty) {
-        break;
-      }
-      page += 1;
-    }
-
-    return favorites;
   }
 
   @override
@@ -71,31 +52,24 @@ class LaravelFavoriteBackend implements FavoriteBackendContract {
     required int page,
     required int pageSize,
   }) async {
-    final token = await TenantPublicAuthHeaders.resolveToken(
-      bootstrapIfEmpty: true,
-    );
-    if (token.trim().isEmpty) {
-      return const FavoritePreviewPageDTO(
-        items: <FavoritePreviewDTO>[],
-        hasMore: false,
-      );
-    }
-
-    return _fetchFavoritesPageWithToken(
-      token: token,
-      page: page,
-      pageSize: pageSize,
+    return TenantPublicAuthHeaders.retryOnceOnUnauthorized(
+      includeJsonAccept: true,
+      action: (headers) => _fetchFavoritesPageWithHeaders(
+        headers: headers,
+        page: page,
+        pageSize: pageSize,
+      ),
     );
   }
 
-  Future<FavoritePreviewPageDTO> _fetchFavoritesPageWithToken({
-    required String token,
+  Future<FavoritePreviewPageDTO> _fetchFavoritesPageWithHeaders({
+    required Map<String, String> headers,
     required int page,
     required int pageSize,
   }) async {
     final payload = await _get(
       '$_apiBaseUrl/v1/favorites',
-      token: token,
+      headers: headers,
       queryParameters: {
         'page': page,
         'page_size': pageSize,
@@ -142,13 +116,6 @@ class LaravelFavoriteBackend implements FavoriteBackendContract {
     required String accountProfileId,
     required bool isFavorite,
   }) async {
-    final token = await TenantPublicAuthHeaders.resolveToken(
-      bootstrapIfEmpty: true,
-    );
-    if (token.isEmpty) {
-      throw Exception('Cannot mutate favorites without authentication token.');
-    }
-
     final normalizedTargetId = accountProfileId.trim();
     if (normalizedTargetId.isEmpty) {
       throw Exception('Cannot mutate favorites with an empty target id.');
@@ -162,17 +129,22 @@ class LaravelFavoriteBackend implements FavoriteBackendContract {
 
     try {
       final requestUri = '$_apiBaseUrl/v1/favorites';
-      final options = Options(
-        headers: _headers(token: token, includeJsonAccept: true),
-        connectTimeout: _connectTimeout,
-        sendTimeout: _sendTimeout,
-        receiveTimeout: _receiveTimeout,
+      await TenantPublicAuthHeaders.retryOnceOnUnauthorized(
+        includeJsonAccept: true,
+        action: (headers) async {
+          final options = Options(
+            headers: headers,
+            connectTimeout: _connectTimeout,
+            sendTimeout: _sendTimeout,
+            receiveTimeout: _receiveTimeout,
+          );
+          if (isFavorite) {
+            await _dio.post(requestUri, data: payload, options: options);
+            return;
+          }
+          await _dio.delete(requestUri, data: payload, options: options);
+        },
       );
-      if (isFavorite) {
-        await _dio.post(requestUri, data: payload, options: options);
-        return;
-      }
-      await _dio.delete(requestUri, data: payload, options: options);
     } on DioException catch (error) {
       final statusCode = error.response?.statusCode;
       final data = error.response?.data;
@@ -188,7 +160,7 @@ class LaravelFavoriteBackend implements FavoriteBackendContract {
 
   Future<Map<String, dynamic>> _get(
     String url, {
-    required String token,
+    required Map<String, String> headers,
     Map<String, dynamic>? queryParameters,
   }) async {
     try {
@@ -196,7 +168,7 @@ class LaravelFavoriteBackend implements FavoriteBackendContract {
         url,
         queryParameters: queryParameters,
         options: Options(
-          headers: _headers(token: token, includeJsonAccept: true),
+          headers: headers,
           connectTimeout: _connectTimeout,
           sendTimeout: _sendTimeout,
           receiveTimeout: _receiveTimeout,
@@ -215,11 +187,10 @@ class LaravelFavoriteBackend implements FavoriteBackendContract {
 
       throw Exception('Unexpected favorites response shape.');
     } on DioException catch (error) {
-      final statusCode = error.response?.statusCode;
-      if (statusCode == 401) {
-        return const {'items': <dynamic>[], 'has_more': false};
+      if (error.response?.statusCode == 401) {
+        rethrow;
       }
-
+      final statusCode = error.response?.statusCode;
       final data = error.response?.data;
       throw Exception(
         'Failed to GET favorites request '

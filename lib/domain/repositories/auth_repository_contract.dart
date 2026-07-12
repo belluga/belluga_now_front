@@ -41,6 +41,11 @@ abstract class AuthRepositoryContract<T extends UserContract> {
     );
   }
 
+  Future<void>
+  recoverTenantPublicIdentityAfterUnauthorizedPublicRequest() async {
+    await ensureTenantPublicIdentityReady();
+  }
+
   Future<void> autoLogin();
 
   Future<void> loginWithEmailPassword(

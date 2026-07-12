@@ -257,6 +257,7 @@ Future<void> _pumpScreen(WidgetTester tester, Widget child) async {
     MaterialApp.router(
       routeInformationParser: router.defaultRouteParser(),
       routerDelegate: router.delegate(),
+      theme: ThemeData(splashFactory: NoSplash.splashFactory),
     ),
   );
   await tester.pumpAndSettle();

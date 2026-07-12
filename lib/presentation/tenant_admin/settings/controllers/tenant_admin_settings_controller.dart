@@ -61,48 +61,56 @@ class TenantAdminSettingsController implements Disposable {
     TenantAdminLocationSelectionContract? locationSelectionService,
     TenantAdminImageIngestionService? imageIngestionService,
     TenantAdminFaviconIngestionService? faviconIngestionService,
-  })  : _appDataRepository =
-            appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
-        _settingsRepository = settingsRepository ??
-            GetIt.I.get<TenantAdminSettingsRepositoryContract>(),
-        _accountProfilesRepository = accountProfilesRepository ??
-            (GetIt.I.isRegistered<
-                    TenantAdminAccountProfilesRepositoryContract>()
-                ? GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
-                : null),
-        _staticAssetsRepository = staticAssetsRepository ??
-            (GetIt.I.isRegistered<TenantAdminStaticAssetsRepositoryContract>()
-                ? GetIt.I.get<TenantAdminStaticAssetsRepositoryContract>()
-                : null),
-        _taxonomiesRepository = taxonomiesRepository ??
-            (GetIt.I.isRegistered<TenantAdminTaxonomiesRepositoryContract>()
-                ? GetIt.I.get<TenantAdminTaxonomiesRepositoryContract>()
-                : null),
-        _eventsRepository = eventsRepository ??
-            (GetIt.I.isRegistered<TenantAdminEventsRepositoryContract>()
-                ? GetIt.I.get<TenantAdminEventsRepositoryContract>()
-                : null),
-        _tenantScope = tenantScope ??
-            (GetIt.I.isRegistered<TenantAdminTenantScopeContract>()
-                ? GetIt.I.get<TenantAdminTenantScopeContract>()
-                : null),
-        _locationSelectionService = locationSelectionService ??
-            GetIt.I.get<TenantAdminLocationSelectionContract>(),
-        _imageIngestionService = imageIngestionService ??
-            (GetIt.I.isRegistered<TenantAdminImageIngestionService>()
-                ? GetIt.I.get<TenantAdminImageIngestionService>()
-                : TenantAdminImageIngestionService()),
-        _faviconIngestionService = faviconIngestionService ??
-            (GetIt.I.isRegistered<TenantAdminFaviconIngestionService>()
-                ? GetIt.I.get<TenantAdminFaviconIngestionService>()
-                : TenantAdminFaviconIngestionService()) {
+  }) : _appDataRepository =
+           appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
+       _settingsRepository =
+           settingsRepository ??
+           GetIt.I.get<TenantAdminSettingsRepositoryContract>(),
+       _accountProfilesRepository =
+           accountProfilesRepository ??
+           (GetIt.I.isRegistered<TenantAdminAccountProfilesRepositoryContract>()
+               ? GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+               : null),
+       _staticAssetsRepository =
+           staticAssetsRepository ??
+           (GetIt.I.isRegistered<TenantAdminStaticAssetsRepositoryContract>()
+               ? GetIt.I.get<TenantAdminStaticAssetsRepositoryContract>()
+               : null),
+       _taxonomiesRepository =
+           taxonomiesRepository ??
+           (GetIt.I.isRegistered<TenantAdminTaxonomiesRepositoryContract>()
+               ? GetIt.I.get<TenantAdminTaxonomiesRepositoryContract>()
+               : null),
+       _eventsRepository =
+           eventsRepository ??
+           (GetIt.I.isRegistered<TenantAdminEventsRepositoryContract>()
+               ? GetIt.I.get<TenantAdminEventsRepositoryContract>()
+               : null),
+       _tenantScope =
+           tenantScope ??
+           (GetIt.I.isRegistered<TenantAdminTenantScopeContract>()
+               ? GetIt.I.get<TenantAdminTenantScopeContract>()
+               : null),
+       _locationSelectionService =
+           locationSelectionService ??
+           GetIt.I.get<TenantAdminLocationSelectionContract>(),
+       _imageIngestionService =
+           imageIngestionService ??
+           (GetIt.I.isRegistered<TenantAdminImageIngestionService>()
+               ? GetIt.I.get<TenantAdminImageIngestionService>()
+               : TenantAdminImageIngestionService()),
+       _faviconIngestionService =
+           faviconIngestionService ??
+           (GetIt.I.isRegistered<TenantAdminFaviconIngestionService>()
+               ? GetIt.I.get<TenantAdminFaviconIngestionService>()
+               : TenantAdminFaviconIngestionService()) {
     _bindMaxRadiusStream();
   }
 
   final AppDataRepositoryContract _appDataRepository;
   final TenantAdminSettingsRepositoryContract _settingsRepository;
   final TenantAdminAccountProfilesRepositoryContract?
-      _accountProfilesRepository;
+  _accountProfilesRepository;
   final TenantAdminStaticAssetsRepositoryContract? _staticAssetsRepository;
   final TenantAdminTaxonomiesRepositoryContract? _taxonomiesRepository;
   final TenantAdminEventsRepositoryContract? _eventsRepository;
@@ -111,52 +119,55 @@ class TenantAdminSettingsController implements Disposable {
   final TenantAdminImageIngestionService _imageIngestionService;
   final TenantAdminFaviconIngestionService _faviconIngestionService;
 
-  static const List<String> telemetryTypes = [
-    'mixpanel',
-    'webhook',
-  ];
+  static const List<String> telemetryTypes = ['mixpanel', 'webhook'];
 
-  final StreamValue<bool> isRemoteLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> isRemoteLoadingStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
   final StreamValue<String?> remoteErrorStreamValue = StreamValue<String?>();
   final StreamValue<String?> remoteSuccessStreamValue = StreamValue<String?>();
-  final StreamValue<bool> mapUiSubmittingStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> mapUiSubmittingStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
   final StreamValue<TenantAdminMapUiSettings> mapUiSettingsStreamValue =
       StreamValue<TenantAdminMapUiSettings>(
-    defaultValue: TenantAdminMapUiSettings.empty(),
+        defaultValue: TenantAdminMapUiSettings.empty(),
+      );
+  final StreamValue<bool> domainsSubmittingStreamValue = StreamValue<bool>(
+    defaultValue: false,
   );
-  final StreamValue<bool> domainsSubmittingStreamValue =
-      StreamValue<bool>(defaultValue: false);
-  final StreamValue<bool> appLinksSubmittingStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> appLinksSubmittingStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
   final StreamValue<TenantAdminAppLinksSettings> appLinksSettingsStreamValue =
       StreamValue<TenantAdminAppLinksSettings>(
-    defaultValue: TenantAdminAppLinksSettings.empty(),
-  );
+        defaultValue: TenantAdminAppLinksSettings.empty(),
+      );
   final StreamValue<List<String>> appLinksIosPathsSelectionStreamValue =
       StreamValue<List<String>>(
-    defaultValue: List<String>.from(
-      TenantAdminAppLinksSettings.canonicalIosPaths,
-      growable: false,
-    ),
-  );
+        defaultValue: List<String>.from(
+          TenantAdminAppLinksSettings.canonicalIosPaths,
+          growable: false,
+        ),
+      );
   final StreamValue<bool> appLinksAndroidPublicationEnabledStreamValue =
       StreamValue<bool>(defaultValue: false);
   final StreamValue<bool> appLinksIosPublicationEnabledStreamValue =
       StreamValue<bool>(defaultValue: false);
   final StreamValue<TenantAdminMapFilterRuleCatalog>
-      mapFilterRuleCatalogStreamValue =
+  mapFilterRuleCatalogStreamValue =
       StreamValue<TenantAdminMapFilterRuleCatalog>(
-    defaultValue: const TenantAdminMapFilterRuleCatalog.empty(),
-  );
+        defaultValue: const TenantAdminMapFilterRuleCatalog.empty(),
+      );
   final StreamValue<bool> mapFilterRuleCatalogLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
 
-  final StreamValue<bool> firebaseSubmittingStreamValue =
-      StreamValue<bool>(defaultValue: false);
-  final StreamValue<bool> resendEmailSubmittingStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> firebaseSubmittingStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
+  final StreamValue<bool> resendEmailSubmittingStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
   final StreamValue<bool> outboundIntegrationsSubmittingStreamValue =
       StreamValue<bool>(defaultValue: false);
   final StreamValue<bool> outboundOtpUseWhatsappWebhookStreamValue =
@@ -165,30 +176,33 @@ class TenantAdminSettingsController implements Disposable {
       StreamValue<bool>(defaultValue: false);
   final StreamValue<String> outboundOtpDeliveryChannelStreamValue =
       StreamValue<String>(
-    defaultValue:
-        TenantAdminOutboundIntegrationsSettings.deliveryChannelWhatsapp,
-  );
+        defaultValue:
+            TenantAdminOutboundIntegrationsSettings.deliveryChannelWhatsapp,
+      );
   final StreamValue<bool> phoneOtpReviewAccessSubmittingStreamValue =
       StreamValue<bool>(defaultValue: false);
   final StreamValue<bool> phoneOtpReviewAccessHashGeneratingStreamValue =
       StreamValue<bool>(defaultValue: false);
-  final StreamValue<bool> pushSubmittingStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> pushSubmittingStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
   final StreamValue<bool> pushCredentialsSubmittingStreamValue =
       StreamValue<bool>(defaultValue: false);
-  final StreamValue<bool?> pushEnabledStreamValue =
-      StreamValue<bool?>(defaultValue: null);
+  final StreamValue<bool?> pushEnabledStreamValue = StreamValue<bool?>(
+    defaultValue: null,
+  );
   final StreamValue<TenantAdminPushStatus?> pushStatusStreamValue =
       StreamValue<TenantAdminPushStatus?>(defaultValue: null);
   final StreamValue<bool> pushCredentialsConfiguredStreamValue =
       StreamValue<bool>(defaultValue: false);
-  final StreamValue<bool> telemetrySubmittingStreamValue =
-      StreamValue<bool>(defaultValue: false);
-  final StreamValue<bool> brandingSubmittingStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> telemetrySubmittingStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
+  final StreamValue<bool> brandingSubmittingStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
   final StreamValue<TenantAdminBrandingBrightness>
-      brandingBrightnessStreamValue =
-      StreamValue<TenantAdminBrandingBrightness>(
+  brandingBrightnessStreamValue = StreamValue<TenantAdminBrandingBrightness>(
     defaultValue: TenantAdminBrandingBrightness.light,
   );
   final StreamValue<XFile?> brandingLightLogoFileStreamValue =
@@ -222,18 +236,22 @@ class TenantAdminSettingsController implements Disposable {
       StreamValue<String?>();
 
   final StreamValue<TenantAdminTelemetrySettingsSnapshot>
-      telemetrySnapshotStreamValue =
+  telemetrySnapshotStreamValue =
       StreamValue<TenantAdminTelemetrySettingsSnapshot>(
-    defaultValue: TenantAdminTelemetrySettingsSnapshot.empty(),
-  );
+        defaultValue: TenantAdminTelemetrySettingsSnapshot.empty(),
+      );
   final StreamValue<String> selectedTelemetryTypeStreamValue =
       StreamValue<String>(defaultValue: telemetryTypes.first);
-  final StreamValue<bool> telemetryTrackAllStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> telemetryTrackAllStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
 
   final TextEditingController firebaseApiKeyController =
       TextEditingController();
-  final TextEditingController firebaseAppIdController = TextEditingController();
+  final TextEditingController firebaseAndroidAppIdController =
+      TextEditingController();
+  final TextEditingController firebaseIosAppIdController =
+      TextEditingController();
   final TextEditingController firebaseProjectIdController =
       TextEditingController();
   final TextEditingController firebaseMessagingSenderIdController =
@@ -326,10 +344,10 @@ class TenantAdminSettingsController implements Disposable {
   bool _localPreferencesFlowBound = false;
   String? _loadedBrandingFaviconPreviewUrl;
   final Map<TenantAdminBrandingAssetSlot, String?>
-      _loadedBrandingAssetPreviewUrls =
-      <TenantAdminBrandingAssetSlot, String?>{};
-  final StreamValue<double> maxRadiusMetersStreamValue =
-      StreamValue<double>(defaultValue: 50000);
+  _loadedBrandingAssetPreviewUrls = <TenantAdminBrandingAssetSlot, String?>{};
+  final StreamValue<double> maxRadiusMetersStreamValue = StreamValue<double>(
+    defaultValue: 50000,
+  );
 
   AppData get appData => _appDataRepository.appData;
   StreamValue<ThemeMode?> get themeModeStreamValue =>
@@ -347,12 +365,15 @@ class TenantAdminSettingsController implements Disposable {
 
   void _bindMaxRadiusStream() {
     _maxRadiusSubscription?.cancel();
-    maxRadiusMetersStreamValue
-        .addValue(_appDataRepository.maxRadiusMeters.value);
-    _maxRadiusSubscription =
-        _appDataRepository.maxRadiusMetersStreamValue.stream.listen((value) {
-      maxRadiusMetersStreamValue.addValue(value.value);
-    });
+    maxRadiusMetersStreamValue.addValue(
+      _appDataRepository.maxRadiusMeters.value,
+    );
+    _maxRadiusSubscription = _appDataRepository
+        .maxRadiusMetersStreamValue
+        .stream
+        .listen((value) {
+          maxRadiusMetersStreamValue.addValue(value.value);
+        });
   }
 
   void updateAppLinksIosPathsSelection(List<String> selectedPaths) {
@@ -376,13 +397,12 @@ class TenantAdminSettingsController implements Disposable {
     appLinksIosPublicationEnabledStreamValue.addValue(value);
   }
 
-  Future<void> init({
-    bool loadBranding = true,
-  }) async {
+  Future<void> init({bool loadBranding = true}) async {
     _bindTenantScope();
     _bindBrandingRepositoryStream();
-    final normalizedTenantDomain =
-        _normalizeTenantDomain(_tenantScope?.selectedTenantDomain);
+    final normalizedTenantDomain = _normalizeTenantDomain(
+      _tenantScope?.selectedTenantDomain,
+    );
     if (_initialized) {
       if (_initializedTenantDomain != normalizedTenantDomain) {
         _initializedTenantDomain = normalizedTenantDomain;
@@ -409,23 +429,23 @@ class TenantAdminSettingsController implements Disposable {
       return;
     }
     final tenantScope = _tenantScope;
-    _tenantScopeSubscription =
-        tenantScope.selectedTenantDomainStreamValue.stream.listen(
-      (tenantDomain) {
-        final normalized = _normalizeTenantDomain(tenantDomain);
-        if (normalized == _initializedTenantDomain) {
-          return;
-        }
-        _initializedTenantDomain = normalized;
-        _resetTenantScopedForms();
-        if (normalized != null) {
-          unawaited(loadBrandingSettings());
-          if (_localPreferencesFlowBound) {
-            unawaited(loadMapUiSettings());
+    _tenantScopeSubscription = tenantScope
+        .selectedTenantDomainStreamValue
+        .stream
+        .listen((tenantDomain) {
+          final normalized = _normalizeTenantDomain(tenantDomain);
+          if (normalized == _initializedTenantDomain) {
+            return;
           }
-        }
-      },
-    );
+          _initializedTenantDomain = normalized;
+          _resetTenantScopedForms();
+          if (normalized != null) {
+            unawaited(loadBrandingSettings());
+            if (_localPreferencesFlowBound) {
+              unawaited(loadMapUiSettings());
+            }
+          }
+        });
   }
 
   void _bindLocationSelection() {
@@ -433,17 +453,18 @@ class TenantAdminSettingsController implements Disposable {
       return;
     }
     _locationSelectionSubscription = _locationSelectionService
-        .confirmedLocationStreamValue.stream
+        .confirmedLocationStreamValue
+        .stream
         .listen((location) {
-      if (location == null) {
-        return;
-      }
-      mapDefaultOriginLatitudeController.text =
-          location.latitude.toStringAsFixed(6);
-      mapDefaultOriginLongitudeController.text =
-          location.longitude.toStringAsFixed(6);
-      _locationSelectionService.clearConfirmedLocation();
-    });
+          if (location == null) {
+            return;
+          }
+          mapDefaultOriginLatitudeController.text = location.latitude
+              .toStringAsFixed(6);
+          mapDefaultOriginLongitudeController.text = location.longitude
+              .toStringAsFixed(6);
+          _locationSelectionService.clearConfirmedLocation();
+        });
   }
 
   void bindLocalPreferencesFlow() {
@@ -456,13 +477,14 @@ class TenantAdminSettingsController implements Disposable {
       return;
     }
     _brandingSubscription = _settingsRepository
-        .brandingSettingsStreamValue.stream
+        .brandingSettingsStreamValue
+        .stream
         .listen((settings) {
-      if (settings == null) {
-        return;
-      }
-      _applyBrandingSettings(settings);
-    });
+          if (settings == null) {
+            return;
+          }
+          _applyBrandingSettings(settings);
+        });
   }
 
   Future<void> updateThemeMode(ThemeMode mode) {
@@ -470,8 +492,9 @@ class TenantAdminSettingsController implements Disposable {
   }
 
   Future<void> updateMaxRadiusMeters(double meters) {
-    return _appDataRepository
-        .setMaxRadiusMeters(_distanceInMetersValue(meters));
+    return _appDataRepository.setMaxRadiusMeters(
+      _distanceInMetersValue(meters),
+    );
   }
 
   Future<void> loadTechnicalIntegrationsSettings() async {
@@ -481,8 +504,8 @@ class TenantAdminSettingsController implements Disposable {
     final errors = <String>[];
     try {
       try {
-        final firebaseSettings =
-            await _settingsRepository.fetchFirebaseSettings();
+        final firebaseSettings = await _settingsRepository
+            .fetchFirebaseSettings();
         if (firebaseSettings != null) {
           _applyFirebaseSettings(firebaseSettings);
         }
@@ -505,48 +528,48 @@ class TenantAdminSettingsController implements Disposable {
       }
 
       try {
-        final pushCredentials =
-            await _settingsRepository.fetchPushCredentials();
+        final pushCredentials = await _settingsRepository
+            .fetchPushCredentials();
         _applyPushCredentials(pushCredentials);
       } catch (error) {
         errors.add(error.toString());
       }
 
       try {
-        final resendEmailSettings =
-            await _settingsRepository.fetchResendEmailSettings();
+        final resendEmailSettings = await _settingsRepository
+            .fetchResendEmailSettings();
         _applyResendEmailSettings(resendEmailSettings);
       } catch (error) {
         errors.add(error.toString());
       }
 
       try {
-        final outboundIntegrationsSettings =
-            await _settingsRepository.fetchOutboundIntegrationsSettings();
+        final outboundIntegrationsSettings = await _settingsRepository
+            .fetchOutboundIntegrationsSettings();
         _applyOutboundIntegrationsSettings(outboundIntegrationsSettings);
       } catch (error) {
         errors.add(error.toString());
       }
 
       try {
-        final phoneOtpReviewAccessSettings =
-            await _settingsRepository.fetchPhoneOtpReviewAccessSettings();
+        final phoneOtpReviewAccessSettings = await _settingsRepository
+            .fetchPhoneOtpReviewAccessSettings();
         _applyPhoneOtpReviewAccessSettings(phoneOtpReviewAccessSettings);
       } catch (error) {
         errors.add(error.toString());
       }
 
       try {
-        final telemetrySnapshot =
-            await _settingsRepository.fetchTelemetrySettings();
+        final telemetrySnapshot = await _settingsRepository
+            .fetchTelemetrySettings();
         telemetrySnapshotStreamValue.addValue(telemetrySnapshot);
       } catch (error) {
         errors.add(error.toString());
       }
 
       try {
-        final appLinksSettings =
-            await _settingsRepository.fetchAppLinksSettings();
+        final appLinksSettings = await _settingsRepository
+            .fetchAppLinksSettings();
         _applyAppLinksSettings(appLinksSettings);
       } catch (error) {
         errors.add(error.toString());
@@ -695,8 +718,9 @@ class TenantAdminSettingsController implements Disposable {
       final staticRepo = _staticAssetsRepository;
       final taxonomyRepo = _taxonomiesRepository;
       if (accountRepo == null || staticRepo == null || taxonomyRepo == null) {
-        mapFilterRuleCatalogStreamValue
-            .addValue(const TenantAdminMapFilterRuleCatalog.empty());
+        mapFilterRuleCatalogStreamValue.addValue(
+          const TenantAdminMapFilterRuleCatalog.empty(),
+        );
         return;
       }
 
@@ -706,16 +730,20 @@ class TenantAdminSettingsController implements Disposable {
         taxonomyRepo.loadAllTaxonomies(),
       ]);
 
-      final accountTypes = accountRepo.profileTypesStreamValue.value ??
+      final accountTypes =
+          accountRepo.profileTypesStreamValue.value ??
           const <TenantAdminProfileTypeDefinition>[];
-      final staticTypes = staticRepo.staticProfileTypesStreamValue.value ??
+      final staticTypes =
+          staticRepo.staticProfileTypesStreamValue.value ??
           const <TenantAdminStaticProfileTypeDefinition>[];
       final eventTypes = await _loadEventTypes();
-      final taxonomies = taxonomyRepo.taxonomiesStreamValue.value ??
+      final taxonomies =
+          taxonomyRepo.taxonomiesStreamValue.value ??
           const <TenantAdminTaxonomyDefinition>[];
 
-      final termsByTaxonomySlug =
-          await _loadTermsByTaxonomySlug(taxonomies: taxonomies);
+      final termsByTaxonomySlug = await _loadTermsByTaxonomySlug(
+        taxonomies: taxonomies,
+      );
       final catalog = _buildMapFilterRuleCatalog(
         accountTypes: accountTypes,
         staticTypes: staticTypes,
@@ -734,10 +762,12 @@ class TenantAdminSettingsController implements Disposable {
   }
 
   TenantAdminLocation? currentMapDefaultOriginLocation() {
-    final lat =
-        tenantAdminParseLatitude(mapDefaultOriginLatitudeController.text);
-    final lng =
-        tenantAdminParseLongitude(mapDefaultOriginLongitudeController.text);
+    final lat = tenantAdminParseLatitude(
+      mapDefaultOriginLatitudeController.text,
+    );
+    final lng = tenantAdminParseLongitude(
+      mapDefaultOriginLongitudeController.text,
+    );
     if (lat == null || lng == null) {
       return null;
     }
@@ -878,9 +908,7 @@ class TenantAdminSettingsController implements Disposable {
     final current = List<TenantAdminMapFilterCatalogItem>.from(
       _mapUiSettings.filters,
     );
-    current[index] = item.copyWith(
-      keyValue: _tokenValue(normalized),
-    );
+    current[index] = item.copyWith(keyValue: _tokenValue(normalized));
     _replaceMapFilters(current);
     remoteErrorStreamValue.addValue(null);
   }
@@ -898,9 +926,7 @@ class TenantAdminSettingsController implements Disposable {
     final current = List<TenantAdminMapFilterCatalogItem>.from(
       _mapUiSettings.filters,
     );
-    current[index] = item.copyWith(
-      labelValue: _requiredTextValue(label),
-    );
+    current[index] = item.copyWith(labelValue: _requiredTextValue(label));
     _replaceMapFilters(current);
     remoteErrorStreamValue.addValue(null);
   }
@@ -933,9 +959,7 @@ class TenantAdminSettingsController implements Disposable {
     final current = List<TenantAdminMapFilterCatalogItem>.from(
       _mapUiSettings.filters,
     );
-    current[index] = currentItem.copyWith(
-      query: sanitized,
-    );
+    current[index] = currentItem.copyWith(query: sanitized);
     _replaceMapFilters(current);
     remoteErrorStreamValue.addValue(null);
   }
@@ -991,7 +1015,8 @@ class TenantAdminSettingsController implements Disposable {
     if (item == null) {
       return;
     }
-    final shouldDisableImageOverride = item.overrideMarker &&
+    final shouldDisableImageOverride =
+        item.overrideMarker &&
         item.markerOverride?.mode ==
             TenantAdminMapFilterMarkerOverrideMode.image;
     final current = List<TenantAdminMapFilterCatalogItem>.from(
@@ -1000,9 +1025,11 @@ class TenantAdminSettingsController implements Disposable {
     current[index] = item.copyWith(
       clearImageUriValue: TenantAdminFlagValue(true),
       overrideMarkerValue: TenantAdminFlagValue(
-          shouldDisableImageOverride ? false : item.overrideMarker),
-      clearMarkerOverrideValue:
-          TenantAdminFlagValue(shouldDisableImageOverride),
+        shouldDisableImageOverride ? false : item.overrideMarker,
+      ),
+      clearMarkerOverrideValue: TenantAdminFlagValue(
+        shouldDisableImageOverride,
+      ),
     );
     _replaceMapFilters(current);
     if (shouldDisableImageOverride) {
@@ -1052,7 +1079,8 @@ class TenantAdminSettingsController implements Disposable {
       current[index] = item.copyWith(
         keyValue: _tokenValue(key),
         imageUriValue: uploadedImageUriValue,
-        markerOverride: item.overrideMarker &&
+        markerOverride:
+            item.overrideMarker &&
                 item.markerOverride?.mode ==
                     TenantAdminMapFilterMarkerOverrideMode.image
             ? TenantAdminMapFilterMarkerOverride.image(
@@ -1123,10 +1151,8 @@ class TenantAdminSettingsController implements Disposable {
 
     outboundIntegrationsSubmittingStreamValue.addValue(true);
     try {
-      final updated =
-          await _settingsRepository.updateOutboundIntegrationsSettings(
-        settings: parsed,
-      );
+      final updated = await _settingsRepository
+          .updateOutboundIntegrationsSettings(settings: parsed);
       _applyOutboundIntegrationsSettings(updated);
       _reportSuccess('Webhooks de saída atualizados com sucesso.');
     } catch (error) {
@@ -1137,8 +1163,9 @@ class TenantAdminSettingsController implements Disposable {
   }
 
   Future<void> generatePhoneOtpReviewAccessCodeHash() async {
-    final code =
-        _normalizeOptionalText(phoneOtpReviewAccessHelperCodeController.text);
+    final code = _normalizeOptionalText(
+      phoneOtpReviewAccessHelperCodeController.text,
+    );
     if (code == null) {
       remoteErrorStreamValue.addValue(
         'Informe o código de revisão antes de gerar o hash.',
@@ -1148,10 +1175,8 @@ class TenantAdminSettingsController implements Disposable {
 
     phoneOtpReviewAccessHashGeneratingStreamValue.addValue(true);
     try {
-      final generatedHash =
-          await _settingsRepository.generatePhoneOtpReviewAccessCodeHash(
-        code: _requiredTextValue(code),
-      );
+      final generatedHash = await _settingsRepository
+          .generatePhoneOtpReviewAccessCodeHash(code: _requiredTextValue(code));
       phoneOtpReviewAccessCodeHashController.text = generatedHash;
       _reportSuccess('Hash do código de revisão gerado com sucesso.');
     } catch (error) {
@@ -1169,10 +1194,8 @@ class TenantAdminSettingsController implements Disposable {
 
     phoneOtpReviewAccessSubmittingStreamValue.addValue(true);
     try {
-      final updated =
-          await _settingsRepository.updatePhoneOtpReviewAccessSettings(
-        settings: parsed,
-      );
+      final updated = await _settingsRepository
+          .updatePhoneOtpReviewAccessSettings(settings: parsed);
       _applyPhoneOtpReviewAccessSettings(updated);
       _reportSuccess('Acesso de revisão OTP atualizado com sucesso.');
     } catch (error) {
@@ -1282,9 +1305,7 @@ class TenantAdminSettingsController implements Disposable {
     brandingBrightnessStreamValue.addValue(brightness);
   }
 
-  StreamValue<XFile?> brandingFileStream(
-    TenantAdminBrandingAssetSlot slot,
-  ) {
+  StreamValue<XFile?> brandingFileStream(TenantAdminBrandingAssetSlot slot) {
     return switch (slot) {
       TenantAdminBrandingAssetSlot.lightLogo =>
         brandingLightLogoFileStreamValue,
@@ -1298,9 +1319,7 @@ class TenantAdminSettingsController implements Disposable {
     };
   }
 
-  StreamValue<String?> brandingUrlStream(
-    TenantAdminBrandingAssetSlot slot,
-  ) {
+  StreamValue<String?> brandingUrlStream(TenantAdminBrandingAssetSlot slot) {
     return switch (slot) {
       TenantAdminBrandingAssetSlot.lightLogo => brandingLightLogoUrlStreamValue,
       TenantAdminBrandingAssetSlot.darkLogo => brandingDarkLogoUrlStreamValue,
@@ -1312,10 +1331,7 @@ class TenantAdminSettingsController implements Disposable {
     };
   }
 
-  void updateBrandingFile(
-    TenantAdminBrandingAssetSlot slot,
-    XFile? file,
-  ) {
+  void updateBrandingFile(TenantAdminBrandingAssetSlot slot, XFile? file) {
     brandingFileStream(slot).addValue(file);
     if (file != null) {
       brandingUrlStream(slot).addValue(null);
@@ -1377,9 +1393,7 @@ class TenantAdminSettingsController implements Disposable {
     return _faviconIngestionService.pickFromDevice();
   }
 
-  Future<XFile> fetchBrandingImageFromUrlForCrop({
-    required String imageUrl,
-  }) {
+  Future<XFile> fetchBrandingImageFromUrlForCrop({required String imageUrl}) {
     return _imageIngestionService.fetchFromUrlForCrop(imageUrl: imageUrl);
   }
 
@@ -1514,7 +1528,9 @@ class TenantAdminSettingsController implements Disposable {
     final firebase = appData.firebaseSettings;
     if (firebase != null) {
       firebaseApiKeyController.text = firebase.apiKey;
-      firebaseAppIdController.text = firebase.appId;
+      firebaseAndroidAppIdController.text =
+          firebase.androidBootstrapAppId ?? '';
+      firebaseIosAppIdController.text = firebase.iosBootstrapAppId ?? '';
       firebaseProjectIdController.text = firebase.projectId;
       firebaseMessagingSenderIdController.text = firebase.messagingSenderId;
       firebaseStorageBucketController.text = firebase.storageBucket;
@@ -1532,8 +1548,9 @@ class TenantAdminSettingsController implements Disposable {
   void _resetTenantScopedForms() {
     _settingsRepository.clearBrandingSettings();
     clearStatusMessages();
-    telemetrySnapshotStreamValue
-        .addValue(TenantAdminTelemetrySettingsSnapshot.empty());
+    telemetrySnapshotStreamValue.addValue(
+      TenantAdminTelemetrySettingsSnapshot.empty(),
+    );
     clearTelemetryForm();
     _resetResendEmailDraft();
     _resetOutboundIntegrationsDraft();
@@ -1637,12 +1654,14 @@ class TenantAdminSettingsController implements Disposable {
 
   TenantAdminFirebaseSettings? _buildFirebaseSettings() {
     final apiKey = firebaseApiKeyController.text.trim();
-    final appId = firebaseAppIdController.text.trim();
+    final androidAppId = firebaseAndroidAppIdController.text.trim();
+    final iosAppId = firebaseIosAppIdController.text.trim();
     final projectId = firebaseProjectIdController.text.trim();
     final senderId = firebaseMessagingSenderIdController.text.trim();
     final storageBucket = firebaseStorageBucketController.text.trim();
     if (apiKey.isEmpty ||
-        appId.isEmpty ||
+        androidAppId.isEmpty ||
+        iosAppId.isEmpty ||
         projectId.isEmpty ||
         senderId.isEmpty ||
         storageBucket.isEmpty) {
@@ -1650,7 +1669,8 @@ class TenantAdminSettingsController implements Disposable {
     }
     return TenantAdminFirebaseSettings(
       apiKey: _requiredTextValue(apiKey),
-      appId: _requiredTextValue(appId),
+      androidAppId: _requiredTextValue(androidAppId),
+      iosAppId: _requiredTextValue(iosAppId),
       projectId: _requiredTextValue(projectId),
       messagingSenderId: _requiredTextValue(senderId),
       storageBucket: _requiredTextValue(storageBucket),
@@ -1660,17 +1680,13 @@ class TenantAdminSettingsController implements Disposable {
   TenantAdminResendEmailSettings? _buildResendEmailSettings() {
     final token = _normalizeOptionalText(resendEmailTokenController.text);
     if (token == null) {
-      remoteErrorStreamValue.addValue(
-        'Token do Resend é obrigatório.',
-      );
+      remoteErrorStreamValue.addValue('Token do Resend é obrigatório.');
       return null;
     }
 
     final from = _normalizeOptionalText(resendEmailFromController.text);
     if (from == null) {
-      remoteErrorStreamValue.addValue(
-        'Remetente do Resend é obrigatório.',
-      );
+      remoteErrorStreamValue.addValue('Remetente do Resend é obrigatório.');
       return null;
     }
     if (!_isValidResendSender(from)) {
@@ -1739,9 +1755,10 @@ class TenantAdminSettingsController implements Disposable {
   }
 
   TenantAdminOutboundIntegrationsSettings?
-      _buildOutboundIntegrationsSettings() {
-    final whatsappWebhookUrl =
-        _normalizeOptionalText(outboundWhatsappWebhookUrlController.text);
+  _buildOutboundIntegrationsSettings() {
+    final whatsappWebhookUrl = _normalizeOptionalText(
+      outboundWhatsappWebhookUrlController.text,
+    );
     final smsSecondaryEnabled = outboundOtpSmsSecondaryEnabledStreamValue.value;
     final otpWebhookUrl = smsSecondaryEnabled
         ? _normalizeOptionalText(outboundOtpWebhookUrlController.text)
@@ -1783,8 +1800,9 @@ class TenantAdminSettingsController implements Disposable {
     try {
       return TenantAdminOutboundIntegrationsSettings(
         whatsappWebhookUrlValue: _optionalUrlValue(whatsappWebhookUrl),
-        otpWebhookUrlValue:
-            otpWebhookUrl == null ? null : _optionalUrlValue(otpWebhookUrl),
+        otpWebhookUrlValue: otpWebhookUrl == null
+            ? null
+            : _optionalUrlValue(otpWebhookUrl),
         otpUseWhatsappWebhookValue: _booleanValue(true),
         otpDeliveryChannelValue: _tokenValue(
           TenantAdminOutboundIntegrationsSettings.deliveryChannelWhatsapp,
@@ -1802,9 +1820,10 @@ class TenantAdminSettingsController implements Disposable {
   }
 
   TenantAdminPhoneOtpReviewAccessSettings?
-      _buildPhoneOtpReviewAccessSettings() {
-    final phoneE164 =
-        _normalizeOptionalText(phoneOtpReviewAccessPhoneController.text);
+  _buildPhoneOtpReviewAccessSettings() {
+    final phoneE164 = _normalizeOptionalText(
+      phoneOtpReviewAccessPhoneController.text,
+    );
     if (phoneE164 != null && !_isValidE164Phone(phoneE164)) {
       remoteErrorStreamValue.addValue(
         'Telefone de revisão inválido. Use o formato E.164.',
@@ -1812,10 +1831,12 @@ class TenantAdminSettingsController implements Disposable {
       return null;
     }
 
-    final helperCode =
-        _normalizeOptionalText(phoneOtpReviewAccessHelperCodeController.text);
-    final codeHash =
-        _normalizeOptionalText(phoneOtpReviewAccessCodeHashController.text);
+    final helperCode = _normalizeOptionalText(
+      phoneOtpReviewAccessHelperCodeController.text,
+    );
+    final codeHash = _normalizeOptionalText(
+      phoneOtpReviewAccessCodeHashController.text,
+    );
     if (phoneE164 == null) {
       if (helperCode != null) {
         remoteErrorStreamValue.addValue(
@@ -1826,10 +1847,7 @@ class TenantAdminSettingsController implements Disposable {
 
       return TenantAdminPhoneOtpReviewAccessSettings(
         rawPhoneOtpReviewAccessValue: TenantAdminDynamicMapValue(
-          const <String, dynamic>{
-            'phone_e164': null,
-            'code_hash': null,
-          },
+          const <String, dynamic>{'phone_e164': null, 'code_hash': null},
         ),
         phoneE164Value: null,
         codeHashValue: null,
@@ -1872,8 +1890,9 @@ class TenantAdminSettingsController implements Disposable {
   }
 
   TenantAdminPushCredentials? _buildPushCredentials() {
-    final projectId =
-        _normalizeOptionalText(pushCredentialsProjectIdController.text);
+    final projectId = _normalizeOptionalText(
+      pushCredentialsProjectIdController.text,
+    );
     if (projectId == null) {
       remoteErrorStreamValue.addValue(
         'Informe o Project ID do Firebase antes de salvar as credenciais.',
@@ -1881,8 +1900,9 @@ class TenantAdminSettingsController implements Disposable {
       return null;
     }
 
-    final clientEmail =
-        _normalizeOptionalText(pushCredentialsClientEmailController.text);
+    final clientEmail = _normalizeOptionalText(
+      pushCredentialsClientEmailController.text,
+    );
     if (clientEmail == null || !_isValidEmailAddress(clientEmail)) {
       remoteErrorStreamValue.addValue(
         'Informe um client_email valido para as credenciais de push.',
@@ -1890,8 +1910,9 @@ class TenantAdminSettingsController implements Disposable {
       return null;
     }
 
-    final privateKey =
-        _normalizeOptionalText(pushCredentialsPrivateKeyController.text);
+    final privateKey = _normalizeOptionalText(
+      pushCredentialsPrivateKeyController.text,
+    );
     if (privateKey == null) {
       remoteErrorStreamValue.addValue(
         'Informe a private_key antes de salvar as credenciais de push.',
@@ -1907,8 +1928,9 @@ class TenantAdminSettingsController implements Disposable {
   }
 
   TenantAdminAppLinksSettings? _buildAppLinksSettings() {
-    final androidPackageName =
-        _normalizeOptionalText(appLinksAndroidPackageNameController.text);
+    final androidPackageName = _normalizeOptionalText(
+      appLinksAndroidPackageNameController.text,
+    );
     if (androidPackageName != null &&
         !_isValidAndroidPackageName(androidPackageName)) {
       remoteErrorStreamValue.addValue('Package name Android inválido.');
@@ -1942,8 +1964,9 @@ class TenantAdminSettingsController implements Disposable {
     }
 
     final iosTeamId = _normalizeOptionalText(appLinksIosTeamIdController.text);
-    final iosBundleId =
-        _normalizeOptionalText(appLinksIosBundleIdController.text);
+    final iosBundleId = _normalizeOptionalText(
+      appLinksIosBundleIdController.text,
+    );
     if ((iosTeamId == null) != (iosBundleId == null)) {
       remoteErrorStreamValue.addValue(
         'Preencha team_id e bundle_id do iOS juntos, ou deixe ambos vazios.',
@@ -1959,8 +1982,9 @@ class TenantAdminSettingsController implements Disposable {
       return null;
     }
 
-    final iosPaths =
-        List<String>.from(appLinksIosPathsSelectionStreamValue.value);
+    final iosPaths = List<String>.from(
+      appLinksIosPathsSelectionStreamValue.value,
+    );
     if (iosTeamId != null && iosPaths.isEmpty) {
       remoteErrorStreamValue.addValue(
         'Informe ao menos um path iOS para Universal Links.',
@@ -1971,10 +1995,12 @@ class TenantAdminSettingsController implements Disposable {
         appLinksAndroidPublicationEnabledStreamValue.value;
     final iosPublicationEnabled =
         appLinksIosPublicationEnabledStreamValue.value;
-    final androidStoreUrl =
-        _normalizeOptionalText(appLinksAndroidStoreUrlController.text);
-    final iosStoreUrl =
-        _normalizeOptionalText(appLinksIosStoreUrlController.text);
+    final androidStoreUrl = _normalizeOptionalText(
+      appLinksAndroidStoreUrlController.text,
+    );
+    final iosStoreUrl = _normalizeOptionalText(
+      appLinksIosStoreUrlController.text,
+    );
     if (androidPublicationEnabled && androidStoreUrl == null) {
       remoteErrorStreamValue.addValue(
         'Informe a URL Android para ativar a publicação.',
@@ -1991,11 +2017,13 @@ class TenantAdminSettingsController implements Disposable {
     try {
       return appLinksSettingsStreamValue.value.applyValues(
         androidAppIdentifier: _androidAppIdentifierValue(androidPackageName),
-        androidSha256CertFingerprintValues:
-            fingerprints.map(_sha256FingerprintValue).toList(growable: false),
+        androidSha256CertFingerprintValues: fingerprints
+            .map(_sha256FingerprintValue)
+            .toList(growable: false),
         iosTeamId: iosTeamId == null ? null : _iosTeamIdValue(iosTeamId),
-        iosBundleId:
-            iosBundleId == null ? null : _iosBundleIdValue(iosBundleId),
+        iosBundleId: iosBundleId == null
+            ? null
+            : _iosBundleIdValue(iosBundleId),
         iosPathValues: iosPaths.map(_appLinkPathValue).toList(growable: false),
         androidPublicationEnabled: _booleanValue(androidPublicationEnabled),
         androidStoreUrl: androidStoreUrl == null
@@ -2036,8 +2064,9 @@ class TenantAdminSettingsController implements Disposable {
       );
       return null;
     }
-    final secondary =
-        _normalizeHexColor(brandingSecondarySeedColorController.text);
+    final secondary = _normalizeHexColor(
+      brandingSecondarySeedColorController.text,
+    );
     if (secondary == null) {
       remoteErrorStreamValue.addValue(
         'Cor secundaria invalida. Use formato #RRGGBB.',
@@ -2056,8 +2085,9 @@ class TenantAdminSettingsController implements Disposable {
       darkIconUpload: darkIconUpload,
       faviconUpload: faviconUpload,
       pwaIconUpload: pwaIconUpload,
-      publicWebDefaultTitle:
-          _optionalTextValue(brandingPublicWebDefaultTitleController.text),
+      publicWebDefaultTitle: _optionalTextValue(
+        brandingPublicWebDefaultTitleController.text,
+      ),
       publicWebDefaultDescription: _optionalTextValue(
         brandingPublicWebDefaultDescriptionController.text,
       ),
@@ -2067,7 +2097,8 @@ class TenantAdminSettingsController implements Disposable {
 
   void _applyFirebaseSettings(TenantAdminFirebaseSettings settings) {
     firebaseApiKeyController.text = settings.apiKey;
-    firebaseAppIdController.text = settings.appId;
+    firebaseAndroidAppIdController.text = settings.androidAppId;
+    firebaseIosAppIdController.text = settings.iosAppId ?? '';
     firebaseProjectIdController.text = settings.projectId;
     firebaseMessagingSenderIdController.text = settings.messagingSenderId;
     firebaseStorageBucketController.text = settings.storageBucket;
@@ -2096,9 +2127,7 @@ class TenantAdminSettingsController implements Disposable {
     outboundWhatsappWebhookUrlController.text =
         settings.whatsappWebhookUrl ?? '';
     outboundOtpWebhookUrlController.text = settings.otpWebhookUrl ?? '';
-    outboundOtpUseWhatsappWebhookStreamValue.addValue(
-      true,
-    );
+    outboundOtpUseWhatsappWebhookStreamValue.addValue(true);
     outboundOtpSmsSecondaryEnabledStreamValue.addValue(
       settings.hasSmsSecondaryChannel,
     );
@@ -2121,9 +2150,7 @@ class TenantAdminSettingsController implements Disposable {
 
   void updateOutboundOtpDeliveryChannel(String? value) {
     final normalized = (value ?? '').trim().toLowerCase();
-    if (!_isValidOutboundOtpDeliveryChannel(
-      normalized,
-    )) {
+    if (!_isValidOutboundOtpDeliveryChannel(normalized)) {
       return;
     }
     outboundOtpDeliveryChannelStreamValue.addValue(normalized);
@@ -2132,9 +2159,7 @@ class TenantAdminSettingsController implements Disposable {
   TenantAdminResendEmailRecipients _resendEmailRecipients(
     Iterable<String> rawValues,
   ) {
-    return TenantAdminResendEmailRecipients(
-      rawValues.map(_emailAddressValue),
-    );
+    return TenantAdminResendEmailRecipients(rawValues.map(_emailAddressValue));
   }
 
   bool _isValidOutboundOtpDeliveryChannel(String raw) {
@@ -2189,8 +2214,9 @@ class TenantAdminSettingsController implements Disposable {
     );
     appLinksAndroidPackageNameController.text =
         settings.androidAppIdentifier ?? '';
-    appLinksAndroidFingerprintsController.text =
-        settings.androidSha256CertFingerprints.join(', ');
+    appLinksAndroidFingerprintsController.text = settings
+        .androidSha256CertFingerprints
+        .join(', ');
     appLinksIosTeamIdController.text = settings.iosTeamId ?? '';
     appLinksIosBundleIdController.text = settings.iosBundleId ?? '';
     appLinksAndroidStoreUrlController.text = settings.androidStoreUrl ?? '';
@@ -2248,7 +2274,8 @@ class TenantAdminSettingsController implements Disposable {
     _loadedBrandingAssetPreviewUrls[TenantAdminBrandingAssetSlot.pwaIcon] =
         pwaIconUrl;
     _loadedBrandingAssetPreviewUrls[TenantAdminBrandingAssetSlot
-        .publicWebDefaultImage] = publicWebDefaultImageUrl;
+            .publicWebDefaultImage] =
+        publicWebDefaultImageUrl;
     brandingLightLogoUrlStreamValue.addValue(lightLogoUrl);
     brandingDarkLogoUrlStreamValue.addValue(darkLogoUrl);
     brandingLightIconUrlStreamValue.addValue(lightIconUrl);
@@ -2256,8 +2283,9 @@ class TenantAdminSettingsController implements Disposable {
     _loadedBrandingFaviconPreviewUrl = faviconPreviewUrl;
     brandingFaviconUrlStreamValue.addValue(faviconPreviewUrl);
     brandingPwaIconUrlStreamValue.addValue(pwaIconUrl);
-    brandingPublicWebDefaultImageUrlStreamValue
-        .addValue(publicWebDefaultImageUrl);
+    brandingPublicWebDefaultImageUrlStreamValue.addValue(
+      publicWebDefaultImageUrl,
+    );
 
     clearBrandingFile(TenantAdminBrandingAssetSlot.lightLogo);
     clearBrandingFile(TenantAdminBrandingAssetSlot.darkLogo);
@@ -2279,15 +2307,16 @@ class TenantAdminSettingsController implements Disposable {
       return;
     }
 
-    mapDefaultOriginLatitudeController.text =
-        defaultOrigin.lat.toStringAsFixed(6);
-    mapDefaultOriginLongitudeController.text =
-        defaultOrigin.lng.toStringAsFixed(6);
+    mapDefaultOriginLatitudeController.text = defaultOrigin.lat.toStringAsFixed(
+      6,
+    );
+    mapDefaultOriginLongitudeController.text = defaultOrigin.lng
+        .toStringAsFixed(6);
     mapDefaultOriginLabelController.text = defaultOrigin.label ?? '';
   }
 
   Future<Map<String, List<TenantAdminTaxonomyTermDefinition>>>
-      _loadTermsByTaxonomySlug({
+  _loadTermsByTaxonomySlug({
     required List<TenantAdminTaxonomyDefinition> taxonomies,
   }) async {
     final taxonomyRepo = _taxonomiesRepository;
@@ -2298,9 +2327,14 @@ class TenantAdminSettingsController implements Disposable {
         <MapEntry<String, List<TenantAdminTaxonomyTermDefinition>>>[];
     for (final taxonomy in taxonomies) {
       await taxonomyRepo.loadAllTerms(
-          taxonomyId: TenantAdminTaxRepoString.fromRaw(taxonomy.id,
-              defaultValue: '', isRequired: true));
-      final terms = taxonomyRepo.termsStreamValue.value ??
+        taxonomyId: TenantAdminTaxRepoString.fromRaw(
+          taxonomy.id,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
+      final terms =
+          taxonomyRepo.termsStreamValue.value ??
           const <TenantAdminTaxonomyTermDefinition>[];
       entries.add(
         MapEntry<String, List<TenantAdminTaxonomyTermDefinition>>(
@@ -2309,9 +2343,7 @@ class TenantAdminSettingsController implements Disposable {
         ),
       );
     }
-    return {
-      for (final entry in entries) entry.key: entry.value,
-    };
+    return {for (final entry in entries) entry.key: entry.value};
   }
 
   Future<List<TenantAdminEventType>> _loadEventTypes() async {
@@ -2328,16 +2360,14 @@ class TenantAdminSettingsController implements Disposable {
     required List<TenantAdminEventType> eventTypes,
     required List<TenantAdminTaxonomyDefinition> taxonomies,
     required Map<String, List<TenantAdminTaxonomyTermDefinition>>
-        termsByTaxonomySlug,
+    termsByTaxonomySlug,
   }) {
     return const TenantAdminDiscoveryFilterRuleCatalogBuilder().build(
       accountTypes: accountTypes,
       staticTypes: staticTypes,
       eventTypes: eventTypes,
       taxonomies: taxonomies,
-      termsBySlug: TenantAdminTaxonomyTermsBySlug.fromMap(
-        termsByTaxonomySlug,
-      ),
+      termsBySlug: TenantAdminTaxonomyTermsBySlug.fromMap(termsByTaxonomySlug),
     );
   }
 
@@ -2452,8 +2482,9 @@ class TenantAdminSettingsController implements Disposable {
   void _resetMapUiDraft() {
     _mapUiSettings = TenantAdminMapUiSettings.empty();
     mapUiSettingsStreamValue.addValue(TenantAdminMapUiSettings.empty());
-    mapFilterRuleCatalogStreamValue
-        .addValue(const TenantAdminMapFilterRuleCatalog.empty());
+    mapFilterRuleCatalogStreamValue.addValue(
+      const TenantAdminMapFilterRuleCatalog.empty(),
+    );
     mapFilterRuleCatalogLoadingStreamValue.addValue(false);
     mapUiSubmittingStreamValue.addValue(false);
     mapDefaultOriginLatitudeController.clear();
@@ -2645,11 +2676,7 @@ class TenantAdminSettingsController implements Disposable {
     return parsed;
   }
 
-  int? _parseBoundedInt(
-    String raw, {
-    required int min,
-    required int max,
-  }) {
+  int? _parseBoundedInt(String raw, {required int min, required int max}) {
     final parsed = _parsePositiveInt(raw);
     if (parsed == null || parsed < min || parsed > max) {
       return null;
@@ -2817,7 +2844,8 @@ class TenantAdminSettingsController implements Disposable {
     selectedTelemetryTypeStreamValue.dispose();
     telemetryTrackAllStreamValue.dispose();
     firebaseApiKeyController.dispose();
-    firebaseAppIdController.dispose();
+    firebaseAndroidAppIdController.dispose();
+    firebaseIosAppIdController.dispose();
     firebaseProjectIdController.dispose();
     firebaseMessagingSenderIdController.dispose();
     firebaseStorageBucketController.dispose();

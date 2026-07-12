@@ -215,6 +215,93 @@ void main() {
   );
 
   test(
+    'ApplicationContract skips iOS push wiring when only legacy Android appId is available',
+    () async {
+      final appData = _buildTestAppData(
+        firebase: {
+          'apiKey': 'firebase-key',
+          'appId': '1:249193301334:android:f73db77742a1b07f2302f7',
+          'projectId': 'guarappari',
+          'messagingSenderId': '249193301334',
+          'storageBucket': 'guarappari.firebasestorage.app',
+        },
+      );
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(
+        _FakeAppDataRepository(appData),
+      );
+      final authRepository = _FakeAuthRepository(
+        userTokenValue: 'token-123',
+        deviceId: 'device-1',
+      );
+      GetIt.I.registerSingleton<AuthRepositoryContract>(authRepository);
+
+      final app = _TestApplication();
+      GetIt.I.registerSingleton<ApplicationContract>(app);
+
+      final capture = _RepositoryCapture();
+      await app.initializePushHandlerForTesting(
+        isWebOverride: false,
+        platformOverride: 'ios',
+        repositoryFactory: capture.factory,
+        invitePushTapSourceOverride: _ThrowingInvitePushTapSource(),
+      );
+
+      expect(capture.factoryCalled, isFalse);
+      expect(capture.initCalled, isFalse);
+    },
+  );
+
+  test(
+    'ApplicationContract builds iOS Firebase options from iosAppId before init',
+    () async {
+      final appData = _buildTestAppData(
+        firebase: {
+          'apiKey': 'firebase-key',
+          'appId': '1:249193301334:android:f73db77742a1b07f2302f7',
+          'androidAppId': '1:249193301334:android:f73db77742a1b07f2302f7',
+          'iosAppId': '1:249193301334:ios:ce4aca6dbb545ca02302f7',
+          'projectId': 'guarappari',
+          'messagingSenderId': '249193301334',
+          'storageBucket': 'guarappari.firebasestorage.app',
+        },
+      );
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(
+        _FakeAppDataRepository(appData),
+      );
+
+      final app = _TestApplication();
+      final options = app.firebaseOptionsForTesting(platform: 'ios');
+
+      expect(options, isNotNull);
+      expect(options!.appId, '1:249193301334:ios:ce4aca6dbb545ca02302f7');
+      expect(options.projectId, 'guarappari');
+    },
+  );
+
+  test(
+    'ApplicationContract does not build iOS Firebase options from legacy Android appId',
+    () async {
+      final appData = _buildTestAppData(
+        firebase: {
+          'apiKey': 'firebase-key',
+          'appId': '1:249193301334:android:f73db77742a1b07f2302f7',
+          'projectId': 'guarappari',
+          'messagingSenderId': '249193301334',
+          'storageBucket': 'guarappari.firebasestorage.app',
+        },
+      );
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(
+        _FakeAppDataRepository(appData),
+      );
+
+      final app = _TestApplication();
+      final options = app.firebaseOptionsForTesting(platform: 'ios');
+
+      expect(options, isNull);
+    },
+  );
+
+  test(
     'ApplicationContract reports recoverable push init failures to Sentry',
     () async {
       final sentryCaptures = <_SentryCapture>[];
@@ -1071,24 +1158,30 @@ AppData _buildTestAppData({
   List<String> domains = const ['https://guarappari.com.br'],
   String localHostname = 'guarappari.com.br',
   String localHref = 'https://guarappari.com.br',
+  Map<String, Object?>? firebase,
 }) {
   final platformType = PlatformTypeValue()..parse(platform.name);
-  return buildAppDataFromInitialization(
-    remoteData: {
-      'name': 'Guarappari',
-      'type': 'tenant',
-      'main_domain': mainDomain,
-      'domains': domains,
-      'app_domains': [],
-      'theme_data_settings': {
-        'primary_seed_color': '#4FA0E3',
-        'secondary_seed_color': '#E80D5D',
-        'brightness_default': 'light',
-      },
-      'main_color': '#4FA0E3',
-      'tenant_id': 'tenant-1',
-      'telemetry': {'trackers': []},
+  final remoteData = <String, Object?>{
+    'name': 'Guarappari',
+    'type': 'tenant',
+    'main_domain': mainDomain,
+    'domains': domains,
+    'app_domains': [],
+    'theme_data_settings': {
+      'primary_seed_color': '#4FA0E3',
+      'secondary_seed_color': '#E80D5D',
+      'brightness_default': 'light',
     },
+    'main_color': '#4FA0E3',
+    'tenant_id': 'tenant-1',
+    'telemetry': {'trackers': []},
+  };
+  if (firebase != null) {
+    remoteData['firebase'] = firebase;
+  }
+
+  return buildAppDataFromInitialization(
+    remoteData: remoteData,
     localInfo: {
       'platformType': platformType,
       'hostname': localHostname,

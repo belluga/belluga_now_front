@@ -113,11 +113,8 @@ void main() {
   test(
     'initialize retries transient startup failures before resolving route',
     () async {
-      final authRepository = _FakeAuthRepository();
-      final invitesRepository = _FlakyInvitesRepository(
-        hasPendingInvites: true,
-        failuresBeforeSuccess: 2,
-      );
+      final authRepository = _FlakyAuthRepository(failuresBeforeSuccess: 2);
+      final invitesRepository = _FakeInvitesRepository(true);
       final controller = InitScreenController(
         authRepository: authRepository,
         invitesRepository: invitesRepository,
@@ -130,7 +127,7 @@ void main() {
       await controller.initialize();
 
       expect(authRepository.initCallCount, 3);
-      expect(invitesRepository.initCallCount, 3);
+      expect(invitesRepository.initCallCount, 1);
       expect(controller.initialRoute, isA<InviteFlowRoute>());
       expect(
         controller.initialRouteStack.map((route) => route.routeName).toList(),
@@ -140,12 +137,11 @@ void main() {
   );
 
   test('initialize rethrows after exhausting startup retries', () async {
-    final authRepository = _FakeAuthRepository();
-    final invitesRepository = _FlakyInvitesRepository(
-      hasPendingInvites: false,
+    final authRepository = _FlakyAuthRepository(
       failuresBeforeSuccess: 4,
-      errorMessage: 'invites bootstrap unavailable',
+      errorMessage: 'auth bootstrap unavailable',
     );
+    final invitesRepository = _FakeInvitesRepository(false);
     final controller = InitScreenController(
       authRepository: authRepository,
       invitesRepository: invitesRepository,
@@ -161,14 +157,40 @@ void main() {
         isA<Exception>().having(
           (error) => error.toString(),
           'message',
-          contains('invites bootstrap unavailable'),
+          contains('auth bootstrap unavailable'),
         ),
       ),
     );
 
     expect(authRepository.initCallCount, 4);
-    expect(invitesRepository.initCallCount, 4);
+    expect(invitesRepository.initCallCount, 0);
   });
+
+  test(
+    'initialize tolerates invite bootstrap failure and still resolves tenant home',
+    () async {
+      final authRepository = _FakeAuthRepository();
+      final invitesRepository = _ThrowingInvitesRepository();
+      final controller = InitScreenController(
+        authRepository: authRepository,
+        invitesRepository: invitesRepository,
+        appDataRepository: _FakeAppDataRepository(
+          _buildAppData(environmentType: EnvironmentType.tenant),
+        ),
+        startupRetryDelays: const [Duration.zero, Duration.zero],
+      );
+
+      await controller.initialize();
+
+      expect(authRepository.initCallCount, 1);
+      expect(invitesRepository.initCallCount, 1);
+      expect(controller.initialRoute, isA<TenantHomeRoute>());
+      expect(
+        controller.initialRouteStack.map((route) => route.routeName).toList(),
+        [TenantHomeRoute.name],
+      );
+    },
+  );
 
   test(
     'captured deferred share code overrides first route path to invite',
@@ -555,27 +577,31 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserBelluga> {
   Future<void> updateUser(UserCustomData data) async {}
 }
 
-class _FlakyInvitesRepository extends _FakeInvitesRepository {
-  _FlakyInvitesRepository({
-    required bool hasPendingInvites,
-    required int failuresBeforeSuccess,
-    this.errorMessage = 'transient invites startup failure',
-  }) : _remainingFailures = failuresBeforeSuccess,
-       super(hasPendingInvites);
-
-  final String errorMessage;
-  int _remainingFailures;
+class _ThrowingInvitesRepository extends _FakeInvitesRepository {
+  _ThrowingInvitesRepository() : super(false);
 
   @override
   Future<void> init() async {
     initCallCount += 1;
-    if (_remainingFailures > 0) {
-      _remainingFailures -= 1;
+    throw Exception('invites bootstrap unavailable');
+  }
+}
+
+class _FlakyAuthRepository extends _FakeAuthRepository {
+  _FlakyAuthRepository({
+    required this.failuresBeforeSuccess,
+    this.errorMessage = 'transient auth startup failure',
+  });
+
+  final int failuresBeforeSuccess;
+  final String errorMessage;
+
+  @override
+  Future<void> init() async {
+    initCallCount += 1;
+    if (initCallCount <= failuresBeforeSuccess) {
       throw Exception(errorMessage);
     }
-    pendingInvitesStreamValue.addValue(
-      _hasPendingInvites ? [_buildInvite()] : const [],
-    );
   }
 }
 

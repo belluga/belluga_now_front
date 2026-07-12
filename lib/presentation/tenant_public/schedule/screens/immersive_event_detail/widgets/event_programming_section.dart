@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
+import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
 import 'package:belluga_now/domain/schedule/event_programming_item.dart';
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
@@ -9,6 +10,7 @@ import 'package:belluga_now/presentation/shared/visuals/resolved_account_profile
 import 'package:belluga_now/presentation/shared/widgets/account_profile_type_avatar.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_html/flutter_html.dart';
 import 'package:intl/intl.dart';
 
 const _initialVisibleProgrammingItems = 24;
@@ -60,9 +62,9 @@ class _EventProgrammingSectionState extends State<EventProgrammingSection> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final visibleItems = widget.items.take(_visibleItemCount).toList(
-          growable: false,
-        );
+    final visibleItems = widget.items
+        .take(_visibleItemCount)
+        .toList(growable: false);
     final remainingItemCount = widget.items.length - visibleItems.length;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 112),
@@ -91,7 +93,7 @@ class _EventProgrammingSectionState extends State<EventProgrammingSection> {
             for (final entry in visibleItems.asMap().entries)
               Padding(
                 key: Key(
-                  'eventProgrammingItemSlot_${entry.key}_${entry.value.time}',
+                  'eventProgrammingItemSlot_${entry.key}_${entry.value.hasTime ? entry.value.time : 'untimed'}',
                 ),
                 padding: const EdgeInsets.only(bottom: 12),
                 child: RepaintBoundary(
@@ -163,8 +165,10 @@ class _ProgrammingDateSelectorState extends State<_ProgrammingDateSelector> {
   }
 
   String get _scrollOffsetCacheKey => widget.occurrences
-      .map((occurrence) =>
-          '${occurrence.occurrenceId}:${occurrence.dateTimeStart?.toIso8601String() ?? ''}')
+      .map(
+        (occurrence) =>
+            '${occurrence.occurrenceId}:${occurrence.dateTimeStart?.toIso8601String() ?? ''}',
+      )
       .join('|');
 
   void _cacheScrollOffset() {
@@ -199,10 +203,7 @@ class _ProgrammingDateSelectorState extends State<_ProgrammingDateSelector> {
       return;
     }
     _pendingCenterOccurrenceId = selectedOccurrenceId;
-    _scheduleCenterSelectedOccurrenceAttempt(
-      selectedOccurrenceId,
-      attempt: 0,
-    );
+    _scheduleCenterSelectedOccurrenceAttempt(selectedOccurrenceId, attempt: 0);
   }
 
   void _scheduleCenterSelectedOccurrenceAttempt(
@@ -256,17 +257,17 @@ class _ProgrammingDateSelectorState extends State<_ProgrammingDateSelector> {
         }
         return;
       }
-      final selectedOffset =
-          selectedRenderObject.localToGlobal(Offset.zero, ancestor: selectorRenderObject);
+      final selectedOffset = selectedRenderObject.localToGlobal(
+        Offset.zero,
+        ancestor: selectorRenderObject,
+      );
       final selectedCenterDx =
           selectedOffset.dx + (selectedRenderObject.size.width / 2);
-      final targetOffset = (_scrollController.offset +
-              selectedCenterDx -
-              (selectorRenderObject.size.width / 2))
-          .clamp(
-            0.0,
-            _scrollController.position.maxScrollExtent,
-          );
+      final targetOffset =
+          (_scrollController.offset +
+                  selectedCenterDx -
+                  (selectorRenderObject.size.width / 2))
+              .clamp(0.0, _scrollController.position.maxScrollExtent);
       if ((targetOffset - _scrollController.offset).abs() <= 1) {
         _scrollOffsetCache[_scrollOffsetCacheKey] = _scrollController.offset;
         _lastCenteredOccurrenceId = selectedOccurrenceId;
@@ -373,10 +374,7 @@ class _ShowMoreProgrammingItemsButton extends StatelessWidget {
 }
 
 class _ProgrammingDateChip extends StatelessWidget {
-  const _ProgrammingDateChip({
-    required this.occurrence,
-    required this.onTap,
-  });
+  const _ProgrammingDateChip({required this.occurrence, required this.onTap});
 
   final EventOccurrenceOption occurrence;
   final VoidCallback onTap;
@@ -387,8 +385,9 @@ class _ProgrammingDateChip extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final start = occurrence.dateTimeStart;
     final isSelected = occurrence.isSelected;
-    final dateLabel =
-        start == null ? 'Data' : DateFormat('dd/MM').format(start);
+    final dateLabel = start == null
+        ? 'Data'
+        : DateFormat('dd/MM').format(start);
     final weekdayLabel = _formatWeekday(start);
 
     return Semantics(
@@ -409,8 +408,9 @@ class _ProgrammingDateChip extends StatelessWidget {
                 : colorScheme.surfaceContainerLow,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color:
-                  isSelected ? colorScheme.primary : colorScheme.outlineVariant,
+              color: isSelected
+                  ? colorScheme.primary
+                  : colorScheme.outlineVariant,
             ),
           ),
           child: Column(
@@ -451,11 +451,10 @@ class _ProgrammingDateChip extends StatelessWidget {
     if (value == null) {
       return '';
     }
-    final label = DateFormat('EEEE', 'pt_BR')
-        .format(value)
-        .replaceAll('.', '')
-        .replaceAll('-feira', '')
-        .trim();
+    final label = DateFormat(
+      'EEEE',
+      'pt_BR',
+    ).format(value).replaceAll('.', '').replaceAll('-feira', '').trim();
     if (label.isEmpty) {
       return '';
     }
@@ -479,9 +478,9 @@ class _ProgrammingEmptyState extends StatelessWidget {
       child: Text(
         'Esta data ainda não tem programação cadastrada.',
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w600,
-            ),
+          color: colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -505,12 +504,15 @@ class _ProgrammingCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final title = item.displayTitle.trim();
-    final hasTitle = title.isNotEmpty;
+    final richTitleHtml = SafeRichHtml.canonicalize(title);
+    final hasTitle = !SafeRichHtml.isEffectivelyEmpty(richTitleHtml);
+    final hasTime = item.hasTime;
     final hasProfiles = item.linkedAccountProfiles.isNotEmpty;
     final hasLocation = item.locationProfile != null;
     final hasSecondaryContent = hasProfiles || hasLocation;
-    final timeLabel =
-        item.endTime == null ? item.time : '${item.time} às ${item.endTime}';
+    final timeLabel = hasTime
+        ? (item.endTime == null ? item.time : '${item.time} às ${item.endTime}')
+        : null;
     final visibleProfiles = item.linkedAccountProfiles
         .take(_visibleProgrammingProfilesPerItem)
         .toList(growable: false);
@@ -518,7 +520,7 @@ class _ProgrammingCard extends StatelessWidget {
         item.linkedAccountProfiles.length - visibleProfiles.length;
 
     return DecoratedBox(
-      key: Key('eventProgrammingItem_${itemIndex}_${item.time}'),
+      key: Key('eventProgrammingItem_$itemIndex'),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(24),
@@ -531,25 +533,45 @@ class _ProgrammingCard extends StatelessWidget {
               ? CrossAxisAlignment.start
               : CrossAxisAlignment.center,
           children: [
-            Container(
-              width: 82,
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              decoration: BoxDecoration(
-                color: colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(18),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                timeLabel,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  color: colorScheme.onPrimaryContainer,
-                  fontSize: item.endTime == null ? null : 12,
-                  fontWeight: FontWeight.w900,
-                  height: 1.1,
-                ),
+            SizedBox(
+              width: 74,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 2,
+                    height: 14,
+                    color: colorScheme.outlineVariant,
+                  ),
+                  Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: hasTime
+                          ? colorScheme.primary
+                          : colorScheme.tertiary,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  Container(
+                    width: 2,
+                    height: 14,
+                    color: colorScheme.outlineVariant,
+                  ),
+                  const SizedBox(height: 8),
+                  if (timeLabel != null)
+                    Text(
+                      timeLabel,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w800,
+                        height: 1.1,
+                      ),
+                    ),
+                ],
               ),
             ),
             const SizedBox(width: 14),
@@ -559,11 +581,42 @@ class _ProgrammingCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (hasTitle)
-                    Text(
-                      title,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+                    Html(
+                      data: richTitleHtml,
+                      style: {
+                        'body': Style(
+                          margin: Margins.zero,
+                          padding: HtmlPaddings.zero,
+                          color: colorScheme.onSurface,
+                          fontSize: FontSize(
+                            theme.textTheme.titleMedium?.fontSize ?? 16,
+                          ),
+                          fontWeight: FontWeight.w800,
+                          lineHeight: const LineHeight(1.3),
+                        ),
+                        'p': Style(
+                          margin: Margins.zero,
+                          padding: HtmlPaddings.zero,
+                        ),
+                        'strong': Style(
+                          color: colorScheme.onSurface,
+                          fontWeight: FontWeight.w800,
+                        ),
+                        'em': Style(fontStyle: FontStyle.italic),
+                        'br': Style(display: Display.block),
+                        'ul': Style(
+                          margin: Margins.zero,
+                          padding: HtmlPaddings.zero,
+                        ),
+                        'ol': Style(
+                          margin: Margins.zero,
+                          padding: HtmlPaddings.zero,
+                        ),
+                        'li': Style(
+                          margin: Margins.zero,
+                          padding: HtmlPaddings.zero,
+                        ),
+                      },
                     ),
                   if (hasProfiles) ...[
                     if (hasTitle) const SizedBox(height: 10),
@@ -602,10 +655,7 @@ class _ProgrammingCard extends StatelessWidget {
 }
 
 class _ProgrammingLocationLine extends StatelessWidget {
-  const _ProgrammingLocationLine({
-    required this.profile,
-    required this.onTap,
-  });
+  const _ProgrammingLocationLine({required this.profile, required this.onTap});
 
   final EventLinkedAccountProfile profile;
   final VoidCallback onTap;
@@ -675,9 +725,9 @@ class _ProgrammingProfileOverflowChip extends StatelessWidget {
       child: Text(
         label,
         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w800,
-            ),
+          color: colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }
@@ -724,9 +774,9 @@ class _ProgrammingProfileChip extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.w700,
-                  ),
+                color: colorScheme.onSurface,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],

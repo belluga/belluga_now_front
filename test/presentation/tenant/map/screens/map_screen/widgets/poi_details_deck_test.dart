@@ -55,7 +55,7 @@ void main() {
   );
 
   testWidgets(
-    'event invite action fails closed when deck event hydration is missing',
+    'event invite action stays disabled until deck event hydration is ready',
     (tester) async {
       final poi = _buildEventPoi();
       final controller = _StubMapScreenController(selectedPoi: poi);
@@ -63,14 +63,21 @@ void main() {
 
       await _pumpDeck(tester, controller: controller, router: router);
 
+      final inviteTooltip = find.byTooltip('Convidar');
+      final inviteAction = find.descendant(
+        of: inviteTooltip,
+        matching: find.byType(InkWell),
+      );
+      final inviteInkWell = tester.widget<InkWell>(inviteAction);
+
+      expect(inviteTooltip, findsOneWidget);
+      expect(inviteInkWell.onTap, isNull);
+
       await tester.tap(find.byTooltip('Convidar'));
       await tester.pumpAndSettle();
 
       expect(router.pushedRoutes, isEmpty);
-      expect(
-        controller.statusMessageStreamValue.value,
-        'Detalhes do evento ainda não estão prontos para convite.',
-      );
+      expect(controller.statusMessageStreamValue.value, isNull);
     },
   );
 }
@@ -85,9 +92,7 @@ Future<void> _pumpDeck(
       home: StackRouterScope(
         controller: router,
         stateHash: 0,
-        child: Scaffold(
-          body: PoiDetailDeck(controller: controller),
-        ),
+        child: Scaffold(body: PoiDetailDeck(controller: controller)),
       ),
     ),
   );
@@ -170,20 +175,23 @@ class _StubMapScreenController extends Fake implements MapScreenController {
       StreamValue<CityPoiModel?>();
 
   @override
-  final StreamValue<int> poiDeckContentRevisionStreamValue =
-      StreamValue<int>(defaultValue: 0);
+  final StreamValue<int> poiDeckContentRevisionStreamValue = StreamValue<int>(
+    defaultValue: 0,
+  );
 
   @override
   final StreamValue<ProximityPreference?> proximityPreferenceStreamValue =
       StreamValue<ProximityPreference?>(defaultValue: null);
 
   @override
-  final StreamValue<int> poiDeckHeightRevisionStreamValue =
-      StreamValue<int>(defaultValue: 0);
+  final StreamValue<int> poiDeckHeightRevisionStreamValue = StreamValue<int>(
+    defaultValue: 0,
+  );
 
   @override
-  final StreamValue<String?> statusMessageStreamValue =
-      StreamValue<String?>(defaultValue: null);
+  final StreamValue<String?> statusMessageStreamValue = StreamValue<String?>(
+    defaultValue: null,
+  );
 
   @override
   ProximityPreference? get proximityPreference => null;
@@ -202,8 +210,7 @@ class _StubMapScreenController extends Fake implements MapScreenController {
   int deckIndexForSelectedPoi(
     CityPoiModel selectedPoi,
     List<CityPoiModel> deckPois,
-  ) =>
-      0;
+  ) => 0;
 
   @override
   void clearSelectedPoi({bool preserveMarkerMemory = true}) {
@@ -234,8 +241,7 @@ class _StubMapScreenController extends Fake implements MapScreenController {
     required int currentIndex,
     required double defaultHeight,
     required double safeFallbackHeight,
-  }) =>
-      defaultHeight;
+  }) => defaultHeight;
 }
 
 class _RecordingStackRouter extends Fake implements StackRouter {

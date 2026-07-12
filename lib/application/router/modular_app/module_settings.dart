@@ -123,19 +123,19 @@ class ModuleSettings extends ModuleSettingsContract {
 
   @override
   Future<void> initializeSubmodules() async {
-    await registerSubModule(InitializationModule());
-    await registerSubModule(HomeModule());
-    await registerSubModule(AuthModule());
-    await registerSubModule(AppPromotionModule());
-    await registerSubModule(LandlordModule());
-    await registerSubModule(TenantAdminModule());
-    await registerSubModule(ProfileModule());
-    await registerSubModule(InvitesModule());
-    await registerSubModule(InviteShareModule());
-    await registerSubModule(ScheduleModule());
-    await registerSubModule(MapModule());
-    await registerSubModule(DiscoveryModule());
-    await registerSubModule(AccountWorkspaceModule());
+    await registerSubModuleIfAbsent(InitializationModule());
+    await registerSubModuleIfAbsent(HomeModule());
+    await registerSubModuleIfAbsent(AuthModule());
+    await registerSubModuleIfAbsent(AppPromotionModule());
+    await registerSubModuleIfAbsent(LandlordModule());
+    await registerSubModuleIfAbsent(TenantAdminModule());
+    await registerSubModuleIfAbsent(ProfileModule());
+    await registerSubModuleIfAbsent(InvitesModule());
+    await registerSubModuleIfAbsent(InviteShareModule());
+    await registerSubModuleIfAbsent(ScheduleModule());
+    await registerSubModuleIfAbsent(MapModule());
+    await registerSubModuleIfAbsent(DiscoveryModule());
+    await registerSubModuleIfAbsent(AccountWorkspaceModule());
   }
 
   void _registerBackend() {
@@ -472,5 +472,19 @@ class ModuleSettings extends ModuleSettingsContract {
     if (!GetIt.I.isRegistered<T>()) {
       GetIt.I.registerLazySingleton<T>(builder);
     }
+  }
+
+  @protected
+  Future<void> registerSubModuleIfAbsent<T extends ModuleContract>(
+    T module,
+  ) async {
+    if (GetIt.I.isRegistered<T>()) {
+      final registeredModule = GetIt.I.get<T>();
+      if (!childModules.any((existingModule) => identical(existingModule, registeredModule))) {
+        childModules.add(registeredModule);
+      }
+      return;
+    }
+    await registerSubModule<T>(module);
   }
 }

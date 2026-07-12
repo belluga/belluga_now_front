@@ -3397,10 +3397,7 @@ void main() {
     await tester.tap(find.byKey(const Key('immersiveTabLabel_1')));
     await tester.pumpAndSettle();
 
-    expect(
-      find.byKey(const Key('eventProgrammingItem_0_17:00')),
-      findsOneWidget,
-    );
+    expect(find.byKey(const Key('eventProgrammingItem_0')), findsOneWidget);
     expect(find.text('17:00'), findsOneWidget);
     expect(find.text('Coral XYZ'), findsWidgets);
     expect(
@@ -3828,13 +3825,13 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        find.byKey(const Key('eventProgrammingItem_0_17:00')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const Key('eventProgrammingItem_1_17:00')),
-        findsOneWidget,
-      );
+      find.byKey(const Key('eventProgrammingItem_0')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('eventProgrammingItem_1')),
+      findsOneWidget,
+    );
       expect(find.text('Palco principal'), findsOneWidget);
       expect(find.text('Palco alternativo'), findsOneWidget);
       expect(
@@ -3856,7 +3853,7 @@ void main() {
       );
       expect(
         find.descendant(
-          of: find.byKey(const Key('eventProgrammingItem_0_17:00')),
+          of: find.byKey(const Key('eventProgrammingItem_0')),
           matching: find.byType(BellugaNetworkImage),
         ),
         findsNWidgets(4),
@@ -3987,7 +3984,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final rowFinder = find.descendant(
-      of: find.byKey(const Key('eventProgrammingItem_0_17:00')),
+      of: find.byKey(const Key('eventProgrammingItem_0')),
       matching: find.byWidgetPredicate((widget) => widget is Row),
     );
     final row = tester.widget<Row>(rowFinder.first);
@@ -4125,10 +4122,7 @@ void main() {
 
       expect(find.text('Programação'), findsWidgets);
       expect(find.byKey(const Key('immersiveTabSelected_1')), findsOneWidget);
-      expect(
-        find.byKey(const Key('eventProgrammingItem_0_19:00')),
-        findsOneWidget,
-      );
+      expect(find.byKey(const Key('eventProgrammingItem_0')), findsOneWidget);
       expect(find.byKey(const Key('eventDateCard_occ-1')), findsNothing);
       expect(find.text('Atual'), findsNothing);
     },
@@ -4273,10 +4267,7 @@ void main() {
 
     expect(find.byKey(const Key('eventDateCard_occ-1')), findsOneWidget);
     expect(find.byKey(const Key('eventDateCard_occ-2')), findsOneWidget);
-    expect(
-      find.byKey(const Key('eventProgrammingItem_0_17:00')),
-      findsOneWidget,
-    );
+    expect(find.byKey(const Key('eventProgrammingItem_0')), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('eventDateCard_occ-1')));
     await tester.pump();

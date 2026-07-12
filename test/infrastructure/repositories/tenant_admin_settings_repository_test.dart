@@ -50,42 +50,48 @@ void main() {
 
     expect(settings, isNotNull);
     expect(settings!.projectId, 'project-a');
+    expect(settings.androidAppId, 'app-id-a');
+    expect(settings.iosAppId, 'ios-app-id-a');
     expect(adapter.requests.single.uri.path, '/api/v1/settings/firebase');
   });
 
-  test('updateFirebaseSettings uses tenant public firebase settings endpoint',
-      () async {
-    final adapter = _RoutingAdapter();
-    final scope = _MutableTenantScope('https://tenant-a.test');
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminSettingsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
+  test(
+    'updateFirebaseSettings uses tenant public firebase settings endpoint',
+    () async {
+      final adapter = _RoutingAdapter();
+      final scope = _MutableTenantScope('https://tenant-a.test');
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminSettingsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
 
-    final updated = await repository.updateFirebaseSettings(
-      settings: TenantAdminFirebaseSettings(
-        apiKey: _requiredTextValue('api-key-b'),
-        appId: _requiredTextValue('app-id-b'),
-        projectId: _requiredTextValue('project-b'),
-        messagingSenderId: _requiredTextValue('sender-b'),
-        storageBucket: _requiredTextValue('bucket-b'),
-      ),
-    );
+      final updated = await repository.updateFirebaseSettings(
+        settings: TenantAdminFirebaseSettings(
+          apiKey: _requiredTextValue('api-key-b'),
+          androidAppId: _requiredTextValue('android-app-id-b'),
+          iosAppId: _requiredTextValue('ios-app-id-b'),
+          projectId: _requiredTextValue('project-b'),
+          messagingSenderId: _requiredTextValue('sender-b'),
+          storageBucket: _requiredTextValue('bucket-b'),
+        ),
+      );
 
-    expect(adapter.requests.single.uri.path, '/api/v1/settings/firebase');
-    expect(
-      adapter.requests.single.data,
-      equals(<String, dynamic>{
-        'apiKey': 'api-key-b',
-        'appId': 'app-id-b',
-        'projectId': 'project-b',
-        'messagingSenderId': 'sender-b',
-        'storageBucket': 'bucket-b',
-      }),
-    );
-    expect(updated.projectId, 'project-b');
-  });
+      expect(adapter.requests.single.uri.path, '/api/v1/settings/firebase');
+      expect(
+        adapter.requests.single.data,
+        equals(<String, dynamic>{
+          'apiKey': 'api-key-b',
+          'androidAppId': 'android-app-id-b',
+          'iosAppId': 'ios-app-id-b',
+          'projectId': 'project-b',
+          'messagingSenderId': 'sender-b',
+          'storageBucket': 'bucket-b',
+        }),
+      );
+      expect(updated.projectId, 'project-b');
+    },
+  );
 
   test('fetchPushSettings parses push response', () async {
     final adapter = _RoutingAdapter(
@@ -116,9 +122,7 @@ void main() {
 
   test('fetchPushStatus parses root status response', () async {
     final adapter = _RoutingAdapter(
-      pushStatusPayload: const <String, dynamic>{
-        'status': 'pending_tests',
-      },
+      pushStatusPayload: const <String, dynamic>{'status': 'pending_tests'},
     );
     final scope = _MutableTenantScope('https://tenant-a.test');
     final dio = Dio()..httpClientAdapter = adapter;
@@ -134,38 +138,37 @@ void main() {
     expect(status.isPendingTests, isTrue);
   });
 
-  test('fetchResendEmailSettings parses resend_email namespace payload',
-      () async {
-    final adapter = _RoutingAdapter();
-    final scope = _MutableTenantScope('https://tenant-a.test');
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminSettingsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
+  test(
+    'fetchResendEmailSettings parses resend_email namespace payload',
+    () async {
+      final adapter = _RoutingAdapter();
+      final scope = _MutableTenantScope('https://tenant-a.test');
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminSettingsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
 
-    final settings = await repository.fetchResendEmailSettings();
+      final settings = await repository.fetchResendEmailSettings();
 
-    expect(settings.token, 're_live_token');
-    expect(settings.from, 'Belluga <noreply@belluga.space>');
-    expect(
-      _recipientStrings(settings.to),
-      equals(['admin@example.com']),
-    );
-    expect(
-      _recipientStrings(settings.cc),
-      equals(['ops@bellugasolutions.com.br']),
-    );
-    expect(
-      _recipientStrings(settings.bcc),
-      equals(['audit@bellugasolutions.com.br']),
-    );
-    expect(
-      _recipientStrings(settings.replyTo),
-      equals(['reply@bellugasolutions.com.br']),
-    );
-    expect(adapter.requests.single.uri.path, '/admin/api/v1/settings/values');
-  });
+      expect(settings.token, 're_live_token');
+      expect(settings.from, 'Belluga <noreply@belluga.space>');
+      expect(_recipientStrings(settings.to), equals(['admin@example.com']));
+      expect(
+        _recipientStrings(settings.cc),
+        equals(['ops@bellugasolutions.com.br']),
+      );
+      expect(
+        _recipientStrings(settings.bcc),
+        equals(['audit@bellugasolutions.com.br']),
+      );
+      expect(
+        _recipientStrings(settings.replyTo),
+        equals(['reply@bellugasolutions.com.br']),
+      );
+      expect(adapter.requests.single.uri.path, '/admin/api/v1/settings/values');
+    },
+  );
 
   test('updatePushSettings sends payload and parses response', () async {
     final adapter = _RoutingAdapter();
@@ -233,56 +236,60 @@ void main() {
     expect(updated.enabled, isFalse);
   });
 
-  test('fetchPushCredentials returns stored credentials without private key',
-      () async {
-    final adapter = _RoutingAdapter();
-    final scope = _MutableTenantScope('https://tenant-a.test');
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminSettingsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
+  test(
+    'fetchPushCredentials returns stored credentials without private key',
+    () async {
+      final adapter = _RoutingAdapter();
+      final scope = _MutableTenantScope('https://tenant-a.test');
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminSettingsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
 
-    final credentials = await repository.fetchPushCredentials();
+      final credentials = await repository.fetchPushCredentials();
 
-    expect(
-      adapter.requests.single.uri.path,
-      '/api/v1/settings/push/credentials',
-    );
-    expect(credentials, isNotNull);
-    expect(credentials!.projectId, 'project-a');
-    expect(credentials.clientEmail, 'push-service@tenant-a.test');
-    expect(credentials.privateKey, isNull);
-  });
+      expect(
+        adapter.requests.single.uri.path,
+        '/api/v1/settings/push/credentials',
+      );
+      expect(credentials, isNotNull);
+      expect(credentials!.projectId, 'project-a');
+      expect(credentials.clientEmail, 'push-service@tenant-a.test');
+      expect(credentials.privateKey, isNull);
+    },
+  );
 
-  test('fetchPushCredentials accepts single credential envelope response',
-      () async {
-    final adapter = _RoutingAdapter(
-      pushCredentialsResponseData: {
-        'id': 'push-credential-object',
-        'project_id': 'project-object',
-        'client_email': 'push-object@tenant-a.test',
-      },
-    );
-    final scope = _MutableTenantScope('https://tenant-a.test');
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminSettingsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
+  test(
+    'fetchPushCredentials accepts single credential envelope response',
+    () async {
+      final adapter = _RoutingAdapter(
+        pushCredentialsResponseData: {
+          'id': 'push-credential-object',
+          'project_id': 'project-object',
+          'client_email': 'push-object@tenant-a.test',
+        },
+      );
+      final scope = _MutableTenantScope('https://tenant-a.test');
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminSettingsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
 
-    final credentials = await repository.fetchPushCredentials();
+      final credentials = await repository.fetchPushCredentials();
 
-    expect(
-      adapter.requests.single.uri.path,
-      '/api/v1/settings/push/credentials',
-    );
-    expect(credentials, isNotNull);
-    expect(credentials!.id, 'push-credential-object');
-    expect(credentials.projectId, 'project-object');
-    expect(credentials.clientEmail, 'push-object@tenant-a.test');
-    expect(credentials.privateKey, isNull);
-  });
+      expect(
+        adapter.requests.single.uri.path,
+        '/api/v1/settings/push/credentials',
+      );
+      expect(credentials, isNotNull);
+      expect(credentials!.id, 'push-credential-object');
+      expect(credentials.projectId, 'project-object');
+      expect(credentials.clientEmail, 'push-object@tenant-a.test');
+      expect(credentials.privateKey, isNull);
+    },
+  );
 
   test('fetchPushCredentials returns null when no credentials exist', () async {
     final adapter = _RoutingAdapter(pushCredentialsPayload: const []);
@@ -298,366 +305,372 @@ void main() {
     expect(credentials, isNull);
   });
 
-  test('upsertPushCredentials sends direct payload and parses response',
-      () async {
-    final adapter = _RoutingAdapter(pushCredentialsPayload: const []);
-    final scope = _MutableTenantScope('https://tenant-a.test');
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminSettingsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
-
-    final updated = await repository.upsertPushCredentials(
-      credentials: TenantAdminPushCredentials(
-        projectIdValue: _requiredTextValue('project-updated'),
-        clientEmailValue: _emailAddressValue('push-updated@tenant-a.test'),
-        privateKeyValue: _requiredTextValue('-----BEGIN PRIVATE KEY-----'),
-      ),
-    );
-
-    expect(
-      adapter.requests.single.uri.path,
-      '/api/v1/settings/push/credentials',
-    );
-    expect(
-      adapter.requests.single.data,
-      equals(<String, dynamic>{
-        'project_id': 'project-updated',
-        'client_email': 'push-updated@tenant-a.test',
-        'private_key': '-----BEGIN PRIVATE KEY-----',
-      }),
-    );
-    expect(updated.projectId, 'project-updated');
-    expect(updated.clientEmail, 'push-updated@tenant-a.test');
-    expect(updated.privateKey, isNull);
-  });
-
-  test('updateResendEmailSettings patches resend_email namespace payload',
-      () async {
-    final adapter = _RoutingAdapter();
-    final scope = _MutableTenantScope('https://tenant-a.test');
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminSettingsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
-
-    final updated = await repository.updateResendEmailSettings(
-      settings: TenantAdminResendEmailSettings(
-        token: _optionalTextValue('re_live_token'),
-        from: _optionalTextValue('Belluga <noreply@belluga.space>'),
-        toRecipients: _recipients(['admin@example.com']),
-        ccRecipients: _recipients(['ops@bellugasolutions.com.br']),
-        bccRecipients: _recipients(['audit@bellugasolutions.com.br']),
-        replyToRecipients: _recipients(['reply@bellugasolutions.com.br']),
-      ),
-    );
-
-    final request = adapter.requests.single;
-    expect(request.uri.path, '/admin/api/v1/settings/values/resend_email');
-    final payload = request.data as Map<String, dynamic>;
-    expect(payload['token'], 're_live_token');
-    expect(payload['from'], 'Belluga <noreply@belluga.space>');
-    expect(
-      payload['to'],
-      equals(['admin@example.com']),
-    );
-    expect(
-      payload['cc'],
-      equals(['ops@bellugasolutions.com.br']),
-    );
-    expect(
-      payload['bcc'],
-      equals(['audit@bellugasolutions.com.br']),
-    );
-    expect(
-      payload['reply_to'],
-      equals(['reply@bellugasolutions.com.br']),
-    );
-    expect(updated.from, 'Belluga <noreply@belluga.space>');
-    expect(
-      _recipientStrings(updated.to),
-      equals(['admin@example.com']),
-    );
-  });
-
-  test('fetchOutboundIntegrationsSettings parses outbound integrations payload',
-      () async {
-    final adapter = _RoutingAdapter();
-    final scope = _MutableTenantScope('https://tenant-a.test');
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminSettingsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
-
-    final settings = await repository.fetchOutboundIntegrationsSettings();
-
-    expect(
-      settings.whatsappWebhookUrl,
-      'https://integrations.example/whatsapp',
-    );
-    expect(settings.otpWebhookUrl, 'https://integrations.example/otp');
-    expect(settings.otpUseWhatsappWebhook, isTrue);
-    expect(settings.otpDeliveryChannel, 'whatsapp');
-    expect(settings.otpTtlMinutes, 10);
-    expect(settings.otpResendCooldownSeconds, 60);
-    expect(settings.otpMaxAttempts, 5);
-    expect(adapter.requests.single.uri.path, '/admin/api/v1/settings/values');
-  });
-
   test(
-      'fetchPhoneOtpReviewAccessSettings parses phone_otp_review_access namespace payload',
-      () async {
-    final adapter = _RoutingAdapter();
-    final scope = _MutableTenantScope('https://tenant-a.test');
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminSettingsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
+    'upsertPushCredentials sends direct payload and parses response',
+    () async {
+      final adapter = _RoutingAdapter(pushCredentialsPayload: const []);
+      final scope = _MutableTenantScope('https://tenant-a.test');
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminSettingsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
 
-    final settings = await repository.fetchPhoneOtpReviewAccessSettings();
+      final updated = await repository.upsertPushCredentials(
+        credentials: TenantAdminPushCredentials(
+          projectIdValue: _requiredTextValue('project-updated'),
+          clientEmailValue: _emailAddressValue('push-updated@tenant-a.test'),
+          privateKeyValue: _requiredTextValue('-----BEGIN PRIVATE KEY-----'),
+        ),
+      );
 
-    expect(settings.phoneE164, '+15551234567');
-    expect(settings.codeHash, r'$2y$12$fixture-review-code-hash');
-    expect(adapter.requests.single.uri.path, '/admin/api/v1/settings/values');
-  });
-
-  test(
-      'updateOutboundIntegrationsSettings patches outbound_integrations compatibility payload',
-      () async {
-    final adapter = _RoutingAdapter();
-    final scope = _MutableTenantScope('https://tenant-a.test');
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminSettingsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
-
-    final updated = await repository.updateOutboundIntegrationsSettings(
-      settings: TenantAdminOutboundIntegrationsSettings(
-        whatsappWebhookUrlValue:
-            _optionalUrlValue('https://integrations.example/whatsapp'),
-        otpWebhookUrlValue:
-            _optionalUrlValue('https://integrations.example/otp'),
-        otpUseWhatsappWebhookValue: _booleanValue(true),
-        otpDeliveryChannelValue: _tokenValue('whatsapp'),
-        otpTtlMinutesValue: _positiveIntValue(8),
-        otpResendCooldownSecondsValue: _positiveIntValue(90),
-        otpMaxAttemptsValue: _positiveIntValue(4),
-      ),
-    );
-
-    final request = adapter.requests.single;
-    expect(
-      request.uri.path,
-      '/admin/api/v1/settings/values/outbound_integrations',
-    );
-    final payload = request.data as Map<String, dynamic>;
-    expect(
-      payload['whatsapp.webhook_url'],
-      'https://integrations.example/whatsapp',
-    );
-    expect(payload['otp.webhook_url'], 'https://integrations.example/otp');
-    expect(payload['otp.use_whatsapp_webhook'], isTrue);
-    expect(payload['otp.delivery_channel'], 'whatsapp');
-    expect(payload['otp.ttl_minutes'], 8);
-    expect(payload['otp.resend_cooldown_seconds'], 90);
-    expect(payload['otp.max_attempts'], 4);
-    expect(updated.otpDeliveryChannel, 'whatsapp');
-    expect(updated.otpUseWhatsappWebhook, isTrue);
-  });
-
-  test(
-      'updatePhoneOtpReviewAccessSettings patches phone_otp_review_access namespace payload',
-      () async {
-    final adapter = _RoutingAdapter();
-    final scope = _MutableTenantScope('https://tenant-a.test');
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminSettingsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
-
-    final updated = await repository.updatePhoneOtpReviewAccessSettings(
-      settings: TenantAdminPhoneOtpReviewAccessSettings(
-        rawPhoneOtpReviewAccessValue: TenantAdminDynamicMapValue({
-          'phone_e164': '+15559876543',
-          'code_hash': r'$2y$12$updated-review-code-hash',
+      expect(
+        adapter.requests.single.uri.path,
+        '/api/v1/settings/push/credentials',
+      );
+      expect(
+        adapter.requests.single.data,
+        equals(<String, dynamic>{
+          'project_id': 'project-updated',
+          'client_email': 'push-updated@tenant-a.test',
+          'private_key': '-----BEGIN PRIVATE KEY-----',
         }),
-        phoneE164Value: _optionalTextValue('+15559876543'),
-        codeHashValue: _optionalTextValue(r'$2y$12$updated-review-code-hash'),
-      ),
-    );
-
-    final request = adapter.requests.single;
-    expect(
-      request.uri.path,
-      '/admin/api/v1/settings/values/phone_otp_review_access',
-    );
-    final payload = request.data as Map<String, dynamic>;
-    expect(payload['phone_e164'], '+15559876543');
-    expect(payload['code_hash'], r'$2y$12$updated-review-code-hash');
-    expect(payload.containsKey('code'), isFalse);
-    expect(updated.phoneE164, '+15559876543');
-    expect(updated.codeHash, r'$2y$12$updated-review-code-hash');
-  });
+      );
+      expect(updated.projectId, 'project-updated');
+      expect(updated.clientEmail, 'push-updated@tenant-a.test');
+      expect(updated.privateKey, isNull);
+    },
+  );
 
   test(
-      'generatePhoneOtpReviewAccessCodeHash posts helper code and decodes hash',
-      () async {
-    final adapter = _RoutingAdapter();
-    final scope = _MutableTenantScope('https://tenant-a.test');
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminSettingsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
+    'updateResendEmailSettings patches resend_email namespace payload',
+    () async {
+      final adapter = _RoutingAdapter();
+      final scope = _MutableTenantScope('https://tenant-a.test');
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminSettingsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
 
-    final generatedHash = await repository.generatePhoneOtpReviewAccessCodeHash(
-      code: _requiredTextValue('654321'),
-    );
+      final updated = await repository.updateResendEmailSettings(
+        settings: TenantAdminResendEmailSettings(
+          token: _optionalTextValue('re_live_token'),
+          from: _optionalTextValue('Belluga <noreply@belluga.space>'),
+          toRecipients: _recipients(['admin@example.com']),
+          ccRecipients: _recipients(['ops@bellugasolutions.com.br']),
+          bccRecipients: _recipients(['audit@bellugasolutions.com.br']),
+          replyToRecipients: _recipients(['reply@bellugasolutions.com.br']),
+        ),
+      );
 
-    final request = adapter.requests.single;
-    expect(request.method, 'POST');
-    expect(
-      request.uri.path,
-      '/admin/api/v1/settings/values/phone_otp_review_access/hash',
-    );
-    expect(
-      request.data,
-      equals(<String, dynamic>{
-        'code': '654321',
-      }),
-    );
-    expect(generatedHash, r'$2y$12$generated-review-code-hash');
-  });
+      final request = adapter.requests.single;
+      expect(request.uri.path, '/admin/api/v1/settings/values/resend_email');
+      final payload = request.data as Map<String, dynamic>;
+      expect(payload['token'], 're_live_token');
+      expect(payload['from'], 'Belluga <noreply@belluga.space>');
+      expect(payload['to'], equals(['admin@example.com']));
+      expect(payload['cc'], equals(['ops@bellugasolutions.com.br']));
+      expect(payload['bcc'], equals(['audit@bellugasolutions.com.br']));
+      expect(payload['reply_to'], equals(['reply@bellugasolutions.com.br']));
+      expect(updated.from, 'Belluga <noreply@belluga.space>');
+      expect(_recipientStrings(updated.to), equals(['admin@example.com']));
+    },
+  );
 
-  test('updateDiscoveryFiltersSettings preserves dotted surface keys',
-      () async {
-    final adapter = _RoutingAdapter();
-    final scope = _MutableTenantScope('https://tenant-a.test');
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminSettingsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
+  test(
+    'fetchOutboundIntegrationsSettings parses outbound integrations payload',
+    () async {
+      final adapter = _RoutingAdapter();
+      final scope = _MutableTenantScope('https://tenant-a.test');
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminSettingsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
 
-    final updated = await repository.updateDiscoveryFiltersSettings(
-      settings: TenantAdminDiscoveryFiltersSettingsValue(
-        TenantAdminDynamicMapValue({
-          'surfaces': {
-            'public_map.primary': {
-              'target': 'map_poi',
-              'primary_selection_mode': 'single',
-              'filters': [
-                {
-                  'key': 'assets',
-                  'label': 'Assets',
-                  'image_uri': 'https://tenant-a.test/filter.png',
-                  'query': {
-                    'entities': ['static_asset'],
+      final settings = await repository.fetchOutboundIntegrationsSettings();
+
+      expect(
+        settings.whatsappWebhookUrl,
+        'https://integrations.example/whatsapp',
+      );
+      expect(settings.otpWebhookUrl, 'https://integrations.example/otp');
+      expect(settings.otpUseWhatsappWebhook, isTrue);
+      expect(settings.otpDeliveryChannel, 'whatsapp');
+      expect(settings.otpTtlMinutes, 10);
+      expect(settings.otpResendCooldownSeconds, 60);
+      expect(settings.otpMaxAttempts, 5);
+      expect(adapter.requests.single.uri.path, '/admin/api/v1/settings/values');
+    },
+  );
+
+  test(
+    'fetchPhoneOtpReviewAccessSettings parses phone_otp_review_access namespace payload',
+    () async {
+      final adapter = _RoutingAdapter();
+      final scope = _MutableTenantScope('https://tenant-a.test');
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminSettingsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      final settings = await repository.fetchPhoneOtpReviewAccessSettings();
+
+      expect(settings.phoneE164, '+15551234567');
+      expect(settings.codeHash, r'$2y$12$fixture-review-code-hash');
+      expect(adapter.requests.single.uri.path, '/admin/api/v1/settings/values');
+    },
+  );
+
+  test(
+    'updateOutboundIntegrationsSettings patches outbound_integrations compatibility payload',
+    () async {
+      final adapter = _RoutingAdapter();
+      final scope = _MutableTenantScope('https://tenant-a.test');
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminSettingsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      final updated = await repository.updateOutboundIntegrationsSettings(
+        settings: TenantAdminOutboundIntegrationsSettings(
+          whatsappWebhookUrlValue: _optionalUrlValue(
+            'https://integrations.example/whatsapp',
+          ),
+          otpWebhookUrlValue: _optionalUrlValue(
+            'https://integrations.example/otp',
+          ),
+          otpUseWhatsappWebhookValue: _booleanValue(true),
+          otpDeliveryChannelValue: _tokenValue('whatsapp'),
+          otpTtlMinutesValue: _positiveIntValue(8),
+          otpResendCooldownSecondsValue: _positiveIntValue(90),
+          otpMaxAttemptsValue: _positiveIntValue(4),
+        ),
+      );
+
+      final request = adapter.requests.single;
+      expect(
+        request.uri.path,
+        '/admin/api/v1/settings/values/outbound_integrations',
+      );
+      final payload = request.data as Map<String, dynamic>;
+      expect(
+        payload['whatsapp.webhook_url'],
+        'https://integrations.example/whatsapp',
+      );
+      expect(payload['otp.webhook_url'], 'https://integrations.example/otp');
+      expect(payload['otp.use_whatsapp_webhook'], isTrue);
+      expect(payload['otp.delivery_channel'], 'whatsapp');
+      expect(payload['otp.ttl_minutes'], 8);
+      expect(payload['otp.resend_cooldown_seconds'], 90);
+      expect(payload['otp.max_attempts'], 4);
+      expect(updated.otpDeliveryChannel, 'whatsapp');
+      expect(updated.otpUseWhatsappWebhook, isTrue);
+    },
+  );
+
+  test(
+    'updatePhoneOtpReviewAccessSettings patches phone_otp_review_access namespace payload',
+    () async {
+      final adapter = _RoutingAdapter();
+      final scope = _MutableTenantScope('https://tenant-a.test');
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminSettingsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      final updated = await repository.updatePhoneOtpReviewAccessSettings(
+        settings: TenantAdminPhoneOtpReviewAccessSettings(
+          rawPhoneOtpReviewAccessValue: TenantAdminDynamicMapValue({
+            'phone_e164': '+15559876543',
+            'code_hash': r'$2y$12$updated-review-code-hash',
+          }),
+          phoneE164Value: _optionalTextValue('+15559876543'),
+          codeHashValue: _optionalTextValue(r'$2y$12$updated-review-code-hash'),
+        ),
+      );
+
+      final request = adapter.requests.single;
+      expect(
+        request.uri.path,
+        '/admin/api/v1/settings/values/phone_otp_review_access',
+      );
+      final payload = request.data as Map<String, dynamic>;
+      expect(payload['phone_e164'], '+15559876543');
+      expect(payload['code_hash'], r'$2y$12$updated-review-code-hash');
+      expect(payload.containsKey('code'), isFalse);
+      expect(updated.phoneE164, '+15559876543');
+      expect(updated.codeHash, r'$2y$12$updated-review-code-hash');
+    },
+  );
+
+  test(
+    'generatePhoneOtpReviewAccessCodeHash posts helper code and decodes hash',
+    () async {
+      final adapter = _RoutingAdapter();
+      final scope = _MutableTenantScope('https://tenant-a.test');
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminSettingsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      final generatedHash = await repository
+          .generatePhoneOtpReviewAccessCodeHash(
+            code: _requiredTextValue('654321'),
+          );
+
+      final request = adapter.requests.single;
+      expect(request.method, 'POST');
+      expect(
+        request.uri.path,
+        '/admin/api/v1/settings/values/phone_otp_review_access/hash',
+      );
+      expect(request.data, equals(<String, dynamic>{'code': '654321'}));
+      expect(generatedHash, r'$2y$12$generated-review-code-hash');
+    },
+  );
+
+  test(
+    'updateDiscoveryFiltersSettings preserves dotted surface keys',
+    () async {
+      final adapter = _RoutingAdapter();
+      final scope = _MutableTenantScope('https://tenant-a.test');
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminSettingsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      final updated = await repository.updateDiscoveryFiltersSettings(
+        settings: TenantAdminDiscoveryFiltersSettingsValue(
+          TenantAdminDynamicMapValue({
+            'surfaces': {
+              'public_map.primary': {
+                'target': 'map_poi',
+                'primary_selection_mode': 'single',
+                'filters': [
+                  {
+                    'key': 'assets',
+                    'label': 'Assets',
+                    'image_uri': 'https://tenant-a.test/filter.png',
+                    'query': {
+                      'entities': ['static_asset'],
+                    },
                   },
-                },
-              ],
+                ],
+              },
             },
-          },
-        }),
-      ),
-    );
+          }),
+        ),
+      );
 
-    final request = adapter.requests.single;
-    expect(request.uri.path, '/admin/api/v1/settings/values/discovery_filters');
-    final payload = request.data as Map<String, dynamic>;
-    expect(payload.containsKey('surfaces.public_map.primary.filters'), isFalse);
-    final requestSurfaces = payload['surfaces'] as Map<String, dynamic>;
-    expect(requestSurfaces.containsKey('public_map.primary'), isTrue);
+      final request = adapter.requests.single;
+      expect(
+        request.uri.path,
+        '/admin/api/v1/settings/values/discovery_filters',
+      );
+      final payload = request.data as Map<String, dynamic>;
+      expect(
+        payload.containsKey('surfaces.public_map.primary.filters'),
+        isFalse,
+      );
+      final requestSurfaces = payload['surfaces'] as Map<String, dynamic>;
+      expect(requestSurfaces.containsKey('public_map.primary'), isTrue);
 
-    final updatedSurfaces =
-        updated.rawDiscoveryFilters['surfaces'] as Map<String, dynamic>;
-    final publicMap =
-        updatedSurfaces['public_map.primary'] as Map<String, dynamic>;
-    final filters = publicMap['filters'] as List<dynamic>;
-    expect(filters.single['image_uri'], 'https://tenant-a.test/filter.png');
-  });
-
-  test('fetchMapUiSettings parses default origin from settings values',
-      () async {
-    final adapter = _RoutingAdapter();
-    final scope = _MutableTenantScope('https://tenant-a.test');
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminSettingsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
-
-    final settings = await repository.fetchMapUiSettings();
-
-    expect(settings.defaultOrigin, isNotNull);
-    expect(settings.defaultOrigin!.lat, closeTo(-20.6736, 0.000001));
-    expect(settings.defaultOrigin!.lng, closeTo(-40.4976, 0.000001));
-    expect(settings.defaultOrigin!.label, 'Centro');
-    expect(settings.filters, hasLength(1));
-    expect(settings.filters.first.key, 'events');
-    expect(settings.filters.first.label, 'Eventos');
-    expect(
-      settings.filters.first.imageUri,
-      'https://tenant-a.test/api/v1/media/map-filters/events?v=1710000000',
-    );
-    expect(settings.filters.first.overrideMarker, isFalse);
-    expect(settings.filters.first.markerOverride?.mode,
-        TenantAdminMapFilterMarkerOverrideMode.icon);
-    expect(settings.filters.first.markerOverride?.icon, 'music');
-    expect(
-      settings.filters.first.query.source,
-      TenantAdminMapFilterSource.event,
-    );
-    expect(
-      settings.filters.first.query.types.map((entry) => entry.value).toList(),
-      equals(['show']),
-    );
-    expect(
-      settings.filters.first.query.taxonomy
-          .map((entry) => entry.value)
-          .toList(),
-      equals(['music_genre:rock']),
-    );
-    final radius = settings.rawMapUi['radius'] as Map<String, dynamic>;
-    expect(radius['default_km'], 5);
-    expect(adapter.requests.single.uri.path, '/admin/api/v1/settings/values');
-  });
+      final updatedSurfaces =
+          updated.rawDiscoveryFilters['surfaces'] as Map<String, dynamic>;
+      final publicMap =
+          updatedSurfaces['public_map.primary'] as Map<String, dynamic>;
+      final filters = publicMap['filters'] as List<dynamic>;
+      expect(filters.single['image_uri'], 'https://tenant-a.test/filter.png');
+    },
+  );
 
   test(
-      'fetchMapUiSettings treats empty map_ui namespace payload as empty settings only',
-      () async {
-    final adapter = _RoutingAdapter(
-      settingsValuesPayload: {
-        'data': {
-          'map_ui': [],
-          'events': [],
-          'telemetry': [],
-          'push': [],
-          'firebase': [],
+    'fetchMapUiSettings parses default origin from settings values',
+    () async {
+      final adapter = _RoutingAdapter();
+      final scope = _MutableTenantScope('https://tenant-a.test');
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminSettingsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      final settings = await repository.fetchMapUiSettings();
+
+      expect(settings.defaultOrigin, isNotNull);
+      expect(settings.defaultOrigin!.lat, closeTo(-20.6736, 0.000001));
+      expect(settings.defaultOrigin!.lng, closeTo(-40.4976, 0.000001));
+      expect(settings.defaultOrigin!.label, 'Centro');
+      expect(settings.filters, hasLength(1));
+      expect(settings.filters.first.key, 'events');
+      expect(settings.filters.first.label, 'Eventos');
+      expect(
+        settings.filters.first.imageUri,
+        'https://tenant-a.test/api/v1/media/map-filters/events?v=1710000000',
+      );
+      expect(settings.filters.first.overrideMarker, isFalse);
+      expect(
+        settings.filters.first.markerOverride?.mode,
+        TenantAdminMapFilterMarkerOverrideMode.icon,
+      );
+      expect(settings.filters.first.markerOverride?.icon, 'music');
+      expect(
+        settings.filters.first.query.source,
+        TenantAdminMapFilterSource.event,
+      );
+      expect(
+        settings.filters.first.query.types.map((entry) => entry.value).toList(),
+        equals(['show']),
+      );
+      expect(
+        settings.filters.first.query.taxonomy
+            .map((entry) => entry.value)
+            .toList(),
+        equals(['music_genre:rock']),
+      );
+      final radius = settings.rawMapUi['radius'] as Map<String, dynamic>;
+      expect(radius['default_km'], 5);
+      expect(adapter.requests.single.uri.path, '/admin/api/v1/settings/values');
+    },
+  );
+
+  test(
+    'fetchMapUiSettings treats empty map_ui namespace payload as empty settings only',
+    () async {
+      final adapter = _RoutingAdapter(
+        settingsValuesPayload: {
+          'data': {
+            'map_ui': [],
+            'events': [],
+            'telemetry': [],
+            'push': [],
+            'firebase': [],
+          },
         },
-      },
-    );
-    final scope = _MutableTenantScope('https://tenant-a.test');
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminSettingsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
+      );
+      final scope = _MutableTenantScope('https://tenant-a.test');
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminSettingsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
 
-    final settings = await repository.fetchMapUiSettings();
+      final settings = await repository.fetchMapUiSettings();
 
-    expect(settings.defaultOrigin, isNull);
-    expect(settings.rawMapUi, isEmpty);
-    expect(settings.rawMapUi.containsKey('events'), isFalse);
-    expect(settings.rawMapUi.containsKey('telemetry'), isFalse);
-    expect(adapter.requests.single.uri.path, '/admin/api/v1/settings/values');
-  });
+      expect(settings.defaultOrigin, isNull);
+      expect(settings.rawMapUi, isEmpty);
+      expect(settings.rawMapUi.containsKey('events'), isFalse);
+      expect(settings.rawMapUi.containsKey('telemetry'), isFalse);
+      expect(adapter.requests.single.uri.path, '/admin/api/v1/settings/values');
+    },
+  );
 
   test('fetchAppLinksSettings parses app_links namespace payload', () async {
     final adapter = _RoutingAdapter();
@@ -673,11 +686,9 @@ void main() {
     expect(settings.androidAppIdentifier, 'com.guarappari.app');
     expect(
       settings.androidSha256CertFingerprints,
-      equals(
-        [
-          '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:AA:23:11:22:33:44:55:66:77:88:99',
-        ],
-      ),
+      equals([
+        '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:AA:23:11:22:33:44:55:66:77:88:99',
+      ]),
     );
     expect(settings.iosTeamId, 'TEAMID1234');
     expect(settings.iosBundleId, 'com.guarappari.app');
@@ -694,50 +705,52 @@ void main() {
     expect(adapter.requests.last.uri.path, '/admin/api/v1/appdomains');
   });
 
-  test('fetchDomainsPage requests page/per_page and decodes active domains',
-      () async {
-    final adapter = _RoutingAdapter(
-      domainsPayload: [
-        {
-          'id': 'domain-1',
-          'path': 'tenant-a.test',
-          'type': 'web',
-          'status': 'active',
-          'created_at': '2026-04-01T10:00:00Z',
-          'updated_at': '2026-04-01T10:00:00Z',
-          'deleted_at': null,
-        },
-        {
-          'id': 'domain-2',
-          'path': 'tenant-b.test',
-          'type': 'web',
-          'status': 'active',
-          'created_at': '2026-03-01T10:00:00Z',
-          'updated_at': '2026-03-01T10:00:00Z',
-          'deleted_at': null,
-        },
-      ],
-    );
-    final scope = _MutableTenantScope('https://tenant-a.test');
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminSettingsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
+  test(
+    'fetchDomainsPage requests page/per_page and decodes active domains',
+    () async {
+      final adapter = _RoutingAdapter(
+        domainsPayload: [
+          {
+            'id': 'domain-1',
+            'path': 'tenant-a.test',
+            'type': 'web',
+            'status': 'active',
+            'created_at': '2026-04-01T10:00:00Z',
+            'updated_at': '2026-04-01T10:00:00Z',
+            'deleted_at': null,
+          },
+          {
+            'id': 'domain-2',
+            'path': 'tenant-b.test',
+            'type': 'web',
+            'status': 'active',
+            'created_at': '2026-03-01T10:00:00Z',
+            'updated_at': '2026-03-01T10:00:00Z',
+            'deleted_at': null,
+          },
+        ],
+      );
+      final scope = _MutableTenantScope('https://tenant-a.test');
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminSettingsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
 
-    final result = await repository.fetchDomainsPage(
-      page: TenantAdminCountValue(1),
-      pageSize: TenantAdminCountValue(1),
-    );
+      final result = await repository.fetchDomainsPage(
+        page: TenantAdminCountValue(1),
+        pageSize: TenantAdminCountValue(1),
+      );
 
-    expect(adapter.requests.single.uri.path, '/admin/api/v1/domains');
-    expect(adapter.requests.single.uri.queryParameters['page'], '1');
-    expect(adapter.requests.single.uri.queryParameters['per_page'], '1');
-    expect(result.items, hasLength(1));
-    expect(result.items.single.path, 'tenant-a.test');
-    expect(result.items.single.status, TenantAdminDomainStatusValue.active);
-    expect(result.hasMore, isTrue);
-  });
+      expect(adapter.requests.single.uri.path, '/admin/api/v1/domains');
+      expect(adapter.requests.single.uri.queryParameters['page'], '1');
+      expect(adapter.requests.single.uri.queryParameters['per_page'], '1');
+      expect(result.items, hasLength(1));
+      expect(result.items.single.path, 'tenant-a.test');
+      expect(result.items.single.status, TenantAdminDomainStatusValue.active);
+      expect(result.hasMore, isTrue);
+    },
+  );
 
   test('createDomain posts payload and decodes created entry', () async {
     final adapter = _RoutingAdapter();
@@ -759,31 +772,34 @@ void main() {
     expect(created.status, TenantAdminDomainStatusValue.active);
   });
 
-  test('createDomain preserves backend validation message for duplicates',
-      () async {
-    final adapter = _RoutingAdapter(
-      createDomainValidationMessage: 'Another tenant already uses this domain.',
-    );
-    final scope = _MutableTenantScope('https://tenant-a.test');
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminSettingsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
+  test(
+    'createDomain preserves backend validation message for duplicates',
+    () async {
+      final adapter = _RoutingAdapter(
+        createDomainValidationMessage:
+            'Another tenant already uses this domain.',
+      );
+      final scope = _MutableTenantScope('https://tenant-a.test');
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminSettingsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
 
-    await expectLater(
-      () => repository.createDomain(
-        path: _requiredTextValue('duplicate-tenant.test'),
-      ),
-      throwsA(
-        isA<Exception>().having(
-          (error) => error.toString(),
-          'message',
-          contains('Another tenant already uses this domain.'),
+      await expectLater(
+        () => repository.createDomain(
+          path: _requiredTextValue('duplicate-tenant.test'),
         ),
-      ),
-    );
-  });
+        throwsA(
+          isA<Exception>().having(
+            (error) => error.toString(),
+            'message',
+            contains('Another tenant already uses this domain.'),
+          ),
+        ),
+      );
+    },
+  );
 
   test('deleteDomain hits expected endpoint', () async {
     final adapter = _RoutingAdapter();
@@ -800,95 +816,91 @@ void main() {
     expect(adapter.requests.single.uri.path, '/admin/api/v1/domains/domain-1');
   });
 
-  test('updateMapUiSettings patches map_ui namespace without legacy filters',
-      () async {
-    final adapter = _RoutingAdapter();
-    final scope = _MutableTenantScope('https://tenant-a.test');
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminSettingsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
-    final mapUi = TenantAdminMapUiSettings(
-      rawMapUiValue: TenantAdminDynamicMapValue({
-        'radius': {
-          'min_km': 1,
-          'default_km': 5,
-          'max_km': 50,
-        },
-        'default_origin': {
-          'lat': -20.611111,
-          'lng': -40.422222,
-          'label': 'Praia do Morro',
-        },
-        'filters': [
-          {
-            'key': 'events',
-            'label': 'Eventos',
-            'image_uri':
-                'https://tenant-a.test/map-filters/events/image?v=1710000000',
-            'override_marker': false,
-            'marker_override': {
-              'mode': 'icon',
-              'icon': 'music',
-              'color': '#C6141F',
-              'icon_color': '#FFFFFF',
-            },
-            'query': {
-              'source': 'event',
-              'types': ['show'],
-              'taxonomy': ['music_genre:rock'],
-            },
+  test(
+    'updateMapUiSettings patches map_ui namespace without legacy filters',
+    () async {
+      final adapter = _RoutingAdapter();
+      final scope = _MutableTenantScope('https://tenant-a.test');
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminSettingsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+      final mapUi = TenantAdminMapUiSettings(
+        rawMapUiValue: TenantAdminDynamicMapValue({
+          'radius': {'min_km': 1, 'default_km': 5, 'max_km': 50},
+          'default_origin': {
+            'lat': -20.611111,
+            'lng': -40.422222,
+            'label': 'Praia do Morro',
           },
-        ],
-      }),
-      defaultOrigin: TenantAdminMapDefaultOrigin(
-        lat: _latitudeValue(-20.611111),
-        lng: _longitudeValue(-40.422222),
-        label: _optionalTextValue('Praia do Morro'),
-      ),
-      filters: _mapFilterCatalogItems([
-        TenantAdminMapFilterCatalogItem(
-          keyValue: TenantAdminLowercaseTokenValue()..parse('events'),
-          labelValue: TenantAdminRequiredTextValue()..parse('Eventos'),
-          imageUriValue: TenantAdminOptionalUrlValue()
-            ..parse(
-                'https://tenant-a.test/map-filters/events/image?v=1710000000'),
-          overrideMarkerValue: TenantAdminFlagValue(false),
-          markerOverride: TenantAdminMapFilterMarkerOverride.icon(
-            iconValue: _requiredTextValue('music'),
-            colorValue: _hexColorValue('#C6141F'),
-            iconColorValue: _hexColorValue('#FFFFFF'),
-          ),
-          query: TenantAdminMapFilterQuery(
-            source: TenantAdminMapFilterSource.event,
-            typeValues: [_tokenValue('show')],
-            taxonomyValues: [_tokenValue('music_genre:rock')],
-          ),
+          'filters': [
+            {
+              'key': 'events',
+              'label': 'Eventos',
+              'image_uri':
+                  'https://tenant-a.test/map-filters/events/image?v=1710000000',
+              'override_marker': false,
+              'marker_override': {
+                'mode': 'icon',
+                'icon': 'music',
+                'color': '#C6141F',
+                'icon_color': '#FFFFFF',
+              },
+              'query': {
+                'source': 'event',
+                'types': ['show'],
+                'taxonomy': ['music_genre:rock'],
+              },
+            },
+          ],
+        }),
+        defaultOrigin: TenantAdminMapDefaultOrigin(
+          lat: _latitudeValue(-20.611111),
+          lng: _longitudeValue(-40.422222),
+          label: _optionalTextValue('Praia do Morro'),
         ),
-      ]),
-    );
+        filters: _mapFilterCatalogItems([
+          TenantAdminMapFilterCatalogItem(
+            keyValue: TenantAdminLowercaseTokenValue()..parse('events'),
+            labelValue: TenantAdminRequiredTextValue()..parse('Eventos'),
+            imageUriValue: TenantAdminOptionalUrlValue()
+              ..parse(
+                'https://tenant-a.test/map-filters/events/image?v=1710000000',
+              ),
+            overrideMarkerValue: TenantAdminFlagValue(false),
+            markerOverride: TenantAdminMapFilterMarkerOverride.icon(
+              iconValue: _requiredTextValue('music'),
+              colorValue: _hexColorValue('#C6141F'),
+              iconColorValue: _hexColorValue('#FFFFFF'),
+            ),
+            query: TenantAdminMapFilterQuery(
+              source: TenantAdminMapFilterSource.event,
+              typeValues: [_tokenValue('show')],
+              taxonomyValues: [_tokenValue('music_genre:rock')],
+            ),
+          ),
+        ]),
+      );
 
-    final updated = await repository.updateMapUiSettings(settings: mapUi);
+      final updated = await repository.updateMapUiSettings(settings: mapUi);
 
-    final request = adapter.requests.single;
-    expect(request.uri.path, '/admin/api/v1/settings/values/map_ui');
-    final payload = request.data as Map<String, dynamic>;
-    expect(payload['radius.default_km'], 5);
-    expect(payload['default_origin.lat'], -20.611111);
-    expect(payload['default_origin.lng'], -40.422222);
-    expect(payload['default_origin.label'], 'Praia do Morro');
-    expect(payload.containsKey('filters'), isFalse);
-    expect(
-      payload.keys.where((key) => key.startsWith('filters.')),
-      isEmpty,
-    );
-    expect(updated.defaultOrigin, isNotNull);
-    expect(updated.defaultOrigin!.lat, closeTo(-20.611111, 0.000001));
-    expect(updated.defaultOrigin!.lng, closeTo(-40.422222, 0.000001));
-    expect(updated.defaultOrigin!.label, 'Praia do Morro');
-    expect(updated.filters, isEmpty);
-  });
+      final request = adapter.requests.single;
+      expect(request.uri.path, '/admin/api/v1/settings/values/map_ui');
+      final payload = request.data as Map<String, dynamic>;
+      expect(payload['radius.default_km'], 5);
+      expect(payload['default_origin.lat'], -20.611111);
+      expect(payload['default_origin.lng'], -40.422222);
+      expect(payload['default_origin.label'], 'Praia do Morro');
+      expect(payload.containsKey('filters'), isFalse);
+      expect(payload.keys.where((key) => key.startsWith('filters.')), isEmpty);
+      expect(updated.defaultOrigin, isNotNull);
+      expect(updated.defaultOrigin!.lat, closeTo(-20.611111, 0.000001));
+      expect(updated.defaultOrigin!.lng, closeTo(-40.422222, 0.000001));
+      expect(updated.defaultOrigin!.label, 'Praia do Morro');
+      expect(updated.filters, isEmpty);
+    },
+  );
 
   test('updateAppLinksSettings patches app_links namespace payload', () async {
     final adapter = _RoutingAdapter();
@@ -945,20 +957,18 @@ void main() {
     expect(payload['ios.paths'], equals(['/invite*', '/convites*']));
     expect(payload['ios.enabled'], isTrue);
     expect(
-        payload['ios.store_url'], 'https://apps.apple.com/br/app/id123456789');
+      payload['ios.store_url'],
+      'https://apps.apple.com/br/app/id123456789',
+    );
     expect(updated.androidAppIdentifier, 'com.guarappari.app');
     expect(updated.iosTeamId, 'TEAMID1234');
     expect(updated.iosBundleId, 'com.guarappari.app');
     expect(updated.iosPaths, equals(['/invite*', '/convites*']));
   });
 
-  test('updateAppLinksSettings upserts typed identifiers before patch',
-      () async {
+  test('updateAppLinksSettings upserts typed identifiers before patch', () async {
     final adapter = _RoutingAdapter(
-      appDomainsPayload: {
-        'android': 'com.old.app',
-        'ios': null,
-      },
+      appDomainsPayload: {'android': 'com.old.app', 'ios': null},
     );
     final scope = _MutableTenantScope('https://tenant-a.test');
     final dio = Dio()..httpClientAdapter = adapter;
@@ -993,210 +1003,215 @@ void main() {
     expect(adapter.requests[0].uri.path, '/admin/api/v1/appdomains');
     expect(adapter.requests[1].uri.path, '/admin/api/v1/appdomains');
     expect(adapter.requests[2].uri.path, '/admin/api/v1/appdomains');
-    expect(adapter.requests[3].uri.path,
-        '/admin/api/v1/settings/values/app_links');
+    expect(
+      adapter.requests[3].uri.path,
+      '/admin/api/v1/settings/values/app_links',
+    );
     expect(updated.androidAppIdentifier, 'com.guarappari.app');
     expect(updated.iosBundleId, 'com.guarappari.app');
   });
 
   test(
-      'updateAppLinksSettings upserts Android typed identifier even when GET appdomains matches legacy fallback',
-      () async {
-    final adapter = _RoutingAdapter(
-      appDomainsPayload: {
-        'android': 'com.guarappari.app',
-        'ios': null,
-      },
-      typedAppDomainPersistedByPlatform: {
-        'android': false,
-        'ios': false,
-      },
-    );
-    final scope = _MutableTenantScope('https://tenant-a.test');
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminSettingsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
-    final appLinks = buildTenantAdminAppLinksSettings(
-      rawAppLinks: {
-        'android': {
-          'sha256_cert_fingerprints': [
-            'ED:07:87:5E:89:8A:4B:26:41:5B:C7:A9:19:44:84:D3:0A:A4:AD:52:BA:66:47:56:8F:62:EF:71:F0:FD:1A:54',
-          ],
+    'updateAppLinksSettings upserts Android typed identifier even when GET appdomains matches legacy fallback',
+    () async {
+      final adapter = _RoutingAdapter(
+        appDomainsPayload: {'android': 'com.guarappari.app', 'ios': null},
+        typedAppDomainPersistedByPlatform: {'android': false, 'ios': false},
+      );
+      final scope = _MutableTenantScope('https://tenant-a.test');
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminSettingsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+      final appLinks = buildTenantAdminAppLinksSettings(
+        rawAppLinks: {
+          'android': {
+            'sha256_cert_fingerprints': [
+              'ED:07:87:5E:89:8A:4B:26:41:5B:C7:A9:19:44:84:D3:0A:A4:AD:52:BA:66:47:56:8F:62:EF:71:F0:FD:1A:54',
+            ],
+          },
+          'ios': {
+            'team_id': null,
+            'paths': ['/invite*', '/convites*'],
+          },
         },
-        'ios': {
-          'team_id': null,
-          'paths': ['/invite*', '/convites*'],
-        },
-      },
-      androidAppIdentifier: 'com.guarappari.app',
-      androidSha256CertFingerprints: [
-        'ED:07:87:5E:89:8A:4B:26:41:5B:C7:A9:19:44:84:D3:0A:A4:AD:52:BA:66:47:56:8F:62:EF:71:F0:FD:1A:54',
-      ],
-      iosTeamId: null,
-      iosBundleId: null,
-      iosPaths: ['/invite*', '/convites*'],
-    );
+        androidAppIdentifier: 'com.guarappari.app',
+        androidSha256CertFingerprints: [
+          'ED:07:87:5E:89:8A:4B:26:41:5B:C7:A9:19:44:84:D3:0A:A4:AD:52:BA:66:47:56:8F:62:EF:71:F0:FD:1A:54',
+        ],
+        iosTeamId: null,
+        iosBundleId: null,
+        iosPaths: ['/invite*', '/convites*'],
+      );
 
-    final updated = await repository.updateAppLinksSettings(settings: appLinks);
+      final updated = await repository.updateAppLinksSettings(
+        settings: appLinks,
+      );
 
-    expect(adapter.requests, hasLength(3));
-    expect(adapter.requests[0].method.toUpperCase(), 'GET');
-    expect(adapter.requests[0].uri.path, '/admin/api/v1/appdomains');
-    expect(adapter.requests[1].method.toUpperCase(), 'POST');
-    expect(adapter.requests[1].uri.path, '/admin/api/v1/appdomains');
-    expect(adapter.requests[2].method.toUpperCase(), 'PATCH');
-    expect(
-      adapter.requests[2].uri.path,
-      '/admin/api/v1/settings/values/app_links',
-    );
-    expect(updated.androidAppIdentifier, 'com.guarappari.app');
-    expect(
-      updated.androidSha256CertFingerprints,
-      equals([
-        'ED:07:87:5E:89:8A:4B:26:41:5B:C7:A9:19:44:84:D3:0A:A4:AD:52:BA:66:47:56:8F:62:EF:71:F0:FD:1A:54',
-      ]),
-    );
-  });
-
-  test('updateAppLinksSettings removes typed identifiers when cleared',
-      () async {
-    final adapter = _RoutingAdapter(
-      appDomainsPayload: {
-        'android': 'com.guarappari.app',
-        'ios': 'com.guarappari.app',
-      },
-    );
-    final scope = _MutableTenantScope('https://tenant-a.test');
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminSettingsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
-    final appLinks = buildTenantAdminAppLinksSettings(
-      rawAppLinks: {
-        'android': {
-          'sha256_cert_fingerprints': [],
-        },
-        'ios': {
-          'team_id': null,
-          'paths': ['/invite*'],
-        },
-      },
-      androidAppIdentifier: null,
-      androidSha256CertFingerprints: [],
-      iosTeamId: null,
-      iosBundleId: null,
-      iosPaths: ['/invite*'],
-    );
-
-    final updated = await repository.updateAppLinksSettings(settings: appLinks);
-
-    expect(adapter.requests, hasLength(4));
-    expect(adapter.requests[0].uri.path, '/admin/api/v1/appdomains');
-    expect(adapter.requests[1].uri.path, '/admin/api/v1/appdomains');
-    expect(adapter.requests[1].method.toUpperCase(), 'DELETE');
-    expect(adapter.requests[2].uri.path, '/admin/api/v1/appdomains');
-    expect(adapter.requests[2].method.toUpperCase(), 'DELETE');
-    expect(adapter.requests[3].uri.path,
-        '/admin/api/v1/settings/values/app_links');
-    expect(updated.androidAppIdentifier, isNull);
-    expect(updated.iosBundleId, isNull);
-  });
+      expect(adapter.requests, hasLength(3));
+      expect(adapter.requests[0].method.toUpperCase(), 'GET');
+      expect(adapter.requests[0].uri.path, '/admin/api/v1/appdomains');
+      expect(adapter.requests[1].method.toUpperCase(), 'POST');
+      expect(adapter.requests[1].uri.path, '/admin/api/v1/appdomains');
+      expect(adapter.requests[2].method.toUpperCase(), 'PATCH');
+      expect(
+        adapter.requests[2].uri.path,
+        '/admin/api/v1/settings/values/app_links',
+      );
+      expect(updated.androidAppIdentifier, 'com.guarappari.app');
+      expect(
+        updated.androidSha256CertFingerprints,
+        equals([
+          'ED:07:87:5E:89:8A:4B:26:41:5B:C7:A9:19:44:84:D3:0A:A4:AD:52:BA:66:47:56:8F:62:EF:71:F0:FD:1A:54',
+        ]),
+      );
+    },
+  );
 
   test(
-      'uploadMapFilterImage sends authenticated multipart payload and returns image uri',
-      () async {
-    final adapter = _RoutingAdapter();
-    final scope = _MutableTenantScope('https://tenant-a.test');
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminSettingsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
+    'updateAppLinksSettings removes typed identifiers when cleared',
+    () async {
+      final adapter = _RoutingAdapter(
+        appDomainsPayload: {
+          'android': 'com.guarappari.app',
+          'ios': 'com.guarappari.app',
+        },
+      );
+      final scope = _MutableTenantScope('https://tenant-a.test');
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminSettingsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+      final appLinks = buildTenantAdminAppLinksSettings(
+        rawAppLinks: {
+          'android': {'sha256_cert_fingerprints': []},
+          'ios': {
+            'team_id': null,
+            'paths': ['/invite*'],
+          },
+        },
+        androidAppIdentifier: null,
+        androidSha256CertFingerprints: [],
+        iosTeamId: null,
+        iosBundleId: null,
+        iosPaths: ['/invite*'],
+      );
 
-    final imageUri = await repository.uploadMapFilterImage(
-      key: _tokenValue('events'),
-      upload: tenantAdminMediaUploadFromRaw(
-        bytes: Uint8List.fromList([1, 2, 3, 4]),
-        fileName: 'events.png',
-        mimeType: 'image/png',
-      ),
-    );
+      final updated = await repository.updateAppLinksSettings(
+        settings: appLinks,
+      );
 
-    expect(imageUri,
-        'https://tenant-a.test/api/v1/media/map-filters/events?v=1710000000');
-    final request = adapter.requests.single;
-    expect(request.uri.path, '/admin/api/v1/media/map-filter-image');
-    expect(request.headers['Authorization'], 'Bearer test-token');
-    expect(request.headers['Accept'], 'application/json');
-    expect(request.data, isA<FormData>());
-    final formData = request.data as FormData;
-    expect(
-      formData.fields.any(
-        (entry) => entry.key == 'key' && entry.value == 'events',
-      ),
-      isTrue,
-    );
-    expect(
-      formData.files.any((entry) => entry.key == 'image'),
-      isTrue,
-    );
-  });
+      expect(adapter.requests, hasLength(4));
+      expect(adapter.requests[0].uri.path, '/admin/api/v1/appdomains');
+      expect(adapter.requests[1].uri.path, '/admin/api/v1/appdomains');
+      expect(adapter.requests[1].method.toUpperCase(), 'DELETE');
+      expect(adapter.requests[2].uri.path, '/admin/api/v1/appdomains');
+      expect(adapter.requests[2].method.toUpperCase(), 'DELETE');
+      expect(
+        adapter.requests[3].uri.path,
+        '/admin/api/v1/settings/values/app_links',
+      );
+      expect(updated.androidAppIdentifier, isNull);
+      expect(updated.iosBundleId, isNull);
+    },
+  );
 
   test(
-      'updateMapUiSettings after empty namespace fetch does not leak sibling namespaces',
-      () async {
-    final adapter = _RoutingAdapter(
-      settingsValuesPayload: {
-        'data': {
-          'map_ui': [],
-          'events': [],
-          'map_ingest': [],
-          'map_security': [],
-          'telemetry': [],
-          'push': [],
-          'firebase': [],
-        },
-      },
-    );
-    final scope = _MutableTenantScope('https://tenant-a.test');
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminSettingsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
+    'uploadMapFilterImage sends authenticated multipart payload and returns image uri',
+    () async {
+      final adapter = _RoutingAdapter();
+      final scope = _MutableTenantScope('https://tenant-a.test');
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminSettingsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
 
-    final fetched = await repository.fetchMapUiSettings();
-    final updated = await repository.updateMapUiSettings(
-      settings: fetched.applyDefaultOrigin(
-        TenantAdminMapDefaultOrigin(
-          lat: _latitudeValue(-20.611111),
-          lng: _longitudeValue(-40.422222),
-          label: _optionalTextValue('Praia do Morro'),
+      final imageUri = await repository.uploadMapFilterImage(
+        key: _tokenValue('events'),
+        upload: tenantAdminMediaUploadFromRaw(
+          bytes: Uint8List.fromList([1, 2, 3, 4]),
+          fileName: 'events.png',
+          mimeType: 'image/png',
         ),
-      ),
-    );
+      );
 
-    expect(adapter.requests, hasLength(2));
-    final request = adapter.requests.last;
-    final payload = Map<String, dynamic>.from(request.data as Map);
-    expect(
+      expect(
+        imageUri,
+        'https://tenant-a.test/api/v1/media/map-filters/events?v=1710000000',
+      );
+      final request = adapter.requests.single;
+      expect(request.uri.path, '/admin/api/v1/media/map-filter-image');
+      expect(request.headers['Authorization'], 'Bearer test-token');
+      expect(request.headers['Accept'], 'application/json');
+      expect(request.data, isA<FormData>());
+      final formData = request.data as FormData;
+      expect(
+        formData.fields.any(
+          (entry) => entry.key == 'key' && entry.value == 'events',
+        ),
+        isTrue,
+      );
+      expect(formData.files.any((entry) => entry.key == 'image'), isTrue);
+    },
+  );
+
+  test(
+    'updateMapUiSettings after empty namespace fetch does not leak sibling namespaces',
+    () async {
+      final adapter = _RoutingAdapter(
+        settingsValuesPayload: {
+          'data': {
+            'map_ui': [],
+            'events': [],
+            'map_ingest': [],
+            'map_security': [],
+            'telemetry': [],
+            'push': [],
+            'firebase': [],
+          },
+        },
+      );
+      final scope = _MutableTenantScope('https://tenant-a.test');
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminSettingsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      final fetched = await repository.fetchMapUiSettings();
+      final updated = await repository.updateMapUiSettings(
+        settings: fetched.applyDefaultOrigin(
+          TenantAdminMapDefaultOrigin(
+            lat: _latitudeValue(-20.611111),
+            lng: _longitudeValue(-40.422222),
+            label: _optionalTextValue('Praia do Morro'),
+          ),
+        ),
+      );
+
+      expect(adapter.requests, hasLength(2));
+      final request = adapter.requests.last;
+      final payload = Map<String, dynamic>.from(request.data as Map);
+      expect(
         payload.keys,
         unorderedEquals([
           'default_origin.lat',
           'default_origin.lng',
           'default_origin.label',
-        ]));
-    expect(payload.containsKey('events'), isFalse);
-    expect(payload.containsKey('telemetry'), isFalse);
-    expect(payload.containsKey('push'), isFalse);
-    expect(updated.defaultOrigin, isNotNull);
-    expect(updated.defaultOrigin!.lat, closeTo(-20.611111, 0.000001));
-    expect(updated.defaultOrigin!.lng, closeTo(-40.422222, 0.000001));
-    expect(updated.defaultOrigin!.label, 'Praia do Morro');
-  });
+        ]),
+      );
+      expect(payload.containsKey('events'), isFalse);
+      expect(payload.containsKey('telemetry'), isFalse);
+      expect(payload.containsKey('push'), isFalse);
+      expect(updated.defaultOrigin, isNotNull);
+      expect(updated.defaultOrigin!.lat, closeTo(-20.611111, 0.000001));
+      expect(updated.defaultOrigin!.lng, closeTo(-40.422222, 0.000001));
+      expect(updated.defaultOrigin!.label, 'Praia do Morro');
+    },
+  );
 
   test('upsertTelemetryIntegration returns snapshot', () async {
     final adapter = _RoutingAdapter();
@@ -1222,166 +1237,45 @@ void main() {
   });
 
   test(
-      'updateBranding sends multipart payload and reloads branding from tenant',
-      () async {
-    final adapter = _RoutingAdapter(
-      environmentPayload: {
-        'type': 'tenant',
-        'tenant_id': 'tenant-a',
-        'name': 'Guarappari',
-        'theme_data_settings': {
-          'brightness_default': 'dark',
-          'primary_seed_color': '#112233',
-          'secondary_seed_color': '#445566',
-        },
-        'branding_assets': {
-          'favicon': {
-            'has_dedicated_asset': true,
-            'uses_pwa_fallback': false,
+    'updateBranding sends multipart payload and reloads branding from tenant',
+    () async {
+      final adapter = _RoutingAdapter(
+        environmentPayload: {
+          'type': 'tenant',
+          'tenant_id': 'tenant-a',
+          'name': 'Guarappari',
+          'theme_data_settings': {
+            'brightness_default': 'dark',
+            'primary_seed_color': '#112233',
+            'secondary_seed_color': '#445566',
+          },
+          'branding_assets': {
+            'favicon': {
+              'has_dedicated_asset': true,
+              'uses_pwa_fallback': false,
+            },
+          },
+          'public_web_metadata': {
+            'default_title': 'Guarappari Home',
+            'default_description': 'Fallback institucional da home.',
+            'default_image':
+                'https://tenant-a.test/storage/public-web-updated.jpg',
+          },
+          'logo_settings': {
+            'pwa_icon': {
+              'icon512_uri': 'https://tenant-a.test/storage/pwa-icon.png',
+            },
           },
         },
-        'public_web_metadata': {
-          'default_title': 'Guarappari Home',
-          'default_description': 'Fallback institucional da home.',
-          'default_image':
-              'https://tenant-a.test/storage/public-web-updated.jpg',
-        },
-        'logo_settings': {
-          'pwa_icon': {
-            'icon512_uri': 'https://tenant-a.test/storage/pwa-icon.png',
-          },
-        },
-      },
-    );
-    final scope = _MutableTenantScope('https://tenant-a.test');
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminSettingsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
+      );
+      final scope = _MutableTenantScope('https://tenant-a.test');
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminSettingsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
 
-    final updated = await repository.updateBranding(
-      input: TenantAdminBrandingUpdateInput(
-        tenantName: _requiredTextValue('Guarappari'),
-        brightnessDefault: TenantAdminBrandingBrightness.dark,
-        primarySeedColor: _hexColorValue('#112233'),
-        secondarySeedColor: _hexColorValue('#445566'),
-        lightLogoUpload: tenantAdminMediaUploadFromRaw(
-          bytes: Uint8List.fromList([1, 2, 3]),
-          fileName: 'light_logo.png',
-          mimeType: 'image/png',
-        ),
-        faviconUpload: tenantAdminMediaUploadFromRaw(
-          bytes: Uint8List.fromList([0, 0, 1, 0, 1, 0, 16, 16]),
-          fileName: 'favicon.ico',
-          mimeType: 'image/x-icon',
-        ),
-        publicWebDefaultTitle: _optionalTextValue('Guarappari Home'),
-        publicWebDefaultDescription:
-            _optionalTextValue('Fallback institucional da home.'),
-        publicWebDefaultImageUpload: tenantAdminMediaUploadFromRaw(
-          bytes: Uint8List.fromList([1, 2, 3, 4]),
-          fileName: 'public_web.jpg',
-          mimeType: 'image/jpeg',
-        ),
-      ),
-    );
-
-    expect(adapter.requests, hasLength(2));
-    final postRequest = adapter.requests.first;
-    final environmentRequest = adapter.requests.last;
-
-    expect(postRequest.path, contains('/branding/update'));
-    expect(environmentRequest.uri.path, '/api/v1/environment');
-
-    final requestData = postRequest.data;
-    expect(requestData, isA<FormData>());
-
-    final formData = requestData as FormData;
-    expect(
-      formData.fields.any(
-        (item) => item.key == 'name' && item.value == 'Guarappari',
-      ),
-      isTrue,
-    );
-    expect(
-      formData.fields.any((item) =>
-          item.key == 'theme_data_settings[brightness_default]' &&
-          item.value == 'dark'),
-      isTrue,
-    );
-    expect(
-      formData.files.any(
-        (entry) => entry.key == 'logo_settings[light_logo_uri]',
-      ),
-      isTrue,
-    );
-    expect(
-      formData.files.any(
-        (entry) => entry.key == 'logo_settings[favicon_uri]',
-      ),
-      isTrue,
-    );
-    expect(
-      formData.fields.any(
-        (item) =>
-            item.key == 'public_web_metadata[default_title]' &&
-            item.value == 'Guarappari Home',
-      ),
-      isTrue,
-    );
-    expect(
-      formData.fields.any(
-        (item) =>
-            item.key == 'public_web_metadata[default_description]' &&
-            item.value == 'Fallback institucional da home.',
-      ),
-      isTrue,
-    );
-    expect(
-      formData.files.any(
-        (entry) => entry.key == 'public_web_metadata[default_image]',
-      ),
-      isTrue,
-    );
-    expect(updated.brightnessDefault, TenantAdminBrandingBrightness.dark);
-    expect(updated.primarySeedColor, '#112233');
-    expect(updated.secondarySeedColor, '#445566');
-    expect(updated.publicWebDefaultTitle, 'Guarappari Home');
-    expect(
-        updated.publicWebDefaultDescription, 'Fallback institucional da home.');
-    expect(
-      updated.publicWebDefaultImageUrl,
-      'https://tenant-a.test/storage/public-web-updated.jpg',
-    );
-    expect(updated.lightLogoUrl, contains('tenant-a.test/logo-light.png'));
-    expect(updated.faviconUrl, contains('tenant-a.test/favicon.ico'));
-    expect(updated.pwaIconUrl, 'https://tenant-a.test/storage/pwa-icon.png');
-    expect(updated.hasDedicatedFavicon, isTrue);
-    expect(updated.usesPwaFaviconFallback, isFalse);
-    expect(
-      repository.brandingSettingsStreamValue.value?.primarySeedColor,
-      '#112233',
-    );
-  });
-
-  test(
-      'updateBranding fails when refresh fails after POST (no optimistic fallback)',
-      () async {
-    final adapter = _RoutingAdapter(
-      environmentPayload: {
-        'type': 'landlord',
-      },
-    );
-    final scope = _MutableTenantScope('https://tenant-a.test');
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminSettingsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
-
-    await expectLater(
-      repository.updateBranding(
+      final updated = await repository.updateBranding(
         input: TenantAdminBrandingUpdateInput(
           tenantName: _requiredTextValue('Guarappari'),
           brightnessDefault: TenantAdminBrandingBrightness.dark,
@@ -1397,19 +1291,143 @@ void main() {
             fileName: 'favicon.ico',
             mimeType: 'image/x-icon',
           ),
-          pwaIconUpload: tenantAdminMediaUploadFromRaw(
-            bytes: Uint8List.fromList([4, 5, 6]),
-            fileName: 'pwa_icon.png',
-            mimeType: 'image/png',
+          publicWebDefaultTitle: _optionalTextValue('Guarappari Home'),
+          publicWebDefaultDescription: _optionalTextValue(
+            'Fallback institucional da home.',
+          ),
+          publicWebDefaultImageUpload: tenantAdminMediaUploadFromRaw(
+            bytes: Uint8List.fromList([1, 2, 3, 4]),
+            fileName: 'public_web.jpg',
+            mimeType: 'image/jpeg',
           ),
         ),
-      ),
-      throwsA(isA<Exception>()),
-    );
+      );
 
-    expect(adapter.requests, hasLength(2));
-    expect(repository.brandingSettingsStreamValue.value, isNull);
-  });
+      expect(adapter.requests, hasLength(2));
+      final postRequest = adapter.requests.first;
+      final environmentRequest = adapter.requests.last;
+
+      expect(postRequest.path, contains('/branding/update'));
+      expect(environmentRequest.uri.path, '/api/v1/environment');
+
+      final requestData = postRequest.data;
+      expect(requestData, isA<FormData>());
+
+      final formData = requestData as FormData;
+      expect(
+        formData.fields.any(
+          (item) => item.key == 'name' && item.value == 'Guarappari',
+        ),
+        isTrue,
+      );
+      expect(
+        formData.fields.any(
+          (item) =>
+              item.key == 'theme_data_settings[brightness_default]' &&
+              item.value == 'dark',
+        ),
+        isTrue,
+      );
+      expect(
+        formData.files.any(
+          (entry) => entry.key == 'logo_settings[light_logo_uri]',
+        ),
+        isTrue,
+      );
+      expect(
+        formData.files.any(
+          (entry) => entry.key == 'logo_settings[favicon_uri]',
+        ),
+        isTrue,
+      );
+      expect(
+        formData.fields.any(
+          (item) =>
+              item.key == 'public_web_metadata[default_title]' &&
+              item.value == 'Guarappari Home',
+        ),
+        isTrue,
+      );
+      expect(
+        formData.fields.any(
+          (item) =>
+              item.key == 'public_web_metadata[default_description]' &&
+              item.value == 'Fallback institucional da home.',
+        ),
+        isTrue,
+      );
+      expect(
+        formData.files.any(
+          (entry) => entry.key == 'public_web_metadata[default_image]',
+        ),
+        isTrue,
+      );
+      expect(updated.brightnessDefault, TenantAdminBrandingBrightness.dark);
+      expect(updated.primarySeedColor, '#112233');
+      expect(updated.secondarySeedColor, '#445566');
+      expect(updated.publicWebDefaultTitle, 'Guarappari Home');
+      expect(
+        updated.publicWebDefaultDescription,
+        'Fallback institucional da home.',
+      );
+      expect(
+        updated.publicWebDefaultImageUrl,
+        'https://tenant-a.test/storage/public-web-updated.jpg',
+      );
+      expect(updated.lightLogoUrl, contains('tenant-a.test/logo-light.png'));
+      expect(updated.faviconUrl, contains('tenant-a.test/favicon.ico'));
+      expect(updated.pwaIconUrl, 'https://tenant-a.test/storage/pwa-icon.png');
+      expect(updated.hasDedicatedFavicon, isTrue);
+      expect(updated.usesPwaFaviconFallback, isFalse);
+      expect(
+        repository.brandingSettingsStreamValue.value?.primarySeedColor,
+        '#112233',
+      );
+    },
+  );
+
+  test(
+    'updateBranding fails when refresh fails after POST (no optimistic fallback)',
+    () async {
+      final adapter = _RoutingAdapter(environmentPayload: {'type': 'landlord'});
+      final scope = _MutableTenantScope('https://tenant-a.test');
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminSettingsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      await expectLater(
+        repository.updateBranding(
+          input: TenantAdminBrandingUpdateInput(
+            tenantName: _requiredTextValue('Guarappari'),
+            brightnessDefault: TenantAdminBrandingBrightness.dark,
+            primarySeedColor: _hexColorValue('#112233'),
+            secondarySeedColor: _hexColorValue('#445566'),
+            lightLogoUpload: tenantAdminMediaUploadFromRaw(
+              bytes: Uint8List.fromList([1, 2, 3]),
+              fileName: 'light_logo.png',
+              mimeType: 'image/png',
+            ),
+            faviconUpload: tenantAdminMediaUploadFromRaw(
+              bytes: Uint8List.fromList([0, 0, 1, 0, 1, 0, 16, 16]),
+              fileName: 'favicon.ico',
+              mimeType: 'image/x-icon',
+            ),
+            pwaIconUpload: tenantAdminMediaUploadFromRaw(
+              bytes: Uint8List.fromList([4, 5, 6]),
+              fileName: 'pwa_icon.png',
+              mimeType: 'image/png',
+            ),
+          ),
+        ),
+        throwsA(isA<Exception>()),
+      );
+
+      expect(adapter.requests, hasLength(2));
+      expect(repository.brandingSettingsStreamValue.value, isNull);
+    },
+  );
 
   test('uses selected tenant scope dynamically between requests', () async {
     final adapter = _RoutingAdapter();
@@ -1444,301 +1462,317 @@ void main() {
     expect(snapshot.integrations.single.type, 'mixpanel');
     expect(snapshot.integrations.single.token, 'token-a');
     expect(
-        adapter.requests.single.uri.path, '/admin/api/v1/settings/telemetry');
-  });
-
-  test(
-      'upsertTelemetryIntegration posts telemetry payload to tenant admin endpoint',
-      () async {
-    final adapter = _RoutingAdapter();
-    final scope = _MutableTenantScope('https://tenant-a.test');
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminSettingsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
-
-    final snapshot = await repository.upsertTelemetryIntegration(
-      integration: TenantAdminTelemetryIntegration(
-        type: _tokenValue('mixpanel'),
-        trackAll: TenantAdminBooleanValue(defaultValue: false)..parse('false'),
-        eventValues: [_tokenValue('app_opened')],
-        token: TenantAdminOptionalTextValue()..parse('tenant-token'),
-      ),
-    );
-
-    expect(snapshot.integrations, hasLength(1));
-    expect(snapshot.integrations.single.type, 'mixpanel');
-    expect(snapshot.integrations.single.token, 'tenant-token');
-    expect(
-        adapter.requests.single.uri.path, '/admin/api/v1/settings/telemetry');
-    expect(adapter.requests.single.data, isA<Map<String, dynamic>>());
-    final payload = Map<String, dynamic>.from(
-      adapter.requests.single.data as Map<String, dynamic>,
-    );
-    expect(payload['type'], 'mixpanel');
-    expect(payload['events'], equals(['app_opened']));
-    expect(payload['token'], 'tenant-token');
-    expect(payload.containsKey('url'), isFalse);
-  });
-
-  test('deleteTelemetryIntegration deletes by type at tenant admin endpoint',
-      () async {
-    final adapter = _RoutingAdapter();
-    final scope = _MutableTenantScope('https://tenant-a.test');
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminSettingsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
-
-    final snapshot = await repository.deleteTelemetryIntegration(
-      type: _tokenValue('mixpanel'),
-    );
-
-    expect(snapshot.integrations, isEmpty);
-    expect(
       adapter.requests.single.uri.path,
-      '/admin/api/v1/settings/telemetry/mixpanel',
+      '/admin/api/v1/settings/telemetry',
     );
   });
 
   test(
-      'fetchBrandingSettings uses tenant-admin resolved origin for environment endpoint',
-      () async {
-    final adapter = _RoutingAdapter();
-    final scope = _FixedTenantScopeForOriginRead(
-      selectedTenantDomainValue: 'tenant-a.test',
-      selectedTenantAdminBaseUrlValue: 'http://tenant-a.test:8081/admin/api',
-    );
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminSettingsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
+    'upsertTelemetryIntegration posts telemetry payload to tenant admin endpoint',
+    () async {
+      final adapter = _RoutingAdapter();
+      final scope = _MutableTenantScope('https://tenant-a.test');
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminSettingsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
 
-    final branding = await repository.fetchBrandingSettings();
-    final request = adapter.requests.single;
+      final snapshot = await repository.upsertTelemetryIntegration(
+        integration: TenantAdminTelemetryIntegration(
+          type: _tokenValue('mixpanel'),
+          trackAll: TenantAdminBooleanValue(defaultValue: false)
+            ..parse('false'),
+          eventValues: [_tokenValue('app_opened')],
+          token: TenantAdminOptionalTextValue()..parse('tenant-token'),
+        ),
+      );
 
-    expect(request.uri.scheme, 'http');
-    expect(request.uri.host, 'tenant-a.test');
-    expect(request.uri.port, 8081);
-    expect(request.uri.path, '/api/v1/environment');
-    expect(request.uri.queryParameters['_ts'], isNotNull);
-    expect(request.headers['Authorization'], isNull);
-    expect(request.headers['Accept'], 'application/json');
-    expect(branding.primarySeedColor, '#A36CE3');
-    expect(branding.secondarySeedColor, '#03DAC6');
-    expect(
-      repository.brandingSettingsStreamValue.value?.secondarySeedColor,
-      '#03DAC6',
-    );
-  });
-
-  test('fetchBrandingSettings maps pwa icon URL from environment payload',
-      () async {
-    final adapter = _RoutingAdapter(
-      environmentPayload: {
-        'type': 'tenant',
-        'tenant_id': 'tenant-a',
-        'name': 'Guarappari Admin',
-        'theme_data_settings': {
-          'brightness_default': 'light',
-          'primary_seed_color': '#a36ce3',
-          'secondary_seed_color': '#03dac6',
-        },
-        'logo_settings': {
-          'pwa_icon': {
-            'icon512_uri': '/storage/pwa-icon-512.png',
-          },
-        },
-      },
-    );
-    final scope = _FixedTenantScopeForOriginRead(
-      selectedTenantDomainValue: 'tenant-a.test',
-      selectedTenantAdminBaseUrlValue: 'http://tenant-a.test:8081/admin/api',
-    );
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminSettingsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
-
-    final branding = await repository.fetchBrandingSettings();
-
-    expect(
-      branding.pwaIconUrl,
-      'http://tenant-a.test:8081/storage/pwa-icon-512.png',
-    );
-    expect(
-      repository.brandingSettingsStreamValue.value?.pwaIconUrl,
-      'http://tenant-a.test:8081/storage/pwa-icon-512.png',
-    );
-  });
+      expect(snapshot.integrations, hasLength(1));
+      expect(snapshot.integrations.single.type, 'mixpanel');
+      expect(snapshot.integrations.single.token, 'tenant-token');
+      expect(
+        adapter.requests.single.uri.path,
+        '/admin/api/v1/settings/telemetry',
+      );
+      expect(adapter.requests.single.data, isA<Map<String, dynamic>>());
+      final payload = Map<String, dynamic>.from(
+        adapter.requests.single.data as Map<String, dynamic>,
+      );
+      expect(payload['type'], 'mixpanel');
+      expect(payload['events'], equals(['app_opened']));
+      expect(payload['token'], 'tenant-token');
+      expect(payload.containsKey('url'), isFalse);
+    },
+  );
 
   test(
-      'fetchBrandingSettings maps public web metadata fields from environment payload',
-      () async {
-    final adapter = _RoutingAdapter(
-      environmentPayload: {
-        'type': 'tenant',
-        'tenant_id': 'tenant-a',
-        'name': 'Guarappari Admin',
-        'theme_data_settings': {
-          'brightness_default': 'light',
-          'primary_seed_color': '#a36ce3',
-          'secondary_seed_color': '#03dac6',
-        },
-        'public_web_metadata': {
-          'default_title': 'Guarappari Home',
-          'default_description': 'Fallback institucional da home.',
-          'default_image': '/storage/public-web.jpg',
-        },
-      },
-    );
-    final scope = _FixedTenantScopeForOriginRead(
-      selectedTenantDomainValue: 'tenant-a.test',
-      selectedTenantAdminBaseUrlValue: 'http://tenant-a.test:8081/admin/api',
-    );
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminSettingsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
+    'deleteTelemetryIntegration deletes by type at tenant admin endpoint',
+    () async {
+      final adapter = _RoutingAdapter();
+      final scope = _MutableTenantScope('https://tenant-a.test');
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminSettingsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
 
-    final branding = await repository.fetchBrandingSettings();
+      final snapshot = await repository.deleteTelemetryIntegration(
+        type: _tokenValue('mixpanel'),
+      );
 
-    expect(branding.publicWebDefaultTitle, 'Guarappari Home');
-    expect(
-      branding.publicWebDefaultDescription,
-      'Fallback institucional da home.',
-    );
-    expect(
-      branding.publicWebDefaultImageUrl,
-      'http://tenant-a.test:8081/storage/public-web.jpg',
-    );
-  });
+      expect(snapshot.integrations, isEmpty);
+      expect(
+        adapter.requests.single.uri.path,
+        '/admin/api/v1/settings/telemetry/mixpanel',
+      );
+    },
+  );
 
   test(
-      'fetchBrandingSettings ignores stale response from previous tenant scope',
-      () async {
-    final adapter = _RoutingAdapter(
-      environmentPayloadByHost: {
-        'tenant-a.test': {
+    'fetchBrandingSettings uses tenant-admin resolved origin for environment endpoint',
+    () async {
+      final adapter = _RoutingAdapter();
+      final scope = _FixedTenantScopeForOriginRead(
+        selectedTenantDomainValue: 'tenant-a.test',
+        selectedTenantAdminBaseUrlValue: 'http://tenant-a.test:8081/admin/api',
+      );
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminSettingsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      final branding = await repository.fetchBrandingSettings();
+      final request = adapter.requests.single;
+
+      expect(request.uri.scheme, 'http');
+      expect(request.uri.host, 'tenant-a.test');
+      expect(request.uri.port, 8081);
+      expect(request.uri.path, '/api/v1/environment');
+      expect(request.uri.queryParameters['_ts'], isNotNull);
+      expect(request.headers['Authorization'], isNull);
+      expect(request.headers['Accept'], 'application/json');
+      expect(branding.primarySeedColor, '#A36CE3');
+      expect(branding.secondarySeedColor, '#03DAC6');
+      expect(
+        repository.brandingSettingsStreamValue.value?.secondarySeedColor,
+        '#03DAC6',
+      );
+    },
+  );
+
+  test(
+    'fetchBrandingSettings maps pwa icon URL from environment payload',
+    () async {
+      final adapter = _RoutingAdapter(
+        environmentPayload: {
           'type': 'tenant',
           'tenant_id': 'tenant-a',
-          'name': 'Tenant A',
+          'name': 'Guarappari Admin',
           'theme_data_settings': {
             'brightness_default': 'light',
-            'primary_seed_color': '#111111',
-            'secondary_seed_color': '#222222',
+            'primary_seed_color': '#a36ce3',
+            'secondary_seed_color': '#03dac6',
+          },
+          'logo_settings': {
+            'pwa_icon': {'icon512_uri': '/storage/pwa-icon-512.png'},
           },
         },
-        'tenant-b.test': {
+      );
+      final scope = _FixedTenantScopeForOriginRead(
+        selectedTenantDomainValue: 'tenant-a.test',
+        selectedTenantAdminBaseUrlValue: 'http://tenant-a.test:8081/admin/api',
+      );
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminSettingsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      final branding = await repository.fetchBrandingSettings();
+
+      expect(
+        branding.pwaIconUrl,
+        'http://tenant-a.test:8081/storage/pwa-icon-512.png',
+      );
+      expect(
+        repository.brandingSettingsStreamValue.value?.pwaIconUrl,
+        'http://tenant-a.test:8081/storage/pwa-icon-512.png',
+      );
+    },
+  );
+
+  test(
+    'fetchBrandingSettings maps public web metadata fields from environment payload',
+    () async {
+      final adapter = _RoutingAdapter(
+        environmentPayload: {
           'type': 'tenant',
-          'tenant_id': 'tenant-b',
-          'name': 'Tenant B',
+          'tenant_id': 'tenant-a',
+          'name': 'Guarappari Admin',
           'theme_data_settings': {
-            'brightness_default': 'dark',
-            'primary_seed_color': '#333333',
-            'secondary_seed_color': '#444444',
+            'brightness_default': 'light',
+            'primary_seed_color': '#a36ce3',
+            'secondary_seed_color': '#03dac6',
+          },
+          'public_web_metadata': {
+            'default_title': 'Guarappari Home',
+            'default_description': 'Fallback institucional da home.',
+            'default_image': '/storage/public-web.jpg',
           },
         },
-      },
-      environmentDelayByHost: {
-        'tenant-a.test': Duration(milliseconds: 80),
-        'tenant-b.test': Duration(milliseconds: 5),
-      },
-    );
-    final scope = _MutableTenantScope('https://tenant-a.test');
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminSettingsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
+      );
+      final scope = _FixedTenantScopeForOriginRead(
+        selectedTenantDomainValue: 'tenant-a.test',
+        selectedTenantAdminBaseUrlValue: 'http://tenant-a.test:8081/admin/api',
+      );
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminSettingsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
 
-    final staleFetch = repository.fetchBrandingSettings();
-    scope.selectTenantDomain('https://tenant-b.test');
-    final currentFetch = repository.fetchBrandingSettings();
+      final branding = await repository.fetchBrandingSettings();
 
-    final current = await currentFetch;
-    final stale = await staleFetch;
+      expect(branding.publicWebDefaultTitle, 'Guarappari Home');
+      expect(
+        branding.publicWebDefaultDescription,
+        'Fallback institucional da home.',
+      );
+      expect(
+        branding.publicWebDefaultImageUrl,
+        'http://tenant-a.test:8081/storage/public-web.jpg',
+      );
+    },
+  );
 
-    expect(current.tenantName, 'Tenant B');
-    expect(stale.tenantName, 'Tenant A');
-    expect(
-        repository.brandingSettingsStreamValue.value?.tenantName, 'Tenant B');
-  });
-
-  test('clearBrandingSettings clears repository canonical branding stream',
-      () async {
-    final adapter = _RoutingAdapter();
-    final scope = _MutableTenantScope('https://tenant-a.test');
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminSettingsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
-
-    await repository.fetchBrandingSettings();
-    expect(repository.brandingSettingsStreamValue.value, isNotNull);
-
-    repository.clearBrandingSettings();
-    expect(repository.brandingSettingsStreamValue.value, isNull);
-  });
-
-  test('fetchBrandingSettings fails when tenant scope is missing (no fallback)',
-      () async {
-    final adapter = _RoutingAdapter();
-    final scope = _NoTenantScope();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminSettingsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
-
-    await expectLater(
-      repository.fetchBrandingSettings(),
-      throwsA(isA<StateError>()),
-    );
-    expect(adapter.requests, isEmpty);
-  });
-
-  test('fetchBrandingSettings fails for non-tenant environment payload',
-      () async {
-    final adapter = _RoutingAdapter(
-      environmentPayload: {
-        'type': 'landlord',
-        'name': 'Belluga',
-        'theme_data_settings': {
-          'brightness_default': 'light',
-          'primary_seed_color': '#a36ce3',
-          'secondary_seed_color': '#03dac6',
+  test(
+    'fetchBrandingSettings ignores stale response from previous tenant scope',
+    () async {
+      final adapter = _RoutingAdapter(
+        environmentPayloadByHost: {
+          'tenant-a.test': {
+            'type': 'tenant',
+            'tenant_id': 'tenant-a',
+            'name': 'Tenant A',
+            'theme_data_settings': {
+              'brightness_default': 'light',
+              'primary_seed_color': '#111111',
+              'secondary_seed_color': '#222222',
+            },
+          },
+          'tenant-b.test': {
+            'type': 'tenant',
+            'tenant_id': 'tenant-b',
+            'name': 'Tenant B',
+            'theme_data_settings': {
+              'brightness_default': 'dark',
+              'primary_seed_color': '#333333',
+              'secondary_seed_color': '#444444',
+            },
+          },
         },
-      },
-    );
-    final scope = _FixedTenantScopeForOriginRead(
-      selectedTenantDomainValue: 'tenant-a.test',
-      selectedTenantAdminBaseUrlValue: 'http://tenant-a.test:8081/admin/api',
-    );
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminSettingsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
+        environmentDelayByHost: {
+          'tenant-a.test': Duration(milliseconds: 80),
+          'tenant-b.test': Duration(milliseconds: 5),
+        },
+      );
+      final scope = _MutableTenantScope('https://tenant-a.test');
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminSettingsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
 
-    await expectLater(
-      repository.fetchBrandingSettings(),
-      throwsA(isA<Exception>()),
-    );
-  });
+      final staleFetch = repository.fetchBrandingSettings();
+      scope.selectTenantDomain('https://tenant-b.test');
+      final currentFetch = repository.fetchBrandingSettings();
+
+      final current = await currentFetch;
+      final stale = await staleFetch;
+
+      expect(current.tenantName, 'Tenant B');
+      expect(stale.tenantName, 'Tenant A');
+      expect(
+        repository.brandingSettingsStreamValue.value?.tenantName,
+        'Tenant B',
+      );
+    },
+  );
+
+  test(
+    'clearBrandingSettings clears repository canonical branding stream',
+    () async {
+      final adapter = _RoutingAdapter();
+      final scope = _MutableTenantScope('https://tenant-a.test');
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminSettingsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      await repository.fetchBrandingSettings();
+      expect(repository.brandingSettingsStreamValue.value, isNotNull);
+
+      repository.clearBrandingSettings();
+      expect(repository.brandingSettingsStreamValue.value, isNull);
+    },
+  );
+
+  test(
+    'fetchBrandingSettings fails when tenant scope is missing (no fallback)',
+    () async {
+      final adapter = _RoutingAdapter();
+      final scope = _NoTenantScope();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminSettingsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      await expectLater(
+        repository.fetchBrandingSettings(),
+        throwsA(isA<StateError>()),
+      );
+      expect(adapter.requests, isEmpty);
+    },
+  );
+
+  test(
+    'fetchBrandingSettings fails for non-tenant environment payload',
+    () async {
+      final adapter = _RoutingAdapter(
+        environmentPayload: {
+          'type': 'landlord',
+          'name': 'Belluga',
+          'theme_data_settings': {
+            'brightness_default': 'light',
+            'primary_seed_color': '#a36ce3',
+            'secondary_seed_color': '#03dac6',
+          },
+        },
+      );
+      final scope = _FixedTenantScopeForOriginRead(
+        selectedTenantDomainValue: 'tenant-a.test',
+        selectedTenantAdminBaseUrlValue: 'http://tenant-a.test:8081/admin/api',
+      );
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminSettingsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      await expectLater(
+        repository.fetchBrandingSettings(),
+        throwsA(isA<Exception>()),
+      );
+    },
+  );
 
   test('fetchBrandingSettings fails when theme settings are missing', () async {
     final adapter = _RoutingAdapter(
-      environmentPayload: {
-        'type': 'tenant',
-        'name': 'Guarappari Admin',
-      },
+      environmentPayload: {'type': 'tenant', 'name': 'Guarappari Admin'},
     );
     final scope = _FixedTenantScopeForOriginRead(
       selectedTenantDomainValue: 'tenant-a.test',
@@ -1764,9 +1798,7 @@ TenantAdminPositiveIntValue _positiveIntValue(int raw) {
 }
 
 TenantAdminResendEmailRecipients _recipients(Iterable<String> values) {
-  return TenantAdminResendEmailRecipients(
-    values.map(_emailAddressValue),
-  );
+  return TenantAdminResendEmailRecipients(values.map(_emailAddressValue));
 }
 
 List<String> _recipientStrings(TenantAdminResendEmailRecipients values) {
@@ -1849,8 +1881,9 @@ class _StubAuthRepo implements LandlordAuthRepositoryContract {
 
   @override
   Future<void> loginWithEmailPassword(
-      LandlordAuthRepositoryContractPrimString email,
-      LandlordAuthRepositoryContractPrimString password) async {}
+    LandlordAuthRepositoryContractPrimString email,
+    LandlordAuthRepositoryContractPrimString password,
+  ) async {}
 
   @override
   Future<void> logout() async {}
@@ -1882,10 +1915,12 @@ class _MutableTenantScope implements TenantAdminTenantScopeContract {
 
   @override
   void selectTenantDomain(Object tenantDomain) {
-    _selectedTenantDomainStreamValue.addValue((tenantDomain is String
-            ? tenantDomain
-            : (tenantDomain as dynamic).value as String)
-        .trim());
+    _selectedTenantDomainStreamValue.addValue(
+      (tenantDomain is String
+              ? tenantDomain
+              : (tenantDomain as dynamic).value as String)
+          .trim(),
+    );
   }
 }
 
@@ -1919,10 +1954,12 @@ class _FixedTenantScopeForOriginRead implements TenantAdminTenantScopeContract {
 
   @override
   void selectTenantDomain(Object tenantDomain) {
-    _selectedTenantDomainStreamValue.addValue((tenantDomain is String
-            ? tenantDomain
-            : (tenantDomain as dynamic).value as String)
-        .trim());
+    _selectedTenantDomainStreamValue.addValue(
+      (tenantDomain is String
+              ? tenantDomain
+              : (tenantDomain as dynamic).value as String)
+          .trim(),
+    );
   }
 }
 
@@ -1948,10 +1985,12 @@ class _NoTenantScope implements TenantAdminTenantScopeContract {
 
   @override
   void selectTenantDomain(Object tenantDomain) {
-    _selectedTenantDomainStreamValue.addValue((tenantDomain is String
-            ? tenantDomain
-            : (tenantDomain as dynamic).value as String)
-        .trim());
+    _selectedTenantDomainStreamValue.addValue(
+      (tenantDomain is String
+              ? tenantDomain
+              : (tenantDomain as dynamic).value as String)
+          .trim(),
+    );
   }
 }
 
@@ -1969,59 +2008,58 @@ class _RoutingAdapter implements HttpClientAdapter {
     Map<String, dynamic>? appDomainsPayload,
     List<Map<String, dynamic>>? pushCredentialsPayload,
     Map<String, bool>? typedAppDomainPersistedByPlatform,
-  })  : _appDomainsPayload = Map<String, dynamic>.from(
-          appDomainsPayload ??
-              {
-                'android': 'com.guarappari.app',
-                'ios': 'com.guarappari.app',
-              },
-        ),
-        _typedAppDomainPersistedByPlatform = Map<String, bool>.from(
-          typedAppDomainPersistedByPlatform ??
-              {
-                if ((appDomainsPayload?['android'] as String?)
-                        ?.trim()
-                        .isNotEmpty ??
-                    true)
-                  'android': true,
-                if ((appDomainsPayload?['ios'] as String?)?.trim().isNotEmpty ??
-                    true)
-                  'ios': true,
-              },
-        ),
-        _pushCredentialsPayload = (pushCredentialsPayload ??
-                [
-                  {
-                    'id': 'push-credential-1',
-                    'project_id': 'project-a',
-                    'client_email': 'push-service@tenant-a.test',
-                  },
-                ])
-            .map((entry) => Map<String, dynamic>.from(entry))
-            .toList(growable: true),
-        _domainsPayload = (domainsPayload ??
-                [
-                  {
-                    'id': 'domain-1',
-                    'path': 'tenant-a.test',
-                    'type': 'web',
-                    'status': 'active',
-                    'created_at': '2026-04-01T10:00:00Z',
-                    'updated_at': '2026-04-01T10:00:00Z',
-                    'deleted_at': null,
-                  },
-                  {
-                    'id': 'domain-2',
-                    'path': 'tenant-old.test',
-                    'type': 'web',
-                    'status': 'deleted',
-                    'created_at': '2026-03-01T10:00:00Z',
-                    'updated_at': '2026-03-01T10:00:00Z',
-                    'deleted_at': '2026-04-02T10:00:00Z',
-                  },
-                ])
-            .map((entry) => Map<String, dynamic>.from(entry))
-            .toList(growable: true);
+  }) : _appDomainsPayload = Map<String, dynamic>.from(
+         appDomainsPayload ??
+             {'android': 'com.guarappari.app', 'ios': 'com.guarappari.app'},
+       ),
+       _typedAppDomainPersistedByPlatform = Map<String, bool>.from(
+         typedAppDomainPersistedByPlatform ??
+             {
+               if ((appDomainsPayload?['android'] as String?)
+                       ?.trim()
+                       .isNotEmpty ??
+                   true)
+                 'android': true,
+               if ((appDomainsPayload?['ios'] as String?)?.trim().isNotEmpty ??
+                   true)
+                 'ios': true,
+             },
+       ),
+       _pushCredentialsPayload =
+           (pushCredentialsPayload ??
+                   [
+                     {
+                       'id': 'push-credential-1',
+                       'project_id': 'project-a',
+                       'client_email': 'push-service@tenant-a.test',
+                     },
+                   ])
+               .map((entry) => Map<String, dynamic>.from(entry))
+               .toList(growable: true),
+       _domainsPayload =
+           (domainsPayload ??
+                   [
+                     {
+                       'id': 'domain-1',
+                       'path': 'tenant-a.test',
+                       'type': 'web',
+                       'status': 'active',
+                       'created_at': '2026-04-01T10:00:00Z',
+                       'updated_at': '2026-04-01T10:00:00Z',
+                       'deleted_at': null,
+                     },
+                     {
+                       'id': 'domain-2',
+                       'path': 'tenant-old.test',
+                       'type': 'web',
+                       'status': 'deleted',
+                       'created_at': '2026-03-01T10:00:00Z',
+                       'updated_at': '2026-03-01T10:00:00Z',
+                       'deleted_at': '2026-04-02T10:00:00Z',
+                     },
+                   ])
+               .map((entry) => Map<String, dynamic>.from(entry))
+               .toList(growable: true);
 
   final Map<String, dynamic>? environmentPayload;
   final Map<String, Map<String, dynamic>>? environmentPayloadByHost;
@@ -2055,7 +2093,8 @@ class _RoutingAdapter implements HttpClientAdapter {
       return _jsonResponse({
         'data': {
           'apiKey': 'api-key-a',
-          'appId': 'app-id-a',
+          'androidAppId': 'app-id-a',
+          'iosAppId': 'ios-app-id-a',
           'projectId': 'project-a',
           'messagingSenderId': 'sender-a',
           'storageBucket': 'bucket-a',
@@ -2070,14 +2109,12 @@ class _RoutingAdapter implements HttpClientAdapter {
 
     if (path.endsWith('/settings/push') && method == 'GET') {
       return _jsonResponse({
-        'data': pushSettingsPayload ??
+        'data':
+            pushSettingsPayload ??
             {
               'enabled': false,
               'max_ttl_days': 30,
-              'throttles': {
-                'max_per_minute': 60,
-                'max_per_hour': 600,
-              },
+              'throttles': {'max_per_minute': 60, 'max_per_hour': 600},
             },
       });
     }
@@ -2085,19 +2122,14 @@ class _RoutingAdapter implements HttpClientAdapter {
     if (path.endsWith('/settings/push') && method == 'PATCH') {
       final request = options.data as Map<String, dynamic>;
       return _jsonResponse({
-        'data': {
-          ...request,
-          'enabled': false,
-        },
+        'data': {...request, 'enabled': false},
       });
     }
 
     if (path.endsWith('/settings/push/status') && method == 'GET') {
       return _jsonResponse(
         pushStatusPayload ??
-            const <String, dynamic>{
-              'status': 'not_configured',
-            },
+            const <String, dynamic>{'status': 'not_configured'},
       );
     }
 
@@ -2106,10 +2138,7 @@ class _RoutingAdapter implements HttpClientAdapter {
         'data': {
           'enabled': true,
           'max_ttl_days': 30,
-          'throttles': {
-            'max_per_minute': 60,
-            'max_per_hour': 600,
-          },
+          'throttles': {'max_per_minute': 60, 'max_per_hour': 600},
         },
       });
     }
@@ -2119,10 +2148,7 @@ class _RoutingAdapter implements HttpClientAdapter {
         'data': {
           'enabled': false,
           'max_ttl_days': 30,
-          'throttles': {
-            'max_per_minute': 60,
-            'max_per_hour': 600,
-          },
+          'throttles': {'max_per_minute': 60, 'max_per_hour': 600},
         },
       });
     }
@@ -2145,9 +2171,7 @@ class _RoutingAdapter implements HttpClientAdapter {
       _pushCredentialsPayload
         ..clear()
         ..add(nextCredential);
-      return _jsonResponse({
-        'data': nextCredential,
-      });
+      return _jsonResponse({'data': nextCredential});
     }
 
     if (path.endsWith('/settings/values') && method == 'GET') {
@@ -2196,15 +2220,8 @@ class _RoutingAdapter implements HttpClientAdapter {
                   'code_hash': r'$2y$12$fixture-review-code-hash',
                 },
                 'map_ui': {
-                  'radius': {
-                    'min_km': 1,
-                    'default_km': 5,
-                    'max_km': 50,
-                  },
-                  'poi_time_window_days': {
-                    'past': 0,
-                    'future': 0,
-                  },
+                  'radius': {'min_km': 1, 'default_km': 5, 'max_km': 50},
+                  'poi_time_window_days': {'past': 0, 'future': 0},
                   'default_origin': {
                     'lat': -20.6736,
                     'lng': -40.4976,
@@ -2238,9 +2255,7 @@ class _RoutingAdapter implements HttpClientAdapter {
 
     if (path.endsWith('/appdomains') && method == 'GET') {
       return _jsonResponse({
-        'data': {
-          'app_domains': Map<String, dynamic>.from(_appDomainsPayload),
-        },
+        'data': {'app_domains': Map<String, dynamic>.from(_appDomainsPayload)},
       });
     }
 
@@ -2253,9 +2268,7 @@ class _RoutingAdapter implements HttpClientAdapter {
         _typedAppDomainPersistedByPlatform[platform] = true;
       }
       return _jsonResponse({
-        'data': {
-          'app_domains': Map<String, dynamic>.from(_appDomainsPayload),
-        },
+        'data': {'app_domains': Map<String, dynamic>.from(_appDomainsPayload)},
       });
     }
 
@@ -2267,19 +2280,15 @@ class _RoutingAdapter implements HttpClientAdapter {
         _typedAppDomainPersistedByPlatform[platform] = false;
       }
       return _jsonResponse({
-        'data': {
-          'app_domains': Map<String, dynamic>.from(_appDomainsPayload),
-        },
+        'data': {'app_domains': Map<String, dynamic>.from(_appDomainsPayload)},
       });
     }
 
     if (path.endsWith('/domains') && method == 'GET') {
       final queryParameters = options.uri.queryParameters;
       final page = int.tryParse(queryParameters['page']?.toString() ?? '') ?? 1;
-      final perPage = int.tryParse(
-            queryParameters['per_page']?.toString() ?? '',
-          ) ??
-          15;
+      final perPage =
+          int.tryParse(queryParameters['per_page']?.toString() ?? '') ?? 15;
       final start = (page - 1) * perPage;
       final end = start + perPage > _domainsPayload.length
           ? _domainsPayload.length
@@ -2302,15 +2311,12 @@ class _RoutingAdapter implements HttpClientAdapter {
     if (path.endsWith('/domains') && method == 'POST') {
       final request = Map<String, dynamic>.from(options.data as Map);
       if (createDomainValidationMessage != null) {
-        return _jsonResponse(
-          {
-            'message': createDomainValidationMessage,
-            'errors': {
-              'path': [createDomainValidationMessage],
-            },
+        return _jsonResponse({
+          'message': createDomainValidationMessage,
+          'errors': {
+            'path': [createDomainValidationMessage],
           },
-          statusCode: 422,
-        );
+        }, statusCode: 422);
       }
       final next = <String, dynamic>{
         'id': 'domain-${_domainsPayload.length + 1}',
@@ -2334,9 +2340,7 @@ class _RoutingAdapter implements HttpClientAdapter {
     if (path.endsWith('/settings/values/map_ui') && method == 'PATCH') {
       final request = Map<String, dynamic>.from(options.data as Map);
       return _jsonResponse({
-        'data': {
-          'map_ui': _expandDotPayload(request),
-        },
+        'data': {'map_ui': _expandDotPayload(request)},
       });
     }
 
@@ -2344,9 +2348,7 @@ class _RoutingAdapter implements HttpClientAdapter {
         method == 'PATCH') {
       final request = Map<String, dynamic>.from(options.data as Map);
       return _jsonResponse({
-        'data': {
-          'discovery_filters': request,
-        },
+        'data': {'discovery_filters': request},
       });
     }
 
@@ -2356,32 +2358,25 @@ class _RoutingAdapter implements HttpClientAdapter {
           request['android.sha256_cert_fingerprints'] as List<dynamic>?;
       if ((androidFingerprints?.isNotEmpty ?? false) &&
           _typedAppDomainPersistedByPlatform['android'] != true) {
-        return _jsonResponse(
-          {
-            'message':
-                'Configure Android app identifier before saving fingerprints.',
-            'errors': {
-              'android.sha256_cert_fingerprints': [
-                'Configure Android app identifier before saving fingerprints.',
-              ],
-            },
+        return _jsonResponse({
+          'message':
+              'Configure Android app identifier before saving fingerprints.',
+          'errors': {
+            'android.sha256_cert_fingerprints': [
+              'Configure Android app identifier before saving fingerprints.',
+            ],
           },
-          statusCode: 422,
-        );
+        }, statusCode: 422);
       }
       return _jsonResponse({
-        'data': {
-          'app_links': _expandDotPayload(request),
-        },
+        'data': {'app_links': _expandDotPayload(request)},
       });
     }
 
     if (path.endsWith('/settings/values/resend_email') && method == 'PATCH') {
       final request = Map<String, dynamic>.from(options.data as Map);
       return _jsonResponse({
-        'data': {
-          'resend_email': _expandDotPayload(request),
-        },
+        'data': {'resend_email': _expandDotPayload(request)},
       });
     }
 
@@ -2389,9 +2384,7 @@ class _RoutingAdapter implements HttpClientAdapter {
         method == 'PATCH') {
       final request = Map<String, dynamic>.from(options.data as Map);
       return _jsonResponse({
-        'data': {
-          'outbound_integrations': _expandDotPayload(request),
-        },
+        'data': {'outbound_integrations': _expandDotPayload(request)},
       });
     }
 
@@ -2399,18 +2392,14 @@ class _RoutingAdapter implements HttpClientAdapter {
         method == 'PATCH') {
       final request = Map<String, dynamic>.from(options.data as Map);
       return _jsonResponse({
-        'data': {
-          'phone_otp_review_access': _expandDotPayload(request),
-        },
+        'data': {'phone_otp_review_access': _expandDotPayload(request)},
       });
     }
 
     if (path.endsWith('/settings/values/phone_otp_review_access/hash') &&
         method == 'POST') {
       return _jsonResponse({
-        'data': {
-          'code_hash': r'$2y$12$generated-review-code-hash',
-        },
+        'data': {'code_hash': r'$2y$12$generated-review-code-hash'},
       });
     }
 

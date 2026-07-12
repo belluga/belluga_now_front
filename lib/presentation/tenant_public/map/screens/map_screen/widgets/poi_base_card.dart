@@ -627,23 +627,31 @@ class _CardActionIconButton extends StatelessWidget {
 
   final String tooltip;
   final IconData icon;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isEnabled = onTap != null;
+    final iconColor = isEnabled
+        ? scheme.onSurfaceVariant
+        : scheme.onSurfaceVariant.withValues(alpha: 0.38);
     return Tooltip(
       message: tooltip,
-      child: Material(
-        color: scheme.surfaceContainerHighest,
-        shape: const CircleBorder(),
-        child: InkWell(
-          onTap: onTap,
-          customBorder: const CircleBorder(),
-          child: SizedBox(
-            width: 40,
-            height: 40,
-            child: Icon(icon, size: 20, color: scheme.onSurfaceVariant),
+      child: Semantics(
+        button: true,
+        enabled: isEnabled,
+        child: Material(
+          color: scheme.surfaceContainerHighest,
+          shape: const CircleBorder(),
+          child: InkWell(
+            onTap: onTap,
+            customBorder: const CircleBorder(),
+            child: SizedBox(
+              width: 40,
+              height: 40,
+              child: Icon(icon, size: 20, color: iconColor),
+            ),
           ),
         ),
       ),

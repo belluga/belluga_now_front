@@ -35,6 +35,8 @@ migrate_working_dir/
 .pub/
 /build/
 tool/belluga_custom_lint/build/
+/packages/*/build/
+/packages/*/pubspec.lock
 
 # Symbolication related
 app.*.symbols
@@ -53,7 +55,10 @@ app.*.map.json
 # FVM Version Cache
 .fvm/
 
-/android/keystores/
+/android/keystores/*
+!/android/keystores/README.recovery.txt
+!/android/keystores/tenant.signing.properties.example
+!/android/flavors/tenant.public.properties.example
 
 # DELPHI-AI
 AGENTS.md

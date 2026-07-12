@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_form_validation/belluga_form_validation.dart';
+import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
 import 'package:belluga_now/application/rich_text/tenant_admin_rich_text_limits.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
@@ -33,6 +34,7 @@ import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admi
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_xfile_preview.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_html/flutter_html.dart' hide Marker;
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -1042,12 +1044,9 @@ class _TenantAdminEventFormScreenState
                     item: programmingItems[itemIndex].value,
                   ),
                   leading: Text(programmingItems[itemIndex].value.time),
-                  title: Text(
-                    programmingItems[itemIndex].value.title ??
-                        TenantAdminEventOccurrenceEditorDraft.firstProgrammingProfileName(
-                          programmingItems[itemIndex].value,
-                        ) ??
-                        'Item sem título',
+                  title: _buildPrimaryOccurrenceProgrammingItemTitle(
+                    context,
+                    programmingItems[itemIndex].value,
                   ),
                   subtitle: _buildProgrammingItemSubtitle(
                     programmingItems[itemIndex].value,
@@ -1072,6 +1071,40 @@ class _TenantAdminEventFormScreenState
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildPrimaryOccurrenceProgrammingItemTitle(
+    BuildContext context,
+    TenantAdminEventProgrammingItem item,
+  ) {
+    final titleHtml = SafeRichHtml.canonicalize(item.title?.trim() ?? '');
+    if (SafeRichHtml.isEffectivelyEmpty(titleHtml)) {
+      return Text(
+        TenantAdminEventOccurrenceEditorDraft.firstProgrammingProfileName(
+              item,
+            ) ??
+            'Item sem título',
+      );
+    }
+
+    final colorScheme = Theme.of(context).colorScheme;
+    return Html(
+      data: titleHtml,
+      style: {
+        'body': Style(
+          margin: Margins.zero,
+          padding: HtmlPaddings.zero,
+          color: colorScheme.onSurface,
+          fontSize: FontSize(
+            Theme.of(context).textTheme.bodyLarge?.fontSize ?? 16,
+          ),
+          lineHeight: const LineHeight(1.35),
+        ),
+        'p': Style(margin: Margins.only(bottom: 8)),
+        'strong': Style(fontWeight: FontWeight.w800),
+        'br': Style(display: Display.block),
+      },
     );
   }
 

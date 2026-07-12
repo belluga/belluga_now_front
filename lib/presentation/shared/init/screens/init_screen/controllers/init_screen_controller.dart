@@ -159,10 +159,21 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
     }
     // loadingStatusStreamValue.addValue("É bom te ver por aqui!");
     // loadingStatusStreamValue.addValue("Ajustando últimos detalhes!");
-    await _invitesRepository.init();
+    await _initializeInvitesBestEffort();
     await _resolveDeferredInviteFirstOpenPath();
     _determinedRoute = _resolveInitialRoute();
     // await _initializeBehavior();
+  }
+
+  Future<void> _initializeInvitesBestEffort() async {
+    try {
+      await _invitesRepository.init();
+    } catch (error, stackTrace) {
+      debugPrint(
+        'InitScreenController invites bootstrap failed; '
+        'continuing without pending invites: $error\n$stackTrace',
+      );
+    }
   }
 
   Future<void> _resolveDeferredInviteFirstOpenPath() async {
