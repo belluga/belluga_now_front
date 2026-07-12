@@ -188,10 +188,10 @@ void main() {
 
       final plan = await resolver.resolvePlan();
 
-      expect(
-        plan.routes.map((route) => route.routeName).toList(),
-        <String>[TenantHomeRoute.name, InviteFlowRoute.name],
-      );
+      expect(plan.routes.map((route) => route.routeName).toList(), <String>[
+        TenantHomeRoute.name,
+        InviteFlowRoute.name,
+      ]);
       expect(invitesRepository.initCallCount, 0);
       expect(invitesRepository.refreshPendingInvitesCallCount, 1);
     },
