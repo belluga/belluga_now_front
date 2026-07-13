@@ -179,9 +179,18 @@ void main() {
 
       final timeRect = tester.getRect(find.text('10:00'));
       final titleRect = tester.getRect(find.text('Mesa colaborativa'));
+      final cardRect = tester.getRect(
+        find.byKey(const Key('eventProgrammingItem_0')),
+      );
 
       expect(timeRect.top, lessThan(titleRect.top));
       expect(timeRect.left, greaterThanOrEqualTo(titleRect.left - 1));
+      expect(
+        titleRect.left - cardRect.left,
+        lessThanOrEqualTo(64),
+        reason:
+            'The timeline rail must not regress into the former wide leading time gutter.',
+      );
     },
   );
 

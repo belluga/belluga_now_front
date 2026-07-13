@@ -2806,7 +2806,7 @@ void main() {
   );
 
   testWidgets(
-    'occurrence programming cards reserve drag for sequential items and keep identities through controller operations',
+    'occurrence programming cards insert and reorder sequential items through the admin UI while keeping identities stable',
     (tester) async {
       final eventsRepository = _FakeEventsRepository();
       final taxonomiesRepository = _FakeTaxonomiesRepository();
@@ -2886,19 +2886,54 @@ void main() {
       final fixedEntry = originalEntries.first;
       final sequentialEntry = originalEntries.last;
 
-      controller.moveOccurrenceProgrammingItem(
-        occurrenceKey: occurrenceKey,
-        itemKey: sequentialEntry.key,
-        targetIndex: 0,
+      await _addOccurrenceProgrammingFromInsertionAction(
+        tester,
+        insertAction: find.byKey(
+          const Key('tenantAdminOccurrenceProgrammingInsert_1'),
+        ),
+        title: 'Ponte sequencial',
       );
+      await tester.pumpAndSettle();
+
+      final entriesAfterInsertion = controller.programmingItemsForOccurrenceKey(
+        occurrenceKey,
+      );
+      expect(entriesAfterInsertion[0].key, fixedEntry.key);
+      expect(entriesAfterInsertion[2].key, sequentialEntry.key);
+      expect(entriesAfterInsertion.map((entry) => entry.value.title), [
+        _programmingTitleContains('Abertura fixa'),
+        _programmingTitleContains('Ponte sequencial'),
+        _programmingTitleContains('Intervenção sequencial'),
+      ]);
+
+      final sequentialDragHandle = find.byKey(
+        const Key('tenantAdminOccurrenceProgrammingDrag_2'),
+      );
+      await tester.ensureVisible(sequentialDragHandle);
+      final firstItemRect = tester.getRect(
+        find.byKey(const Key('tenantAdminOccurrenceProgrammingItem_0')),
+      );
+      final drag = await tester.startGesture(
+        tester.getCenter(sequentialDragHandle),
+      );
+      await tester.pump();
+      await drag.moveTo(Offset(firstItemRect.center.dx, firstItemRect.top + 2));
+      await tester.pump();
+      await drag.up();
+      await tester.pumpAndSettle();
 
       final movedEntries = controller.programmingItemsForOccurrenceKey(
         occurrenceKey,
       );
       expect(movedEntries.map((entry) => entry.key), [
-        sequentialEntry.key,
         fixedEntry.key,
+        sequentialEntry.key,
+        entriesAfterInsertion[1].key,
       ]);
+      expect(
+        tester.getTopLeft(find.text('Intervenção sequencial')).dy,
+        lessThan(tester.getTopLeft(find.text('Ponte sequencial')).dy),
+      );
 
       controller.moveOccurrenceProgrammingItem(
         occurrenceKey: occurrenceKey,
@@ -2909,27 +2944,97 @@ void main() {
         controller
             .programmingItemsForOccurrenceKey(occurrenceKey)
             .map((entry) => entry.key),
-        [sequentialEntry.key, fixedEntry.key],
+        [fixedEntry.key, sequentialEntry.key, entriesAfterInsertion[1].key],
+      );
+    },
+  );
+
+  testWidgets(
+    'primary occurrence programming inserts and reorders sequential items through the admin UI',
+    (tester) async {
+      final eventsRepository = _FakeEventsRepository();
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
       );
 
-      controller.insertOccurrenceProgrammingItem(
-        occurrenceKey: occurrenceKey,
-        index: 1,
-        item: TenantAdminEventProgrammingItem(
-          titleValue: tenantAdminOptionalText('Ponte sequencial'),
+      eventsRepository.eventTypes = [
+        TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439203'),
+          nameValue: tenantAdminRequiredText('Feira'),
+          slugValue: tenantAdminRequiredText('feira'),
         ),
+      ];
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(body: TenantAdminEventFormScreen()),
+      );
+      await _fillRequiredFields(tester, controller: controller);
+      await tester.pumpAndSettle();
+
+      await _addPrimaryOccurrenceProgrammingTitleOnly(
+        tester,
+        time: '09:00',
+        title: 'Abertura principal',
+      );
+      await _addPrimaryOccurrenceProgrammingUntimedTitleOnly(
+        tester,
+        title: 'Intervenção principal',
       );
 
-      final insertedEntries = controller.programmingItemsForOccurrenceKey(
+      await _addPrimaryOccurrenceProgrammingFromInsertionAction(
+        tester,
+        insertAction: find.byKey(
+          const Key('tenantAdminPrimaryOccurrenceProgrammingInsert_1'),
+        ),
+        title: 'Ponte principal',
+      );
+      await tester.pumpAndSettle();
+
+      final occurrenceKey = controller.primaryOccurrenceKey()!;
+      final entriesAfterInsertion = controller.programmingItemsForOccurrenceKey(
         occurrenceKey,
       );
-      expect(insertedEntries[0].key, sequentialEntry.key);
-      expect(insertedEntries[2].key, fixedEntry.key);
-      expect(insertedEntries.map((entry) => entry.value.title), [
-        _programmingTitleContains('Intervenção sequencial'),
-        _programmingTitleContains('Ponte sequencial'),
-        _programmingTitleContains('Abertura fixa'),
+      final fixedEntry = entriesAfterInsertion.first;
+      final insertedEntry = entriesAfterInsertion[1];
+      final sequentialEntry = entriesAfterInsertion.last;
+      expect(entriesAfterInsertion.map((entry) => entry.value.title), [
+        _programmingTitleContains('Abertura principal'),
+        _programmingTitleContains('Ponte principal'),
+        _programmingTitleContains('Intervenção principal'),
       ]);
+
+      final sequentialDragHandle = find.byKey(
+        const Key('tenantAdminPrimaryOccurrenceProgrammingDrag_2'),
+      );
+      await tester.ensureVisible(sequentialDragHandle);
+      final firstItemRect = tester.getRect(
+        find.byKey(const Key('tenantAdminPrimaryOccurrenceProgrammingItem_0')),
+      );
+      final drag = await tester.startGesture(
+        tester.getCenter(sequentialDragHandle),
+      );
+      await tester.pump();
+      await drag.moveTo(Offset(firstItemRect.center.dx, firstItemRect.top + 2));
+      await tester.pump();
+      await drag.up();
+      await tester.pumpAndSettle();
+
+      final movedEntries = controller.programmingItemsForOccurrenceKey(
+        occurrenceKey,
+      );
+      expect(movedEntries.map((entry) => entry.key), [
+        fixedEntry.key,
+        sequentialEntry.key,
+        insertedEntry.key,
+      ]);
+      expect(
+        tester.getTopLeft(find.text('Intervenção principal')).dy,
+        lessThan(tester.getTopLeft(find.text('Ponte principal')).dy),
+      );
     },
   );
 
@@ -6185,6 +6290,78 @@ Future<void> _addOccurrenceProgrammingUntimedTitleOnly(
   );
   await _enterProgrammingTitle(tester, title);
   await _setProgrammingTimedState(tester, isTimed: false);
+  await _tapProgrammingSaveButton(tester);
+}
+
+Future<void> _addOccurrenceProgrammingFromInsertionAction(
+  WidgetTester tester, {
+  required Finder insertAction,
+  required String title,
+}) async {
+  await _bringIntoView(tester, insertAction);
+  await tester.tap(insertAction.hitTestable().last, warnIfMissed: false);
+  await tester.pumpAndSettle();
+  await _setProgrammingTimedState(tester, isTimed: false);
+  await _enterProgrammingTitle(tester, title);
+  await _tapProgrammingSaveButton(tester);
+}
+
+Future<void> _addPrimaryOccurrenceProgrammingTitleOnly(
+  WidgetTester tester, {
+  required String time,
+  required String title,
+}) async {
+  final addButton = find.byKey(
+    const Key('tenantAdminPrimaryOccurrenceAddProgrammingButton'),
+  );
+  await tester.scrollUntilVisible(
+    addButton,
+    250,
+    scrollable: find.byType(Scrollable).first,
+  );
+  await tester.tap(addButton);
+  await tester.pumpAndSettle();
+  await tester.enterText(
+    find.byKey(const Key('tenantAdminProgrammingTimeField')),
+    time,
+  );
+  await _enterProgrammingTitle(tester, title);
+  await _tapProgrammingSaveButton(tester);
+}
+
+Future<void> _addPrimaryOccurrenceProgrammingUntimedTitleOnly(
+  WidgetTester tester, {
+  required String title,
+}) async {
+  final addButton = find.byKey(
+    const Key('tenantAdminPrimaryOccurrenceAddProgrammingButton'),
+  );
+  await tester.scrollUntilVisible(
+    addButton,
+    250,
+    scrollable: find.byType(Scrollable).first,
+  );
+  await tester.tap(addButton);
+  await tester.pumpAndSettle();
+  await _setProgrammingTimedState(tester, isTimed: false);
+  await _enterProgrammingTitle(tester, title);
+  await _tapProgrammingSaveButton(tester);
+}
+
+Future<void> _addPrimaryOccurrenceProgrammingFromInsertionAction(
+  WidgetTester tester, {
+  required Finder insertAction,
+  required String title,
+}) async {
+  await tester.scrollUntilVisible(
+    insertAction,
+    250,
+    scrollable: find.byType(Scrollable).first,
+  );
+  await tester.tap(insertAction);
+  await tester.pumpAndSettle();
+  await _setProgrammingTimedState(tester, isTimed: false);
+  await _enterProgrammingTitle(tester, title);
   await _tapProgrammingSaveButton(tester);
 }
 
