@@ -1,4 +1,5 @@
 import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
+import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/partners/account_profile_gallery_group.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
@@ -13,6 +14,9 @@ import 'package:belluga_now/domain/partners/value_objects/account_profile_nested
 import 'package:belluga_now/domain/partners/value_objects/account_profile_public_detail_path_value.dart';
 import 'package:belluga_now/domain/repositories/value_objects/account_profiles_repository_taxonomy_filter.dart';
 import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
+import 'package:belluga_now/domain/shared/account_profile_contact_source_summary.dart';
+import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_channel_id_value.dart';
+import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_source_account_profile_id_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
@@ -408,6 +412,26 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           locationLongitudeValue = LongitudeValue()
             ..parse(locationCoordinates.$2.toString());
         }
+        final contactMode = BellugaContactSourceMode.fromRaw(
+          json['contact_mode']?.toString(),
+        );
+        final contactSourceAccountProfileId = _parseNullableText(
+          json['contact_source_account_profile_id'],
+        );
+        final contactChannels = BellugaContactChannelCodec.channelsFromJson(
+          json['contact_channels'],
+        );
+        final effectiveContactChannels =
+            BellugaContactChannelCodec.channelsFromJson(
+              json['effective_contact_channels'],
+            );
+        final effectiveContactBubbleChannel =
+            BellugaContactChannelCodec.channelFromJson(
+              json['effective_contact_bubble_channel'],
+            );
+        final contactBubbleChannelId = _parseNullableText(
+          json['contact_bubble_channel_id'],
+        );
         profiles.add(
           AccountProfileModel(
             idValue: MongoIDValue()..parse(id),
@@ -438,6 +462,24 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
             publicDetailPathValue: publicDetailPath == null
                 ? null
                 : AccountProfilePublicDetailPathValue(publicDetailPath),
+            contactMode: contactMode,
+            contactSourceAccountProfileId: contactSourceAccountProfileId == null
+                ? null
+                : AccountProfileContactSourceAccountProfileIdValue(
+                    contactSourceAccountProfileId,
+                  ),
+            contactChannelValues: contactChannels,
+            contactBubbleChannelId: contactBubbleChannelId == null
+                ? null
+                : AccountProfileContactChannelIdValue(contactBubbleChannelId),
+            effectiveContactChannelValues: effectiveContactChannels,
+            effectiveContactBubbleChannelValue: effectiveContactBubbleChannel,
+            contactSourceProfile: _parseContactSourceSummary(
+              json['contact_source_account_profile'],
+            ),
+            effectiveContactSourceProfile: _parseContactSourceSummary(
+              json['effective_contact_source'],
+            ),
           ),
         );
       } catch (_) {
@@ -466,6 +508,33 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     }
 
     return allowUnavailableSentinel ? _publicUnavailableProfileLabel : null;
+  }
+
+  String? _parseNullableText(Object? raw) {
+    final normalized = raw?.toString().trim();
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+    return normalized;
+  }
+
+  AccountProfileContactSourceSummary? _parseContactSourceSummary(Object? raw) {
+    if (raw is! Map) {
+      return null;
+    }
+    final json = Map<String, dynamic>.from(raw);
+    final id = _parseNullableText(json['id']);
+    final displayName = _parseNullableText(json['display_name']);
+    final profileType = _parseNullableText(json['profile_type']);
+    if (id == null || displayName == null || profileType == null) {
+      return null;
+    }
+    return AccountProfileContactSourceSummary(
+      id: id,
+      displayName: displayName,
+      slug: _parseNullableText(json['slug']),
+      profileType: profileType,
+    );
   }
 
   String? _resolvePublicSlug({String? payloadSlug, String? routeSlugFallback}) {

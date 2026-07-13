@@ -73,6 +73,17 @@ class TenantAdminAccountProfilesController implements Disposable {
   final StreamValue<List<TenantAdminAccountProfile>>
   nestedProfileCandidatesStreamValue =
       StreamValue<List<TenantAdminAccountProfile>>(defaultValue: const []);
+  final StreamValue<List<TenantAdminAccountProfile>>
+  contactSourceCandidatesStreamValue =
+      StreamValue<List<TenantAdminAccountProfile>>(defaultValue: const []);
+  final StreamValue<bool> contactSourceCandidatesLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> contactSourceCandidatesPageLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> contactSourceCandidatesHasMoreStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<String?> contactSourceCandidatesErrorStreamValue =
+      StreamValue<String?>();
   final StreamValue<bool> nestedProfileSearchLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
   final StreamValue<bool> nestedProfileSearchPageLoadingStreamValue =
@@ -175,6 +186,11 @@ class TenantAdminAccountProfilesController implements Disposable {
   int _nestedProfileCandidatesRequestToken = 0;
   String _nestedProfileCandidatesQuery = '';
   String? _nestedProfileCandidatesExcludeProfileId;
+  int _contactSourceCandidatesCurrentPage = 0;
+  int _contactSourceCandidatesRequestToken = 0;
+  String? _contactSourceCandidatesExcludeProfileId;
+  bool _isFetchingContactSourceCandidates = false;
+  bool _contactSourceCandidatesReloadQueued = false;
 
   StreamValue<TenantAdminAccount?> get accountStreamValue =>
       _accountDetailStreamValue;
@@ -301,6 +317,111 @@ class TenantAdminAccountProfilesController implements Disposable {
       isInitial: true,
       requestToken: requestToken,
     );
+  }
+
+  Future<void> loadContactSourceCandidates({String? excludeProfileId}) async {
+    _contactSourceCandidatesExcludeProfileId = excludeProfileId?.trim();
+    _contactSourceCandidatesCurrentPage = 0;
+    final requestToken = _contactSourceCandidatesRequestToken + 1;
+    _contactSourceCandidatesRequestToken = requestToken;
+    contactSourceCandidatesStreamValue.addValue(const []);
+    contactSourceCandidatesHasMoreStreamValue.addValue(false);
+    contactSourceCandidatesErrorStreamValue.addValue(null);
+    await _loadContactSourceCandidatesPage(
+      isInitial: true,
+      requestToken: requestToken,
+    );
+  }
+
+  Future<void> loadNextContactSourceCandidatesPage() async {
+    if (_isFetchingContactSourceCandidates ||
+        !contactSourceCandidatesHasMoreStreamValue.value) {
+      return;
+    }
+    await _loadContactSourceCandidatesPage(
+      isInitial: false,
+      requestToken: _contactSourceCandidatesRequestToken,
+    );
+  }
+
+  Future<void> _loadContactSourceCandidatesPage({
+    required bool isInitial,
+    required int requestToken,
+  }) async {
+    if (_isFetchingContactSourceCandidates) {
+      if (isInitial) {
+        _contactSourceCandidatesReloadQueued = true;
+      }
+      return;
+    }
+    _isFetchingContactSourceCandidates = true;
+    if (isInitial) {
+      contactSourceCandidatesLoadingStreamValue.addValue(true);
+    } else {
+      contactSourceCandidatesPageLoadingStreamValue.addValue(true);
+    }
+    try {
+      final page = await _profilesRepository.fetchContactSourceCandidatesPage(
+        page: tenantAdminAccountProfilesRepoInt(
+          isInitial ? 1 : _contactSourceCandidatesCurrentPage + 1,
+          defaultValue: 1,
+        ),
+        pageSize: tenantAdminAccountProfilesRepoInt(50, defaultValue: 50),
+        excludeAccountProfileId:
+            _contactSourceCandidatesExcludeProfileId == null ||
+                _contactSourceCandidatesExcludeProfileId!.isEmpty
+            ? null
+            : tenantAdminAccountProfilesRepoString(
+                _contactSourceCandidatesExcludeProfileId!,
+              ),
+      );
+      if (_isDisposed || requestToken != _contactSourceCandidatesRequestToken) {
+        return;
+      }
+      final merged = isInitial
+          ? page.items
+          : _mergeAccountProfiles(
+              contactSourceCandidatesStreamValue.value,
+              page.items,
+            );
+      _contactSourceCandidatesCurrentPage =
+          page.pagination?.currentPage ??
+          (isInitial ? 1 : _contactSourceCandidatesCurrentPage + 1);
+      contactSourceCandidatesStreamValue.addValue(merged);
+      contactSourceCandidatesHasMoreStreamValue.addValue(page.hasMore);
+      contactSourceCandidatesErrorStreamValue.addValue(null);
+    } catch (error) {
+      if (_isDisposed || requestToken != _contactSourceCandidatesRequestToken) {
+        return;
+      }
+      // A later-page failure must not erase an already useful, server-owned
+      // candidate set. The picker can still render and select the first page;
+      // a subsequent initial load retries from the canonical endpoint.
+      if (isInitial) {
+        contactSourceCandidatesStreamValue.addValue(const []);
+      }
+      contactSourceCandidatesHasMoreStreamValue.addValue(false);
+      contactSourceCandidatesErrorStreamValue.addValue(error.toString());
+    } finally {
+      _isFetchingContactSourceCandidates = false;
+      if (!_isDisposed &&
+          requestToken == _contactSourceCandidatesRequestToken) {
+        if (isInitial) {
+          contactSourceCandidatesLoadingStreamValue.addValue(false);
+        } else {
+          contactSourceCandidatesPageLoadingStreamValue.addValue(false);
+        }
+      }
+      if (_contactSourceCandidatesReloadQueued && !_isDisposed) {
+        _contactSourceCandidatesReloadQueued = false;
+        unawaited(
+          _loadContactSourceCandidatesPage(
+            isInitial: true,
+            requestToken: _contactSourceCandidatesRequestToken,
+          ),
+        );
+      }
+    }
   }
 
   void searchNestedProfileCandidates(String query) {
@@ -572,6 +693,7 @@ class TenantAdminAccountProfilesController implements Disposable {
             .syncRemoteState(profile),
       );
       unawaited(loadNestedProfileCandidates(excludeProfileId: profile.id));
+      unawaited(loadContactSourceCandidates(excludeProfileId: profile.id));
       _removeAvatarOnSubmit = false;
       _removeCoverOnSubmit = false;
     } catch (error) {
@@ -590,6 +712,156 @@ class TenantAdminAccountProfilesController implements Disposable {
     );
   }
 
+  void updateEditContactMode(BellugaContactSourceMode mode) {
+    _updateEditState(editStateStreamValue.value.copyWith(contactMode: mode));
+  }
+
+  void updateEditContactSourceAccountProfileId(String? profileId) {
+    final normalized = profileId?.trim();
+    _updateEditState(
+      editStateStreamValue.value.copyWith(
+        contactSourceAccountProfileId: normalized == null || normalized.isEmpty
+            ? null
+            : normalized,
+      ),
+    );
+  }
+
+  void updateEditContactBubbleChannelId(String? channelId) {
+    final normalized = channelId?.trim();
+    _updateEditState(
+      editStateStreamValue.value.copyWith(
+        contactBubbleSelection: normalized == null || normalized.isEmpty
+            ? const BellugaContactBubbleSelectionMutation.clear()
+            : BellugaContactBubbleSelectionMutation.setPersisted(normalized),
+      ),
+    );
+  }
+
+  void addEditContactChannel(BellugaContactChannelType type) {
+    final drafts = editStateStreamValue.value.contactChannelDrafts;
+    if (drafts.length >= BellugaContactChannelDraftValidator.maxChannels) {
+      reportEditErrorMessage('Limite de canais de contato atingido.');
+      return;
+    }
+    _updateEditState(
+      editStateStreamValue.value.copyWith(
+        contactChannelDrafts: <BellugaContactChannelDraft>[
+          ...drafts,
+          BellugaContactChannelDraft(
+            draftKey: _newContactDraftKey(type),
+            type: type,
+            value: '',
+          ),
+        ],
+      ),
+    );
+  }
+
+  void updateEditContactChannel(BellugaContactChannelDraft draft) {
+    _updateEditState(
+      editStateStreamValue.value.copyWith(
+        contactChannelDrafts: _replaceContactDraft(
+          editStateStreamValue.value.contactChannelDrafts,
+          draft,
+        ),
+      ),
+    );
+  }
+
+  void removeEditContactChannel(String draftKey) {
+    final state = editStateStreamValue.value;
+    final removedDraft = _findContactDraft(
+      state.contactChannelDrafts,
+      draftKey,
+    );
+    final next = state.contactChannelDrafts
+        .where((draft) => draft.draftKey != draftKey)
+        .toList(growable: false);
+    _updateEditState(
+      state.copyWith(
+        contactChannelDrafts: next,
+        expandedContactCtaDraftKey: state.expandedContactCtaDraftKey == draftKey
+            ? null
+            : state.expandedContactCtaDraftKey,
+        contactBubbleSelection: _bubbleSelectionAfterRemoval(
+          state.contactBubbleSelection,
+          removedDraft,
+        ),
+      ),
+    );
+  }
+
+  void selectEditContactBubble(
+    BellugaContactChannelDraft draft,
+    bool selected,
+  ) {
+    _updateEditState(
+      editStateStreamValue.value.copyWith(
+        contactBubbleSelection: selected
+            ? _bubbleSelectionForDraft(draft)
+            : const BellugaContactBubbleSelectionMutation.clear(),
+      ),
+    );
+  }
+
+  void toggleEditContactCtaEditor(String draftKey) {
+    final state = editStateStreamValue.value;
+    final draft = _findContactDraft(state.contactChannelDrafts, draftKey);
+    if (draft == null || !draft.definition.capabilities.messagePresets) return;
+    _updateEditState(
+      state.copyWith(
+        expandedContactCtaDraftKey: state.expandedContactCtaDraftKey == draftKey
+            ? null
+            : draftKey,
+      ),
+    );
+  }
+
+  void addEditContactInitialMessage(String draftKey) {
+    final draft = _requireEditContactDraft(draftKey);
+    if (!_canAddContactInitialMessage(draft)) {
+      reportEditErrorMessage('Limite de CTAs do WhatsApp atingido.');
+      return;
+    }
+    updateEditContactChannel(
+      draft.copyWith(
+        initialMessages: <BellugaContactInitialMessage>[
+          ...draft.initialMessages,
+          _newContactInitialMessage(),
+        ],
+      ),
+    );
+  }
+
+  void updateEditContactInitialMessage(
+    String draftKey,
+    BellugaContactInitialMessage message,
+  ) {
+    final draft = _requireEditContactDraft(draftKey);
+    updateEditContactChannel(
+      draft.copyWith(
+        initialMessages: draft.initialMessages
+            .map((entry) => entry.id == message.id ? message : entry)
+            .toList(growable: false),
+      ),
+    );
+  }
+
+  void removeEditContactInitialMessageFromChannel(
+    String draftKey,
+    String messageId,
+  ) {
+    final draft = _requireEditContactDraft(draftKey);
+    updateEditContactChannel(
+      draft.copyWith(
+        initialMessages: draft.initialMessages
+            .where((entry) => entry.id != messageId)
+            .toList(growable: false),
+      ),
+    );
+  }
+
   void updateEditLoading(bool isLoading) {
     editLoadingStreamValue.addValue(isLoading);
   }
@@ -600,6 +872,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     _updateEditState(
       editStateStreamValue.value.copyWith().syncRemoteState(profile),
     );
+    unawaited(loadContactSourceCandidates(excludeProfileId: profile.id));
     _removeAvatarOnSubmit = false;
     _removeCoverOnSubmit = false;
   }
@@ -718,7 +991,13 @@ class TenantAdminAccountProfilesController implements Disposable {
     String? coverUrl,
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
         const <TenantAdminNestedProfileGroup>[],
+    required BellugaContactSourceMode contactMode,
+    String? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft>? contactChannelDrafts,
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) async {
+    if (createSubmittingStreamValue.value) return;
     createSubmittingStreamValue.addValue(true);
     try {
       await createProfile(
@@ -734,6 +1013,10 @@ class TenantAdminAccountProfilesController implements Disposable {
         avatarUrl: avatarUrl,
         coverUrl: coverUrl,
         nestedProfileGroups: nestedProfileGroups,
+        contactMode: contactMode,
+        contactSourceAccountProfileId: contactSourceAccountProfileId,
+        contactChannelDrafts: contactChannelDrafts,
+        bubbleSelection: bubbleSelection,
       );
       if (_isDisposed) return;
       createErrorMessageStreamValue.addValue(null);
@@ -815,7 +1098,13 @@ class TenantAdminAccountProfilesController implements Disposable {
     bool? removeCover,
     List<TenantAdminAccountProfileGalleryUpdateGroup>? galleryGroups,
     List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
+    BellugaContactSourceMode? contactMode,
+    String? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft>? contactChannelDrafts,
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) async {
+    if (editSubmittingStreamValue.value) return;
     editSubmittingStreamValue.addValue(true);
     try {
       final updated = await updateProfile(
@@ -834,6 +1123,10 @@ class TenantAdminAccountProfilesController implements Disposable {
         removeAvatar: removeAvatar ?? _removeAvatarOnSubmit,
         removeCover: removeCover ?? _removeCoverOnSubmit,
         nestedProfileGroups: nestedProfileGroups,
+        contactMode: contactMode,
+        contactSourceAccountProfileId: contactSourceAccountProfileId,
+        contactChannelDrafts: contactChannelDrafts,
+        bubbleSelection: bubbleSelection,
       );
       final finalProfile =
           _shouldSkipGalleryUpdate(
@@ -993,6 +1286,158 @@ class TenantAdminAccountProfilesController implements Disposable {
   void updateCreateSelectedProfileType(String? profileType) {
     _updateCreateState(
       createStateStreamValue.value.copyWith(selectedProfileType: profileType),
+    );
+  }
+
+  void updateCreateContactMode(BellugaContactSourceMode mode) {
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(contactMode: mode),
+    );
+  }
+
+  void updateCreateContactSourceAccountProfileId(String? profileId) {
+    final normalized = profileId?.trim();
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(
+        contactSourceAccountProfileId: normalized == null || normalized.isEmpty
+            ? null
+            : normalized,
+      ),
+    );
+  }
+
+  void updateCreateContactBubbleChannelId(String? channelId) {
+    final normalized = channelId?.trim();
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(
+        contactBubbleSelection: normalized == null || normalized.isEmpty
+            ? const BellugaContactBubbleSelectionMutation.clear()
+            : BellugaContactBubbleSelectionMutation.setPersisted(normalized),
+      ),
+    );
+  }
+
+  void addCreateContactChannel(BellugaContactChannelType type) {
+    final drafts = createStateStreamValue.value.contactChannelDrafts;
+    if (drafts.length >= BellugaContactChannelDraftValidator.maxChannels) {
+      reportCreateErrorMessage('Limite de canais de contato atingido.');
+      return;
+    }
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(
+        contactChannelDrafts: <BellugaContactChannelDraft>[
+          ...drafts,
+          BellugaContactChannelDraft(
+            draftKey: _newContactDraftKey(type),
+            type: type,
+            value: '',
+          ),
+        ],
+      ),
+    );
+  }
+
+  void updateCreateContactChannel(BellugaContactChannelDraft draft) {
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(
+        contactChannelDrafts: _replaceContactDraft(
+          createStateStreamValue.value.contactChannelDrafts,
+          draft,
+        ),
+      ),
+    );
+  }
+
+  void removeCreateContactChannel(String draftKey) {
+    final state = createStateStreamValue.value;
+    final removedDraft = _findContactDraft(
+      state.contactChannelDrafts,
+      draftKey,
+    );
+    final next = state.contactChannelDrafts
+        .where((draft) => draft.draftKey != draftKey)
+        .toList(growable: false);
+    _updateCreateState(
+      state.copyWith(
+        contactChannelDrafts: next,
+        expandedContactCtaDraftKey: state.expandedContactCtaDraftKey == draftKey
+            ? null
+            : state.expandedContactCtaDraftKey,
+        contactBubbleSelection: _bubbleSelectionAfterRemoval(
+          state.contactBubbleSelection,
+          removedDraft,
+        ),
+      ),
+    );
+  }
+
+  void selectCreateContactBubble(
+    BellugaContactChannelDraft draft,
+    bool selected,
+  ) {
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(
+        contactBubbleSelection: selected
+            ? _bubbleSelectionForDraft(draft)
+            : const BellugaContactBubbleSelectionMutation.clear(),
+      ),
+    );
+  }
+
+  void toggleCreateContactCtaEditor(String draftKey) {
+    final state = createStateStreamValue.value;
+    final draft = _findContactDraft(state.contactChannelDrafts, draftKey);
+    if (draft == null || !draft.definition.capabilities.messagePresets) return;
+    _updateCreateState(
+      state.copyWith(
+        expandedContactCtaDraftKey: state.expandedContactCtaDraftKey == draftKey
+            ? null
+            : draftKey,
+      ),
+    );
+  }
+
+  void addCreateContactInitialMessage(String draftKey) {
+    final draft = _requireCreateContactDraft(draftKey);
+    if (!_canAddContactInitialMessage(draft)) {
+      reportCreateErrorMessage('Limite de CTAs do WhatsApp atingido.');
+      return;
+    }
+    updateCreateContactChannel(
+      draft.copyWith(
+        initialMessages: <BellugaContactInitialMessage>[
+          ...draft.initialMessages,
+          _newContactInitialMessage(),
+        ],
+      ),
+    );
+  }
+
+  void updateCreateContactInitialMessage(
+    String draftKey,
+    BellugaContactInitialMessage message,
+  ) {
+    final draft = _requireCreateContactDraft(draftKey);
+    updateCreateContactChannel(
+      draft.copyWith(
+        initialMessages: draft.initialMessages
+            .map((entry) => entry.id == message.id ? message : entry)
+            .toList(growable: false),
+      ),
+    );
+  }
+
+  void removeCreateContactInitialMessageFromChannel(
+    String draftKey,
+    String messageId,
+  ) {
+    final draft = _requireCreateContactDraft(draftKey);
+    updateCreateContactChannel(
+      draft.copyWith(
+        initialMessages: draft.initialMessages
+            .where((entry) => entry.id != messageId)
+            .toList(growable: false),
+      ),
     );
   }
 
@@ -1679,6 +2124,11 @@ class TenantAdminAccountProfilesController implements Disposable {
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
         const <TenantAdminNestedProfileGroup>[],
+    BellugaContactSourceMode contactMode = BellugaContactSourceMode.own,
+    String? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft>? contactChannelDrafts,
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) async {
     final filtered = _filterCapabilities(
       profileType: profileType,
@@ -1691,22 +2141,30 @@ class TenantAdminAccountProfilesController implements Disposable {
       avatarUpload: avatarUpload,
       coverUpload: coverUpload,
     );
+    final accountIdValue = tenantAdminAccountProfilesRepoString(
+      accountId,
+      defaultValue: '',
+      isRequired: true,
+    );
+    final profileTypeValue = tenantAdminAccountProfilesRepoString(
+      profileType,
+      defaultValue: '',
+      isRequired: true,
+    );
+    final displayNameValue = tenantAdminAccountProfilesRepoString(
+      displayName,
+      defaultValue: '',
+      isRequired: true,
+    );
+    final contactSourceValue =
+        contactSourceAccountProfileId == null ||
+            contactSourceAccountProfileId.trim().isEmpty
+        ? null
+        : tenantAdminAccountProfilesRepoString(contactSourceAccountProfileId);
     final profile = await _profilesRepository.createAccountProfile(
-      accountId: tenantAdminAccountProfilesRepoString(
-        accountId,
-        defaultValue: '',
-        isRequired: true,
-      ),
-      profileType: tenantAdminAccountProfilesRepoString(
-        profileType,
-        defaultValue: '',
-        isRequired: true,
-      ),
-      displayName: tenantAdminAccountProfilesRepoString(
-        displayName,
-        defaultValue: '',
-        isRequired: true,
-      ),
+      accountId: accountIdValue,
+      profileType: profileTypeValue,
+      displayName: displayNameValue,
       location: filtered.location,
       taxonomyTerms: filtered.taxonomyTerms,
       bio: filtered.bio == null
@@ -1724,6 +2182,11 @@ class TenantAdminAccountProfilesController implements Disposable {
       avatarUpload: filtered.avatarUpload,
       coverUpload: filtered.coverUpload,
       nestedProfileGroups: nestedProfileGroups,
+      contactMode: contactMode,
+      contactSourceAccountProfileId: contactSourceValue,
+      contactChannelDrafts:
+          contactChannelDrafts ?? const <BellugaContactChannelDraft>[],
+      bubbleSelection: bubbleSelection,
     );
     if (!_isDisposed) {
       accountProfileStreamValue.addValue(profile);
@@ -1748,6 +2211,11 @@ class TenantAdminAccountProfilesController implements Disposable {
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
+    BellugaContactSourceMode? contactMode,
+    String? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft>? contactChannelDrafts,
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) async {
     final filtered = profileType == null
         ? _CapabilityFilter(
@@ -1773,12 +2241,18 @@ class TenantAdminAccountProfilesController implements Disposable {
             avatarUpload: avatarUpload,
             coverUpload: coverUpload,
           );
+    final accountProfileIdValue = tenantAdminAccountProfilesRepoString(
+      accountProfileId,
+      defaultValue: '',
+      isRequired: true,
+    );
+    final contactSourceValue =
+        contactSourceAccountProfileId == null ||
+            contactSourceAccountProfileId.trim().isEmpty
+        ? null
+        : tenantAdminAccountProfilesRepoString(contactSourceAccountProfileId);
     final profile = await _profilesRepository.updateAccountProfile(
-      accountProfileId: tenantAdminAccountProfilesRepoString(
-        accountProfileId,
-        defaultValue: '',
-        isRequired: true,
-      ),
+      accountProfileId: accountProfileIdValue,
       profileType: profileType == null
           ? null
           : tenantAdminAccountProfilesRepoString(profileType),
@@ -1809,6 +2283,10 @@ class TenantAdminAccountProfilesController implements Disposable {
       avatarUpload: filtered.avatarUpload,
       coverUpload: filtered.coverUpload,
       nestedProfileGroups: nestedProfileGroups,
+      contactMode: contactMode,
+      contactSourceAccountProfileId: contactSourceValue,
+      contactChannelDrafts: contactChannelDrafts,
+      bubbleSelection: bubbleSelection,
     );
     await loadProfiles(profile.accountId);
     return profile;
@@ -1819,6 +2297,200 @@ class TenantAdminAccountProfilesController implements Disposable {
       if (definition.type == profileType) {
         return definition;
       }
+    }
+    return null;
+  }
+
+  List<BellugaContactChannelDraft> buildCreateContactChannelDrafts({
+    required bool capabilityEnabled,
+  }) =>
+      !capabilityEnabled ||
+          createStateStreamValue.value.contactMode !=
+              BellugaContactSourceMode.own
+      ? const <BellugaContactChannelDraft>[]
+      : createStateStreamValue.value.contactChannelDrafts;
+
+  List<BellugaContactChannelDraft> buildEditContactChannelDrafts({
+    required bool capabilityEnabled,
+  }) =>
+      !capabilityEnabled ||
+          editStateStreamValue.value.contactMode != BellugaContactSourceMode.own
+      ? const <BellugaContactChannelDraft>[]
+      : editStateStreamValue.value.contactChannelDrafts;
+
+  BellugaContactBubbleSelectionMutation createBubbleSelection({
+    required bool capabilityEnabled,
+  }) => !capabilityEnabled
+      ? const BellugaContactBubbleSelectionMutation.omit()
+      : createStateStreamValue.value.contactBubbleSelection;
+
+  BellugaContactBubbleSelectionMutation editBubbleSelection({
+    required bool capabilityEnabled,
+  }) => !capabilityEnabled
+      ? const BellugaContactBubbleSelectionMutation.omit()
+      : editStateStreamValue.value.contactBubbleSelection;
+
+  String? validateCreateContactDraft({required bool capabilityEnabled}) {
+    final draftValidation = _validateContactDraftCollection(
+      capabilityEnabled: capabilityEnabled,
+      mode: createStateStreamValue.value.contactMode,
+      drafts: buildCreateContactChannelDrafts(
+        capabilityEnabled: capabilityEnabled,
+      ),
+    );
+    if (draftValidation != null) return draftValidation;
+    return _validateContactSource(
+      capabilityEnabled: capabilityEnabled,
+      mode: createStateStreamValue.value.contactMode,
+      sourceAccountProfileId:
+          createStateStreamValue.value.contactSourceAccountProfileId,
+    );
+  }
+
+  String? validateEditContactDraft({required bool capabilityEnabled}) {
+    final draftValidation = _validateContactDraftCollection(
+      capabilityEnabled: capabilityEnabled,
+      mode: editStateStreamValue.value.contactMode,
+      drafts: buildEditContactChannelDrafts(
+        capabilityEnabled: capabilityEnabled,
+      ),
+    );
+    if (draftValidation != null) return draftValidation;
+    return _validateContactSource(
+      capabilityEnabled: capabilityEnabled,
+      mode: editStateStreamValue.value.contactMode,
+      sourceAccountProfileId:
+          editStateStreamValue.value.contactSourceAccountProfileId,
+    );
+  }
+
+  BellugaContactResolution? resolveDraftContactChannel({
+    required BellugaContactChannelType type,
+    required String rawValue,
+    String? prefilledMessage,
+  }) {
+    return BellugaContactChannelResolver.resolveRaw(
+      type: type,
+      rawValue: rawValue,
+      prefilledMessage: prefilledMessage,
+    );
+  }
+
+  String? _validateContactDraftCollection({
+    required bool capabilityEnabled,
+    required BellugaContactSourceMode mode,
+    required List<BellugaContactChannelDraft> drafts,
+  }) {
+    if (!capabilityEnabled || mode != BellugaContactSourceMode.own) return null;
+    final errors = BellugaContactChannelDraftValidator.validate(drafts);
+    if (errors.isNotEmpty) return errors.first;
+    for (final draft in drafts) {
+      if (!draft.definition.capabilities.messagePresets) continue;
+      for (final message in draft.initialMessages) {
+        final hasCta = message.cta.trim().isNotEmpty;
+        final hasMessage = message.message.trim().isNotEmpty;
+        if (hasCta != hasMessage) {
+          return 'Preencha CTA e mensagem do WhatsApp.';
+        }
+      }
+    }
+    return null;
+  }
+
+  String? _validateContactSource({
+    required bool capabilityEnabled,
+    required BellugaContactSourceMode mode,
+    required String? sourceAccountProfileId,
+  }) {
+    if (!capabilityEnabled) {
+      return null;
+    }
+    if (mode == BellugaContactSourceMode.mirroredAccountProfile) {
+      final normalizedSource = sourceAccountProfileId?.trim();
+      if (normalizedSource == null || normalizedSource.isEmpty) {
+        return 'Selecione o perfil de origem do contato.';
+      }
+      return null;
+    }
+    return null;
+  }
+
+  String _newContactDraftKey(BellugaContactChannelType type) =>
+      '${type.rawValue}-${DateTime.now().microsecondsSinceEpoch}';
+
+  BellugaContactInitialMessage _newContactInitialMessage() =>
+      BellugaContactInitialMessage(
+        id: 'wa-cta-${DateTime.now().microsecondsSinceEpoch}',
+        cta: '',
+        message: '',
+      );
+
+  bool _canAddContactInitialMessage(BellugaContactChannelDraft draft) {
+    final capabilities = draft.definition.capabilities;
+    return capabilities.messagePresets &&
+        draft.initialMessages.length < capabilities.maxInitialMessages;
+  }
+
+  List<BellugaContactChannelDraft> _replaceContactDraft(
+    List<BellugaContactChannelDraft> drafts,
+    BellugaContactChannelDraft replacement,
+  ) => drafts
+      .map(
+        (draft) => draft.draftKey == replacement.draftKey ? replacement : draft,
+      )
+      .toList(growable: false);
+
+  BellugaContactChannelDraft _requireEditContactDraft(String draftKey) =>
+      _requireContactDraft(
+        editStateStreamValue.value.contactChannelDrafts,
+        draftKey,
+      );
+
+  BellugaContactChannelDraft _requireCreateContactDraft(String draftKey) =>
+      _requireContactDraft(
+        createStateStreamValue.value.contactChannelDrafts,
+        draftKey,
+      );
+
+  BellugaContactChannelDraft _requireContactDraft(
+    List<BellugaContactChannelDraft> drafts,
+    String draftKey,
+  ) {
+    for (final draft in drafts) {
+      if (draft.draftKey == draftKey) return draft;
+    }
+    throw StateError(
+      'Contact channel draft was removed before it could be edited.',
+    );
+  }
+
+  BellugaContactBubbleSelectionMutation _bubbleSelectionForDraft(
+    BellugaContactChannelDraft draft,
+  ) => draft.isPersisted
+      ? BellugaContactBubbleSelectionMutation.setPersisted(draft.id!)
+      : BellugaContactBubbleSelectionMutation.setDraft(draft.draftKey);
+
+  BellugaContactBubbleSelectionMutation _bubbleSelectionAfterRemoval(
+    BellugaContactBubbleSelectionMutation selection,
+    BellugaContactChannelDraft? removedDraft,
+  ) {
+    if (selection is BellugaContactBubbleSelectionDraft &&
+        selection.draftKey == removedDraft?.draftKey) {
+      return const BellugaContactBubbleSelectionMutation.clear();
+    }
+    if (selection is BellugaContactBubbleSelectionPersisted &&
+        selection.channelId == removedDraft?.id) {
+      return const BellugaContactBubbleSelectionMutation.clear();
+    }
+    return selection;
+  }
+
+  BellugaContactChannelDraft? _findContactDraft(
+    List<BellugaContactChannelDraft> drafts,
+    String draftKey,
+  ) {
+    for (final draft in drafts) {
+      if (draft.draftKey == draftKey) return draft;
     }
     return null;
   }
@@ -1885,6 +2557,11 @@ class TenantAdminAccountProfilesController implements Disposable {
     longitudeController.dispose();
     profilesStreamValue.dispose();
     nestedProfileCandidatesStreamValue.dispose();
+    contactSourceCandidatesStreamValue.dispose();
+    contactSourceCandidatesLoadingStreamValue.dispose();
+    contactSourceCandidatesPageLoadingStreamValue.dispose();
+    contactSourceCandidatesHasMoreStreamValue.dispose();
+    contactSourceCandidatesErrorStreamValue.dispose();
     nestedProfileSearchLoadingStreamValue.dispose();
     nestedProfileSearchPageLoadingStreamValue.dispose();
     nestedProfileSearchHasMoreStreamValue.dispose();

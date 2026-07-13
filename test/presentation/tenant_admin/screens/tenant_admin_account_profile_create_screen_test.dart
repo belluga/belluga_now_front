@@ -280,6 +280,12 @@ class _FakeAccountsRepository extends TenantAdminAccountsRepositoryContract {
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
         const <TenantAdminNestedProfileGroup>[],
+    BellugaContactSourceMode contactMode = BellugaContactSourceMode.own,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft> contactChannelDrafts =
+        const <BellugaContactChannelDraft>[],
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) {
     throw UnimplementedError();
   }
@@ -404,6 +410,12 @@ class _FakeAccountProfilesRepository
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
         const <TenantAdminNestedProfileGroup>[],
+    BellugaContactSourceMode contactMode = BellugaContactSourceMode.own,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft> contactChannelDrafts =
+        const <BellugaContactChannelDraft>[],
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) {
     throw UnimplementedError();
   }
@@ -425,6 +437,11 @@ class _FakeAccountProfilesRepository
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
+    BellugaContactSourceMode? contactMode,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft>? contactChannelDrafts,
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) {
     throw UnimplementedError();
   }

@@ -35,8 +35,9 @@ void main() {
 
   testWidgets('loads account detail using route slug on init', (tester) async {
     final accountsRepository = _FakeAccountsRepository();
-    final controller =
-        _registerController(accountsRepository: accountsRepository);
+    final controller = _registerController(
+      accountsRepository: accountsRepository,
+    );
 
     await _pumpScreen(
       tester,
@@ -50,8 +51,9 @@ void main() {
     expect(find.text('Conta: yuri-dias'), findsOneWidget);
   });
 
-  testWidgets('reflects repository account stream updates without reload',
-      (tester) async {
+  testWidgets('reflects repository account stream updates without reload', (
+    tester,
+  ) async {
     final accountsRepository = _FakeAccountsRepository();
     _registerController(accountsRepository: accountsRepository);
 
@@ -72,28 +74,34 @@ void main() {
     expect(accountsRepository.fetchAccountBySlugCalls, 1);
   });
 
-  testWidgets('reloads account detail after returning from profile edit route',
-      (tester) async {
-    final accountsRepository = _FakeAccountsRepository();
-    _registerController(accountsRepository: accountsRepository);
+  testWidgets(
+    'reloads account detail after returning from profile edit route',
+    (tester) async {
+      final accountsRepository = _FakeAccountsRepository();
+      _registerController(accountsRepository: accountsRepository);
 
-    await _pumpScreen(
-      tester,
-      TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
-    );
+      await _pumpScreen(
+        tester,
+        TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
+      );
 
-    expect(accountsRepository.fetchAccountBySlugCalls, 1);
+      expect(accountsRepository.fetchAccountBySlugCalls, 1);
 
-    await tester.tap(find.text('Editar'));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey<String>('profile_edit_close')),
-        findsOneWidget);
+      await tester.tap(find.text('Editar'));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey<String>('profile_edit_close')),
+        findsOneWidget,
+      );
 
-    await tester.tap(find.byKey(const ValueKey<String>('profile_edit_close')));
-    await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey<String>('profile_edit_close')),
+      );
+      await tester.pumpAndSettle();
 
-    expect(accountsRepository.fetchAccountBySlugCalls, 2);
-  });
+      expect(accountsRepository.fetchAccountBySlugCalls, 2);
+    },
+  );
 
   testWidgets('hides delete action for tenant-owned accounts', (tester) async {
     final tenantOwnedRepository = _FakeAccountsRepository(
@@ -146,26 +154,31 @@ void main() {
   });
 
   testWidgets(
-      'missing profile renders invariant-broken state and no create CTA',
-      (tester) async {
-    final accountsRepository = _FakeAccountsRepository();
-    _registerController(
-      accountsRepository: accountsRepository,
-      withProfile: false,
-    );
+    'missing profile renders invariant-broken state and no create CTA',
+    (tester) async {
+      final accountsRepository = _FakeAccountsRepository();
+      _registerController(
+        accountsRepository: accountsRepository,
+        withProfile: false,
+      );
 
-    await _pumpScreen(
-      tester,
-      TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
-    );
+      await _pumpScreen(
+        tester,
+        TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
+      );
 
-    expect(find.text('Inconsistência de dados'), findsOneWidget);
-    expect(find.textContaining('Conta sem perfil detectada.'), findsOneWidget);
-    expect(find.text('Criar Perfil'), findsNothing);
-  });
+      expect(find.text('Inconsistência de dados'), findsOneWidget);
+      expect(
+        find.textContaining('Conta sem perfil detectada.'),
+        findsOneWidget,
+      );
+      expect(find.text('Criar Perfil'), findsNothing);
+    },
+  );
 
-  testWidgets('renders account profile rich text readback faithfully',
-      (tester) async {
+  testWidgets('renders account profile rich text readback faithfully', (
+    tester,
+  ) async {
     final accountsRepository = _FakeAccountsRepository();
     _registerController(
       accountsRepository: accountsRepository,
@@ -186,29 +199,32 @@ void main() {
     expect(find.textContaining('<strong>'), findsNothing);
   });
 
-  test('loadAccountDetail invalidates stale async work after dispose',
-      () async {
-    final accountsRepository = _DelayedFetchAccountsRepository();
-    final profilesRepository =
-        _FakeAccountProfilesRepository(withProfile: true);
-    final controller = TenantAdminAccountDetailController(
-      profilesRepository: profilesRepository,
-      accountsRepository: accountsRepository,
-    );
+  test(
+    'loadAccountDetail invalidates stale async work after dispose',
+    () async {
+      final accountsRepository = _DelayedFetchAccountsRepository();
+      final profilesRepository = _FakeAccountProfilesRepository(
+        withProfile: true,
+      );
+      final controller = TenantAdminAccountDetailController(
+        profilesRepository: profilesRepository,
+        accountsRepository: accountsRepository,
+      );
 
-    final loadFuture = controller.loadAccountDetail('yuri-dias');
-    await Future<void>.delayed(Duration.zero);
+      final loadFuture = controller.loadAccountDetail('yuri-dias');
+      await Future<void>.delayed(Duration.zero);
 
-    expect(accountsRepository.fetchAccountBySlugCalls, 1);
-    expect(accountsRepository.watchLoadedAccountCalls, 0);
+      expect(accountsRepository.fetchAccountBySlugCalls, 1);
+      expect(accountsRepository.watchLoadedAccountCalls, 0);
 
-    controller.onDispose();
-    accountsRepository.completeFetch();
+      controller.onDispose();
+      accountsRepository.completeFetch();
 
-    await loadFuture;
+      await loadFuture;
 
-    expect(accountsRepository.watchLoadedAccountCalls, 0);
-  });
+      expect(accountsRepository.watchLoadedAccountCalls, 0);
+    },
+  );
 }
 
 TenantAdminAccountDetailController _registerController({
@@ -395,6 +411,12 @@ class _FakeAccountsRepository
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
         const <TenantAdminNestedProfileGroup>[],
+    BellugaContactSourceMode contactMode = BellugaContactSourceMode.own,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft> contactChannelDrafts =
+        const <BellugaContactChannelDraft>[],
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) async {
     final account = await createAccount(
       name: name,
@@ -486,7 +508,8 @@ class _FakeAccountsRepository
 
   @override
   Future<void> forceDeleteAccount(
-      TenantAdminAccountsRepositoryContractPrimString accountSlug) async {}
+    TenantAdminAccountsRepositoryContractPrimString accountSlug,
+  ) async {}
 
   void _seedAccount(TenantAdminAccount account) {
     _accountsById[account.id] = account;
@@ -575,7 +598,7 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-      fetchAccountProfilesPage({
+  fetchAccountProfilesPage({
     required TenantAdminAccountProfilesRepoInt page,
     required TenantAdminAccountProfilesRepoInt pageSize,
     TenantAdminAccountProfilesRepoString? search,
@@ -588,11 +611,21 @@ class _FakeAccountProfilesRepository
       queryableOnly: queryableOnly,
       excludeAccountProfileId: excludeAccountProfileId,
     );
-    return tenantAdminPagedResultFromRaw(
-      items: profiles,
-      hasMore: false,
-    );
+    return tenantAdminPagedResultFromRaw(items: profiles, hasMore: false);
   }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+  fetchContactSourceCandidatesPage({
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
+  }) async => tenantAdminPagedResultFromRaw(
+    items: const <TenantAdminAccountProfile>[],
+    hasMore: false,
+    currentPage: page.value,
+    pageSize: pageSize.value,
+  );
 
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async {
@@ -626,15 +659,12 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminProfileTypeDefinition>>
-      fetchProfileTypesPage({
+  fetchProfileTypesPage({
     required TenantAdminAccountProfilesRepoInt page,
     required TenantAdminAccountProfilesRepoInt pageSize,
   }) async {
     final types = await fetchProfileTypes();
-    return tenantAdminPagedResultFromRaw(
-      items: types,
-      hasMore: false,
-    );
+    return tenantAdminPagedResultFromRaw(items: types, hasMore: false);
   }
 
   @override
@@ -667,6 +697,12 @@ class _FakeAccountProfilesRepository
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
         const <TenantAdminNestedProfileGroup>[],
+    BellugaContactSourceMode contactMode = BellugaContactSourceMode.own,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft> contactChannelDrafts =
+        const <BellugaContactChannelDraft>[],
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) async {
     return tenantAdminAccountProfileFromRaw(
       id: 'profile-created',
@@ -699,6 +735,11 @@ class _FakeAccountProfilesRepository
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
+    BellugaContactSourceMode? contactMode,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft>? contactChannelDrafts,
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) async {
     return tenantAdminAccountProfileFromRaw(
       id: accountProfileId.value,
@@ -726,7 +767,8 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<void> deleteAccountProfile(
-      TenantAdminAccountProfilesRepoString accountProfileId) async {}
+    TenantAdminAccountProfilesRepoString accountProfileId,
+  ) async {}
 
   @override
   Future<TenantAdminAccountProfile> restoreAccountProfile(
@@ -737,7 +779,8 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<void> forceDeleteAccountProfile(
-      TenantAdminAccountProfilesRepoString accountProfileId) async {}
+    TenantAdminAccountProfilesRepoString accountProfileId,
+  ) async {}
 
   @override
   Future<TenantAdminProfileTypeDefinition> createProfileType({
@@ -768,7 +811,8 @@ class _FakeAccountProfilesRepository
       type: newType ?? type,
       label: label ?? 'Updated',
       allowedTaxonomies: allowedTaxonomies ?? [],
-      capabilities: capabilities ??
+      capabilities:
+          capabilities ??
           TenantAdminProfileTypeCapabilities(
             isFavoritable: TenantAdminFlagValue(true),
             isPoiEnabled: TenantAdminFlagValue(false),
@@ -784,5 +828,6 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<void> deleteProfileType(
-      TenantAdminAccountProfilesRepoString type) async {}
+    TenantAdminAccountProfilesRepoString type,
+  ) async {}
 }

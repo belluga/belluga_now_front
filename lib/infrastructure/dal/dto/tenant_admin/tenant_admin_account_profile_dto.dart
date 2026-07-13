@@ -1,6 +1,8 @@
+import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_group.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_taxonomy_term_dto.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
+import 'package:belluga_now/domain/shared/account_profile_contact_source_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
@@ -25,6 +27,13 @@ class TenantAdminAccountProfileDTO {
     this.galleryGroups = const [],
     this.nestedProfileGroups = const [],
     this.ownershipState,
+    this.contactMode,
+    this.contactSourceAccountProfileId,
+    this.contactChannels = const [],
+    this.contactBubbleChannelId,
+    this.effectiveContactChannels = const [],
+    this.contactSourceProfile,
+    this.effectiveContactSourceProfile,
   });
 
   final String id;
@@ -42,6 +51,13 @@ class TenantAdminAccountProfileDTO {
   final List<TenantAdminAccountProfileGalleryGroup> galleryGroups;
   final List<TenantAdminNestedProfileGroup> nestedProfileGroups;
   final String? ownershipState;
+  final String? contactMode;
+  final String? contactSourceAccountProfileId;
+  final List<BellugaContactChannel> contactChannels;
+  final String? contactBubbleChannelId;
+  final List<BellugaContactChannel> effectiveContactChannels;
+  final AccountProfileContactSourceSummary? contactSourceProfile;
+  final AccountProfileContactSourceSummary? effectiveContactSourceProfile;
 
   factory TenantAdminAccountProfileDTO.fromJson(Map<String, dynamic> json) {
     final location = json['location'];
@@ -106,6 +122,22 @@ class TenantAdminAccountProfileDTO {
       galleryGroups: galleryGroups,
       nestedProfileGroups: nestedGroups,
       ownershipState: json['ownership_state']?.toString(),
+      contactMode: json['contact_mode']?.toString(),
+      contactSourceAccountProfileId:
+          json['contact_source_account_profile_id']?.toString(),
+      contactChannels: BellugaContactChannelCodec.channelsFromJson(
+        json['contact_channels'],
+      ),
+      contactBubbleChannelId: json['contact_bubble_channel_id']?.toString(),
+      effectiveContactChannels: BellugaContactChannelCodec.channelsFromJson(
+        json['effective_contact_channels'],
+      ),
+      contactSourceProfile: _contactSourceSummaryFromRaw(
+        json['contact_source_account_profile'],
+      ),
+      effectiveContactSourceProfile: _contactSourceSummaryFromRaw(
+        json['effective_contact_source'],
+      ),
     );
   }
 
@@ -143,8 +175,35 @@ class TenantAdminAccountProfileDTO {
       ownershipState: ownershipState == null
           ? null
           : tenantAdminOwnershipStateFromRaw(ownershipState),
+      contactMode: BellugaContactSourceMode.fromRaw(contactMode),
+      contactSourceAccountProfileId: contactSourceAccountProfileId,
+      contactChannels: contactChannels,
+      contactBubbleChannelId: contactBubbleChannelId,
+      effectiveContactChannels: effectiveContactChannels,
+      contactSourceProfile: contactSourceProfile,
+      effectiveContactSourceProfile: effectiveContactSourceProfile,
     );
   }
+}
+
+AccountProfileContactSourceSummary? _contactSourceSummaryFromRaw(Object? raw) {
+  if (raw is! Map) {
+    return null;
+  }
+  final json = Map<String, dynamic>.from(raw);
+  final id = json['id']?.toString().trim() ?? '';
+  final displayName = json['display_name']?.toString().trim() ?? '';
+  final profileType = json['profile_type']?.toString().trim() ?? '';
+  if (id.isEmpty || displayName.isEmpty || profileType.isEmpty) {
+    return null;
+  }
+  final slug = json['slug']?.toString().trim();
+  return AccountProfileContactSourceSummary(
+    id: id,
+    displayName: displayName,
+    slug: slug == null || slug.isEmpty ? null : slug,
+    profileType: profileType,
+  );
 }
 
 TenantAdminAccountProfileGalleryGroup? _galleryGroupFromRaw(

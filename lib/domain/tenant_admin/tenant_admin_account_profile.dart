@@ -1,7 +1,11 @@
+import 'package:belluga_contact_channels/belluga_contact_channels.dart';
+import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_channel_id_value.dart';
+import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_source_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_group.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
+import 'package:belluga_now/domain/shared/account_profile_contact_source_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
@@ -24,19 +28,35 @@ class TenantAdminAccountProfile {
     List<TenantAdminAccountProfileGalleryGroup>? galleryGroups,
     List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
     this.ownershipState,
-  })  : slugValue = slugValue ?? TenantAdminOptionalTextValue(),
-        avatarUrlValue = avatarUrlValue ?? TenantAdminOptionalUrlValue(),
-        coverUrlValue = coverUrlValue ?? TenantAdminOptionalUrlValue(),
-        bioValue = bioValue ?? TenantAdminOptionalTextValue(),
-        contentValue = contentValue ?? TenantAdminOptionalTextValue(),
-        taxonomyTerms = taxonomyTerms ?? const TenantAdminTaxonomyTerms.empty(),
-        galleryGroups =
-            List<TenantAdminAccountProfileGalleryGroup>.unmodifiable(
-          galleryGroups ?? const <TenantAdminAccountProfileGalleryGroup>[],
-        ),
-        nestedProfileGroups = List<TenantAdminNestedProfileGroup>.unmodifiable(
-          nestedProfileGroups ?? const <TenantAdminNestedProfileGroup>[],
-        );
+    BellugaContactSourceMode? contactMode,
+    AccountProfileContactSourceAccountProfileIdValue?
+    contactSourceAccountProfileId,
+    List<BellugaContactChannel>? contactChannels,
+    AccountProfileContactChannelIdValue? contactBubbleChannelId,
+    List<BellugaContactChannel>? effectiveContactChannels,
+    this.contactSourceProfile,
+    this.effectiveContactSourceProfile,
+  }) : slugValue = slugValue ?? TenantAdminOptionalTextValue(),
+       avatarUrlValue = avatarUrlValue ?? TenantAdminOptionalUrlValue(),
+       coverUrlValue = coverUrlValue ?? TenantAdminOptionalUrlValue(),
+       bioValue = bioValue ?? TenantAdminOptionalTextValue(),
+       contentValue = contentValue ?? TenantAdminOptionalTextValue(),
+       taxonomyTerms = taxonomyTerms ?? const TenantAdminTaxonomyTerms.empty(),
+       galleryGroups = List<TenantAdminAccountProfileGalleryGroup>.unmodifiable(
+         galleryGroups ?? const <TenantAdminAccountProfileGalleryGroup>[],
+       ),
+       nestedProfileGroups = List<TenantAdminNestedProfileGroup>.unmodifiable(
+         nestedProfileGroups ?? const <TenantAdminNestedProfileGroup>[],
+       ),
+       contactMode = contactMode ?? BellugaContactSourceMode.own,
+       contactSourceAccountProfileIdValue = contactSourceAccountProfileId,
+       contactChannels = List<BellugaContactChannel>.unmodifiable(
+         contactChannels ?? const <BellugaContactChannel>[],
+       ),
+       contactBubbleChannelIdValue = contactBubbleChannelId,
+       effectiveContactChannels = List<BellugaContactChannel>.unmodifiable(
+         effectiveContactChannels ?? contactChannels ?? const [],
+       );
 
   final TenantAdminRequiredTextValue idValue;
   final TenantAdminRequiredTextValue accountIdValue;
@@ -52,6 +72,14 @@ class TenantAdminAccountProfile {
   final List<TenantAdminAccountProfileGalleryGroup> galleryGroups;
   final List<TenantAdminNestedProfileGroup> nestedProfileGroups;
   final TenantAdminOwnershipState? ownershipState;
+  final BellugaContactSourceMode contactMode;
+  final AccountProfileContactSourceAccountProfileIdValue?
+  contactSourceAccountProfileIdValue;
+  final List<BellugaContactChannel> contactChannels;
+  final AccountProfileContactChannelIdValue? contactBubbleChannelIdValue;
+  final List<BellugaContactChannel> effectiveContactChannels;
+  final AccountProfileContactSourceSummary? contactSourceProfile;
+  final AccountProfileContactSourceSummary? effectiveContactSourceProfile;
 
   String get id => idValue.value;
   String get accountId => accountIdValue.value;
@@ -62,4 +90,32 @@ class TenantAdminAccountProfile {
   String? get coverUrl => coverUrlValue.nullableValue;
   String? get bio => bioValue.nullableValue;
   String? get content => contentValue.nullableValue;
+  String? get contactSourceAccountProfileId {
+    final raw = contactSourceAccountProfileIdValue?.value.trim();
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+    return raw;
+  }
+
+  String? get contactBubbleChannelId {
+    final raw = contactBubbleChannelIdValue?.value.trim();
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+    return raw;
+  }
+
+  BellugaContactChannel? get effectiveContactBubbleChannel {
+    final selectedId = contactBubbleChannelId;
+    if (selectedId == null || selectedId.isEmpty) {
+      return null;
+    }
+    for (final channel in effectiveContactChannels) {
+      if (channel.id == selectedId && channel.isBubbleEligible) {
+        return channel;
+      }
+    }
+    return null;
+  }
 }

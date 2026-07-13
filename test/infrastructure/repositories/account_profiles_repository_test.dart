@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
+import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/domain/favorite/favorite.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
@@ -62,6 +63,47 @@ void main() {
 
       expect(page.profiles, hasLength(1));
       expect(page.profiles.first.type, 'artist');
+    },
+  );
+
+  test(
+    'fetchAccountProfilesPage preserves contact channels and bubble selection from backend models',
+    () async {
+      final whatsappChannel = BellugaContactChannel(
+        id: 'whatsapp-primary',
+        type: BellugaContactChannelType.whatsapp,
+        value: '+55 (27) 99999-9999',
+      );
+      final backend = _StubAccountProfilesBackend(
+        accountProfiles: [
+          buildAccountProfileModelFromPrimitives(
+            id: _generateMongoId(),
+            name: 'Artist One',
+            slug: 'artist-one',
+            type: 'artist',
+            contactChannels: [whatsappChannel],
+            effectiveContactChannels: [whatsappChannel],
+            contactBubbleChannelId: whatsappChannel.id,
+          ),
+        ],
+      );
+      final repository = AccountProfilesRepository(
+        backend: backend,
+        favoriteBackend: _StubFavoriteBackend(favorites: const []),
+        favoriteAccountProfileIds: const {},
+      );
+
+      final page = await repository.fetchAccountProfilesPage(
+        page: AccountProfilesRepositoryContractPrimInt.fromRaw(1),
+        pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
+      );
+
+      expect(page.profiles, hasLength(1));
+      expect(page.profiles.first.effectiveContactChannels, [whatsappChannel]);
+      expect(
+        page.profiles.first.effectiveContactBubbleChannel?.id,
+        whatsappChannel.id,
+      );
     },
   );
 

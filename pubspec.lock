@@ -104,6 +104,13 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  belluga_contact_channels:
+    dependency: "direct main"
+    description:
+      path: "packages/belluga_contact_channels"
+      relative: true
+    source: path
+    version: "0.0.1"
   belluga_discovery_filters:
     dependency: "direct main"
     description:

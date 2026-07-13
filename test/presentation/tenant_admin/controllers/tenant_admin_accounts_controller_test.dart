@@ -266,6 +266,12 @@ class _FakeAccountsRepository
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
         const <TenantAdminNestedProfileGroup>[],
+    BellugaContactSourceMode contactMode = BellugaContactSourceMode.own,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft> contactChannelDrafts =
+        const <BellugaContactChannelDraft>[],
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) async {
     final error = createAccountError;
     if (error != null) {
@@ -419,6 +425,12 @@ class _FakeAccountProfilesRepository
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
         const <TenantAdminNestedProfileGroup>[],
+    BellugaContactSourceMode contactMode = BellugaContactSourceMode.own,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft> contactChannelDrafts =
+        const <BellugaContactChannelDraft>[],
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) async {
     final error = createProfileError;
     if (error != null) {
@@ -502,6 +514,19 @@ class _FakeAccountProfilesRepository
   }
 
   @override
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+  fetchContactSourceCandidatesPage({
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
+  }) async => tenantAdminPagedResultFromRaw(
+    items: const <TenantAdminAccountProfile>[],
+    hasMore: false,
+    currentPage: page.value,
+    pageSize: pageSize.value,
+  );
+
+  @override
   Future<TenantAdminAccountProfile> fetchAccountProfile(
     TenantAdminAccountProfilesRepoString accountProfileId,
   ) async {
@@ -533,6 +558,11 @@ class _FakeAccountProfilesRepository
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
+    BellugaContactSourceMode? contactMode,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft>? contactChannelDrafts,
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) async {
     return tenantAdminAccountProfileFromRaw(
       id: 'profile-1',

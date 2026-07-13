@@ -1,3 +1,4 @@
+import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_update.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
@@ -81,6 +82,19 @@ class TenantAdminAccountProfilesRequestEncoder {
     return payload;
   }
 
+  Map<String, dynamic> encodeFetchContactSourceCandidatesQuery({
+    required int page,
+    required int pageSize,
+    String? excludeAccountProfileId,
+  }) {
+    final payload = <String, dynamic>{'page': page, 'per_page': pageSize};
+    if (excludeAccountProfileId != null &&
+        excludeAccountProfileId.trim().isNotEmpty) {
+      payload['exclude_account_profile_id'] = excludeAccountProfileId.trim();
+    }
+    return payload;
+  }
+
   Map<String, dynamic> encodeCreateAccountProfile({
     required String accountId,
     required String profileType,
@@ -94,8 +108,14 @@ class TenantAdminAccountProfilesRequestEncoder {
     String? coverUrl,
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
         const <TenantAdminNestedProfileGroup>[],
+    BellugaContactSourceMode contactMode = BellugaContactSourceMode.own,
+    String? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft> contactChannelDrafts =
+        const <BellugaContactChannelDraft>[],
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) {
-    return {
+    final payload = <String, dynamic>{
       'account_id': accountId,
       'profile_type': profileType,
       'display_name': displayName,
@@ -113,7 +133,14 @@ class TenantAdminAccountProfilesRequestEncoder {
         'nested_profile_groups': encodeTenantAdminNestedProfileGroups(
           nestedProfileGroups,
         ),
+      'contact_mode': contactMode.rawValue,
+      'contact_source_account_profile_id': ?contactSourceAccountProfileId,
+      'contact_channels': BellugaContactChannelCodec.draftsToJson(
+        contactChannelDrafts,
+      ),
     };
+    bubbleSelection.encodeInto(payload);
+    return payload;
   }
 
   Map<String, dynamic> encodeUpdateAccountProfile({
@@ -129,6 +156,11 @@ class TenantAdminAccountProfilesRequestEncoder {
     bool? removeAvatar,
     bool? removeCover,
     List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
+    BellugaContactSourceMode? contactMode,
+    String? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft>? contactChannelDrafts,
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) {
     final payload = <String, dynamic>{};
     if (profileType != null) payload['profile_type'] = profileType;
@@ -156,6 +188,19 @@ class TenantAdminAccountProfilesRequestEncoder {
         nestedProfileGroups,
       );
     }
+    if (contactMode != null) {
+      payload['contact_mode'] = contactMode.rawValue;
+    }
+    if (contactSourceAccountProfileId != null) {
+      payload['contact_source_account_profile_id'] =
+          contactSourceAccountProfileId;
+    }
+    if (contactChannelDrafts != null) {
+      payload['contact_channels'] = BellugaContactChannelCodec.draftsToJson(
+        contactChannelDrafts,
+      );
+    }
+    bubbleSelection.encodeInto(payload);
     return payload;
   }
 

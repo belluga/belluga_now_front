@@ -593,6 +593,19 @@ class _FakeAccountProfilesRepository
   }
 
   @override
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+  fetchContactSourceCandidatesPage({
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
+  }) async => tenantAdminPagedResultFromRaw(
+    items: const <TenantAdminAccountProfile>[],
+    hasMore: false,
+    currentPage: page.value,
+    pageSize: pageSize.value,
+  );
+
+  @override
   Future<TenantAdminAccountProfile> createAccountProfile({
     required TenantAdminAccountProfilesRepoString accountId,
     required TenantAdminAccountProfilesRepoString profileType,
@@ -608,6 +621,12 @@ class _FakeAccountProfilesRepository
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
         const <TenantAdminNestedProfileGroup>[],
+    BellugaContactSourceMode contactMode = BellugaContactSourceMode.own,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft> contactChannelDrafts =
+        const <BellugaContactChannelDraft>[],
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) async {
     lastCreatedTerms = taxonomyTerms;
     return tenantAdminAccountProfileFromRaw(
@@ -640,6 +659,11 @@ class _FakeAccountProfilesRepository
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
+    BellugaContactSourceMode? contactMode,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft>? contactChannelDrafts,
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) async {
     return tenantAdminAccountProfileFromRaw(
       id: accountProfileId,

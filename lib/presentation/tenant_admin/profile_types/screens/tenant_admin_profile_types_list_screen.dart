@@ -19,8 +19,8 @@ class TenantAdminProfileTypesListScreen extends StatefulWidget {
 
 class _TenantAdminProfileTypesListScreenState
     extends State<TenantAdminProfileTypesListScreen> {
-  final TenantAdminProfileTypesController _controller =
-      GetIt.I.get<TenantAdminProfileTypesController>();
+  final TenantAdminProfileTypesController _controller = GetIt.I
+      .get<TenantAdminProfileTypesController>();
 
   @override
   void initState() {
@@ -70,16 +70,19 @@ class _TenantAdminProfileTypesListScreenState
                       streamValue: _controller.isTypesPageLoadingStreamValue,
                       builder: (context, isPageLoading) {
                         return StreamValueBuilder<
-                            List<TenantAdminProfileTypeDefinition>?>(
+                          List<TenantAdminProfileTypeDefinition>?
+                        >(
                           streamValue: _controller.typesStreamValue,
                           onNullWidget: _buildScaffold(
                             context: context,
                             error: error,
                             body: const Center(
-                                child: CircularProgressIndicator()),
+                              child: CircularProgressIndicator(),
+                            ),
                           ),
                           builder: (context, types) {
-                            final loadedTypes = types ??
+                            final loadedTypes =
+                                types ??
                                 const <TenantAdminProfileTypeDefinition>[];
                             return _buildScaffold(
                               context: context,
@@ -190,6 +193,7 @@ class _TenantAdminProfileTypesListScreenState
           if (type.capabilities.hasEvents) 'Agenda',
           if (type.capabilities.hasGallery) 'Galeria',
           if (type.capabilities.hasNestedProfileGroups) 'Abas vinculadas',
+          if (type.capabilities.hasContactChannels) 'Contato por canais',
           if (type.allowedTaxonomies.isNotEmpty)
             'Taxonomias: ${type.allowedTaxonomies.join(', ')}',
         ].join(' • ');
@@ -201,9 +205,7 @@ class _TenantAdminProfileTypesListScreenState
             onTap: () {
               context.router
                   .push(
-                    TenantAdminProfileTypeDetailRoute(
-                      profileType: type.type,
-                    ),
+                    TenantAdminProfileTypeDetailRoute(profileType: type.type),
                   )
                   .then((_) => _controller.loadTypes());
             },
@@ -212,9 +214,7 @@ class _TenantAdminProfileTypesListScreenState
                 if (value == 'edit') {
                   context.router
                       .push(
-                        TenantAdminProfileTypeEditRoute(
-                          profileType: type.type,
-                        ),
+                        TenantAdminProfileTypeEditRoute(profileType: type.type),
                       )
                       .then((_) => _controller.loadTypes());
                 }
@@ -223,14 +223,8 @@ class _TenantAdminProfileTypesListScreenState
                 }
               },
               itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'edit',
-                  child: Text('Editar'),
-                ),
-                const PopupMenuItem(
-                  value: 'delete',
-                  child: Text('Remover'),
-                ),
+                const PopupMenuItem(value: 'edit', child: Text('Editar')),
+                const PopupMenuItem(value: 'delete', child: Text('Remover')),
               ],
             ),
           ),
@@ -242,9 +236,9 @@ class _TenantAdminProfileTypesListScreenState
   void _handleSuccessMessage(String? message) {
     if (message == null || message.isEmpty) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
       _controller.clearSuccessMessage();
     });
   }
@@ -252,9 +246,9 @@ class _TenantAdminProfileTypesListScreenState
   void _handleActionErrorMessage(String? message) {
     if (message == null || message.isEmpty) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
       _controller.clearActionErrorMessage();
     });
   }

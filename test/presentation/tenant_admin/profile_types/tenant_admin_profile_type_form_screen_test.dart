@@ -356,6 +356,45 @@ void main() {
     expect(controller.currentCapabilities.hasNestedProfileGroups, isTrue);
   });
 
+  testWidgets('toggles contact channel capability in profile type form', (
+    tester,
+  ) async {
+    final controller = _TestProfileTypesController(0);
+    await _pumpFormScreen(
+      tester,
+      controller: controller,
+      definition: tenantAdminProfileTypeDefinitionFromRaw(
+        type: 'artist',
+        label: 'Artist',
+        allowedTaxonomies: const [],
+        capabilities: TenantAdminProfileTypeCapabilities(
+          isFavoritable: TenantAdminFlagValue(true),
+          isPoiEnabled: TenantAdminFlagValue(false),
+          hasBio: TenantAdminFlagValue(true),
+          hasContent: TenantAdminFlagValue(false),
+          hasTaxonomies: TenantAdminFlagValue(true),
+          hasAvatar: TenantAdminFlagValue(true),
+          hasCover: TenantAdminFlagValue(true),
+          hasEvents: TenantAdminFlagValue(true),
+          hasContactChannels: TenantAdminFlagValue(false),
+        ),
+      ),
+    );
+
+    final toggle = find.widgetWithText(
+      SwitchListTile,
+      'Contato por canais habilitado',
+    );
+    await tester.ensureVisible(toggle);
+    expect(tester.widget<SwitchListTile>(toggle).value, isFalse);
+
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<SwitchListTile>(toggle).value, isTrue);
+    expect(controller.currentCapabilities.hasContactChannels, isTrue);
+  });
+
   testWidgets('gallery capability toggle updates controller state', (
     tester,
   ) async {
@@ -456,6 +495,37 @@ void main() {
     expect(find.textContaining('Galeria'), findsOneWidget);
   });
 
+  testWidgets('shows contact capability label in profile type list cards', (
+    tester,
+  ) async {
+    final controller = _TestProfileTypesController(
+      0,
+      initialProfileTypes: [
+        tenantAdminProfileTypeDefinitionFromRaw(
+          type: 'artist',
+          label: 'Artist',
+          allowedTaxonomies: const [],
+          capabilities: TenantAdminProfileTypeCapabilities(
+            isFavoritable: TenantAdminFlagValue(true),
+            isPoiEnabled: TenantAdminFlagValue(false),
+            hasBio: TenantAdminFlagValue(true),
+            hasContent: TenantAdminFlagValue(false),
+            hasTaxonomies: TenantAdminFlagValue(true),
+            hasAvatar: TenantAdminFlagValue(true),
+            hasCover: TenantAdminFlagValue(true),
+            hasEvents: TenantAdminFlagValue(true),
+            hasContactChannels: TenantAdminFlagValue(true),
+          ),
+        ),
+      ],
+    );
+
+    await _pumpListScreen(tester, controller: controller);
+
+    expect(find.text('Artist'), findsOneWidget);
+    expect(find.textContaining('Contato por canais'), findsOneWidget);
+  });
+
   testWidgets('shows gallery capability chip in profile type detail', (
     tester,
   ) async {
@@ -484,6 +554,36 @@ void main() {
     );
 
     expect(find.widgetWithText(Chip, 'Galeria'), findsOneWidget);
+  });
+
+  testWidgets('shows contact capability chip in profile type detail', (
+    tester,
+  ) async {
+    final controller = _TestProfileTypesController(0);
+    final definition = tenantAdminProfileTypeDefinitionFromRaw(
+      type: 'artist',
+      label: 'Artist',
+      allowedTaxonomies: const [],
+      capabilities: TenantAdminProfileTypeCapabilities(
+        isFavoritable: TenantAdminFlagValue(true),
+        isPoiEnabled: TenantAdminFlagValue(false),
+        hasBio: TenantAdminFlagValue(true),
+        hasContent: TenantAdminFlagValue(false),
+        hasTaxonomies: TenantAdminFlagValue(true),
+        hasAvatar: TenantAdminFlagValue(true),
+        hasCover: TenantAdminFlagValue(true),
+        hasEvents: TenantAdminFlagValue(true),
+        hasContactChannels: TenantAdminFlagValue(true),
+      ),
+    );
+
+    await _pumpDetailScreen(
+      tester,
+      controller: controller,
+      definition: definition,
+    );
+
+    expect(find.widgetWithText(Chip, 'Contato por canais'), findsOneWidget);
   });
 
   testWidgets('favoritable capability is editable without public discovery', (
@@ -768,6 +868,12 @@ class _FakeAccountProfilesRepository
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
         const <TenantAdminNestedProfileGroup>[],
+    BellugaContactSourceMode contactMode = BellugaContactSourceMode.own,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft> contactChannelDrafts =
+        const <BellugaContactChannelDraft>[],
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) async {
     throw UnimplementedError();
   }
@@ -834,6 +940,19 @@ class _FakeAccountProfilesRepository
   }
 
   @override
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+  fetchContactSourceCandidatesPage({
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
+  }) async => tenantAdminPagedResultFromRaw(
+    items: const <TenantAdminAccountProfile>[],
+    hasMore: false,
+    currentPage: page.value,
+    pageSize: pageSize.value,
+  );
+
+  @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async {
     return _initialProfileTypes;
   }
@@ -891,6 +1010,11 @@ class _FakeAccountProfilesRepository
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
+    BellugaContactSourceMode? contactMode,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft>? contactChannelDrafts,
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) async {
     throw UnimplementedError();
   }

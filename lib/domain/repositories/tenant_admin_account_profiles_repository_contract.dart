@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/domain/repositories/value_objects/tenant_admin_account_profiles_repository_contract_values.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_update.dart';
@@ -17,6 +18,7 @@ export 'package:belluga_now/domain/repositories/value_objects/tenant_admin_accou
 export 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_update.dart';
 export 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 export 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_taxonomy_terms_value.dart';
+export 'package:belluga_contact_channels/belluga_contact_channels.dart';
 
 typedef TenantAdminAccountProfilesRepoString =
     TenantAdminAccountProfilesRepositoryContractTextValue;
@@ -54,6 +56,18 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     );
   }
 
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+  fetchContactSourceCandidatesPage({
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
+  }) async {
+    throw UnimplementedError(
+      'fetchContactSourceCandidatesPage must be implemented by tenant-admin '
+      'account-profile repositories.',
+    );
+  }
+
   Future<TenantAdminAccountProfile> fetchAccountProfile(
     TenantAdminAccountProfilesRepoString accountProfileId,
   );
@@ -72,6 +86,12 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
         const <TenantAdminNestedProfileGroup>[],
+    BellugaContactSourceMode contactMode = BellugaContactSourceMode.own,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft> contactChannelDrafts =
+        const <BellugaContactChannelDraft>[],
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   });
   Future<TenantAdminAccountProfile> updateAccountProfile({
     required TenantAdminAccountProfilesRepoString accountProfileId,
@@ -89,6 +109,11 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
+    BellugaContactSourceMode? contactMode,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft>? contactChannelDrafts,
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   });
   Future<TenantAdminAccountProfile> updateAccountProfileGallery({
     required TenantAdminAccountProfilesRepoString accountProfileId,

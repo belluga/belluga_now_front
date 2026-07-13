@@ -1,9 +1,13 @@
+import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/domain/partners/account_profile_gallery_group.dart';
 import 'package:belluga_now/domain/partners/engagement_data.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_public_detail_path_value.dart';
+import 'package:belluga_now/domain/shared/account_profile_contact_source_summary.dart';
+import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_channel_id_value.dart';
+import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_source_account_profile_id_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
@@ -35,6 +39,15 @@ class AccountProfileModel {
   final List<AccountProfileNestedGroup> nestedProfileGroupValues;
   final DomainBooleanValue canOpenPublicDetailValue;
   final AccountProfilePublicDetailPathValue? publicDetailPathValue;
+  final BellugaContactSourceMode contactMode;
+  final AccountProfileContactSourceAccountProfileIdValue?
+  contactSourceAccountProfileIdValue;
+  final List<BellugaContactChannel> contactChannelValues;
+  final AccountProfileContactChannelIdValue? contactBubbleChannelIdValue;
+  final List<BellugaContactChannel> effectiveContactChannelValues;
+  final BellugaContactChannel? effectiveContactBubbleChannelValue;
+  final AccountProfileContactSourceSummary? contactSourceProfile;
+  final AccountProfileContactSourceSummary? effectiveContactSourceProfile;
 
   AccountProfileModel({
     required this.idValue,
@@ -58,26 +71,45 @@ class AccountProfileModel {
     List<AccountProfileNestedGroup>? nestedProfileGroupValues,
     DomainBooleanValue? canOpenPublicDetailValue,
     this.publicDetailPathValue,
-  })  : tagValues = List<AccountProfileTagValue>.unmodifiable(
-          tagValues ?? const <AccountProfileTagValue>[],
-        ),
-        galleryGroupValues = List<AccountProfileGalleryGroup>.unmodifiable(
-          galleryGroupValues ?? const <AccountProfileGalleryGroup>[],
-        ),
-        agendaEventViews = List<PartnerEventView>.unmodifiable(
-          agendaEventViews ?? const <PartnerEventView>[],
-        ),
-        nestedProfileGroupValues = List<AccountProfileNestedGroup>.unmodifiable(
-          nestedProfileGroupValues ?? const <AccountProfileNestedGroup>[],
-        ),
-        canOpenPublicDetailValue = canOpenPublicDetailValue ??
-            (DomainBooleanValue(defaultValue: false, isRequired: false)
-              ..parse('false')),
-        isVerifiedValue = isVerifiedValue ?? AccountProfileIsVerifiedValue(),
-        acceptedInvitesValue =
-            acceptedInvitesValue ?? AccountProfileAcceptedInvitesValue(),
-        distanceMetersValue =
-            distanceMetersValue ?? AccountProfileDistanceMetersValue();
+    BellugaContactSourceMode? contactMode,
+    AccountProfileContactSourceAccountProfileIdValue?
+    contactSourceAccountProfileId,
+    List<BellugaContactChannel>? contactChannelValues,
+    AccountProfileContactChannelIdValue? contactBubbleChannelId,
+    List<BellugaContactChannel>? effectiveContactChannelValues,
+    this.effectiveContactBubbleChannelValue,
+    this.contactSourceProfile,
+    this.effectiveContactSourceProfile,
+  }) : tagValues = List<AccountProfileTagValue>.unmodifiable(
+         tagValues ?? const <AccountProfileTagValue>[],
+       ),
+       galleryGroupValues = List<AccountProfileGalleryGroup>.unmodifiable(
+         galleryGroupValues ?? const <AccountProfileGalleryGroup>[],
+       ),
+       agendaEventViews = List<PartnerEventView>.unmodifiable(
+         agendaEventViews ?? const <PartnerEventView>[],
+       ),
+       nestedProfileGroupValues = List<AccountProfileNestedGroup>.unmodifiable(
+         nestedProfileGroupValues ?? const <AccountProfileNestedGroup>[],
+       ),
+       contactMode = contactMode ?? BellugaContactSourceMode.own,
+       contactSourceAccountProfileIdValue = contactSourceAccountProfileId,
+       contactChannelValues = List<BellugaContactChannel>.unmodifiable(
+         contactChannelValues ?? const <BellugaContactChannel>[],
+       ),
+       contactBubbleChannelIdValue = contactBubbleChannelId,
+       effectiveContactChannelValues = List<BellugaContactChannel>.unmodifiable(
+         effectiveContactChannelValues ?? contactChannelValues ?? const [],
+       ),
+       canOpenPublicDetailValue =
+           canOpenPublicDetailValue ??
+           (DomainBooleanValue(defaultValue: false, isRequired: false)
+             ..parse('false')),
+       isVerifiedValue = isVerifiedValue ?? AccountProfileIsVerifiedValue(),
+       acceptedInvitesValue =
+           acceptedInvitesValue ?? AccountProfileAcceptedInvitesValue(),
+       distanceMetersValue =
+           distanceMetersValue ?? AccountProfileDistanceMetersValue();
 
   String get id => idValue.value;
   String get name => nameValue.value;
@@ -112,6 +144,31 @@ class AccountProfileModel {
   List<AccountProfileNestedGroup> get nestedProfileGroups =>
       List<AccountProfileNestedGroup>.unmodifiable(nestedProfileGroupValues);
   bool get canOpenPublicDetail => canOpenPublicDetailValue.value;
+  String? get contactSourceAccountProfileId {
+    final raw = contactSourceAccountProfileIdValue?.value.trim();
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+    return raw;
+  }
+
+  List<BellugaContactChannel> get contactChannels =>
+      List<BellugaContactChannel>.unmodifiable(contactChannelValues);
+  List<BellugaContactChannel> get effectiveContactChannels =>
+      List<BellugaContactChannel>.unmodifiable(effectiveContactChannelValues);
+  String? get contactBubbleChannelId {
+    final raw = contactBubbleChannelIdValue?.value.trim();
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+    return raw;
+  }
+
+  BellugaContactChannel? get effectiveContactBubbleChannel {
+    final channel = effectiveContactBubbleChannelValue;
+    return channel?.isBubbleEligible == true ? channel : null;
+  }
+
   String? get publicDetailPath {
     final raw = publicDetailPathValue?.value.trim();
     if (raw == null || raw.isEmpty) {
@@ -142,6 +199,15 @@ class AccountProfileModel {
     List<AccountProfileNestedGroup>? nestedProfileGroupValues,
     DomainBooleanValue? canOpenPublicDetailValue,
     AccountProfilePublicDetailPathValue? publicDetailPathValue,
+    BellugaContactSourceMode? contactMode,
+    AccountProfileContactSourceAccountProfileIdValue?
+    contactSourceAccountProfileId,
+    List<BellugaContactChannel>? contactChannelValues,
+    AccountProfileContactChannelIdValue? contactBubbleChannelId,
+    List<BellugaContactChannel>? effectiveContactChannelValues,
+    BellugaContactChannel? effectiveContactBubbleChannelValue,
+    AccountProfileContactSourceSummary? contactSourceProfile,
+    AccountProfileContactSourceSummary? effectiveContactSourceProfile,
   }) {
     return AccountProfileModel(
       idValue: idValue ?? this.idValue,
@@ -170,6 +236,20 @@ class AccountProfileModel {
           canOpenPublicDetailValue ?? this.canOpenPublicDetailValue,
       publicDetailPathValue:
           publicDetailPathValue ?? this.publicDetailPathValue,
+      contactMode: contactMode ?? this.contactMode,
+      contactSourceAccountProfileId:
+          contactSourceAccountProfileId ?? contactSourceAccountProfileIdValue,
+      contactChannelValues: contactChannelValues ?? this.contactChannelValues,
+      contactBubbleChannelId:
+          contactBubbleChannelId ?? contactBubbleChannelIdValue,
+      effectiveContactChannelValues:
+          effectiveContactChannelValues ?? this.effectiveContactChannelValues,
+      effectiveContactBubbleChannelValue:
+          effectiveContactBubbleChannelValue ??
+          this.effectiveContactBubbleChannelValue,
+      contactSourceProfile: contactSourceProfile ?? this.contactSourceProfile,
+      effectiveContactSourceProfile:
+          effectiveContactSourceProfile ?? this.effectiveContactSourceProfile,
     );
   }
 }
