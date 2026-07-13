@@ -527,14 +527,14 @@ class _ProgrammingCard extends StatelessWidget {
         border: Border.all(color: colorScheme.outlineVariant),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         child: Row(
           crossAxisAlignment: hasSecondaryContent
               ? CrossAxisAlignment.start
               : CrossAxisAlignment.center,
           children: [
             SizedBox(
-              width: 74,
+              width: 24,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -558,28 +558,29 @@ class _ProgrammingCard extends StatelessWidget {
                     height: 14,
                     color: colorScheme.outlineVariant,
                   ),
-                  const SizedBox(height: 8),
-                  if (timeLabel != null)
-                    Text(
-                      timeLabel,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w800,
-                        height: 1.1,
-                      ),
-                    ),
                 ],
               ),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (timeLabel != null) ...[
+                    Text(
+                      timeLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: colorScheme.primary,
+                        fontWeight: FontWeight.w900,
+                        height: 1.1,
+                      ),
+                    ),
+                    if (hasTitle || hasSecondaryContent)
+                      const SizedBox(height: 6),
+                  ],
                   if (hasTitle)
                     Html(
                       data: richTitleHtml,
@@ -801,8 +802,8 @@ class _ProgrammingProfileVisual extends StatelessWidget {
       return ClipOval(
         child: BellugaNetworkImage(
           avatarUrl,
-          width: 18,
-          height: 18,
+          width: 22,
+          height: 22,
           fit: BoxFit.cover,
           errorWidget: _buildFallback(context),
         ),
@@ -813,8 +814,8 @@ class _ProgrammingProfileVisual extends StatelessWidget {
     if (typeVisual != null) {
       return AccountProfileTypeAvatar(
         visual: typeVisual,
-        size: 18,
-        iconSize: 10,
+        size: 22,
+        iconSize: 12,
       );
     }
 

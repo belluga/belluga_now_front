@@ -150,6 +150,42 @@ void main() {
   });
 
   testWidgets(
+    'timed programming places the time above the title in the card content column',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: EventProgrammingSection(
+              items: [
+                _buildProgrammingItem(
+                  time: '10:00',
+                  title: 'Mesa colaborativa',
+                ),
+              ],
+              occurrences: [
+                _buildOccurrence(
+                  id: 'occ-1',
+                  start: DateTime(2026, 4, 28, 10),
+                  programmingCount: 1,
+                ),
+              ],
+              onOccurrenceTap: (_) {},
+              onLocationTap: (_) {},
+              profileTypeRegistry: null,
+            ),
+          ),
+        ),
+      );
+
+      final timeRect = tester.getRect(find.text('10:00'));
+      final titleRect = tester.getRect(find.text('Mesa colaborativa'));
+
+      expect(timeRect.top, lessThan(titleRect.top));
+      expect(timeRect.left, greaterThanOrEqualTo(titleRect.left - 1));
+    },
+  );
+
+  testWidgets(
     'untimed programming items render without a synthetic time label or fake hour chip',
     (tester) async {
       await tester.pumpWidget(

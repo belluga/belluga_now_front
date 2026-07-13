@@ -2806,6 +2806,134 @@ void main() {
   );
 
   testWidgets(
+    'occurrence programming cards reserve drag for sequential items and keep identities through controller operations',
+    (tester) async {
+      final eventsRepository = _FakeEventsRepository();
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+
+      eventsRepository.eventTypes = [
+        TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439202'),
+          nameValue: tenantAdminRequiredText('Feira'),
+          slugValue: tenantAdminRequiredText('feira'),
+        ),
+      ];
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(body: TenantAdminEventFormScreen()),
+      );
+      await _fillRequiredFields(tester, controller: controller);
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('tenantAdminEventAddOccurrenceButton')),
+      );
+      await tester.pumpAndSettle();
+      await _closeOccurrenceSheet(tester);
+
+      await tester.ensureVisible(
+        find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),
+      );
+      await tester.tap(
+        find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),
+      );
+      await tester.pumpAndSettle();
+
+      await _addOccurrenceProgrammingTitleOnly(
+        tester,
+        time: '09:00',
+        title: 'Abertura fixa',
+      );
+      await _addOccurrenceProgrammingUntimedTitleOnly(
+        tester,
+        time: '10:00',
+        title: 'Intervenção sequencial',
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Fixo'), findsOneWidget);
+      expect(find.text('Sequencial'), findsOneWidget);
+      expect(
+        find.byKey(const Key('tenantAdminOccurrenceProgrammingDrag_0')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const Key('tenantAdminOccurrenceProgrammingDrag_1')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('tenantAdminOccurrenceProgrammingInsert_0')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('tenantAdminOccurrenceProgrammingInsert_1')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('tenantAdminOccurrenceProgrammingInsert_2')),
+        findsOneWidget,
+      );
+
+      final occurrenceKey = controller.occurrenceKeyAt(1)!;
+      final originalEntries = controller.programmingItemsForOccurrenceKey(
+        occurrenceKey,
+      );
+      final fixedEntry = originalEntries.first;
+      final sequentialEntry = originalEntries.last;
+
+      controller.moveOccurrenceProgrammingItem(
+        occurrenceKey: occurrenceKey,
+        itemKey: sequentialEntry.key,
+        targetIndex: 0,
+      );
+
+      final movedEntries = controller.programmingItemsForOccurrenceKey(
+        occurrenceKey,
+      );
+      expect(movedEntries.map((entry) => entry.key), [
+        sequentialEntry.key,
+        fixedEntry.key,
+      ]);
+
+      controller.moveOccurrenceProgrammingItem(
+        occurrenceKey: occurrenceKey,
+        itemKey: fixedEntry.key,
+        targetIndex: 2,
+      );
+      expect(
+        controller
+            .programmingItemsForOccurrenceKey(occurrenceKey)
+            .map((entry) => entry.key),
+        [sequentialEntry.key, fixedEntry.key],
+      );
+
+      controller.insertOccurrenceProgrammingItem(
+        occurrenceKey: occurrenceKey,
+        index: 1,
+        item: TenantAdminEventProgrammingItem(
+          titleValue: tenantAdminOptionalText('Ponte sequencial'),
+        ),
+      );
+
+      final insertedEntries = controller.programmingItemsForOccurrenceKey(
+        occurrenceKey,
+      );
+      expect(insertedEntries[0].key, sequentialEntry.key);
+      expect(insertedEntries[2].key, fixedEntry.key);
+      expect(insertedEntries.map((entry) => entry.value.title), [
+        _programmingTitleContains('Intervenção sequencial'),
+        _programmingTitleContains('Ponte sequencial'),
+        _programmingTitleContains('Abertura fixa'),
+      ]);
+    },
+  );
+
+  testWidgets(
     'multi-occurrence editor accumulates programming items that add occurrence profiles',
     (tester) async {
       final eventsRepository = _MultipleRelatedCandidatesEventsRepository();
