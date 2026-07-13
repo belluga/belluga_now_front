@@ -1,8 +1,14 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:belluga_form_validation/belluga_form_validation.dart'
+    show FormValidationFailure;
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/auth/auth_phone_otp_challenge.dart';
+import 'package:belluga_now/domain/auth/errors/belluga_auth_errors.dart';
 import 'package:belluga_now/domain/auth/value_objects/auth_phone_otp_challenge_id_value.dart';
 import 'package:belluga_now/domain/auth/value_objects/auth_phone_otp_delivery_channel_value.dart';
 import 'package:belluga_now/domain/auth/value_objects/auth_phone_otp_phone_value.dart';
@@ -208,6 +214,143 @@ void main() {
         controller.currentPhoneOtpChallengeStreamValue.value?.challengeId,
         'challenge-1',
       );
+      expect(controller.buttonLoadingValue.value, isFalse);
+      expect(controller.fieldEnabled.value, isTrue);
+    },
+  );
+
+  testWidgets(
+    'requestPhoneOtpChallenge ignores a completed request after controller disposal',
+    (tester) async {
+      final pendingChallenge = Completer<AuthPhoneOtpChallenge>();
+      final repository = _PhoneOtpAuthRepository()
+        ..pendingPhoneOtpChallenge = pendingChallenge.future;
+      final controller = AuthLoginController(authRepository: repository);
+      const phoneNumber = PhoneNumber(isoCode: IsoCode.BR, nsn: '27999990000');
+      controller.updatePhoneOtpInput(phoneNumber);
+
+      final request = controller.requestPhoneOtpChallenge();
+      await tester.pump();
+      expect(repository.requestedPhones, ['+5527999990000']);
+
+      controller.onDispose();
+      pendingChallenge.complete(
+        _buildOtpChallenge(
+          phone: '+5527999990000',
+          deliveryChannel: 'whatsapp',
+        ),
+      );
+
+      await expectLater(request, completes);
+    },
+  );
+
+  testWidgets(
+    'requestPhoneOtpChallenge drops duplicate attempts while a pending request is disposed',
+    (tester) async {
+      final configuredBurstLevel = int.tryParse(
+        Platform.environment['DELPHI_RACE_BURST_LEVEL'] ?? '',
+      );
+      final burstLevel = configuredBurstLevel != null && configuredBurstLevel > 1
+          ? configuredBurstLevel
+          : 2;
+      final pendingChallenge = Completer<AuthPhoneOtpChallenge>();
+      final repository = _PhoneOtpAuthRepository()
+        ..pendingPhoneOtpChallenge = pendingChallenge.future;
+      final controller = AuthLoginController(authRepository: repository);
+      const phoneNumber = PhoneNumber(isoCode: IsoCode.BR, nsn: '27999990000');
+      controller.updatePhoneOtpInput(phoneNumber);
+
+      final requests = List<Future<void>>.generate(
+        burstLevel,
+        (_) => controller.requestPhoneOtpChallenge(),
+      );
+      await tester.pump();
+      expect(repository.requestedPhones, ['+5527999990000']);
+      expect(repository.requestedDeliveryChannels, ['whatsapp']);
+
+      controller.onDispose();
+      pendingChallenge.complete(
+        _buildOtpChallenge(
+          phone: '+5527999990000',
+          deliveryChannel: 'whatsapp',
+        ),
+      );
+
+      await Future.wait(requests);
+      expect(repository.requestedPhones, ['+5527999990000']);
+      expect(repository.requestedDeliveryChannels, ['whatsapp']);
+    },
+  );
+
+  testWidgets(
+    'requestPhoneOtpChallenge ignores a typed auth error after controller disposal',
+    (tester) async {
+      final pendingChallenge = Completer<AuthPhoneOtpChallenge>();
+      final repository = _PhoneOtpAuthRepository()
+        ..pendingPhoneOtpChallenge = pendingChallenge.future;
+      final controller = AuthLoginController(authRepository: repository);
+      const phoneNumber = PhoneNumber(isoCode: IsoCode.BR, nsn: '27999990000');
+      controller.updatePhoneOtpInput(phoneNumber);
+
+      final request = controller.requestPhoneOtpChallenge();
+      await tester.pump();
+      expect(repository.requestedPhones, ['+5527999990000']);
+
+      controller.onDispose();
+      pendingChallenge.completeError(AuthErrorGeneric());
+
+      await expectLater(request, completes);
+    },
+  );
+
+  testWidgets(
+    'requestPhoneOtpChallenge ignores a validation error after controller disposal',
+    (tester) async {
+      final pendingChallenge = Completer<AuthPhoneOtpChallenge>();
+      final repository = _PhoneOtpAuthRepository()
+        ..pendingPhoneOtpChallenge = pendingChallenge.future;
+      final controller = AuthLoginController(authRepository: repository);
+      const phoneNumber = PhoneNumber(isoCode: IsoCode.BR, nsn: '27999990000');
+      controller.updatePhoneOtpInput(phoneNumber);
+
+      final request = controller.requestPhoneOtpChallenge();
+      await tester.pump();
+      expect(repository.requestedPhones, ['+5527999990000']);
+
+      controller.onDispose();
+      pendingChallenge.completeError(
+        FormValidationFailure(
+          statusCode: 422,
+          message: 'Telefone inválido.',
+          fieldErrors: const <String, List<String>>{
+            'phone': <String>['Telefone inválido.'],
+          },
+        ),
+      );
+
+      await expectLater(request, completes);
+    },
+  );
+
+  testWidgets(
+    'requestPhoneOtpChallenge ignores an unknown error after controller disposal',
+    (tester) async {
+      final pendingChallenge = Completer<AuthPhoneOtpChallenge>();
+      final repository = _PhoneOtpAuthRepository()
+        ..pendingPhoneOtpChallenge = pendingChallenge.future;
+      final controller = AuthLoginController(authRepository: repository);
+      const phoneNumber = PhoneNumber(isoCode: IsoCode.BR, nsn: '27999990000');
+      controller.updatePhoneOtpInput(phoneNumber);
+
+      final request = controller.requestPhoneOtpChallenge();
+      await tester.pump();
+      expect(repository.requestedPhones, ['+5527999990000']);
+
+      controller.onDispose();
+      pendingChallenge.completeError(Exception('Falha OTP simulada'));
+
+      await expectLater(request, completes);
     },
   );
 
@@ -890,6 +1033,7 @@ class _PhoneOtpAuthRepository implements AuthRepositoryContract<UserContract> {
   final verifiedCodes = <String>[];
   Object? requestFailure;
   Object? verifyFailure;
+  Future<AuthPhoneOtpChallenge>? pendingPhoneOtpChallenge;
   bool _authorized = false;
 
   @override
@@ -944,6 +1088,10 @@ class _PhoneOtpAuthRepository implements AuthRepositoryContract<UserContract> {
     requestedPhones.add(phone.value);
     final channel = deliveryChannel?.value ?? 'whatsapp';
     requestedDeliveryChannels.add(channel);
+    final pendingChallenge = pendingPhoneOtpChallenge;
+    if (pendingChallenge != null) {
+      return pendingChallenge;
+    }
     return _buildOtpChallenge(
       phone: phone.value,
       deliveryChannel: channel,
