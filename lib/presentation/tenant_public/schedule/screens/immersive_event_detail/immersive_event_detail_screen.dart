@@ -137,14 +137,19 @@ class _ImmersiveEventDetailScreenState
                       streamValue: _controller.receivedInvitesStreamValue,
                       builder: (context, receivedInvites) {
                         return StreamValueBuilder<
-                            Map<InvitesRepositoryContractPrimString,
-                                SentInviteSummary>>(
+                          Map<
+                            InvitesRepositoryContractPrimString,
+                            SentInviteSummary
+                          >
+                        >(
                           streamValue: _controller
                               .sentInviteSummariesByOccurrenceStreamValue,
                           builder: (context, sentSummariesByOccurrence) {
-                            final selectedOccurrenceId =
-                                resolvedEvent.selectedOccurrenceId?.trim();
-                            final sentSummary = selectedOccurrenceId == null ||
+                            final selectedOccurrenceId = resolvedEvent
+                                .selectedOccurrenceId
+                                ?.trim();
+                            final sentSummary =
+                                selectedOccurrenceId == null ||
                                     selectedOccurrenceId.isEmpty
                                 ? null
                                 : sentSummariesByOccurrence[invitesRepoString(
@@ -189,25 +194,25 @@ class _ImmersiveEventDetailScreenState
                                           _controller.profileTypeRegistry,
                                       onOccurrenceTap: (occurrence) =>
                                           _openOccurrence(
-                                        resolvedEvent,
-                                        occurrence,
-                                        tab: 'programming',
-                                      ),
+                                            resolvedEvent,
+                                            occurrence,
+                                            tab: 'programming',
+                                          ),
                                       onLocationTap:
                                           _openProgrammingLocationMap,
                                     ),
                                   ),
-                                  onHorizontalSwipeEnd: ({
-                                    required direction,
-                                    required activateTab,
-                                    required currentTabIndex,
-                                  }) =>
-                                      _handleProgrammingSwipe(
-                                    event: resolvedEvent,
-                                    direction: direction,
-                                    activateTab: activateTab,
-                                    currentTabIndex: currentTabIndex,
-                                  ),
+                                  onHorizontalSwipeEnd:
+                                      ({
+                                        required direction,
+                                        required activateTab,
+                                        required currentTabIndex,
+                                      }) => _handleProgrammingSwipe(
+                                        event: resolvedEvent,
+                                        direction: direction,
+                                        activateTab: activateTab,
+                                        currentTabIndex: currentTabIndex,
+                                      ),
                                   footer: null,
                                 ),
                               ..._buildDynamicProfileTabs(
@@ -233,8 +238,8 @@ class _ImmersiveEventDetailScreenState
                               ),
                             ];
 
-                            final footer = isConfirmationStateLoading &&
-                                    !isConfirmed
+                            final footer =
+                                isConfirmationStateLoading && !isConfirmed
                                 ? DynamicFooter(
                                     buttonText: 'Confirmando presença...',
                                     buttonIcon: Icons.hourglass_top_rounded,
@@ -243,20 +248,19 @@ class _ImmersiveEventDetailScreenState
                                     onActionPressed: null,
                                   )
                                 : isConfirmed
-                                    ? _buildInviteFooter(
-                                        context,
-                                        () => _openInviteFlow(resolvedEvent),
-                                        sentSummary,
-                                      )
-                                    : DynamicFooter(
-                                        buttonText:
-                                            'Bóora! Confirmar Presença!',
-                                        buttonIcon: Icons.celebration,
-                                        buttonColor: colorScheme.primary,
-                                        onActionPressed: () {
-                                          unawaited(_handleConfirmAttendance());
-                                        },
-                                      );
+                                ? _buildInviteFooter(
+                                    context,
+                                    () => _openInviteFlow(resolvedEvent),
+                                    sentSummary,
+                                  )
+                                : DynamicFooter(
+                                    buttonText: 'Bóora! Confirmar Presença!',
+                                    buttonIcon: Icons.celebration,
+                                    buttonColor: colorScheme.primary,
+                                    onActionPressed: () {
+                                      unawaited(_handleConfirmAttendance());
+                                    },
+                                  );
 
                             return Theme(
                               data: Theme.of(
@@ -265,20 +269,20 @@ class _ImmersiveEventDetailScreenState
                               child: ImmersiveDetailScreen(
                                 heroContentBuilder: (context, activateTab) =>
                                     ImmersiveHero(
-                                  event: resolvedEvent,
-                                  fallbackImageUri:
-                                      _controller.defaultEventImageUri,
-                                  onCounterpartTap: (profile) {
-                                    final targetIndex =
-                                        _linkedProfileTabIndexForHeroTap(
-                                      resolvedEvent,
-                                      profile,
-                                    );
-                                    if (targetIndex != null) {
-                                      activateTab(targetIndex);
-                                    }
-                                  },
-                                ),
+                                      event: resolvedEvent,
+                                      fallbackImageUri:
+                                          _controller.defaultEventImageUri,
+                                      onCounterpartTap: (profile) {
+                                        final targetIndex =
+                                            _linkedProfileTabIndexForHeroTap(
+                                              resolvedEvent,
+                                              profile,
+                                            );
+                                        if (targetIndex != null) {
+                                          activateTab(targetIndex);
+                                        }
+                                      },
+                                    ),
                                 heroViewportHeightFactor: 0.65,
                                 title: resolvedEvent.title.value,
                                 betweenHeroAndTabs: topBanner,
@@ -292,8 +296,8 @@ class _ImmersiveEventDetailScreenState
                                 footer: footer,
                                 backPolicy:
                                     buildCanonicalCurrentRouteBackPolicy(
-                                  context,
-                                ),
+                                      context,
+                                    ),
                                 heroActions: _buildHeroActions(resolvedEvent),
                               ),
                             );
@@ -695,10 +699,11 @@ class _ImmersiveEventDetailScreenState
   }
 
   String _inviteAwarePromotionRedirectPath({InviteModel? invite}) {
-    final shareCode = (invite == null
-            ? _controller.shareCodeForSelectedEvent()
-            : _controller.shareCodeForInvite(invite))
-        ?.trim();
+    final shareCode =
+        (invite == null
+                ? _controller.shareCodeForSelectedEvent()
+                : _controller.shareCodeForInvite(invite))
+            ?.trim();
     if (shareCode != null && shareCode.isNotEmpty) {
       return Uri(
         path: '/invite',
@@ -782,8 +787,9 @@ class _ImmersiveEventDetailScreenState
     }
 
     final selectedIndex = _selectedOccurrenceIndex(event);
-    final step =
-        direction == ImmersiveHorizontalSwipeDirection.forward ? 1 : -1;
+    final step = direction == ImmersiveHorizontalSwipeDirection.forward
+        ? 1
+        : -1;
     final targetIndex = selectedIndex + step;
     if (targetIndex >= 0 && targetIndex < occurrences.length) {
       _openOccurrence(event, occurrences[targetIndex], tab: 'programming');
@@ -814,8 +820,9 @@ class _ImmersiveEventDetailScreenState
     required ValueChanged<int> activateTab,
     required int currentTabIndex,
   }) {
-    final delta =
-        direction == ImmersiveHorizontalSwipeDirection.forward ? 1 : -1;
+    final delta = direction == ImmersiveHorizontalSwipeDirection.forward
+        ? 1
+        : -1;
     activateTab(currentTabIndex + delta);
   }
 
@@ -835,8 +842,10 @@ class _ImmersiveEventDetailScreenState
     List<ImmersiveTabItem> tabs,
     BuildContext context,
   ) {
-    final requestedTab =
-        context.routeData.queryParams.optString('tab')?.trim().toLowerCase();
+    final requestedTab = context.routeData.queryParams
+        .optString('tab')
+        ?.trim()
+        .toLowerCase();
     if (requestedTab != 'programming') {
       return 0;
     }
