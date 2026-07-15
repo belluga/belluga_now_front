@@ -8,16 +8,16 @@ import '../type_utils.dart';
 
 class RepositoryInlineDtoToDomainMapperForbiddenRule extends DartLintRule {
   RepositoryInlineDtoToDomainMapperForbiddenRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'repository_inline_dto_to_domain_mapper_forbidden',
-            problemMessage:
-                'Repositories cannot own inline DTO-to-domain mapper methods.',
-            correctionMessage:
-                'Treatments: move DTO-to-domain conversion into dedicated mapper files under lib/infrastructure/dal/dto/mappers and let repositories delegate to them.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'repository_inline_dto_to_domain_mapper_forbidden',
+          problemMessage:
+              'Repositories cannot own inline DTO-to-domain mapper methods.',
+          correctionMessage:
+              'Treatments: move DTO-to-domain conversion into dedicated mapper files under lib/infrastructure/dal/dto/mappers and let repositories delegate to them.',
+        ),
+      );
 
   @override
   void run(

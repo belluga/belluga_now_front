@@ -613,6 +613,9 @@ class _FakeFriendsRepository implements FriendsRepositoryContract {
 
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   @override
+  void clearCurrentIdentityState() {}
+
+  @override
   final StreamValue<Set<UserEventsRepositoryContractPrimString>>
   confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(

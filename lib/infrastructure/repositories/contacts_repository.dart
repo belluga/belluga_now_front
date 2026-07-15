@@ -144,4 +144,10 @@ class ContactsRepository implements ContactsRepositoryContract {
     await _localCache.write(contacts);
     contactsStreamValue.addValue(contacts);
   }
+
+  @override
+  Future<void> clearCurrentIdentityState() async {
+    await _localCache.clear();
+    contactsStreamValue.addValue(null);
+  }
 }

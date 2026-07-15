@@ -5,8 +5,7 @@ export 'package:belluga_now/infrastructure/dal/dao/invites/invite_contact_import
 abstract class InviteContactImportCacheContract {
   Future<InviteContactImportCacheEntry?> read(String cacheKey);
 
-  Future<void> write(
-    String cacheKey,
-    InviteContactImportCacheEntry entry,
-  );
+  Future<void> write(String cacheKey, InviteContactImportCacheEntry entry);
+
+  Future<void> clearAll();
 }

@@ -1,7 +1,5 @@
 // ignore_for_file: deprecated_member_use
 
-import 'package:analyzer/dart/ast/ast.dart';
-
 import 'package:belluga_analysis_plugin/src/compat/custom_lint_compat.dart';
 
 import '../path_utils.dart';
@@ -11,7 +9,7 @@ class TimezoneServiceDirectDateTimeConversionForbiddenRule
   TimezoneServiceDirectDateTimeConversionForbiddenRule()
     : super(
         code: const LintCode(
-          errorSeverity: ErrorSeverity.WARNING,
+          errorSeverity: ErrorSeverity.warning,
           name: 'timezone_service_direct_datetime_conversion_forbidden',
           problemMessage:
               'Direct DateTime timezone conversion is forbidden outside TimezoneService/TimezoneConverter.',

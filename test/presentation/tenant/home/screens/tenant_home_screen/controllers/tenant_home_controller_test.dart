@@ -88,28 +88,30 @@ void main() {
     );
   });
 
-  test('keeps ongoing events when explicit end date is in the future',
-      () async {
-    final now = DateTime.now();
-    const ongoingId = '507f1f77bcf86cd799439013';
-    final ongoingLongEvent = buildVenueEventResume(
-      id: ongoingId,
-      slug: 'ongoing-long-event',
-      title: 'Ongoing Long Event Title',
-      imageUri: Uri.parse('http://example.com/img.jpg'),
-      startDateTime: now.subtract(const Duration(hours: 18)),
-      endDateTime: now.add(const Duration(hours: 8)),
-      location: 'Valid Ongoing Location Name',
-    );
+  test(
+    'keeps ongoing events when explicit end date is in the future',
+    () async {
+      final now = DateTime.now();
+      const ongoingId = '507f1f77bcf86cd799439013';
+      final ongoingLongEvent = buildVenueEventResume(
+        id: ongoingId,
+        slug: 'ongoing-long-event',
+        title: 'Ongoing Long Event Title',
+        imageUri: Uri.parse('http://example.com/img.jpg'),
+        startDateTime: now.subtract(const Duration(hours: 18)),
+        endDateTime: now.add(const Duration(hours: 8)),
+        location: 'Valid Ongoing Location Name',
+      );
 
-    userEventsRepository.setEvents([ongoingLongEvent]);
-    await controller.init();
+      userEventsRepository.setEvents([ongoingLongEvent]);
+      await controller.init();
 
-    expect(
-      controller.myEventsFilteredStreamValue.value.map((e) => e.id),
-      contains(ongoingId),
-    );
-  });
+      expect(
+        controller.myEventsFilteredStreamValue.value.map((e) => e.id),
+        contains(ongoingId),
+      );
+    },
+  );
 
   test('init continues when confirmed ids refresh fails', () async {
     controller.onDispose();
@@ -125,47 +127,51 @@ void main() {
     expect(userEventsRepository.fetchMyEventsCallCount, 1);
   });
 
-  test('publishes live location status copy from repository-owned origin mode',
-      () async {
-    await controller.init();
+  test(
+    'publishes live location status copy from repository-owned origin mode',
+    () async {
+      await controller.init();
 
-    await appDataRepository.setLocationOriginSettings(
-      LocationOriginSettings.userLiveLocation(),
-    );
+      await appDataRepository.setLocationOriginSettings(
+        LocationOriginSettings.userLiveLocation(),
+      );
 
-    expect(
-      controller.homeLocationStatusStreamValue.value?.statusText,
-      'Usando sua localização.',
-    );
-    expect(
-      controller.homeLocationStatusStreamValue.value?.dialogMessage,
-      'Estamos usando sua localização para exibir eventos e lugares próximos a você.',
-    );
-  });
+      expect(
+        controller.homeLocationStatusStreamValue.value?.statusText,
+        'Usando sua localização.',
+      );
+      expect(
+        controller.homeLocationStatusStreamValue.value?.dialogMessage,
+        'Estamos usando sua localização para exibir eventos e lugares próximos a você.',
+      );
+    },
+  );
 
-  test('publishes fixed location status copy from repository-owned origin mode',
-      () async {
-    await controller.init();
+  test(
+    'publishes fixed location status copy from repository-owned origin mode',
+    () async {
+      await controller.init();
 
-    await appDataRepository.setLocationOriginSettings(
-      LocationOriginSettings.tenantDefaultLocation(
-        fixedLocationReference: CityCoordinate(
-          latitudeValue: LatitudeValue()..parse('-20.671339'),
-          longitudeValue: LongitudeValue()..parse('-40.495395'),
+      await appDataRepository.setLocationOriginSettings(
+        LocationOriginSettings.tenantDefaultLocation(
+          fixedLocationReference: CityCoordinate(
+            latitudeValue: LatitudeValue()..parse('-20.671339'),
+            longitudeValue: LongitudeValue()..parse('-40.495395'),
+          ),
+          reason: LocationOriginReason.outsideRange,
         ),
-        reason: LocationOriginReason.outsideRange,
-      ),
-    );
+      );
 
-    expect(
-      controller.homeLocationStatusStreamValue.value?.statusText,
-      'Usando localização fixa.',
-    );
-    expect(
-      controller.homeLocationStatusStreamValue.value?.dialogMessage,
-      'Sua localização atual está fora da área atendida pelo Tenant Test. Por isso, usamos uma localização de referência para mostrar o eventos e locais dentro da área de atuação.',
-    );
-  });
+      expect(
+        controller.homeLocationStatusStreamValue.value?.statusText,
+        'Usando localização fixa.',
+      );
+      expect(
+        controller.homeLocationStatusStreamValue.value?.dialogMessage,
+        'Sua localização atual está fora da área atendida pelo Tenant Test. Por isso, usamos uma localização de referência para mostrar o eventos e locais dentro da área de atuação.',
+      );
+    },
+  );
 }
 
 TenantHomeController _buildTenantHomeController({
@@ -194,10 +200,7 @@ AppData _buildAppData() {
         'type': 'artist',
         'label': 'Artist',
         'allowed_taxonomies': [],
-        'capabilities': {
-          'is_favoritable': true,
-          'is_poi_enabled': false,
-        },
+        'capabilities': {'is_favoritable': true, 'is_poi_enabled': false},
       },
     ],
     'domains': const ['https://tenant.test'],
@@ -222,18 +225,24 @@ AppData _buildAppData() {
     'device': 'test-device',
   };
   return buildAppDataFromInitialization(
-      remoteData: remoteData, localInfo: localInfo);
+    remoteData: remoteData,
+    localInfo: localInfo,
+  );
 }
 
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {
+  @override
+  void clearCurrentIdentityState() {}
+
   _FakeUserEventsRepository({List<VenueEventResume>? events})
-      : _events = events ?? [];
+    : _events = events ?? [];
 
   @override
   final StreamValue<Set<UserEventsRepositoryContractPrimString>>
-      confirmedOccurrenceIdsStream =
+  confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(
-          defaultValue: {});
+        defaultValue: {},
+      );
   List<VenueEventResume> _events;
   int fetchMyEventsCallCount = 0;
   bool throwOnRefreshConfirmedIds = false;
@@ -272,12 +281,12 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
 
   @override
   UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
-          UserEventsRepositoryContractPrimString eventId) =>
-      userEventsRepoBool(
-        confirmedOccurrenceIdsStream.value.contains(eventId),
-        defaultValue: false,
-        isRequired: true,
-      );
+    UserEventsRepositoryContractPrimString eventId,
+  ) => userEventsRepoBool(
+    confirmedOccurrenceIdsStream.value.contains(eventId),
+    defaultValue: false,
+    isRequired: true,
+  );
 }
 
 class _FakeAppDataRepository extends AppDataRepositoryContract {
@@ -292,8 +301,9 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
   Future<void> init() async {}
 
   @override
-  final StreamValue<ThemeMode?> themeModeStreamValue =
-      StreamValue<ThemeMode?>(defaultValue: ThemeMode.light);
+  final StreamValue<ThemeMode?> themeModeStreamValue = StreamValue<ThemeMode?>(
+    defaultValue: ThemeMode.light,
+  );
 
   @override
   ThemeMode get themeMode => themeModeStreamValue.value ?? ThemeMode.light;
@@ -306,8 +316,8 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
   @override
   final StreamValue<DistanceInMetersValue> maxRadiusMetersStreamValue =
       StreamValue<DistanceInMetersValue>(
-    defaultValue: DistanceInMetersValue.fromRaw(5000, defaultValue: 5000),
-  );
+        defaultValue: DistanceInMetersValue.fromRaw(5000, defaultValue: 5000),
+      );
 
   @override
   DistanceInMetersValue get maxRadiusMeters => maxRadiusMetersStreamValue.value;
@@ -348,13 +358,14 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
       StreamValue<double?>(defaultValue: null);
 
   @override
-  final StreamValue<String?> lastKnownAddressStreamValue =
-      StreamValue<String?>(defaultValue: null);
+  final StreamValue<String?> lastKnownAddressStreamValue = StreamValue<String?>(
+    defaultValue: null,
+  );
 
   @override
   @override
   final StreamValue<LocationResolutionPhase>
-      locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
+  locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
     defaultValue: LocationResolutionPhase.unknown,
   );
 
@@ -381,14 +392,12 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   Future<String?> resolveUserLocation({
     Object? timeout,
     UserLocationRepositoryContractBoolValue? requestPermissionIfNeededValue,
-  }) async =>
-      null;
+  }) async => null;
 
   @override
-  Future<bool> startTracking(
-          {LocationTrackingMode mode =
-              LocationTrackingMode.mapForeground}) async =>
-      false;
+  Future<bool> startTracking({
+    LocationTrackingMode mode = LocationTrackingMode.mapForeground,
+  }) async => false;
 
   @override
   Future<void> stopTracking() async {}

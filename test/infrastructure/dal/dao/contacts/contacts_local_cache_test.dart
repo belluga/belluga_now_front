@@ -22,30 +22,34 @@ class _FakeContactsLocalCacheStorage
 }
 
 void main() {
-  test('contacts local cache rehydrates contacts after chunked write', () async {
-    final storage = _FakeContactsLocalCacheStorage();
-    final cache = ContactsLocalCache(storage: storage);
-    final contacts = List.generate(
-      250,
-      (index) => buildContactModel(
-        id: 'contact-$index',
-        displayName: 'Contato $index',
-        phones: <String>[
-          '+55 27 99999-${index.toString().padLeft(4, '0')}',
-        ],
-        emails: <String>['contato$index@example.com'],
-      ),
-      growable: false,
-    );
+  test(
+    'contacts local cache rehydrates contacts after chunked write',
+    () async {
+      final storage = _FakeContactsLocalCacheStorage();
+      final cache = ContactsLocalCache(storage: storage);
+      final contacts = List.generate(
+        250,
+        (index) => buildContactModel(
+          id: 'contact-$index',
+          displayName: 'Contato $index',
+          phones: <String>['+55 27 99999-${index.toString().padLeft(4, '0')}'],
+          emails: <String>['contato$index@example.com'],
+        ),
+        growable: false,
+      );
 
-    await cache.write(contacts);
+      await cache.write(contacts);
 
-    final restored = await cache.read();
+      final restored = await cache.read();
 
-    expect(restored, isNotNull);
-    expect(restored, contacts);
-    expect(storage.values.containsKey('contacts_repository_cache_v2'), isTrue);
-  });
+      expect(restored, isNotNull);
+      expect(restored, contacts);
+      expect(
+        storage.values.containsKey('contacts_repository_cache_v2'),
+        isTrue,
+      );
+    },
+  );
 
   test('contacts local cache can read legacy single-key payload', () async {
     final storage = _FakeContactsLocalCacheStorage();
@@ -67,4 +71,33 @@ void main() {
 
     expect(restored, contacts);
   });
+
+  test(
+    'contacts local cache clear removes chunked and legacy payloads',
+    () async {
+      final storage = _FakeContactsLocalCacheStorage();
+      final cache = ContactsLocalCache(storage: storage);
+      final contacts = List.generate(
+        250,
+        (index) => buildContactModel(
+          id: 'contact-$index',
+          displayName: 'Contato $index',
+        ),
+        growable: false,
+      );
+
+      await cache.write(contacts);
+      await storage.write(
+        'contacts_repository_cache_v1',
+        '[{"id":"legacy-1","display_name":"Contato legado","phones":[],"emails":[]}]',
+      );
+
+      expect(storage.values, isNotEmpty);
+
+      await cache.clear();
+
+      expect(storage.values, isEmpty);
+      expect(await cache.read(), isNull);
+    },
+  );
 }

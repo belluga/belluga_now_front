@@ -23,6 +23,14 @@ const _domainForbiddenCollectionTypeNames = {
   'Collection',
 };
 
+/// First-party packages that publish domain values for use in host-domain
+/// signatures. This is deliberately an exact registry, rather than an
+/// external-package allowlist: a package is admitted only after its domain
+/// contract is established and the package is added here.
+const _firstPartyDomainPackageLibraryRoots = <String>{
+  '/packages/belluga_contact_channels/lib/',
+};
+
 String normalizeTypeName(String raw) {
   final withoutNullability = raw.replaceAll('?', '');
   final genericIndex = withoutNullability.indexOf('<');
@@ -312,9 +320,7 @@ bool containsForbiddenDomainPrimitiveDartType(
     return true;
   }
 
-  final typeName = normalizeTypeName(
-    type.getDisplayString(withNullability: false),
-  );
+  final typeName = normalizeTypeName(type.getDisplayString());
   if (_domainPrimitiveTypeNames.contains(typeName)) {
     return true;
   }
@@ -409,9 +415,7 @@ bool _isForbiddenDomainValueObjectPayloadType(
     }
   }
 
-  final typeName = normalizeTypeName(
-    type.getDisplayString(withNullability: false),
-  );
+  final typeName = normalizeTypeName(type.getDisplayString());
   if (_domainForbiddenCollectionTypeNames.contains(typeName)) {
     return true;
   }
@@ -447,7 +451,21 @@ bool _isDomainOwnedType(InterfaceType type) {
   if (sourcePath == null) {
     return false;
   }
-  return isDomainFilePath(sourcePath);
+  return isDomainFilePath(sourcePath) ||
+      _isRegisteredFirstPartyDomainPackageSource(sourcePath);
+}
+
+bool _isRegisteredFirstPartyDomainPackageSource(String sourcePath) {
+  return _firstPartyDomainPackageLibraryRoots.any(sourcePath.contains);
+}
+
+Iterable<ClassMember> classMembersOf(ClassDeclaration declaration) {
+  final body = declaration.body;
+  if (body is BlockClassBody) {
+    return body.members;
+  }
+
+  return const <ClassMember>[];
 }
 
 bool _isDomainValueObjectsFolderType(InterfaceType type) {
@@ -459,9 +477,7 @@ bool _isDomainValueObjectsFolderType(InterfaceType type) {
 }
 
 String? _sourcePathOf(InterfaceType type) {
-  final source =
-      type.element.firstFragment.libraryFragment?.source ??
-      type.element.library.firstFragment.source;
+  final source = type.element.firstFragment.libraryFragment.source;
   return normalizePath(source.fullName);
 }
 

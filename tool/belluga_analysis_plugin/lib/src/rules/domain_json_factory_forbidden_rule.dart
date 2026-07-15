@@ -6,16 +6,16 @@ import '../path_utils.dart';
 
 class DomainJsonFactoryForbiddenRule extends DartLintRule {
   DomainJsonFactoryForbiddenRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'domain_json_factory_forbidden',
-            problemMessage:
-                'Domain files cannot declare fromJson/fromMap factories.',
-            correctionMessage:
-                'Treatments: move JSON parsing to DAO/DTO layers and expose domain construction through infrastructure mappers or fromPrimitives.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'domain_json_factory_forbidden',
+          problemMessage:
+              'Domain files cannot declare fromJson/fromMap factories.',
+          correctionMessage:
+              'Treatments: move JSON parsing to DAO/DTO layers and expose domain construction through infrastructure mappers or fromPrimitives.',
+        ),
+      );
 
   @override
   void run(

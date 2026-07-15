@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/application/extensions/compute_on_color.dart';
 import 'package:belluga_now/application/sharing/account_profile_public_share_payload.dart';
 import 'package:belluga_now/application/rich_text/account_profile_rich_text_block.dart';
@@ -41,6 +42,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 
 class AccountProfileDetailScreen extends StatefulWidget {
   const AccountProfileDetailScreen({
@@ -158,8 +161,6 @@ class _AccountProfileDetailScreenState
                                         resolvedAccountProfile,
                                         resolvedConfig,
                                         moduleData,
-                                        isFav: isFav,
-                                        isFavoritable: isFavoritable,
                                       );
                                       final effectiveTabs = configTabs.isEmpty
                                           ? <ImmersiveTabItem>[
@@ -186,6 +187,15 @@ class _AccountProfileDetailScreenState
                                           isFav: isFav,
                                           isFavoritable: isFavoritable,
                                         ),
+                                        footer: _buildFavoriteFooterIfAvailable(
+                                          resolvedAccountProfile,
+                                          isFav: isFav,
+                                          isFavoritable: isFavoritable,
+                                        ),
+                                        floatingActionButton:
+                                            _buildContactBubbleFloatingActionButton(
+                                              resolvedAccountProfile,
+                                            ),
                                         backPolicy:
                                             buildCanonicalCurrentRouteBackPolicy(
                                               context,
@@ -340,14 +350,6 @@ class _AccountProfileDetailScreenState
         icon: BooraIcons.share,
         isPrimary: !isFavoritable,
         onPressed: () => unawaited(_shareAccountProfile(accountProfile)),
-      ),
-      ImmersiveHeroAction(
-        key: const Key('accountProfileWhatsappAction'),
-        label: 'WhatsApp',
-        icon: BooraIcons.whatsapp,
-        foregroundColor: const Color(0xFF25D366),
-        onPressed: () =>
-            unawaited(_shareAccountProfileOnWhatsApp(accountProfile)),
       ),
     ];
   }
@@ -819,10 +821,8 @@ class _AccountProfileDetailScreenState
   List<ImmersiveTabItem> _buildTabsFromConfig(
     AccountProfileModel accountProfile,
     PartnerProfileConfig config,
-    Map<ProfileModuleId, Object?> moduleData, {
-    required bool isFav,
-    required bool isFavoritable,
-  }) {
+    Map<ProfileModuleId, Object?> moduleData,
+  ) {
     final agendaEvents = _agendaEventsFromModuleData(moduleData);
     final locationView = _locationFromModuleData(moduleData);
 
@@ -834,57 +834,36 @@ class _AccountProfileDetailScreenState
             location: locationView,
           ),
         )
-        .map(
-          (tab) => _buildConfiguredTab(
-            accountProfile,
-            tab,
-            moduleData,
-            location: locationView,
-            isFav: isFav,
-            isFavoritable: isFavoritable,
-          ),
-        )
+        .map((tab) => _buildConfiguredTab(tab, moduleData))
         .toList();
 
     tabs.sort(
       (left, right) =>
           _tabOrderRank(left.title).compareTo(_tabOrderRank(right.title)),
     );
+    if (_controller.shouldRenderContactTab(accountProfile)) {
+      tabs.add(_buildContactTab(accountProfile));
+    }
     tabs.addAll(_buildNestedProfileGroupTabs(accountProfile));
 
     return tabs;
   }
 
   ImmersiveTabItem _buildConfiguredTab(
-    AccountProfileModel accountProfile,
     ProfileTabConfig tab,
-    Map<ProfileModuleId, Object?> moduleData, {
-    required PartnerLocationView? location,
-    required bool isFav,
-    required bool isFavoritable,
-  }) {
+    Map<ProfileModuleId, Object?> moduleData,
+  ) {
     final content = _buildModules(tab.modules, moduleData);
-    final footer = _buildTabFooter(
-      accountProfile,
-      tab,
-      location: location,
-      isFav: isFav,
-      isFavoritable: isFavoritable,
-    );
     final normalizedTitle = tab.title.trim().toLowerCase();
 
     if (normalizedTitle == ImmersiveCommonTabs.aboutTitle.toLowerCase()) {
-      return ImmersiveCommonTabs.about(content: content, footer: footer);
+      return ImmersiveCommonTabs.about(content: content);
     }
     if (normalizedTitle.contains('chegar')) {
-      return ImmersiveCommonTabs.directions(content: content, footer: footer);
+      return ImmersiveCommonTabs.directions(content: content);
     }
 
-    return ImmersiveCommonTabs.custom(
-      title: tab.title,
-      content: content,
-      footer: footer,
-    );
+    return ImmersiveCommonTabs.custom(title: tab.title, content: content);
   }
 
   List<ImmersiveTabItem> _buildNestedProfileGroupTabs(
@@ -912,11 +891,14 @@ class _AccountProfileDetailScreenState
     if (normalized == 'sobre') {
       return 0;
     }
-    if (normalized == 'agenda' || normalized == 'eventos') {
+    if (normalized == 'fale conosco') {
       return 1;
     }
-    if (normalized.contains('chegar')) {
+    if (normalized == 'agenda' || normalized == 'eventos') {
       return 2;
+    }
+    if (normalized.contains('chegar')) {
+      return 3;
     }
     return 100;
   }
@@ -948,12 +930,169 @@ class _AccountProfileDetailScreenState
         isFav: isFav,
         isFavoritable: isFavoritable,
       ),
-      footer: _buildFallbackFooter(
-        accountProfile,
-        isFav: isFav,
-        isFavoritable: isFavoritable,
+    );
+  }
+
+  ImmersiveTabItem _buildContactTab(AccountProfileModel accountProfile) {
+    final channels = _controller.availableContactChannelsFor(accountProfile);
+    return ImmersiveTabItem(
+      title: 'Contato',
+      content: _buildContactTabContent(accountProfile, channels),
+    );
+  }
+
+  Widget _buildContactTabContent(
+    AccountProfileModel accountProfile,
+    List<BellugaContactChannel> channels,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (accountProfile.contactMode ==
+              BellugaContactSourceMode.mirroredAccountProfile)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: colorScheme.outlineVariant),
+              ),
+              child: Text(
+                accountProfile.effectiveContactSourceProfile == null
+                    ? 'Os canais deste perfil são atendidos por outro perfil do mesmo tenant.'
+                    : 'Os canais deste perfil são atendidos por ${accountProfile.effectiveContactSourceProfile!.displayName}.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          if (accountProfile.contactMode ==
+              BellugaContactSourceMode.mirroredAccountProfile)
+            const SizedBox(height: 16),
+          for (var index = 0; index < channels.length; index++) ...[
+            _buildContactChannelCard(accountProfile, channels[index]),
+            if (index < channels.length - 1) const SizedBox(height: 12),
+          ],
+        ],
       ),
     );
+  }
+
+  Widget _buildContactChannelCard(
+    AccountProfileModel accountProfile,
+    BellugaContactChannel channel,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final iconColor = switch (channel.iconToken) {
+      BellugaContactIconToken.whatsapp => const Color(0xFF25D366),
+      BellugaContactIconToken.emailOutlined => colorScheme.primary,
+    };
+    final title = channel.title?.trim().isNotEmpty == true
+        ? channel.title!.trim()
+        : channel.definition.canonicalLabel;
+    return InkWell(
+      key: Key('accountProfileContactChannelCard_${channel.id}'),
+      borderRadius: BorderRadius.circular(24),
+      onTap: () => unawaited(
+        _invokeContactChannel(accountProfile, channel, origin: 'tab'),
+      ),
+      child: Ink(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: colorScheme.outlineVariant),
+          boxShadow: [
+            BoxShadow(
+              color: colorScheme.shadow.withValues(alpha: 0.04),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(_contactIconFor(channel.iconToken), color: iconColor),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    channel.value,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 16,
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget? _buildContactBubbleFloatingActionButton(
+    AccountProfileModel accountProfile,
+  ) {
+    final bubbleChannel = _controller.resolvedBubbleChannelFor(accountProfile);
+    if (bubbleChannel == null) {
+      return null;
+    }
+
+    return VisibilityDetector(
+      key: Key('accountProfileContactBubbleVisibility_${bubbleChannel.id}'),
+      onVisibilityChanged: (info) {
+        if (info.visibleFraction > 0.5) {
+          _controller.trackContactBubbleImpression(accountProfile);
+        }
+      },
+      child: FloatingActionButton(
+        key: const Key('accountProfileContactBubbleButton'),
+        heroTag:
+            'accountProfileContactBubble_${accountProfile.id}_${bubbleChannel.id}',
+        onPressed: () =>
+            unawaited(_handleContactBubbleTap(accountProfile, bubbleChannel)),
+        backgroundColor: const Color(0xFF25D366),
+        foregroundColor: Colors.white,
+        child: Icon(_contactIconFor(bubbleChannel.iconToken)),
+      ),
+    );
+  }
+
+  IconData _contactIconFor(BellugaContactIconToken token) {
+    return switch (token) {
+      BellugaContactIconToken.emailOutlined => Icons.email_outlined,
+      BellugaContactIconToken.whatsapp => BooraIcons.whatsapp,
+    };
   }
 
   void _checkPendingIntent() {
@@ -986,6 +1125,153 @@ class _AccountProfileDetailScreenState
     );
   }
 
+  Future<void> _handleContactBubbleTap(
+    AccountProfileModel accountProfile,
+    BellugaContactChannel bubbleChannel,
+  ) async {
+    _controller.trackContactBubbleTap(accountProfile);
+    await _invokeContactChannel(
+      accountProfile,
+      bubbleChannel,
+      origin: 'bubble',
+    );
+  }
+
+  Future<void> _invokeContactChannel(
+    AccountProfileModel accountProfile,
+    BellugaContactChannel channel, {
+    required String origin,
+  }) async {
+    if (channel.definition.capabilities.messagePresets &&
+        channel.hasInitialMessages) {
+      _controller.trackContactChooserOpen(
+        accountProfile,
+        channel: channel,
+        origin: origin,
+      );
+      await _showContactChooserSheet(accountProfile, channel, origin: origin);
+      return;
+    }
+
+    await _launchContactChannel(accountProfile, channel, origin: origin);
+  }
+
+  Future<void> _handleContactCtaTap(
+    AccountProfileModel accountProfile,
+    BellugaContactChannel channel,
+    BellugaContactInitialMessage initialMessage, {
+    required String origin,
+  }) async {
+    _controller.trackContactCtaTap(
+      accountProfile,
+      channel: channel,
+      initialMessage: initialMessage,
+      origin: origin,
+    );
+    await _launchContactChannel(
+      accountProfile,
+      channel,
+      origin: origin,
+      initialMessage: initialMessage,
+      trackDirectClick: false,
+    );
+  }
+
+  Future<void> _showContactChooserSheet(
+    AccountProfileModel accountProfile,
+    BellugaContactChannel channel, {
+    required String origin,
+  }) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (
+                  var index = 0;
+                  index < channel.initialMessages.length;
+                  index++
+                ) ...[
+                  ListTile(
+                    key: Key(
+                      'accountProfileContactSheetCta_${channel.initialMessages[index].id}',
+                    ),
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(_contactIconFor(channel.iconToken)),
+                    title: Text(channel.initialMessages[index].cta),
+                    onTap: () {
+                      sheetContext.router.pop();
+                      unawaited(
+                        _handleContactCtaTap(
+                          accountProfile,
+                          channel,
+                          channel.initialMessages[index],
+                          origin: origin,
+                        ),
+                      );
+                    },
+                  ),
+                  if (index < channel.initialMessages.length - 1)
+                    const Divider(height: 1),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _launchContactChannel(
+    AccountProfileModel accountProfile,
+    BellugaContactChannel channel, {
+    required String origin,
+    BellugaContactInitialMessage? initialMessage,
+    bool trackDirectClick = true,
+  }) async {
+    final resolution = _controller.resolveContactChannel(
+      channel,
+      initialMessage: initialMessage,
+    );
+    if (resolution == null) {
+      _showStatusMessage('Canal de contato indisponível no momento.');
+      return;
+    }
+
+    if (trackDirectClick && initialMessage == null) {
+      _controller.trackContactDirectClick(
+        accountProfile,
+        channel: channel,
+        origin: origin,
+      );
+    }
+
+    try {
+      final launcher = widget.externalUrlLauncher ?? _launchExternalUrl;
+      final launched = await launcher(
+        resolution.uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched && mounted) {
+        _showStatusMessage('Não foi possível abrir o canal de contato.');
+      }
+    } catch (_) {
+      if (mounted) {
+        _showStatusMessage('Não foi possível abrir o canal de contato.');
+      }
+    }
+  }
+
+  Future<bool> _launchExternalUrl(Uri uri, {required LaunchMode mode}) {
+    return launchUrl(uri, mode: mode);
+  }
+
   Future<void> _shareAccountProfile(AccountProfileModel accountProfile) async {
     final payload = _buildAccountProfilePublicSharePayload(accountProfile);
     if (payload == null) {
@@ -999,31 +1285,6 @@ class _AccountProfileDetailScreenState
       await PublicShareLauncher.launchSystemShare(
         ShareParams(text: payload.message, subject: payload.subject),
         launcher: widget.shareLauncher,
-      );
-    } catch (_) {
-      _showStatusMessage(
-        'Não foi possível compartilhar ${accountProfile.name}.',
-      );
-    }
-  }
-
-  Future<void> _shareAccountProfileOnWhatsApp(
-    AccountProfileModel accountProfile,
-  ) async {
-    final payload = _buildAccountProfilePublicSharePayload(accountProfile);
-    if (payload == null) {
-      _showStatusMessage(
-        'Não foi possível compartilhar ${accountProfile.name}.',
-      );
-      return;
-    }
-
-    try {
-      await PublicShareLauncher.launchWhatsAppOrSystemShare(
-        text: payload.message,
-        subject: payload.subject,
-        fallbackShareLauncher: widget.shareLauncher,
-        externalUrlLauncher: widget.externalUrlLauncher,
       );
     } catch (_) {
       _showStatusMessage(
@@ -1240,25 +1501,7 @@ class _AccountProfileDetailScreenState
     return !now.isBefore(start) && !now.isAfter(end);
   }
 
-  Widget? _buildTabFooter(
-    AccountProfileModel accountProfile,
-    ProfileTabConfig tab, {
-    required PartnerLocationView? location,
-    required bool isFav,
-    required bool isFavoritable,
-  }) {
-    final lowerTitle = tab.title.toLowerCase();
-    if (lowerTitle.contains('evento') || lowerTitle.contains('agenda')) {
-      if (!isFavoritable || isFav) {
-        return null;
-      }
-      return _favoriteFooter(accountProfile);
-    }
-
-    return null;
-  }
-
-  Widget? _buildFallbackFooter(
+  Widget? _buildFavoriteFooterIfAvailable(
     AccountProfileModel accountProfile, {
     required bool isFav,
     required bool isFavoritable,

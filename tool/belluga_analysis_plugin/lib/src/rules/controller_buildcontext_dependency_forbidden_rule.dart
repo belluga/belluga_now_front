@@ -7,16 +7,16 @@ import '../type_utils.dart';
 
 class ControllerBuildContextDependencyForbiddenRule extends DartLintRule {
   ControllerBuildContextDependencyForbiddenRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'controller_buildcontext_dependency_forbidden',
-            problemMessage:
-                'Controllers must not depend on BuildContext in fields, params, or APIs.',
-            correctionMessage:
-                'Treatments: remove BuildContext from controller APIs/fields; move context-bound behavior to UI/router layer.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'controller_buildcontext_dependency_forbidden',
+          problemMessage:
+              'Controllers must not depend on BuildContext in fields, params, or APIs.',
+          correctionMessage:
+              'Treatments: remove BuildContext from controller APIs/fields; move context-bound behavior to UI/router layer.',
+        ),
+      );
 
   @override
   void run(

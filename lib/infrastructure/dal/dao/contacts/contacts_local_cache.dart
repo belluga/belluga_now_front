@@ -35,9 +35,10 @@ class _CompositeContactsLocalCacheStorage
   _CompositeContactsLocalCacheStorage({
     ContactsLocalCacheStorageContract? primaryStorage,
     ContactsLocalCacheStorageContract? legacyStorage,
-  })  : _primaryStorage = primaryStorage ?? ContactsLocalCacheFileStorage(),
-        _legacyStorage = legacyStorage ??
-            _LegacyFlutterSecureStorageContactsLocalCacheStorage();
+  }) : _primaryStorage = primaryStorage ?? ContactsLocalCacheFileStorage(),
+       _legacyStorage =
+           legacyStorage ??
+           _LegacyFlutterSecureStorageContactsLocalCacheStorage();
 
   final ContactsLocalCacheStorageContract _primaryStorage;
   final ContactsLocalCacheStorageContract _legacyStorage;
@@ -63,10 +64,8 @@ class _CompositeContactsLocalCacheStorage
   }
 
   @override
-  Future<void> write(String key, String value) => _primaryStorage.write(
-        key,
-        value,
-      );
+  Future<void> write(String key, String value) =>
+      _primaryStorage.write(key, value);
 
   @override
   Future<void> delete(String key) async {
@@ -77,7 +76,7 @@ class _CompositeContactsLocalCacheStorage
 
 class ContactsLocalCache implements ContactsLocalCacheContract {
   ContactsLocalCache({ContactsLocalCacheStorageContract? storage})
-      : _storage = storage ?? _CompositeContactsLocalCacheStorage();
+    : _storage = storage ?? _CompositeContactsLocalCacheStorage();
 
   static const String _contactsCacheKey = 'contacts_repository_cache_v1';
   static const String _contactsCacheMetaKey = 'contacts_repository_cache_v2';
@@ -88,9 +87,8 @@ class ContactsLocalCache implements ContactsLocalCacheContract {
   @override
   Future<List<ContactModel>?> read() async {
     try {
-      final raw = await _readChunkedPayload() ?? await _storage.read(
-            _contactsCacheKey,
-          );
+      final raw =
+          await _readChunkedPayload() ?? await _storage.read(_contactsCacheKey);
       if (raw == null || raw.trim().isEmpty) {
         return null;
       }
@@ -119,6 +117,20 @@ class ContactsLocalCache implements ContactsLocalCacheContract {
     } catch (_) {
       // Contact cache is an optimization. Runtime contact loading remains
       // authoritative when persistence fails.
+    }
+  }
+
+  @override
+  Future<void> clear() async {
+    final rawMeta = await _storage.read(_contactsCacheMetaKey);
+    final chunkCount = rawMeta == null || rawMeta.trim().isEmpty
+        ? 0
+        : _parseChunkCount((jsonDecode(rawMeta) as Map?)?['chunk_count']);
+
+    await _storage.delete(_contactsCacheKey);
+    await _storage.delete(_contactsCacheMetaKey);
+    for (var index = 0; index < chunkCount; index += 1) {
+      await _storage.delete(_chunkKey(index));
     }
   }
 
@@ -161,11 +173,10 @@ class ContactsLocalCache implements ContactsLocalCacheContract {
   Future<void> _writeChunkedPayload(String encoded) async {
     final chunks = _splitIntoChunks(encoded);
     final previousMeta = await _storage.read(_contactsCacheMetaKey);
-    final previousChunkCount = previousMeta == null || previousMeta.trim().isEmpty
+    final previousChunkCount =
+        previousMeta == null || previousMeta.trim().isEmpty
         ? 0
-        : _parseChunkCount(
-            (jsonDecode(previousMeta) as Map?)?['chunk_count'],
-          );
+        : _parseChunkCount((jsonDecode(previousMeta) as Map?)?['chunk_count']);
 
     for (final entry in chunks.asMap().entries) {
       await _storage.write(_chunkKey(entry.key), entry.value);
@@ -197,11 +208,11 @@ class ContactsLocalCache implements ContactsLocalCacheContract {
   String _chunkKey(int index) => '$_contactsCacheMetaKey:$index';
 
   Map<String, Object?> _contactToCacheJson(ContactModel contact) => {
-        'id': contact.id,
-        'display_name': contact.displayName,
-        'phones': contact.phones.map((phone) => phone.value).toList(),
-        'emails': contact.emails.map((email) => email.value).toList(),
-      };
+    'id': contact.id,
+    'display_name': contact.displayName,
+    'phones': contact.phones.map((phone) => phone.value).toList(),
+    'emails': contact.emails.map((email) => email.value).toList(),
+  };
 
   ContactModel? _contactFromCacheJson(Object? raw) {
     if (raw is! Map) {
@@ -220,10 +231,12 @@ class ContactsLocalCache implements ContactsLocalCacheContract {
     return ContactModel(
       idValue: ContactIdValue(id),
       displayNameValue: ContactDisplayNameValue(displayName),
-      phoneValues:
-          phones.map((phone) => ContactPhoneValue(raw: phone)).toList(),
-      emailValues:
-          emails.map((email) => ContactEmailValue(raw: email)).toList(),
+      phoneValues: phones
+          .map((phone) => ContactPhoneValue(raw: phone))
+          .toList(),
+      emailValues: emails
+          .map((email) => ContactEmailValue(raw: email))
+          .toList(),
       avatarValue: ContactAvatarBytesValue(),
     );
   }

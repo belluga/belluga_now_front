@@ -12,7 +12,7 @@ class ControllerControllerDependencyForbiddenRule extends DartLintRule {
   ControllerControllerDependencyForbiddenRule()
     : super(
         code: const LintCode(
-          errorSeverity: ErrorSeverity.WARNING,
+          errorSeverity: ErrorSeverity.warning,
           name: 'controller_controller_dependency_forbidden',
           problemMessage:
               'Controller files cannot inject or resolve other presentation controllers.',
@@ -108,7 +108,7 @@ class ControllerControllerDependencyForbiddenRule extends DartLintRule {
       return false;
     }
 
-    return isControllerTypeName(classNode.name.lexeme);
+    return isControllerTypeName(classNode.namePart.typeName.lexeme);
   }
 
   ClassDeclaration? _enclosingClass(AstNode node) {

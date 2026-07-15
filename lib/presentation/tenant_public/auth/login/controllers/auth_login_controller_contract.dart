@@ -133,6 +133,7 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
   final FormValidationControllerAdapter phoneOtpValidationController =
       FormValidationControllerAdapter(config: authPhoneOtpValidationConfig);
   bool _phoneOtpAutoVerificationAttempted = false;
+  int _phoneOtpRequestEpoch = 0;
 
   StreamValue<FormValidationState> get phoneOtpValidationStreamValue =>
       phoneOtpValidationController.stateStreamValue;
@@ -317,6 +318,7 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
     if (buttonLoadingValue.value || !fieldEnabled.value) {
       return;
     }
+    final phoneOtpRequestEpoch = ++_phoneOtpRequestEpoch;
 
     final normalizedDeliveryChannel =
         deliveryChannel.trim().toLowerCase().isEmpty
@@ -346,6 +348,9 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
         _authTextValue(phone),
         deliveryChannel: _authTextValue(normalizedDeliveryChannel),
       );
+      if (!_isCurrentPhoneOtpRequest(phoneOtpRequestEpoch)) {
+        return;
+      }
       _phoneOtpAutoVerificationAttempted = false;
       currentPhoneOtpChallengeStreamValue.addValue(challenge);
       phoneController.text = challenge.phone;
@@ -353,14 +358,25 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
       otpCodeController.clear();
       phoneOtpStepStreamValue.addValue(AuthPhoneOtpStep.otpVerification);
     } on FormValidationFailure catch (e) {
+      if (!_isCurrentPhoneOtpRequest(phoneOtpRequestEpoch)) {
+        return;
+      }
       _applyPhoneOtpGlobalError(_resolveOtpRequestError(e));
     } on BellugaAuthError catch (e) {
+      if (!_isCurrentPhoneOtpRequest(phoneOtpRequestEpoch)) {
+        return;
+      }
       _applyPhoneOtpGlobalError(_resolveOtpRequestError(e));
     } catch (e) {
+      if (!_isCurrentPhoneOtpRequest(phoneOtpRequestEpoch)) {
+        return;
+      }
       _applyPhoneOtpGlobalError(_resolveOtpRequestError(e));
     } finally {
-      buttonLoadingValue.addValue(false);
-      fieldEnabled.addValue(true);
+      if (_isCurrentPhoneOtpRequest(phoneOtpRequestEpoch)) {
+        buttonLoadingValue.addValue(false);
+        fieldEnabled.addValue(true);
+      }
     }
   }
 
@@ -775,8 +791,13 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
     return AuthRepositoryContractTextValue.fromRaw(raw);
   }
 
+  bool _isCurrentPhoneOtpRequest(int epoch) {
+    return epoch == _phoneOtpRequestEpoch;
+  }
+
   @override
   void onDispose() {
+    _phoneOtpRequestEpoch++;
     authEmailFieldController.dispose();
     passwordController.dispose();
     signupNameController.dispose();

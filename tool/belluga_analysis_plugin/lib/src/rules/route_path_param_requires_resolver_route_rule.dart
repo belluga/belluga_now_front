@@ -10,7 +10,7 @@ class RoutePathParamRequiresResolverRouteRule extends DartLintRule {
   RoutePathParamRequiresResolverRouteRule()
     : super(
         code: const LintCode(
-          errorSeverity: ErrorSeverity.WARNING,
+          errorSeverity: ErrorSeverity.warning,
           name: 'route_path_param_requires_resolver_route',
           problemMessage:
               'Route pages with @PathParam must use ResolverRoute model hydration.',
@@ -56,7 +56,7 @@ class RoutePathParamRequiresResolverRouteRule extends DartLintRule {
   }
 
   bool _hasPathParamConstructorParameter(ClassDeclaration node) {
-    for (final member in node.members) {
+    for (final member in classMembersOf(node)) {
       if (member is! ConstructorDeclaration) {
         continue;
       }

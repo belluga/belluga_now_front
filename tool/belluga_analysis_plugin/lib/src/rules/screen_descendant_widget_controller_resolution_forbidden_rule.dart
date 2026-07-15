@@ -1,7 +1,5 @@
 // ignore_for_file: deprecated_member_use
 
-import 'package:analyzer/dart/ast/ast.dart';
-
 import 'package:belluga_analysis_plugin/src/compat/custom_lint_compat.dart';
 
 import '../getit_utils.dart';
@@ -13,7 +11,7 @@ class ScreenDescendantWidgetControllerResolutionForbiddenRule
   ScreenDescendantWidgetControllerResolutionForbiddenRule()
     : super(
         code: const LintCode(
-          errorSeverity: ErrorSeverity.WARNING,
+          errorSeverity: ErrorSeverity.warning,
           name: 'screen_descendant_widget_controller_resolution_forbidden',
           problemMessage:
               'Screens or parent widgets cannot resolve a descendant widget controller outside its owning widget subtree.',

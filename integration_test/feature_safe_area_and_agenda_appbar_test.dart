@@ -389,6 +389,9 @@ class FakeTenantHomeAgendaController extends TenantHomeAgendaController {
 }
 
 class FakeUserEventsRepository implements UserEventsRepositoryContract {
+  @override
+  void clearCurrentIdentityState() {}
+
   final StreamValue<Set<UserEventsRepositoryContractPrimString>>
       _confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(

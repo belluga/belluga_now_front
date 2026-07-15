@@ -180,6 +180,13 @@ class InvitesRepository extends InvitesRepositoryContract
   }
 
   @override
+  Future<void> clearCurrentIdentityState() async {
+    await super.clearCurrentIdentityState();
+    await _contactImportCache.clearAll();
+    await _syncInviteRealtimeLifecycle();
+  }
+
+  @override
   Future<List<InviteContactMatch>?> hydrateImportedContactMatchesFromCache(
     InviteContacts contacts,
   ) async {

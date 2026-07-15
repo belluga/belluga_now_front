@@ -1,3 +1,4 @@
+import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
@@ -18,6 +19,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_accounts_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
@@ -75,11 +77,13 @@ void main() {
         ),
       );
 
-      const editedBio = '<h2>Bio Heading 🎉</h2>'
+      const editedBio =
+          '<h2>Bio Heading 🎉</h2>'
           '<p><strong>Bold bio</strong><br />Second bio line</p>'
           '<blockquote>Bio quote</blockquote>'
           '<ul><li>Bio bullet</li></ul>';
-      const editedContent = '<h3>Content Heading</h3>'
+      const editedContent =
+          '<h3>Content Heading</h3>'
           '<p><em>Italic content</em> and <s>strike content</s> 😄</p>'
           '<ol><li>Content ordered</li></ol>';
 
@@ -261,10 +265,7 @@ class _PublicRouteHost extends StatelessWidget {
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
-        home: RouteDataScope(
-          routeData: routeData,
-          child: child,
-        ),
+        home: RouteDataScope(routeData: routeData, child: child),
       ),
     );
   }
@@ -308,9 +309,7 @@ class _FakeRootStackRouter extends Fake implements RootStackRouter {
 
 class _FakeRouteMatch extends Fake implements RouteMatch {
   _FakeRouteMatch({required this.fullPath})
-      : meta = canonicalRouteMeta(
-          family: CanonicalRouteFamily.partnerDetail,
-        );
+    : meta = canonicalRouteMeta(family: CanonicalRouteFamily.partnerDetail);
 
   @override
   final String fullPath;
@@ -426,15 +425,15 @@ class _RichTextAccountsRepository
 class _RichTextProfilesRepository
     extends TenantAdminAccountProfilesRepositoryContract {
   _RichTextProfilesRepository()
-      : current = tenantAdminAccountProfileFromRaw(
-          id: 'profile-rich-1',
-          accountId: 'account-rich-1',
-          profileType: 'rich',
-          displayName: 'Casa Cultural',
-          slug: 'casa-cultural',
-          bio: '<p>Bio inicial</p>',
-          content: '<p>Conteudo inicial</p>',
-        );
+    : current = tenantAdminAccountProfileFromRaw(
+        id: 'profile-rich-1',
+        accountId: 'account-rich-1',
+        profileType: 'rich',
+        displayName: 'Casa Cultural',
+        slug: 'casa-cultural',
+        bio: '<p>Bio inicial</p>',
+        content: '<p>Conteudo inicial</p>',
+      );
 
   TenantAdminAccountProfile current;
   int updateCalls = 0;
@@ -471,6 +470,12 @@ class _RichTextProfilesRepository
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
         const <TenantAdminNestedProfileGroup>[],
+    BellugaContactSourceMode contactMode = BellugaContactSourceMode.own,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft> contactChannelDrafts =
+        const <BellugaContactChannelDraft>[],
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) async {
     throw UnimplementedError();
   }
@@ -492,6 +497,11 @@ class _RichTextProfilesRepository
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
+    BellugaContactSourceMode? contactMode,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft>? contactChannelDrafts,
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) async {
     updateCalls += 1;
     current = tenantAdminAccountProfileFromRaw(
@@ -526,6 +536,19 @@ class _RichTextProfilesRepository
   Future<void> forceDeleteAccountProfile(
     TenantAdminAccountProfilesRepoString accountProfileId,
   ) async {}
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+  fetchContactSourceCandidatesPage({
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
+  }) async => tenantAdminPagedResultFromRaw(
+    items: const <TenantAdminAccountProfile>[],
+    hasMore: false,
+    currentPage: page.value,
+    pageSize: pageSize.value,
+  );
 
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async {
@@ -587,7 +610,8 @@ class _RichTextProfilesRepository
       label: label?.value ?? 'Rich Profile',
       allowedTaxonomies:
           allowedTaxonomies?.map((value) => value.value).toList() ?? const [],
-      capabilities: capabilities ??
+      capabilities:
+          capabilities ??
           TenantAdminProfileTypeCapabilities(
             isFavoritable: TenantAdminFlagValue(true),
             isPoiEnabled: TenantAdminFlagValue(false),
@@ -603,7 +627,8 @@ class _RichTextProfilesRepository
 
   @override
   Future<void> deleteProfileType(
-      TenantAdminAccountProfilesRepoString type) async {}
+    TenantAdminAccountProfilesRepoString type,
+  ) async {}
 }
 
 class _EmptyTaxonomiesRepository

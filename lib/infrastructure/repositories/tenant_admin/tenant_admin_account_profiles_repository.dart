@@ -1,3 +1,4 @@
+import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
@@ -16,8 +17,8 @@ import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
 class TenantAdminAccountProfilesRepository
-    with TenantAdminProfileTypesPaginationMixin
-    implements TenantAdminAccountProfilesRepositoryContract {
+    extends TenantAdminAccountProfilesRepositoryContract
+    with TenantAdminProfileTypesPaginationMixin {
   TenantAdminAccountProfilesRepository({
     Dio? dio,
     TenantAdminTenantScopeContract? tenantScope,
@@ -126,6 +127,44 @@ class TenantAdminAccountProfilesRepository
   }
 
   @override
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+  fetchContactSourceCandidatesPage({
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '$_apiBaseUrl/v1/account_profiles/contact_sources',
+        queryParameters: _requestEncoder
+            .encodeFetchContactSourceCandidatesQuery(
+              page: page.value,
+              pageSize: pageSize.value,
+              excludeAccountProfileId: excludeAccountProfileId?.value,
+            ),
+        options: Options(headers: _buildHeaders()),
+      );
+      final rawResponse = response.data;
+      final currentPage =
+          tenantAdminReadPageValue(rawResponse, 'current_page') ?? page.value;
+      final resolvedPageSize =
+          tenantAdminReadPageValue(rawResponse, 'per_page') ?? pageSize.value;
+      final dtos = _responseDecoder.decodeAccountProfileList(rawResponse);
+      return tenantAdminPagedResultFromRaw(
+        items: dtos.map((dto) => dto.toDomain()).toList(growable: false),
+        hasMore: tenantAdminResolveHasMore(
+          rawResponse: rawResponse,
+          requestedPage: currentPage,
+        ),
+        currentPage: currentPage,
+        pageSize: resolvedPageSize,
+      );
+    } on DioException catch (error) {
+      throw _wrapError(error, 'load contact source candidates page');
+    }
+  }
+
+  @override
   Future<TenantAdminAccountProfile> fetchAccountProfile(
     TenantAdminAccountProfilesRepoString accountProfileId,
   ) async {
@@ -158,6 +197,12 @@ class TenantAdminAccountProfilesRepository
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
         const <TenantAdminNestedProfileGroup>[],
+    BellugaContactSourceMode contactMode = BellugaContactSourceMode.own,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft> contactChannelDrafts =
+        const <BellugaContactChannelDraft>[],
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) async {
     try {
       final payload = _requestEncoder.encodeCreateAccountProfile(
@@ -171,6 +216,10 @@ class TenantAdminAccountProfilesRepository
         avatarUrl: avatarUrl?.value,
         coverUrl: coverUrl?.value,
         nestedProfileGroups: nestedProfileGroups,
+        contactMode: contactMode,
+        contactSourceAccountProfileId: contactSourceAccountProfileId?.value,
+        contactChannelDrafts: contactChannelDrafts,
+        bubbleSelection: bubbleSelection,
       );
       final uploadPayload = _mediaFormDataBuilder.buildAvatarCoverPayload(
         payload: payload,
@@ -211,6 +260,11 @@ class TenantAdminAccountProfilesRepository
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
+    BellugaContactSourceMode? contactMode,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft>? contactChannelDrafts,
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) async {
     try {
       final payload = _requestEncoder.encodeUpdateAccountProfile(
@@ -226,6 +280,10 @@ class TenantAdminAccountProfilesRepository
         removeAvatar: removeAvatar?.value,
         removeCover: removeCover?.value,
         nestedProfileGroups: nestedProfileGroups,
+        contactMode: contactMode,
+        contactSourceAccountProfileId: contactSourceAccountProfileId?.value,
+        contactChannelDrafts: contactChannelDrafts,
+        bubbleSelection: bubbleSelection,
       );
       final uploadPayload = _mediaFormDataBuilder.buildAvatarCoverPayload(
         payload: payload,

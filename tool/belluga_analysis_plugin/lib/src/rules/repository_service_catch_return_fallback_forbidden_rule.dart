@@ -8,16 +8,16 @@ import '../path_utils.dart';
 
 class RepositoryServiceCatchReturnFallbackForbiddenRule extends DartLintRule {
   RepositoryServiceCatchReturnFallbackForbiddenRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'repository_service_catch_return_fallback_forbidden',
-            problemMessage:
-                'Repositories/services cannot return fallback values inside catch/on handlers.',
-            correctionMessage:
-                'Treatments: propagate failure to controller/view layer; do not hide backend/runtime failures by returning fallback models/collections/flags in repository/service.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'repository_service_catch_return_fallback_forbidden',
+          problemMessage:
+              'Repositories/services cannot return fallback values inside catch/on handlers.',
+          correctionMessage:
+              'Treatments: propagate failure to controller/view layer; do not hide backend/runtime failures by returning fallback models/collections/flags in repository/service.',
+        ),
+      );
 
   @override
   void run(

@@ -6,6 +6,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/application_contract.dart';
 import 'package:belluga_now/application/router/modular_app/module_settings.dart';
 import 'package:belluga_now/application/router/modular_app/modules/initialization_module.dart';
+import 'package:belluga_now/application/startup/app_startup_plan_resolver.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/app_type.dart';
@@ -246,11 +247,13 @@ void main() {
 
       await expectLater(
         app.init(),
-        throwsA(isA<StateError>().having(
-          (error) => error.message,
-          'message',
-          'post-bootstrap failure',
-        )),
+        throwsA(
+          isA<StateError>().having(
+            (error) => error.message,
+            'message',
+            'post-bootstrap failure',
+          ),
+        ),
       );
 
       await app.init();
@@ -261,6 +264,34 @@ void main() {
         moduleSettings.childModules.whereType<InitializationModule>().length,
         1,
       );
+    },
+  );
+
+  test(
+    'module settings init leaves startup resolver unavailable when it remains module-scoped only',
+    () async {
+      final moduleSettings = _StartupPlanTestModuleSettings(
+        registerStartupResolverGlobally: false,
+      );
+
+      await moduleSettings.init();
+
+      expect(GetIt.I.isRegistered<InitializationModule>(), isTrue);
+      expect(GetIt.I.isRegistered<AppStartupPlanResolver>(), isFalse);
+    },
+  );
+
+  test(
+    'module settings init exposes startup resolver when startup dependencies are registered globally',
+    () async {
+      final moduleSettings = _StartupPlanTestModuleSettings(
+        registerStartupResolverGlobally: true,
+      );
+
+      await moduleSettings.init();
+
+      expect(GetIt.I.isRegistered<InitializationModule>(), isTrue);
+      expect(GetIt.I.isRegistered<AppStartupPlanResolver>(), isTrue);
     },
   );
 }
@@ -319,6 +350,26 @@ class _BootstrapRetryTestModuleSettings extends ModuleSettings {
   @override
   Future<void> initializeSubmodules() async {
     initializeSubmodulesCalls += 1;
+    await registerSubModuleIfAbsent(InitializationModule());
+  }
+}
+
+class _StartupPlanTestModuleSettings extends ModuleSettings {
+  _StartupPlanTestModuleSettings({
+    required this.registerStartupResolverGlobally,
+  });
+
+  final bool registerStartupResolverGlobally;
+
+  @override
+  Future<void> registerGlobalDependencies() async {
+    if (registerStartupResolverGlobally) {
+      registerStartupDependencies();
+    }
+  }
+
+  @override
+  Future<void> initializeSubmodules() async {
     await registerSubModuleIfAbsent(InitializationModule());
   }
 }
@@ -478,17 +529,22 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 
 class _FakeFavoriteRepository implements FavoriteRepositoryContract {
   @override
+  void clearCurrentIdentityState() {}
+
+  @override
   final favoriteResumesStreamValue = StreamValue<List<FavoriteResume>?>(
     defaultValue: null,
   );
 
   @override
-  final hasMoreFavoriteResumesStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  final hasMoreFavoriteResumesStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
 
   @override
-  final isFavoriteResumesPageLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  final isFavoriteResumesPageLoadingStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
 
   int refreshFavoriteResumesCalls = 0;
 

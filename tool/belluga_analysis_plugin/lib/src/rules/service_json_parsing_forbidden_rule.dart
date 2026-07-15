@@ -8,16 +8,16 @@ import '../type_utils.dart';
 
 class ServiceJsonParsingForbiddenRule extends DartLintRule {
   ServiceJsonParsingForbiddenRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'service_json_parsing_forbidden',
-            problemMessage:
-                'Services cannot parse raw JSON or hydrate DTOs directly.',
-            correctionMessage:
-                'Treatments: move transport parsing into DAO adapters and keep services focused on orchestration or outbound request shaping only.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'service_json_parsing_forbidden',
+          problemMessage:
+              'Services cannot parse raw JSON or hydrate DTOs directly.',
+          correctionMessage:
+              'Treatments: move transport parsing into DAO adapters and keep services focused on orchestration or outbound request shaping only.',
+        ),
+      );
 
   @override
   void run(
@@ -55,7 +55,8 @@ class ServiceJsonParsingForbiddenRule extends DartLintRule {
     });
 
     context.registry.addMethodInvocation((node) {
-      if (node.target?.toSource() != 'json' || node.methodName.name != 'decode') {
+      if (node.target?.toSource() != 'json' ||
+          node.methodName.name != 'decode') {
         return;
       }
 
@@ -69,8 +70,9 @@ class ServiceJsonParsingForbiddenRule extends DartLintRule {
       return false;
     }
 
-    final targetTypeName =
-        normalizeTypeName(node.constructorName.type.toSource());
+    final targetTypeName = normalizeTypeName(
+      node.constructorName.type.toSource(),
+    );
     if (constructorName == 'fromMap' && targetTypeName == 'FormData') {
       return false;
     }

@@ -11,7 +11,7 @@ class FlutterSentryUnreportedDebugPrintCatchForbiddenRule extends DartLintRule {
   FlutterSentryUnreportedDebugPrintCatchForbiddenRule()
     : super(
         code: const LintCode(
-          errorSeverity: ErrorSeverity.WARNING,
+          errorSeverity: ErrorSeverity.warning,
           name: 'flutter_sentry_unreported_debug_print_catch_forbidden',
           problemMessage:
               'Catch blocks that log with debugPrint must also report unexpected failures to Sentry or rethrow.',

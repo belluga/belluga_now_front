@@ -9,16 +9,16 @@ import '../type_utils.dart';
 
 class UiControllerOwnershipForbiddenRule extends DartLintRule {
   UiControllerOwnershipForbiddenRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'ui_controller_ownership_forbidden',
-            problemMessage:
-                'Screen files cannot own UI controllers/keys; auxiliary widgets can own them only if they do not interact with feature controllers.',
-            correctionMessage:
-                'Treatments: in screens, move ownership to feature controller. In auxiliary widgets, keep local only when isolated from controller interactions.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'ui_controller_ownership_forbidden',
+          problemMessage:
+              'Screen files cannot own UI controllers/keys; auxiliary widgets can own them only if they do not interact with feature controllers.',
+          correctionMessage:
+              'Treatments: in screens, move ownership to feature controller. In auxiliary widgets, keep local only when isolated from controller interactions.',
+        ),
+      );
 
   static const _blockedTypes = {
     'TextEditingController',

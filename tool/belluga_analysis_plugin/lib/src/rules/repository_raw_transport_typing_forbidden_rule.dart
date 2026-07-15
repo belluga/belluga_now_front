@@ -8,16 +8,16 @@ import '../type_utils.dart';
 
 class RepositoryRawTransportTypingForbiddenRule extends DartLintRule {
   RepositoryRawTransportTypingForbiddenRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'repository_raw_transport_typing_forbidden',
-            problemMessage:
-                'Repositories cannot declare raw transport typing (dynamic/Map<String, dynamic>).',
-            correctionMessage:
-                'Treatments: keep raw payload typing/parsing inside DAO adapters; repositories must consume typed DTOs/services and return domain/projection objects.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'repository_raw_transport_typing_forbidden',
+          problemMessage:
+              'Repositories cannot declare raw transport typing (dynamic/Map<String, dynamic>).',
+          correctionMessage:
+              'Treatments: keep raw payload typing/parsing inside DAO adapters; repositories must consume typed DTOs/services and return domain/projection objects.',
+        ),
+      );
 
   @override
   void run(
@@ -84,8 +84,9 @@ class RepositoryRawTransportTypingForbiddenRule extends DartLintRule {
   }
 
   TypeAnnotation? _parameterType(FormalParameter parameter) {
-    final normalized =
-        parameter is DefaultFormalParameter ? parameter.parameter : parameter;
+    final normalized = parameter is DefaultFormalParameter
+        ? parameter.parameter
+        : parameter;
 
     if (normalized is SimpleFormalParameter) {
       return normalized.type;

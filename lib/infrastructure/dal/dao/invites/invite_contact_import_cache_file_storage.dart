@@ -8,14 +8,15 @@ class InviteContactImportCacheFileStorage
   InviteContactImportCacheFileStorage({
     Future<Directory> Function()? directoryProvider,
   }) : _directoryProvider =
-            directoryProvider ?? _defaultInviteContactImportCacheDirectory;
+           directoryProvider ?? _defaultInviteContactImportCacheDirectory;
 
   final Future<Directory> Function() _directoryProvider;
 
   static Future<Directory> _defaultInviteContactImportCacheDirectory() async {
     final supportDirectory = await getApplicationSupportDirectory();
-    final cacheDirectory =
-        Directory('${supportDirectory.path}/invite_contact_import_cache');
+    final cacheDirectory = Directory(
+      '${supportDirectory.path}/invite_contact_import_cache',
+    );
     if (!await cacheDirectory.exists()) {
       await cacheDirectory.create(recursive: true);
     }
@@ -49,6 +50,17 @@ class InviteContactImportCacheFileStorage
     final file = await _resolveFile(key);
     if (await file.exists()) {
       await file.delete();
+    }
+  }
+
+  @override
+  Future<void> clearAll() async {
+    final directory = await _directoryProvider();
+    if (!await directory.exists()) {
+      return;
+    }
+    await for (final entity in directory.list(followLinks: false)) {
+      await entity.delete(recursive: true);
     }
   }
 

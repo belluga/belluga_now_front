@@ -1,3 +1,7 @@
+import 'package:belluga_contact_channels/belluga_contact_channels.dart';
+import 'dart:async';
+import 'dart:io';
+
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
@@ -151,6 +155,12 @@ class _FakeAccountsRepository
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
         const <TenantAdminNestedProfileGroup>[],
+    BellugaContactSourceMode contactMode = BellugaContactSourceMode.own,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft> contactChannelDrafts =
+        const <BellugaContactChannelDraft>[],
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) async {
     final account = await createAccount(
       name: name,
@@ -211,8 +221,8 @@ class _FakeAccountsRepository
 }
 
 class _FakeAccountProfilesRepository
-    with TenantAdminProfileTypesPaginationMixin
-    implements TenantAdminAccountProfilesRepositoryContract {
+    extends TenantAdminAccountProfilesRepositoryContract
+    with TenantAdminProfileTypesPaginationMixin {
   _FakeAccountProfilesRepository(this._profiles, this._types);
 
   List<TenantAdminAccountProfile> _profiles;
@@ -231,9 +241,20 @@ class _FakeAccountProfilesRepository
   int? lastFetchPageSize;
   String? lastFetchSearch;
   int fetchAccountProfilesPageCalls = 0;
+  int fetchAccountProfilesCalls = 0;
+  int fetchContactSourceCandidatesPageCalls = 0;
+  final List<String?> contactSourceCandidateExclusions = [];
+  Completer<void>? contactSourceCandidatesGate;
+  final Set<int> contactSourceCandidateFailingPages = <int>{};
+  final Map<int, TenantAdminPagedResult<TenantAdminAccountProfile>>
+  contactSourceCandidatePageOverrides =
+      <int, TenantAdminPagedResult<TenantAdminAccountProfile>>{};
   List<TenantAdminNestedProfileGroup>? lastCreateNestedProfileGroups;
   List<TenantAdminNestedProfileGroup>? lastUpdateNestedProfileGroups;
   List<TenantAdminAccountProfileGalleryUpdateGroup>? lastGalleryGroups;
+  int updateProfileCalls = 0;
+  Completer<void>? createProfileGate;
+  Completer<void>? updateProfileGate;
 
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
@@ -241,6 +262,7 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoBool? queryableOnly,
     TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async => () {
+    fetchAccountProfilesCalls += 1;
     lastFetchQueryableOnly = queryableOnly?.value;
     lastFetchExcludeAccountProfileId = excludeAccountProfileId?.value;
     return _filterProfiles(
@@ -289,6 +311,49 @@ class _FakeAccountProfilesRepository
   }
 
   @override
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+  fetchContactSourceCandidatesPage({
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
+  }) async {
+    fetchContactSourceCandidatesPageCalls += 1;
+    contactSourceCandidateExclusions.add(excludeAccountProfileId?.value);
+    final gate = contactSourceCandidatesGate;
+    if (gate != null) {
+      await gate.future;
+    }
+    if (contactSourceCandidateFailingPages.contains(page.value)) {
+      throw StateError('contact-source page ${page.value} failed');
+    }
+    final overriddenPage = contactSourceCandidatePageOverrides[page.value];
+    if (overriddenPage != null) {
+      return overriddenPage;
+    }
+    final filtered = _filterProfiles(
+      excludeAccountProfileId: excludeAccountProfileId?.value,
+    );
+    final start = (page.value - 1) * pageSize.value;
+    if (page.value <= 0 || pageSize.value <= 0 || start >= filtered.length) {
+      return tenantAdminPagedResultFromRaw(
+        items: const <TenantAdminAccountProfile>[],
+        hasMore: false,
+        currentPage: page.value,
+        pageSize: pageSize.value,
+      );
+    }
+    final end = start + pageSize.value < filtered.length
+        ? start + pageSize.value
+        : filtered.length;
+    return tenantAdminPagedResultFromRaw(
+      items: filtered.sublist(start, end),
+      hasMore: end < filtered.length,
+      currentPage: page.value,
+      pageSize: pageSize.value,
+    );
+  }
+
+  @override
   Future<TenantAdminAccountProfile> createAccountProfile({
     required TenantAdminAccountProfilesRepoString accountId,
     required TenantAdminAccountProfilesRepoString profileType,
@@ -304,8 +369,16 @@ class _FakeAccountProfilesRepository
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
         const <TenantAdminNestedProfileGroup>[],
+    BellugaContactSourceMode contactMode = BellugaContactSourceMode.own,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft> contactChannelDrafts =
+        const <BellugaContactChannelDraft>[],
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) async {
     createProfileCalls += 1;
+    final gate = createProfileGate;
+    if (gate != null) await gate.future;
     lastCreateNestedProfileGroups = nestedProfileGroups;
     final created = tenantAdminAccountProfileFromRaw(
       id: 'profile-$createProfileCalls',
@@ -384,7 +457,15 @@ class _FakeAccountProfilesRepository
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
+    BellugaContactSourceMode? contactMode,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft>? contactChannelDrafts,
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) async {
+    updateProfileCalls += 1;
+    final gate = updateProfileGate;
+    if (gate != null) await gate.future;
     lastUpdateSlug = slug?.value;
     lastUpdateProfileType = profileType?.value;
     lastUpdateDisplayName = displayName?.value;
@@ -701,6 +782,80 @@ void main() {
     expect(controller.profilesStreamValue.value.length, 1);
   });
 
+  test(
+    'submit profile drops duplicate contact saves while the first request is in flight',
+    () async {
+      final burstLevel =
+          int.tryParse(Platform.environment['DELPHI_RACE_BURST_LEVEL'] ?? '') ??
+          2;
+      final profilesRepository = _FakeAccountProfilesRepository([
+        tenantAdminAccountProfileFromRaw(
+          id: 'profile-1',
+          accountId: 'acc-1',
+          profileType: 'venue',
+          displayName: 'Perfil',
+        ),
+      ], const <TenantAdminProfileTypeDefinition>[]);
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+      final createGate = Completer<void>();
+      profilesRepository.createProfileGate = createGate;
+
+      final createAttempts = List<Future<void>>.generate(
+        burstLevel,
+        (_) => controller.submitCreateProfile(
+          accountId: 'acc-1',
+          profileType: 'venue',
+          displayName: 'Novo perfil',
+          location: null,
+          bio: null,
+          content: null,
+          taxonomyTerms: const TenantAdminTaxonomyTerms.empty(),
+          avatarUpload: null,
+          coverUpload: null,
+          contactMode: BellugaContactSourceMode.own,
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(profilesRepository.createProfileCalls, 1);
+      createGate.complete();
+      await Future.wait(createAttempts);
+      expect(controller.createSuccessMessageStreamValue.value, 'Perfil salvo.');
+
+      final updateGate = Completer<void>();
+      profilesRepository.updateProfileGate = updateGate;
+      final updateAttempts = List<Future<void>>.generate(
+        burstLevel,
+        (_) => controller.submitUpdateProfile(
+          accountProfileId: 'profile-1',
+          profileType: 'venue',
+          displayName: 'Perfil atualizado',
+          location: null,
+          bio: null,
+          content: null,
+          taxonomyTerms: const TenantAdminTaxonomyTerms.empty(),
+          avatarUpload: null,
+          coverUpload: null,
+          contactMode: BellugaContactSourceMode.own,
+          contactChannelDrafts: const <BellugaContactChannelDraft>[],
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(profilesRepository.updateProfileCalls, 1);
+      updateGate.complete();
+      await Future.wait(updateAttempts);
+      expect(
+        controller.editSuccessMessageStreamValue.value,
+        'Perfil atualizado.',
+      );
+      controller.dispose();
+    },
+  );
+
   test('submitUpdateProfile forwards slug to repository update', () async {
     final profilesRepository = _FakeAccountProfilesRepository(
       [
@@ -746,6 +901,7 @@ void main() {
       accountProfileId: 'profile-1',
       profileType: 'venue',
       displayName: 'Perfil atualizado',
+      contactMode: BellugaContactSourceMode.own,
       slug: 'perfil-atualizado',
       location: null,
       bio: null,
@@ -818,6 +974,7 @@ void main() {
         accountProfileId: 'profile-1',
         profileType: 'venue',
         displayName: 'Perfil atualizado',
+        contactMode: BellugaContactSourceMode.own,
         slug: 'perfil-atualizado',
         location: null,
         bio: null,
@@ -873,6 +1030,7 @@ void main() {
         accountProfileId: 'profile-1',
         profileType: 'venue',
         displayName: 'Perfil atualizado',
+        contactMode: BellugaContactSourceMode.own,
         location: null,
         bio: null,
         content: null,
@@ -950,6 +1108,7 @@ void main() {
         accountProfileId: 'profile-1',
         profileType: 'venue',
         displayName: 'Perfil atualizado',
+        contactMode: BellugaContactSourceMode.own,
         location: null,
         bio: null,
         content: null,
@@ -1008,6 +1167,7 @@ void main() {
         accountProfileId: 'profile-1',
         profileType: 'venue',
         displayName: 'Perfil atualizado',
+        contactMode: BellugaContactSourceMode.own,
         location: null,
         bio: null,
         content: null,
@@ -1081,6 +1241,59 @@ void main() {
   );
 
   test(
+    'loadEditProfile expands the first persisted WhatsApp CTA editor',
+    () async {
+      final whatsappChannel = BellugaContactChannel(
+        id: 'whatsapp-primary',
+        type: BellugaContactChannelType.whatsapp,
+        value: '+55 (27) 99999-1111',
+        initialMessages: const <BellugaContactInitialMessage>[
+          BellugaContactInitialMessage(
+            id: 'whatsapp-cta-1',
+            cta: 'Falar com a Ananda',
+            message: 'Olá, gostaria de saber mais.',
+          ),
+        ],
+      );
+      final profile = tenantAdminAccountProfileFromRaw(
+        id: 'profile-ananda',
+        accountId: 'account-ananda',
+        profileType: 'artist',
+        displayName: 'Ananda',
+        contactChannels: <BellugaContactChannel>[whatsappChannel],
+      );
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: _FakeAccountProfilesRepository(
+          <TenantAdminAccountProfile>[profile],
+          const <TenantAdminProfileTypeDefinition>[],
+        ),
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+
+      await controller.loadEditProfile('profile-ananda');
+
+      expect(
+        controller.editStateStreamValue.value.expandedContactCtaDraftKey,
+        'persisted:whatsapp-primary',
+      );
+      expect(
+        controller
+            .editStateStreamValue
+            .value
+            .contactChannelDrafts
+            .single
+            .initialMessages
+            .single
+            .cta,
+        'Falar com a Ananda',
+      );
+      controller.dispose();
+    },
+  );
+
+  test(
     'loadNestedProfileCandidates requests backend queryable-only candidates and excludes current profile',
     () async {
       final profilesRepository = _FakeAccountProfilesRepository([
@@ -1121,6 +1334,236 @@ void main() {
             .toList(growable: false),
         ['profile-2'],
       );
+    },
+  );
+
+  test(
+    'loadContactSourceCandidates uses only the dedicated server candidate query',
+    () async {
+      final profilesRepository = _FakeAccountProfilesRepository([
+        tenantAdminAccountProfileFromRaw(
+          id: 'profile-current',
+          accountId: 'acc-1',
+          profileType: 'venue',
+          displayName: 'Perfil atual',
+        ),
+        tenantAdminAccountProfileFromRaw(
+          id: 'profile-source',
+          accountId: 'acc-2',
+          profileType: 'contact_source',
+          displayName: 'Perfil de origem',
+        ),
+      ], const []);
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+
+      await controller.loadContactSourceCandidates(
+        excludeProfileId: 'profile-current',
+      );
+
+      expect(profilesRepository.fetchContactSourceCandidatesPageCalls, 1);
+      expect(profilesRepository.fetchAccountProfilesCalls, 0);
+      expect(profilesRepository.fetchAccountProfilesPageCalls, 0);
+      expect(
+        controller.contactSourceCandidatesStreamValue.value
+            .map((profile) => profile.id)
+            .toList(growable: false),
+        ['profile-source'],
+      );
+    },
+  );
+
+  test(
+    'loadContactSourceCandidates reruns the latest initial request after an in-flight request',
+    () async {
+      final burstLevel =
+          int.tryParse(Platform.environment['DELPHI_RACE_BURST_LEVEL'] ?? '') ??
+          2;
+      final profilesRepository = _FakeAccountProfilesRepository([
+        tenantAdminAccountProfileFromRaw(
+          id: 'profile-a',
+          accountId: 'acc-1',
+          profileType: 'contact_source',
+          displayName: 'Perfil A',
+        ),
+        tenantAdminAccountProfileFromRaw(
+          id: 'profile-b',
+          accountId: 'acc-2',
+          profileType: 'contact_source',
+          displayName: 'Perfil B',
+        ),
+        tenantAdminAccountProfileFromRaw(
+          id: 'profile-c',
+          accountId: 'acc-3',
+          profileType: 'contact_source',
+          displayName: 'Perfil C',
+        ),
+      ], const []);
+      final gate = Completer<void>();
+      profilesRepository.contactSourceCandidatesGate = gate;
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+
+      final first = controller.loadContactSourceCandidates(
+        excludeProfileId: 'profile-a',
+      );
+      await Future<void>.delayed(Duration.zero);
+      final pendingExclusions = List<String>.generate(
+        burstLevel - 1,
+        (index) => index.isEven ? 'profile-b' : 'profile-c',
+      );
+      for (final exclusion in pendingExclusions) {
+        await controller.loadContactSourceCandidates(
+          excludeProfileId: exclusion,
+        );
+      }
+      final latestExclusion = pendingExclusions.last;
+      gate.complete();
+      await first;
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(profilesRepository.fetchContactSourceCandidatesPageCalls, 2);
+      expect(profilesRepository.contactSourceCandidateExclusions, [
+        'profile-a',
+        latestExclusion,
+      ]);
+      expect(
+        controller.contactSourceCandidatesStreamValue.value
+            .map((profile) => profile.id)
+            .toList(growable: false),
+        latestExclusion == 'profile-b'
+            ? ['profile-a', 'profile-c']
+            : ['profile-a', 'profile-b'],
+      );
+    },
+  );
+
+  test(
+    'loadContactSourceCandidates preserves loaded candidates when a later page fails',
+    () async {
+      final profilesRepository = _FakeAccountProfilesRepository(
+        const <TenantAdminAccountProfile>[],
+        const <TenantAdminProfileTypeDefinition>[],
+      );
+      final source = tenantAdminAccountProfileFromRaw(
+        id: 'profile-source',
+        accountId: 'acc-source',
+        profileType: 'contact_source',
+        displayName: 'Perfil de origem',
+      );
+      profilesRepository.contactSourceCandidatePageOverrides[1] =
+          tenantAdminPagedResultFromRaw(
+            items: [source],
+            hasMore: true,
+            currentPage: 1,
+            pageSize: 50,
+          );
+      profilesRepository.contactSourceCandidateFailingPages.add(2);
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+
+      await controller.loadContactSourceCandidates();
+      await controller.loadNextContactSourceCandidatesPage();
+
+      expect(controller.contactSourceCandidatesStreamValue.value, [source]);
+      expect(
+        controller.contactSourceCandidatesHasMoreStreamValue.value,
+        isFalse,
+      );
+      expect(
+        controller.contactSourceCandidatesErrorStreamValue.value,
+        contains('contact-source page 2 failed'),
+      );
+    },
+  );
+
+  test(
+    'caps create and edit WhatsApp CTAs at the definition-owned limit and keeps one controller-selected editor',
+    () {
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: _FakeAccountProfilesRepository([], []),
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+      final maxInitialMessages = BellugaContactChannelRegistry.canonical
+          .require(BellugaContactChannelType.whatsapp)
+          .capabilities
+          .maxInitialMessages;
+
+      controller.addCreateContactChannel(BellugaContactChannelType.whatsapp);
+      final createDraftKey = controller
+          .createStateStreamValue
+          .value
+          .contactChannelDrafts
+          .single
+          .draftKey;
+      controller.toggleCreateContactCtaEditor(createDraftKey);
+      for (var index = 0; index < maxInitialMessages + 1; index += 1) {
+        controller.addCreateContactInitialMessage(createDraftKey);
+      }
+
+      expect(
+        controller.createStateStreamValue.value.expandedContactCtaDraftKey,
+        createDraftKey,
+      );
+      expect(
+        controller
+            .createStateStreamValue
+            .value
+            .contactChannelDrafts
+            .single
+            .initialMessages,
+        hasLength(maxInitialMessages),
+      );
+      expect(
+        controller.createErrorMessageStreamValue.value,
+        'Limite de CTAs do WhatsApp atingido.',
+      );
+
+      controller.addEditContactChannel(BellugaContactChannelType.whatsapp);
+      final editDraftKey = controller
+          .editStateStreamValue
+          .value
+          .contactChannelDrafts
+          .single
+          .draftKey;
+      controller.toggleEditContactCtaEditor(editDraftKey);
+      for (var index = 0; index < maxInitialMessages + 1; index += 1) {
+        controller.addEditContactInitialMessage(editDraftKey);
+      }
+
+      expect(
+        controller.editStateStreamValue.value.expandedContactCtaDraftKey,
+        editDraftKey,
+      );
+      expect(
+        controller
+            .editStateStreamValue
+            .value
+            .contactChannelDrafts
+            .single
+            .initialMessages,
+        hasLength(maxInitialMessages),
+      );
+      expect(
+        controller.editErrorMessageStreamValue.value,
+        'Limite de CTAs do WhatsApp atingido.',
+      );
+      controller.dispose();
     },
   );
 

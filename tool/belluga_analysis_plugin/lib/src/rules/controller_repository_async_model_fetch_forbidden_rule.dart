@@ -8,16 +8,16 @@ import '../type_utils.dart';
 
 class ControllerRepositoryAsyncModelFetchForbiddenRule extends DartLintRule {
   ControllerRepositoryAsyncModelFetchForbiddenRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'controller_repository_async_model_fetch_forbidden',
-            problemMessage:
-                'Controller must not call repository async methods that return payload directly.',
-            correctionMessage:
-                'Treatments: controller should trigger repository initialize/refresh (Future<void>) and consume repository-owned StreamValue delegation.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'controller_repository_async_model_fetch_forbidden',
+          problemMessage:
+              'Controller must not call repository async methods that return payload directly.',
+          correctionMessage:
+              'Treatments: controller should trigger repository initialize/refresh (Future<void>) and consume repository-owned StreamValue delegation.',
+        ),
+      );
 
   @override
   void run(
@@ -184,11 +184,12 @@ class ControllerRepositoryAsyncModelFetchForbiddenRule extends DartLintRule {
 
     final allTypes = <InterfaceType>{
       repositoryType,
-      ...repositoryType.allSupertypes
+      ...repositoryType.allSupertypes,
     };
     for (final type in allTypes) {
-      final methodNames =
-          type.element.methods.map((method) => method.name).toSet();
+      final methodNames = type.element.methods
+          .map((method) => method.name)
+          .toSet();
       for (final candidate in candidateMethodNames) {
         if (methodNames.contains(candidate)) {
           return true;

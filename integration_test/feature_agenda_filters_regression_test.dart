@@ -377,6 +377,9 @@ class _TestScheduleRepository extends IntegrationTestScheduleRepositoryFake {
 }
 
 class _TestUserEventsRepository implements UserEventsRepositoryContract {
+  @override
+  void clearCurrentIdentityState() {}
+
   final StreamValue<Set<UserEventsRepositoryContractPrimString>>
       _confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(

@@ -28,24 +28,18 @@ class TenantPrivacyPolicyScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Última atualização: 16/03/2026',
+                  'Última atualização: 14/07/2026',
                   style: theme.textTheme.bodySmall,
                 ),
                 const SizedBox(height: 16),
-                Text(
-                  'Resumo',
-                  style: theme.textTheme.titleMedium,
-                ),
+                Text('Resumo', style: theme.textTheme.titleMedium),
                 const SizedBox(height: 8),
                 const Text(
                   'Esta política descreve, de forma inicial, como tratamos dados '
                   'pessoais no Belluga Now (tenant Guarappari).',
                 ),
                 const SizedBox(height: 16),
-                Text(
-                  '1. Dados coletados',
-                  style: theme.textTheme.titleMedium,
-                ),
+                Text('1. Dados coletados', style: theme.textTheme.titleMedium),
                 const SizedBox(height: 8),
                 const Text(
                   'Podemos coletar dados de cadastro, dados de uso do app, '
@@ -64,10 +58,7 @@ class TenantPrivacyPolicyScreen extends StatelessWidget {
                   'da conta e melhoria da experiência.',
                 ),
                 const SizedBox(height: 16),
-                Text(
-                  '3. Compartilhamento',
-                  style: theme.textTheme.titleMedium,
-                ),
+                Text('3. Compartilhamento', style: theme.textTheme.titleMedium),
                 const SizedBox(height: 8),
                 const Text(
                   'Não vendemos dados pessoais. O compartilhamento com terceiros '
@@ -81,15 +72,15 @@ class TenantPrivacyPolicyScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Você pode solicitar atualização ou exclusão de dados pessoais '
-                  'conforme a legislação aplicável. Esta política pode ser '
-                  'atualizada para refletir novos recursos e requisitos legais.',
+                  'Você pode atualizar dados do perfil e excluir a conta no app '
+                  'em Perfil > Privacidade e conta > Excluir conta. Após a '
+                  'confirmação, a conta e os dados vinculados são removidos '
+                  'permanentemente, sem uma exceção de retenção nesta versão. '
+                  'Depois, você pode fechar o app ou escolher continuar de forma '
+                  'anônima com uma nova identidade no dispositivo.',
                 ),
                 const SizedBox(height: 16),
-                Text(
-                  '5. Contato',
-                  style: theme.textTheme.titleMedium,
-                ),
+                Text('5. Contato', style: theme.textTheme.titleMedium),
                 const SizedBox(height: 8),
                 const Text(
                   'Dúvidas sobre privacidade podem ser enviadas para os canais '

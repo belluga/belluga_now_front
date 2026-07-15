@@ -8,16 +8,16 @@ import '../type_utils.dart';
 
 class RoutePageMustLiveInRoutesFolderRule extends DartLintRule {
   RoutePageMustLiveInRoutesFolderRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'route_page_must_live_in_routes_folder',
-            problemMessage:
-                'Classes annotated with @RoutePage must be declared under presentation routes folders.',
-            correctionMessage:
-                'Treatments: move the @RoutePage class to lib/presentation/**/routes/** and keep screen/controller files free of route declarations.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'route_page_must_live_in_routes_folder',
+          problemMessage:
+              'Classes annotated with @RoutePage must be declared under presentation routes folders.',
+          correctionMessage:
+              'Treatments: move the @RoutePage class to lib/presentation/**/routes/** and keep screen/controller files free of route declarations.',
+        ),
+      );
 
   @override
   void run(

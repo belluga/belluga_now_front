@@ -9,16 +9,16 @@ import '../type_utils.dart';
 
 class GlobalUiControllerNamingForbiddenRule extends DartLintRule {
   GlobalUiControllerNamingForbiddenRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'global_ui_controller_naming_forbidden',
-            problemMessage:
-                'Global registrations cannot use UI controller naming (*Controller/*ControllerContract).',
-            correctionMessage:
-                'Treatments: reclassify as module-scoped UI controller or rename to a non-UI global type (for example, *Service/*Gate/*Coordinator).',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'global_ui_controller_naming_forbidden',
+          problemMessage:
+              'Global registrations cannot use UI controller naming (*Controller/*ControllerContract).',
+          correctionMessage:
+              'Treatments: reclassify as module-scoped UI controller or rename to a non-UI global type (for example, *Service/*Gate/*Coordinator).',
+        ),
+      );
 
   @override
   void run(

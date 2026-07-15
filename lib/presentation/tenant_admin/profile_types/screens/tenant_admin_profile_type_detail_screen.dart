@@ -24,8 +24,8 @@ class TenantAdminProfileTypeDetailScreen extends StatefulWidget {
 
 class _TenantAdminProfileTypeDetailScreenState
     extends State<TenantAdminProfileTypeDetailScreen> {
-  final TenantAdminProfileTypesController _controller =
-      GetIt.I.get<TenantAdminProfileTypesController>();
+  final TenantAdminProfileTypesController _controller = GetIt.I
+      .get<TenantAdminProfileTypesController>();
 
   @override
   void initState() {
@@ -89,10 +89,7 @@ class _TenantAdminProfileTypeDetailScreenState
     await _saveChanges(newType: next);
   }
 
-  Future<void> _saveChanges({
-    String? newType,
-    String? label,
-  }) async {
+  Future<void> _saveChanges({String? newType, String? label}) async {
     final definition = _currentDefinition();
     final updated = await _controller.submitDetailTypeUpdate(
       type: definition.type,
@@ -103,16 +100,15 @@ class _TenantAdminProfileTypeDetailScreenState
       return;
     }
     if (updated != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tipo atualizado.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Tipo atualizado.')));
       return;
     }
-    final error = _controller.actionErrorMessageStreamValue.value ??
+    final error =
+        _controller.actionErrorMessageStreamValue.value ??
         'Não foi possível atualizar o tipo.';
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(error)),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
   }
 
   TenantAdminProfileTypeDefinition _currentDefinition() {
@@ -141,6 +137,7 @@ class _TenantAdminProfileTypeDetailScreenState
           if (definition.capabilities.hasEvents) 'Agenda',
           if (definition.capabilities.hasGallery) 'Galeria',
           if (definition.capabilities.hasNestedProfileGroups) 'Abas vinculadas',
+          if (definition.capabilities.hasContactChannels) 'Contato por canais',
         ];
 
         return StreamValueBuilder<bool>(
@@ -275,16 +272,10 @@ class _TenantAdminProfileTypeDetailScreenState
       children: [
         SizedBox(
           width: 96,
-          child: Text(
-            label,
-            style: Theme.of(context).textTheme.labelMedium,
-          ),
+          child: Text(label, style: Theme.of(context).textTheme.labelMedium),
         ),
         Expanded(
-          child: Text(
-            value,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
+          child: Text(value, style: Theme.of(context).textTheme.bodyMedium),
         ),
         IconButton(
           onPressed: isSaving ? null : onEdit,

@@ -9,6 +9,7 @@ class _FakeContactsLocalCache implements ContactsLocalCacheContract {
 
   List<ContactModel>? cachedContacts;
   List<ContactModel>? writtenContacts;
+  int clearCount = 0;
   int readCount = 0;
   int writeCount = 0;
 
@@ -22,6 +23,12 @@ class _FakeContactsLocalCache implements ContactsLocalCacheContract {
   Future<void> write(List<ContactModel> contacts) async {
     writeCount += 1;
     writtenContacts = contacts;
+  }
+
+  @override
+  Future<void> clear() async {
+    clearCount += 1;
+    cachedContacts = null;
   }
 }
 
@@ -154,6 +161,29 @@ void main() {
       expect(localCache.readCount, 1);
       expect(localCache.writeCount, 1);
       expect(localCache.writtenContacts, [deviceContact]);
+    },
+  );
+
+  test(
+    'clearCurrentIdentityState clears stream and persistent cache',
+    () async {
+      final cachedContact = buildContactModel(
+        id: 'cached-1',
+        displayName: 'Contato Cache',
+        phones: const <String>['+55 27 99999-0001'],
+      );
+      final localCache = _FakeContactsLocalCache(
+        cachedContacts: [cachedContact],
+      );
+      final repository = ContactsRepository(localCache: localCache);
+
+      repository.contactsStreamValue.addValue([cachedContact]);
+
+      await repository.clearCurrentIdentityState();
+
+      expect(repository.contactsStreamValue.value, isNull);
+      expect(localCache.clearCount, 1);
+      expect(localCache.cachedContacts, isNull);
     },
   );
 }

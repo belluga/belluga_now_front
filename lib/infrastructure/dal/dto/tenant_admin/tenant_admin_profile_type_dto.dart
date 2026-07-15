@@ -24,6 +24,7 @@ class TenantAdminProfileTypeDTO {
     required this.hasEvents,
     required this.hasGallery,
     required this.hasNestedProfileGroups,
+    required this.hasContactChannels,
   });
 
   final String type;
@@ -46,6 +47,7 @@ class TenantAdminProfileTypeDTO {
   final bool hasEvents;
   final bool hasGallery;
   final bool hasNestedProfileGroups;
+  final bool hasContactChannels;
 
   factory TenantAdminProfileTypeDTO.fromJson(Map<String, dynamic> json) {
     final allowed = <String>[];
@@ -100,6 +102,7 @@ class TenantAdminProfileTypeDTO {
       hasGallery: capabilityMap['has_gallery'] == true,
       hasNestedProfileGroups:
           capabilityMap['has_nested_profile_groups'] == true,
+      hasContactChannels: capabilityMap['has_contact_channels'] == true,
     );
   }
 
@@ -128,6 +131,7 @@ class TenantAdminProfileTypeDTO {
         hasEvents: TenantAdminFlagValue(hasEvents),
         hasGallery: TenantAdminFlagValue(hasGallery),
         hasNestedProfileGroups: TenantAdminFlagValue(hasNestedProfileGroups),
+        hasContactChannels: TenantAdminFlagValue(hasContactChannels),
       ),
     );
   }

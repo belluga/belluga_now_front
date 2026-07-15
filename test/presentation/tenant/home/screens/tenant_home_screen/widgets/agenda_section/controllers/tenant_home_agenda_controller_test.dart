@@ -6373,6 +6373,9 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 }
 
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {
+  @override
+  void clearCurrentIdentityState() {}
+
   bool throwOnRefreshConfirmedIds = false;
 
   @override

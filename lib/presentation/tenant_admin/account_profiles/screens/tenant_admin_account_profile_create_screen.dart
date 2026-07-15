@@ -1,7 +1,12 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_contact_channels/belluga_contact_channels.dart';
+import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/application/rich_text/account_profile_rich_text_limits.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
@@ -13,6 +18,8 @@ import 'package:belluga_now/presentation/tenant_admin/account_profiles/controlle
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_canonical_image_upload_field.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_account_profile_picker.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_contact_channels_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_upload_field.dart';
@@ -49,7 +56,11 @@ class _TenantAdminAccountProfileCreateScreenState
     _controller.bindCreateFlow();
     _controller.resetCreateState();
     _controller.resetFormControllers();
-    _controller.loadProfileTypes();
+    unawaited(
+      _controller.loadProfileTypes().whenComplete(
+        () => _controller.loadContactSourceCandidates(),
+      ),
+    );
     _controller.loadTaxonomies();
     _controller.loadAccountForCreate(_currentAccountSlugForRequests());
     _controller.loadNestedProfileCandidates();
@@ -161,6 +172,11 @@ class _TenantAdminAccountProfileCreateScreenState
   bool _hasNestedProfileGroups(String? selectedType) {
     final definition = _profileTypeDefinition(selectedType);
     return definition?.capabilities.hasNestedProfileGroups ?? false;
+  }
+
+  bool _hasContactChannels(String? selectedType) {
+    final definition = _profileTypeDefinition(selectedType);
+    return definition?.capabilities.hasContactChannels ?? false;
   }
 
   List<String> _allowedTaxonomies(String? selectedType) {
@@ -310,6 +326,35 @@ class _TenantAdminAccountProfileCreateScreenState
     }
     final state = _controller.createStateStreamValue.value;
     final selectedType = state.selectedProfileType ?? '';
+    final hasContactChannels = _hasContactChannels(state.selectedProfileType);
+    final contactDraftError = _controller.validateCreateContactDraft(
+      capabilityEnabled: hasContactChannels,
+    );
+    if (contactDraftError != null) {
+      _controller.reportCreateErrorMessage(contactDraftError);
+      return;
+    }
+    final selectedContactSource = _selectedCreateContactSourceCandidate(state);
+    if (hasContactChannels &&
+        state.contactMode == BellugaContactSourceMode.mirroredAccountProfile &&
+        selectedContactSource == null) {
+      _controller.reportCreateErrorMessage(
+        'Selecione um perfil válido para espelhar o contato.',
+      );
+      return;
+    }
+    final contactBubbleValidationError = _validateCreateBubbleSelection(
+      state,
+      selectedContactSource,
+      capabilityEnabled: hasContactChannels,
+    );
+    if (contactBubbleValidationError != null) {
+      _controller.reportCreateErrorMessage(contactBubbleValidationError);
+      return;
+    }
+    final contactChannelDrafts = _controller.buildCreateContactChannelDrafts(
+      capabilityEnabled: hasContactChannels,
+    );
     final location = _requiresLocation(state.selectedProfileType)
         ? _currentLocation()
         : null;
@@ -344,6 +389,19 @@ class _TenantAdminAccountProfileCreateScreenState
       nestedProfileGroups: _hasNestedProfileGroups(state.selectedProfileType)
           ? state.nestedProfileGroups
           : const <TenantAdminNestedProfileGroup>[],
+      contactMode: hasContactChannels
+          ? state.contactMode
+          : BellugaContactSourceMode.own,
+      contactSourceAccountProfileId:
+          hasContactChannels &&
+              state.contactMode ==
+                  BellugaContactSourceMode.mirroredAccountProfile
+          ? selectedContactSource?.id
+          : null,
+      contactChannelDrafts: contactChannelDrafts,
+      bubbleSelection: _controller.createBubbleSelection(
+        capabilityEnabled: hasContactChannels,
+      ),
     );
   }
 
@@ -371,6 +429,9 @@ class _TenantAdminAccountProfileCreateScreenState
                     _hasBio(state.selectedProfileType) ||
                     _hasContent(state.selectedProfileType) ||
                     _hasTaxonomies(state.selectedProfileType);
+                final hasContactChannels = _hasContactChannels(
+                  state.selectedProfileType,
+                );
                 final hasNestedProfileGroups = _hasNestedProfileGroups(
                   state.selectedProfileType,
                 );
@@ -392,6 +453,12 @@ class _TenantAdminAccountProfileCreateScreenState
                           if (hasContent) ...[
                             const SizedBox(height: 16),
                             _buildContentSection(context, state),
+                          ],
+                          if (hasContactChannels) ...[
+                            const SizedBox(height: 16),
+                            _buildContactSourceSection(context, state),
+                            const SizedBox(height: 16),
+                            _buildContactChannelsSection(context, state),
                           ],
                           if (requiresLocation) ...[
                             const SizedBox(height: 16),
@@ -696,6 +763,304 @@ class _TenantAdminAccountProfileCreateScreenState
           ],
         ],
       ),
+    );
+  }
+
+  TenantAdminAccountProfile? _selectedCreateContactSourceCandidate(
+    TenantAdminAccountProfileCreateDraft state,
+  ) {
+    final selectedId = state.contactSourceAccountProfileId?.trim();
+    if (selectedId == null || selectedId.isEmpty) {
+      return null;
+    }
+    for (final profile
+        in _controller.contactSourceCandidatesStreamValue.value) {
+      if (profile.id == selectedId) {
+        return profile;
+      }
+    }
+    return null;
+  }
+
+  String? _validateCreateBubbleSelection(
+    TenantAdminAccountProfileCreateDraft state,
+    TenantAdminAccountProfile? selectedSource, {
+    required bool capabilityEnabled,
+  }) {
+    if (!capabilityEnabled ||
+        state.contactMode != BellugaContactSourceMode.mirroredAccountProfile) {
+      return null;
+    }
+    final selectedId = _persistedBubbleChannelId(state.contactBubbleSelection);
+    if (selectedId == null || selectedId.isEmpty) {
+      return null;
+    }
+    return selectedSource?.effectiveContactChannels.any(
+              (channel) => channel.id == selectedId && channel.isBubbleEligible,
+            ) !=
+            true
+        ? 'Selecione um canal de WhatsApp válido para o balão.'
+        : null;
+  }
+
+  String? _persistedBubbleChannelId(
+    BellugaContactBubbleSelectionMutation selection,
+  ) => selection is BellugaContactBubbleSelectionPersisted
+      ? selection.channelId
+      : null;
+
+  IconData _contactIconFor(BellugaContactIconToken token) {
+    return switch (token) {
+      BellugaContactIconToken.emailOutlined => Icons.email_outlined,
+      BellugaContactIconToken.whatsapp => BooraIcons.whatsapp,
+    };
+  }
+
+  String _formatContactChannelType(BellugaContactChannelType type) {
+    return switch (type) {
+      BellugaContactChannelType.email => 'E-mail',
+      BellugaContactChannelType.whatsapp => 'WhatsApp',
+    };
+  }
+
+  String _formatContactChannelOption(BellugaContactChannel channel) {
+    final title = channel.title?.trim();
+    if (title == null || title.isEmpty) {
+      return channel.value;
+    }
+    return '${channel.value} • $title';
+  }
+
+  Widget _buildContactSourceSection(
+    BuildContext context,
+    TenantAdminAccountProfileCreateDraft state,
+  ) {
+    final isMirrored =
+        state.contactMode == BellugaContactSourceMode.mirroredAccountProfile;
+    return TenantAdminFormSectionCard(
+      title: 'Origem do Contato',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          RadioGroup<BellugaContactSourceMode>(
+            groupValue: state.contactMode,
+            onChanged: (value) {
+              if (value == null) {
+                return;
+              }
+              _controller.updateCreateContactMode(value);
+              _controller.updateCreateContactBubbleChannelId(null);
+            },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                RadioListTile<BellugaContactSourceMode>(
+                  key: Key('tenantAdminCreateContactModeOwn'),
+                  value: BellugaContactSourceMode.own,
+                  contentPadding: EdgeInsets.zero,
+                  title: Text('Usar canais deste perfil'),
+                  subtitle: Text(
+                    'E-mail e WhatsApp serão configurados diretamente aqui.',
+                  ),
+                ),
+                RadioListTile<BellugaContactSourceMode>(
+                  key: Key('tenantAdminCreateContactModeMirrored'),
+                  value: BellugaContactSourceMode.mirroredAccountProfile,
+                  contentPadding: EdgeInsets.zero,
+                  title: Text('Espelhar outro perfil'),
+                  subtitle: Text(
+                    'Este perfil publicará os canais efetivos do perfil selecionado.',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (isMirrored) ...[
+            const SizedBox(height: 12),
+            StreamValueBuilder<List<TenantAdminAccountProfile>>(
+              streamValue: _controller.contactSourceCandidatesStreamValue,
+              builder: (context, candidates) {
+                final selectedSource = _selectedCreateContactSourceCandidate(
+                  state,
+                );
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    OutlinedButton.icon(
+                      key: const Key('tenantAdminCreateContactSourcePicker'),
+                      icon: const Icon(Icons.person_search_outlined),
+                      label: Text(
+                        selectedSource == null
+                            ? 'Selecionar perfil de origem'
+                            : selectedSource.displayName,
+                      ),
+                      onPressed: () async {
+                        final selected = await showTenantAdminAccountProfilePicker(
+                          context: context,
+                          candidatesStreamValue:
+                              _controller.contactSourceCandidatesStreamValue,
+                          isLoadingStreamValue: _controller
+                              .contactSourceCandidatesLoadingStreamValue,
+                          isPageLoadingStreamValue: _controller
+                              .contactSourceCandidatesPageLoadingStreamValue,
+                          hasMoreStreamValue: _controller
+                              .contactSourceCandidatesHasMoreStreamValue,
+                          errorStreamValue: _controller
+                              .contactSourceCandidatesErrorStreamValue,
+                          loadNextPage:
+                              _controller.loadNextContactSourceCandidatesPage,
+                          title: 'Perfil de origem',
+                          emptyMessage:
+                              'Nenhum perfil elegível para espelhar contatos.',
+                          selectedProfileId: selectedSource?.id,
+                        );
+                        if (!context.mounted || selected == null) return;
+                        _controller.updateCreateContactSourceAccountProfileId(
+                          selected.id,
+                        );
+                        _controller.updateCreateContactBubbleChannelId(null);
+                      },
+                    ),
+                    if (candidates.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 8),
+                        child: Text(
+                          'Nenhum perfil próprio com contato habilitado está disponível.',
+                        ),
+                      ),
+                    const SizedBox(height: 12),
+                    if (selectedSource == null)
+                      const Text(
+                        'Selecione um perfil para visualizar os canais efetivos que serão espelhados.',
+                      )
+                    else
+                      _buildContactPreview(
+                        context,
+                        channels: selectedSource.effectiveContactChannels,
+                        emptyMessage:
+                            'O perfil selecionado ainda não possui canais de contato válidos.',
+                        selectedBubbleChannelId: _persistedBubbleChannelId(
+                          state.contactBubbleSelection,
+                        ),
+                        onBubbleChanged: (channel, selected) =>
+                            _controller.updateCreateContactBubbleChannelId(
+                              selected ? channel.id : null,
+                            ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContactChannelsSection(
+    BuildContext context,
+    TenantAdminAccountProfileCreateDraft state,
+  ) {
+    if (state.contactMode == BellugaContactSourceMode.mirroredAccountProfile) {
+      return TenantAdminFormSectionCard(
+        title: 'Canais de Contato',
+        child: StreamValueBuilder<List<TenantAdminAccountProfile>>(
+          streamValue: _controller.contactSourceCandidatesStreamValue,
+          builder: (context, _) {
+            final selectedSource = _selectedCreateContactSourceCandidate(state);
+            if (selectedSource == null) {
+              return const Text(
+                'Selecione um perfil de origem para visualizar os canais efetivos.',
+              );
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'A edição local de canais fica desativada no modo espelhado. Edite o perfil de origem para alterar os canais exibidos aqui.',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 12),
+                _buildContactPreview(
+                  context,
+                  channels: selectedSource.effectiveContactChannels,
+                  emptyMessage:
+                      'O perfil de origem ainda não possui canais de contato válidos.',
+                  selectedBubbleChannelId: _persistedBubbleChannelId(
+                    state.contactBubbleSelection,
+                  ),
+                  onBubbleChanged: (channel, selected) =>
+                      _controller.updateCreateContactBubbleChannelId(
+                        selected ? channel.id : null,
+                      ),
+                ),
+              ],
+            );
+          },
+        ),
+      );
+    }
+
+    return TenantAdminFormSectionCard(
+      title: 'Canais de Contato',
+      child: TenantAdminContactChannelsEditor(
+        drafts: state.contactChannelDrafts,
+        bubbleSelection: state.contactBubbleSelection,
+        expandedCtaDraftKey: state.expandedContactCtaDraftKey,
+        onAddChannel: _controller.addCreateContactChannel,
+        onUpdateChannel: _controller.updateCreateContactChannel,
+        onRemoveChannel: _controller.removeCreateContactChannel,
+        onSelectBubble: _controller.selectCreateContactBubble,
+        onToggleCtaEditor: _controller.toggleCreateContactCtaEditor,
+        onAddInitialMessage: _controller.addCreateContactInitialMessage,
+        onUpdateInitialMessage: _controller.updateCreateContactInitialMessage,
+        onRemoveInitialMessage:
+            _controller.removeCreateContactInitialMessageFromChannel,
+      ),
+    );
+  }
+
+  Widget _buildContactPreview(
+    BuildContext context, {
+    required List<BellugaContactChannel> channels,
+    required String emptyMessage,
+    String? selectedBubbleChannelId,
+    void Function(BellugaContactChannel channel, bool selected)?
+    onBubbleChanged,
+  }) {
+    if (channels.isEmpty) {
+      return Text(emptyMessage);
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: channels
+          .map(
+            (channel) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Column(
+                children: [
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(_contactIconFor(channel.iconToken)),
+                    title: Text(_formatContactChannelType(channel.type)),
+                    subtitle: Text(_formatContactChannelOption(channel)),
+                  ),
+                  if (channel.isBubbleEligible && onBubbleChanged != null)
+                    SwitchListTile(
+                      key: Key(
+                        'tenantAdminCreateMirroredBubbleToggle_${channel.id}',
+                      ),
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Ativar balão flutuante'),
+                      value: selectedBubbleChannelId == channel.id,
+                      onChanged: (selected) =>
+                          onBubbleChanged(channel, selected),
+                    ),
+                ],
+              ),
+            ),
+          )
+          .toList(growable: false),
     );
   }
 
