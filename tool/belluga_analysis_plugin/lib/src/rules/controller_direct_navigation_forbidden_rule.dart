@@ -6,16 +6,16 @@ import '../path_utils.dart';
 
 class ControllerDirectNavigationForbiddenRule extends DartLintRule {
   ControllerDirectNavigationForbiddenRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'controller_direct_navigation_forbidden',
-            problemMessage:
-                'Controllers must not perform direct navigation calls.',
-            correctionMessage:
-                'Treatments: emit navigation intents/state in controller; execute navigation in UI/router guards.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'controller_direct_navigation_forbidden',
+          problemMessage:
+              'Controllers must not perform direct navigation calls.',
+          correctionMessage:
+              'Treatments: emit navigation intents/state in controller; execute navigation in UI/router guards.',
+        ),
+      );
 
   static const _routerMethodNames = {
     'push',
@@ -46,13 +46,15 @@ class ControllerDirectNavigationForbiddenRule extends DartLintRule {
       if (targetSource != null) {
         final normalizedTarget = targetSource.toLowerCase();
 
-        if (targetSource == 'Navigator' || targetSource.startsWith('Navigator.')) {
+        if (targetSource == 'Navigator' ||
+            targetSource.startsWith('Navigator.')) {
           reporter.atNode(node.methodName, code);
           return;
         }
 
         final looksLikeRouterCall =
-            normalizedTarget.contains('router') && _routerMethodNames.contains(methodName);
+            normalizedTarget.contains('router') &&
+            _routerMethodNames.contains(methodName);
         if (looksLikeRouterCall) {
           reporter.atNode(node.methodName, code);
         }

@@ -182,6 +182,7 @@ Future<void> _openModal(
 }) async {
   await tester.pumpWidget(
     MaterialApp(
+      theme: ThemeData(splashFactory: NoSplash.splashFactory),
       home: Scaffold(
         body: Builder(
           builder: (context) => TextButton(

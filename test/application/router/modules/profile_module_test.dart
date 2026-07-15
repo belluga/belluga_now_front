@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/guards/account_deletion_resolution_route_guard.dart';
 import 'package:belluga_now/application/router/guards/auth_route_guard.dart';
 import 'package:belluga_now/application/router/modular_app/modules/profile_module.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
@@ -8,9 +9,7 @@ import 'package:get_it/get_it.dart';
 void main() {
   setUp(() async {
     await GetIt.I.reset();
-    GetIt.I.registerSingleton<AuthRepositoryContract>(
-      _FakeAuthRepository(),
-    );
+    GetIt.I.registerSingleton<AuthRepositoryContract>(_FakeAuthRepository());
   });
 
   tearDown(() async {
@@ -19,14 +18,26 @@ void main() {
 
   test('/profile is auth-guarded', () {
     final module = ProfileModule();
-    final profileRoute =
-        module.routes.firstWhere((route) => route.path == '/profile');
+    final profileRoute = module.routes.firstWhere(
+      (route) => route.path == '/profile',
+    );
 
     expect(profileRoute, isA<AutoRoute>());
-    expect(
-      profileRoute.guards.map((guard) => guard.runtimeType).toList(),
-      [AuthRouteGuard],
+    expect(profileRoute.guards.map((guard) => guard.runtimeType).toList(), [
+      AuthRouteGuard,
+    ]);
+  });
+
+  test('account-deletion resolution is an internal guarded profile route', () {
+    final module = ProfileModule();
+    final resolutionRoute = module.routes.firstWhere(
+      (route) => route.path == '/profile/account-deletion-resolution',
     );
+
+    expect(resolutionRoute, isA<AutoRoute>());
+    expect(resolutionRoute.guards.map((guard) => guard.runtimeType).toList(), [
+      AccountDeletionResolutionRouteGuard,
+    ]);
   });
 }
 

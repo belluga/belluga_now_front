@@ -10,16 +10,16 @@ import '../type_utils.dart';
 
 class UiStreamValueBuilderNullCheckForbiddenRule extends DartLintRule {
   UiStreamValueBuilderNullCheckForbiddenRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'ui_streamvalue_builder_null_check_forbidden',
-            problemMessage:
-                'Do not null-check StreamValueBuilder value inside builder.',
-            correctionMessage:
-                'Treatments: use onNullWidget for null-state rendering and keep builder focused on non-null data.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'ui_streamvalue_builder_null_check_forbidden',
+          problemMessage:
+              'Do not null-check StreamValueBuilder value inside builder.',
+          correctionMessage:
+              'Treatments: use onNullWidget for null-state rendering and keep builder focused on non-null data.',
+        ),
+      );
 
   @override
   void run(
@@ -116,4 +116,3 @@ class _BuilderNullCheckVisitor extends RecursiveAstVisitor<void> {
     return expression is SimpleIdentifier && expression.name == valueParamName;
   }
 }
-

@@ -7,16 +7,16 @@ import '../type_utils.dart';
 
 class UiFutureStreamBuilderForbiddenRule extends DartLintRule {
   UiFutureStreamBuilderForbiddenRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'ui_future_stream_builder_forbidden',
-            problemMessage:
-                'UI files must not use FutureBuilder/StreamBuilder in this architecture.',
-            correctionMessage:
-                'Treatments: replace FutureBuilder/StreamBuilder with controller-owned StreamValue + StreamValueBuilder.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'ui_future_stream_builder_forbidden',
+          problemMessage:
+              'UI files must not use FutureBuilder/StreamBuilder in this architecture.',
+          correctionMessage:
+              'Treatments: replace FutureBuilder/StreamBuilder with controller-owned StreamValue + StreamValueBuilder.',
+        ),
+      );
 
   @override
   void run(

@@ -1389,20 +1389,84 @@ class TenantAdminEventsController implements Disposable {
     String occurrenceKey,
     TenantAdminEventProgrammingItem item,
   ) {
+    final occurrence = occurrenceForKey(occurrenceKey);
+    if (occurrence == null) {
+      return;
+    }
+    insertOccurrenceProgrammingItem(
+      occurrenceKey: occurrenceKey,
+      index: occurrence.programmingItems.length,
+      item: item,
+    );
+  }
+
+  void insertOccurrenceProgrammingItem({
+    required String occurrenceKey,
+    required int index,
+    required TenantAdminEventProgrammingItem item,
+  }) {
     final current = eventFormStateStreamValue.value;
+    final occurrence = occurrenceForKey(occurrenceKey);
+    if (occurrence == null ||
+        index < 0 ||
+        index > occurrence.programmingItems.length) {
+      return;
+    }
+    final itemKeys = _programmingItemKeysForOccurrence(
+      current,
+      occurrenceKey,
+      occurrence.programmingItems,
+    ).toList(growable: true);
+    final items = occurrence.programmingItems.toList(growable: true);
+    items.insert(index, item);
+    itemKeys.insert(index, _newEventFormLocalId('programming'));
     final itemKeysByOccurrenceKey =
         _normalizedProgrammingItemKeysByOccurrenceKey(current);
-    final itemKeys = [
-      ...(itemKeysByOccurrenceKey[occurrenceKey] ?? const <String>[]),
-      _newEventFormLocalId('programming'),
-    ];
-    itemKeysByOccurrenceKey[occurrenceKey] = itemKeys;
+    itemKeysByOccurrenceKey[occurrenceKey] = List.unmodifiable(itemKeys);
     _replaceOccurrenceByKey(
       occurrenceKey,
-      (occurrence) => _copyOccurrence(
-        occurrence,
-        programmingItems: [...occurrence.programmingItems, item],
-      ),
+      (occurrence) => _copyOccurrence(occurrence, programmingItems: items),
+      sort: false,
+      programmingItemLocalIdsByOccurrenceKey: itemKeysByOccurrenceKey,
+    );
+  }
+
+  void moveOccurrenceProgrammingItem({
+    required String occurrenceKey,
+    required String itemKey,
+    required int targetIndex,
+  }) {
+    final current = eventFormStateStreamValue.value;
+    final occurrence = occurrenceForKey(occurrenceKey);
+    if (occurrence == null ||
+        targetIndex < 0 ||
+        targetIndex >= occurrence.programmingItems.length) {
+      return;
+    }
+    final itemKeys = _programmingItemKeysForOccurrence(
+      current,
+      occurrenceKey,
+      occurrence.programmingItems,
+    ).toList(growable: true);
+    final sourceIndex = itemKeys.indexOf(itemKey);
+    if (sourceIndex < 0 ||
+        sourceIndex >= occurrence.programmingItems.length ||
+        !occurrence.programmingItems[sourceIndex].isSequential) {
+      return;
+    }
+
+    final items = occurrence.programmingItems.toList(growable: true);
+    final item = items.removeAt(sourceIndex);
+    final stableItemKey = itemKeys.removeAt(sourceIndex);
+    items.insert(targetIndex, item);
+    itemKeys.insert(targetIndex, stableItemKey);
+
+    final itemKeysByOccurrenceKey =
+        _normalizedProgrammingItemKeysByOccurrenceKey(current);
+    itemKeysByOccurrenceKey[occurrenceKey] = List.unmodifiable(itemKeys);
+    _replaceOccurrenceByKey(
+      occurrenceKey,
+      (occurrence) => _copyOccurrence(occurrence, programmingItems: items),
       sort: false,
       programmingItemLocalIdsByOccurrenceKey: itemKeysByOccurrenceKey,
     );

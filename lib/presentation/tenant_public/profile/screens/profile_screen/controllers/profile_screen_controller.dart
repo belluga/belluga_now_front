@@ -12,6 +12,7 @@ import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/inviteables_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/self_profile_repository_contract.dart';
+import 'package:belluga_now/domain/auth/account_deletion_journey_state.dart';
 import 'package:belluga_now/domain/user/value_objects/user_display_name_value.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/user/profile_avatar_storage_contract.dart';
@@ -20,6 +21,7 @@ import 'package:belluga_now/domain/user/user_profile_media_upload.dart';
 import 'package:belluga_now/domain/user/value_objects/user_profile_media_bytes_value.dart';
 import 'package:belluga_now/domain/user/value_objects/profile_avatar_path_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
+import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/controllers/profile_account_deletion_ui_phase.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
@@ -35,20 +37,23 @@ class ProfileScreenController implements Disposable {
     ProfileAvatarStorageContract? avatarStorage,
     SelfProfileRepositoryContract? selfProfileRepository,
     InviteablesRepositoryContract? inviteablesRepository,
-  })  : _authRepository =
-            authRepository ?? GetIt.I.get<AuthRepositoryContract>(),
-        _appDataRepository =
-            appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
-        _proximityPreferencesRepository = proximityPreferencesRepository ??
-            (GetIt.I.isRegistered<ProximityPreferencesRepositoryContract>()
-                ? GetIt.I.get<ProximityPreferencesRepositoryContract>()
-                : null),
-        _avatarStorage =
-            avatarStorage ?? GetIt.I.get<ProfileAvatarStorageContract>(),
-        _selfProfileRepository = selfProfileRepository ??
-            GetIt.I.get<SelfProfileRepositoryContract>(),
-        _inviteablesRepository = inviteablesRepository ??
-            GetIt.I.get<InviteablesRepositoryContract>() {
+  }) : _authRepository =
+           authRepository ?? GetIt.I.get<AuthRepositoryContract>(),
+       _appDataRepository =
+           appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
+       _proximityPreferencesRepository =
+           proximityPreferencesRepository ??
+           (GetIt.I.isRegistered<ProximityPreferencesRepositoryContract>()
+               ? GetIt.I.get<ProximityPreferencesRepositoryContract>()
+               : null),
+       _avatarStorage =
+           avatarStorage ?? GetIt.I.get<ProfileAvatarStorageContract>(),
+       _selfProfileRepository =
+           selfProfileRepository ??
+           GetIt.I.get<SelfProfileRepositoryContract>(),
+       _inviteablesRepository =
+           inviteablesRepository ??
+           GetIt.I.get<InviteablesRepositoryContract>() {
     _bindUserStream();
     _bindSelfProfileStream();
     _bindMaxRadiusStream();
@@ -79,32 +84,49 @@ class ProfileScreenController implements Disposable {
       TextEditingController();
   final StreamValue<String?> localAvatarPathStreamValue =
       StreamValue<String?>();
-  final StreamValue<int> formVersionStreamValue =
-      StreamValue<int>(defaultValue: 0);
-  final StreamValue<bool> isProfileLoadingStreamValue =
-      StreamValue<bool>(defaultValue: true);
-  final StreamValue<bool> isMatchedPeopleLoadingStreamValue =
-      StreamValue<bool>(defaultValue: true);
+  final StreamValue<int> formVersionStreamValue = StreamValue<int>(
+    defaultValue: 0,
+  );
+  final StreamValue<bool> isProfileLoadingStreamValue = StreamValue<bool>(
+    defaultValue: true,
+  );
+  final StreamValue<bool> isMatchedPeopleLoadingStreamValue = StreamValue<bool>(
+    defaultValue: true,
+  );
   final StreamValue<List<InviteableRecipient>> matchedPeopleStreamValue =
       StreamValue<List<InviteableRecipient>>(defaultValue: const []);
-  final StreamValue<String> matchedPeopleErrorStreamValue =
-      StreamValue<String>(defaultValue: '');
-  final StreamValue<int> pendingInvitesCountStreamValue =
-      StreamValue<int>(defaultValue: 0);
-  final StreamValue<int> confirmedEventsCountStreamValue =
-      StreamValue<int>(defaultValue: 0);
-  final StreamValue<int> invitesSentCountStreamValue =
-      StreamValue<int>(defaultValue: 0);
-  final StreamValue<int> invitesAcceptedCountStreamValue =
-      StreamValue<int>(defaultValue: 0);
-  final StreamValue<double> maxRadiusMetersStreamValue =
-      StreamValue<double>(defaultValue: 50000);
-  final StreamValue<bool> isUsingFixedOriginStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  final StreamValue<String> matchedPeopleErrorStreamValue = StreamValue<String>(
+    defaultValue: '',
+  );
+  final StreamValue<int> pendingInvitesCountStreamValue = StreamValue<int>(
+    defaultValue: 0,
+  );
+  final StreamValue<int> confirmedEventsCountStreamValue = StreamValue<int>(
+    defaultValue: 0,
+  );
+  final StreamValue<int> invitesSentCountStreamValue = StreamValue<int>(
+    defaultValue: 0,
+  );
+  final StreamValue<int> invitesAcceptedCountStreamValue = StreamValue<int>(
+    defaultValue: 0,
+  );
+  final StreamValue<double> maxRadiusMetersStreamValue = StreamValue<double>(
+    defaultValue: 50000,
+  );
+  final StreamValue<bool> isUsingFixedOriginStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
   final StreamValue<String> activeOriginSummaryStreamValue =
       StreamValue<String>(defaultValue: 'Localização atual');
   final StreamValue<String?> originPreferenceFeedbackStreamValue =
       StreamValue<String?>(defaultValue: null);
+  final StreamValue<ProfileAccountDeletionUiPhase>
+  accountDeletionUiPhaseStreamValue =
+      StreamValue<ProfileAccountDeletionUiPhase>(
+        defaultValue: ProfileAccountDeletionUiPhase.idle,
+      );
+  final StreamValue<int> accountDeletionResolutionNavigationRequestStreamValue =
+      StreamValue<int>(defaultValue: 0);
 
   String? _syncedUserId;
   String _initialName = '';
@@ -112,6 +134,7 @@ class ProfileScreenController implements Disposable {
   SelfProfile? _currentProfile;
   UserProfileMediaUpload? _pendingAvatarUpload;
   bool _didInit = false;
+  Future<void>? _accountDeletionAction;
 
   StreamValue<UserContract?> get userStreamValue =>
       _authRepository.userStreamValue;
@@ -151,7 +174,8 @@ class ProfileScreenController implements Disposable {
     _userSubscription = userStreamValue.stream.listen((user) {
       if (syncFromUser(user)) {
         if (_didInit) {
-          final hasCachedProfile = currentProfileStreamValue.value != null ||
+          final hasCachedProfile =
+              currentProfileStreamValue.value != null ||
               _currentProfile != null;
           unawaited(refreshProfile(silent: hasCachedProfile));
         }
@@ -165,8 +189,9 @@ class ProfileScreenController implements Disposable {
 
   void _bindSelfProfileStream() {
     _selfProfileSubscription?.cancel();
-    _selfProfileSubscription =
-        currentProfileStreamValue.stream.listen((profile) {
+    _selfProfileSubscription = currentProfileStreamValue.stream.listen((
+      profile,
+    ) {
       if (profile == null) {
         return;
       }
@@ -183,12 +208,15 @@ class ProfileScreenController implements Disposable {
 
   void _bindMaxRadiusStream() {
     _maxRadiusSubscription?.cancel();
-    maxRadiusMetersStreamValue
-        .addValue(_appDataRepository.maxRadiusMeters.value);
-    _maxRadiusSubscription =
-        _appDataRepository.maxRadiusMetersStreamValue.stream.listen((value) {
-      maxRadiusMetersStreamValue.addValue(value.value);
-    });
+    maxRadiusMetersStreamValue.addValue(
+      _appDataRepository.maxRadiusMeters.value,
+    );
+    _maxRadiusSubscription = _appDataRepository
+        .maxRadiusMetersStreamValue
+        .stream
+        .listen((value) {
+          maxRadiusMetersStreamValue.addValue(value.value);
+        });
   }
 
   Future<void> loadAvatarPath() async {
@@ -235,15 +263,16 @@ class ProfileScreenController implements Disposable {
     }
 
     _proximityPreferenceSubscription?.cancel();
-    _proximityPreferenceSubscription =
-        repository.proximityPreferenceStreamValue.stream.listen(
-      _applyProximityPreference,
-    );
+    _proximityPreferenceSubscription = repository
+        .proximityPreferenceStreamValue
+        .stream
+        .listen(_applyProximityPreference);
     _applyProximityPreference(repository.proximityPreference);
   }
 
   void _applyProximityPreference(ProximityPreference? preference) {
-    final effectivePreference = preference ??
+    final effectivePreference =
+        preference ??
         ProximityPreference(
           maxDistanceMetersValue: _appDataRepository.maxRadiusMeters,
           locationPreference:
@@ -260,10 +289,10 @@ class ProfileScreenController implements Disposable {
     );
 
     if (fixedReference != null) {
-      fixedOriginLatitudeController.text =
-          fixedReference.coordinate.latitude.toStringAsFixed(6);
-      fixedOriginLongitudeController.text =
-          fixedReference.coordinate.longitude.toStringAsFixed(6);
+      fixedOriginLatitudeController.text = fixedReference.coordinate.latitude
+          .toStringAsFixed(6);
+      fixedOriginLongitudeController.text = fixedReference.coordinate.longitude
+          .toStringAsFixed(6);
       fixedOriginLabelController.text = fixedReference.label ?? '';
     } else {
       fixedOriginLatitudeController.clear();
@@ -272,9 +301,7 @@ class ProfileScreenController implements Disposable {
     }
   }
 
-  String? saveOriginPreference({
-    required bool useFixedOrigin,
-  }) {
+  String? saveOriginPreference({required bool useFixedOrigin}) {
     if (!useFixedOrigin) {
       originPreferenceFeedbackStreamValue.addValue(null);
       unawaited(
@@ -301,9 +328,7 @@ class ProfileScreenController implements Disposable {
       _persistOriginPreference(() async {
         final repository = _proximityPreferencesRepository;
         if (repository != null) {
-          await repository.setFixedReference(
-            fixedReference: fixedReference,
-          );
+          await repository.setFixedReference(fixedReference: fixedReference);
           return;
         }
         await _appDataRepository.useUserFixedLocationOrigin(
@@ -320,8 +345,9 @@ class ProfileScreenController implements Disposable {
       return 'Latitude inválida.';
     }
 
-    final longitude =
-        double.tryParse(fixedOriginLongitudeController.text.trim());
+    final longitude = double.tryParse(
+      fixedOriginLongitudeController.text.trim(),
+    );
     if (longitude == null || longitude < -180 || longitude > 180) {
       return 'Longitude inválida.';
     }
@@ -343,9 +369,7 @@ class ProfileScreenController implements Disposable {
     );
   }
 
-  Future<void> _persistOriginPreference(
-    Future<void> Function() persist,
-  ) async {
+  Future<void> _persistOriginPreference(Future<void> Function() persist) async {
     try {
       await persist();
     } catch (_) {
@@ -379,9 +403,7 @@ class ProfileScreenController implements Disposable {
     debugPrint('[Profile] Avatar update requested');
   }
 
-  Future<void> refreshProfile({
-    bool silent = false,
-  }) async {
+  Future<void> refreshProfile({bool silent = false}) async {
     if (!silent) {
       isProfileLoadingStreamValue.addValue(true);
     }
@@ -405,19 +427,21 @@ class ProfileScreenController implements Disposable {
       await _inviteablesRepository.refreshInviteableRecipients();
       final recipients =
           _inviteablesRepository.inviteableRecipientsStreamValue.value ??
-              const <InviteableRecipient>[];
-      final filtered = recipients.where((recipient) {
-        final userId = recipient.userId.trim();
-        final profileId = recipient.receiverAccountProfileId.trim();
-        if (userId.isNotEmpty && userId == profile.userId.trim()) {
-          return false;
-        }
-        if (profile.accountProfileId.trim().isNotEmpty &&
-            profileId == profile.accountProfileId.trim()) {
-          return false;
-        }
-        return true;
-      }).toList(growable: false);
+          const <InviteableRecipient>[];
+      final filtered = recipients
+          .where((recipient) {
+            final userId = recipient.userId.trim();
+            final profileId = recipient.receiverAccountProfileId.trim();
+            if (userId.isNotEmpty && userId == profile.userId.trim()) {
+              return false;
+            }
+            if (profile.accountProfileId.trim().isNotEmpty &&
+                profileId == profile.accountProfileId.trim()) {
+              return false;
+            }
+            return true;
+          })
+          .toList(growable: false);
       matchedPeopleStreamValue.addValue(filtered);
     } catch (error) {
       matchedPeopleErrorStreamValue.addValue(error.toString());
@@ -429,8 +453,9 @@ class ProfileScreenController implements Disposable {
 
   void _applySelfProfile(SelfProfile profile) {
     _currentProfile = profile;
-    _syncedUserId =
-        profile.userId.trim().isEmpty ? _syncedUserId : profile.userId;
+    _syncedUserId = profile.userId.trim().isEmpty
+        ? _syncedUserId
+        : profile.userId;
     final resolvedDisplayName = _resolveEditableDisplayName(profile);
     _initialName = resolvedDisplayName;
     _initialDescription = profile.bio;
@@ -446,10 +471,7 @@ class ProfileScreenController implements Disposable {
 
   Future<void> pickAvatar(ImageSource source) async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(
-      source: source,
-      imageQuality: 85,
-    );
+    final picked = await picker.pickImage(source: source, imageQuality: 85);
     if (picked == null) return;
 
     final directory = await getApplicationDocumentsDirectory();
@@ -464,14 +486,10 @@ class ProfileScreenController implements Disposable {
     localAvatarPathStreamValue.addValue(saved.path);
     _pendingAvatarUpload = UserProfileMediaUpload(
       bytesValue: UserProfileMediaBytesValue()..set(await saved.readAsBytes()),
-      fileNameValue: GenericStringValue(
-        defaultValue: '',
-        isRequired: true,
-      )..parse(_fileNameFromPath(saved.path)),
-      mimeTypeValue: GenericStringValue(
-        defaultValue: '',
-        isRequired: false,
-      )..parse(_inferImageMimeType(saved.path) ?? ''),
+      fileNameValue: GenericStringValue(defaultValue: '', isRequired: true)
+        ..parse(_fileNameFromPath(saved.path)),
+      mimeTypeValue: GenericStringValue(defaultValue: '', isRequired: false)
+        ..parse(_inferImageMimeType(saved.path) ?? ''),
     );
     bumpFormVersion();
     try {
@@ -523,16 +541,12 @@ class ProfileScreenController implements Disposable {
     try {
       final updated = await _selfProfileRepository.updateCurrentProfile(
         displayNameValue: hasNameChange
-            ? (UserDisplayNameValue(
-                isRequired: false,
-                minLenght: null,
-              )..parse(trimmedName))
+            ? (UserDisplayNameValue(isRequired: false, minLenght: null)
+                ..parse(trimmedName))
             : null,
         bioValue: hasDescriptionChange
-            ? (DescriptionValue(
-                defaultValue: '',
-                minLenght: null,
-              )..parse(trimmedDescription))
+            ? (DescriptionValue(defaultValue: '', minLenght: null)
+                ..parse(trimmedDescription))
             : null,
         avatarUpload: _pendingAvatarUpload,
       );
@@ -554,6 +568,42 @@ class ProfileScreenController implements Disposable {
   }
 
   Future<void> logout() => _authRepository.logout();
+
+  Future<void> deleteCurrentAccount() {
+    final inFlight = _accountDeletionAction;
+    if (inFlight != null) {
+      return inFlight;
+    }
+
+    accountDeletionUiPhaseStreamValue.addValue(
+      ProfileAccountDeletionUiPhase.deleting,
+    );
+    final action = _deleteCurrentAccountOnce().whenComplete(() {
+      _accountDeletionAction = null;
+    });
+    _accountDeletionAction = action;
+    return action;
+  }
+
+  Future<void> _deleteCurrentAccountOnce() async {
+    final outcome = await _authRepository.deleteCurrentAccount();
+    switch (outcome) {
+      case AccountDeletionDispatchOutcome.preEraseRejected:
+        accountDeletionUiPhaseStreamValue.addValue(
+          ProfileAccountDeletionUiPhase.preEraseRejected,
+        );
+        return;
+      case AccountDeletionDispatchOutcome.confirmed:
+      case AccountDeletionDispatchOutcome.unknown:
+        accountDeletionUiPhaseStreamValue.addValue(
+          ProfileAccountDeletionUiPhase.idle,
+        );
+        accountDeletionResolutionNavigationRequestStreamValue.addValue(
+          accountDeletionResolutionNavigationRequestStreamValue.value + 1,
+        );
+        return;
+    }
+  }
 
   DistanceInMetersValue _distanceInMetersValue(double raw) {
     final value = DistanceInMetersValue();
@@ -675,5 +725,7 @@ class ProfileScreenController implements Disposable {
     isUsingFixedOriginStreamValue.dispose();
     activeOriginSummaryStreamValue.dispose();
     originPreferenceFeedbackStreamValue.dispose();
+    accountDeletionUiPhaseStreamValue.dispose();
+    accountDeletionResolutionNavigationRequestStreamValue.dispose();
   }
 }

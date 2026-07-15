@@ -7,16 +7,16 @@ import '../path_utils.dart';
 
 class UiDtoImportForbiddenRule extends DartLintRule {
   UiDtoImportForbiddenRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'ui_dto_import_forbidden',
-            problemMessage:
-                'Presentation layer cannot import DTO artifacts directly.',
-            correctionMessage:
-                'Treatments: replace DTO references with domain/projection models in UI; keep DTO mapping in infrastructure.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'ui_dto_import_forbidden',
+          problemMessage:
+              'Presentation layer cannot import DTO artifacts directly.',
+          correctionMessage:
+              'Treatments: replace DTO references with domain/projection models in UI; keep DTO mapping in infrastructure.',
+        ),
+      );
 
   @override
   void run(

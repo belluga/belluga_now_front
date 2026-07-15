@@ -9,16 +9,16 @@ import '../type_utils.dart';
 
 class ScreenControllerResolutionPatternRequiredRule extends DartLintRule {
   ScreenControllerResolutionPatternRequiredRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'screen_controller_resolution_pattern_required',
-            problemMessage:
-                'Screen classes must resolve feature controllers via GetIt instead of receiving them via constructor.',
-            correctionMessage:
-                'Treatments: remove controller constructor params from screen classes; resolve controller at screen boundary via GetIt.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'screen_controller_resolution_pattern_required',
+          problemMessage:
+              'Screen classes must resolve feature controllers via GetIt instead of receiving them via constructor.',
+          correctionMessage:
+              'Treatments: remove controller constructor params from screen classes; resolve controller at screen boundary via GetIt.',
+        ),
+      );
 
   @override
   void run(
@@ -32,7 +32,7 @@ class ScreenControllerResolutionPatternRequiredRule extends DartLintRule {
     }
 
     context.registry.addClassDeclaration((node) {
-      final className = node.name.lexeme;
+      final className = node.namePart.typeName.lexeme;
       if (!className.endsWith('Screen')) {
         return;
       }
@@ -41,7 +41,7 @@ class ScreenControllerResolutionPatternRequiredRule extends DartLintRule {
         return;
       }
 
-      for (final member in node.members) {
+      for (final member in classMembersOf(node)) {
         if (member is! ConstructorDeclaration) {
           continue;
         }

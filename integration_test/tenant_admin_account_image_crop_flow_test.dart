@@ -1,3 +1,4 @@
+import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:integration_test/integration_test.dart';
 import 'dart:io';
 import 'dart:typed_data';
@@ -14,6 +15,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dar
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
@@ -37,8 +39,9 @@ void main() {
     await GetIt.I.reset();
   });
 
-  testWidgets('device image selection opens crop sheet for avatar',
-      (tester) async {
+  testWidgets('device image selection opens crop sheet for avatar', (
+    tester,
+  ) async {
     final tmpFile = _writeTempImage('picked.png');
     final originalImagePicker = ImagePickerPlatform.instance;
     ImagePickerPlatform.instance = _FakeImagePickerPlatform(tmpFile.path);
@@ -51,9 +54,7 @@ void main() {
 
     await _pumpWithAutoRoute(
       tester,
-      const Scaffold(
-        body: TenantAdminAccountCreateScreen(),
-      ),
+      const Scaffold(body: TenantAdminAccountCreateScreen()),
     );
 
     await tester.tap(find.byType(DropdownButtonFormField<String>).last);
@@ -86,8 +87,9 @@ void main() {
     await _confirmCropAndDismiss(tester);
   });
 
-  testWidgets('device image selection opens crop sheet for cover (560:512)',
-      (tester) async {
+  testWidgets('device image selection opens crop sheet for cover (560:512)', (
+    tester,
+  ) async {
     final tmpFile = _writeTempImage('picked_cover.png');
     final originalImagePicker = ImagePickerPlatform.instance;
     ImagePickerPlatform.instance = _FakeImagePickerPlatform(tmpFile.path);
@@ -100,9 +102,7 @@ void main() {
 
     await _pumpWithAutoRoute(
       tester,
-      const Scaffold(
-        body: TenantAdminAccountCreateScreen(),
-      ),
+      const Scaffold(body: TenantAdminAccountCreateScreen()),
     );
 
     await tester.tap(find.byType(DropdownButtonFormField<String>).last);
@@ -140,9 +140,7 @@ void main() {
 
     await _pumpWithAutoRoute(
       tester,
-      const Scaffold(
-        body: TenantAdminAccountCreateScreen(),
-      ),
+      const Scaffold(body: TenantAdminAccountCreateScreen()),
     );
 
     await tester.tap(find.byType(DropdownButtonFormField<String>).last);
@@ -167,16 +165,15 @@ void main() {
     await _confirmCropAndDismiss(tester);
   });
 
-  testWidgets('web url selection opens crop sheet for cover (560:512)',
-      (tester) async {
+  testWidgets('web url selection opens crop sheet for cover (560:512)', (
+    tester,
+  ) async {
     await GetIt.I.reset();
     _registerFakes();
 
     await _pumpWithAutoRoute(
       tester,
-      const Scaffold(
-        body: TenantAdminAccountCreateScreen(),
-      ),
+      const Scaffold(body: TenantAdminAccountCreateScreen()),
     );
 
     await tester.tap(find.byType(DropdownButtonFormField<String>).last);
@@ -202,10 +199,7 @@ void main() {
   });
 }
 
-Future<void> _pumpWithAutoRoute(
-  WidgetTester tester,
-  Widget child,
-) async {
+Future<void> _pumpWithAutoRoute(WidgetTester tester, Widget child) async {
   final router = RootStackRouter.build(
     routes: [
       NamedRouteDef(
@@ -437,8 +431,7 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? accountId,
     TenantAdminAccountProfilesRepoBool? queryableOnly,
     TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
-  }) async =>
-      [];
+  }) async => [];
 
   @override
   Future<TenantAdminAccountProfile> fetchAccountProfile(
@@ -446,6 +439,19 @@ class _FakeAccountProfilesRepository
   ) async {
     throw UnimplementedError();
   }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+  fetchContactSourceCandidatesPage({
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
+  }) async => tenantAdminPagedResultFromRaw(
+    items: const <TenantAdminAccountProfile>[],
+    hasMore: false,
+    currentPage: page.value,
+    pageSize: pageSize.value,
+  );
 
   @override
   Future<TenantAdminAccountProfile> createAccountProfile({
@@ -463,6 +469,12 @@ class _FakeAccountProfilesRepository
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
         const <TenantAdminNestedProfileGroup>[],
+    BellugaContactSourceMode contactMode = BellugaContactSourceMode.own,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft> contactChannelDrafts =
+        const <BellugaContactChannelDraft>[],
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) async {
     throw UnimplementedError();
   }
@@ -484,13 +496,19 @@ class _FakeAccountProfilesRepository
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
+    BellugaContactSourceMode? contactMode,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft>? contactChannelDrafts,
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) async {
     throw UnimplementedError();
   }
 
   @override
   Future<void> deleteAccountProfile(
-      TenantAdminAccountProfilesRepoString accountProfileId) async {
+    TenantAdminAccountProfilesRepoString accountProfileId,
+  ) async {
     throw UnimplementedError();
   }
 
@@ -503,7 +521,8 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<void> forceDeleteAccountProfile(
-      TenantAdminAccountProfilesRepoString accountProfileId) async {
+    TenantAdminAccountProfilesRepoString accountProfileId,
+  ) async {
     throw UnimplementedError();
   }
 
@@ -562,7 +581,8 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<void> deleteProfileType(
-      TenantAdminAccountProfilesRepoString type) async {
+    TenantAdminAccountProfilesRepoString type,
+  ) async {
     throw UnimplementedError();
   }
 }
@@ -603,8 +623,7 @@ class _FakeTaxonomiesRepository
   @override
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
     required TenantAdminTaxRepoString taxonomyId,
-  }) async =>
-      [];
+  }) async => [];
 
   @override
   Future<TenantAdminTaxonomyTermDefinition> createTerm({

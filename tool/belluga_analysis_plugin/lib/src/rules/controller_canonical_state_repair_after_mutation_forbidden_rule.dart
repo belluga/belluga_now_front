@@ -6,13 +6,14 @@ import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:belluga_analysis_plugin/src/compat/custom_lint_compat.dart';
 
 import '../path_utils.dart';
+import '../type_utils.dart';
 
 class ControllerCanonicalStateRepairAfterMutationForbiddenRule
     extends DartLintRule {
   ControllerCanonicalStateRepairAfterMutationForbiddenRule()
     : super(
         code: const LintCode(
-          errorSeverity: ErrorSeverity.WARNING,
+          errorSeverity: ErrorSeverity.warning,
           name: 'controller_canonical_state_repair_after_mutation_forbidden',
           problemMessage:
               'Controller must not repair canonical repository state after repository mutations.',
@@ -48,7 +49,9 @@ class ControllerCanonicalStateRepairAfterMutationForbiddenRule
     context.registry.addClassDeclaration((node) {
       final repairHelperNames = _collectRepairHelperNames(node);
 
-      for (final method in node.members.whereType<MethodDeclaration>()) {
+      for (final method in classMembersOf(
+        node,
+      ).whereType<MethodDeclaration>()) {
         final body = method.body;
         final directCalls = _collectDirectRepositoryCalls(body);
         final helperCalls = _collectLocalHelperCalls(body);
@@ -82,7 +85,7 @@ class ControllerCanonicalStateRepairAfterMutationForbiddenRule
 
   Set<String> _collectRepairHelperNames(ClassDeclaration node) {
     final names = <String>{};
-    for (final method in node.members.whereType<MethodDeclaration>()) {
+    for (final method in classMembersOf(node).whereType<MethodDeclaration>()) {
       final directCalls = _collectDirectRepositoryCalls(method.body);
       if (directCalls.any(
         (call) => _repairMethodNames.contains(call.methodName),

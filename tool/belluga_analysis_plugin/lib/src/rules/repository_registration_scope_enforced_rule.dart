@@ -7,16 +7,16 @@ import '../repository_registration_utils.dart';
 
 class RepositoryRegistrationScopeEnforcedRule extends DartLintRule {
   RepositoryRegistrationScopeEnforcedRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'repository_registration_scope_enforced',
-            problemMessage:
-                'Repository registration is allowed only in module_settings.dart.',
-            correctionMessage:
-                'Treatments: move repository DI registration to lib/application/router/modular_app/module_settings.dart.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'repository_registration_scope_enforced',
+          problemMessage:
+              'Repository registration is allowed only in module_settings.dart.',
+          correctionMessage:
+              'Treatments: move repository DI registration to lib/application/router/modular_app/module_settings.dart.',
+        ),
+      );
 
   @override
   void run(

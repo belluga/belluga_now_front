@@ -77,6 +77,168 @@ void main() {
     },
   );
 
+  testWidgets('active tab footer replaces the screen default footer', (
+    tester,
+  ) async {
+    await _pumpImmersiveScreen(
+      tester,
+      ImmersiveDetailScreen(
+        title: 'Profile',
+        backPolicy: _FakeBackPolicy(),
+        heroContent: Container(color: Colors.black),
+        footer: const SizedBox(key: Key('immersiveDefaultFooter'), height: 32),
+        tabs: [
+          ImmersiveTabItem(
+            title: 'Sobre',
+            content: const SizedBox(height: 200, child: Text('Section')),
+            footer: const SizedBox(key: Key('immersiveTabFooter'), height: 32),
+          ),
+        ],
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('immersiveTabFooter')), findsOneWidget);
+    expect(find.byKey(const Key('immersiveDefaultFooter')), findsNothing);
+  });
+
+  testWidgets('tab-footer gate preserves the screen default footer', (
+    tester,
+  ) async {
+    await _pumpImmersiveScreen(
+      tester,
+      ImmersiveDetailScreen(
+        title: 'Event',
+        backPolicy: _FakeBackPolicy(),
+        heroContent: Container(color: Colors.black),
+        footer: const SizedBox(key: Key('immersiveDefaultFooter'), height: 32),
+        canUseTabFooter: (_) => false,
+        tabs: [
+          ImmersiveTabItem(
+            title: 'Sobre',
+            content: const SizedBox(height: 200, child: Text('Section')),
+            footer: const SizedBox(key: Key('immersiveTabFooter'), height: 32),
+          ),
+        ],
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('immersiveTabFooter')), findsNothing);
+    expect(find.byKey(const Key('immersiveDefaultFooter')), findsOneWidget);
+  });
+
+  testWidgets('supplied floating action floats above the active footer', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpImmersiveScreen(
+      tester,
+      ImmersiveDetailScreen(
+        title: 'Profile',
+        backPolicy: _FakeBackPolicy(),
+        heroContent: Container(color: Colors.black),
+        footer: const SizedBox(
+          key: Key('immersiveFloatingActionFooter'),
+          height: 72,
+        ),
+        floatingActionButton: FloatingActionButton(
+          key: const Key('immersiveFloatingAction'),
+          onPressed: () {},
+          child: const Icon(Icons.chat),
+        ),
+        tabs: [
+          ImmersiveTabItem(
+            title: 'Sobre',
+            content: const SizedBox(height: 200, child: Text('Section')),
+          ),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final floatingAction = find.byKey(const Key('immersiveFloatingAction'));
+    final footer = find.byKey(const Key('immersiveFloatingActionFooter'));
+    expect(tester.widget<FloatingActionButton>(floatingAction).mini, isFalse);
+    expect(tester.getSize(floatingAction), const Size.square(56));
+    expect(
+      tester.getRect(floatingAction).bottom,
+      lessThan(tester.getRect(footer).top),
+      reason: 'The Scaffold must reserve the footer area for a supplied FAB.',
+    );
+  });
+
+  testWidgets(
+    'terminal tab content remains tappable above the active footer after scrolling',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      var terminalTapCount = 0;
+      await _pumpImmersiveScreen(
+        tester,
+        ImmersiveDetailScreen(
+          title: 'Profile',
+          heroViewportHeightFactor: 0.3,
+          backPolicy: _FakeBackPolicy(),
+          heroContent: Container(color: Colors.black),
+          footer: const SizedBox(key: Key('immersiveTallFooter'), height: 120),
+          tabs: [
+            ImmersiveTabItem(
+              title: 'Sobre',
+              content: Column(
+                children: [
+                  const SizedBox(height: 1000),
+                  SizedBox(
+                    height: 56,
+                    child: FilledButton(
+                      key: const Key('immersiveTerminalContentAction'),
+                      onPressed: () => terminalTapCount += 1,
+                      child: const Text('Final content action'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 16));
+
+      final nestedScrollView = tester.state<NestedScrollViewState>(
+        find.byType(NestedScrollView),
+      );
+      nestedScrollView.outerController.jumpTo(
+        nestedScrollView.outerController.position.maxScrollExtent,
+      );
+      nestedScrollView.innerController.jumpTo(
+        nestedScrollView.innerController.position.maxScrollExtent,
+      );
+      await tester.pump();
+
+      final terminalAction = find.byKey(
+        const Key('immersiveTerminalContentAction'),
+      );
+      final footer = find.byKey(const Key('immersiveTallFooter'));
+      expect(
+        tester.getBottomLeft(terminalAction).dy,
+        lessThanOrEqualTo(tester.getTopLeft(footer).dy),
+      );
+
+      await tester.tap(terminalAction);
+      expect(terminalTapCount, 1);
+    },
+  );
+
   testWidgets(
     'tab header is flat before it overlaps content and elevated when pinned',
     (tester) async {
@@ -104,23 +266,20 @@ void main() {
     },
   );
 
-  test(
-    'tab header rebuilds when labels change without changing tab count',
-    () {
-      final oldDelegate = ImmersiveHeaderDelegate(
-        tabs: const ['Sobre', 'Programação', 'Palco Sexta', 'Como Chegar'],
-        currentTabIndex: 1,
-        onTabTapped: (_) {},
-      );
-      final newDelegate = ImmersiveHeaderDelegate(
-        tabs: const ['Sobre', 'Programação', 'Palco Sábado', 'Como Chegar'],
-        currentTabIndex: 1,
-        onTabTapped: (_) {},
-      );
+  test('tab header rebuilds when labels change without changing tab count', () {
+    final oldDelegate = ImmersiveHeaderDelegate(
+      tabs: const ['Sobre', 'Programação', 'Palco Sexta', 'Como Chegar'],
+      currentTabIndex: 1,
+      onTabTapped: (_) {},
+    );
+    final newDelegate = ImmersiveHeaderDelegate(
+      tabs: const ['Sobre', 'Programação', 'Palco Sábado', 'Como Chegar'],
+      currentTabIndex: 1,
+      onTabTapped: (_) {},
+    );
 
-      expect(newDelegate.shouldRebuild(oldDelegate), isTrue);
-    },
-  );
+    expect(newDelegate.shouldRebuild(oldDelegate), isTrue);
+  });
 
   testWidgets(
     'tab tap keeps the target section start visible with taller collapsed app bar',
@@ -175,8 +334,9 @@ void main() {
       final tabBottom = tester
           .getBottomLeft(find.byKey(const Key('immersiveTabSelected_1')))
           .dy;
-      final sectionStartTop =
-          tester.getTopLeft(find.byKey(const Key('sectionTwoStart'))).dy;
+      final sectionStartTop = tester
+          .getTopLeft(find.byKey(const Key('sectionTwoStart')))
+          .dy;
 
       expect(sectionStartTop, greaterThanOrEqualTo(tabBottom - 1));
       expect(sectionStartTop, lessThanOrEqualTo(tabBottom + 8));
@@ -382,106 +542,106 @@ void main() {
       await tester.pump(const Duration(milliseconds: 700));
       await tester.pumpAndSettle();
 
-      final heroTop =
-          tester.getTopLeft(find.byKey(const Key('heroTopMarker'))).dy;
+      final heroTop = tester
+          .getTopLeft(find.byKey(const Key('heroTopMarker')))
+          .dy;
 
       expect(heroTop, greaterThanOrEqualTo(0));
       expect(heroTop, lessThanOrEqualTo(24));
     },
   );
 
-  testWidgets(
-    'visible back delegates to the configured back policy',
-    (tester) async {
-      final backPolicy = _FakeBackPolicy();
+  testWidgets('visible back delegates to the configured back policy', (
+    tester,
+  ) async {
+    final backPolicy = _FakeBackPolicy();
 
-      await _pumpImmersiveScreen(
-        tester,
-        ImmersiveDetailScreen(
-          title: 'Profile',
-          backPolicy: backPolicy,
-          heroContent: Container(color: Colors.black),
-          tabs: [
-            ImmersiveTabItem(
-              title: 'Sobre',
-              content: SizedBox(height: 200, child: Text('Section')),
-            ),
-          ],
-        ),
-      );
+    await _pumpImmersiveScreen(
+      tester,
+      ImmersiveDetailScreen(
+        title: 'Profile',
+        backPolicy: backPolicy,
+        heroContent: Container(color: Colors.black),
+        tabs: [
+          ImmersiveTabItem(
+            title: 'Sobre',
+            content: SizedBox(height: 200, child: Text('Section')),
+          ),
+        ],
+      ),
+    );
 
-      await tester.pumpAndSettle();
-      await tester.tap(find.byIcon(Icons.arrow_back));
-      await tester.pumpAndSettle();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.pumpAndSettle();
 
-      expect(backPolicy.callCount, 1);
-    },
-  );
+    expect(backPolicy.callCount, 1);
+  });
 
-  testWidgets(
-    'expanded hero renders the declared actions as an overlay rail',
-    (tester) async {
-      var primaryCalls = 0;
-      var shareCalls = 0;
-      var whatsappCalls = 0;
+  testWidgets('expanded hero renders the declared actions as an overlay rail', (
+    tester,
+  ) async {
+    var primaryCalls = 0;
+    var shareCalls = 0;
+    var whatsappCalls = 0;
 
-      await _pumpImmersiveScreen(
-        tester,
-        ImmersiveDetailScreen(
-          title: 'Profile',
-          backPolicy: _FakeBackPolicy(),
-          heroContent: Container(color: Colors.black),
-          heroActions: [
-            ImmersiveHeroAction(
-              key: const Key('testPrimaryHeroAction'),
-              label: 'Favoritar',
-              icon: Icons.favorite_border,
-              isPrimary: true,
-              onPressed: () => primaryCalls += 1,
-            ),
-            ImmersiveHeroAction(
-              key: const Key('testShareHeroAction'),
-              label: 'Compartilhar',
-              icon: Icons.share,
-              onPressed: () => shareCalls += 1,
-            ),
-            ImmersiveHeroAction(
-              key: const Key('testWhatsappHeroAction'),
-              label: 'WhatsApp',
-              icon: BooraIcons.whatsapp,
-              onPressed: () => whatsappCalls += 1,
-            ),
-          ],
-          tabs: [
-            ImmersiveTabItem(
-              title: 'Sobre',
-              content: const SizedBox(height: 800, child: Text('Section')),
-            ),
-          ],
-        ),
-      );
+    await _pumpImmersiveScreen(
+      tester,
+      ImmersiveDetailScreen(
+        title: 'Profile',
+        backPolicy: _FakeBackPolicy(),
+        heroContent: Container(color: Colors.black),
+        heroActions: [
+          ImmersiveHeroAction(
+            key: const Key('testPrimaryHeroAction'),
+            label: 'Favoritar',
+            icon: Icons.favorite_border,
+            isPrimary: true,
+            onPressed: () => primaryCalls += 1,
+          ),
+          ImmersiveHeroAction(
+            key: const Key('testShareHeroAction'),
+            label: 'Compartilhar',
+            icon: Icons.share,
+            onPressed: () => shareCalls += 1,
+          ),
+          ImmersiveHeroAction(
+            key: const Key('testWhatsappHeroAction'),
+            label: 'WhatsApp',
+            icon: BooraIcons.whatsapp,
+            onPressed: () => whatsappCalls += 1,
+          ),
+        ],
+        tabs: [
+          ImmersiveTabItem(
+            title: 'Sobre',
+            content: const SizedBox(height: 800, child: Text('Section')),
+          ),
+        ],
+      ),
+    );
 
-      await tester.pumpAndSettle();
+    await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('testPrimaryHeroAction')), findsOneWidget);
-      expect(find.byKey(const Key('testShareHeroAction')), findsOneWidget);
-      expect(find.byKey(const Key('testWhatsappHeroAction')), findsOneWidget);
-      expect(find.byKey(const Key('immersiveHeroMoreAction')), findsNothing);
+    expect(find.byKey(const Key('testPrimaryHeroAction')), findsOneWidget);
+    expect(find.byKey(const Key('testShareHeroAction')), findsOneWidget);
+    expect(find.byKey(const Key('testWhatsappHeroAction')), findsOneWidget);
+    expect(find.byKey(const Key('immersiveHeroMoreAction')), findsNothing);
 
-      final backTop = tester.getTopLeft(find.byIcon(Icons.arrow_back)).dy;
-      final primaryTop =
-          tester.getTopLeft(find.byKey(const Key('testPrimaryHeroAction'))).dy;
-      expect(primaryTop, greaterThanOrEqualTo(0));
-      expect(primaryTop, lessThanOrEqualTo(backTop + 12));
+    final backTop = tester.getTopLeft(find.byIcon(Icons.arrow_back)).dy;
+    final primaryTop = tester
+        .getTopLeft(find.byKey(const Key('testPrimaryHeroAction')))
+        .dy;
+    expect(primaryTop, greaterThanOrEqualTo(0));
+    expect(primaryTop, lessThanOrEqualTo(backTop + 12));
 
-      await tester.tap(find.byKey(const Key('testWhatsappHeroAction')));
-      await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('testWhatsappHeroAction')));
+    await tester.pumpAndSettle();
 
-      expect(primaryCalls, 0);
-      expect(shareCalls, 0);
-      expect(whatsappCalls, 1);
-    },
-  );
+    expect(primaryCalls, 0);
+    expect(shareCalls, 0);
+    expect(whatsappCalls, 1);
+  });
 
   testWidgets(
     'collapsed hero keeps primary action visible and moves secondary actions to more',
@@ -527,7 +687,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-          find.byKey(const Key('testCollapsedPrimaryAction')), findsOneWidget);
+        find.byKey(const Key('testCollapsedPrimaryAction')),
+        findsOneWidget,
+      );
       expect(find.byKey(const Key('immersiveHeroMoreAction')), findsOneWidget);
       expect(find.byKey(const Key('testCollapsedShareAction')), findsNothing);
 
@@ -604,10 +766,7 @@ void main() {
         find.byKey(const Key('immersiveCollapsedToolbarScrim')),
         findsNothing,
       );
-      expect(
-        find.byKey(const Key('immersiveCollapsedTitle')),
-        findsNothing,
-      );
+      expect(find.byKey(const Key('immersiveCollapsedTitle')), findsNothing);
       expect(find.byKey(const Key('testPartialPrimaryAction')), findsOneWidget);
       expect(find.byKey(const Key('testPartialShareAction')), findsOneWidget);
       expect(find.byKey(const Key('immersiveHeroMoreAction')), findsNothing);
@@ -618,10 +777,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(
-        find.byKey(const Key('immersiveCollapsedTitle')),
-        findsOneWidget,
-      );
+      expect(find.byKey(const Key('immersiveCollapsedTitle')), findsOneWidget);
       expect(find.byKey(const Key('testPartialPrimaryAction')), findsOneWidget);
       expect(find.byKey(const Key('testPartialShareAction')), findsNothing);
       expect(find.byKey(const Key('immersiveHeroMoreAction')), findsOneWidget);
@@ -712,37 +868,36 @@ void main() {
     },
   );
 
-  testWidgets(
-    'system back delegates to the configured back policy',
-    (tester) async {
-      final backPolicy = _FakeBackPolicy();
+  testWidgets('system back delegates to the configured back policy', (
+    tester,
+  ) async {
+    final backPolicy = _FakeBackPolicy();
 
-      await _pumpImmersiveScreen(
-        tester,
-        ImmersiveDetailScreen(
-          title: 'Profile',
-          backPolicy: backPolicy,
-          heroContent: Container(color: Colors.black),
-          tabs: [
-            ImmersiveTabItem(
-              title: 'Sobre',
-              content: SizedBox(height: 200, child: Text('Section')),
-            ),
-          ],
-        ),
-      );
+    await _pumpImmersiveScreen(
+      tester,
+      ImmersiveDetailScreen(
+        title: 'Profile',
+        backPolicy: backPolicy,
+        heroContent: Container(color: Colors.black),
+        tabs: [
+          ImmersiveTabItem(
+            title: 'Sobre',
+            content: SizedBox(height: 200, child: Text('Section')),
+          ),
+        ],
+      ),
+    );
 
-      await tester.pumpAndSettle();
+    await tester.pumpAndSettle();
 
-      final popScope = tester.widget<PopScope<dynamic>>(
-        find.byWidgetPredicate((widget) => widget is PopScope),
-      );
-      popScope.onPopInvokedWithResult?.call(false, null);
-      await tester.pumpAndSettle();
+    final popScope = tester.widget<PopScope<dynamic>>(
+      find.byWidgetPredicate((widget) => widget is PopScope),
+    );
+    popScope.onPopInvokedWithResult?.call(false, null);
+    await tester.pumpAndSettle();
 
-      expect(backPolicy.callCount, 1);
-    },
-  );
+    expect(backPolicy.callCount, 1);
+  });
 }
 
 Future<void> _pumpImmersiveScreen(

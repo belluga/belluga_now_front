@@ -7,16 +7,15 @@ import '../path_utils.dart';
 
 class DomainDtoDependencyForbiddenRule extends DartLintRule {
   DomainDtoDependencyForbiddenRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'domain_dto_dependency_forbidden',
-            problemMessage:
-                'Domain layer cannot depend on DTO artifacts.',
-            correctionMessage:
-                'Treatments: keep DTO mapping in infrastructure; expose only domain models/contracts in domain layer.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'domain_dto_dependency_forbidden',
+          problemMessage: 'Domain layer cannot depend on DTO artifacts.',
+          correctionMessage:
+              'Treatments: keep DTO mapping in infrastructure; expose only domain models/contracts in domain layer.',
+        ),
+      );
 
   @override
   void run(

@@ -1,3 +1,6 @@
+@Tags(<String>['golden'])
+library;
+
 import 'package:belluga_now/application/router/support/back_surface_kind.dart';
 import 'package:belluga_now/application/router/support/route_back_policy.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_empty_state.dart';
@@ -21,7 +24,12 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        theme: ThemeData(useMaterial3: true),
+        // Golden output is static; removing transient ink avoids loading the
+        // Vulkan-only Material shader on the host's SkSL golden renderer.
+        theme: ThemeData(
+          useMaterial3: true,
+          splashFactory: NoSplash.splashFactory,
+        ),
         home: child,
       ),
     );

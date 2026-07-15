@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_form_validation/belluga_form_validation.dart';
-import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
 import 'package:belluga_now/application/rich_text/tenant_admin_rich_text_limits.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
@@ -17,11 +16,11 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_defin
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
-import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_occurrence_editor_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/models/tenant_admin_event_form_validation_config.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/widgets/tenant_admin_account_profile_location_picker_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/widgets/tenant_admin_event_occurrence_editor_sheet.dart';
+import 'package:belluga_now/presentation/tenant_admin/events/widgets/tenant_admin_programming_item_card.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
@@ -34,7 +33,6 @@ import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admi
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_xfile_preview.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_html/flutter_html.dart' hide Marker;
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -962,7 +960,7 @@ class _TenantAdminEventFormScreenState
         ? const <MapEntry<String, TenantAdminEventProgrammingItem>>[]
         : _controller.programmingItemsForOccurrenceKey(occurrenceKey);
 
-    Future<void> addProgrammingItem() async {
+    Future<void> addProgrammingItem({int? insertAt}) async {
       if (!canEditProgramming) {
         return;
       }
@@ -975,6 +973,7 @@ class _TenantAdminEventFormScreenState
         venues: venues,
         pickRelatedAccountProfile: _pickRelatedAccountProfile,
         closeModalSheet: _closeModalSheet,
+        insertAt: insertAt,
       );
     }
 
@@ -1028,37 +1027,84 @@ class _TenantAdminEventFormScreenState
                 'Nenhum item de programação nesta data.',
                 style: Theme.of(context).textTheme.bodySmall,
               )
-            else
-              for (
-                var itemIndex = 0;
-                itemIndex < programmingItems.length;
-                itemIndex++
-              )
-                ListTile(
-                  key: Key(
-                    'tenantAdminPrimaryOccurrenceProgrammingItem_$itemIndex',
-                  ),
-                  contentPadding: EdgeInsets.zero,
-                  onTap: () => editProgrammingItem(
-                    itemKey: programmingItems[itemIndex].key,
-                    item: programmingItems[itemIndex].value,
-                  ),
-                  leading: Text(programmingItems[itemIndex].value.time),
-                  title: _buildPrimaryOccurrenceProgrammingItemTitle(
-                    context,
-                    programmingItems[itemIndex].value,
-                  ),
-                  subtitle: _buildProgrammingItemSubtitle(
-                    programmingItems[itemIndex].value,
-                    venues,
-                  ),
-                  trailing: IconButton(
-                    tooltip: 'Remover item de programação',
-                    onPressed: () =>
-                        removeProgrammingItem(programmingItems[itemIndex].key),
-                    icon: const Icon(Icons.close),
-                  ),
-                ),
+            else ...[
+              _buildPrimaryProgrammingInsertionAction(
+                index: 0,
+                onInsert: addProgrammingItem,
+              ),
+              ReorderableListView(
+                shrinkWrap: true,
+                primary: false,
+                physics: const NeverScrollableScrollPhysics(),
+                buildDefaultDragHandles: false,
+                onReorderItem: (oldIndex, newIndex) {
+                  if (oldIndex < 0 || oldIndex >= programmingItems.length) {
+                    return;
+                  }
+                  final resolvedOccurrenceKey = occurrenceKey;
+                  if (resolvedOccurrenceKey == null) {
+                    return;
+                  }
+                  _controller.moveOccurrenceProgrammingItem(
+                    occurrenceKey: resolvedOccurrenceKey,
+                    itemKey: programmingItems[oldIndex].key,
+                    targetIndex: newIndex,
+                  );
+                },
+                children: [
+                  for (
+                    var itemIndex = 0;
+                    itemIndex < programmingItems.length;
+                    itemIndex++
+                  )
+                    KeyedSubtree(
+                      key: ValueKey(
+                        'tenantAdminPrimaryOccurrenceProgrammingReorderable_${programmingItems[itemIndex].key}',
+                      ),
+                      child: Column(
+                        children: [
+                          TenantAdminProgrammingItemCard(
+                            key: Key(
+                              'tenantAdminPrimaryOccurrenceProgrammingItem_$itemIndex',
+                            ),
+                            item: programmingItems[itemIndex].value,
+                            venues: venues,
+                            dragHandle:
+                                programmingItems[itemIndex].value.isSequential
+                                ? ReorderableDragStartListener(
+                                    key: Key(
+                                      'tenantAdminPrimaryOccurrenceProgrammingDrag_$itemIndex',
+                                    ),
+                                    index: itemIndex,
+                                    child: const Tooltip(
+                                      message: 'Reordenar item sequencial',
+                                      child: Icon(Icons.drag_handle),
+                                    ),
+                                  )
+                                : null,
+                            onTap: () => editProgrammingItem(
+                              itemKey: programmingItems[itemIndex].key,
+                              item: programmingItems[itemIndex].value,
+                            ),
+                            onRemove: () => removeProgrammingItem(
+                              programmingItems[itemIndex].key,
+                            ),
+                          ),
+                          if (itemIndex + 1 < programmingItems.length)
+                            _buildPrimaryProgrammingInsertionAction(
+                              index: itemIndex + 1,
+                              onInsert: addProgrammingItem,
+                            ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+              _buildPrimaryProgrammingInsertionAction(
+                index: programmingItems.length,
+                onInsert: addProgrammingItem,
+              ),
+            ],
             const SizedBox(height: 12),
             OutlinedButton.icon(
               key: const Key(
@@ -1074,37 +1120,18 @@ class _TenantAdminEventFormScreenState
     );
   }
 
-  Widget _buildPrimaryOccurrenceProgrammingItemTitle(
-    BuildContext context,
-    TenantAdminEventProgrammingItem item,
-  ) {
-    final titleHtml = SafeRichHtml.canonicalize(item.title?.trim() ?? '');
-    if (SafeRichHtml.isEffectivelyEmpty(titleHtml)) {
-      return Text(
-        TenantAdminEventOccurrenceEditorDraft.firstProgrammingProfileName(
-              item,
-            ) ??
-            'Item sem título',
-      );
-    }
-
-    final colorScheme = Theme.of(context).colorScheme;
-    return Html(
-      data: titleHtml,
-      style: {
-        'body': Style(
-          margin: Margins.zero,
-          padding: HtmlPaddings.zero,
-          color: colorScheme.onSurface,
-          fontSize: FontSize(
-            Theme.of(context).textTheme.bodyLarge?.fontSize ?? 16,
-          ),
-          lineHeight: const LineHeight(1.35),
-        ),
-        'p': Style(margin: Margins.only(bottom: 8)),
-        'strong': Style(fontWeight: FontWeight.w800),
-        'br': Style(display: Display.block),
-      },
+  Widget _buildPrimaryProgrammingInsertionAction({
+    required int index,
+    required Future<void> Function({int? insertAt}) onInsert,
+  }) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: TextButton.icon(
+        key: Key('tenantAdminPrimaryOccurrenceProgrammingInsert_$index'),
+        onPressed: () => onInsert(insertAt: index),
+        icon: const Icon(Icons.add, size: 18),
+        label: const Text('Inserir item aqui'),
+      ),
     );
   }
 
@@ -1254,28 +1281,6 @@ class _TenantAdminEventFormScreenState
       isDestructive: true,
     );
     return !discard;
-  }
-
-  Widget _buildProgrammingItemSubtitle(
-    TenantAdminEventProgrammingItem item,
-    List<TenantAdminAccountProfile> venues,
-  ) {
-    final locationLabel =
-        TenantAdminEventOccurrenceEditorDraft.programmingLocationDisplayName(
-          item,
-          venues,
-        );
-    final lines = <String>[
-      '${item.accountProfileIds.length} perfil(is) vinculado(s)',
-      if (locationLabel != null) 'Local: $locationLabel',
-    ];
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: lines
-          .map((line) => Text(line, overflow: TextOverflow.ellipsis))
-          .toList(growable: false),
-    );
   }
 
   List<TenantAdminEventOccurrence> _buildOccurrencesForSubmit({

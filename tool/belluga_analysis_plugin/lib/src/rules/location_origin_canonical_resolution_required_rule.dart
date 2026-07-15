@@ -9,7 +9,7 @@ class LocationOriginCanonicalResolutionRequiredRule extends DartLintRule {
   LocationOriginCanonicalResolutionRequiredRule()
     : super(
         code: const LintCode(
-          errorSeverity: ErrorSeverity.WARNING,
+          errorSeverity: ErrorSeverity.warning,
           name: 'location_origin_canonical_resolution_required',
           problemMessage:
               'Geo consumers must not resolve canonical location origin inline.',
@@ -61,7 +61,7 @@ class LocationOriginCanonicalResolutionRequiredRule extends DartLintRule {
 
     context.registry.addInstanceCreationExpression((node) {
       final constructor = node.constructorName;
-      final typeName = constructor.type.name.toString();
+      final typeName = constructor.type.name.lexeme;
       if (typeName != 'LocationOriginSettings') {
         return;
       }

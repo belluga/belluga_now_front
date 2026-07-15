@@ -1,3 +1,4 @@
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/startup/app_startup_plan_resolver.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/app_type.dart';
@@ -16,6 +17,7 @@ import 'package:belluga_now/domain/repositories/value_objects/telemetry_reposito
 import 'package:belluga_now/infrastructure/services/telemetry/telemetry_properties_codec.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
+import 'package:belluga_now/testing/invite_model_factory.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -137,12 +139,47 @@ void main() {
   );
 
   test(
-    'resolvePlan tolerates invite bootstrap failure and keeps tenant home startup on the public surface',
+    'resolvePlan applies deferred override before any pending invite bootstrap',
     () async {
-      final authRepository = _FakeAuthRepository();
-      final invitesRepository = _ThrowingInvitesRepository();
+      final invitesRepository = _StartupRefreshInvitesRepository(
+        throwOnInit: true,
+      );
       final resolver = AppStartupPlanResolver(
-        authRepository: authRepository,
+        authRepository: _FakeAuthRepository(),
+        invitesRepository: invitesRepository,
+        appDataRepository: _FakeAppDataRepository(_buildTenantAppData()),
+        deferredLinkRepository: _FakeDeferredLinkRepository(
+          DeferredLinkCaptureResult(
+            status: DeferredLinkCaptureStatus.captured,
+            platformValue: deferredLinkPlatform('ios'),
+            targetPathValue: DeferredLinkTargetPathValue(
+              defaultValue: '/profile',
+            ),
+            storeChannelValue: DeferredLinkStoreChannelValue(
+              defaultValue: 'web_gate',
+            ),
+          ),
+        ),
+        telemetryRepository: _FakeTelemetryRepository(),
+      );
+
+      final plan = await resolver.resolvePlan();
+
+      expect(plan.path, '/profile');
+      expect(invitesRepository.initCallCount, 0);
+      expect(invitesRepository.refreshPendingInvitesCallCount, 0);
+    },
+  );
+
+  test(
+    'resolvePlan applies pending invite stack from startup refresh without full invite init',
+    () async {
+      final invitesRepository = _StartupRefreshInvitesRepository(
+        startupInvites: <InviteModel>[_buildInvite()],
+        throwOnInit: true,
+      );
+      final resolver = AppStartupPlanResolver(
+        authRepository: _FakeAuthRepository(),
         invitesRepository: invitesRepository,
         appDataRepository: _FakeAppDataRepository(_buildTenantAppData()),
         deferredLinkRepository: null,
@@ -151,11 +188,34 @@ void main() {
 
       final plan = await resolver.resolvePlan();
 
-      expect(plan.hasOverride, isFalse);
-      expect(plan.path, isNull);
-      expect(plan.routes, isEmpty);
+      expect(plan.routes.map((route) => route.routeName).toList(), <String>[
+        TenantHomeRoute.name,
+        InviteFlowRoute.name,
+      ]);
+      expect(invitesRepository.initCallCount, 0);
+      expect(invitesRepository.refreshPendingInvitesCallCount, 1);
+    },
+  );
+
+  test(
+    'resolvePlan rethrows pending invite refresh failures when no deferred override exists',
+    () async {
+      final authRepository = _FakeAuthRepository();
+      final invitesRepository = _StartupRefreshInvitesRepository(
+        throwOnRefresh: true,
+      );
+      final resolver = AppStartupPlanResolver(
+        authRepository: authRepository,
+        invitesRepository: invitesRepository,
+        appDataRepository: _FakeAppDataRepository(_buildTenantAppData()),
+        deferredLinkRepository: null,
+        telemetryRepository: null,
+      );
+
+      await expectLater(resolver.resolvePlan(), throwsA(isA<StateError>()));
       expect(authRepository.initCallCount, 1);
-      expect(invitesRepository.initCallCount, 1);
+      expect(invitesRepository.initCallCount, 0);
+      expect(invitesRepository.refreshPendingInvitesCallCount, 1);
     },
   );
 }
@@ -258,11 +318,62 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   }
 }
 
-class _ThrowingInvitesRepository extends _FakeInvitesRepository {
+class _StartupRefreshInvitesRepository extends InvitesRepositoryContract {
+  _StartupRefreshInvitesRepository({
+    this.startupInvites = const <InviteModel>[],
+    this.throwOnInit = false,
+    this.throwOnRefresh = false,
+  });
+
+  final List<InviteModel> startupInvites;
+  final bool throwOnInit;
+  final bool throwOnRefresh;
+
+  int initCallCount = 0;
+  int refreshPendingInvitesCallCount = 0;
+
   @override
   Future<void> init() async {
     initCallCount += 1;
-    throw Exception('invites bootstrap unavailable');
+    if (throwOnInit) {
+      throw StateError('full invite init should not run during startup plan');
+    }
+    pendingInvitesStreamValue.addValue(
+      List<InviteModel>.unmodifiable(startupInvites),
+    );
+  }
+
+  @override
+  Future<void> refreshPendingInvites({
+    InvitesRepositoryContractPrimInt? page,
+    InvitesRepositoryContractPrimInt? pageSize,
+  }) async {
+    refreshPendingInvitesCallCount += 1;
+    if (throwOnRefresh) {
+      throw StateError('pending invite startup refresh unavailable');
+    }
+    pendingInvitesStreamValue.addValue(
+      List<InviteModel>.unmodifiable(startupInvites),
+    );
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+
+  @override
+  Future<List<InviteModel>> fetchInvites({
+    InvitesRepositoryContractPrimInt? page,
+    InvitesRepositoryContractPrimInt? pageSize,
+  }) async {
+    return List<InviteModel>.unmodifiable(startupInvites);
+  }
+
+  @override
+  Future<InviteRuntimeSettings> fetchSettings() async {
+    return InviteRuntimeSettings(
+      limitValues: InviteRateLimitsValue(),
+      cooldownValues: InviteCooldownsValue(),
+    );
   }
 }
 
@@ -460,5 +571,21 @@ AppData _buildTenantAppData() {
       'href': 'https://guarappari.belluga.space',
       'device': 'test-device',
     },
+  );
+}
+
+InviteModel _buildInvite() {
+  return buildInviteModelFromPrimitives(
+    id: 'invite-1',
+    eventId: 'event-1',
+    eventSlug: 'show-rock',
+    eventName: 'Show Rock',
+    eventDateTime: DateTime.utc(2026, 7, 12, 20),
+    eventImageUrl: 'https://example.com/event.png',
+    location: 'Guarapari',
+    hostName: 'Belluga',
+    message: 'Você foi convidado.',
+    tags: const <String>['music'],
+    occurrenceId: 'occ-1',
   );
 }

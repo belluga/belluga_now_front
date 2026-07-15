@@ -57,10 +57,10 @@ void main() {
                   items: <EventProgrammingItem>[
                     EventProgrammingItem(
                       timeValue: EventProgrammingTimeValue('18:00'),
-                      titleValue:
-                          EventLinkedAccountProfileTextValue('Faixa ativa'),
-                      linkedAccountProfiles:
-                          <EventLinkedAccountProfile>[],
+                      titleValue: EventLinkedAccountProfileTextValue(
+                        'Faixa ativa',
+                      ),
+                      linkedAccountProfiles: <EventLinkedAccountProfile>[],
                       locationProfile: null,
                     ),
                   ],
@@ -81,10 +81,12 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      final viewportFinder =
-          find.byKey(const Key('eventProgrammingDateSelectorViewport'));
-      final selectorListFinder =
-          find.byKey(const Key('eventProgrammingDateSelectorList'));
+      final viewportFinder = find.byKey(
+        const Key('eventProgrammingDateSelectorViewport'),
+      );
+      final selectorListFinder = find.byKey(
+        const Key('eventProgrammingDateSelectorList'),
+      );
 
       Future<void> selectAndValidate(
         String occurrenceId, {
@@ -109,8 +111,8 @@ void main() {
 
         final viewportRect = tester.getRect(viewportFinder);
         final selectedRect = tester.getRect(cardFinder);
-        final centerDelta =
-            (selectedRect.center.dx - viewportRect.center.dx).abs();
+        final centerDelta = (selectedRect.center.dx - viewportRect.center.dx)
+            .abs();
 
         expect(selectedRect.left, greaterThanOrEqualTo(viewportRect.left - 1));
         expect(selectedRect.right, lessThanOrEqualTo(viewportRect.right + 1));
@@ -123,10 +125,7 @@ void main() {
       }
 
       for (var index = 1; index <= 7; index += 1) {
-        await selectAndValidate(
-          'occ-$index',
-          expectCentered: true,
-        );
+        await selectAndValidate('occ-$index', expectCentered: true);
       }
 
       await selectAndValidate('occ-8', expectCentered: false);

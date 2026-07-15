@@ -10,16 +10,16 @@ import '../type_utils.dart';
 
 class ControllerStreamValueModelOwnershipForbiddenRule extends DartLintRule {
   ControllerStreamValueModelOwnershipForbiddenRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'controller_streamvalue_model_ownership_forbidden',
-            problemMessage:
-                'Controller must not own StreamValue whose payload is a *Model type.',
-            correctionMessage:
-                'Treatments: move canonical model stream ownership to repository and expose it via controller delegation getter.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'controller_streamvalue_model_ownership_forbidden',
+          problemMessage:
+              'Controller must not own StreamValue whose payload is a *Model type.',
+          correctionMessage:
+              'Treatments: move canonical model stream ownership to repository and expose it via controller delegation getter.',
+        ),
+      );
 
   @override
   void run(
@@ -78,8 +78,9 @@ class ControllerStreamValueModelOwnershipForbiddenRule extends DartLintRule {
 
   _StreamValueConstruction? _streamValueConstruction(Expression? expression) {
     if (expression is InstanceCreationExpression) {
-      final typeName =
-          normalizeTypeName(expression.constructorName.type.toSource());
+      final typeName = normalizeTypeName(
+        expression.constructorName.type.toSource(),
+      );
       if (typeName != 'StreamValue') {
         return null;
       }
@@ -154,9 +155,7 @@ class ControllerStreamValueModelOwnershipForbiddenRule extends DartLintRule {
     return type.typeArguments.any(_containsModelDartType);
   }
 
-  bool _containsModelPayloadFromTypeArguments(
-    TypeArgumentList? typeArguments,
-  ) {
+  bool _containsModelPayloadFromTypeArguments(TypeArgumentList? typeArguments) {
     final arguments = typeArguments?.arguments;
     if (arguments == null || arguments.isEmpty) {
       return false;

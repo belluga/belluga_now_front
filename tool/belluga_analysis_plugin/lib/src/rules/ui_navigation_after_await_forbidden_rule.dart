@@ -9,16 +9,15 @@ import '../path_utils.dart';
 
 class UiNavigationAfterAwaitForbiddenRule extends DartLintRule {
   UiNavigationAfterAwaitForbiddenRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'ui_navigation_after_await_forbidden',
-            problemMessage:
-                'UI navigation after an async gap is forbidden.',
-            correctionMessage:
-                'Treatments: move async flow to controller intent/state, then navigate synchronously in UI reaction.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'ui_navigation_after_await_forbidden',
+          problemMessage: 'UI navigation after an async gap is forbidden.',
+          correctionMessage:
+              'Treatments: move async flow to controller intent/state, then navigate synchronously in UI reaction.',
+        ),
+      );
 
   static const _navigationMethods = {
     'push',
@@ -74,7 +73,7 @@ class UiNavigationAfterAwaitForbiddenRule extends DartLintRule {
 
     final looksLikeRouterCall =
         targetSource.toLowerCase().contains('router') &&
-            _navigationMethods.contains(methodName);
+        _navigationMethods.contains(methodName);
 
     return looksLikeRouterCall;
   }

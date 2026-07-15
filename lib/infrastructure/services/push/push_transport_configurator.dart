@@ -14,6 +14,11 @@ class PushTransportConfigurator {
       baseUrl: _resolveBaseUrl(),
       apiPrefix: '/v1/',
       tokenProvider: () async {
+        if (authRepository
+            .accountDeletionJourneyState
+            .blocksAutomaticIdentityBootstrap) {
+          return null;
+        }
         final token = authRepository.userToken;
         return token.isEmpty ? null : token;
       },

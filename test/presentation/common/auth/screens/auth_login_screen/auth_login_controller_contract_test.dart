@@ -1,8 +1,15 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:belluga_form_validation/belluga_form_validation.dart'
+    show FormValidationFailure;
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
+import 'package:belluga_now/domain/auth/account_deletion_journey_state.dart';
 import 'package:belluga_now/domain/auth/auth_phone_otp_challenge.dart';
+import 'package:belluga_now/domain/auth/errors/belluga_auth_errors.dart';
 import 'package:belluga_now/domain/auth/value_objects/auth_phone_otp_challenge_id_value.dart';
 import 'package:belluga_now/domain/auth/value_objects/auth_phone_otp_delivery_channel_value.dart';
 import 'package:belluga_now/domain/auth/value_objects/auth_phone_otp_phone_value.dart';
@@ -27,6 +34,16 @@ import 'package:stream_value/core/stream_value.dart';
 
 class _FailingAuthRepository implements AuthRepositoryContract<UserContract> {
   _FailingAuthRepository();
+
+  @override
+  final accountDeletionJourneyStreamValue =
+      StreamValue<AccountDeletionJourneyState>(
+        defaultValue: const AccountDeletionJourneyState.idle(),
+      );
+
+  @override
+  AccountDeletionJourneyState get accountDeletionJourneyState =>
+      accountDeletionJourneyStreamValue.value;
 
   @override
   final userStreamValue = StreamValue<UserContract?>();
@@ -69,8 +86,10 @@ class _FailingAuthRepository implements AuthRepositoryContract<UserContract> {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
-      AuthRepositoryContractParamString password) async {
+  Future<void> loginWithEmailPassword(
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
+  ) async {
     throw Exception('Falha backend');
   }
 
@@ -102,8 +121,9 @@ class _FailingAuthRepository implements AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> sendTokenRecoveryPassword(
-      AuthRepositoryContractParamString email,
-      AuthRepositoryContractParamString codigoEnviado) async {
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString codigoEnviado,
+  ) async {
     throw UnimplementedError();
   }
 
@@ -120,7 +140,8 @@ class _FailingAuthRepository implements AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> sendPasswordResetEmail(
-      AuthRepositoryContractParamString email) async {
+    AuthRepositoryContractParamString email,
+  ) async {
     throw UnimplementedError();
   }
 
@@ -128,6 +149,18 @@ class _FailingAuthRepository implements AuthRepositoryContract<UserContract> {
   Future<void> updateUser(UserCustomData data) async {
     throw UnimplementedError();
   }
+
+  @override
+  Future<AccountDeletionDispatchOutcome> deleteCurrentAccount() async =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> reconcileUnknownAccountDeletion() async {}
+
+  @override
+  Future<AccountDeletionContinuationOutcome>
+  continueAnonymouslyAfterConfirmedAccountDeletion() async =>
+      AccountDeletionContinuationOutcome.unavailable;
 }
 
 class _FakeBackend implements BackendContract {
@@ -150,64 +183,195 @@ void main() {
   setUp(() async {
     await GetIt.I.reset();
     GetIt.I.registerSingleton<AppData>(_buildAppData());
-    GetIt.I.registerSingleton<AuthRepositoryContract>(
-      _FailingAuthRepository(),
-    );
+    GetIt.I.registerSingleton<AuthRepositoryContract>(_FailingAuthRepository());
   });
 
   tearDown(() async {
     await GetIt.I.reset();
   });
 
-  testWidgets(
-    'tryLoginWithEmailPassword surfaces unknown error message',
-    (tester) async {
-      final controller = AuthLoginController(
-        initialEmail: 'user@example.com',
-        initialPassword: 'password123',
-      );
-      controller.authEmailFieldController.addValue('user@example.com');
-      controller.passwordController.addValue('password123');
+  testWidgets('tryLoginWithEmailPassword surfaces unknown error message', (
+    tester,
+  ) async {
+    final controller = AuthLoginController(
+      initialEmail: 'user@example.com',
+      initialPassword: 'password123',
+    );
+    controller.authEmailFieldController.addValue('user@example.com');
+    controller.passwordController.addValue('password123');
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Form(
-            key: controller.loginFormKey,
-            child: const SizedBox(),
-          ),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Form(key: controller.loginFormKey, child: const SizedBox()),
+      ),
+    );
+
+    await controller.tryLoginWithEmailPassword();
+    await tester.pump();
+
+    expect(controller.generalErrorStreamValue.value, 'Falha backend');
+    expect(controller.loginResultStreamValue.value, isFalse);
+  });
+
+  testWidgets('requestPhoneOtpChallenge advances to verification step', (
+    tester,
+  ) async {
+    final repository = _PhoneOtpAuthRepository();
+    final controller = AuthLoginController(authRepository: repository);
+    const phoneNumber = PhoneNumber(isoCode: IsoCode.BR, nsn: '27999990000');
+    controller.phoneNumberController.value = phoneNumber;
+    controller.updatePhoneOtpInput(phoneNumber);
+
+    await controller.requestPhoneOtpChallenge();
+    await tester.pump();
+
+    expect(repository.requestedPhones, ['+5527999990000']);
+    expect(repository.requestedDeliveryChannels, ['whatsapp']);
+    expect(
+      controller.phoneOtpStepStreamValue.value,
+      AuthPhoneOtpStep.otpVerification,
+    );
+    expect(
+      controller.currentPhoneOtpChallengeStreamValue.value?.challengeId,
+      'challenge-1',
+    );
+    expect(controller.buttonLoadingValue.value, isFalse);
+    expect(controller.fieldEnabled.value, isTrue);
+  });
+
+  testWidgets(
+    'requestPhoneOtpChallenge ignores a completed request after controller disposal',
+    (tester) async {
+      final pendingChallenge = Completer<AuthPhoneOtpChallenge>();
+      final repository = _PhoneOtpAuthRepository()
+        ..pendingPhoneOtpChallenge = pendingChallenge.future;
+      final controller = AuthLoginController(authRepository: repository);
+      const phoneNumber = PhoneNumber(isoCode: IsoCode.BR, nsn: '27999990000');
+      controller.updatePhoneOtpInput(phoneNumber);
+
+      final request = controller.requestPhoneOtpChallenge();
+      await tester.pump();
+      expect(repository.requestedPhones, ['+5527999990000']);
+
+      controller.onDispose();
+      pendingChallenge.complete(
+        _buildOtpChallenge(
+          phone: '+5527999990000',
+          deliveryChannel: 'whatsapp',
         ),
       );
 
-      await controller.tryLoginWithEmailPassword();
-      await tester.pump();
-
-      expect(controller.generalErrorStreamValue.value, 'Falha backend');
-      expect(controller.loginResultStreamValue.value, isFalse);
+      await expectLater(request, completes);
     },
   );
 
   testWidgets(
-    'requestPhoneOtpChallenge advances to verification step',
+    'requestPhoneOtpChallenge drops duplicate attempts while a pending request is disposed',
     (tester) async {
-      final repository = _PhoneOtpAuthRepository();
+      final configuredBurstLevel = int.tryParse(
+        Platform.environment['DELPHI_RACE_BURST_LEVEL'] ?? '',
+      );
+      final burstLevel =
+          configuredBurstLevel != null && configuredBurstLevel > 1
+          ? configuredBurstLevel
+          : 2;
+      final pendingChallenge = Completer<AuthPhoneOtpChallenge>();
+      final repository = _PhoneOtpAuthRepository()
+        ..pendingPhoneOtpChallenge = pendingChallenge.future;
       final controller = AuthLoginController(authRepository: repository);
       const phoneNumber = PhoneNumber(isoCode: IsoCode.BR, nsn: '27999990000');
-      controller.phoneNumberController.value = phoneNumber;
       controller.updatePhoneOtpInput(phoneNumber);
 
-      await controller.requestPhoneOtpChallenge();
+      final requests = List<Future<void>>.generate(
+        burstLevel,
+        (_) => controller.requestPhoneOtpChallenge(),
+      );
       await tester.pump();
-
       expect(repository.requestedPhones, ['+5527999990000']);
       expect(repository.requestedDeliveryChannels, ['whatsapp']);
-      expect(
-        controller.phoneOtpStepStreamValue.value,
-        AuthPhoneOtpStep.otpVerification,
+
+      controller.onDispose();
+      pendingChallenge.complete(
+        _buildOtpChallenge(
+          phone: '+5527999990000',
+          deliveryChannel: 'whatsapp',
+        ),
       );
-      expect(
-        controller.currentPhoneOtpChallengeStreamValue.value?.challengeId,
-        'challenge-1',
+
+      await Future.wait(requests);
+      expect(repository.requestedPhones, ['+5527999990000']);
+      expect(repository.requestedDeliveryChannels, ['whatsapp']);
+    },
+  );
+
+  testWidgets(
+    'requestPhoneOtpChallenge ignores a typed auth error after controller disposal',
+    (tester) async {
+      final pendingChallenge = Completer<AuthPhoneOtpChallenge>();
+      final repository = _PhoneOtpAuthRepository()
+        ..pendingPhoneOtpChallenge = pendingChallenge.future;
+      final controller = AuthLoginController(authRepository: repository);
+      const phoneNumber = PhoneNumber(isoCode: IsoCode.BR, nsn: '27999990000');
+      controller.updatePhoneOtpInput(phoneNumber);
+
+      final request = controller.requestPhoneOtpChallenge();
+      await tester.pump();
+      expect(repository.requestedPhones, ['+5527999990000']);
+
+      controller.onDispose();
+      pendingChallenge.completeError(AuthErrorGeneric());
+
+      await expectLater(request, completes);
+    },
+  );
+
+  testWidgets(
+    'requestPhoneOtpChallenge ignores a validation error after controller disposal',
+    (tester) async {
+      final pendingChallenge = Completer<AuthPhoneOtpChallenge>();
+      final repository = _PhoneOtpAuthRepository()
+        ..pendingPhoneOtpChallenge = pendingChallenge.future;
+      final controller = AuthLoginController(authRepository: repository);
+      const phoneNumber = PhoneNumber(isoCode: IsoCode.BR, nsn: '27999990000');
+      controller.updatePhoneOtpInput(phoneNumber);
+
+      final request = controller.requestPhoneOtpChallenge();
+      await tester.pump();
+      expect(repository.requestedPhones, ['+5527999990000']);
+
+      controller.onDispose();
+      pendingChallenge.completeError(
+        FormValidationFailure(
+          statusCode: 422,
+          message: 'Telefone inválido.',
+          fieldErrors: const <String, List<String>>{
+            'phone': <String>['Telefone inválido.'],
+          },
+        ),
       );
+
+      await expectLater(request, completes);
+    },
+  );
+
+  testWidgets(
+    'requestPhoneOtpChallenge ignores an unknown error after controller disposal',
+    (tester) async {
+      final pendingChallenge = Completer<AuthPhoneOtpChallenge>();
+      final repository = _PhoneOtpAuthRepository()
+        ..pendingPhoneOtpChallenge = pendingChallenge.future;
+      final controller = AuthLoginController(authRepository: repository);
+      const phoneNumber = PhoneNumber(isoCode: IsoCode.BR, nsn: '27999990000');
+      controller.updatePhoneOtpInput(phoneNumber);
+
+      final request = controller.requestPhoneOtpChallenge();
+      await tester.pump();
+      expect(repository.requestedPhones, ['+5527999990000']);
+
+      controller.onDispose();
+      pendingChallenge.completeError(Exception('Falha OTP simulada'));
+
+      await expectLater(request, completes);
     },
   );
 
@@ -307,47 +471,40 @@ void main() {
     },
   );
 
-  testWidgets(
-    'resendPhoneOtpChallenge shows a production-safe request error',
-    (tester) async {
-      final repository = _PhoneOtpAuthRepository()
-        ..requestFailure = Exception(
-          'Failed to request OTP [500] '
-          '(/v1/auth/otp/challenge?tenant_id=tenant-1): '
-          '{"message":"Webhook transport failure","trace":"secret"}',
-        );
-      final controller = AuthLoginController(authRepository: repository);
-      controller.phoneController.text = '+5527999990000';
-      controller.currentPhoneOtpChallengeStreamValue.addValue(
-        _buildOtpChallenge(
-          phone: '+5527999990000',
-          deliveryChannel: 'whatsapp',
-        ),
+  testWidgets('resendPhoneOtpChallenge shows a production-safe request error', (
+    tester,
+  ) async {
+    final repository = _PhoneOtpAuthRepository()
+      ..requestFailure = Exception(
+        'Failed to request OTP [500] '
+        '(/v1/auth/otp/challenge?tenant_id=tenant-1): '
+        '{"message":"Webhook transport failure","trace":"secret"}',
       );
-      controller.phoneOtpStepStreamValue.addValue(
-        AuthPhoneOtpStep.otpVerification,
-      );
+    final controller = AuthLoginController(authRepository: repository);
+    controller.phoneController.text = '+5527999990000';
+    controller.currentPhoneOtpChallengeStreamValue.addValue(
+      _buildOtpChallenge(phone: '+5527999990000', deliveryChannel: 'whatsapp'),
+    );
+    controller.phoneOtpStepStreamValue.addValue(
+      AuthPhoneOtpStep.otpVerification,
+    );
 
-      await controller.resendPhoneOtpChallenge();
-      await tester.pump();
+    await controller.resendPhoneOtpChallenge();
+    await tester.pump();
 
-      expect(controller.generalErrorStreamValue.value, isNull);
-      expect(
-        controller.phoneOtpValidationController.errorsForGlobal(),
-        <String>[
-          'Não conseguimos enviar o código agora. Tente novamente em instantes.',
-        ],
-      );
-      expect(
-        controller.phoneOtpValidationController.errorsForGlobal().join(' '),
-        isNot(contains('/v1/auth/otp/challenge')),
-      );
-      expect(
-        controller.phoneOtpValidationController.errorsForGlobal().join(' '),
-        isNot(contains('trace')),
-      );
-    },
-  );
+    expect(controller.generalErrorStreamValue.value, isNull);
+    expect(controller.phoneOtpValidationController.errorsForGlobal(), <String>[
+      'Não conseguimos enviar o código agora. Tente novamente em instantes.',
+    ]);
+    expect(
+      controller.phoneOtpValidationController.errorsForGlobal().join(' '),
+      isNot(contains('/v1/auth/otp/challenge')),
+    );
+    expect(
+      controller.phoneOtpValidationController.errorsForGlobal().join(' '),
+      isNot(contains('trace')),
+    );
+  });
 
   testWidgets(
     'tenant public login surface shows phone otp instead of password signup',
@@ -381,10 +538,7 @@ void main() {
 
       await tester.pumpWidget(
         _buildLocalizedTestApp(
-          home: AuthPhoneOtpExperience(
-            controller: controller,
-            onBack: () {},
-          ),
+          home: AuthPhoneOtpExperience(controller: controller, onBack: () {}),
         ),
       );
 
@@ -403,58 +557,44 @@ void main() {
       await tester.enterText(find.byType(EditableText).last, '27');
       await tester.pump();
 
-      editable = tester.widget<EditableText>(
-        find.byType(EditableText).last,
-      );
+      editable = tester.widget<EditableText>(find.byType(EditableText).last);
       expect(editable.controller.text, '(27)');
 
       await tester.enterText(find.byType(EditableText).last, '279');
       await tester.pump();
 
-      editable = tester.widget<EditableText>(
-        find.byType(EditableText).last,
-      );
+      editable = tester.widget<EditableText>(find.byType(EditableText).last);
       expect(editable.controller.text, '(27) 9');
 
       await tester.enterText(find.byType(EditableText).last, '27999990000');
       await tester.pump();
 
-      editable = tester.widget<EditableText>(
-        find.byType(EditableText).last,
-      );
+      editable = tester.widget<EditableText>(find.byType(EditableText).last);
       expect(editable.controller.text, '(27) 99999-0000');
 
       await tester.enterText(find.byType(EditableText).last, '2799');
       await tester.pump();
 
-      editable = tester.widget<EditableText>(
-        find.byType(EditableText).last,
-      );
+      editable = tester.widget<EditableText>(find.byType(EditableText).last);
       expect(editable.controller.text, '(27) 99');
 
       await tester.showKeyboard(find.byType(EditableText).last);
       await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
       await tester.pump();
 
-      editable = tester.widget<EditableText>(
-        find.byType(EditableText).last,
-      );
+      editable = tester.widget<EditableText>(find.byType(EditableText).last);
       expect(editable.controller.text, '(27) 9');
 
       await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
       await tester.pump();
 
-      editable = tester.widget<EditableText>(
-        find.byType(EditableText).last,
-      );
+      editable = tester.widget<EditableText>(find.byType(EditableText).last);
       expect(editable.controller.text, '(27)');
 
       await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
       await tester.pump();
 
-      editable = tester.widget<EditableText>(
-        find.byType(EditableText).last,
-      );
+      editable = tester.widget<EditableText>(find.byType(EditableText).last);
       expect(editable.controller.text, '(2');
 
       controller.updatePhoneOtpCountry(IsoCode.US);
@@ -466,29 +606,25 @@ void main() {
       await tester.enterText(find.byType(EditableText).last, '4');
       await tester.pump();
 
-      editable = tester.widget<EditableText>(
-        find.byType(EditableText).last,
-      );
+      editable = tester.widget<EditableText>(find.byType(EditableText).last);
       expect(editable.controller.text, '(4');
 
       await tester.enterText(find.byType(EditableText).last, '4155');
       await tester.pump();
 
-      editable = tester.widget<EditableText>(
-        find.byType(EditableText).last,
-      );
+      editable = tester.widget<EditableText>(find.byType(EditableText).last);
       expect(editable.controller.text, '(415) 5');
 
       await tester.enterText(find.byType(EditableText).last, '4155552671');
       await tester.pump();
 
-      editable = tester.widget<EditableText>(
-        find.byType(EditableText).last,
-      );
+      editable = tester.widget<EditableText>(find.byType(EditableText).last);
       expect(editable.controller.text, '(415) 555-2671');
       expect(controller.phoneNumberController.value.isoCode, IsoCode.US);
       expect(
-          controller.phoneNumberController.value.international, '+14155552671');
+        controller.phoneNumberController.value.international,
+        '+14155552671',
+      );
     },
   );
 
@@ -538,10 +674,7 @@ void main() {
 
       await tester.pumpWidget(
         _buildLocalizedTestApp(
-          home: AuthPhoneOtpExperience(
-            controller: controller,
-            onBack: () {},
-          ),
+          home: AuthPhoneOtpExperience(controller: controller, onBack: () {}),
         ),
       );
 
@@ -586,10 +719,7 @@ void main() {
 
       await tester.pumpWidget(
         _buildLocalizedTestApp(
-          home: AuthPhoneOtpExperience(
-            controller: controller,
-            onBack: () {},
-          ),
+          home: AuthPhoneOtpExperience(controller: controller, onBack: () {}),
         ),
       );
 
@@ -597,10 +727,7 @@ void main() {
       await tester.tap(find.text('Confirmar código'));
       await tester.pumpAndSettle();
 
-      expect(
-        find.text('Código incorreto'),
-        findsOneWidget,
-      );
+      expect(find.text('Código incorreto'), findsOneWidget);
       expect(find.textContaining('/v1/auth/otp/verify'), findsNothing);
       expect(find.textContaining('errors'), findsNothing);
 
@@ -620,52 +747,45 @@ void main() {
     },
   );
 
-  testWidgets(
-    'otp experience shows SMS fallback visibly when configured',
-    (tester) async {
-      await GetIt.I.reset();
-      GetIt.I.registerSingleton<AppData>(_buildAppData(smsFallback: true));
+  testWidgets('otp experience shows SMS fallback visibly when configured', (
+    tester,
+  ) async {
+    await GetIt.I.reset();
+    GetIt.I.registerSingleton<AppData>(_buildAppData(smsFallback: true));
 
-      final repository = _PhoneOtpAuthRepository();
-      final controller = AuthLoginController(authRepository: repository);
-      controller.phoneController.text = '+5527999990000';
-      controller.currentPhoneOtpChallengeStreamValue.addValue(
-        _buildOtpChallenge(
-          phone: '+5527999990000',
-          deliveryChannel: 'whatsapp',
-        ),
-      );
-      controller.phoneOtpStepStreamValue.addValue(
-        AuthPhoneOtpStep.otpVerification,
-      );
+    final repository = _PhoneOtpAuthRepository();
+    final controller = AuthLoginController(authRepository: repository);
+    controller.phoneController.text = '+5527999990000';
+    controller.currentPhoneOtpChallengeStreamValue.addValue(
+      _buildOtpChallenge(phone: '+5527999990000', deliveryChannel: 'whatsapp'),
+    );
+    controller.phoneOtpStepStreamValue.addValue(
+      AuthPhoneOtpStep.otpVerification,
+    );
 
-      await tester.pumpWidget(
-        _buildLocalizedTestApp(
-          home: AuthPhoneOtpExperience(
-            controller: controller,
-            onBack: () {},
-          ),
-        ),
-      );
+    await tester.pumpWidget(
+      _buildLocalizedTestApp(
+        home: AuthPhoneOtpExperience(controller: controller, onBack: () {}),
+      ),
+    );
 
-      expect(find.text('Outras formas'), findsNothing);
-      expect(find.text('Confirmar código'), findsOneWidget);
-      expect(find.text('Receber por SMS'), findsOneWidget);
+    expect(find.text('Outras formas'), findsNothing);
+    expect(find.text('Confirmar código'), findsOneWidget);
+    expect(find.text('Receber por SMS'), findsOneWidget);
 
-      await tester.ensureVisible(find.text('Receber por SMS'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Receber por SMS'));
-      await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Receber por SMS'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Receber por SMS'));
+    await tester.pumpAndSettle();
 
-      expect(find.text('Código enviado por SMS'), findsOneWidget);
-      expect(find.text('Receber por SMS'), findsNothing);
-      expect(repository.requestedDeliveryChannels, ['sms']);
-      expect(
-        controller.currentPhoneOtpChallengeStreamValue.value?.deliveryChannel,
-        'sms',
-      );
-    },
-  );
+    expect(find.text('Código enviado por SMS'), findsOneWidget);
+    expect(find.text('Receber por SMS'), findsNothing);
+    expect(repository.requestedDeliveryChannels, ['sms']);
+    expect(
+      controller.currentPhoneOtpChallengeStreamValue.value?.deliveryChannel,
+      'sms',
+    );
+  });
 
   testWidgets(
     'otp experience uses emphasized CTA colors in light and dark themes',
@@ -699,20 +819,19 @@ void main() {
             theme: buildTheme(Brightness.light, lightPrimary),
             darkTheme: buildTheme(Brightness.dark, darkPrimary),
             themeMode: mode,
-            home: AuthPhoneOtpExperience(
-              controller: controller,
-              onBack: () {},
-            ),
+            home: AuthPhoneOtpExperience(controller: controller, onBack: () {}),
           ),
         );
       }
 
       await pumpForTheme(ThemeMode.light);
       await tester.pump();
-      final lightTheme =
-          Theme.of(tester.element(find.byType(AuthPhoneOtpExperience)));
-      final lightButton =
-          tester.widget<ElevatedButton>(find.byType(ElevatedButton));
+      final lightTheme = Theme.of(
+        tester.element(find.byType(AuthPhoneOtpExperience)),
+      );
+      final lightButton = tester.widget<ElevatedButton>(
+        find.byType(ElevatedButton),
+      );
       expect(
         lightButton.style?.backgroundColor?.resolve(<WidgetState>{}),
         lightTheme.colorScheme.primary,
@@ -724,10 +843,12 @@ void main() {
 
       await pumpForTheme(ThemeMode.dark);
       await tester.pump();
-      final darkTheme =
-          Theme.of(tester.element(find.byType(AuthPhoneOtpExperience)));
-      final darkButton =
-          tester.widget<ElevatedButton>(find.byType(ElevatedButton));
+      final darkTheme = Theme.of(
+        tester.element(find.byType(AuthPhoneOtpExperience)),
+      );
+      final darkButton = tester.widget<ElevatedButton>(
+        find.byType(ElevatedButton),
+      );
       expect(
         darkButton.style?.backgroundColor?.resolve(<WidgetState>{}),
         darkTheme.colorScheme.primary,
@@ -739,42 +860,35 @@ void main() {
     },
   );
 
-  testWidgets(
-    'otp experience updates SMS fallback from the challenge stream',
-    (tester) async {
-      await GetIt.I.reset();
-      GetIt.I.registerSingleton<AppData>(_buildAppData(smsFallback: true));
+  testWidgets('otp experience updates SMS fallback from the challenge stream', (
+    tester,
+  ) async {
+    await GetIt.I.reset();
+    GetIt.I.registerSingleton<AppData>(_buildAppData(smsFallback: true));
 
-      final repository = _PhoneOtpAuthRepository();
-      final controller = AuthLoginController(authRepository: repository);
-      controller.phoneController.text = '+5527999990000';
-      controller.phoneOtpStepStreamValue.addValue(
-        AuthPhoneOtpStep.otpVerification,
-      );
+    final repository = _PhoneOtpAuthRepository();
+    final controller = AuthLoginController(authRepository: repository);
+    controller.phoneController.text = '+5527999990000';
+    controller.phoneOtpStepStreamValue.addValue(
+      AuthPhoneOtpStep.otpVerification,
+    );
 
-      await tester.pumpWidget(
-        _buildLocalizedTestApp(
-          home: AuthPhoneOtpExperience(
-            controller: controller,
-            onBack: () {},
-          ),
-        ),
-      );
+    await tester.pumpWidget(
+      _buildLocalizedTestApp(
+        home: AuthPhoneOtpExperience(controller: controller, onBack: () {}),
+      ),
+    );
 
-      expect(find.text('Receber por SMS'), findsOneWidget);
+    expect(find.text('Receber por SMS'), findsOneWidget);
 
-      controller.currentPhoneOtpChallengeStreamValue.addValue(
-        _buildOtpChallenge(
-          phone: '+5527999990000',
-          deliveryChannel: 'sms',
-        ),
-      );
-      await tester.pump();
+    controller.currentPhoneOtpChallengeStreamValue.addValue(
+      _buildOtpChallenge(phone: '+5527999990000', deliveryChannel: 'sms'),
+    );
+    await tester.pump();
 
-      expect(find.text('Código enviado por SMS'), findsOneWidget);
-      expect(find.text('Receber por SMS'), findsNothing);
-    },
-  );
+    expect(find.text('Código enviado por SMS'), findsOneWidget);
+    expect(find.text('Receber por SMS'), findsNothing);
+  });
 
   testWidgets(
     'otp experience verifies automatically once when code is completed',
@@ -795,10 +909,7 @@ void main() {
 
       await tester.pumpWidget(
         _buildLocalizedTestApp(
-          home: AuthPhoneOtpExperience(
-            controller: controller,
-            onBack: () {},
-          ),
+          home: AuthPhoneOtpExperience(controller: controller, onBack: () {}),
         ),
       );
 
@@ -890,7 +1001,18 @@ class _PhoneOtpAuthRepository implements AuthRepositoryContract<UserContract> {
   final verifiedCodes = <String>[];
   Object? requestFailure;
   Object? verifyFailure;
+  Future<AuthPhoneOtpChallenge>? pendingPhoneOtpChallenge;
   bool _authorized = false;
+
+  @override
+  final accountDeletionJourneyStreamValue =
+      StreamValue<AccountDeletionJourneyState>(
+        defaultValue: const AccountDeletionJourneyState.idle(),
+      );
+
+  @override
+  AccountDeletionJourneyState get accountDeletionJourneyState =>
+      accountDeletionJourneyStreamValue.value;
 
   @override
   final userStreamValue = StreamValue<UserContract?>();
@@ -944,10 +1066,11 @@ class _PhoneOtpAuthRepository implements AuthRepositoryContract<UserContract> {
     requestedPhones.add(phone.value);
     final channel = deliveryChannel?.value ?? 'whatsapp';
     requestedDeliveryChannels.add(channel);
-    return _buildOtpChallenge(
-      phone: phone.value,
-      deliveryChannel: channel,
-    );
+    final pendingChallenge = pendingPhoneOtpChallenge;
+    if (pendingChallenge != null) {
+      return pendingChallenge;
+    }
+    return _buildOtpChallenge(phone: phone.value, deliveryChannel: channel);
   }
 
   @override
@@ -1000,6 +1123,18 @@ class _PhoneOtpAuthRepository implements AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> updateUser(UserCustomData data) async {}
+
+  @override
+  Future<AccountDeletionDispatchOutcome> deleteCurrentAccount() async =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> reconcileUnknownAccountDeletion() async {}
+
+  @override
+  Future<AccountDeletionContinuationOutcome>
+  continueAnonymouslyAfterConfirmedAccountDeletion() async =>
+      AccountDeletionContinuationOutcome.unavailable;
 }
 
 Widget _buildLocalizedTestApp({required Widget home}) {
@@ -1036,9 +1171,7 @@ AppData _buildAppData({bool smsFallback = false}) {
       if (smsFallback)
         'settings': {
           'tenant_public_auth': {
-            'phone_otp': {
-              'sms_fallback_enabled': true,
-            },
+            'phone_otp': {'sms_fallback_enabled': true},
           },
         },
     },

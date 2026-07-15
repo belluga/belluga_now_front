@@ -6,6 +6,15 @@ version: 0.3.1+16
 environment:
   sdk: ">=3.12.0 <4.0.0"
 
+# All first-party packages that participate in the Flutter product and its
+# architecture plugin resolve together. This gives the Dart Analysis Server one
+# workspace context instead of a separate high-memory context per package.
+workspace:
+  - packages/belluga_contact_channels
+  - packages/belluga_discovery_filters
+  - packages/belluga_form_validation
+  - tool/belluga_analysis_plugin
+
 dependencies:
   flutter:
     sdk: flutter
@@ -66,6 +75,8 @@ dependencies:
   belluga_admin_ui: ^0.0.1
   belluga_discovery_filters:
     path: packages/belluga_discovery_filters
+  belluga_contact_channels:
+    path: packages/belluga_contact_channels
   belluga_form_validation:
     path: packages/belluga_form_validation
   

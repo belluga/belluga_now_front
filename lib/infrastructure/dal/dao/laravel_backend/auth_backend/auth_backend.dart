@@ -151,6 +151,86 @@ class LaravelAuthBackend extends AuthBackendContract {
   }
 
   @override
+  Future<CurrentAccountDeletionBackendResult> deleteCurrentAccount() async {
+    final token = await _storage.read(key: _userTokenStorageKey);
+    if (token == null || token.trim().isEmpty) {
+      return const CurrentAccountDeletionPreEraseRejected(401);
+    }
+
+    try {
+      final dio = _resolveAdminDio();
+      final tenantQuery = await _tenantQuerySuffix();
+      final response = await dio.delete<void>(
+        '/v1/profile$tenantQuery',
+        data: const <String, String>{'confirmation': 'remove_account'},
+        options: Options(
+          contentType: Headers.jsonContentType,
+          headers: <String, String>{
+            'Accept': Headers.jsonContentType,
+            'Authorization': 'Bearer ${token.trim()}',
+          },
+        ),
+      );
+
+      return response.statusCode == 204
+          ? const CurrentAccountDeletionSucceeded()
+          : const CurrentAccountDeletionUnknown();
+    } on DioException catch (error) {
+      final statusCode = error.response?.statusCode;
+      if (statusCode == 401 ||
+          statusCode == 403 ||
+          statusCode == 409 ||
+          statusCode == 422) {
+        return CurrentAccountDeletionPreEraseRejected(statusCode!);
+      }
+      return const CurrentAccountDeletionUnknown();
+    } catch (_) {
+      return const CurrentAccountDeletionUnknown();
+    }
+  }
+
+  @override
+  Future<CurrentIdentityValidationResult>
+  validateCurrentIdentityForDeletionResolution() async {
+    final token = await _storage.read(key: _userTokenStorageKey);
+    if (token == null || token.trim().isEmpty) {
+      return const CurrentIdentityValidationUncertain();
+    }
+
+    try {
+      final dio = _resolveAdminDio();
+      final tenantQuery = await _tenantQuerySuffix();
+      final response = await dio.get<Object?>(
+        '/v1/auth/token_validate$tenantQuery',
+        options: Options(
+          headers: <String, String>{'Authorization': 'Bearer ${token.trim()}'},
+        ),
+      );
+      final raw = response.data;
+      if (raw is Map<String, dynamic>) {
+        final data = raw['data'];
+        if (data is Map<String, dynamic>) {
+          final user = data['user'];
+          if (user is Map<String, dynamic>) {
+            return CurrentIdentityValidationValid(
+              _userDtoFromTokenValidation(user),
+            );
+          }
+        }
+      }
+      return const CurrentIdentityValidationUncertain();
+    } on DioException catch (error) {
+      final statusCode = error.response?.statusCode;
+      if (statusCode == 401 || statusCode == 404) {
+        return const CurrentIdentityValidationTerminalAbsent();
+      }
+      return const CurrentIdentityValidationUncertain();
+    } catch (_) {
+      return const CurrentIdentityValidationUncertain();
+    }
+  }
+
+  @override
   Future<AuthRegistrationResponse> registerWithEmailPassword({
     required String name,
     required String email,

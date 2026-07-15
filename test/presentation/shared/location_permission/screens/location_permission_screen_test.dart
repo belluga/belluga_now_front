@@ -25,7 +25,8 @@ void main() {
     GetIt.I.registerSingleton<LocationPermissionController>(controller);
 
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
+        theme: _testTheme(),
         home: LocationPermissionScreen(
           initialState: LocationPermissionState.denied,
         ),
@@ -64,7 +65,8 @@ void main() {
     GetIt.I.registerSingleton<LocationPermissionController>(controller);
 
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
+        theme: _testTheme(),
         home: LocationPermissionScreen(
           initialState: LocationPermissionState.deniedForever,
         ),
@@ -85,7 +87,8 @@ void main() {
     GetIt.I.registerSingleton<LocationPermissionController>(controller);
 
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
+        theme: _testTheme(),
         home: LocationPermissionScreen(
           initialState: LocationPermissionState.denied,
           allowContinueWithoutLocation: false,
@@ -106,6 +109,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        theme: _testTheme(),
         home: LocationPermissionScreen(
           initialState: LocationPermissionState.denied,
           onResult: (result) => capturedResult = result,
@@ -131,6 +135,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        theme: _testTheme(),
         home: LocationPermissionScreen(
           initialState: LocationPermissionState.denied,
           onResult: (result) => capturedResult = result,
@@ -152,7 +157,8 @@ void main() {
     GetIt.I.registerSingleton<LocationPermissionController>(controller);
 
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
+        theme: _testTheme(),
         home: LocationPermissionScreen(
           initialState: LocationPermissionState.denied,
         ),
@@ -254,6 +260,7 @@ void main() {
     ThemeData buildTheme(Brightness brightness, Color primary) {
       return ThemeData(
         useMaterial3: true,
+        splashFactory: NoSplash.splashFactory,
         colorScheme: ColorScheme.fromSeed(
           seedColor: primary,
           brightness: brightness,
@@ -410,10 +417,13 @@ Widget _buildWidget({
     controller: router,
     stateHash: 0,
     child: MaterialApp(
+      theme: _testTheme(),
       home: child,
     ),
   );
 }
+
+ThemeData _testTheme() => ThemeData(splashFactory: NoSplash.splashFactory);
 
 class _RecordingStackRouter extends Mock implements StackRouter {
   int popCalls = 0;

@@ -2,10 +2,10 @@ import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.da
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:stream_value/core/stream_value.dart';
 
-typedef UserEventsRepositoryContractPrimString
-    = UserEventsRepositoryContractTextValue;
-typedef UserEventsRepositoryContractPrimBool
-    = UserEventsRepositoryContractBoolValue;
+typedef UserEventsRepositoryContractPrimString =
+    UserEventsRepositoryContractTextValue;
+typedef UserEventsRepositoryContractPrimBool =
+    UserEventsRepositoryContractBoolValue;
 
 /// Repository contract for user-specific event relationships.
 /// Attendance confirmation identity is occurrence-scoped; event IDs are route
@@ -13,10 +13,16 @@ typedef UserEventsRepositoryContractPrimBool
 abstract class UserEventsRepositoryContract {
   /// Stream of confirmed occurrence IDs to notify listeners of changes.
   StreamValue<Set<UserEventsRepositoryContractPrimString>>
-      get confirmedOccurrenceIdsStream;
+  get confirmedOccurrenceIdsStream;
 
   /// Refresh confirmed occurrence IDs from backend authoritative source.
   Future<void> refreshConfirmedOccurrenceIds();
+
+  void clearCurrentIdentityState() {
+    confirmedOccurrenceIdsStream.addValue(
+      const <UserEventsRepositoryContractPrimString>{},
+    );
+  }
 
   /// Fetch occurrences that the user has confirmed attendance for.
   Future<List<VenueEventResume>> fetchMyEvents();
@@ -38,5 +44,6 @@ abstract class UserEventsRepositoryContract {
 
   /// Check if user has confirmed attendance for an occurrence.
   UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
-      UserEventsRepositoryContractPrimString occurrenceId);
+    UserEventsRepositoryContractPrimString occurrenceId,
+  );
 }

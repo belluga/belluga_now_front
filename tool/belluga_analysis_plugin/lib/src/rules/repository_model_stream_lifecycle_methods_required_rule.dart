@@ -8,16 +8,16 @@ import '../type_utils.dart';
 
 class RepositoryModelStreamLifecycleMethodsRequiredRule extends DartLintRule {
   RepositoryModelStreamLifecycleMethodsRequiredRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'repository_model_stream_lifecycle_methods_required',
-            problemMessage:
-                'Repository with model StreamValue must expose initialize/populate and refresh methods returning void/Future<void>.',
-            correctionMessage:
-                'Treatments: add initialize/populate + refresh methods that update repository StreamValue and return void/Future<void>.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'repository_model_stream_lifecycle_methods_required',
+          problemMessage:
+              'Repository with model StreamValue must expose initialize/populate and refresh methods returning void/Future<void>.',
+          correctionMessage:
+              'Treatments: add initialize/populate + refresh methods that update repository StreamValue and return void/Future<void>.',
+        ),
+      );
 
   @override
   void run(
@@ -35,9 +35,12 @@ class RepositoryModelStreamLifecycleMethodsRequiredRule extends DartLintRule {
         return;
       }
 
-      final methods = node.members.whereType<MethodDeclaration>().toList();
-      final hasInitializeOrPopulate =
-          methods.any(_isInitializeOrPopulateMethod);
+      final methods = classMembersOf(
+        node,
+      ).whereType<MethodDeclaration>().toList();
+      final hasInitializeOrPopulate = methods.any(
+        _isInitializeOrPopulateMethod,
+      );
       final hasRefresh = methods.any(_isRefreshMethod);
 
       if (hasInitializeOrPopulate && hasRefresh) {
@@ -49,7 +52,7 @@ class RepositoryModelStreamLifecycleMethodsRequiredRule extends DartLintRule {
   }
 
   bool _ownsModelStreamValue(ClassDeclaration node) {
-    for (final member in node.members) {
+    for (final member in classMembersOf(node)) {
       if (member is! FieldDeclaration) {
         continue;
       }

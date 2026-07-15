@@ -20,4 +20,8 @@ abstract class FavoriteRepositoryContract {
   Future<void> refreshFavoriteResumes();
 
   Future<void> loadNextFavoriteResumesPage();
+
+  void clearCurrentIdentityState() {
+    favoriteResumesStreamValue.addValue(null);
+  }
 }

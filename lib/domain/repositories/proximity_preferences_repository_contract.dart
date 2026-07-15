@@ -33,4 +33,8 @@ abstract class ProximityPreferencesRepositoryContract {
   void setCurrentPreference(ProximityPreference? preference) {
     _proximityPreferenceStreamValue.addValue(preference);
   }
+
+  void clearCurrentIdentityState() {
+    setCurrentPreference(null);
+  }
 }

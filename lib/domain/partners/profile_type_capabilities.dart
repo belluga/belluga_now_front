@@ -14,11 +14,14 @@ class ProfileTypeCapabilities {
     required this.hasEventsValue,
     ProfileTypeFlagValue? hasGalleryValue,
     ProfileTypeFlagValue? hasNestedProfileGroupsValue,
-  })  : isReferenceLocationEnabledValue =
-            isReferenceLocationEnabledValue ?? ProfileTypeFlagValue(false),
-        hasGalleryValue = hasGalleryValue ?? ProfileTypeFlagValue(false),
-        hasNestedProfileGroupsValue =
-            hasNestedProfileGroupsValue ?? ProfileTypeFlagValue(false);
+    ProfileTypeFlagValue? hasContactChannelsValue,
+  }) : isReferenceLocationEnabledValue =
+           isReferenceLocationEnabledValue ?? ProfileTypeFlagValue(false),
+       hasGalleryValue = hasGalleryValue ?? ProfileTypeFlagValue(false),
+       hasNestedProfileGroupsValue =
+           hasNestedProfileGroupsValue ?? ProfileTypeFlagValue(false),
+       hasContactChannelsValue =
+           hasContactChannelsValue ?? ProfileTypeFlagValue(false);
 
   final ProfileTypeFlagValue isPubliclyDiscoverableValue;
   final ProfileTypeFlagValue isFavoritableValue;
@@ -32,6 +35,7 @@ class ProfileTypeCapabilities {
   final ProfileTypeFlagValue hasEventsValue;
   final ProfileTypeFlagValue hasGalleryValue;
   final ProfileTypeFlagValue hasNestedProfileGroupsValue;
+  final ProfileTypeFlagValue hasContactChannelsValue;
 
   bool get isPubliclyDiscoverable => isPubliclyDiscoverableValue.value;
   bool get isFavoritable => isFavoritableValue.value;
@@ -46,4 +50,5 @@ class ProfileTypeCapabilities {
   bool get hasEvents => hasEventsValue.value;
   bool get hasGallery => hasGalleryValue.value;
   bool get hasNestedProfileGroups => hasNestedProfileGroupsValue.value;
+  bool get hasContactChannels => hasContactChannelsValue.value;
 }

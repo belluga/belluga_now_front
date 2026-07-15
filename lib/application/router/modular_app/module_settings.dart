@@ -13,6 +13,7 @@ import 'package:belluga_now/application/router/modular_app/modules/map_module.da
 import 'package:belluga_now/application/router/modular_app/modules/profile_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/schedule_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/tenant_admin_module.dart';
+import 'package:belluga_now/application/startup/app_startup_plan_resolver.dart';
 import 'package:belluga_now/application/tenant_admin/discovery_filters/tenant_admin_taxonomies_sequential_batch_terms_repository.dart';
 
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
@@ -108,8 +109,8 @@ import 'package:push_handler/push_handler.dart';
 class ModuleSettings extends ModuleSettingsContract {
   ModuleSettings({
     @visibleForTesting BackendContract Function()? backendBuilderForTest,
-  })  : _backendBuilder = backendBuilderForTest ?? (() => ProductionBackend()),
-        _appDataLocalInfoSource = AppDataLocalInfoSource();
+  }) : _backendBuilder = backendBuilderForTest ?? (() => ProductionBackend()),
+       _appDataLocalInfoSource = AppDataLocalInfoSource();
 
   final BackendContract Function() _backendBuilder;
   final AppDataLocalInfoSource _appDataLocalInfoSource;
@@ -118,6 +119,7 @@ class ModuleSettings extends ModuleSettingsContract {
   FutureOr<void> registerGlobalDependencies() async {
     _registerBackend();
     await _registerRepositories();
+    registerStartupDependencies();
     _registerPushDependencies();
   }
 
@@ -143,6 +145,13 @@ class ModuleSettings extends ModuleSettingsContract {
     _registerLazySingletonIfAbsent<BackendContract>(_backendBuilder);
   }
 
+  @protected
+  void registerStartupDependencies() {
+    _registerLazySingletonIfAbsent<AppStartupPlanResolver>(
+      () => AppStartupPlanResolver(),
+    );
+  }
+
   void _registerPushDependencies() {
     _registerLazySingletonIfAbsent<PushPresentationGateContract>(
       () => PushPresentationGate(),
@@ -164,7 +173,8 @@ class ModuleSettings extends ModuleSettingsContract {
       final resolvedPath = _resolvePushRoutePath(request);
       if (resolvedPath == null || resolvedPath.isEmpty) {
         debugPrint(
-            '[Push] Unmapped route request: ${request.routeKey ?? request.route}');
+          '[Push] Unmapped route request: ${request.routeKey ?? request.route}',
+        );
         return;
       }
       final appRouter = GetIt.I.get<ApplicationContract>().appRouter;
@@ -249,10 +259,7 @@ class ModuleSettings extends ModuleSettingsContract {
     return null;
   }
 
-  String? _applyPathParameters(
-    String path,
-    Map<String, String> parameters,
-  ) {
+  String? _applyPathParameters(String path, Map<String, String> parameters) {
     final pattern = RegExp(r':([A-Za-z0-9_]+)');
     final matches = pattern.allMatches(path).toList();
     if (matches.isEmpty) {
@@ -273,10 +280,7 @@ class ModuleSettings extends ModuleSettingsContract {
     return resolved;
   }
 
-  String? _resolveRouteParameter(
-    Map<String, String> parameters,
-    String key,
-  ) {
+  String? _resolveRouteParameter(Map<String, String> parameters, String key) {
     final direct = parameters[key];
     if (direct != null && direct.isNotEmpty) {
       return direct;
@@ -294,12 +298,8 @@ class ModuleSettings extends ModuleSettingsContract {
     _registerIfAbsent<UserLocationRepositoryContract>(
       () => UserLocationRepository(),
     );
-    _registerIfAbsent<TimezoneServiceContract>(
-      () => TimezoneService(),
-    );
-    _registerIfAbsent<AdminModeRepositoryContract>(
-      () => AdminModeRepository(),
-    );
+    _registerIfAbsent<TimezoneServiceContract>(() => TimezoneService());
+    _registerIfAbsent<AdminModeRepositoryContract>(() => AdminModeRepository());
     _registerIfAbsent<TenantAdminAccountsRepositoryContract>(
       () => TenantAdminAccountsRepository(),
     );
@@ -324,8 +324,8 @@ class ModuleSettings extends ModuleSettingsContract {
     final tenantAdminTaxonomiesRepository = TenantAdminTaxonomiesRepository();
     final taxonomiesRepository =
         _registerIfAbsent<TenantAdminTaxonomiesRepositoryContract>(
-      () => tenantAdminTaxonomiesRepository,
-    );
+          () => tenantAdminTaxonomiesRepository,
+        );
     _registerIfAbsent<TenantAdminTaxonomiesBatchTermsRepositoryContract>(
       () => identical(taxonomiesRepository, tenantAdminTaxonomiesRepository)
           ? tenantAdminTaxonomiesRepository
@@ -335,14 +335,14 @@ class ModuleSettings extends ModuleSettingsContract {
     );
     _registerIfAbsent<TenantAdminDiscoveryFilterRuleCatalogRepositoryContract>(
       () => TenantAdminDiscoveryFilterRuleCatalogRepository(
-        accountProfilesRepository:
-            GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>(),
-        staticAssetsRepository:
-            GetIt.I.get<TenantAdminStaticAssetsRepositoryContract>(),
-        taxonomiesRepository:
-            GetIt.I.get<TenantAdminTaxonomiesRepositoryContract>(),
-        batchTermsRepository:
-            GetIt.I.get<TenantAdminTaxonomiesBatchTermsRepositoryContract>(),
+        accountProfilesRepository: GetIt.I
+            .get<TenantAdminAccountProfilesRepositoryContract>(),
+        staticAssetsRepository: GetIt.I
+            .get<TenantAdminStaticAssetsRepositoryContract>(),
+        taxonomiesRepository: GetIt.I
+            .get<TenantAdminTaxonomiesRepositoryContract>(),
+        batchTermsRepository: GetIt.I
+            .get<TenantAdminTaxonomiesBatchTermsRepositoryContract>(),
         eventsRepository: GetIt.I.get<TenantAdminEventsRepositoryContract>(),
       ),
     );
@@ -352,25 +352,17 @@ class ModuleSettings extends ModuleSettingsContract {
     _registerIfAbsent<LandlordPublicInstancesRepositoryContract>(
       () => LandlordKnownPublicInstancesRepository(),
     );
-    _registerIfAbsent<ContactsRepositoryContract>(
-      () => ContactsRepository(),
-    );
+    _registerIfAbsent<ContactsRepositoryContract>(() => ContactsRepository());
     _registerIfAbsent<DeferredLinkRepositoryContract>(
       () => DeferredLinkRepository(),
     );
-    _registerIfAbsent<FavoriteRepositoryContract>(
-      () => FavoriteRepository(),
-    );
+    _registerIfAbsent<FavoriteRepositoryContract>(() => FavoriteRepository());
     _registerIfAbsent<ScheduleRepositoryContract>(() => ScheduleRepository());
-    _registerIfAbsent<FriendsRepositoryContract>(
-      () => FriendsRepository(),
-    );
+    _registerIfAbsent<FriendsRepositoryContract>(() => FriendsRepository());
     _registerIfAbsent<InviteablesRepositoryContract>(
       () => InviteablesRepository(),
     );
-    _registerIfAbsent<InvitesRepositoryContract>(
-      () => InvitesRepository(),
-    );
+    _registerIfAbsent<InvitesRepositoryContract>(() => InvitesRepository());
     await _registerAppDataRepository();
     _registerIfAbsent<ProximityPreferencesRepositoryContract>(
       () => ProximityPreferencesRepository(),
@@ -398,9 +390,7 @@ class ModuleSettings extends ModuleSettingsContract {
     _registerIfAbsent<SelfProfileRepositoryContract>(
       () => SelfProfileRepository(),
     );
-    _registerIfAbsent<TelemetryRepositoryContract>(
-      () => TelemetryRepository(),
-    );
+    _registerIfAbsent<TelemetryRepositoryContract>(() => TelemetryRepository());
     _registerIfAbsent<AccountProfilesRepositoryContract>(
       () => AccountProfilesRepository(),
     );
@@ -429,13 +419,11 @@ class ModuleSettings extends ModuleSettingsContract {
     );
     await appDataRepository.init();
     _registerLazySingletonIfAbsent<LocationOriginServiceContract>(
-      () => LocationOriginService(
-        appDataRepository: appDataRepository,
-      ),
+      () => LocationOriginService(appDataRepository: appDataRepository),
     );
-    GetIt.I
-        .get<BackendContract>()
-        .setContext(BackendContext.fromAppData(appDataRepository.appData));
+    GetIt.I.get<BackendContract>().setContext(
+      BackendContext.fromAppData(appDataRepository.appData),
+    );
   }
 
   Future<void> _registerTenantRepository() async {
@@ -466,9 +454,7 @@ class ModuleSettings extends ModuleSettingsContract {
     return GetIt.I.registerSingleton<T>(builder());
   }
 
-  void _registerLazySingletonIfAbsent<T extends Object>(
-    T Function() builder,
-  ) {
+  void _registerLazySingletonIfAbsent<T extends Object>(T Function() builder) {
     if (!GetIt.I.isRegistered<T>()) {
       GetIt.I.registerLazySingleton<T>(builder);
     }
@@ -480,7 +466,9 @@ class ModuleSettings extends ModuleSettingsContract {
   ) async {
     if (GetIt.I.isRegistered<T>()) {
       final registeredModule = GetIt.I.get<T>();
-      if (!childModules.any((existingModule) => identical(existingModule, registeredModule))) {
+      if (!childModules.any(
+        (existingModule) => identical(existingModule, registeredModule),
+      )) {
         childModules.add(registeredModule);
       }
       return;

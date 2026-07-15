@@ -1,3 +1,4 @@
+import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profile_gallery_group_draft.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
@@ -20,6 +21,12 @@ class TenantAdminAccountProfileEditDraft {
     required this.coverPreloadUrl,
     required this.avatarBusy,
     required this.coverBusy,
+    required this.contactMode,
+    this.contactChannelDrafts = const <BellugaContactChannelDraft>[],
+    this.expandedContactCtaDraftKey,
+    this.contactBubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
+    this.contactSourceAccountProfileId,
     this.galleryGroups = const <TenantAdminAccountProfileGalleryGroupDraft>[],
     this.nestedProfileGroups = const <TenantAdminNestedProfileGroup>[],
   });
@@ -39,6 +46,11 @@ class TenantAdminAccountProfileEditDraft {
         coverPreloadUrl: null,
         avatarBusy: false,
         coverBusy: false,
+        contactMode: BellugaContactSourceMode.own,
+        contactChannelDrafts: <BellugaContactChannelDraft>[],
+        expandedContactCtaDraftKey: null,
+        contactBubbleSelection: BellugaContactBubbleSelectionMutation.omit(),
+        contactSourceAccountProfileId: null,
         galleryGroups: <TenantAdminAccountProfileGalleryGroupDraft>[],
         nestedProfileGroups: <TenantAdminNestedProfileGroup>[],
       );
@@ -56,6 +68,11 @@ class TenantAdminAccountProfileEditDraft {
   final String? coverPreloadUrl;
   final bool avatarBusy;
   final bool coverBusy;
+  final BellugaContactSourceMode contactMode;
+  final List<BellugaContactChannelDraft> contactChannelDrafts;
+  final String? expandedContactCtaDraftKey;
+  final BellugaContactBubbleSelectionMutation contactBubbleSelection;
+  final String? contactSourceAccountProfileId;
   final List<TenantAdminAccountProfileGalleryGroupDraft> galleryGroups;
   final List<TenantAdminNestedProfileGroup> nestedProfileGroups;
 
@@ -73,16 +90,23 @@ class TenantAdminAccountProfileEditDraft {
     Object? coverPreloadUrl = _unset,
     bool? avatarBusy,
     bool? coverBusy,
+    BellugaContactSourceMode? contactMode,
+    List<BellugaContactChannelDraft>? contactChannelDrafts,
+    Object? expandedContactCtaDraftKey = _unset,
+    BellugaContactBubbleSelectionMutation? contactBubbleSelection,
+    Object? contactSourceAccountProfileId = _unset,
     List<TenantAdminAccountProfileGalleryGroupDraft>? galleryGroups,
     List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
   }) {
     final nextSelectedProfileType = selectedProfileType == _unset
         ? this.selectedProfileType
         : selectedProfileType as String?;
-    final nextAvatarFile =
-        avatarFile == _unset ? this.avatarFile : avatarFile as XFile?;
-    final nextCoverFile =
-        coverFile == _unset ? this.coverFile : coverFile as XFile?;
+    final nextAvatarFile = avatarFile == _unset
+        ? this.avatarFile
+        : avatarFile as XFile?;
+    final nextCoverFile = coverFile == _unset
+        ? this.coverFile
+        : coverFile as XFile?;
     final nextAvatarRemoteUrl = avatarRemoteUrl == _unset
         ? this.avatarRemoteUrl
         : avatarRemoteUrl as String?;
@@ -110,6 +134,16 @@ class TenantAdminAccountProfileEditDraft {
       coverPreloadUrl: nextCoverPreloadUrl,
       avatarBusy: avatarBusy ?? this.avatarBusy,
       coverBusy: coverBusy ?? this.coverBusy,
+      contactMode: contactMode ?? this.contactMode,
+      contactChannelDrafts: contactChannelDrafts ?? this.contactChannelDrafts,
+      expandedContactCtaDraftKey: expandedContactCtaDraftKey == _unset
+          ? this.expandedContactCtaDraftKey
+          : expandedContactCtaDraftKey as String?,
+      contactBubbleSelection:
+          contactBubbleSelection ?? this.contactBubbleSelection,
+      contactSourceAccountProfileId: contactSourceAccountProfileId == _unset
+          ? this.contactSourceAccountProfileId
+          : contactSourceAccountProfileId as String?,
       galleryGroups: galleryGroups ?? this.galleryGroups,
       nestedProfileGroups: nestedProfileGroups ?? this.nestedProfileGroups,
     );
@@ -120,6 +154,9 @@ class TenantAdminAccountProfileEditDraft {
   ) {
     final avatarUrl = updated.avatarUrl;
     final coverUrl = updated.coverUrl;
+    final contactChannelDrafts = updated.contactChannels
+        .map(BellugaContactChannelDraft.fromChannel)
+        .toList(growable: false);
     return copyWith(
       avatarRemoteUrl: avatarUrl,
       coverRemoteUrl: coverUrl,
@@ -129,10 +166,37 @@ class TenantAdminAccountProfileEditDraft {
       coverRemoteError: false,
       avatarPreloadUrl: null,
       coverPreloadUrl: null,
+      contactMode: updated.contactMode,
+      contactSourceAccountProfileId: updated.contactSourceAccountProfileId,
+      contactChannelDrafts: contactChannelDrafts,
+      expandedContactCtaDraftKey: _expandedCtaDraftKeyFor(contactChannelDrafts),
+      contactBubbleSelection: updated.contactBubbleChannelId == null
+          ? const BellugaContactBubbleSelectionMutation.clear()
+          : BellugaContactBubbleSelectionMutation.setPersisted(
+              updated.contactBubbleChannelId!,
+            ),
       galleryGroups: updated.galleryGroups
           .map(TenantAdminAccountProfileGalleryGroupDraft.fromRead)
           .toList(growable: false),
       nestedProfileGroups: updated.nestedProfileGroups,
     );
+  }
+
+  String? _expandedCtaDraftKeyFor(
+    List<BellugaContactChannelDraft> contactChannelDrafts,
+  ) {
+    final currentKey = expandedContactCtaDraftKey;
+    if (currentKey != null &&
+        contactChannelDrafts.any((draft) => draft.draftKey == currentKey)) {
+      return currentKey;
+    }
+
+    for (final draft in contactChannelDrafts) {
+      if (draft.definition.capabilities.messagePresets &&
+          draft.initialMessages.isNotEmpty) {
+        return draft.draftKey;
+      }
+    }
+    return null;
   }
 }
