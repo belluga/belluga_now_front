@@ -8,60 +8,63 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets(
-      'privacy policy visible back falls back to home when no history exists',
-      (tester) async {
-    final router = _RecordingStackRouter()..canPopResult = false;
+    'privacy policy visible back falls back to home when no history exists',
+    (tester) async {
+      final router = _RecordingStackRouter()..canPopResult = false;
 
-    await tester.pumpWidget(
-      _buildRoutedTestApp(
-        router: router,
-        child: const TenantPrivacyPolicyScreen(),
-      ),
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        _buildRoutedTestApp(
+          router: router,
+          child: const TenantPrivacyPolicyScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(Icons.arrow_back));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.arrow_back));
+      await tester.pumpAndSettle();
 
-    expect(router.canPopCallCount, 1);
-    expect(router.popCallCount, 0);
-    expect(router.replaceAllRoutes, hasLength(1));
-    expect(
-      router.replaceAllRoutes.single.single.routeName,
-      TenantHomeRoute.name,
-    );
-  });
+      expect(router.canPopCallCount, 1);
+      expect(router.popCallCount, 0);
+      expect(router.replaceAllRoutes, hasLength(1));
+      expect(
+        router.replaceAllRoutes.single.single.routeName,
+        TenantHomeRoute.name,
+      );
+    },
+  );
 
   testWidgets(
-      'privacy policy system back falls back to home when no history exists',
-      (tester) async {
-    final router = _RecordingStackRouter()..canPopResult = false;
+    'privacy policy system back falls back to home when no history exists',
+    (tester) async {
+      final router = _RecordingStackRouter()..canPopResult = false;
 
-    await tester.pumpWidget(
-      _buildRoutedTestApp(
-        router: router,
-        child: const TenantPrivacyPolicyScreen(),
-      ),
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        _buildRoutedTestApp(
+          router: router,
+          child: const TenantPrivacyPolicyScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    final popScope = tester.widget<PopScope<dynamic>>(
-      find.byWidgetPredicate((widget) => widget is PopScope),
-    );
-    popScope.onPopInvokedWithResult?.call(false, null);
-    await tester.pumpAndSettle();
+      final popScope = tester.widget<PopScope<dynamic>>(
+        find.byWidgetPredicate((widget) => widget is PopScope),
+      );
+      popScope.onPopInvokedWithResult?.call(false, null);
+      await tester.pumpAndSettle();
 
-    expect(router.canPopCallCount, 1);
-    expect(router.popCallCount, 0);
-    expect(router.replaceAllRoutes, hasLength(1));
-    expect(
-      router.replaceAllRoutes.single.single.routeName,
-      TenantHomeRoute.name,
-    );
-  });
+      expect(router.canPopCallCount, 1);
+      expect(router.popCallCount, 0);
+      expect(router.replaceAllRoutes, hasLength(1));
+      expect(
+        router.replaceAllRoutes.single.single.routeName,
+        TenantHomeRoute.name,
+      );
+    },
+  );
 
-  testWidgets('privacy policy visible back pops when history exists',
-      (tester) async {
+  testWidgets('privacy policy visible back pops when history exists', (
+    tester,
+  ) async {
     final router = _RecordingStackRouter()..canPopResult = true;
 
     await tester.pumpWidget(
@@ -78,6 +81,26 @@ void main() {
     expect(router.canPopCallCount, 1);
     expect(router.popCallCount, 1);
     expect(router.replaceAllRoutes, isEmpty);
+  });
+
+  testWidgets('privacy policy identifies the in-app permanent deletion path', (
+    tester,
+  ) async {
+    final router = _RecordingStackRouter();
+
+    await tester.pumpWidget(
+      _buildRoutedTestApp(
+        router: router,
+        child: const TenantPrivacyPolicyScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('Perfil > Privacidade e conta > Excluir conta'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('removidos permanentemente'), findsOneWidget);
   });
 }
 
@@ -103,10 +126,7 @@ Widget _buildRoutedTestApp({
     controller: router,
     stateHash: 0,
     child: MaterialApp(
-      home: RouteDataScope(
-        routeData: routeData,
-        child: child,
-      ),
+      home: RouteDataScope(routeData: routeData, child: child),
     ),
   );
 }

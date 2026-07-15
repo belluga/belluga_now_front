@@ -9,13 +9,13 @@ import 'package:belluga_now/presentation/shared/visuals/account_profile_visual_r
 import 'package:belluga_now/presentation/shared/visuals/resolved_account_profile_visual.dart';
 import 'package:belluga_now/presentation/shared/widgets/account_profile_type_avatar.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
+import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/event_programming_timeline_rail_painter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:intl/intl.dart';
 
 const _initialVisibleProgrammingItems = 24;
 const _visibleProgrammingItemsPageSize = 24;
-const _visibleProgrammingProfilesPerItem = 4;
 
 class EventProgrammingSection extends StatefulWidget {
   const EventProgrammingSection({
@@ -43,6 +43,8 @@ class EventProgrammingSection extends StatefulWidget {
 
 class _EventProgrammingSectionState extends State<EventProgrammingSection> {
   int _visibleItemCount = _initialVisibleProgrammingItems;
+  final GlobalKey _timelineKey = GlobalKey();
+  final Map<int, GlobalKey> _timelineMarkerKeys = <int, GlobalKey>{};
 
   @override
   void didUpdateWidget(covariant EventProgrammingSection oldWidget) {
@@ -57,6 +59,10 @@ class _EventProgrammingSectionState extends State<EventProgrammingSection> {
       _visibleItemCount = (_visibleItemCount + _visibleProgrammingItemsPageSize)
           .clamp(0, widget.items.length);
     });
+  }
+
+  GlobalKey _timelineMarkerKeyFor(int itemIndex) {
+    return _timelineMarkerKeys.putIfAbsent(itemIndex, GlobalKey.new);
   }
 
   @override
@@ -90,21 +96,31 @@ class _EventProgrammingSectionState extends State<EventProgrammingSection> {
           if (widget.items.isEmpty)
             _ProgrammingEmptyState()
           else ...[
-            for (final entry in visibleItems.asMap().entries)
-              Padding(
-                key: Key(
-                  'eventProgrammingItemSlot_${entry.key}_${entry.value.hasTime ? entry.value.time : 'untimed'}',
-                ),
-                padding: const EdgeInsets.only(bottom: 12),
-                child: RepaintBoundary(
-                  child: _ProgrammingCard(
-                    item: entry.value,
-                    itemIndex: entry.key,
-                    onLocationTap: widget.onLocationTap,
-                    profileTypeRegistry: widget.profileTypeRegistry,
-                  ),
-                ),
+            CustomPaint(
+              key: const Key('eventProgrammingTimelineRail'),
+              painter: EventProgrammingTimelineRailPainter(
+                timelineKey: _timelineKey,
+                markerKeys: visibleItems
+                    .asMap()
+                    .keys
+                    .map(_timelineMarkerKeyFor)
+                    .toList(growable: false),
+                color: theme.colorScheme.outlineVariant,
               ),
+              child: Column(
+                key: _timelineKey,
+                children: [
+                  for (final entry in visibleItems.asMap().entries)
+                    _ProgrammingTimelineEntry(
+                      item: entry.value,
+                      itemIndex: entry.key,
+                      markerKey: _timelineMarkerKeyFor(entry.key),
+                      onLocationTap: widget.onLocationTap,
+                      profileTypeRegistry: widget.profileTypeRegistry,
+                    ),
+                ],
+              ),
+            ),
             if (remainingItemCount > 0)
               _ShowMoreProgrammingItemsButton(
                 remainingItemCount: remainingItemCount,
@@ -486,6 +502,71 @@ class _ProgrammingEmptyState extends StatelessWidget {
   }
 }
 
+class _ProgrammingTimelineEntry extends StatelessWidget {
+  const _ProgrammingTimelineEntry({
+    required this.item,
+    required this.itemIndex,
+    required this.markerKey,
+    required this.onLocationTap,
+    required this.profileTypeRegistry,
+  });
+
+  static const _gutterWidth = 28.0;
+  static const _cardGap = 12.0;
+
+  final EventProgrammingItem item;
+  final int itemIndex;
+  final GlobalKey markerKey;
+  final ValueChanged<EventLinkedAccountProfile> onLocationTap;
+  final ProfileTypeRegistry? profileTypeRegistry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      key: Key(
+        'eventProgrammingItemSlot_${itemIndex}_${item.hasTime ? item.time : 'untimed'}',
+      ),
+      padding: const EdgeInsets.only(bottom: _cardGap),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: _gutterWidth,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 22),
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: Container(
+                  key: markerKey,
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: item.hasTime
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.tertiary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: RepaintBoundary(
+              child: _ProgrammingCard(
+                item: item,
+                itemIndex: itemIndex,
+                onLocationTap: onLocationTap,
+                profileTypeRegistry: profileTypeRegistry,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ProgrammingCard extends StatelessWidget {
   const _ProgrammingCard({
     required this.item,
@@ -513,12 +594,6 @@ class _ProgrammingCard extends StatelessWidget {
     final timeLabel = hasTime
         ? (item.endTime == null ? item.time : '${item.time} às ${item.endTime}')
         : null;
-    final visibleProfiles = item.linkedAccountProfiles
-        .take(_visibleProgrammingProfilesPerItem)
-        .toList(growable: false);
-    final remainingProfileCount =
-        item.linkedAccountProfiles.length - visibleProfiles.length;
-
     return DecoratedBox(
       key: Key('eventProgrammingItem_$itemIndex'),
       decoration: BoxDecoration(
@@ -527,126 +602,73 @@ class _ProgrammingCard extends StatelessWidget {
         border: Border.all(color: colorScheme.outlineVariant),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          crossAxisAlignment: hasSecondaryContent
-              ? CrossAxisAlignment.start
-              : CrossAxisAlignment.center,
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(
-              width: 74,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 2,
-                    height: 14,
-                    color: colorScheme.outlineVariant,
-                  ),
-                  Container(
-                    width: 12,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: hasTime
-                          ? colorScheme.primary
-                          : colorScheme.tertiary,
-                      shape: BoxShape.circle,
+            if (timeLabel != null) ...[
+              Text(
+                timeLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: colorScheme.primary,
+                  fontWeight: FontWeight.w900,
+                  height: 1.1,
+                ),
+              ),
+              if (hasTitle || hasSecondaryContent) const SizedBox(height: 6),
+            ],
+            if (hasTitle)
+              Html(
+                data: richTitleHtml,
+                style: {
+                  'body': Style(
+                    margin: Margins.zero,
+                    padding: HtmlPaddings.zero,
+                    color: colorScheme.onSurface,
+                    fontSize: FontSize(
+                      theme.textTheme.titleMedium?.fontSize ?? 16,
                     ),
+                    fontWeight: FontWeight.w800,
+                    lineHeight: const LineHeight(1.3),
                   ),
-                  Container(
-                    width: 2,
-                    height: 14,
-                    color: colorScheme.outlineVariant,
+                  'p': Style(margin: Margins.zero, padding: HtmlPaddings.zero),
+                  'strong': Style(
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.w800,
                   ),
-                  const SizedBox(height: 8),
-                  if (timeLabel != null)
-                    Text(
-                      timeLabel,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w800,
-                        height: 1.1,
-                      ),
+                  'em': Style(fontStyle: FontStyle.italic),
+                  'br': Style(display: Display.block),
+                  'ul': Style(margin: Margins.zero, padding: HtmlPaddings.zero),
+                  'ol': Style(margin: Margins.zero, padding: HtmlPaddings.zero),
+                  'li': Style(margin: Margins.zero, padding: HtmlPaddings.zero),
+                },
+              ),
+            if (hasProfiles) ...[
+              if (hasTitle) const SizedBox(height: 10),
+              Wrap(
+                key: Key('eventProgrammingProfiles_$itemIndex'),
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final profile in item.linkedAccountProfiles)
+                    _ProgrammingProfileChip(
+                      profile: profile,
+                      profileTypeRegistry: profileTypeRegistry,
                     ),
                 ],
               ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (hasTitle)
-                    Html(
-                      data: richTitleHtml,
-                      style: {
-                        'body': Style(
-                          margin: Margins.zero,
-                          padding: HtmlPaddings.zero,
-                          color: colorScheme.onSurface,
-                          fontSize: FontSize(
-                            theme.textTheme.titleMedium?.fontSize ?? 16,
-                          ),
-                          fontWeight: FontWeight.w800,
-                          lineHeight: const LineHeight(1.3),
-                        ),
-                        'p': Style(
-                          margin: Margins.zero,
-                          padding: HtmlPaddings.zero,
-                        ),
-                        'strong': Style(
-                          color: colorScheme.onSurface,
-                          fontWeight: FontWeight.w800,
-                        ),
-                        'em': Style(fontStyle: FontStyle.italic),
-                        'br': Style(display: Display.block),
-                        'ul': Style(
-                          margin: Margins.zero,
-                          padding: HtmlPaddings.zero,
-                        ),
-                        'ol': Style(
-                          margin: Margins.zero,
-                          padding: HtmlPaddings.zero,
-                        ),
-                        'li': Style(
-                          margin: Margins.zero,
-                          padding: HtmlPaddings.zero,
-                        ),
-                      },
-                    ),
-                  if (hasProfiles) ...[
-                    if (hasTitle) const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        for (final profile in visibleProfiles)
-                          _ProgrammingProfileChip(
-                            profile: profile,
-                            profileTypeRegistry: profileTypeRegistry,
-                          ),
-                        if (remainingProfileCount > 0)
-                          _ProgrammingProfileOverflowChip(
-                            itemIndex: itemIndex,
-                            remainingProfileCount: remainingProfileCount,
-                          ),
-                      ],
-                    ),
-                  ],
-                  if (hasLocation) ...[
-                    const SizedBox(height: 12),
-                    _ProgrammingLocationLine(
-                      profile: item.locationProfile!,
-                      onTap: () => onLocationTap(item.locationProfile!),
-                    ),
-                  ],
-                ],
+            ],
+            if (hasLocation) ...[
+              if (hasTitle || hasProfiles || timeLabel != null)
+                const SizedBox(height: 12),
+              _ProgrammingLocationLine(
+                profile: item.locationProfile!,
+                onTap: () => onLocationTap(item.locationProfile!),
               ),
-            ),
+            ],
           ],
         ),
       ),
@@ -702,37 +724,6 @@ class _ProgrammingLocationLine extends StatelessWidget {
   }
 }
 
-class _ProgrammingProfileOverflowChip extends StatelessWidget {
-  const _ProgrammingProfileOverflowChip({
-    required this.itemIndex,
-    required this.remainingProfileCount,
-  });
-
-  final int itemIndex;
-  final int remainingProfileCount;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final label = 'e mais $remainingProfileCount';
-    return Container(
-      key: Key('eventProgrammingProfilesOverflow_$itemIndex'),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-          color: colorScheme.onSurfaceVariant,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
-  }
-}
-
 class _ProgrammingProfileChip extends StatelessWidget {
   const _ProgrammingProfileChip({
     required this.profile,
@@ -745,7 +736,6 @@ class _ProgrammingProfileChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final maxWidth = MediaQuery.sizeOf(context).width * 0.56;
     final resolvedVisual = AccountProfileVisualResolver.resolvePreview(
       registry: profileTypeRegistry,
       profileType: profile.profileType,
@@ -754,7 +744,11 @@ class _ProgrammingProfileChip extends StatelessWidget {
     );
     return Container(
       key: Key('eventProgrammingProfile_${profile.id}'),
-      constraints: BoxConstraints(maxWidth: maxWidth),
+      constraints: BoxConstraints(
+        maxWidth: (MediaQuery.sizeOf(context).width - 32)
+            .clamp(0.0, double.infinity)
+            .toDouble(),
+      ),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHighest,
@@ -796,29 +790,36 @@ class _ProgrammingProfileVisual extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final avatarKey = Key('eventProgrammingProfileAvatar_${profile.id}');
     final avatarUrl = profile.avatarUrl?.trim();
     if (avatarUrl != null && avatarUrl.isNotEmpty) {
-      return ClipOval(
-        child: BellugaNetworkImage(
-          avatarUrl,
-          width: 18,
-          height: 18,
-          fit: BoxFit.cover,
-          errorWidget: _buildFallback(context),
+      return KeyedSubtree(
+        key: avatarKey,
+        child: ClipOval(
+          child: BellugaNetworkImage(
+            avatarUrl,
+            width: 22,
+            height: 22,
+            fit: BoxFit.cover,
+            errorWidget: _buildFallback(context),
+          ),
         ),
       );
     }
 
     final typeVisual = resolvedVisual.typeVisual;
     if (typeVisual != null) {
-      return AccountProfileTypeAvatar(
-        visual: typeVisual,
-        size: 18,
-        iconSize: 10,
+      return KeyedSubtree(
+        key: avatarKey,
+        child: AccountProfileTypeAvatar(
+          visual: typeVisual,
+          size: 22,
+          iconSize: 12,
+        ),
       );
     }
 
-    return _buildFallback(context);
+    return KeyedSubtree(key: avatarKey, child: _buildFallback(context));
   }
 
   Widget _buildFallback(BuildContext context) {

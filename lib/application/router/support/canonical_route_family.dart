@@ -5,6 +5,7 @@ enum CanonicalRouteFamily {
   partnerDetail,
   staticAssetDetail,
   profileRoot,
+  accountDeletionResolution,
   eventSearch,
   immersiveEventDetail,
   cityMap,
@@ -33,11 +34,7 @@ enum CanonicalRouteFamily {
   tenantAdminSettingsInternal,
 }
 
-enum RouteChromeMode {
-  standard,
-  fullscreen,
-  scopedSectionAppBar,
-}
+enum RouteChromeMode { standard, fullscreen, scopedSectionAppBar }
 
 enum AdminShellSection {
   dashboard,

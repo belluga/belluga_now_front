@@ -11,16 +11,16 @@ import '../type_utils.dart';
 
 class UiBuildSideEffectsForbiddenRule extends DartLintRule {
   UiBuildSideEffectsForbiddenRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'ui_build_side_effects_forbidden',
-            problemMessage:
-                'build/didChangeDependencies cannot trigger side-effect operations.',
-            correctionMessage:
-                'Treatments: move fetch/IO/logging side effects to controller lifecycle/intents; keep build methods pure.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'ui_build_side_effects_forbidden',
+          problemMessage:
+              'build/didChangeDependencies cannot trigger side-effect operations.',
+          correctionMessage:
+              'Treatments: move fetch/IO/logging side effects to controller lifecycle/intents; keep build methods pure.',
+        ),
+      );
 
   static const _sideEffectMethodNames = {
     'load',
@@ -59,7 +59,8 @@ class UiBuildSideEffectsForbiddenRule extends DartLintRule {
       }
 
       final visitor = _BuildSideEffectVisitor(
-        onViolation: (invocation) => reporter.atNode(invocation.methodName, code),
+        onViolation: (invocation) =>
+            reporter.atNode(invocation.methodName, code),
         sideEffectMethodNames: _sideEffectMethodNames,
       );
       node.body.visitChildren(visitor);

@@ -56,6 +56,9 @@ class TenantAdminProfileTypeCapabilityCatalog {
     _TenantAdminProfileTypeCapabilityDefinition(
       keyValue: TenantAdminProfileTypeCapabilityKey.hasNestedProfileGroups,
     ),
+    _TenantAdminProfileTypeCapabilityDefinition(
+      keyValue: TenantAdminProfileTypeCapabilityKey.hasContactChannels,
+    ),
   ];
 
   static Iterable<TenantAdminProfileTypeCapabilityKey> get keys =>

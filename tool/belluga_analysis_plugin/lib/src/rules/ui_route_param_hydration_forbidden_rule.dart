@@ -9,16 +9,16 @@ import '../type_utils.dart';
 
 class UiRouteParamHydrationForbiddenRule extends DartLintRule {
   UiRouteParamHydrationForbiddenRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'ui_route_param_hydration_forbidden',
-            problemMessage:
-                'Screen lifecycle methods cannot hydrate feature data using widget route params.',
-            correctionMessage:
-                'Treatments: use RouteModelResolver for route-driven hydration; keep screens passive and trigger controller intents from resolved data only.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'ui_route_param_hydration_forbidden',
+          problemMessage:
+              'Screen lifecycle methods cannot hydrate feature data using widget route params.',
+          correctionMessage:
+              'Treatments: use RouteModelResolver for route-driven hydration; keep screens passive and trigger controller intents from resolved data only.',
+        ),
+      );
 
   static const _hydrationMethodNames = {
     'load',
@@ -33,12 +33,7 @@ class UiRouteParamHydrationForbiddenRule extends DartLintRule {
     'sync',
   };
 
-  static const _detailHydrationHints = {
-    'detail',
-    'profile',
-    'byid',
-    'byslug',
-  };
+  static const _detailHydrationHints = {'detail', 'profile', 'byid', 'byslug'};
 
   @override
   void run(
@@ -67,9 +62,7 @@ class UiRouteParamHydrationForbiddenRule extends DartLintRule {
 }
 
 class _LifecycleHydrationInvocationVisitor extends RecursiveAstVisitor<void> {
-  _LifecycleHydrationInvocationVisitor({
-    required this.onViolation,
-  });
+  _LifecycleHydrationInvocationVisitor({required this.onViolation});
 
   final void Function(MethodInvocation invocation) onViolation;
 
@@ -86,8 +79,9 @@ class _LifecycleHydrationInvocationVisitor extends RecursiveAstVisitor<void> {
       return;
     }
 
-    final hasWidgetArgument = node.argumentList.arguments
-        .any(_expressionUsesRouteParamWidgetReference);
+    final hasWidgetArgument = node.argumentList.arguments.any(
+      _expressionUsesRouteParamWidgetReference,
+    );
     if (!hasWidgetArgument) {
       super.visitMethodInvocation(node);
       return;
@@ -102,9 +96,10 @@ class _LifecycleHydrationInvocationVisitor extends RecursiveAstVisitor<void> {
 
   bool _isHydrationMethodName(String methodName) {
     final normalized = methodName.toLowerCase();
-    final startsLikeHydration = UiRouteParamHydrationForbiddenRule
-            ._hydrationMethodNames
-            .contains(methodName) ||
+    final startsLikeHydration =
+        UiRouteParamHydrationForbiddenRule._hydrationMethodNames.contains(
+          methodName,
+        ) ||
         normalized.startsWith('load') ||
         normalized.startsWith('fetch') ||
         normalized.startsWith('hydrate') ||
@@ -185,9 +180,9 @@ class _LifecycleHydrationInvocationVisitor extends RecursiveAstVisitor<void> {
 
     if (expression is StringInterpolation) {
       return expression.elements.whereType<InterpolationExpression>().any(
-            (element) =>
-                _expressionUsesRouteParamWidgetReference(element.expression),
-          );
+        (element) =>
+            _expressionUsesRouteParamWidgetReference(element.expression),
+      );
     }
 
     if (expression is ConditionalExpression) {
@@ -210,8 +205,9 @@ class _LifecycleHydrationInvocationVisitor extends RecursiveAstVisitor<void> {
       if (target != null && _expressionUsesRouteParamWidgetReference(target)) {
         return true;
       }
-      return expression.argumentList.arguments
-          .any(_expressionUsesRouteParamWidgetReference);
+      return expression.argumentList.arguments.any(
+        _expressionUsesRouteParamWidgetReference,
+      );
     }
 
     return false;

@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:io';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/user/self_profile.dart';
 import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/controllers/profile_screen_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/controllers/profile_account_deletion_ui_phase.dart';
 import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/widgets/profile_editable_tile.dart';
 import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/widgets/profile_header.dart';
 import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/widgets/profile_section_card.dart';
@@ -17,31 +19,36 @@ import 'package:latlong2/latlong.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({
-    super.key,
-  });
+  const ProfileScreen({super.key});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final ProfileScreenController _controller =
-      GetIt.I.get<ProfileScreenController>();
+  final ProfileScreenController _controller = GetIt.I
+      .get<ProfileScreenController>();
   StreamSubscription<String?>? _originPreferenceFeedbackSubscription;
+  StreamSubscription<int>? _accountDeletionNavigationSubscription;
 
   @override
   void initState() {
     super.initState();
     unawaited(_controller.init());
     _originPreferenceFeedbackSubscription = _controller
-        .originPreferenceFeedbackStreamValue.stream
+        .originPreferenceFeedbackStreamValue
+        .stream
         .listen(_handleOriginPreferenceFeedback);
+    _accountDeletionNavigationSubscription = _controller
+        .accountDeletionResolutionNavigationRequestStreamValue
+        .stream
+        .listen(_handleAccountDeletionResolutionNavigation);
   }
 
   @override
   void dispose() {
     _originPreferenceFeedbackSubscription?.cancel();
+    _accountDeletionNavigationSubscription?.cancel();
     super.dispose();
   }
 
@@ -94,15 +101,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ? const Center(
                             child: CircularProgressIndicator.adaptive(),
                           )
-                        : _buildProfileContent(
-                            context: context,
-                            user: user,
-                          ),
+                        : _buildProfileContent(context: context, user: user),
                     builder: (context, _) {
-                      return _buildProfileContent(
-                        context: context,
-                        user: user,
-                      );
+                      return _buildProfileContent(context: context, user: user);
                     },
                   );
                 },
@@ -131,7 +132,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           builder: (context, localPath) {
             final avatarImage = _resolveAvatarImage(
               localPath: localPath,
-              remoteUrl: _controller.currentAvatarUrl ??
+              remoteUrl:
+                  _controller.currentAvatarUrl ??
                   user?.profile.pictureUrlValue?.value?.toString(),
             );
 
@@ -215,8 +217,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           secondary: Icon(
                             isDark ? Icons.dark_mode : Icons.light_mode,
                           ),
-                          contentPadding:
-                              const EdgeInsets.symmetric(horizontal: 16),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                          ),
                         );
                       },
                     ),
@@ -225,9 +228,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       streamValue: _controller.activeOriginSummaryStreamValue,
                       builder: (context, originSummary) {
                         return ListTile(
-                          key: const Key(
-                            'profileOriginPreferenceTile',
-                          ),
+                          key: const Key('profileOriginPreferenceTile'),
                           leading: const Icon(Icons.place_outlined),
                           title: const Text('Minha localização'),
                           subtitle: Text(originSummary),
@@ -240,16 +241,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 12),
                 ProfileSectionCard(
-                  title: 'Privacidade',
+                  title: 'Privacidade e conta',
                   children: [
                     ListTile(
                       leading: const Icon(Icons.policy_outlined),
                       title: const Text('Política de privacidade'),
                       subtitle: const Text('Como tratamos seus dados'),
                       trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.router.pushPath(
-                        '/privacy-policy',
+                      onTap: () => context.router.pushPath('/privacy-policy'),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      key: const Key('profileDeleteAccountEntry'),
+                      leading: Icon(
+                        Icons.delete_outline,
+                        color: colorScheme.error,
                       ),
+                      title: Text(
+                        'Excluir conta',
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: colorScheme.error,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'Remova permanentemente sua conta e seus dados.',
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => _openAccountDeletionConfirmation(context),
                     ),
                   ],
                 ),
@@ -400,9 +418,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               return;
                             }
                             if (error != null) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(error)),
-                              );
+                              ScaffoldMessenger.of(
+                                context,
+                              ).showSnackBar(SnackBar(content: Text(error)));
                               return;
                             }
                             sheetContext.router.pop();
@@ -430,8 +448,114 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (!mounted || message == null || message.isEmpty) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _handleAccountDeletionResolutionNavigation(int request) {
+    if (!mounted || request <= 0) {
+      return;
+    }
+    unawaited(
+      context.router.replaceAll(<PageRouteInfo>[
+        const AccountDeletionResolutionRoute(),
+      ]),
+    );
+  }
+
+  Future<void> _openAccountDeletionConfirmation(BuildContext context) {
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final theme = Theme.of(sheetContext);
+        final colorScheme = theme.colorScheme;
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            child: StreamValueBuilder<ProfileAccountDeletionUiPhase>(
+              streamValue: _controller.accountDeletionUiPhaseStreamValue,
+              builder: (context, phase) {
+                final isDeleting =
+                    phase == ProfileAccountDeletionUiPhase.deleting;
+                final isRejected =
+                    phase == ProfileAccountDeletionUiPhase.preEraseRejected;
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Excluir conta?',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Esta ação remove permanentemente sua conta e os dados vinculados a ela. Não será possível recuperar esse conteúdo.',
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                    if (isRejected) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        'Não foi possível iniciar a remoção. Sua conta continua ativa. Tente novamente.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.error,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        key: const Key('profileConfirmDeleteAccountButton'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: colorScheme.error,
+                          foregroundColor: colorScheme.onError,
+                        ),
+                        onPressed: isDeleting
+                            ? null
+                            : () =>
+                                  unawaited(_controller.deleteCurrentAccount()),
+                        icon: isDeleting
+                            ? SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator.adaptive(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    colorScheme.onError,
+                                  ),
+                                ),
+                              )
+                            : const Icon(Icons.delete_forever_outlined),
+                        label: Text(
+                          isDeleting
+                              ? 'Removendo conta...'
+                              : 'Remover conta definitivamente',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: isDeleting
+                            ? null
+                            : () => sheetContext.router.pop(),
+                        child: const Text('Cancelar'),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -549,8 +673,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       streamValue: _controller.maxRadiusMetersStreamValue,
       builder: (context, radiusMeters) {
         final theme = Theme.of(context);
-        final effectiveRadiusMeters =
-            radiusMeters.clamp(1000, 50000).toDouble();
+        final effectiveRadiusMeters = radiusMeters
+            .clamp(1000, 50000)
+            .toDouble();
         return Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
           child: Row(
@@ -574,10 +699,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _buildRadiusAction(
                 context: context,
                 radiusMeters: effectiveRadiusMeters,
-                onPressed: () => _openRadiusSelector(
-                  context,
-                  effectiveRadiusMeters,
-                ),
+                onPressed: () =>
+                    _openRadiusSelector(context, effectiveRadiusMeters),
               ),
             ],
           ),
@@ -788,7 +911,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final message = error
         .toString()
         .replaceFirst(
-            RegExp(r'^(Exception|StateError|Bad state|Error):\s*'), '')
+          RegExp(r'^(Exception|StateError|Bad state|Error):\s*'),
+          '',
+        )
         .trim();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -820,19 +945,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
 }
 
 class _ProfileMapSelection {
-  const _ProfileMapSelection({
-    required this.latitude,
-    required this.longitude,
-  });
+  const _ProfileMapSelection({required this.latitude, required this.longitude});
 
   final double latitude;
   final double longitude;
 }
 
 class _ProfileOriginMapPickerSheet extends StatefulWidget {
-  const _ProfileOriginMapPickerSheet({
-    this.initialSelection,
-  });
+  const _ProfileOriginMapPickerSheet({this.initialSelection});
 
   final LatLng? initialSelection;
 
@@ -910,7 +1030,7 @@ class _ProfileOriginMapPickerSheetState
                           selectedPoint == null
                               ? 'Toque no mapa para selecionar.'
                               : 'Lat ${selectedPoint.latitude.toStringAsFixed(6)} · '
-                                  'Lng ${selectedPoint.longitude.toStringAsFixed(6)}',
+                                    'Lng ${selectedPoint.longitude.toStringAsFixed(6)}',
                         ),
                       ),
                       const SizedBox(width: 12),

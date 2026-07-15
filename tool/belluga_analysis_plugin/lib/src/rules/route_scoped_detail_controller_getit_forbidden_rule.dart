@@ -10,7 +10,7 @@ class RouteScopedDetailControllerGetItForbiddenRule extends DartLintRule {
   RouteScopedDetailControllerGetItForbiddenRule()
     : super(
         code: const LintCode(
-          errorSeverity: ErrorSeverity.WARNING,
+          errorSeverity: ErrorSeverity.warning,
           name: 'route_scoped_detail_controller_getit_forbidden',
           problemMessage:
               'Stackable tenant-public detail screens must resolve their detail controller from RouteInstanceScope, not global GetIt.',

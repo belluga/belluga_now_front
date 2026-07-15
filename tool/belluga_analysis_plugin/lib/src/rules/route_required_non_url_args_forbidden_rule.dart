@@ -8,16 +8,16 @@ import '../type_utils.dart';
 
 class RouteRequiredNonUrlArgsForbiddenRule extends DartLintRule {
   RouteRequiredNonUrlArgsForbiddenRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'route_required_non_url_args_forbidden',
-            problemMessage:
-                'Route pages cannot require constructor args that are not URL-bound (@PathParam/@QueryParam).',
-            correctionMessage:
-                'Treatments: make route args optional for internal-only flows with deterministic fallback, or move required identifiers to URL path/query with resolver hydration.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'route_required_non_url_args_forbidden',
+          problemMessage:
+              'Route pages cannot require constructor args that are not URL-bound (@PathParam/@QueryParam).',
+          correctionMessage:
+              'Treatments: make route args optional for internal-only flows with deterministic fallback, or move required identifiers to URL path/query with resolver hydration.',
+        ),
+      );
 
   @override
   void run(
@@ -67,7 +67,7 @@ class RouteRequiredNonUrlArgsForbiddenRule extends DartLintRule {
 
   ConstructorDeclaration? _selectPrimaryConstructor(ClassDeclaration node) {
     ConstructorDeclaration? unnamed;
-    for (final member in node.members) {
+    for (final member in classMembersOf(node)) {
       if (member is! ConstructorDeclaration) {
         continue;
       }
@@ -119,8 +119,9 @@ class RouteRequiredNonUrlArgsForbiddenRule extends DartLintRule {
   }
 
   bool _isOptionalUiKey(FormalParameter parameter) {
-    final normalized =
-        parameter is DefaultFormalParameter ? parameter.parameter : parameter;
+    final normalized = parameter is DefaultFormalParameter
+        ? parameter.parameter
+        : parameter;
     final typeName = topLevelTypeName(formalParameterType(normalized));
     final name = _parameterName(normalized);
     return name == 'key' && typeName == 'Key';

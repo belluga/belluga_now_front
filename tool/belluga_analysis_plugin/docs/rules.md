@@ -40,10 +40,15 @@
 - The ONLY acceptable remediation is **ValueObject**.
 - Validation ownership stays in ValueObjects (never in controllers/parsers outside domain VOs).
 - DTOs are the only boundary allowed to receive transport primitives.
-- Domain constructors/method parameters must be only: `Domain`, `ValueObject<T>`, or `List/Set/Iterable` whose element type is `Domain` or `ValueObject<T>`.
+- Domain constructors/method parameters must be only: host `Domain`, a registered first-party domain-package type, `ValueObject<T>`, or `List/Set/Iterable` whose element type is one of those allowed domain types.
 - Any other parameter type is forbidden (`String`, `int`, `DateTime`, `Map`, bare `List/Set/Iterable`, `List<String>`, etc.).
 - Typedef aliases do not remediate primitive usage.
 - Any class under `domain/**/value_objects/**` must extend `ValueObject<T>` (plain classes in this folder are forbidden).
+
+### First-party domain package registry
+- `belluga_contact_channels` is an explicit first-party domain package. Its public types may be used directly in host-domain signatures and typed collections.
+- The registry is exact and source-root based (`packages/belluga_contact_channels/lib/`); it is not a wildcard for package imports or a general external-package allowlist.
+- Third-party package types remain forbidden in domain signatures. This exception does not relax primitive, `Map`, or primitive-collection enforcement.
 
 ### Approved ValueObject bases
 Use existing base classes when they match the semantic type, for example:

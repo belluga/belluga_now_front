@@ -19,48 +19,60 @@ import 'package:stream_value/core/stream_value.dart';
 
 export 'package:belluga_now/domain/repositories/value_objects/invites_repository_contract_values.dart';
 
-typedef InvitesRepositoryContractPrimString
-    = InvitesRepositoryContractTextValue;
+typedef InvitesRepositoryContractPrimString =
+    InvitesRepositoryContractTextValue;
 typedef InvitesRepositoryContractPrimInt = InvitesRepositoryContractIntValue;
 typedef InvitesRepositoryContractPrimBool = InvitesRepositoryContractBoolValue;
 
 abstract class InvitesRepositoryContract {
-  final pendingInvitesStreamValue =
-      StreamValue<List<InviteModel>>(defaultValue: const <InviteModel>[]);
-  final inviteFlowPendingInvitesStreamValue =
-      StreamValue<List<InviteModel>>(defaultValue: const <InviteModel>[]);
-  final inviteFlowDisplayInvitesStreamValue =
-      StreamValue<List<InviteModel>>(defaultValue: const <InviteModel>[]);
-  final immersiveSelectedEventStreamValue =
-      StreamValue<EventModel?>(defaultValue: null);
-  final immersiveReceivedInvitesStreamValue =
-      StreamValue<List<InviteModel>>(defaultValue: const <InviteModel>[]);
-  final shareCodePreviewInviteStreamValue =
-      StreamValue<InviteModel?>(defaultValue: null);
+  final pendingInvitesStreamValue = StreamValue<List<InviteModel>>(
+    defaultValue: const <InviteModel>[],
+  );
+  final inviteFlowPendingInvitesStreamValue = StreamValue<List<InviteModel>>(
+    defaultValue: const <InviteModel>[],
+  );
+  final inviteFlowDisplayInvitesStreamValue = StreamValue<List<InviteModel>>(
+    defaultValue: const <InviteModel>[],
+  );
+  final immersiveSelectedEventStreamValue = StreamValue<EventModel?>(
+    defaultValue: null,
+  );
+  final immersiveReceivedInvitesStreamValue = StreamValue<List<InviteModel>>(
+    defaultValue: const <InviteModel>[],
+  );
+  final shareCodePreviewInviteStreamValue = StreamValue<InviteModel?>(
+    defaultValue: null,
+  );
   final shareCodeSessionContextStreamValue =
       StreamValue<InviteShareSessionContext?>(defaultValue: null);
 
-  final sentInvitesByOccurrenceStreamValue = StreamValue<
-      Map<InvitesRepositoryContractPrimString, List<SentInviteStatus>>>(
-    defaultValue: const <InvitesRepositoryContractPrimString,
-        List<SentInviteStatus>>{},
-  );
+  final sentInvitesByOccurrenceStreamValue =
+      StreamValue<
+        Map<InvitesRepositoryContractPrimString, List<SentInviteStatus>>
+      >(
+        defaultValue:
+            const <
+              InvitesRepositoryContractPrimString,
+              List<SentInviteStatus>
+            >{},
+      );
   final sentInviteSummariesByOccurrenceStreamValue =
       StreamValue<Map<InvitesRepositoryContractPrimString, SentInviteSummary>>(
-    defaultValue: const <InvitesRepositoryContractPrimString,
-        SentInviteSummary>{},
-  );
+        defaultValue:
+            const <InvitesRepositoryContractPrimString, SentInviteSummary>{},
+      );
 
-  final settingsStreamValue =
-      StreamValue<InviteRuntimeSettings?>(defaultValue: null);
+  final settingsStreamValue = StreamValue<InviteRuntimeSettings?>(
+    defaultValue: null,
+  );
   final importedContactMatchesStreamValue =
       StreamValue<List<InviteContactMatch>?>(defaultValue: null);
 
   InvitesRepositoryContractPrimBool get hasPendingInvites => invitesRepoBool(
-        pendingInvitesStreamValue.value.isNotEmpty,
-        defaultValue: false,
-        isRequired: true,
-      );
+    pendingInvitesStreamValue.value.isNotEmpty,
+    defaultValue: false,
+    isRequired: true,
+  );
 
   Future<void> init() async {
     await fetchSettings();
@@ -100,26 +112,19 @@ abstract class InvitesRepositoryContract {
     immersiveReceivedInvitesStreamValue.addValue(const <InviteModel>[]);
   }
 
-  Future<List<InviteModel>> fetchInvites(
-      {InvitesRepositoryContractPrimInt? page,
-      InvitesRepositoryContractPrimInt? pageSize});
+  Future<List<InviteModel>> fetchInvites({
+    InvitesRepositoryContractPrimInt? page,
+    InvitesRepositoryContractPrimInt? pageSize,
+  });
 
   Future<void> refreshPendingInvites({
     InvitesRepositoryContractPrimInt? page,
     InvitesRepositoryContractPrimInt? pageSize,
   }) async {
-    final resolvedPage = page ??
-        invitesRepoInt(
-          1,
-          defaultValue: 1,
-          isRequired: true,
-        );
-    final resolvedPageSize = pageSize ??
-        invitesRepoInt(
-          20,
-          defaultValue: 20,
-          isRequired: true,
-        );
+    final resolvedPage =
+        page ?? invitesRepoInt(1, defaultValue: 1, isRequired: true);
+    final resolvedPageSize =
+        pageSize ?? invitesRepoInt(20, defaultValue: 20, isRequired: true);
     final invites = await fetchInvites(
       page: resolvedPage,
       pageSize: resolvedPageSize,
@@ -129,27 +134,45 @@ abstract class InvitesRepositoryContract {
     }
   }
 
+  Future<void> clearCurrentIdentityState() async {
+    pendingInvitesStreamValue.addValue(const <InviteModel>[]);
+    clearInviteFlowState();
+    clearImmersiveDetailState();
+    clearShareCodePreview();
+    importedContactMatchesStreamValue.addValue(null);
+    sentInvitesByOccurrenceStreamValue.addValue(
+      const <InvitesRepositoryContractPrimString, List<SentInviteStatus>>{},
+    );
+    sentInviteSummariesByOccurrenceStreamValue.addValue(
+      const <InvitesRepositoryContractPrimString, SentInviteSummary>{},
+    );
+  }
+
   Future<InviteRuntimeSettings> fetchSettings();
 
   Future<InviteAcceptResult> acceptInvite(
-      InvitesRepositoryContractPrimString inviteId);
+    InvitesRepositoryContractPrimString inviteId,
+  );
 
   Future<InviteDeclineResult> declineInvite(
-      InvitesRepositoryContractPrimString inviteId);
+    InvitesRepositoryContractPrimString inviteId,
+  );
 
   Future<InviteAcceptResult> acceptInviteByCode(
-      InvitesRepositoryContractPrimString code);
+    InvitesRepositoryContractPrimString code,
+  );
 
   Future<InviteMaterializeResult> materializeShareCode(
-          InvitesRepositoryContractPrimString code) async =>
-      throw UnimplementedError();
+    InvitesRepositoryContractPrimString code,
+  ) async => throw UnimplementedError();
 
   Future<InviteModel?> previewShareCode(
-          InvitesRepositoryContractPrimString code) async =>
-      null;
+    InvitesRepositoryContractPrimString code,
+  ) async => null;
 
   Future<void> loadShareCodePreview(
-      InvitesRepositoryContractPrimString code) async {
+    InvitesRepositoryContractPrimString code,
+  ) async {
     final preview = await previewShareCode(code);
     shareCodePreviewInviteStreamValue.addValue(preview);
     if (preview == null) {
@@ -205,9 +228,7 @@ abstract class InvitesRepositoryContract {
     shareCodeSessionContextStreamValue.addValue(null);
   }
 
-  Future<List<InviteContactMatch>> importContacts(
-    InviteContacts contacts,
-  );
+  Future<List<InviteContactMatch>> importContacts(InviteContacts contacts);
 
   Future<void> refreshImportedContactMatches(InviteContacts contacts) async {
     final matches = await importContacts(contacts);
@@ -216,8 +237,7 @@ abstract class InvitesRepositoryContract {
 
   Future<List<InviteContactMatch>?> hydrateImportedContactMatchesFromCache(
     InviteContacts contacts,
-  ) async =>
-      null;
+  ) async => null;
 
   Future<List<InviteContactGroup>> fetchContactGroups() async =>
       const <InviteContactGroup>[];
@@ -225,18 +245,17 @@ abstract class InvitesRepositoryContract {
   Future<InviteContactGroup?> createContactGroup({
     required InviteContactGroupNameValue nameValue,
     required InviteAccountProfileIds recipientAccountProfileIds,
-  }) async =>
-      null;
+  }) async => null;
 
   Future<InviteContactGroup?> updateContactGroup({
     required InviteContactGroupIdValue groupIdValue,
     InviteContactGroupNameValue? nameValue,
     InviteAccountProfileIds? recipientAccountProfileIds,
-  }) async =>
-      null;
+  }) async => null;
 
   Future<void> deleteContactGroup(
-      InviteContactGroupIdValue groupIdValue) async {}
+    InviteContactGroupIdValue groupIdValue,
+  ) async {}
 
   Future<InviteShareCodeResult> createShareCode({
     required InvitesRepositoryContractPrimString eventId,
@@ -258,20 +277,19 @@ abstract class InvitesRepositoryContract {
   });
 
   Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
-      InvitesRepositoryContractPrimString occurrenceId);
+    InvitesRepositoryContractPrimString occurrenceId,
+  );
 
   Future<List<SentInviteStatus>> refreshSentInvitesForOccurrence({
     required InvitesRepositoryContractPrimString occurrenceId,
     InvitesRepositoryContractPrimString? eventId,
     Iterable<InvitesRepositoryContractPrimString> recipientAccountProfileIds =
         const <InvitesRepositoryContractPrimString>[],
-  }) async =>
-      getSentInvitesForOccurrence(occurrenceId);
+  }) async => getSentInvitesForOccurrence(occurrenceId);
 
   Future<SentInviteSummary> refreshSentInviteSummaryForOccurrence({
     required InvitesRepositoryContractPrimString occurrenceId,
     InvitesRepositoryContractPrimString? eventId,
     InvitesRepositoryContractPrimInt? previewLimit,
-  }) async =>
-      SentInviteSummary.empty();
+  }) async => SentInviteSummary.empty();
 }

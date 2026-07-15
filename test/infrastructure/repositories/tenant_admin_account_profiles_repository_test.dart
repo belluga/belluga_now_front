@@ -1,3 +1,4 @@
+import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -162,6 +163,125 @@ void main() {
     expect((data as Map<String, dynamic>)['bio'], '');
   });
 
+  test('createAccountProfile encodes typed contact draft payload', () async {
+    final adapter = _CaptureAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+    await repository.createAccountProfile(
+      accountId: tenantAdminAccountProfilesRepoString(
+        'account-1',
+        defaultValue: '',
+        isRequired: true,
+      ),
+      profileType: tenantAdminAccountProfilesRepoString(
+        'personal',
+        defaultValue: '',
+        isRequired: true,
+      ),
+      displayName: tenantAdminAccountProfilesRepoString(
+        'Profile',
+        defaultValue: '',
+        isRequired: true,
+      ),
+      contactMode: BellugaContactSourceMode.own,
+      contactChannelDrafts: <BellugaContactChannelDraft>[
+        BellugaContactChannelDraft(
+          draftKey: 'draft-whatsapp-primary',
+          type: BellugaContactChannelType.whatsapp,
+          value: '+55 (27) 99999-9999',
+          title: 'Atendimento',
+          initialMessages: const [
+            BellugaContactInitialMessage(
+              id: 'wa-cta-1',
+              cta: 'Quero falar',
+              message: 'Quero falar sobre o perfil.',
+            ),
+          ],
+        ),
+      ],
+      bubbleSelection: BellugaContactBubbleSelectionMutation.setDraft(
+        'draft-whatsapp-primary',
+      ),
+    );
+
+    final data = adapter.lastRequest?.data;
+    expect(data, isA<Map<String, dynamic>>());
+    expect((data as Map<String, dynamic>)['contact_mode'], 'own');
+    expect(data['contact_source_account_profile_id'], isNull);
+    expect(data['contact_bubble_channel_id'], isNull);
+    expect(data['contact_bubble_channel_draft_key'], 'draft-whatsapp-primary');
+    expect(data['contact_channels'], [
+      {
+        'draft_key': 'draft-whatsapp-primary',
+        'type': 'whatsapp',
+        'value': '+55 (27) 99999-9999',
+        'title': 'Atendimento',
+        'metadata': {
+          'initial_messages': [
+            {
+              'id': 'wa-cta-1',
+              'cta': 'Quero falar',
+              'mensagem': 'Quero falar sobre o perfil.',
+            },
+          ],
+        },
+      },
+    ]);
+  });
+
+  test(
+    'draft write creates server-owned channel identities and selects a new bubble atomically',
+    () async {
+      final adapter = _CaptureAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+      await repository.createAccountProfile(
+        accountId: tenantAdminAccountProfilesRepoString(
+          'account-1',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        profileType: tenantAdminAccountProfilesRepoString(
+          'personal',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        displayName: tenantAdminAccountProfilesRepoString(
+          'Profile',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        contactMode: BellugaContactSourceMode.own,
+        contactChannelDrafts: <BellugaContactChannelDraft>[
+          BellugaContactChannelDraft(
+            draftKey: 'draft-whatsapp-primary',
+            type: BellugaContactChannelType.whatsapp,
+            value: '+55 (27) 99999-9999',
+          ),
+        ],
+        bubbleSelection: BellugaContactBubbleSelectionMutation.setDraft(
+          'draft-whatsapp-primary',
+        ),
+      );
+
+      final data = adapter.lastRequest?.data as Map<String, dynamic>;
+      expect(data['contact_bubble_channel_id'], isNull);
+      expect(
+        data['contact_bubble_channel_draft_key'],
+        'draft-whatsapp-primary',
+      );
+      expect(data['contact_channels'], <Map<String, dynamic>>[
+        <String, dynamic>{
+          'draft_key': 'draft-whatsapp-primary',
+          'type': 'whatsapp',
+          'value': '+55 (27) 99999-9999',
+        },
+      ]);
+    },
+  );
+
   test('updateAccountProfile sends nested profile group payload', () async {
     final adapter = _CaptureAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
@@ -199,6 +319,38 @@ void main() {
         ],
       },
     ]);
+  });
+
+  test('updateAccountProfile encodes mirrored contact payload', () async {
+    final adapter = _CaptureAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+    await repository.updateAccountProfile(
+      accountProfileId: tenantAdminAccountProfilesRepoString(
+        'profile-1',
+        defaultValue: '',
+        isRequired: true,
+      ),
+      contactMode: BellugaContactSourceMode.mirroredAccountProfile,
+      contactSourceAccountProfileId: tenantAdminAccountProfilesRepoString(
+        'source-profile-1',
+      ),
+      contactChannelDrafts: const <BellugaContactChannelDraft>[],
+      bubbleSelection: BellugaContactBubbleSelectionMutation.setPersisted(
+        'whatsapp-primary',
+      ),
+    );
+
+    final data = adapter.lastRequest?.data;
+    expect(data, isA<Map<String, dynamic>>());
+    expect(
+      (data as Map<String, dynamic>)['contact_mode'],
+      'mirrored_account_profile',
+    );
+    expect(data['contact_source_account_profile_id'], 'source-profile-1');
+    expect(data['contact_channels'], const <Map<String, dynamic>>[]);
+    expect(data['contact_bubble_channel_id'], 'whatsapp-primary');
   });
 
   test(

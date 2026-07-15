@@ -9,16 +9,16 @@ import '../type_utils.dart';
 
 class ModuleDirectGetItRegistrationForbiddenRule extends DartLintRule {
   ModuleDirectGetItRegistrationForbiddenRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'module_direct_getit_registration_forbidden',
-            problemMessage:
-                'ModuleContract classes cannot register dependencies via direct GetIt register APIs.',
-            correctionMessage:
-                'Treatments: replace direct GetIt.I.register* with ModuleContract lifecycle wrappers (registerLazySingleton/registerFactory/registerRouteResolver).',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'module_direct_getit_registration_forbidden',
+          problemMessage:
+              'ModuleContract classes cannot register dependencies via direct GetIt register APIs.',
+          correctionMessage:
+              'Treatments: replace direct GetIt.I.register* with ModuleContract lifecycle wrappers (registerLazySingleton/registerFactory/registerRouteResolver).',
+        ),
+      );
 
   @override
   void run(
@@ -62,8 +62,9 @@ class ModuleDirectGetItRegistrationForbiddenRule extends DartLintRule {
       return false;
     }
 
-    final superTypeName =
-        normalizeTypeName(extendsClause.superclass.toSource());
+    final superTypeName = normalizeTypeName(
+      extendsClause.superclass.toSource(),
+    );
     return superTypeName == 'ModuleContract';
   }
 }

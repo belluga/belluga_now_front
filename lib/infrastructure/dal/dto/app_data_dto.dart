@@ -453,6 +453,9 @@ class AppDataDTO {
             hasNestedProfileGroupsValue: ProfileTypeFlagValue(
               capabilitiesMap['has_nested_profile_groups'] == true,
             ),
+            hasContactChannelsValue: ProfileTypeFlagValue(
+              capabilitiesMap['has_contact_channels'] == true,
+            ),
           ),
         ),
       );

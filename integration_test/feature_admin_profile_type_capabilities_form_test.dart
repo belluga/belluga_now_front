@@ -1,3 +1,4 @@
+import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'dart:typed_data';
 
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
@@ -76,20 +77,18 @@ void main() {
     );
     getIt.registerSingleton<TenantAdminAccountProfilesController>(
       TenantAdminAccountProfilesController(
-        profilesRepository:
-            getIt.get<TenantAdminAccountProfilesRepositoryContract>(),
+        profilesRepository: getIt
+            .get<TenantAdminAccountProfilesRepositoryContract>(),
         accountsRepository: getIt.get<TenantAdminAccountsRepositoryContract>(),
-        taxonomiesRepository:
-            getIt.get<TenantAdminTaxonomiesRepositoryContract>(),
+        taxonomiesRepository: getIt
+            .get<TenantAdminTaxonomiesRepositoryContract>(),
       ),
     );
 
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: TenantAdminAccountProfileCreateScreen(
-            accountSlug: 'account-1',
-          ),
+          body: TenantAdminAccountProfileCreateScreen(accountSlug: 'account-1'),
         ),
       ),
     );
@@ -233,7 +232,8 @@ class _FakeTenantAdminAccountsRepository
 
   @override
   Future<void> deleteAccount(
-      TenantAdminAccountsRepositoryContractPrimString accountSlug) async {}
+    TenantAdminAccountsRepositoryContractPrimString accountSlug,
+  ) async {}
 
   @override
   Future<TenantAdminAccount> restoreAccount(
@@ -250,12 +250,13 @@ class _FakeTenantAdminAccountsRepository
 
   @override
   Future<void> forceDeleteAccount(
-      TenantAdminAccountsRepositoryContractPrimString accountSlug) async {}
+    TenantAdminAccountsRepositoryContractPrimString accountSlug,
+  ) async {}
 }
 
 class _FakeTenantAdminAccountProfilesRepository
-    with TenantAdminProfileTypesPaginationMixin
-    implements TenantAdminAccountProfilesRepositoryContract {
+    extends TenantAdminAccountProfilesRepositoryContract
+    with TenantAdminProfileTypesPaginationMixin {
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async {
     return [
@@ -303,7 +304,7 @@ class _FakeTenantAdminAccountProfilesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminProfileTypeDefinition>>
-      fetchProfileTypesPage({
+  fetchProfileTypesPage({
     required TenantAdminAccountProfilesRepoInt page,
     required TenantAdminAccountProfilesRepoInt pageSize,
   }) async {
@@ -329,12 +330,11 @@ class _FakeTenantAdminAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? accountId,
     TenantAdminAccountProfilesRepoBool? queryableOnly,
     TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
-  }) async =>
-      [];
+  }) async => [];
 
   @override
   Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-      fetchAccountProfilesPage({
+  fetchAccountProfilesPage({
     required TenantAdminAccountProfilesRepoInt page,
     required TenantAdminAccountProfilesRepoInt pageSize,
     TenantAdminAccountProfilesRepoString? search,
@@ -347,10 +347,7 @@ class _FakeTenantAdminAccountProfilesRepository
       queryableOnly: queryableOnly,
       excludeAccountProfileId: excludeAccountProfileId,
     );
-    return tenantAdminPagedResultFromRaw(
-      items: profiles,
-      hasMore: false,
-    );
+    return tenantAdminPagedResultFromRaw(items: profiles, hasMore: false);
   }
 
   @override
@@ -364,6 +361,19 @@ class _FakeTenantAdminAccountProfilesRepository
       displayName: 'Perfil',
     );
   }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+  fetchContactSourceCandidatesPage({
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
+  }) async => tenantAdminPagedResultFromRaw(
+    items: const <TenantAdminAccountProfile>[],
+    hasMore: false,
+    currentPage: page.value,
+    pageSize: pageSize.value,
+  );
 
   @override
   Future<TenantAdminAccountProfile> createAccountProfile({
@@ -381,6 +391,12 @@ class _FakeTenantAdminAccountProfilesRepository
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
         const <TenantAdminNestedProfileGroup>[],
+    BellugaContactSourceMode contactMode = BellugaContactSourceMode.own,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft> contactChannelDrafts =
+        const <BellugaContactChannelDraft>[],
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) async {
     return tenantAdminAccountProfileFromRaw(
       id: 'profile-1',
@@ -412,6 +428,11 @@ class _FakeTenantAdminAccountProfilesRepository
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
+    BellugaContactSourceMode? contactMode,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft>? contactChannelDrafts,
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) async {
     return tenantAdminAccountProfileFromRaw(
       id: accountProfileId,
@@ -437,7 +458,8 @@ class _FakeTenantAdminAccountProfilesRepository
 
   @override
   Future<void> deleteAccountProfile(
-      TenantAdminAccountProfilesRepoString accountProfileId) async {}
+    TenantAdminAccountProfilesRepoString accountProfileId,
+  ) async {}
 
   @override
   Future<TenantAdminAccountProfile> restoreAccountProfile(
@@ -453,7 +475,8 @@ class _FakeTenantAdminAccountProfilesRepository
 
   @override
   Future<void> forceDeleteAccountProfile(
-      TenantAdminAccountProfilesRepoString accountProfileId) async {}
+    TenantAdminAccountProfilesRepoString accountProfileId,
+  ) async {}
 
   @override
   Future<TenantAdminProfileTypeDefinition> createProfileType({
@@ -484,7 +507,8 @@ class _FakeTenantAdminAccountProfilesRepository
       type: type,
       label: label ?? 'Basico',
       allowedTaxonomies: allowedTaxonomies ?? [],
-      capabilities: capabilities ??
+      capabilities:
+          capabilities ??
           TenantAdminProfileTypeCapabilities(
             isFavoritable: TenantAdminFlagValue(false),
             isPoiEnabled: TenantAdminFlagValue(false),
@@ -500,7 +524,8 @@ class _FakeTenantAdminAccountProfilesRepository
 
   @override
   Future<void> deleteProfileType(
-      TenantAdminAccountProfilesRepoString type) async {}
+    TenantAdminAccountProfilesRepoString type,
+  ) async {}
 }
 
 class _FakeTenantAdminTaxonomiesRepository
@@ -522,7 +547,7 @@ class _FakeTenantAdminTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
-      fetchTaxonomiesPage({
+  fetchTaxonomiesPage({
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
   }) async {
@@ -559,7 +584,7 @@ class _FakeTenantAdminTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
-      fetchTermsPage({
+  fetchTermsPage({
     required TenantAdminTaxRepoString taxonomyId,
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,

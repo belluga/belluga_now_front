@@ -8,16 +8,16 @@ import '../type_utils.dart';
 
 class RepositoryJsonParsingForbiddenRule extends DartLintRule {
   RepositoryJsonParsingForbiddenRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'repository_json_parsing_forbidden',
-            problemMessage:
-                'Repositories cannot parse raw JSON or hydrate DTOs directly.',
-            correctionMessage:
-                'Treatments: keep raw response parsing in DAO; let repositories consume DTOs and mapper outputs only.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'repository_json_parsing_forbidden',
+          problemMessage:
+              'Repositories cannot parse raw JSON or hydrate DTOs directly.',
+          correctionMessage:
+              'Treatments: keep raw response parsing in DAO; let repositories consume DTOs and mapper outputs only.',
+        ),
+      );
 
   @override
   void run(
@@ -60,7 +60,8 @@ class RepositoryJsonParsingForbiddenRule extends DartLintRule {
         return;
       }
 
-      if (node.target?.toSource() != 'json' || node.methodName.name != 'decode') {
+      if (node.target?.toSource() != 'json' ||
+          node.methodName.name != 'decode') {
         return;
       }
 
@@ -74,8 +75,9 @@ class RepositoryJsonParsingForbiddenRule extends DartLintRule {
       return false;
     }
 
-    final targetTypeName =
-        normalizeTypeName(node.constructorName.type.toSource());
+    final targetTypeName = normalizeTypeName(
+      node.constructorName.type.toSource(),
+    );
     if (constructorName == 'fromMap' && targetTypeName == 'FormData') {
       return false;
     }

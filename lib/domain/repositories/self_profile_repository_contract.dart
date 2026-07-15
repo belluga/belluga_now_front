@@ -7,8 +7,9 @@ import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 abstract class SelfProfileRepositoryContract {
-  final currentProfileStreamValue =
-      StreamValue<SelfProfile?>(defaultValue: null);
+  final currentProfileStreamValue = StreamValue<SelfProfile?>(
+    defaultValue: null,
+  );
 
   Future<SelfProfile> fetchCurrentProfile();
 
@@ -16,6 +17,10 @@ abstract class SelfProfileRepositoryContract {
     final profile = await fetchCurrentProfile();
     currentProfileStreamValue.addValue(profile);
     return profile;
+  }
+
+  void clearCurrentIdentityState() {
+    currentProfileStreamValue.addValue(null);
   }
 
   Future<SelfProfile> updateCurrentProfile({

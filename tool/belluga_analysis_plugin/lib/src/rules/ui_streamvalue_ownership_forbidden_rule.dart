@@ -9,16 +9,16 @@ import '../type_utils.dart';
 
 class UiStreamValueOwnershipForbiddenRule extends DartLintRule {
   UiStreamValueOwnershipForbiddenRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'ui_streamvalue_ownership_forbidden',
-            problemMessage:
-                'UI files must not own StreamValue/StreamController instances.',
-            correctionMessage:
-                'Treatments: move stream ownership to feature controller and expose read-only stream/value to UI.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'ui_streamvalue_ownership_forbidden',
+          problemMessage:
+              'UI files must not own StreamValue/StreamController instances.',
+          correctionMessage:
+              'Treatments: move stream ownership to feature controller and expose read-only stream/value to UI.',
+        ),
+      );
 
   @override
   void run(

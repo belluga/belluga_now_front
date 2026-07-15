@@ -1,6 +1,3 @@
-// ignore_for_file: deprecated_member_use
-import 'package:analyzer/dart/ast/ast.dart';
-
 import 'package:belluga_analysis_plugin/src/compat/custom_lint_compat.dart';
 
 import '../path_utils.dart';
@@ -9,7 +6,7 @@ class DomainPagedResultTypeForbiddenRule extends DartLintRule {
   DomainPagedResultTypeForbiddenRule()
     : super(
         code: const LintCode(
-          errorSeverity: ErrorSeverity.WARNING,
+          errorSeverity: ErrorSeverity.warning,
           name: 'domain_paged_result_type_forbidden',
           problemMessage:
               'Public domain paged-result/envelope types are forbidden.',
@@ -38,7 +35,7 @@ class DomainPagedResultTypeForbiddenRule extends DartLintRule {
     }
 
     context.registry.addClassDeclaration((node) {
-      if (_matchesForbiddenPagedName(node.name.lexeme)) {
+      if (_matchesForbiddenPagedName(node.namePart.typeName.lexeme)) {
         reporter.atNode(node, code);
       }
     });

@@ -113,28 +113,27 @@ void main() {
     },
   );
 
-  testWidgets(
-    'initial loading is finalized when first page fetch fails',
-    (tester) async {
-      final scheduleRepository = _FakeScheduleRepository()
-        ..failOnPageFetch = true;
-      final controller = _buildEventSearchController(
-        scheduleRepository: scheduleRepository,
-        userEventsRepository: _FakeUserEventsRepository(),
-        invitesRepository: _FakeInvitesRepository(),
-        userLocationRepository: _FakeUserLocationRepository(),
-        appDataRepository: _FakeAppDataRepository(_buildAppData()),
-      );
+  testWidgets('initial loading is finalized when first page fetch fails', (
+    tester,
+  ) async {
+    final scheduleRepository = _FakeScheduleRepository()
+      ..failOnPageFetch = true;
+    final controller = _buildEventSearchController(
+      scheduleRepository: scheduleRepository,
+      userEventsRepository: _FakeUserEventsRepository(),
+      invitesRepository: _FakeInvitesRepository(),
+      userLocationRepository: _FakeUserLocationRepository(),
+      appDataRepository: _FakeAppDataRepository(_buildAppData()),
+    );
 
-      await controller.init();
+    await controller.init();
 
-      expect(controller.isInitialLoadingStreamValue.value, isFalse);
-      expect(controller.displayedEventsStreamValue.value, isEmpty);
+    expect(controller.isInitialLoadingStreamValue.value, isFalse);
+    expect(controller.displayedEventsStreamValue.value, isEmpty);
 
-      controller.onDispose();
-      scheduleRepository.dispose();
-    },
-  );
+    controller.onDispose();
+    scheduleRepository.dispose();
+  });
 
   testWidgets(
     'does not fetch or subscribe stream when effective origin is missing',
@@ -145,8 +144,9 @@ void main() {
         userEventsRepository: _FakeUserEventsRepository(),
         invitesRepository: _FakeInvitesRepository(),
         userLocationRepository: _FakeUserLocationRepository(),
-        appDataRepository:
-            _FakeAppDataRepository(_buildAppData(includeDefaultOrigin: false)),
+        appDataRepository: _FakeAppDataRepository(
+          _buildAppData(includeDefaultOrigin: false),
+        ),
       );
 
       await controller.init();
@@ -161,38 +161,37 @@ void main() {
     },
   );
 
-  testWidgets(
-    'uses tenant default origin when cached user location is stale',
-    (tester) async {
-      final scheduleRepository = _FakeScheduleRepository();
-      final locationRepository = _FakeUserLocationRepository()
-        ..userLocationStreamValue.addValue(
-          CityCoordinate(
-            latitudeValue: LatitudeValue()..parse('-23.550520'),
-            longitudeValue: LongitudeValue()..parse('-46.633308'),
-          ),
-        )
-        ..lastKnownCapturedAtStreamValue.addValue(
-          DateTime.now().subtract(const Duration(hours: 2)),
-        );
-      final controller = _buildEventSearchController(
-        scheduleRepository: scheduleRepository,
-        userEventsRepository: _FakeUserEventsRepository(),
-        invitesRepository: _FakeInvitesRepository(),
-        userLocationRepository: locationRepository,
-        appDataRepository: _FakeAppDataRepository(_buildAppData()),
+  testWidgets('uses tenant default origin when cached user location is stale', (
+    tester,
+  ) async {
+    final scheduleRepository = _FakeScheduleRepository();
+    final locationRepository = _FakeUserLocationRepository()
+      ..userLocationStreamValue.addValue(
+        CityCoordinate(
+          latitudeValue: LatitudeValue()..parse('-23.550520'),
+          longitudeValue: LongitudeValue()..parse('-46.633308'),
+        ),
+      )
+      ..lastKnownCapturedAtStreamValue.addValue(
+        DateTime.now().subtract(const Duration(hours: 2)),
       );
+    final controller = _buildEventSearchController(
+      scheduleRepository: scheduleRepository,
+      userEventsRepository: _FakeUserEventsRepository(),
+      invitesRepository: _FakeInvitesRepository(),
+      userLocationRepository: locationRepository,
+      appDataRepository: _FakeAppDataRepository(_buildAppData()),
+    );
 
-      await controller.init();
+    await controller.init();
 
-      expect(scheduleRepository.getEventsPageCallCount, 1);
-      expect(scheduleRepository.lastOriginLat, closeTo(-20.671339, 0.000001));
-      expect(scheduleRepository.lastOriginLng, closeTo(-40.495395, 0.000001));
+    expect(scheduleRepository.getEventsPageCallCount, 1);
+    expect(scheduleRepository.lastOriginLat, closeTo(-20.671339, 0.000001));
+    expect(scheduleRepository.lastOriginLng, closeTo(-40.495395, 0.000001));
 
-      controller.onDispose();
-      scheduleRepository.dispose();
-    },
-  );
+    controller.onDispose();
+    scheduleRepository.dispose();
+  });
 
   testWidgets(
     'agenda system back falls back to profile when no history exists',
@@ -208,8 +207,11 @@ void main() {
       GetIt.I.registerSingleton<EventSearchScreenController>(controller);
       final router = _RecordingStackRouter()..canPopResult = false;
 
-      await _pumpEventSearchScreen(tester,
-          controller: controller, router: router);
+      await _pumpEventSearchScreen(
+        tester,
+        controller: controller,
+        router: router,
+      );
 
       final popScope = tester.widget<PopScope<dynamic>>(
         find.byWidgetPredicate((widget) => widget is PopScope),
@@ -221,7 +223,9 @@ void main() {
       expect(router.popCallCount, 0);
       expect(router.replaceAllRoutes, hasLength(1));
       expect(
-          router.replaceAllRoutes.single.single.routeName, ProfileRoute.name);
+        router.replaceAllRoutes.single.single.routeName,
+        ProfileRoute.name,
+      );
     },
   );
 
@@ -239,8 +243,11 @@ void main() {
       GetIt.I.registerSingleton<EventSearchScreenController>(controller);
       final router = _RecordingStackRouter()..canPopResult = false;
 
-      await _pumpEventSearchScreen(tester,
-          controller: controller, router: router);
+      await _pumpEventSearchScreen(
+        tester,
+        controller: controller,
+        router: router,
+      );
 
       await tester.tap(find.byIcon(Icons.arrow_back).first);
       await tester.pumpAndSettle();
@@ -249,7 +256,9 @@ void main() {
       expect(router.popCallCount, 0);
       expect(router.replaceAllRoutes, hasLength(1));
       expect(
-          router.replaceAllRoutes.single.single.routeName, ProfileRoute.name);
+        router.replaceAllRoutes.single.single.routeName,
+        ProfileRoute.name,
+      );
     },
   );
 
@@ -267,8 +276,11 @@ void main() {
       GetIt.I.registerSingleton<EventSearchScreenController>(controller);
       final router = _RecordingStackRouter()..canPopResult = true;
 
-      await _pumpEventSearchScreen(tester,
-          controller: controller, router: router);
+      await _pumpEventSearchScreen(
+        tester,
+        controller: controller,
+        router: router,
+      );
 
       await tester.tap(find.byIcon(Icons.arrow_back).first);
       await tester.pumpAndSettle();
@@ -300,10 +312,14 @@ void main() {
       await tester.pump();
 
       expect(telemetryRepository.events, hasLength(1));
-      expect(telemetryRepository.events.single.event,
-          EventTrackerEvents.selectItem);
       expect(
-          telemetryRepository.events.single.eventName, 'agenda_radius_changed');
+        telemetryRepository.events.single.event,
+        EventTrackerEvents.selectItem,
+      );
+      expect(
+        telemetryRepository.events.single.eventName,
+        'agenda_radius_changed',
+      );
       expect(telemetryRepository.events.single.properties, <String, dynamic>{
         'surface': 'agenda',
         'previous_radius_meters': 5000,
@@ -388,10 +404,7 @@ void main() {
               controller: controller.scrollController,
               itemCount: 40,
               itemBuilder: (context, index) {
-                return SizedBox(
-                  height: 72,
-                  child: Text('row $index'),
-                );
+                return SizedBox(height: 72, child: Text('row $index'));
               },
             ),
           ),
@@ -412,58 +425,57 @@ void main() {
     },
   );
 
-  testWidgets(
-    'agenda screen loads the next page when scrolled to the bottom',
-    (tester) async {
-      final scheduleRepository = _FakeScheduleRepository()
-        ..eventSearchPages = [
-          List<EventModel>.generate(
-            14,
-            (index) => _buildScheduleEvent(
-              id: '507f1f77bcf86cd799439${(100 + index).toString()}',
-              title: 'Evento pagina um $index',
-              slug: 'evento-pagina-um-$index',
-              startAt: DateTime.utc(2026, 4, 15 + (index ~/ 3), 18, 0),
-            ),
+  testWidgets('agenda screen loads the next page when scrolled to the bottom', (
+    tester,
+  ) async {
+    final scheduleRepository = _FakeScheduleRepository()
+      ..eventSearchPages = [
+        List<EventModel>.generate(
+          14,
+          (index) => _buildScheduleEvent(
+            id: '507f1f77bcf86cd799439${(100 + index).toString()}',
+            title: 'Evento pagina um $index',
+            slug: 'evento-pagina-um-$index',
+            startAt: DateTime.utc(2026, 4, 15 + (index ~/ 3), 18, 0),
           ),
-          [
-            _buildScheduleEvent(
-              id: '507f1f77bcf86cd799439220',
-              title: 'Evento pagina dois',
-              slug: 'evento-pagina-dois',
-              startAt: DateTime.utc(2026, 4, 22, 18, 0),
-            ),
-          ],
-        ];
-      final controller = _buildEventSearchController(
-        scheduleRepository: scheduleRepository,
-        userEventsRepository: _FakeUserEventsRepository(),
-        invitesRepository: _FakeInvitesRepository(),
-        userLocationRepository: _FakeUserLocationRepository(),
-        appDataRepository: _FakeAppDataRepository(_buildAppData()),
-      );
-      GetIt.I.registerSingleton<EventSearchScreenController>(controller);
-      final router = _RecordingStackRouter();
+        ),
+        [
+          _buildScheduleEvent(
+            id: '507f1f77bcf86cd799439220',
+            title: 'Evento pagina dois',
+            slug: 'evento-pagina-dois',
+            startAt: DateTime.utc(2026, 4, 22, 18, 0),
+          ),
+        ],
+      ];
+    final controller = _buildEventSearchController(
+      scheduleRepository: scheduleRepository,
+      userEventsRepository: _FakeUserEventsRepository(),
+      invitesRepository: _FakeInvitesRepository(),
+      userLocationRepository: _FakeUserLocationRepository(),
+      appDataRepository: _FakeAppDataRepository(_buildAppData()),
+    );
+    GetIt.I.registerSingleton<EventSearchScreenController>(controller);
+    final router = _RecordingStackRouter();
 
-      await _pumpEventSearchScreen(
-        tester,
-        controller: controller,
-        router: router,
-      );
-      await tester.pumpAndSettle();
+    await _pumpEventSearchScreen(
+      tester,
+      controller: controller,
+      router: router,
+    );
+    await tester.pumpAndSettle();
 
-      expect(scheduleRepository.loadMoreEventSearchCallCount, 0);
+    expect(scheduleRepository.loadMoreEventSearchCallCount, 0);
 
-      await tester.drag(find.byType(Scrollable).first, const Offset(0, -2200));
-      await tester.pump();
-      await tester.pump();
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -2200));
+    await tester.pump();
+    await tester.pump();
 
-      expect(scheduleRepository.loadMoreEventSearchCallCount, 1);
+    expect(scheduleRepository.loadMoreEventSearchCallCount, 1);
 
-      controller.onDispose();
-      scheduleRepository.dispose();
-    },
-  );
+    controller.onDispose();
+    scheduleRepository.dispose();
+  });
 
   testWidgets(
     'invite filter cycles pending received invites separately from confirmed occurrences',
@@ -536,7 +548,9 @@ void main() {
       await tester.pump();
 
       expect(
-          controller.inviteFilterStreamValue.value, InviteFilter.pendingOnly);
+        controller.inviteFilterStreamValue.value,
+        InviteFilter.pendingOnly,
+      );
       expect(scheduleRepository.lastOccurrenceIds, ['occ-pending']);
       expect(
         controller.displayedEventsStreamValue.value.map((event) => event.title),
@@ -707,9 +721,7 @@ Future<void> _pumpEventSearchScreen(
     route: _FakeRouteMatch(
       name: EventSearchRoute.name,
       fullPath: '/agenda',
-      meta: canonicalRouteMeta(
-        family: CanonicalRouteFamily.eventSearch,
-      ),
+      meta: canonicalRouteMeta(family: CanonicalRouteFamily.eventSearch),
     ),
     router: router,
     stackKey: const ValueKey('stack'),
@@ -757,11 +769,7 @@ EventSearchScreenController _buildEventSearchController({
 
 AppData _buildAppData({bool includeDefaultOrigin = true}) {
   final mapUi = <String, dynamic>{
-    'radius': {
-      'min_km': 1,
-      'default_km': 5,
-      'max_km': 50,
-    },
+    'radius': {'min_km': 1, 'default_km': 5, 'max_km': 50},
   };
   if (includeDefaultOrigin) {
     mapUi['default_origin'] = const {
@@ -780,10 +788,7 @@ AppData _buildAppData({bool includeDefaultOrigin = true}) {
         'type': 'artist',
         'label': 'Artist',
         'allowed_taxonomies': [],
-        'capabilities': {
-          'is_favoritable': true,
-          'is_poi_enabled': false,
-        },
+        'capabilities': {'is_favoritable': true, 'is_poi_enabled': false},
       },
     ],
     'domains': const ['https://tenant.test'],
@@ -798,9 +803,7 @@ AppData _buildAppData({bool includeDefaultOrigin = true}) {
     'telemetry_context': const {'location_freshness_minutes': 5},
     'firebase': null,
     'push': null,
-    'settings': {
-      'map_ui': mapUi,
-    },
+    'settings': {'map_ui': mapUi},
   };
 
   final localInfo = {
@@ -812,7 +815,9 @@ AppData _buildAppData({bool includeDefaultOrigin = true}) {
   };
 
   return buildAppDataFromInitialization(
-      remoteData: remoteData, localInfo: localInfo);
+    remoteData: remoteData,
+    localInfo: localInfo,
+  );
 }
 
 class _RecordingStackRouter extends Fake implements StackRouter {
@@ -870,8 +875,8 @@ class _FakeRouteMatch extends Fake implements RouteMatch {
     required this.meta,
     PageRouteInfo<dynamic>? pageRouteInfo,
     Map<String, dynamic> queryParams = const {},
-  })  : pageRouteInfo = pageRouteInfo ?? EventSearchRoute(),
-        _queryParams = Parameters(queryParams);
+  }) : pageRouteInfo = pageRouteInfo ?? EventSearchRoute(),
+       _queryParams = Parameters(queryParams);
 
   @override
   final String name;
@@ -931,14 +936,12 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
     EventTrackerEvents event, {
     TelemetryRepositoryContractPrimString? eventName,
     TelemetryRepositoryContractPrimMap? properties,
-  }) async =>
-      null;
+  }) async => null;
 
   @override
   Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
     EventTrackerTimedEventHandle handle,
-  ) async =>
-      telemetryRepoBool(true);
+  ) async => telemetryRepoBool(true);
 
   @override
   Future<TelemetryRepositoryContractPrimBool> flushTimedEvents() async =>
@@ -947,8 +950,7 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
   @override
   Future<TelemetryRepositoryContractPrimBool> mergeIdentity({
     required TelemetryRepositoryContractPrimString previousUserId,
-  }) async =>
-      telemetryRepoBool(true);
+  }) async => telemetryRepoBool(true);
 
   @override
   void setScreenContext(TelemetryRepositoryContractPrimMap? screenContext) {}
@@ -959,10 +961,12 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
 
 class _FakeAppDataRepository extends AppDataRepositoryContract {
   _FakeAppDataRepository(this._appData)
-      : maxRadiusMetersStreamValue = StreamValue<DistanceInMetersValue>(
-            defaultValue: DistanceInMetersValue.fromRaw(
-                _appData.mapRadiusMaxMeters,
-                defaultValue: _appData.mapRadiusMaxMeters));
+    : maxRadiusMetersStreamValue = StreamValue<DistanceInMetersValue>(
+        defaultValue: DistanceInMetersValue.fromRaw(
+          _appData.mapRadiusMaxMeters,
+          defaultValue: _appData.mapRadiusMaxMeters,
+        ),
+      );
 
   final AppData _appData;
 
@@ -973,8 +977,9 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
   Future<void> init() async {}
 
   @override
-  final StreamValue<ThemeMode?> themeModeStreamValue =
-      StreamValue<ThemeMode?>(defaultValue: ThemeMode.light);
+  final StreamValue<ThemeMode?> themeModeStreamValue = StreamValue<ThemeMode?>(
+    defaultValue: ThemeMode.light,
+  );
 
   @override
   ThemeMode get themeMode => themeModeStreamValue.value ?? ThemeMode.light;
@@ -1094,8 +1099,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   Future<EventModel?> getEventBySlug(
     ScheduleRepoString slug, {
     ScheduleRepoString? occurrenceId,
-  }) async =>
-      null;
+  }) async => null;
 
   Future<List<EventModel>> _fetchPage({
     required int page,
@@ -1153,17 +1157,16 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     ScheduleRepoDouble? originLat,
     ScheduleRepoDouble? originLng,
     ScheduleRepoDouble? maxDistanceMeters,
-  }) async =>
-      _fetchPage(
-        page: 1,
-        showPastOnly: showPastOnly,
-        searchQuery: searchQuery,
-        confirmedOnly: confirmedOnly,
-        occurrenceIds: occurrenceIds,
-        originLat: originLat,
-        originLng: originLng,
-        maxDistanceMeters: maxDistanceMeters,
-      );
+  }) async => _fetchPage(
+    page: 1,
+    showPastOnly: showPastOnly,
+    searchQuery: searchQuery,
+    confirmedOnly: confirmedOnly,
+    occurrenceIds: occurrenceIds,
+    originLat: originLat,
+    originLng: originLng,
+    maxDistanceMeters: maxDistanceMeters,
+  );
 
   @override
   Future<List<EventModel>> loadMoreEventSearch({
@@ -1191,8 +1194,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   @override
   Future<List<EventModel>> loadConfirmedEvents({
     required ScheduleRepoBool showPastOnly,
-  }) async =>
-      const <EventModel>[];
+  }) async => const <EventModel>[];
 
   @override
   Future<void> refreshDiscoveryLiveNowEvents({
@@ -1335,10 +1337,10 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   List<InviteModel> fetchedInvites = const <InviteModel>[];
 
   @override
-  Future<List<InviteModel>> fetchInvites(
-          {InvitesRepositoryContractPrimInt? page,
-          InvitesRepositoryContractPrimInt? pageSize}) async =>
-      fetchedInvites;
+  Future<List<InviteModel>> fetchInvites({
+    InvitesRepositoryContractPrimInt? page,
+    InvitesRepositoryContractPrimInt? pageSize,
+  }) async => fetchedInvites;
 
   @override
   Future<InviteRuntimeSettings> fetchSettings() async =>
@@ -1351,72 +1353,78 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteAcceptResult> acceptInvite(
-          InvitesRepositoryContractPrimString inviteId) async =>
-      buildInviteAcceptResult(
-        inviteId: inviteId.value,
-        status: 'accepted',
-        creditedAcceptance: true,
-        attendancePolicy: 'free_confirmation_only',
-        nextStep: InviteNextStep.freeConfirmationCreated,
-        supersededInviteIds: const [],
-      );
+    InvitesRepositoryContractPrimString inviteId,
+  ) async => buildInviteAcceptResult(
+    inviteId: inviteId.value,
+    status: 'accepted',
+    creditedAcceptance: true,
+    attendancePolicy: 'free_confirmation_only',
+    nextStep: InviteNextStep.freeConfirmationCreated,
+    supersededInviteIds: const [],
+  );
 
   @override
   Future<InviteAcceptResult> acceptInviteByCode(
-          InvitesRepositoryContractPrimString code) async =>
-      buildInviteAcceptResult(
-        inviteId: 'mock-${code.value}',
-        status: 'accepted',
-        creditedAcceptance: true,
-        attendancePolicy: 'free_confirmation_only',
-        nextStep: InviteNextStep.freeConfirmationCreated,
-        supersededInviteIds: const [],
-      );
+    InvitesRepositoryContractPrimString code,
+  ) async => buildInviteAcceptResult(
+    inviteId: 'mock-${code.value}',
+    status: 'accepted',
+    creditedAcceptance: true,
+    attendancePolicy: 'free_confirmation_only',
+    nextStep: InviteNextStep.freeConfirmationCreated,
+    supersededInviteIds: const [],
+  );
 
   @override
   Future<InviteDeclineResult> declineInvite(
-          InvitesRepositoryContractPrimString inviteId) async =>
-      buildInviteDeclineResult(
-        inviteId: inviteId.value,
-        status: 'declined',
-        groupHasOtherPending: false,
-      );
+    InvitesRepositoryContractPrimString inviteId,
+  ) async => buildInviteDeclineResult(
+    inviteId: inviteId.value,
+    status: 'declined',
+    groupHasOtherPending: false,
+  );
   @override
   Future<List<InviteContactMatch>> importContacts(
-          InviteContacts contacts) async =>
-      const [];
+    InviteContacts contacts,
+  ) async => const [];
 
   @override
   Future<InviteShareCodeResult> createShareCode({
     required InvitesRepositoryContractPrimString eventId,
     InvitesRepositoryContractPrimString? occurrenceId,
     InvitesRepositoryContractPrimString? accountProfileId,
-  }) async =>
-      buildInviteShareCodeResult(
-        code: 'CODE123',
-        eventId: eventId.value,
-        occurrenceId: occurrenceId?.value ?? 'occurrence-1',
-      );
+  }) async => buildInviteShareCodeResult(
+    code: 'CODE123',
+    eventId: eventId.value,
+    occurrenceId: occurrenceId?.value ?? 'occurrence-1',
+  );
 
   @override
   Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
-      InvitesRepositoryContractPrimString eventSlug) async {
+    InvitesRepositoryContractPrimString eventSlug,
+  ) async {
     return const [];
   }
 
   @override
-  Future<void> sendInvites(InvitesRepositoryContractPrimString eventSlug,
-      InviteRecipients recipients,
-      {InvitesRepositoryContractPrimString? occurrenceId,
-      InvitesRepositoryContractPrimString? message}) async {}
+  Future<void> sendInvites(
+    InvitesRepositoryContractPrimString eventSlug,
+    InviteRecipients recipients, {
+    InvitesRepositoryContractPrimString? occurrenceId,
+    InvitesRepositoryContractPrimString? message,
+  }) async {}
 }
 
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   @override
+  void clearCurrentIdentityState() {}
+
+  @override
   final StreamValue<Set<UserEventsRepositoryContractPrimString>>
-      confirmedOccurrenceIdsStream =
+  confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(
-          defaultValue: const {});
+        defaultValue: const {},
+      );
 
   @override
   Future<void> confirmEventAttendance(
@@ -1432,8 +1440,8 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
 
   @override
   UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
-          UserEventsRepositoryContractPrimString eventId) =>
-      userEventsRepoBool(false, defaultValue: false, isRequired: true);
+    UserEventsRepositoryContractPrimString eventId,
+  ) => userEventsRepoBool(false, defaultValue: false, isRequired: true);
 
   @override
   Future<void> unconfirmEventAttendance(
@@ -1463,13 +1471,14 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
       StreamValue<double?>(defaultValue: null);
 
   @override
-  final StreamValue<String?> lastKnownAddressStreamValue =
-      StreamValue<String?>(defaultValue: null);
+  final StreamValue<String?> lastKnownAddressStreamValue = StreamValue<String?>(
+    defaultValue: null,
+  );
 
   @override
   @override
   final StreamValue<LocationResolutionPhase>
-      locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
+  locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
     defaultValue: LocationResolutionPhase.unknown,
   );
 
@@ -1485,23 +1494,18 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   Future<bool> warmUpIfPermitted() async => false;
 
   @override
-  Future<bool> refreshIfPermitted({
-    Object? minInterval,
-  }) async =>
-      false;
+  Future<bool> refreshIfPermitted({Object? minInterval}) async => false;
 
   @override
   Future<String?> resolveUserLocation({
     Object? timeout,
     UserLocationRepositoryContractBoolValue? requestPermissionIfNeededValue,
-  }) async =>
-      null;
+  }) async => null;
 
   @override
   Future<bool> startTracking({
     LocationTrackingMode mode = LocationTrackingMode.mapForeground,
-  }) async =>
-      false;
+  }) async => false;
 
   @override
   Future<void> stopTracking() async {}

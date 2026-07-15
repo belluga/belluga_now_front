@@ -9,10 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
-typedef ImmersiveHeroContentBuilder = Widget Function(
-  BuildContext context,
-  ValueChanged<int> activateTab,
-);
+typedef ImmersiveHeroContentBuilder =
+    Widget Function(BuildContext context, ValueChanged<int> activateTab);
 
 /// Generic immersive detail screen with hero content, tabs, and dynamic footer.
 ///
@@ -34,6 +32,7 @@ class ImmersiveDetailScreen extends StatefulWidget {
     this.betweenHeroAndTabs,
     this.initialTabIndex = 0,
     this.footer,
+    this.floatingActionButton,
     this.collapsedTitle,
     this.collapsedToolbarHeight = kToolbarHeight,
     this.centerCollapsedTitle = true,
@@ -44,14 +43,14 @@ class ImmersiveDetailScreen extends StatefulWidget {
     this.shareIcon = Icons.share,
     this.isShareLoading = false,
     super.key,
-  })  : assert(
-          heroContent != null || heroContentBuilder != null,
-          'Either heroContent or heroContentBuilder must be provided.',
-        ),
-        assert(
-          heroViewportHeightFactor > 0 && heroViewportHeightFactor <= 1,
-          'heroViewportHeightFactor must be greater than 0 and at most 1.',
-        );
+  }) : assert(
+         heroContent != null || heroContentBuilder != null,
+         'Either heroContent or heroContentBuilder must be provided.',
+       ),
+       assert(
+         heroViewportHeightFactor > 0 && heroViewportHeightFactor <= 1,
+         'heroViewportHeightFactor must be greater than 0 and at most 1.',
+       );
 
   /// Widget displayed in the hero area (typically an image or custom content)
   final Widget? heroContent;
@@ -83,6 +82,13 @@ class ImmersiveDetailScreen extends StatefulWidget {
   /// Individual tabs can override this with their own footer
   final Widget? footer;
 
+  /// Optional action rendered by the shared [Scaffold].
+  ///
+  /// The Scaffold's standard [FloatingActionButtonLocation.endFloat] placement
+  /// keeps this action above the active footer without coupling it to any tab
+  /// CTA ownership.
+  final Widget? floatingActionButton;
+
   /// Optional gate that decides whether the active tab footer may replace the
   /// screen-level default footer.
   final bool Function(int currentTabIndex)? canUseTabFooter;
@@ -106,7 +112,7 @@ class ImmersiveDetailScreen extends StatefulWidget {
   /// Optional builder for screen-specific app bar actions that should live in
   /// the same overlay plane as the built-in share action.
   final List<Widget> Function(BuildContext context, bool innerBoxIsScrolled)?
-      appBarActionsBuilder;
+  appBarActionsBuilder;
 
   /// Optional share handler for surfaces that expose a canonical public share.
   final VoidCallback? onSharePressed;
@@ -142,7 +148,8 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
   @override
   void didUpdateWidget(covariant ImmersiveDetailScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final tabsChanged = !identical(oldWidget.tabs, widget.tabs) ||
+    final tabsChanged =
+        !identical(oldWidget.tabs, widget.tabs) ||
         oldWidget.tabs.length != widget.tabs.length ||
         !listEquals(
           oldWidget.tabs.map((t) => t.title).toList(),
@@ -199,6 +206,7 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
     return RouteBackScope(
       backPolicy: widget.backPolicy,
       child: Scaffold(
+        floatingActionButton: widget.floatingActionButton,
         // Use LayoutBuilder to get the exact available height for the body
         // This accounts for the Scaffold's bottomNavigationBar (footer) automatically
         body: LayoutBuilder(
@@ -207,7 +215,8 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
             final availableHeight = constraints.maxHeight;
 
             // The height of the pinned header (StatusBar + AppBar + Tabs)
-            final pinnedHeaderHeight = MediaQuery.of(context).padding.top +
+            final pinnedHeaderHeight =
+                MediaQuery.of(context).padding.top +
                 widget.collapsedToolbarHeight +
                 48.0;
             _controller.updatePinnedHeaderHeight(pinnedHeaderHeight);
@@ -252,11 +261,12 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
                       builder: (context, constraints) {
                         final collapseDistance =
                             appBarExpandedHeight - minimumHeroHeight;
-                        final collapsedChromeThreshold =
-                            collapseDistance <= 0 ? 0.0 : collapseDistance;
+                        final collapsedChromeThreshold = collapseDistance <= 0
+                            ? 0.0
+                            : collapseDistance;
                         final isHeroChromeCollapsed =
                             constraints.scrollOffset >=
-                                collapsedChromeThreshold;
+                            collapsedChromeThreshold;
 
                         return SliverAppBar(
                           expandedHeight: appBarExpandedHeight,
@@ -266,22 +276,24 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
                           backgroundColor: colorScheme.surface,
                           title: isHeroChromeCollapsed
                               ? widget.collapsedTitle ??
-                                  Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: Text(
-                                      key: const Key('immersiveCollapsedTitle'),
-                                      widget.title,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleMedium
-                                          ?.copyWith(
-                                            color: colorScheme.onSurface,
-                                            fontWeight: FontWeight.w800,
-                                          ),
-                                    ),
-                                  )
+                                    Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: Text(
+                                        key: const Key(
+                                          'immersiveCollapsedTitle',
+                                        ),
+                                        widget.title,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium
+                                            ?.copyWith(
+                                              color: colorScheme.onSurface,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                      ),
+                                    )
                               : null,
                           centerTitle: widget.centerCollapsedTitle,
                           leading: _buildAppBarActionButton(
@@ -289,10 +301,7 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
                             icon: Icons.arrow_back,
                             innerBoxIsScrolled: isHeroChromeCollapsed,
                             tooltip: 'Voltar',
-                            padding: const EdgeInsets.only(
-                              left: 8,
-                              right: 4,
-                            ),
+                            padding: const EdgeInsets.only(left: 8, right: 4),
                             onPressed: widget.backPolicy.handleBack,
                           ),
                           actions: [
@@ -321,7 +330,8 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
                                   top: 0,
                                   left: 0,
                                   right: 0,
-                                  height: mediaQuery.padding.top +
+                                  height:
+                                      mediaQuery.padding.top +
                                       widget.collapsedToolbarHeight,
                                   child: ColoredBox(
                                     key: const Key(
@@ -367,23 +377,22 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
                     ),
                     // Optional content between hero and tabs
                     if (widget.betweenHeroAndTabs != null)
-                      SliverToBoxAdapter(
-                        child: widget.betweenHeroAndTabs,
-                      ),
+                      SliverToBoxAdapter(child: widget.betweenHeroAndTabs),
                     StreamValueBuilder<int>(
-                        streamValue: _controller.currentTabIndexStreamValue,
-                        builder: (context, currentTabIndex) {
-                          return SliverPersistentHeader(
-                            pinned: true,
-                            delegate: ImmersiveHeaderDelegate(
-                              tabs: widget.tabs.map((t) => t.title).toList(),
-                              currentTabIndex: currentTabIndex,
-                              onTabTapped: _controller.onTabTapped,
-                              colorScheme: colorScheme,
-                              topPadding: 0,
-                            ),
-                          );
-                        }),
+                      streamValue: _controller.currentTabIndexStreamValue,
+                      builder: (context, currentTabIndex) {
+                        return SliverPersistentHeader(
+                          pinned: true,
+                          delegate: ImmersiveHeaderDelegate(
+                            tabs: widget.tabs.map((t) => t.title).toList(),
+                            currentTabIndex: currentTabIndex,
+                            onTabTapped: _controller.onTabTapped,
+                            colorScheme: colorScheme,
+                            topPadding: 0,
+                          ),
+                        );
+                      },
+                    ),
                   ];
                 },
                 body: SingleChildScrollView(
@@ -395,7 +404,9 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
                         key: Key('tab_visibility_$index'),
                         onVisibilityChanged: (info) {
                           _controller.onTabVisibilityChanged(
-                              index, info.visibleFraction);
+                            index,
+                            info.visibleFraction,
+                          );
                         },
                         child: Container(
                           key: _controller.tabItems[index].key,
@@ -415,24 +426,25 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
           },
         ),
         bottomNavigationBar: StreamValueBuilder<int>(
-            streamValue: _controller.currentTabIndexStreamValue,
-            builder: (context, currentTabIndex) {
-              if (_controller.tabItems.isEmpty) {
-                return const SizedBox.shrink();
-              }
+          streamValue: _controller.currentTabIndexStreamValue,
+          builder: (context, currentTabIndex) {
+            if (_controller.tabItems.isEmpty) {
+              return const SizedBox.shrink();
+            }
 
-              final safeIndex = currentTabIndex.clamp(
-                0,
-                _controller.tabItems.length - 1,
-              );
-              final tabFooter = _controller.tabItems[safeIndex].footer;
-              final canUseTabFooter =
-                  widget.canUseTabFooter?.call(safeIndex) ?? true;
+            final safeIndex = currentTabIndex.clamp(
+              0,
+              _controller.tabItems.length - 1,
+            );
+            final tabFooter = _controller.tabItems[safeIndex].footer;
+            final canUseTabFooter =
+                widget.canUseTabFooter?.call(safeIndex) ?? true;
 
-              return (canUseTabFooter ? tabFooter : null) ??
-                  widget.footer ??
-                  const SizedBox.shrink();
-            }),
+            return (canUseTabFooter ? tabFooter : null) ??
+                widget.footer ??
+                const SizedBox.shrink();
+          },
+        ),
       ),
     );
   }

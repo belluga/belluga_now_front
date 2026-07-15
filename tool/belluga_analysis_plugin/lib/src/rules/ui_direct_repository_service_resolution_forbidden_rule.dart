@@ -8,16 +8,16 @@ import '../type_utils.dart';
 
 class UiDirectRepositoryServiceResolutionForbiddenRule extends DartLintRule {
   UiDirectRepositoryServiceResolutionForbiddenRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'ui_direct_repository_service_resolution_forbidden',
-            problemMessage:
-                'UI files cannot resolve repository/service/DAO/DTO/backend types directly.',
-            correctionMessage:
-                'Treatments: replace repository/service resolution in UI with feature-controller API calls.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'ui_direct_repository_service_resolution_forbidden',
+          problemMessage:
+              'UI files cannot resolve repository/service/DAO/DTO/backend types directly.',
+          correctionMessage:
+              'Treatments: replace repository/service resolution in UI with feature-controller API calls.',
+        ),
+      );
 
   @override
   void run(

@@ -43,6 +43,9 @@ import 'package:belluga_now/testing/invite_model_factory.dart';
 import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 
 class _FakeContactsRepository implements ContactsRepositoryContract {
+  @override
+  Future<void> clearCurrentIdentityState() async {}
+
   _FakeContactsRepository({
     this.throwOnRequestPermission = false,
     this.contacts = const <ContactModel>[],

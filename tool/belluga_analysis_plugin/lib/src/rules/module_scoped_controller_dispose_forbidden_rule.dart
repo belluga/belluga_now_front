@@ -9,7 +9,7 @@ class ModuleScopedControllerDisposeForbiddenRule extends DartLintRule {
   ModuleScopedControllerDisposeForbiddenRule()
     : super(
         code: const LintCode(
-          errorSeverity: ErrorSeverity.WARNING,
+          errorSeverity: ErrorSeverity.warning,
           name: 'module_scoped_controller_dispose_forbidden',
           problemMessage:
               'Widgets/screens must not dispose module-scoped controllers.',

@@ -1,3 +1,4 @@
+import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:integration_test/integration_test.dart';
 import 'dart:typed_data';
 
@@ -12,6 +13,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dar
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
@@ -396,8 +398,7 @@ class _FakeProfilesRepository
     TenantAdminAccountProfilesRepoString? accountId,
     TenantAdminAccountProfilesRepoBool? queryableOnly,
     TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
-  }) async =>
-      [];
+  }) async => [];
 
   @override
   Future<TenantAdminAccountProfile> fetchAccountProfile(
@@ -412,6 +413,19 @@ class _FakeProfilesRepository
       taxonomyTerms: const TenantAdminTaxonomyTerms.empty(),
     );
   }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+  fetchContactSourceCandidatesPage({
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
+  }) async => tenantAdminPagedResultFromRaw(
+    items: const <TenantAdminAccountProfile>[],
+    hasMore: false,
+    currentPage: page.value,
+    pageSize: pageSize.value,
+  );
 
   @override
   Future<TenantAdminAccountProfile> createAccountProfile({
@@ -429,6 +443,12 @@ class _FakeProfilesRepository
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
         const <TenantAdminNestedProfileGroup>[],
+    BellugaContactSourceMode contactMode = BellugaContactSourceMode.own,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft> contactChannelDrafts =
+        const <BellugaContactChannelDraft>[],
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) async {
     throw UnimplementedError();
   }
@@ -450,13 +470,19 @@ class _FakeProfilesRepository
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
+    BellugaContactSourceMode? contactMode,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft>? contactChannelDrafts,
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) async {
     throw UnimplementedError();
   }
 
   @override
   Future<void> deleteAccountProfile(
-      TenantAdminAccountProfilesRepoString accountProfileId) async {
+    TenantAdminAccountProfilesRepoString accountProfileId,
+  ) async {
     throw UnimplementedError();
   }
 
@@ -469,7 +495,8 @@ class _FakeProfilesRepository
 
   @override
   Future<void> forceDeleteAccountProfile(
-      TenantAdminAccountProfilesRepoString accountProfileId) async {
+    TenantAdminAccountProfilesRepoString accountProfileId,
+  ) async {
     throw UnimplementedError();
   }
 
@@ -528,7 +555,8 @@ class _FakeProfilesRepository
 
   @override
   Future<void> deleteProfileType(
-      TenantAdminAccountProfilesRepoString type) async {
+    TenantAdminAccountProfilesRepoString type,
+  ) async {
     throw UnimplementedError();
   }
 }
@@ -596,6 +624,5 @@ class _FakeTaxonomiesRepository
   @override
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
     required TenantAdminTaxRepoString taxonomyId,
-  }) async =>
-      [];
+  }) async => [];
 }

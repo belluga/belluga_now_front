@@ -6,13 +6,21 @@ DEFINES_FILE="${1:-}"
 
 cd "$ROOT_DIR"
 
-root_test_args=(--no-pub --exclude-tags=stage-compatibility)
+root_test_args=(--no-pub --exclude-tags=stage-compatibility --exclude-tags=golden)
 if [[ -n "$DEFINES_FILE" ]]; then
   root_test_args+=(--dart-define-from-file="$DEFINES_FILE")
 fi
 
-echo "INFO: Running root Flutter test suite"
-fvm flutter test "${root_test_args[@]}"
+echo "INFO: Running root Flutter functional test suite with Impeller"
+# The host's SkSL test backend cannot load the Vulkan-only Material ink shader.
+# Functional widget tests therefore run on Impeller, while visual golden tests
+# keep their SkSL baseline in the dedicated lane below. Neither surface is
+# skipped: every root test is included in exactly one renderer lane.
+fvm flutter test --enable-impeller "${root_test_args[@]}"
+
+echo "INFO: Running root Flutter golden test suite with SkSL baselines"
+fvm flutter test --no-pub \
+  test/presentation/tenant_admin/shared/tenant_admin_visual_regression_golden_test.dart
 
 while IFS= read -r package_dir; do
   [[ -d "$package_dir/test" ]] || continue

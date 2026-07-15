@@ -9,7 +9,7 @@ class RepositoryContractPaginationControlsForbiddenRule extends DartLintRule {
   RepositoryContractPaginationControlsForbiddenRule()
     : super(
         code: const LintCode(
-          errorSeverity: ErrorSeverity.WARNING,
+          errorSeverity: ErrorSeverity.warning,
           name: 'repository_contract_pagination_controls_forbidden',
           problemMessage:
               'Repository contract must not expose raw pagination controls or delegated pagination state.',
@@ -74,7 +74,6 @@ class RepositoryContractPaginationControlsForbiddenRule extends DartLintRule {
           FieldFormalParameter() => parameter.name.lexeme,
           SuperFormalParameter() => parameter.name.lexeme,
           FunctionTypedFormalParameter() => parameter.name.lexeme,
-          _ => null,
         };
 
         if (name == null || !_forbiddenParameterNames.contains(name)) {

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/application/proximity_preferences/account_profile_reference_point_resolver.dart';
 import 'package:belluga_now/application/rich_text/account_profile_rich_text_block.dart';
 import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
@@ -11,6 +12,7 @@ import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/partners/projections/value_objects/partner_projection_text_values.dart';
+import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/partners/services/partner_profile_config_builder.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
@@ -18,17 +20,16 @@ import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_state.dart';
 import 'package:belluga_now/presentation/shared/visuals/account_profile_visual_resolver.dart';
 import 'package:belluga_now/presentation/shared/visuals/resolved_account_profile_visual.dart';
+import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
-enum AccountProfileFavoriteToggleOutcome {
-  toggled,
-  requiresAuthentication,
-}
+enum AccountProfileFavoriteToggleOutcome { toggled, requiresAuthentication }
 
 class AccountProfileDetailController implements Disposable {
   AccountProfileDetailController({
@@ -38,50 +39,65 @@ class AccountProfileDetailController implements Disposable {
     UserEventsRepositoryContract? userEventsRepository,
     InvitesRepositoryContract? invitesRepository,
     ProximityPreferencesRepositoryContract? proximityPreferencesRepository,
-  })  : _accountProfilesRepository = accountProfilesRepository ??
-            GetIt.I.get<AccountProfilesRepositoryContract>(),
-        _profileConfigBuilder = profileConfigBuilder ??
-            (GetIt.I.isRegistered<PartnerProfileConfigBuilder>()
-                ? GetIt.I.get<PartnerProfileConfigBuilder>()
-                : PartnerProfileConfigBuilder()),
-        _authRepository = authRepository ??
-            (GetIt.I.isRegistered<AuthRepositoryContract>()
-                ? GetIt.I.get<AuthRepositoryContract>()
-                : null),
-        _userEventsRepository = userEventsRepository ??
-            (GetIt.I.isRegistered<UserEventsRepositoryContract>()
-                ? GetIt.I.get<UserEventsRepositoryContract>()
-                : null),
-        _invitesRepository = invitesRepository ??
-            (GetIt.I.isRegistered<InvitesRepositoryContract>()
-                ? GetIt.I.get<InvitesRepositoryContract>()
-                : null),
-        _proximityPreferencesRepository = proximityPreferencesRepository ??
-            (GetIt.I.isRegistered<ProximityPreferencesRepositoryContract>()
-                ? GetIt.I.get<ProximityPreferencesRepositoryContract>()
-                : null) {
+    TelemetryRepositoryContract? telemetryRepository,
+  }) : _accountProfilesRepository =
+           accountProfilesRepository ??
+           GetIt.I.get<AccountProfilesRepositoryContract>(),
+       _profileConfigBuilder =
+           profileConfigBuilder ??
+           (GetIt.I.isRegistered<PartnerProfileConfigBuilder>()
+               ? GetIt.I.get<PartnerProfileConfigBuilder>()
+               : PartnerProfileConfigBuilder()),
+       _authRepository =
+           authRepository ??
+           (GetIt.I.isRegistered<AuthRepositoryContract>()
+               ? GetIt.I.get<AuthRepositoryContract>()
+               : null),
+       _userEventsRepository =
+           userEventsRepository ??
+           (GetIt.I.isRegistered<UserEventsRepositoryContract>()
+               ? GetIt.I.get<UserEventsRepositoryContract>()
+               : null),
+       _invitesRepository =
+           invitesRepository ??
+           (GetIt.I.isRegistered<InvitesRepositoryContract>()
+               ? GetIt.I.get<InvitesRepositoryContract>()
+               : null),
+       _proximityPreferencesRepository =
+           proximityPreferencesRepository ??
+           (GetIt.I.isRegistered<ProximityPreferencesRepositoryContract>()
+               ? GetIt.I.get<ProximityPreferencesRepositoryContract>()
+               : null),
+       _telemetryRepository =
+           telemetryRepository ??
+           (GetIt.I.isRegistered<TelemetryRepositoryContract>()
+               ? GetIt.I.get<TelemetryRepositoryContract>()
+               : null) {
     _favoriteIdsSubscription = _accountProfilesRepository
-        .favoriteAccountProfileIdsStreamValue.stream
-        .listen(
-      (ids) {
-        favoriteIdsStreamValue.addValue(
-          ids.map((entry) => entry.value).toSet(),
-        );
-      },
-    );
+        .favoriteAccountProfileIdsStreamValue
+        .stream
+        .listen((ids) {
+          favoriteIdsStreamValue.addValue(
+            ids.map((entry) => entry.value).toSet(),
+          );
+        });
     favoriteIdsStreamValue.addValue(
       _accountProfilesRepository.favoriteAccountProfileIdsStreamValue.value
           .map((entry) => entry.value)
           .toSet(),
     );
-    _confirmedEventIdsSubscription =
-        _userEventsRepository?.confirmedOccurrenceIdsStream.stream.listen((_) {
-      _bumpAgendaStatusRevision();
-    });
-    _pendingInvitesSubscription =
-        _invitesRepository?.pendingInvitesStreamValue.stream.listen((_) {
-      _bumpAgendaStatusRevision();
-    });
+    _confirmedEventIdsSubscription = _userEventsRepository
+        ?.confirmedOccurrenceIdsStream
+        .stream
+        .listen((_) {
+          _bumpAgendaStatusRevision();
+        });
+    _pendingInvitesSubscription = _invitesRepository
+        ?.pendingInvitesStreamValue
+        .stream
+        .listen((_) {
+          _bumpAgendaStatusRevision();
+        });
   }
 
   final AccountProfilesRepositoryContract _accountProfilesRepository;
@@ -90,10 +106,11 @@ class AccountProfileDetailController implements Disposable {
   final UserEventsRepositoryContract? _userEventsRepository;
   final InvitesRepositoryContract? _invitesRepository;
   final ProximityPreferencesRepositoryContract? _proximityPreferencesRepository;
+  final TelemetryRepositoryContract? _telemetryRepository;
   StreamSubscription<Set<AccountProfilesRepositoryContractPrimString>>?
-      _favoriteIdsSubscription;
+  _favoriteIdsSubscription;
   StreamSubscription<Set<UserEventsRepositoryContractPrimString>>?
-      _confirmedEventIdsSubscription;
+  _confirmedEventIdsSubscription;
   StreamSubscription<dynamic>? _pendingInvitesSubscription;
 
   final _detailStateStreamValue = StreamValue<AccountProfileDetailState>(
@@ -102,17 +119,21 @@ class AccountProfileDetailController implements Disposable {
   StreamValue<AccountProfileDetailState> get detailStateStreamValue =>
       _detailStateStreamValue;
   final isLoadingStreamValue = StreamValue<bool>(defaultValue: false);
-  final favoriteIdsStreamValue =
-      StreamValue<Set<String>>(defaultValue: const {});
+  final favoriteIdsStreamValue = StreamValue<Set<String>>(
+    defaultValue: const {},
+  );
   StreamValue<Set<String>> get favoriteIdsStream => favoriteIdsStreamValue;
   final agendaStatusRevisionStreamValue = StreamValue<int>(defaultValue: 0);
   final errorMessageStreamValue = StreamValue<String>(defaultValue: '');
-  final profileConfigStreamValue =
-      StreamValue<PartnerProfileConfig?>(defaultValue: null);
-  final moduleDataStreamValue =
-      StreamValue<Map<ProfileModuleId, Object?>>(defaultValue: const {});
+  final profileConfigStreamValue = StreamValue<PartnerProfileConfig?>(
+    defaultValue: null,
+  );
+  final moduleDataStreamValue = StreamValue<Map<ProfileModuleId, Object?>>(
+    defaultValue: const {},
+  );
   final StreamValue<ProximityPreference?> _emptyProximityPreferenceStreamValue =
       StreamValue<ProximityPreference?>(defaultValue: null);
+  final Set<String> _contactBubbleImpressionKeys = <String>{};
 
   StreamValue<ProximityPreference?> get proximityPreferenceStreamValue =>
       _proximityPreferencesRepository?.proximityPreferenceStreamValue ??
@@ -121,13 +142,15 @@ class AccountProfileDetailController implements Disposable {
   bool get isAuthorized => _authRepository?.isAuthorized ?? false;
 
   Future<void> loadResolvedAccountProfile(
-      AccountProfileModel accountProfile) async {
+    AccountProfileModel accountProfile,
+  ) async {
     errorMessageStreamValue.addValue('');
     _detailStateStreamValue.addValue(
       AccountProfileDetailState(accountProfile: accountProfile),
     );
-    final capabilities = _resolveRegistry()
-        ?.capabilitiesFor(ProfileTypeKeyValue(accountProfile.type));
+    final capabilities = _resolveRegistry()?.capabilitiesFor(
+      ProfileTypeKeyValue(accountProfile.type),
+    );
     final rawConfig = _profileConfigBuilder.build(
       accountProfile,
       capabilities: capabilities,
@@ -184,7 +207,9 @@ class AccountProfileDetailController implements Disposable {
   bool isCurrentReferencePoint(AccountProfileModel accountProfile) {
     return AccountProfileReferencePointResolver.matchesAccountProfile(
       _proximityPreferencesRepository
-          ?.proximityPreference?.locationPreference.fixedReference,
+          ?.proximityPreference
+          ?.locationPreference
+          .fixedReference,
       accountProfile,
     );
   }
@@ -196,8 +221,8 @@ class AccountProfileDetailController implements Disposable {
     }
     final fixedReference =
         AccountProfileReferencePointResolver.buildFromAccountProfile(
-      accountProfile,
-    );
+          accountProfile,
+        );
     if (fixedReference == null) {
       return false;
     }
@@ -227,6 +252,123 @@ class AccountProfileDetailController implements Disposable {
     return resolvedVisualFor(accountProfile).typeLabel;
   }
 
+  bool hasContactChannels(AccountProfileModel accountProfile) {
+    return _capabilitiesFor(accountProfile)?.hasContactChannels ?? false;
+  }
+
+  List<BellugaContactChannel> availableContactChannelsFor(
+    AccountProfileModel accountProfile,
+  ) {
+    if (!hasContactChannels(accountProfile)) {
+      return const <BellugaContactChannel>[];
+    }
+    return accountProfile.effectiveContactChannels
+        .where((channel) => resolveContactChannel(channel) != null)
+        .toList(growable: false);
+  }
+
+  bool shouldRenderContactTab(AccountProfileModel accountProfile) {
+    return availableContactChannelsFor(accountProfile).isNotEmpty;
+  }
+
+  BellugaContactChannel? resolvedBubbleChannelFor(
+    AccountProfileModel accountProfile,
+  ) {
+    final channel = accountProfile.effectiveContactBubbleChannel;
+    if (channel == null ||
+        !channel.isBubbleEligible ||
+        !hasContactChannels(accountProfile)) {
+      return null;
+    }
+    return resolveContactChannel(channel) == null ? null : channel;
+  }
+
+  BellugaContactResolution? resolveContactChannel(
+    BellugaContactChannel channel, {
+    BellugaContactInitialMessage? initialMessage,
+  }) {
+    return BellugaContactChannelResolver.resolveChannel(
+      channel,
+      prefilledMessage: initialMessage?.message,
+    );
+  }
+
+  void trackContactBubbleImpression(AccountProfileModel accountProfile) {
+    final channel = resolvedBubbleChannelFor(accountProfile);
+    if (channel == null) {
+      return;
+    }
+    final impressionKey = '${accountProfile.id}:${channel.id}';
+    if (!_contactBubbleImpressionKeys.add(impressionKey)) {
+      return;
+    }
+    _logContactTelemetry(
+      EventTrackerEvents.viewContent,
+      eventName: 'account_profile_contact_bubble_impression',
+      accountProfile: accountProfile,
+      channel: channel,
+      origin: 'bubble',
+    );
+  }
+
+  void trackContactBubbleTap(AccountProfileModel accountProfile) {
+    final channel = resolvedBubbleChannelFor(accountProfile);
+    if (channel == null) {
+      return;
+    }
+    _logContactTelemetry(
+      EventTrackerEvents.buttonClick,
+      eventName: 'account_profile_contact_bubble_tap',
+      accountProfile: accountProfile,
+      channel: channel,
+      origin: 'bubble',
+    );
+  }
+
+  void trackContactChooserOpen(
+    AccountProfileModel accountProfile, {
+    required BellugaContactChannel channel,
+    required String origin,
+  }) {
+    _logContactTelemetry(
+      EventTrackerEvents.buttonClick,
+      eventName: 'account_profile_contact_chooser_open',
+      accountProfile: accountProfile,
+      channel: channel,
+      origin: origin,
+    );
+  }
+
+  void trackContactCtaTap(
+    AccountProfileModel accountProfile, {
+    required BellugaContactChannel channel,
+    required BellugaContactInitialMessage initialMessage,
+    required String origin,
+  }) {
+    _logContactTelemetry(
+      EventTrackerEvents.buttonClick,
+      eventName: 'account_profile_contact_cta_tap',
+      accountProfile: accountProfile,
+      channel: channel,
+      origin: origin,
+      cta: initialMessage,
+    );
+  }
+
+  void trackContactDirectClick(
+    AccountProfileModel accountProfile, {
+    required BellugaContactChannel channel,
+    required String origin,
+  }) {
+    _logContactTelemetry(
+      EventTrackerEvents.buttonClick,
+      eventName: 'account_profile_contact_direct_click',
+      accountProfile: accountProfile,
+      channel: channel,
+      origin: origin,
+    );
+  }
+
   ProfileTypeRegistry? _resolveRegistry() {
     if (!GetIt.I.isRegistered<AppData>()) {
       return null;
@@ -237,13 +379,14 @@ class AccountProfileDetailController implements Disposable {
   ProfileTypeCapabilities? _capabilitiesFor(
     AccountProfileModel accountProfile,
   ) {
-    return _resolveRegistry()
-        ?.capabilitiesFor(ProfileTypeKeyValue(accountProfile.type));
+    return _resolveRegistry()?.capabilitiesFor(
+      ProfileTypeKeyValue(accountProfile.type),
+    );
   }
 
   String? get authenticatedUserDisplayName {
-    final raw =
-        _authRepository?.userStreamValue.value?.profile.nameValue?.value.trim();
+    final raw = _authRepository?.userStreamValue.value?.profile.nameValue?.value
+        .trim();
     if (raw == null || raw.isEmpty) {
       return null;
     }
@@ -349,18 +492,12 @@ class AccountProfileDetailController implements Disposable {
           if (modules.isEmpty) {
             return null;
           }
-          return ProfileTabConfig(
-            titleValue: tab.titleValue,
-            modules: modules,
-          );
+          return ProfileTabConfig(titleValue: tab.titleValue, modules: modules);
         })
         .whereType<ProfileTabConfig>()
         .toList(growable: false);
 
-    return PartnerProfileConfig(
-      partner: config.partner,
-      tabs: filteredTabs,
-    );
+    return PartnerProfileConfig(partner: config.partner, tabs: filteredTabs);
   }
 
   List<AccountProfileRichTextBlock> _buildRichTextModuleData(
@@ -372,8 +509,9 @@ class AccountProfileDetailController implements Disposable {
     final rawBio = accountProfile.bio?.trim() ?? '';
     final rawContent = accountProfile.content?.trim() ?? '';
     final canonicalBio = canRenderBio ? SafeRichHtml.canonicalize(rawBio) : '';
-    final canonicalContent =
-        canRenderContent ? SafeRichHtml.canonicalize(rawContent) : '';
+    final canonicalContent = canRenderContent
+        ? SafeRichHtml.canonicalize(rawContent)
+        : '';
     final hasBio = canonicalBio.isNotEmpty;
     final hasContent = canonicalContent.isNotEmpty;
 
@@ -388,9 +526,7 @@ class AccountProfileDetailController implements Disposable {
       ];
     }
 
-    return [
-      AccountProfileRichTextBlock(html: hasBio ? rawBio : rawContent),
-    ];
+    return [AccountProfileRichTextBlock(html: hasBio ? rawBio : rawContent)];
   }
 
   PartnerLocationView? _buildLocationModuleData(
@@ -408,10 +544,12 @@ class AccountProfileDetailController implements Disposable {
     return PartnerLocationView(
       addressValue: partnerProjectionRequiredText(address ?? ''),
       statusValue: partnerProjectionRequiredText('location_available'),
-      latValue:
-          hasCoordinates ? partnerProjectionOptionalText(lat.toString()) : null,
-      lngValue:
-          hasCoordinates ? partnerProjectionOptionalText(lng.toString()) : null,
+      latValue: hasCoordinates
+          ? partnerProjectionOptionalText(lat.toString())
+          : null,
+      lngValue: hasCoordinates
+          ? partnerProjectionOptionalText(lng.toString())
+          : null,
     );
   }
 
@@ -419,6 +557,40 @@ class AccountProfileDetailController implements Disposable {
     AccountProfileModel accountProfile,
   ) {
     return accountProfile.agendaEvents;
+  }
+
+  void _logContactTelemetry(
+    EventTrackerEvents event, {
+    required String eventName,
+    required AccountProfileModel accountProfile,
+    required BellugaContactChannel channel,
+    required String origin,
+    BellugaContactInitialMessage? cta,
+  }) {
+    final telemetry = _telemetryRepository;
+    if (telemetry == null) {
+      return;
+    }
+    final effectiveSource =
+        accountProfile.effectiveContactSourceProfile ??
+        accountProfile.contactSourceProfile;
+    unawaited(
+      telemetry.logEvent(
+        event,
+        eventName: telemetryRepoString(eventName),
+        properties: telemetryRepoMap(<String, Object?>{
+          'account_profile_id': accountProfile.id,
+          'channel_type': channel.type.rawValue,
+          'channel_id': channel.id,
+          'contact_source_mode': accountProfile.contactMode.rawValue,
+          'surface_origin': origin,
+          if (effectiveSource != null)
+            'contact_source_profile_id': effectiveSource.id,
+          if (cta != null) 'cta_id': cta.id,
+          if (cta != null) 'cta_label': cta.cta,
+        }),
+      ),
+    );
   }
 
   @override

@@ -12,7 +12,7 @@ class WidgetControllerSingletonRegistrationForbiddenRule extends DartLintRule {
   WidgetControllerSingletonRegistrationForbiddenRule()
     : super(
         code: const LintCode(
-          errorSeverity: ErrorSeverity.WARNING,
+          errorSeverity: ErrorSeverity.warning,
           name: 'widget_controller_singleton_registration_forbidden',
           problemMessage:
               'Widget controllers cannot be registered with singleton lifecycle when that registration leaks them above the widget subtree.',

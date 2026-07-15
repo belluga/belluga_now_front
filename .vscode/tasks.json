@@ -46,6 +46,15 @@
       },
       "isBackground": true,
       "problemMatcher": []
+    },
+    {
+      "label": "Analyzer: diagnostics snapshot (VS Code log)",
+      "type": "shell",
+      "command": "python3 ./scripts/export_vscode_analyzer_diagnostics.py",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
     }
   ]
 }

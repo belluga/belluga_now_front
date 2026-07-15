@@ -1,0 +1,3 @@
+tags:
+  golden:
+    description: Pixel-baseline tests that run on the deterministic SkSL lane.

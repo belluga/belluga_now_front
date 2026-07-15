@@ -8,16 +8,16 @@ import '../path_utils.dart';
 class IntegrationAnonymousAuthIdentifiedLoginForbiddenRule
     extends DartLintRule {
   IntegrationAnonymousAuthIdentifiedLoginForbiddenRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'integration_anonymous_auth_identified_login_forbidden',
-            problemMessage:
-                'Anonymous-only integration tests must not use identified auth fallback.',
-            correctionMessage:
-                'Treatments: keep anonymous bootstrap only; remove login/sign-up fallback calls in this test.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'integration_anonymous_auth_identified_login_forbidden',
+          problemMessage:
+              'Anonymous-only integration tests must not use identified auth fallback.',
+          correctionMessage:
+              'Treatments: keep anonymous bootstrap only; remove login/sign-up fallback calls in this test.',
+        ),
+      );
 
   static const _markerName = 'kAnonymousAuthOnlyContract';
   static const _forbiddenMethods = {

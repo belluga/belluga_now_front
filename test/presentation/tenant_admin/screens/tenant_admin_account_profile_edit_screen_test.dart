@@ -1,3 +1,4 @@
+import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
@@ -219,6 +220,137 @@ void main() {
     expect(find.text('Nome de exibicao'), findsOneWidget);
     expect(find.text('Conta Parceira'), findsOneWidget);
   });
+
+  testWidgets(
+    'renders mirrored contact preview without deprecated global bubble or CTA sections',
+    (tester) async {
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+      final whatsappChannel = BellugaContactChannel(
+        id: 'whatsapp-primary',
+        type: BellugaContactChannelType.whatsapp,
+        value: '+55 (27) 99999-9999',
+        title: 'Atendimento',
+        initialMessages: const [
+          BellugaContactInitialMessage(
+            id: 'wa-cta-1',
+            cta: 'Quero falar',
+            message: 'Quero falar sobre o perfil.',
+          ),
+        ],
+      );
+      final sourceProfile = _profile(
+        id: '507f1f77bcf86cd799439099',
+        displayName: 'Perfil Fonte',
+        contactChannels: [whatsappChannel],
+        effectiveContactChannels: [whatsappChannel],
+        contactBubbleChannelId: whatsappChannel.id,
+      );
+      profilesRepository.profileTypesToReturn = [
+        _profileType(
+          hasGallery: false,
+          hasNestedProfileGroups: false,
+          hasContactChannels: true,
+        ),
+      ];
+      profilesRepository.profilesToReturn = [sourceProfile];
+      profilesRepository.profileToReturn = _profile(
+        id: 'route-profile',
+        contactMode: BellugaContactSourceMode.mirroredAccountProfile,
+        contactSourceAccountProfileId: sourceProfile.id,
+        contactBubbleChannelId: whatsappChannel.id,
+        effectiveContactChannels: [whatsappChannel],
+      );
+
+      await _pumpScreen(
+        tester,
+        TenantAdminAccountProfileEditScreen(
+          accountSlug: 'route-account',
+          accountProfileId: 'route-profile',
+        ),
+      );
+
+      final scrollable = find.byType(Scrollable).first;
+      await tester.scrollUntilVisible(
+        find.text('Origem do Contato'),
+        300,
+        scrollable: scrollable,
+      );
+
+      expect(find.text('Origem do Contato'), findsOneWidget);
+      expect(find.text('Canais de Contato'), findsOneWidget);
+      expect(find.text('Balão Flutuante'), findsNothing);
+      expect(find.text('CTA e Mensagens do WhatsApp'), findsNothing);
+      expect(
+        find.byKey(const Key('tenantAdminEditContactSourcePicker')),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Perfil Fonte'), findsWidgets);
+      expect(find.textContaining('Atendimento'), findsWidgets);
+    },
+  );
+
+  testWidgets(
+    'shows persisted WhatsApp CTAs from the channel when editing an own profile',
+    (tester) async {
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+      final whatsappChannel = BellugaContactChannel(
+        id: 'whatsapp-ananda',
+        type: BellugaContactChannelType.whatsapp,
+        value: '+55 (27) 99999-1111',
+        initialMessages: const [
+          BellugaContactInitialMessage(
+            id: 'whatsapp-ananda-cta-1',
+            cta: 'Falar com a Ananda',
+            message: 'Olá, gostaria de saber mais.',
+          ),
+        ],
+      );
+      profilesRepository.profileTypesToReturn = [
+        _profileType(
+          hasGallery: false,
+          hasNestedProfileGroups: false,
+          hasContactChannels: true,
+        ),
+      ];
+      profilesRepository.profileToReturn = _profile(
+        id: 'profile-ananda',
+        displayName: 'Ananda',
+        contactChannels: [whatsappChannel],
+        effectiveContactChannels: [whatsappChannel],
+        contactBubbleChannelId: whatsappChannel.id,
+      );
+
+      await _pumpScreen(
+        tester,
+        const TenantAdminAccountProfileEditScreen(
+          accountSlug: 'route-account',
+          accountProfileId: 'profile-ananda',
+        ),
+      );
+
+      final scrollable = find.byType(Scrollable).first;
+      await tester.scrollUntilVisible(
+        find.text('Falar com a Ananda'),
+        300,
+        scrollable: scrollable,
+      );
+
+      expect(find.text('CTAs e mensagens'), findsOneWidget);
+      expect(find.text('Falar com a Ananda'), findsOneWidget);
+      expect(
+        find.byKey(
+          const Key(
+            'tenantAdminContactCta_persisted:whatsapp-ananda_whatsapp-ananda-cta-1',
+          ),
+        ),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('renders persisted gallery groups and descriptions', (
     tester,
@@ -497,6 +629,12 @@ class _FakeAccountsRepository extends TenantAdminAccountsRepositoryContract {
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
         const <TenantAdminNestedProfileGroup>[],
+    BellugaContactSourceMode contactMode = BellugaContactSourceMode.own,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft> contactChannelDrafts =
+        const <BellugaContactChannelDraft>[],
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) {
     throw UnimplementedError();
   }
@@ -594,6 +732,36 @@ class _FakeAccountProfilesRepository
   }
 
   @override
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+  fetchContactSourceCandidatesPage({
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
+  }) async {
+    final candidates = _filterProfiles(
+      excludeAccountProfileId: excludeAccountProfileId?.value,
+    );
+    final start = (page.value - 1) * pageSize.value;
+    if (page.value <= 0 || pageSize.value <= 0 || start >= candidates.length) {
+      return tenantAdminPagedResultFromRaw(
+        items: const <TenantAdminAccountProfile>[],
+        hasMore: false,
+        currentPage: page.value,
+        pageSize: pageSize.value,
+      );
+    }
+    final end = start + pageSize.value < candidates.length
+        ? start + pageSize.value
+        : candidates.length;
+    return tenantAdminPagedResultFromRaw(
+      items: candidates.sublist(start, end),
+      hasMore: end < candidates.length,
+      currentPage: page.value,
+      pageSize: pageSize.value,
+    );
+  }
+
+  @override
   Future<TenantAdminAccountProfile> fetchAccountProfile(
     TenantAdminAccountProfilesRepoString accountProfileId,
   ) async {
@@ -607,6 +775,12 @@ class _FakeAccountProfilesRepository
       profileType: profileToReturn.profileType,
       galleryGroups: profileToReturn.galleryGroups,
       nestedProfileGroups: profileToReturn.nestedProfileGroups,
+      contactMode: profileToReturn.contactMode,
+      contactSourceAccountProfileId:
+          profileToReturn.contactSourceAccountProfileId,
+      contactChannels: profileToReturn.contactChannels,
+      contactBubbleChannelId: profileToReturn.contactBubbleChannelId,
+      effectiveContactChannels: profileToReturn.effectiveContactChannels,
     );
   }
 
@@ -640,6 +814,12 @@ class _FakeAccountProfilesRepository
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
         const <TenantAdminNestedProfileGroup>[],
+    BellugaContactSourceMode contactMode = BellugaContactSourceMode.own,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft> contactChannelDrafts =
+        const <BellugaContactChannelDraft>[],
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) {
     throw UnimplementedError();
   }
@@ -661,10 +841,46 @@ class _FakeAccountProfilesRepository
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
+    BellugaContactSourceMode? contactMode,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft>? contactChannelDrafts,
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   }) async {
     lastRemoveAvatar = removeAvatar?.value;
     lastRemoveCover = removeCover?.value;
     lastNestedProfileGroups = nestedProfileGroups;
+    final nextContactChannels = contactChannelDrafts == null
+        ? profileToReturn.contactChannels
+        : contactChannelDrafts
+              .map(
+                (draft) => BellugaContactChannel(
+                  id: draft.id ?? 'generated-${draft.draftKey}',
+                  type: draft.type,
+                  value: draft.value,
+                  title: draft.title,
+                  initialMessages: draft.initialMessages,
+                ),
+              )
+              .toList(growable: false);
+    String? nextBubbleChannelId = profileToReturn.contactBubbleChannelId;
+    if (bubbleSelection case BellugaContactBubbleSelectionClear()) {
+      nextBubbleChannelId = null;
+    } else if (bubbleSelection case BellugaContactBubbleSelectionPersisted(
+      :final channelId,
+    )) {
+      nextBubbleChannelId = channelId;
+    } else if (bubbleSelection case BellugaContactBubbleSelectionDraft(
+      :final draftKey,
+    )) {
+      final selectedDraft = contactChannelDrafts
+          ?.where((draft) => draft.draftKey == draftKey)
+          .toList(growable: false);
+      if (selectedDraft != null && selectedDraft.isNotEmpty) {
+        final draft = selectedDraft.first;
+        nextBubbleChannelId = draft.id ?? 'generated-${draft.draftKey}';
+      }
+    }
     profileToReturn = tenantAdminAccountProfileFromRaw(
       id: accountProfileId.value,
       accountId: profileToReturn.accountId,
@@ -685,6 +901,16 @@ class _FakeAccountProfilesRepository
       nestedProfileGroups:
           nestedProfileGroups ?? profileToReturn.nestedProfileGroups,
       ownershipState: profileToReturn.ownershipState,
+      contactMode: contactMode ?? profileToReturn.contactMode,
+      contactSourceAccountProfileId:
+          contactSourceAccountProfileId?.value ??
+          profileToReturn.contactSourceAccountProfileId,
+      contactChannels: nextContactChannels,
+      contactBubbleChannelId: nextBubbleChannelId,
+      effectiveContactChannels: profileToReturn.effectiveContactChannels,
+      contactSourceProfile: profileToReturn.contactSourceProfile,
+      effectiveContactSourceProfile:
+          profileToReturn.effectiveContactSourceProfile,
     );
     return profileToReturn;
   }
@@ -859,6 +1085,12 @@ TenantAdminAccountProfile _profile({
       const <TenantAdminAccountProfileGalleryGroup>[],
   List<TenantAdminNestedProfileGroup> nestedProfileGroups =
       const <TenantAdminNestedProfileGroup>[],
+  BellugaContactSourceMode contactMode = BellugaContactSourceMode.own,
+  String? contactSourceAccountProfileId,
+  List<BellugaContactChannel> contactChannels = const <BellugaContactChannel>[],
+  String? contactBubbleChannelId,
+  List<BellugaContactChannel> effectiveContactChannels =
+      const <BellugaContactChannel>[],
 }) {
   return tenantAdminAccountProfileFromRaw(
     id: id,
@@ -871,6 +1103,11 @@ TenantAdminAccountProfile _profile({
     galleryGroups: galleryGroups,
     nestedProfileGroups: nestedProfileGroups,
     ownershipState: TenantAdminOwnershipState.tenantOwned,
+    contactMode: contactMode,
+    contactSourceAccountProfileId: contactSourceAccountProfileId,
+    contactChannels: contactChannels,
+    contactBubbleChannelId: contactBubbleChannelId,
+    effectiveContactChannels: effectiveContactChannels,
   );
 }
 
@@ -903,6 +1140,7 @@ TenantAdminAccountProfileGalleryItem _galleryItem() {
 TenantAdminProfileTypeDefinition _profileType({
   required bool hasGallery,
   required bool hasNestedProfileGroups,
+  bool hasContactChannels = false,
 }) {
   return tenantAdminProfileTypeDefinitionFromRaw(
     type: 'poi',
@@ -919,6 +1157,7 @@ TenantAdminProfileTypeDefinition _profileType({
       hasEvents: TenantAdminFlagValue(false),
       hasGallery: TenantAdminFlagValue(hasGallery),
       hasNestedProfileGroups: TenantAdminFlagValue(hasNestedProfileGroups),
+      hasContactChannels: TenantAdminFlagValue(hasContactChannels),
     ),
   );
 }

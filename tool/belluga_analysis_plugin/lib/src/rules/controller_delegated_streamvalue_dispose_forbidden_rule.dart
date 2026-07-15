@@ -1,6 +1,5 @@
 // ignore_for_file: deprecated_member_use
 
-import 'package:analyzer/dart/ast/ast.dart';
 import 'package:belluga_analysis_plugin/src/compat/custom_lint_compat.dart';
 
 import '../path_utils.dart';
@@ -10,7 +9,7 @@ class ControllerDelegatedStreamValueDisposeForbiddenRule extends DartLintRule {
   ControllerDelegatedStreamValueDisposeForbiddenRule()
     : super(
         code: const LintCode(
-          errorSeverity: ErrorSeverity.WARNING,
+          errorSeverity: ErrorSeverity.warning,
           name: 'controller_delegated_streamvalue_dispose_forbidden',
           problemMessage:
               'Controller must not dispose delegated StreamValue from repository/service contracts.',

@@ -4,7 +4,7 @@ class PermissionHandlerImportForbiddenRule extends DartLintRule {
   PermissionHandlerImportForbiddenRule()
     : super(
         code: const LintCode(
-          errorSeverity: ErrorSeverity.WARNING,
+          errorSeverity: ErrorSeverity.warning,
           name: 'permission_handler_import_forbidden',
           problemMessage:
               'permission_handler is forbidden in this project because it collides with geolocator_apple during iOS archive.',

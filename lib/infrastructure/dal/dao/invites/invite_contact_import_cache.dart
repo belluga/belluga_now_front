@@ -23,6 +23,17 @@ class _LegacyFlutterSecureStorageInviteContactImportCacheStorage
 
   @override
   Future<void> delete(String key) => _storage.delete(key: key);
+
+  @override
+  Future<void> clearAll() async {
+    final values = await _storage.readAll();
+    for (final key in values.keys) {
+      if (key.startsWith('invite_contact_import_cache_v1:') ||
+          key.startsWith('invite_contact_import_cache_v2:')) {
+        await _storage.delete(key: key);
+      }
+    }
+  }
 }
 
 class _CompositeInviteContactImportCacheStorage
@@ -30,10 +41,11 @@ class _CompositeInviteContactImportCacheStorage
   _CompositeInviteContactImportCacheStorage({
     InviteContactImportCacheStorageContract? primaryStorage,
     InviteContactImportCacheStorageContract? legacyStorage,
-  })  : _primaryStorage =
-            primaryStorage ?? InviteContactImportCacheFileStorage(),
-        _legacyStorage = legacyStorage ??
-            _LegacyFlutterSecureStorageInviteContactImportCacheStorage();
+  }) : _primaryStorage =
+           primaryStorage ?? InviteContactImportCacheFileStorage(),
+       _legacyStorage =
+           legacyStorage ??
+           _LegacyFlutterSecureStorageInviteContactImportCacheStorage();
 
   final InviteContactImportCacheStorageContract _primaryStorage;
   final InviteContactImportCacheStorageContract _legacyStorage;
@@ -59,21 +71,25 @@ class _CompositeInviteContactImportCacheStorage
   }
 
   @override
-  Future<void> write(String key, String value) => _primaryStorage.write(
-        key,
-        value,
-      );
+  Future<void> write(String key, String value) =>
+      _primaryStorage.write(key, value);
 
   @override
   Future<void> delete(String key) async {
     await _primaryStorage.delete(key);
     await _legacyStorage.delete(key);
   }
+
+  @override
+  Future<void> clearAll() => Future.wait<void>([
+    _primaryStorage.clearAll(),
+    _legacyStorage.clearAll(),
+  ]);
 }
 
 class InviteContactImportCache implements InviteContactImportCacheContract {
   InviteContactImportCache({InviteContactImportCacheStorageContract? storage})
-      : _storage = storage ?? _CompositeInviteContactImportCacheStorage();
+    : _storage = storage ?? _CompositeInviteContactImportCacheStorage();
 
   static const String _keyPrefix = 'invite_contact_import_cache_v1';
   static const String _chunkedKeyPrefix = 'invite_contact_import_cache_v2';
@@ -84,9 +100,9 @@ class InviteContactImportCache implements InviteContactImportCacheContract {
   @override
   Future<InviteContactImportCacheEntry?> read(String cacheKey) async {
     try {
-      final raw = await _readChunkedPayload(cacheKey) ?? await _storage.read(
-            _storageKey(cacheKey),
-          );
+      final raw =
+          await _readChunkedPayload(cacheKey) ??
+          await _storage.read(_storageKey(cacheKey));
       if (raw == null || raw.trim().isEmpty) {
         return null;
       }
@@ -114,9 +130,11 @@ class InviteContactImportCache implements InviteContactImportCacheContract {
           }
           return rawMatches
               .whereType<Map>()
-              .map((entry) => InviteContactMatchCacheDto.fromJsonMap(
-                    Map<String, dynamic>.from(entry),
-                  ))
+              .map(
+                (entry) => InviteContactMatchCacheDto.fromJsonMap(
+                  Map<String, dynamic>.from(entry),
+                ),
+              )
               .toList(growable: false);
         })(),
       );
@@ -136,21 +154,22 @@ class InviteContactImportCache implements InviteContactImportCacheContract {
         'imported_at': entry.importedAt.toIso8601String(),
         'matches': entry.matches.map((match) => match.toJsonMap()).toList(),
       });
-      await _writeChunkedPayload(
-        cacheKey: cacheKey,
-        encoded: encoded,
-      );
+      await _writeChunkedPayload(cacheKey: cacheKey, encoded: encoded);
     } catch (_) {
       // Import-cache persistence is an optimization. Contact import remains
       // correct when the cache cannot be written.
     }
   }
 
+  @override
+  Future<void> clearAll() => _storage.clearAll();
+
   String _storageKey(String cacheKey) => '$_keyPrefix:$cacheKey';
 
   String _chunkMetaKey(String cacheKey) => '$_chunkedKeyPrefix:$cacheKey';
 
-  String _chunkKey(String cacheKey, int index) => '${_chunkMetaKey(cacheKey)}:$index';
+  String _chunkKey(String cacheKey, int index) =>
+      '${_chunkMetaKey(cacheKey)}:$index';
 
   Future<String?> _readChunkedPayload(String cacheKey) async {
     final rawMeta = await _storage.read(_chunkMetaKey(cacheKey));
@@ -194,11 +213,10 @@ class InviteContactImportCache implements InviteContactImportCacheContract {
   }) async {
     final chunks = _splitIntoChunks(encoded);
     final previousMeta = await _storage.read(_chunkMetaKey(cacheKey));
-    final previousChunkCount = previousMeta == null || previousMeta.trim().isEmpty
+    final previousChunkCount =
+        previousMeta == null || previousMeta.trim().isEmpty
         ? 0
-        : _parseChunkCount(
-            (jsonDecode(previousMeta) as Map?)?['chunk_count'],
-          );
+        : _parseChunkCount((jsonDecode(previousMeta) as Map?)?['chunk_count']);
 
     for (final entry in chunks.asMap().entries) {
       await _storage.write(_chunkKey(cacheKey, entry.key), entry.value);

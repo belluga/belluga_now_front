@@ -11,7 +11,7 @@ class ControllerOwnedStreamValueDisposeRequiredRule extends DartLintRule {
   ControllerOwnedStreamValueDisposeRequiredRule()
     : super(
         code: const LintCode(
-          errorSeverity: ErrorSeverity.WARNING,
+          errorSeverity: ErrorSeverity.warning,
           name: 'controller_owned_streamvalue_dispose_required',
           problemMessage:
               'Controller-owned StreamValue field must be disposed in onDispose()/dispose().',
@@ -53,7 +53,7 @@ class ControllerOwnedStreamValueDisposeRequiredRule extends DartLintRule {
   ) {
     final result = <String, VariableDeclaration>{};
 
-    for (final member in node.members) {
+    for (final member in classMembersOf(node)) {
       if (member is! FieldDeclaration || member.isStatic) {
         continue;
       }
@@ -99,7 +99,7 @@ class ControllerOwnedStreamValueDisposeRequiredRule extends DartLintRule {
   Set<String> _collectDisposedFieldNames(ClassDeclaration node) {
     final disposed = <String>{};
 
-    for (final member in node.members) {
+    for (final member in classMembersOf(node)) {
       if (member is! MethodDeclaration || member.isStatic) {
         continue;
       }

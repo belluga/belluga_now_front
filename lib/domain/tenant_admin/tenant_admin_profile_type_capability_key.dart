@@ -15,7 +15,8 @@ enum TenantAdminProfileTypeCapabilityKey {
   hasCover,
   hasEvents,
   hasGallery,
-  hasNestedProfileGroups;
+  hasNestedProfileGroups,
+  hasContactChannels;
 
   TenantAdminProfileTypeCapabilityKeyPrimString get apiValue => switch (this) {
         TenantAdminProfileTypeCapabilityKey.isQueryable => 'is_queryable',
@@ -37,5 +38,7 @@ enum TenantAdminProfileTypeCapabilityKey {
         TenantAdminProfileTypeCapabilityKey.hasGallery => 'has_gallery',
         TenantAdminProfileTypeCapabilityKey.hasNestedProfileGroups =>
           'has_nested_profile_groups',
+        TenantAdminProfileTypeCapabilityKey.hasContactChannels =>
+          'has_contact_channels',
       };
 }

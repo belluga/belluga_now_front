@@ -8,22 +8,18 @@ import '../type_utils.dart';
 
 class TenantCanonicalDomainRequiredRule extends DartLintRule {
   TenantCanonicalDomainRequiredRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'tenant_canonical_domain_required',
-            problemMessage:
-                'Tenant-scoped networking code must derive URLs from AppData.mainDomainValue after bootstrap.',
-            correctionMessage:
-                'Treatments: replace href/hostname/schema-based tenant URL composition with appData.mainDomainValue.value.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'tenant_canonical_domain_required',
+          problemMessage:
+              'Tenant-scoped networking code must derive URLs from AppData.mainDomainValue after bootstrap.',
+          correctionMessage:
+              'Treatments: replace href/hostname/schema-based tenant URL composition with appData.mainDomainValue.value.',
+        ),
+      );
 
-  static const _forbiddenAppDataProperties = {
-    'href',
-    'hostname',
-    'schema',
-  };
+  static const _forbiddenAppDataProperties = {'href', 'hostname', 'schema'};
 
   @override
   void run(

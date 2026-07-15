@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/domain/repositories/value_objects/tenant_admin_account_profiles_repository_contract_values.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_update.dart';
@@ -9,9 +10,9 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_grou
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_taxonomy_terms_value.dart';
 import 'package:stream_value/core/stream_value.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 
 export 'package:belluga_now/domain/repositories/value_objects/tenant_admin_account_profiles_repository_contract_values.dart';
 export 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_update.dart';
@@ -29,10 +30,17 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
   static final Expando<_TenantAdminProfileTypesPaginationState>
   _profileTypesStateByRepository =
       Expando<_TenantAdminProfileTypesPaginationState>();
+  static final Expando<_TenantAdminContactSourceCandidatesPaginationState>
+  _contactSourceCandidatesStateByRepository =
+      Expando<_TenantAdminContactSourceCandidatesPaginationState>();
 
   _TenantAdminProfileTypesPaginationState get _profileTypesPaginationState =>
       _profileTypesStateByRepository[this] ??=
           _TenantAdminProfileTypesPaginationState();
+  _TenantAdminContactSourceCandidatesPaginationState
+  get _contactSourceCandidatesPaginationState =>
+      _contactSourceCandidatesStateByRepository[this] ??=
+          _TenantAdminContactSourceCandidatesPaginationState();
 
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
     TenantAdminAccountProfilesRepoString? accountId,
@@ -54,6 +62,60 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     );
   }
 
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+  fetchContactSourceCandidatesPage({
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
+  }) async {
+    throw UnimplementedError(
+      'fetchContactSourceCandidatesPage must be implemented by tenant-admin '
+      'account-profile repositories.',
+    );
+  }
+
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+  loadContactSourceCandidates({
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
+    TenantAdminAccountProfilesRepoInt? pageSize,
+  }) async {
+    final effectivePageSize =
+        pageSize ?? tenantAdminAccountProfilesRepoInt(50, defaultValue: 50);
+    await _waitForContactSourceCandidatesFetch();
+    _resetContactSourceCandidatesPagination(
+      excludeAccountProfileId: excludeAccountProfileId,
+      pageSize: effectivePageSize,
+    );
+    return _fetchContactSourceCandidatesPage(
+      page: tenantAdminAccountProfilesRepoInt(1, defaultValue: 1),
+      pageSize: effectivePageSize,
+      excludeAccountProfileId: excludeAccountProfileId,
+    );
+  }
+
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>?>
+  loadNextContactSourceCandidatesPage() async {
+    if (_contactSourceCandidatesPaginationState.isFetchingPage.value ||
+        !_contactSourceCandidatesPaginationState.hasMore.value) {
+      return null;
+    }
+
+    final nextPage = tenantAdminAccountProfilesRepoInt(
+      _contactSourceCandidatesPaginationState.currentPage.value + 1,
+      defaultValue: 1,
+    );
+    return _fetchContactSourceCandidatesPage(
+      page: nextPage,
+      pageSize: _contactSourceCandidatesPaginationState.pageSize,
+      excludeAccountProfileId:
+          _contactSourceCandidatesPaginationState.excludeAccountProfileId,
+    );
+  }
+
+  void resetContactSourceCandidatesState() {
+    _resetContactSourceCandidatesPagination();
+  }
+
   Future<TenantAdminAccountProfile> fetchAccountProfile(
     TenantAdminAccountProfilesRepoString accountProfileId,
   );
@@ -72,6 +134,12 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
         const <TenantAdminNestedProfileGroup>[],
+    BellugaContactSourceMode contactMode = BellugaContactSourceMode.own,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft> contactChannelDrafts =
+        const <BellugaContactChannelDraft>[],
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   });
   Future<TenantAdminAccountProfile> updateAccountProfile({
     required TenantAdminAccountProfilesRepoString accountProfileId,
@@ -89,6 +157,11 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
+    BellugaContactSourceMode? contactMode,
+    TenantAdminAccountProfilesRepoString? contactSourceAccountProfileId,
+    List<BellugaContactChannelDraft>? contactChannelDrafts,
+    BellugaContactBubbleSelectionMutation bubbleSelection =
+        const BellugaContactBubbleSelectionMutation.omit(),
   });
   Future<TenantAdminAccountProfile> updateAccountProfileGallery({
     required TenantAdminAccountProfilesRepoString accountProfileId,
@@ -273,6 +346,12 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     }
   }
 
+  Future<void> _waitForContactSourceCandidatesFetch() async {
+    while (_contactSourceCandidatesPaginationState.isFetchingPage.value) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+  }
+
   Future<void> _fetchProfileTypesPage({
     required TenantAdminAccountProfilesRepoInt page,
     required TenantAdminAccountProfilesRepoInt pageSize,
@@ -350,10 +429,73 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
       tenantAdminAccountProfilesRepoBool(false, defaultValue: false),
     );
   }
+
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+  _fetchContactSourceCandidatesPage({
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
+  }) async {
+    if (_contactSourceCandidatesPaginationState.isFetchingPage.value) {
+      throw StateError('Contact-source candidates request already in flight.');
+    }
+    if (page.value > 1 &&
+        !_contactSourceCandidatesPaginationState.hasMore.value) {
+      return tenantAdminPagedResultFromRaw(
+        items: const <TenantAdminAccountProfile>[],
+        hasMore: false,
+        currentPage: _contactSourceCandidatesPaginationState.currentPage.value,
+        pageSize: _contactSourceCandidatesPaginationState.pageSize.value,
+      );
+    }
+
+    _contactSourceCandidatesPaginationState.isFetchingPage =
+        tenantAdminAccountProfilesRepoBool(true, defaultValue: true);
+    try {
+      final result = await fetchContactSourceCandidatesPage(
+        page: page,
+        pageSize: pageSize,
+        excludeAccountProfileId: excludeAccountProfileId,
+      );
+      _contactSourceCandidatesPaginationState.currentPage = page;
+      _contactSourceCandidatesPaginationState.hasMore =
+          tenantAdminAccountProfilesRepoBool(
+            result.hasMore,
+            defaultValue: true,
+          );
+      _contactSourceCandidatesPaginationState.pageSize = pageSize;
+      _contactSourceCandidatesPaginationState.excludeAccountProfileId =
+          excludeAccountProfileId;
+      return result;
+    } catch (_) {
+      _contactSourceCandidatesPaginationState.hasMore =
+          tenantAdminAccountProfilesRepoBool(false, defaultValue: false);
+      rethrow;
+    } finally {
+      _contactSourceCandidatesPaginationState.isFetchingPage =
+          tenantAdminAccountProfilesRepoBool(false, defaultValue: false);
+    }
+  }
+
+  void _resetContactSourceCandidatesPagination({
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
+    TenantAdminAccountProfilesRepoInt? pageSize,
+  }) {
+    _contactSourceCandidatesPaginationState.currentPage =
+        tenantAdminAccountProfilesRepoInt(0, defaultValue: 0);
+    _contactSourceCandidatesPaginationState.hasMore =
+        tenantAdminAccountProfilesRepoBool(true, defaultValue: true);
+    _contactSourceCandidatesPaginationState.isFetchingPage =
+        tenantAdminAccountProfilesRepoBool(false, defaultValue: false);
+    _contactSourceCandidatesPaginationState.pageSize =
+        pageSize ?? tenantAdminAccountProfilesRepoInt(50, defaultValue: 50);
+    _contactSourceCandidatesPaginationState.excludeAccountProfileId =
+        excludeAccountProfileId;
+  }
 }
 
 mixin TenantAdminProfileTypesPaginationMixin
-    implements TenantAdminAccountProfilesRepositoryContract {
+    on TenantAdminAccountProfilesRepositoryContract {
   static final Expando<_TenantAdminProfileTypesPaginationState>
   _profileTypesStateByRepository =
       Expando<_TenantAdminProfileTypesPaginationState>();
@@ -601,4 +743,16 @@ class _TenantAdminProfileTypesPaginationState {
       tenantAdminAccountProfilesRepoBool(true, defaultValue: true);
   TenantAdminAccountProfilesRepoInt currentProfileTypesPage =
       tenantAdminAccountProfilesRepoInt(0, defaultValue: 0);
+}
+
+class _TenantAdminContactSourceCandidatesPaginationState {
+  TenantAdminAccountProfilesRepoBool isFetchingPage =
+      tenantAdminAccountProfilesRepoBool(false, defaultValue: false);
+  TenantAdminAccountProfilesRepoBool hasMore =
+      tenantAdminAccountProfilesRepoBool(true, defaultValue: true);
+  TenantAdminAccountProfilesRepoInt currentPage =
+      tenantAdminAccountProfilesRepoInt(0, defaultValue: 0);
+  TenantAdminAccountProfilesRepoInt pageSize =
+      tenantAdminAccountProfilesRepoInt(50, defaultValue: 50);
+  TenantAdminAccountProfilesRepoString? excludeAccountProfileId;
 }

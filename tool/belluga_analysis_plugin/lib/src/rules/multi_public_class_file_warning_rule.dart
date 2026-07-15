@@ -7,16 +7,16 @@ import '../path_utils.dart';
 
 class MultiPublicClassFileWarningRule extends DartLintRule {
   MultiPublicClassFileWarningRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'multi_public_class_file_warning',
-            problemMessage:
-                'Files under lib/ should avoid declaring multiple public classes.',
-            correctionMessage:
-                'Treatments: keep one public class per file; move extra public classes to dedicated files or make local helpers private when they are file-scoped only.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'multi_public_class_file_warning',
+          problemMessage:
+              'Files under lib/ should avoid declaring multiple public classes.',
+          correctionMessage:
+              'Treatments: keep one public class per file; move extra public classes to dedicated files or make local helpers private when they are file-scoped only.',
+        ),
+      );
 
   @override
   void run(
@@ -32,7 +32,7 @@ class MultiPublicClassFileWarningRule extends DartLintRule {
     context.registry.addCompilationUnit((unit) {
       final publicClasses = unit.declarations
           .whereType<ClassDeclaration>()
-          .where((node) => !node.name.lexeme.startsWith('_'))
+          .where((node) => !node.namePart.typeName.lexeme.startsWith('_'))
           .toList(growable: false);
 
       if (publicClasses.length <= 1) {

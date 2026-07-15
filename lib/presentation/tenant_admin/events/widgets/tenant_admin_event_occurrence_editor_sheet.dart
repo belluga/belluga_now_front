@@ -6,15 +6,14 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_grou
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
-import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_occurrence_editor_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_programming_item_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/widgets/tenant_admin_account_profile_location_picker_sheet.dart';
+import 'package:belluga_now/presentation/tenant_admin/events/widgets/tenant_admin_programming_item_card.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_nested_profile_groups_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_html/flutter_html.dart' hide Marker;
 import 'package:stream_value/core/stream_value_builder.dart';
 
 typedef TenantAdminEventDateTimePicker =
@@ -79,6 +78,7 @@ Future<void> showTenantAdminEventProgrammingItemEditorSheet({
   required TenantAdminEventModalCloser closeModalSheet,
   String? itemKey,
   TenantAdminEventProgrammingItem? existing,
+  int? insertAt,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -87,6 +87,7 @@ Future<void> showTenantAdminEventProgrammingItemEditorSheet({
     builder: (context) => _TenantAdminEventProgrammingItemEditorSheet(
       existing: existing,
       itemKey: itemKey,
+      insertAt: insertAt,
       controller: controller,
       occurrenceKey: occurrenceKey,
       venues: venues,
@@ -206,7 +207,7 @@ class _TenantAdminEventOccurrenceEditorSheetState
     });
   }
 
-  Future<void> _addProgrammingItem() async {
+  Future<void> _addProgrammingItem({int? insertAt}) async {
     await showTenantAdminEventProgrammingItemEditorSheet(
       context: context,
       controller: widget.controller,
@@ -214,6 +215,7 @@ class _TenantAdminEventOccurrenceEditorSheetState
       venues: widget.venues,
       pickRelatedAccountProfile: widget.pickRelatedAccountProfile,
       closeModalSheet: widget.closeModalSheet,
+      insertAt: insertAt,
     );
     if (!mounted) return;
     setState(() => _errorMessage = null);
@@ -486,30 +488,84 @@ class _TenantAdminEventOccurrenceEditorSheetState
                 'Nenhum item de programação nesta data.',
                 style: Theme.of(context).textTheme.bodySmall,
               )
-            else
-              for (
-                var itemIndex = 0;
-                itemIndex < widget.programmingItems.length;
-                itemIndex++
-              )
-                _ProgrammingItemListTile(
-                  key: Key('tenantAdminOccurrenceProgrammingItem_$itemIndex'),
-                  item: widget.programmingItems[itemIndex].value,
-                  venues: _currentVenues,
-                  onTap: () => _editProgrammingItem(
-                    itemKey: widget.programmingItems[itemIndex].key,
-                    item: widget.programmingItems[itemIndex].value,
-                  ),
-                  onRemove: () {
-                    setState(() {
-                      widget.controller.removeOccurrenceProgrammingItem(
-                        occurrenceKey: widget.occurrenceKey,
-                        itemKey: widget.programmingItems[itemIndex].key,
-                      );
-                      _errorMessage = null;
-                    });
-                  },
-                ),
+            else ...[
+              _buildProgrammingInsertionAction(0),
+              ReorderableListView(
+                shrinkWrap: true,
+                primary: false,
+                physics: const NeverScrollableScrollPhysics(),
+                buildDefaultDragHandles: false,
+                onReorderItem: (oldIndex, newIndex) {
+                  if (oldIndex < 0 ||
+                      oldIndex >= widget.programmingItems.length) {
+                    return;
+                  }
+                  widget.controller.moveOccurrenceProgrammingItem(
+                    occurrenceKey: widget.occurrenceKey,
+                    itemKey: widget.programmingItems[oldIndex].key,
+                    targetIndex: newIndex,
+                  );
+                },
+                children: [
+                  for (
+                    var itemIndex = 0;
+                    itemIndex < widget.programmingItems.length;
+                    itemIndex++
+                  )
+                    KeyedSubtree(
+                      key: ValueKey(
+                        'tenantAdminOccurrenceProgrammingReorderable_${widget.programmingItems[itemIndex].key}',
+                      ),
+                      child: Column(
+                        children: [
+                          TenantAdminProgrammingItemCard(
+                            key: Key(
+                              'tenantAdminOccurrenceProgrammingItem_$itemIndex',
+                            ),
+                            item: widget.programmingItems[itemIndex].value,
+                            venues: _currentVenues,
+                            dragHandle:
+                                widget
+                                    .programmingItems[itemIndex]
+                                    .value
+                                    .isSequential
+                                ? ReorderableDragStartListener(
+                                    key: Key(
+                                      'tenantAdminOccurrenceProgrammingDrag_$itemIndex',
+                                    ),
+                                    index: itemIndex,
+                                    child: const Tooltip(
+                                      message: 'Reordenar item sequencial',
+                                      child: Icon(Icons.drag_handle),
+                                    ),
+                                  )
+                                : null,
+                            onTap: () => _editProgrammingItem(
+                              itemKey: widget.programmingItems[itemIndex].key,
+                              item: widget.programmingItems[itemIndex].value,
+                            ),
+                            onRemove: () {
+                              setState(() {
+                                widget.controller
+                                    .removeOccurrenceProgrammingItem(
+                                      occurrenceKey: widget.occurrenceKey,
+                                      itemKey: widget
+                                          .programmingItems[itemIndex]
+                                          .key,
+                                    );
+                                _errorMessage = null;
+                              });
+                            },
+                          ),
+                          if (itemIndex + 1 < widget.programmingItems.length)
+                            _buildProgrammingInsertionAction(itemIndex + 1),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+              _buildProgrammingInsertionAction(widget.programmingItems.length),
+            ],
             OutlinedButton.icon(
               key: const Key('tenantAdminOccurrenceAddProgrammingButton'),
               onPressed: _addProgrammingItem,
@@ -529,12 +585,25 @@ class _TenantAdminEventOccurrenceEditorSheetState
       ),
     );
   }
+
+  Widget _buildProgrammingInsertionAction(int index) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: TextButton.icon(
+        key: Key('tenantAdminOccurrenceProgrammingInsert_$index'),
+        onPressed: () => _addProgrammingItem(insertAt: index),
+        icon: const Icon(Icons.add, size: 18),
+        label: const Text('Inserir item aqui'),
+      ),
+    );
+  }
 }
 
 class _TenantAdminEventProgrammingItemEditorSheet extends StatefulWidget {
   const _TenantAdminEventProgrammingItemEditorSheet({
     required this.existing,
     required this.itemKey,
+    required this.insertAt,
     required this.controller,
     required this.occurrenceKey,
     required this.venues,
@@ -544,6 +613,7 @@ class _TenantAdminEventProgrammingItemEditorSheet extends StatefulWidget {
 
   final TenantAdminEventProgrammingItem? existing;
   final String? itemKey;
+  final int? insertAt;
   final TenantAdminEventsController controller;
   final String occurrenceKey;
   final List<TenantAdminAccountProfile> venues;
@@ -559,6 +629,40 @@ class _TenantAdminEventProgrammingItemEditorSheetState
     extends State<_TenantAdminEventProgrammingItemEditorSheet> {
   late final TenantAdminEventProgrammingItemDraft _draft =
       TenantAdminEventProgrammingItemDraft(existing: widget.existing);
+
+  void _save(BuildContext context) {
+    final validationError = _draft.validate();
+    if (validationError != null) {
+      setState(() {
+        _errorMessage = validationError;
+      });
+      return;
+    }
+    final item = _draft.toProgrammingItem();
+    if (widget.itemKey == null) {
+      final insertAt = widget.insertAt;
+      if (insertAt == null) {
+        widget.controller.addOccurrenceProgrammingItem(
+          widget.occurrenceKey,
+          item,
+        );
+      } else {
+        widget.controller.insertOccurrenceProgrammingItem(
+          occurrenceKey: widget.occurrenceKey,
+          index: insertAt,
+          item: item,
+        );
+      }
+    } else {
+      widget.controller.updateOccurrenceProgrammingItem(
+        occurrenceKey: widget.occurrenceKey,
+        itemKey: widget.itemKey!,
+        item: item,
+      );
+    }
+    unawaited(widget.closeModalSheet(context));
+  }
+
   late final TextEditingController _timeController = TextEditingController(
     text: _draft.time,
   );
@@ -1077,55 +1181,11 @@ class _TenantAdminEventProgrammingItemEditorSheetState
                     enabled: true,
                     identifier: 'tenant_admin_programming_save_button',
                     label: 'Salvar item',
-                    onTap: () {
-                      final validationError = _draft.validate();
-                      if (validationError != null) {
-                        setState(() {
-                          _errorMessage = validationError;
-                        });
-                        return;
-                      }
-                      final item = _draft.toProgrammingItem();
-                      if (widget.itemKey == null) {
-                        widget.controller.addOccurrenceProgrammingItem(
-                          widget.occurrenceKey,
-                          item,
-                        );
-                      } else {
-                        widget.controller.updateOccurrenceProgrammingItem(
-                          occurrenceKey: widget.occurrenceKey,
-                          itemKey: widget.itemKey!,
-                          item: item,
-                        );
-                      }
-                      unawaited(widget.closeModalSheet(context));
-                    },
+                    onTap: () => _save(context),
                     child: ExcludeSemantics(
                       child: FilledButton(
                         key: const Key('tenantAdminProgrammingSaveButton'),
-                        onPressed: () {
-                          final validationError = _draft.validate();
-                          if (validationError != null) {
-                            setState(() {
-                              _errorMessage = validationError;
-                            });
-                            return;
-                          }
-                          final item = _draft.toProgrammingItem();
-                          if (widget.itemKey == null) {
-                            widget.controller.addOccurrenceProgrammingItem(
-                              widget.occurrenceKey,
-                              item,
-                            );
-                          } else {
-                            widget.controller.updateOccurrenceProgrammingItem(
-                              occurrenceKey: widget.occurrenceKey,
-                              itemKey: widget.itemKey!,
-                              item: item,
-                            );
-                          }
-                          unawaited(widget.closeModalSheet(context));
-                        },
+                        onPressed: () => _save(context),
                         child: const Text('Salvar item'),
                       ),
                     ),
@@ -1136,126 +1196,6 @@ class _TenantAdminEventProgrammingItemEditorSheetState
           ],
         ),
       ),
-    );
-  }
-}
-
-class _ProgrammingItemListTile extends StatelessWidget {
-  const _ProgrammingItemListTile({
-    super.key,
-    required this.item,
-    required this.venues,
-    required this.onTap,
-    required this.onRemove,
-  });
-
-  final TenantAdminEventProgrammingItem item;
-  final List<TenantAdminAccountProfile> venues;
-  final VoidCallback onTap;
-  final VoidCallback onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    final titleHtml = SafeRichHtml.canonicalize(item.title?.trim() ?? '');
-    final hasHtmlTitle = !SafeRichHtml.isEffectivelyEmpty(titleHtml);
-    final titleText =
-        !hasHtmlTitle
-            ? TenantAdminEventOccurrenceEditorDraft.firstProgrammingProfileName(
-                  item,
-                ) ??
-                'Item sem título'
-            : _plainTextFromHtml(titleHtml);
-    final subtitleLines = _buildProgrammingItemSubtitleLines(item, venues);
-    final semanticLabel = [titleText, ...subtitleLines].join('\n');
-    return Semantics(
-      button: true,
-      label: semanticLabel,
-      child: ExcludeSemantics(
-        excluding: false,
-        child: ListTile(
-          contentPadding: EdgeInsets.zero,
-          onTap: onTap,
-          leading: Text(
-            item.hasTime
-                ? (item.endTime == null
-                      ? item.time
-                      : '${item.time} às ${item.endTime}')
-                : 'Sequencial',
-          ),
-          title: !hasHtmlTitle
-              ? Text(titleText)
-              : _ProgrammingItemHtmlPreview(html: titleHtml),
-          subtitle: _buildProgrammingItemSubtitle(subtitleLines),
-          trailing: IconButton(
-            tooltip: 'Remover item de programação',
-            onPressed: onRemove,
-            icon: const Icon(Icons.close),
-          ),
-        ),
-      ),
-    );
-  }
-
-  List<String> _buildProgrammingItemSubtitleLines(
-    TenantAdminEventProgrammingItem item,
-    List<TenantAdminAccountProfile> venues,
-  ) {
-    final locationLabel =
-        TenantAdminEventOccurrenceEditorDraft.programmingLocationDisplayName(
-          item,
-          venues,
-        );
-    final lines = <String>[
-      '${item.accountProfileIds.length} perfil(is) vinculado(s)',
-      if (locationLabel != null) 'Local: $locationLabel',
-    ];
-    return lines;
-  }
-
-  Widget _buildProgrammingItemSubtitle(List<String> lines) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: lines
-          .map((line) => Text(line, overflow: TextOverflow.ellipsis))
-          .toList(growable: false),
-    );
-  }
-
-  String _plainTextFromHtml(String html) {
-    return html
-        .replaceAll(RegExp(r'<[^>]+>'), ' ')
-        .replaceAll('&nbsp;', ' ')
-        .replaceAll('\u00a0', ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
-  }
-}
-
-class _ProgrammingItemHtmlPreview extends StatelessWidget {
-  const _ProgrammingItemHtmlPreview({required this.html});
-
-  final String html;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Html(
-      data: html,
-      style: {
-        'body': Style(
-          margin: Margins.zero,
-          padding: HtmlPaddings.zero,
-          color: colorScheme.onSurface,
-          fontSize: FontSize(
-            Theme.of(context).textTheme.bodyLarge?.fontSize ?? 16,
-          ),
-          lineHeight: const LineHeight(1.35),
-        ),
-        'p': Style(margin: Margins.only(bottom: 8)),
-        'strong': Style(fontWeight: FontWeight.w800),
-        'br': Style(display: Display.block),
-      },
     );
   }
 }

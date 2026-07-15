@@ -1,0 +1,1 @@
+enum BellugaContactIconToken { emailOutlined, whatsapp }

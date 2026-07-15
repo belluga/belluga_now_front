@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:belluga_form_validation/belluga_form_validation.dart';
+import 'package:belluga_now/domain/auth/account_deletion_journey_state.dart';
 import 'package:belluga_now/domain/auth/auth_phone_otp_challenge.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
@@ -1436,6 +1437,16 @@ class _StubAccountAuthRepo implements AuthRepositoryContract<UserContract> {
   final String tokenValue;
 
   @override
+  final accountDeletionJourneyStreamValue =
+      StreamValue<AccountDeletionJourneyState>(
+        defaultValue: const AccountDeletionJourneyState.idle(),
+      );
+
+  @override
+  AccountDeletionJourneyState get accountDeletionJourneyState =>
+      accountDeletionJourneyStreamValue.value;
+
+  @override
   Object get backend => Object();
 
   @override
@@ -1525,6 +1536,18 @@ class _StubAccountAuthRepo implements AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> updateUser(UserCustomData data) async {}
+
+  @override
+  Future<AccountDeletionDispatchOutcome> deleteCurrentAccount() async =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> reconcileUnknownAccountDeletion() async {}
+
+  @override
+  Future<AccountDeletionContinuationOutcome>
+  continueAnonymouslyAfterConfirmedAccountDeletion() async =>
+      AccountDeletionContinuationOutcome.unavailable;
 }
 
 class _MutableTenantScope implements TenantAdminTenantScopeContract {

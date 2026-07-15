@@ -16,7 +16,7 @@ class ControllerDelegatedStreamValueSnapshotFieldForbiddenRule
   ControllerDelegatedStreamValueSnapshotFieldForbiddenRule()
     : super(
         code: const LintCode(
-          errorSeverity: ErrorSeverity.WARNING,
+          errorSeverity: ErrorSeverity.warning,
           name: 'controller_delegated_streamvalue_snapshot_field_forbidden',
           problemMessage:
               'Controller must not mirror delegated repository/service StreamValue snapshots into mutable private collection fields.',
@@ -87,8 +87,9 @@ class ControllerDelegatedStreamValueSnapshotFieldForbiddenRule
       return null;
     }
 
-    for (final member
-        in classDeclaration.members.whereType<FieldDeclaration>()) {
+    for (final member in classMembersOf(
+      classDeclaration,
+    ).whereType<FieldDeclaration>()) {
       if (member.fields.isFinal || member.fields.isConst) {
         continue;
       }
@@ -335,10 +336,11 @@ class _LocalVariableCollector extends RecursiveAstVisitor<void> {
   void visitVariableDeclaration(VariableDeclaration node) {
     final variableName = node.name.lexeme;
     if (variableName.isNotEmpty) {
-      declarationsByName.putIfAbsent(
+      final declarations = declarationsByName.putIfAbsent(
         variableName,
         () => <VariableDeclaration>[],
-      )..add(node);
+      );
+      declarations.add(node);
     }
     super.visitVariableDeclaration(node);
   }

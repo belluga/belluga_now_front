@@ -9,6 +9,7 @@ import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/application/observability/sentry_error_reporter.dart';
 import 'package:belluga_now/application/push/invite_push_runtime_coordinator.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/auth/account_deletion_journey_state.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/platform_type.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
@@ -119,6 +120,25 @@ void main() {
 
     expect(await config.tokenProvider?.call(), isNull);
   });
+
+  test(
+    'PushTransportConfigurator blocks token reuse during deletion resolution',
+    () async {
+      final authRepository = _FakeAuthRepository(
+        userTokenValue: 'registered-token',
+        deviceId: 'device-1',
+      );
+      authRepository.accountDeletionJourneyStreamValue.addValue(
+        const AccountDeletionJourneyState(AccountDeletionJourneyPhase.unknown),
+      );
+
+      final config = PushTransportConfigurator.build(
+        authRepository: authRepository,
+      );
+
+      expect(await config.tokenProvider?.call(), isNull);
+    },
+  );
 
   test(
     'BackendContext uses canonical main domain instead of current href',
@@ -834,6 +854,9 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
 }
 
 class _FakeContactsRepository implements ContactsRepositoryContract {
+  @override
+  Future<void> clearCurrentIdentityState() async {}
+
   @override
   final contactsStreamValue = StreamValue<List<ContactModel>?>(
     defaultValue: null,

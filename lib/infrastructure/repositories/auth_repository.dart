@@ -2,16 +2,24 @@ import 'dart:async';
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/environment_type.dart';
+import 'package:belluga_now/domain/auth/account_deletion_journey_state.dart';
 import 'package:belluga_now/domain/auth/auth_phone_otp_challenge.dart';
 import 'package:belluga_now/domain/auth/value_objects/auth_phone_otp_challenge_id_value.dart';
 import 'package:belluga_now/domain/auth/value_objects/auth_phone_otp_delivery_channel_value.dart';
 import 'package:belluga_now/domain/auth/value_objects/auth_phone_otp_phone_value.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/self_profile_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/auth_repository_contract_values.dart';
 import 'package:belluga_now/domain/user/user_belluga.dart';
+import 'package:belluga_now/domain/user/profile_avatar_storage_contract.dart';
 import 'dart:convert';
 
 import 'package:belluga_now/infrastructure/user/dtos/user_dto.dart';
@@ -58,6 +66,7 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
   final FlutterSecureStorage _storage;
   Future<void>? _initInFlight;
   Future<void>? _tenantPublicIdentityReadyInFlight;
+  Future<AccountDeletionDispatchOutcome>? _accountDeletionInFlight;
   bool _hasCompletedBootstrap = false;
   bool _hasCompletedTenantPublicIdentityReadiness = false;
 
@@ -125,6 +134,9 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
 
   @override
   Future<void> ensureTenantPublicIdentityReady() async {
+    if (accountDeletionJourneyState.blocksAutomaticIdentityBootstrap) {
+      return;
+    }
     if (_hasCompletedTenantPublicIdentityReadiness) {
       return;
     }
@@ -163,6 +175,9 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
   @override
   Future<void>
   recoverTenantPublicIdentityAfterUnauthorizedPublicRequest() async {
+    if (accountDeletionJourneyState.blocksAutomaticIdentityBootstrap) {
+      return;
+    }
     await _resetStaleIdentity(
       StateError('Tenant-public request returned unauthorized.'),
     );
@@ -171,6 +186,9 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
 
   @override
   Future<void> autoLogin() async {
+    if (accountDeletionJourneyState.blocksAutomaticIdentityBootstrap) {
+      return;
+    }
     final tokenLoadedFromStorage = await _getUserTokenFromLocalStorage();
     await _autoLoginAfterInit(tokenLoadedFromStorage: tokenLoadedFromStorage);
   }
@@ -178,6 +196,9 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
   Future<void> _autoLoginAfterInit({
     required bool tokenLoadedFromStorage,
   }) async {
+    if (accountDeletionJourneyState.blocksAutomaticIdentityBootstrap) {
+      return;
+    }
     if (!tokenLoadedFromStorage) {
       return;
     }
@@ -283,6 +304,97 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
     _hasCompletedTenantPublicIdentityReadiness = false;
 
     return Future.value();
+  }
+
+  @override
+  Future<AccountDeletionDispatchOutcome> deleteCurrentAccount() {
+    final inFlight = _accountDeletionInFlight;
+    if (inFlight != null) {
+      return inFlight;
+    }
+    if (accountDeletionJourneyState.phase != AccountDeletionJourneyPhase.idle) {
+      return Future.value(AccountDeletionDispatchOutcome.preEraseRejected);
+    }
+
+    _setAccountDeletionJourney(AccountDeletionJourneyPhase.deleting);
+    final dispatch = _deleteCurrentAccountOnce().whenComplete(() {
+      _accountDeletionInFlight = null;
+    });
+    _accountDeletionInFlight = dispatch;
+    return dispatch;
+  }
+
+  Future<AccountDeletionDispatchOutcome> _deleteCurrentAccountOnce() async {
+    final result = await backend.auth.deleteCurrentAccount();
+    if (result is CurrentAccountDeletionSucceeded) {
+      var outcome = AccountDeletionDispatchOutcome.confirmed;
+      try {
+        await _clearDeletedIdentityLocalState();
+        _setAccountDeletionJourney(AccountDeletionJourneyPhase.confirmed);
+      } catch (_) {
+        // A server-side deletion is not a client-visible confirmation until all
+        // local identity state has also been erased. Keep this process on the
+        // non-bootstrapping uncertainty boundary so it cannot claim removal or
+        // create an anonymous replacement over retained local state.
+        _setAccountDeletionJourney(AccountDeletionJourneyPhase.unknown);
+        outcome = AccountDeletionDispatchOutcome.unknown;
+      }
+      return outcome;
+    }
+    if (result is CurrentAccountDeletionPreEraseRejected) {
+      _setAccountDeletionJourney(AccountDeletionJourneyPhase.preEraseRejected);
+      _setAccountDeletionJourney(AccountDeletionJourneyPhase.idle);
+      return AccountDeletionDispatchOutcome.preEraseRejected;
+    }
+
+    _setAccountDeletionJourney(AccountDeletionJourneyPhase.unknown);
+    return AccountDeletionDispatchOutcome.unknown;
+  }
+
+  @override
+  Future<void> reconcileUnknownAccountDeletion() async {
+    if (accountDeletionJourneyState.phase !=
+        AccountDeletionJourneyPhase.unknown) {
+      return;
+    }
+
+    final result = await backend.auth
+        .validateCurrentIdentityForDeletionResolution();
+    if (result is CurrentIdentityValidationTerminalAbsent) {
+      try {
+        await _clearDeletedIdentityLocalState();
+        _setAccountDeletionJourney(AccountDeletionJourneyPhase.confirmed);
+      } catch (_) {
+        // Retain unknown until a later reconciliation can finish the required
+        // local teardown. In particular, never enable anonymous continuation.
+        _setAccountDeletionJourney(AccountDeletionJourneyPhase.unknown);
+      }
+    }
+  }
+
+  @override
+  Future<AccountDeletionContinuationOutcome>
+  continueAnonymouslyAfterConfirmedAccountDeletion() async {
+    if (!accountDeletionJourneyState.mayContinueAnonymously) {
+      return AccountDeletionContinuationOutcome.unavailable;
+    }
+
+    _setAccountDeletionJourney(AccountDeletionJourneyPhase.continuing);
+    var outcome = AccountDeletionContinuationOutcome.continued;
+    try {
+      await _rotateDeviceIdentity();
+      await _ensureIdentityToken(allowDeletionContinuation: true);
+      if (userToken.trim().isEmpty) {
+        _setAccountDeletionJourney(AccountDeletionJourneyPhase.confirmed);
+        outcome = AccountDeletionContinuationOutcome.failed;
+      } else {
+        _setAccountDeletionJourney(AccountDeletionJourneyPhase.idle);
+      }
+    } catch (_) {
+      _setAccountDeletionJourney(AccountDeletionJourneyPhase.confirmed);
+      outcome = AccountDeletionContinuationOutcome.failed;
+    }
+    return outcome;
   }
 
   @override
@@ -482,7 +594,13 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
     _hasCompletedTenantPublicIdentityReadiness = false;
   }
 
-  Future<void> _ensureIdentityToken() async {
+  Future<void> _ensureIdentityToken({
+    bool allowDeletionContinuation = false,
+  }) async {
+    if (!allowDeletionContinuation &&
+        accountDeletionJourneyState.blocksAutomaticIdentityBootstrap) {
+      return;
+    }
     if (userToken.isNotEmpty) {
       return;
     }
@@ -502,6 +620,65 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
     if (response.userId != null && response.userId!.isNotEmpty) {
       await _setUserId(response.userId);
     }
+  }
+
+  void _setAccountDeletionJourney(AccountDeletionJourneyPhase phase) {
+    accountDeletionJourneyStreamValue.addValue(
+      AccountDeletionJourneyState(phase),
+    );
+  }
+
+  Future<void> _clearDeletedIdentityLocalState() async {
+    await Future.wait<void>([
+      _deleteUserTokenOnLocalStorage(),
+      _deleteUserIdOnLocalStorage(),
+      _runRequiredCurrentIdentityCleanup<SelfProfileRepositoryContract>(
+        (repository) => repository.clearCurrentIdentityState(),
+      ),
+      _runRequiredCurrentIdentityCleanup<ProfileAvatarStorageContract>(
+        (storage) => storage.clearAvatarPath(),
+      ),
+      _runRequiredCurrentIdentityCleanup<FavoriteRepositoryContract>(
+        (repository) => repository.clearCurrentIdentityState(),
+      ),
+      _runRequiredCurrentIdentityCleanup<AccountProfilesRepositoryContract>(
+        (repository) => repository.clearCurrentIdentityState(),
+      ),
+      _runRequiredCurrentIdentityCleanup<UserEventsRepositoryContract>(
+        (repository) => repository.clearCurrentIdentityState(),
+      ),
+      _runRequiredCurrentIdentityCleanup<InvitesRepositoryContract>(
+        (repository) => repository.clearCurrentIdentityState(),
+      ),
+      _runRequiredCurrentIdentityCleanup<
+        ProximityPreferencesRepositoryContract
+      >((repository) => repository.clearCurrentIdentityState()),
+      _runRequiredCurrentIdentityCleanup<ContactsRepositoryContract>(
+        (repository) => repository.clearCurrentIdentityState(),
+      ),
+    ]);
+
+    userStreamValue.addValue(null);
+    _userTokenStreamValue.addValue(null);
+    _userIdStreamValue.addValue(null);
+    _hasCompletedBootstrap = false;
+    _hasCompletedTenantPublicIdentityReadiness = false;
+  }
+
+  Future<void> _deleteUserIdOnLocalStorage() =>
+      _storage.delete(key: _userIdStorageKey);
+
+  Future<void> _runRequiredCurrentIdentityCleanup<T extends Object>(
+    FutureOr<void> Function(T dependency) action,
+  ) async {
+    if (!GetIt.I.isRegistered<T>()) {
+      return;
+    }
+    await action(GetIt.I.get<T>());
+  }
+
+  Future<void> _rotateDeviceIdentity() async {
+    await _storage.delete(key: _deviceIdStorageKey);
   }
 
   Future<void> _finalizeAuthenticatedUser(

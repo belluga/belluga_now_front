@@ -50,17 +50,18 @@ void main() {
 
       final invitesRepository = _FakeInvitesRepository()
         ..fetchInviteableRecipientsGate = Completer<void>();
-      final contactsRepository = _FakeContactsRepository(
-        contacts: <ContactModel>[
-          buildContactModel(
-            id: 'phone-contact',
-            displayName: 'Mae',
-            phones: <String>['+55 27 98888-7777'],
-          ),
-        ],
-      )
-        ..skipCachedContactsLoad = true
-        ..requestPermissionCompleter = Completer<bool>();
+      final contactsRepository =
+          _FakeContactsRepository(
+              contacts: <ContactModel>[
+                buildContactModel(
+                  id: 'phone-contact',
+                  displayName: 'Mae',
+                  phones: <String>['+55 27 98888-7777'],
+                ),
+              ],
+            )
+            ..skipCachedContactsLoad = true
+            ..requestPermissionCompleter = Completer<bool>();
       final controller = InviteShareScreenController(
         invitesRepository: invitesRepository,
         contactsRepository: contactsRepository,
@@ -71,9 +72,7 @@ void main() {
       addTearDown(controller.onDispose);
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: InviteShareScreen(invite: _buildInvite()),
-        ),
+        MaterialApp(home: InviteShareScreen(invite: _buildInvite())),
       );
       await tester.pump();
 
@@ -91,20 +90,15 @@ void main() {
 
       expect(find.text('Atualizar agenda'), findsOneWidget);
       expect(find.text('Carregando agenda...'), findsOneWidget);
-      expect(
-        find.text('Nenhum contato do telefone disponível.'),
-        findsNothing,
-      );
+      expect(find.text('Nenhum contato do telefone disponível.'), findsNothing);
 
-      controller.externalContactShareTargetsStreamValue
-          .addValue(const <InviteExternalContactShareTarget>[]);
+      controller.externalContactShareTargetsStreamValue.addValue(
+        const <InviteExternalContactShareTarget>[],
+      );
       await tester.pump();
 
       expect(find.text('Carregando agenda...'), findsOneWidget);
-      expect(
-        find.text('Nenhum contato do telefone disponível.'),
-        findsNothing,
-      );
+      expect(find.text('Nenhum contato do telefone disponível.'), findsNothing);
 
       contactsRepository.requestPermissionCompleter!.complete(true);
       await _pumpForRuntimeResolution(tester);
@@ -156,9 +150,7 @@ void main() {
       addTearDown(controller.onDispose);
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: InviteShareScreen(invite: _buildInvite()),
-        ),
+        MaterialApp(home: InviteShareScreen(invite: _buildInvite())),
       );
       await tester.pump();
 
@@ -212,9 +204,7 @@ void main() {
       addTearDown(controller.onDispose);
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: InviteShareScreen(invite: _buildInvite()),
-        ),
+        MaterialApp(home: InviteShareScreen(invite: _buildInvite())),
       );
       await tester.pump();
 
@@ -233,9 +223,10 @@ void main() {
 }
 
 class _FakeContactsRepository implements ContactsRepositoryContract {
-  _FakeContactsRepository({
-    this.contacts = const <ContactModel>[],
-  });
+  @override
+  Future<void> clearCurrentIdentityState() async {}
+
+  _FakeContactsRepository({this.contacts = const <ContactModel>[]});
 
   final List<ContactModel> contacts;
   bool permissionGranted = true;
@@ -243,8 +234,9 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
   Completer<bool>? requestPermissionCompleter;
 
   @override
-  final contactsStreamValue =
-      StreamValue<List<ContactModel>?>(defaultValue: null);
+  final contactsStreamValue = StreamValue<List<ContactModel>?>(
+    defaultValue: null,
+  );
 
   @override
   Future<bool> requestPermission() async {
@@ -303,8 +295,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract
   Future<List<InviteModel>> fetchInvites({
     InvitesRepositoryContractPrimInt? page,
     InvitesRepositoryContractPrimInt? pageSize,
-  }) async =>
-      const <InviteModel>[];
+  }) async => const <InviteModel>[];
 
   @override
   Future<InviteRuntimeSettings> fetchSettings() async =>
@@ -318,44 +309,40 @@ class _FakeInvitesRepository extends InvitesRepositoryContract
   @override
   Future<InviteAcceptResult> acceptInvite(
     InvitesRepositoryContractPrimString inviteId,
-  ) async =>
-      buildInviteAcceptResult(
-        inviteId: inviteId.value,
-        status: 'accepted',
-        creditedAcceptance: true,
-        attendancePolicy: 'free_confirmation_only',
-        nextStep: InviteNextStep.none,
-        supersededInviteIds: const <String>[],
-      );
+  ) async => buildInviteAcceptResult(
+    inviteId: inviteId.value,
+    status: 'accepted',
+    creditedAcceptance: true,
+    attendancePolicy: 'free_confirmation_only',
+    nextStep: InviteNextStep.none,
+    supersededInviteIds: const <String>[],
+  );
 
   @override
   Future<InviteAcceptResult> acceptInviteByCode(
     InvitesRepositoryContractPrimString code,
-  ) async =>
-      buildInviteAcceptResult(
-        inviteId: 'mock-${code.value}',
-        status: 'accepted',
-        creditedAcceptance: true,
-        attendancePolicy: 'free_confirmation_only',
-        nextStep: InviteNextStep.none,
-        supersededInviteIds: const <String>[],
-      );
+  ) async => buildInviteAcceptResult(
+    inviteId: 'mock-${code.value}',
+    status: 'accepted',
+    creditedAcceptance: true,
+    attendancePolicy: 'free_confirmation_only',
+    nextStep: InviteNextStep.none,
+    supersededInviteIds: const <String>[],
+  );
 
   @override
   Future<InviteDeclineResult> declineInvite(
     InvitesRepositoryContractPrimString inviteId,
-  ) async =>
-      buildInviteDeclineResult(
-        inviteId: inviteId.value,
-        status: 'declined',
-        groupHasOtherPending: false,
-      );
+  ) async => buildInviteDeclineResult(
+    inviteId: inviteId.value,
+    status: 'declined',
+    groupHasOtherPending: false,
+  );
 
   @override
   Future<List<InviteContactMatch>> importContacts(
     InviteContacts contacts,
-  ) async =>
-      const <InviteContactMatch>[];
+  ) async => const <InviteContactMatch>[];
 
   @override
   Future<List<InviteContactMatch>?> hydrateImportedContactMatchesFromCache(
@@ -387,12 +374,11 @@ class _FakeInvitesRepository extends InvitesRepositoryContract
     required InvitesRepositoryContractPrimString eventId,
     required InvitesRepositoryContractPrimString occurrenceId,
     InvitesRepositoryContractPrimString? accountProfileId,
-  }) async =>
-      buildInviteShareCodeResult(
-        code: 'SHARE-CODE',
-        eventId: eventId.value,
-        occurrenceId: occurrenceId.value,
-      );
+  }) async => buildInviteShareCodeResult(
+    code: 'SHARE-CODE',
+    eventId: eventId.value,
+    occurrenceId: occurrenceId.value,
+  );
 
   @override
   Future<void> sendInvites(
@@ -405,8 +391,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract
   @override
   Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
     InvitesRepositoryContractPrimString occurrenceId,
-  ) async =>
-      const <SentInviteStatus>[];
+  ) async => const <SentInviteStatus>[];
 }
 
 InviteModel _buildInvite() {
@@ -452,9 +437,7 @@ AppData _buildAppData() {
       'main_color': '#FFFFFF',
       'tenant_id': 'tenant-1',
       'telemetry': <String, dynamic>{'trackers': <dynamic>[]},
-      'telemetry_context': <String, dynamic>{
-        'location_freshness_minutes': 5,
-      },
+      'telemetry_context': <String, dynamic>{'location_freshness_minutes': 5},
       'firebase': null,
       'push': null,
     },

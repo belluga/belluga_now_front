@@ -10,16 +10,16 @@ import '../type_utils.dart';
 class ControllerRepositoryPaginationArgumentsForbiddenRule
     extends DartLintRule {
   ControllerRepositoryPaginationArgumentsForbiddenRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'controller_repository_pagination_arguments_forbidden',
-            problemMessage:
-                'Controller must not pass pagination control arguments (page/cursor/size/limit) into repository calls.',
-            correctionMessage:
-                'Treatments: expose repository intents like initialize/refresh/fetchNextPage without pagination parameters.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'controller_repository_pagination_arguments_forbidden',
+          problemMessage:
+              'Controller must not pass pagination control arguments (page/cursor/size/limit) into repository calls.',
+          correctionMessage:
+              'Treatments: expose repository intents like initialize/refresh/fetchNextPage without pagination parameters.',
+        ),
+      );
 
   static const _forbiddenPaginationArgs = <String>{
     'page',

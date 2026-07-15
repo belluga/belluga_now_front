@@ -1,9 +1,13 @@
+import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/domain/partners/account_profile_gallery_group.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
 import 'package:belluga_now/domain/partners/engagement_data.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
+import 'package:belluga_now/domain/shared/account_profile_contact_source_summary.dart';
+import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_channel_id_value.dart';
+import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_source_account_profile_id_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
@@ -37,6 +41,14 @@ AccountProfileModel buildAccountProfileModelFromPrimitives({
   List<AccountProfileNestedGroup>? nestedProfileGroups,
   bool canOpenPublicDetail = true,
   String? publicDetailPath,
+  BellugaContactSourceMode contactMode = BellugaContactSourceMode.own,
+  String? contactSourceAccountProfileId,
+  List<BellugaContactChannel> contactChannels = const <BellugaContactChannel>[],
+  String? contactBubbleChannelId,
+  List<BellugaContactChannel>? effectiveContactChannels,
+  BellugaContactChannel? effectiveContactBubbleChannel,
+  AccountProfileContactSourceSummary? contactSourceProfile,
+  AccountProfileContactSourceSummary? effectiveContactSourceProfile,
 }) {
   ThumbUriValue? avatarValue;
   if (avatarUrl != null && avatarUrl.isNotEmpty) {
@@ -75,11 +87,13 @@ AccountProfileModel buildAccountProfileModelFromPrimitives({
     locationLongitudeValue = LongitudeValue()..parse(locationLng.toString());
   }
 
-  final canOpenPublicDetailValue =
-      DomainBooleanValue(defaultValue: canOpenPublicDetail, isRequired: false)
-        ..parse(canOpenPublicDetail.toString());
-  final resolvedPublicDetailPath =
-      canOpenPublicDetail ? (publicDetailPath ?? '/parceiro/$slug') : null;
+  final canOpenPublicDetailValue = DomainBooleanValue(
+    defaultValue: canOpenPublicDetail,
+    isRequired: false,
+  )..parse(canOpenPublicDetail.toString());
+  final resolvedPublicDetailPath = canOpenPublicDetail
+      ? (publicDetailPath ?? '/parceiro/$slug')
+      : null;
 
   return AccountProfileModel(
     idValue: MongoIDValue()..parse(id),
@@ -107,7 +121,43 @@ AccountProfileModel buildAccountProfileModelFromPrimitives({
     publicDetailPathValue: resolvedPublicDetailPath == null
         ? null
         : AccountProfilePublicDetailPathValue(resolvedPublicDetailPath),
+    contactModeValue: contactMode,
+    contactSourceAccountProfileId:
+        contactSourceAccountProfileId == null ||
+            contactSourceAccountProfileId.trim().isEmpty
+        ? null
+        : AccountProfileContactSourceAccountProfileIdValue(
+            contactSourceAccountProfileId,
+          ),
+    contactChannelValues: contactChannels,
+    contactBubbleChannelId:
+        contactBubbleChannelId == null || contactBubbleChannelId.trim().isEmpty
+        ? null
+        : AccountProfileContactChannelIdValue(contactBubbleChannelId),
+    effectiveContactChannelValues: effectiveContactChannels ?? contactChannels,
+    effectiveContactBubbleChannelValue:
+        effectiveContactBubbleChannel ??
+        _resolveEffectiveBubbleChannel(
+          contactBubbleChannelId: contactBubbleChannelId,
+          effectiveContactChannels: effectiveContactChannels ?? contactChannels,
+        ),
+    contactSourceProfile: contactSourceProfile,
+    effectiveContactSourceProfile: effectiveContactSourceProfile,
   );
+}
+
+BellugaContactChannel? _resolveEffectiveBubbleChannel({
+  required String? contactBubbleChannelId,
+  required List<BellugaContactChannel> effectiveContactChannels,
+}) {
+  final selectedId = contactBubbleChannelId?.trim();
+  if (selectedId == null || selectedId.isEmpty) return null;
+  for (final channel in effectiveContactChannels) {
+    if (channel.id == selectedId && channel.isBubbleEligible) {
+      return channel;
+    }
+  }
+  return null;
 }
 
 List<AccountProfileTagValue> _buildTagValues(List<String>? tags) {
@@ -141,8 +191,9 @@ AccountProfileGalleryItem buildAccountProfileGalleryItemFromPrimitives({
 }) {
   return AccountProfileGalleryItem(
     itemIdValue: AccountProfileNestedGroupIdValue(itemId),
-    descriptionValue:
-        AccountProfileNestedGroupMemberTextValue(description ?? ''),
+    descriptionValue: AccountProfileNestedGroupMemberTextValue(
+      description ?? '',
+    ),
     orderValue: AccountProfileNestedGroupOrderValue(order),
     imageUrlValue: ThumbUriValue(defaultValue: Uri.parse(imageUrl))
       ..parse(imageUrl),
