@@ -121,7 +121,7 @@ AccountProfileModel buildAccountProfileModelFromPrimitives({
     publicDetailPathValue: resolvedPublicDetailPath == null
         ? null
         : AccountProfilePublicDetailPathValue(resolvedPublicDetailPath),
-    contactMode: contactMode,
+    contactModeValue: contactMode,
     contactSourceAccountProfileId:
         contactSourceAccountProfileId == null ||
             contactSourceAccountProfileId.trim().isEmpty
@@ -134,7 +134,7 @@ AccountProfileModel buildAccountProfileModelFromPrimitives({
         contactBubbleChannelId == null || contactBubbleChannelId.trim().isEmpty
         ? null
         : AccountProfileContactChannelIdValue(contactBubbleChannelId),
-    effectiveContactChannelValues: effectiveContactChannels,
+    effectiveContactChannelValues: effectiveContactChannels ?? contactChannels,
     effectiveContactBubbleChannelValue:
         effectiveContactBubbleChannel ??
         _resolveEffectiveBubbleChannel(
@@ -153,7 +153,9 @@ BellugaContactChannel? _resolveEffectiveBubbleChannel({
   final selectedId = contactBubbleChannelId?.trim();
   if (selectedId == null || selectedId.isEmpty) return null;
   for (final channel in effectiveContactChannels) {
-    if (channel.id == selectedId && channel.isBubbleEligible) return channel;
+    if (channel.id == selectedId && channel.isBubbleEligible) {
+      return channel;
+    }
   }
   return null;
 }

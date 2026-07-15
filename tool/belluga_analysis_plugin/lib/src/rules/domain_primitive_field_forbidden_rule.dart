@@ -10,7 +10,7 @@ class DomainPrimitiveFieldForbiddenRule extends DartLintRule {
   DomainPrimitiveFieldForbiddenRule()
     : super(
         code: const LintCode(
-          errorSeverity: ErrorSeverity.WARNING,
+          errorSeverity: ErrorSeverity.warning,
           name: 'domain_primitive_field_forbidden',
           problemMessage:
               'Domain fields cannot use primitive transport-oriented types directly.',

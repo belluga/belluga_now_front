@@ -1,11 +1,11 @@
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
-import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_channel_id_value.dart';
-import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_source_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_group.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/shared/account_profile_contact_source_summary.dart';
+import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_channel_id_value.dart';
+import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_source_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
@@ -28,7 +28,7 @@ class TenantAdminAccountProfile {
     List<TenantAdminAccountProfileGalleryGroup>? galleryGroups,
     List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
     this.ownershipState,
-    BellugaContactSourceMode? contactMode,
+    BellugaContactSourceMode? contactModeValue,
     AccountProfileContactSourceAccountProfileIdValue?
     contactSourceAccountProfileId,
     List<BellugaContactChannel>? contactChannels,
@@ -48,13 +48,13 @@ class TenantAdminAccountProfile {
        nestedProfileGroups = List<TenantAdminNestedProfileGroup>.unmodifiable(
          nestedProfileGroups ?? const <TenantAdminNestedProfileGroup>[],
        ),
-       contactMode = contactMode ?? BellugaContactSourceMode.own,
+       contactModeValue = contactModeValue ?? BellugaContactSourceMode.own,
        contactSourceAccountProfileIdValue = contactSourceAccountProfileId,
-       contactChannels = List<BellugaContactChannel>.unmodifiable(
+       contactChannelsValue = List<BellugaContactChannel>.unmodifiable(
          contactChannels ?? const <BellugaContactChannel>[],
        ),
        contactBubbleChannelIdValue = contactBubbleChannelId,
-       effectiveContactChannels = List<BellugaContactChannel>.unmodifiable(
+       effectiveContactChannelsValue = List<BellugaContactChannel>.unmodifiable(
          effectiveContactChannels ?? contactChannels ?? const [],
        );
 
@@ -72,14 +72,22 @@ class TenantAdminAccountProfile {
   final List<TenantAdminAccountProfileGalleryGroup> galleryGroups;
   final List<TenantAdminNestedProfileGroup> nestedProfileGroups;
   final TenantAdminOwnershipState? ownershipState;
-  final BellugaContactSourceMode contactMode;
+  final BellugaContactSourceMode contactModeValue;
   final AccountProfileContactSourceAccountProfileIdValue?
   contactSourceAccountProfileIdValue;
-  final List<BellugaContactChannel> contactChannels;
+  final List<BellugaContactChannel> contactChannelsValue;
   final AccountProfileContactChannelIdValue? contactBubbleChannelIdValue;
-  final List<BellugaContactChannel> effectiveContactChannels;
+  final List<BellugaContactChannel> effectiveContactChannelsValue;
   final AccountProfileContactSourceSummary? contactSourceProfile;
   final AccountProfileContactSourceSummary? effectiveContactSourceProfile;
+
+  BellugaContactSourceMode get contactMode => contactModeValue;
+
+  List<BellugaContactChannel> get contactChannels =>
+      List<BellugaContactChannel>.unmodifiable(contactChannelsValue);
+
+  List<BellugaContactChannel> get effectiveContactChannels =>
+      List<BellugaContactChannel>.unmodifiable(effectiveContactChannelsValue);
 
   String get id => idValue.value;
   String get accountId => accountIdValue.value;
@@ -111,7 +119,7 @@ class TenantAdminAccountProfile {
     if (selectedId == null || selectedId.isEmpty) {
       return null;
     }
-    for (final channel in effectiveContactChannels) {
+    for (final channel in effectiveContactChannelsValue) {
       if (channel.id == selectedId && channel.isBubbleEligible) {
         return channel;
       }

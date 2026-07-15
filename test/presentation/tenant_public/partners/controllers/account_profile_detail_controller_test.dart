@@ -20,6 +20,7 @@ import 'package:belluga_now/domain/repositories/value_objects/telemetry_reposito
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/shared/account_profile_contact_source_summary.dart';
+import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_source_account_profile_id_value.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
 import 'package:belluga_now/domain/invites/invite_materialize_result.dart';
@@ -28,6 +29,8 @@ import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
+import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
 import 'package:belluga_now/infrastructure/services/telemetry/telemetry_properties_codec.dart';
 import 'package:belluga_now/testing/account_profile_model_factory.dart';
@@ -380,10 +383,12 @@ void main() {
         contactSourceAccountProfileId: '507f1f77bcf86cd799439099',
         effectiveContactChannels: [whatsappChannel],
         contactBubbleChannelId: whatsappChannel.id,
-        effectiveContactSourceProfile: const AccountProfileContactSourceSummary(
-          id: '507f1f77bcf86cd799439099',
-          displayName: 'Perfil Origem',
-          profileType: 'artist',
+        effectiveContactSourceProfile: AccountProfileContactSourceSummary(
+          idValue: AccountProfileContactSourceAccountProfileIdValue(
+            '507f1f77bcf86cd799439099',
+          ),
+          displayNameValue: TitleValue()..parse('Perfil Origem'),
+          profileTypeValue: AccountProfileTypeValue('artist'),
         ),
       );
 
@@ -981,6 +986,9 @@ class _FakeProximityPreferencesRepository
 }
 
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {
+  @override
+  void clearCurrentIdentityState() {}
+
   _FakeUserEventsRepository({Set<String> confirmedIds = const {}})
     : _confirmedIds = Set<String>.from(confirmedIds) {
     confirmedOccurrenceIdsStream.addValue(

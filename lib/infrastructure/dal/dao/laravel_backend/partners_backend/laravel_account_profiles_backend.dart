@@ -462,7 +462,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
             publicDetailPathValue: publicDetailPath == null
                 ? null
                 : AccountProfilePublicDetailPathValue(publicDetailPath),
-            contactMode: contactMode,
+            contactModeValue: contactMode,
             contactSourceAccountProfileId: contactSourceAccountProfileId == null
                 ? null
                 : AccountProfileContactSourceAccountProfileIdValue(
@@ -530,10 +530,13 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       return null;
     }
     return AccountProfileContactSourceSummary(
-      id: id,
-      displayName: displayName,
-      slug: _parseNullableText(json['slug']),
-      profileType: profileType,
+      idValue: AccountProfileContactSourceAccountProfileIdValue(id),
+      displayNameValue: TitleValue()..parse(displayName),
+      slugValue: switch (_parseNullableText(json['slug'])) {
+        final String slug => SlugValue()..parse(slug),
+        _ => null,
+      },
+      profileTypeValue: AccountProfileTypeValue(profileType),
     );
   }
 

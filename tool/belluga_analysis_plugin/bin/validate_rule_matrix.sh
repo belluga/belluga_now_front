@@ -13,24 +13,23 @@ if [[ ! -d "$fixture_dir" ]]; then
   exit 1
 fi
 
-if [[ ! -f "$fixture_dir/.dart_tool/package_config.json" ]]; then
-  echo "[validate_rule_matrix] fixture package_config missing; running pub get..."
-  (
-    cd "$fixture_dir"
-    fvm flutter pub get
-  )
-fi
+echo "[validate_rule_matrix] synchronizing fixture package dependencies..."
+(
+  cd "$fixture_dir"
+  fvm flutter pub get
+)
 
 analysis_backup="$(mktemp)"
 output_file="$(mktemp)"
 expected_codes_file="$(mktemp)"
 found_codes_file="$(mktemp)"
+negative_expectations_file="$(mktemp)"
 cp "$analysis_options_file" "$analysis_backup"
 
 temp_files=()
 cleanup() {
   cp "$analysis_backup" "$analysis_options_file" || true
-  rm -f "$analysis_backup" "$output_file" "$expected_codes_file" "$found_codes_file"
+  rm -f "$analysis_backup" "$output_file" "$expected_codes_file" "$found_codes_file" "$negative_expectations_file"
   for f in "${temp_files[@]}"; do
     rm -f "$f" || true
   done
@@ -242,6 +241,28 @@ missing_codes="$(comm -23 "$expected_codes_file" "$found_codes_file" || true)"
 if [[ -n "$missing_codes" ]]; then
   echo "[validate_rule_matrix] missing expected lint codes:"
   echo "$missing_codes"
+  echo "[validate_rule_matrix] analyzer output (first 200 lines):"
+  sed -n '1,200p' "$output_file"
+  exit 1
+fi
+
+grep -RIn --include='*.dart' 'expect_no_lint:' \
+  "$fixture_dir/lib" "$fixture_dir/integration_test" |
+  sed -E 's#^(.+):([0-9]+):.*expect_no_lint:[[:space:]]*([a-z0-9_]+).*#\1\t\2\t\3#' \
+  > "$negative_expectations_file"
+
+negative_failures=0
+while IFS=$'\t' read -r source_file source_line code; do
+  [[ -z "$source_file" ]] && continue
+  resolved_source_file="$(realpath "$source_file")"
+  target_line="$((source_line + 1))"
+  if grep -Fq "|$code|$resolved_source_file|$target_line|" "$output_file"; then
+    echo "[validate_rule_matrix] unexpected lint $code at $source_file:$target_line"
+    negative_failures=1
+  fi
+done < "$negative_expectations_file"
+
+if [[ "$negative_failures" -ne 0 ]]; then
   echo "[validate_rule_matrix] analyzer output (first 200 lines):"
   sed -n '1,200p' "$output_file"
   exit 1

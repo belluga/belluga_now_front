@@ -1,3 +1,4 @@
+import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/application/application.dart';
 import 'package:belluga_now/application/application_contract.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
@@ -125,8 +126,9 @@ void main() {
     }
   }
 
-  testWidgets('Tenant admin can create, edit, and delete taxonomies',
-      (tester) async {
+  testWidgets('Tenant admin can create, edit, and delete taxonomies', (
+    tester,
+  ) async {
     final repository = _FakeTaxonomiesRepository();
     await _registerCommonDependencies(taxonomiesRepository: repository);
 
@@ -134,21 +136,15 @@ void main() {
     GetIt.I.registerSingleton<ApplicationContract>(app);
     await app.init();
 
-    app.appRouter.replaceAll(
-      [
-        TenantAdminShellRoute(
-          children: [TenantAdminTaxonomyCreateRoute()],
-        ),
-      ],
-    );
+    app.appRouter.replaceAll([
+      TenantAdminShellRoute(children: [TenantAdminTaxonomyCreateRoute()]),
+    ]);
 
     await tester.pumpWidget(app);
     await tester.pumpAndSettle(const Duration(seconds: 2));
     await _waitForFinder(tester, _tenantAdminShellRouterFinder());
     app.appRouter.navigate(
-      TenantAdminShellRoute(
-        children: [TenantAdminTaxonomyCreateRoute()],
-      ),
+      TenantAdminShellRoute(children: [TenantAdminTaxonomyCreateRoute()]),
     );
     await tester.pumpAndSettle(const Duration(seconds: 1));
 
@@ -160,8 +156,10 @@ void main() {
       find.widgetWithText(TextFormField, 'Slug'),
       'cuisine',
     );
-    final appliesToAccountProfile =
-        find.widgetWithText(FilterChip, 'account_profile');
+    final appliesToAccountProfile = find.widgetWithText(
+      FilterChip,
+      'account_profile',
+    );
     await tester.ensureVisible(appliesToAccountProfile);
     await tester.tap(appliesToAccountProfile, warnIfMissed: false);
     await tester.pumpAndSettle();
@@ -170,28 +168,24 @@ void main() {
     await tester.pumpAndSettle();
     FocusManager.instance.primaryFocus?.unfocus();
     await tester.pumpAndSettle();
-    final taxonomySubmitButton =
-        find.byKey(const ValueKey('taxonomy-form-submit-button'));
+    final taxonomySubmitButton = find.byKey(
+      const ValueKey('taxonomy-form-submit-button'),
+    );
     await tester.ensureVisible(taxonomySubmitButton);
     await tester.tap(taxonomySubmitButton);
     await tester.pumpAndSettle();
-    final created = (await repository.fetchTaxonomies())
-        .firstWhere((taxonomy) => taxonomy.slug == 'cuisine');
+    final created = (await repository.fetchTaxonomies()).firstWhere(
+      (taxonomy) => taxonomy.slug == 'cuisine',
+    );
 
     expect(created.name, 'Cozinha');
     expect(created.appliesTo.contains('account_profile'), isTrue);
 
-    app.appRouter.replaceAll(
-      [
-        TenantAdminShellRoute(
-          children: [
-            TenantAdminTaxonomyEditRoute(
-              taxonomyId: created.id,
-            ),
-          ],
-        ),
-      ],
-    );
+    app.appRouter.replaceAll([
+      TenantAdminShellRoute(
+        children: [TenantAdminTaxonomyEditRoute(taxonomyId: created.id)],
+      ),
+    ]);
     await tester.pumpAndSettle(const Duration(seconds: 1));
 
     await tester.enterText(
@@ -204,20 +198,19 @@ void main() {
     await tester.tap(taxonomySubmitButton);
     await tester.pumpAndSettle();
 
-    final updated = (await repository.fetchTaxonomies())
-        .firstWhere((taxonomy) => taxonomy.id == created.id);
+    final updated = (await repository.fetchTaxonomies()).firstWhere(
+      (taxonomy) => taxonomy.id == created.id,
+    );
     expect(updated.name, 'Cozinha Nova');
 
     await repository.deleteTaxonomy(tenantAdminTaxRepoString(created.id));
     final taxonomies = await repository.fetchTaxonomies();
-    expect(
-      taxonomies.where((taxonomy) => taxonomy.id == created.id),
-      isEmpty,
-    );
+    expect(taxonomies.where((taxonomy) => taxonomy.id == created.id), isEmpty);
   });
 
-  testWidgets('Account onboarding selects taxonomy terms by registry',
-      (tester) async {
+  testWidgets('Account onboarding selects taxonomy terms by registry', (
+    tester,
+  ) async {
     final repository = _FakeTaxonomiesRepository()
       ..seedTaxonomy(
         tenantAdminTaxonomyDefinitionFromRaw(
@@ -291,8 +284,9 @@ void main() {
       find.widgetWithText(TextFormField, 'Nome'),
       'Perfil Teste',
     );
-    final saveButton =
-        find.byKey(const ValueKey('tenant_admin_account_create_save'));
+    final saveButton = find.byKey(
+      const ValueKey('tenant_admin_account_create_save'),
+    );
     await tester.ensureVisible(saveButton);
     await tester.tap(saveButton, warnIfMissed: false);
     await tester.pumpAndSettle();
@@ -343,8 +337,9 @@ class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
 
   @override
   Future<void> loginWithEmailPassword(
-      LandlordAuthRepositoryContractPrimString email,
-      LandlordAuthRepositoryContractPrimString password) async {}
+    LandlordAuthRepositoryContractPrimString email,
+    LandlordAuthRepositoryContractPrimString password,
+  ) async {}
 
   @override
   Future<void> logout() async {}
@@ -458,7 +453,8 @@ class _FakeAccountsRepository
 
   @override
   Future<void> deleteAccount(
-      TenantAdminAccountsRepositoryContractPrimString accountSlug) async {}
+    TenantAdminAccountsRepositoryContractPrimString accountSlug,
+  ) async {}
 
   @override
   Future<TenantAdminAccount> restoreAccount(
@@ -475,7 +471,8 @@ class _FakeAccountsRepository
 
   @override
   Future<void> forceDeleteAccount(
-      TenantAdminAccountsRepositoryContractPrimString accountSlug) async {}
+    TenantAdminAccountsRepositoryContractPrimString accountSlug,
+  ) async {}
 }
 
 class _FakeLandlordTenantsRepository
@@ -493,8 +490,8 @@ class _FakeLandlordTenantsRepository
 }
 
 class _FakeAccountProfilesRepository
-    with TenantAdminProfileTypesPaginationMixin
-    implements TenantAdminAccountProfilesRepositoryContract {
+    extends TenantAdminAccountProfilesRepositoryContract
+    with TenantAdminProfileTypesPaginationMixin {
   TenantAdminTaxonomyTerms lastCreatedTerms =
       const TenantAdminTaxonomyTerms.empty();
 
@@ -530,7 +527,7 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminProfileTypeDefinition>>
-      fetchProfileTypesPage({
+  fetchProfileTypesPage({
     required TenantAdminAccountProfilesRepoInt page,
     required TenantAdminAccountProfilesRepoInt pageSize,
   }) async {
@@ -556,12 +553,11 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? accountId,
     TenantAdminAccountProfilesRepoBool? queryableOnly,
     TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
-  }) async =>
-      [];
+  }) async => [];
 
   @override
   Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-      fetchAccountProfilesPage({
+  fetchAccountProfilesPage({
     required TenantAdminAccountProfilesRepoInt page,
     required TenantAdminAccountProfilesRepoInt pageSize,
     TenantAdminAccountProfilesRepoString? search,
@@ -574,10 +570,7 @@ class _FakeAccountProfilesRepository
       queryableOnly: queryableOnly,
       excludeAccountProfileId: excludeAccountProfileId,
     );
-    return tenantAdminPagedResultFromRaw(
-      items: profiles,
-      hasMore: false,
-    );
+    return tenantAdminPagedResultFromRaw(items: profiles, hasMore: false);
   }
 
   @override
@@ -689,7 +682,8 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<void> deleteAccountProfile(
-      TenantAdminAccountProfilesRepoString accountProfileId) async {}
+    TenantAdminAccountProfilesRepoString accountProfileId,
+  ) async {}
 
   @override
   Future<TenantAdminAccountProfile> restoreAccountProfile(
@@ -705,7 +699,8 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<void> forceDeleteAccountProfile(
-      TenantAdminAccountProfilesRepoString accountProfileId) async {}
+    TenantAdminAccountProfilesRepoString accountProfileId,
+  ) async {}
 
   @override
   Future<TenantAdminProfileTypeDefinition> createProfileType({
@@ -736,7 +731,8 @@ class _FakeAccountProfilesRepository
       type: type,
       label: label ?? 'Artista',
       allowedTaxonomies: allowedTaxonomies ?? ['music_genre'],
-      capabilities: capabilities ??
+      capabilities:
+          capabilities ??
           TenantAdminProfileTypeCapabilities(
             isFavoritable: TenantAdminFlagValue(true),
             isPoiEnabled: TenantAdminFlagValue(false),
@@ -752,7 +748,8 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<void> deleteProfileType(
-      TenantAdminAccountProfilesRepoString type) async {}
+    TenantAdminAccountProfilesRepoString type,
+  ) async {}
 }
 
 class _FakeTaxonomiesRepository
@@ -777,7 +774,7 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
-      fetchTaxonomiesPage({
+  fetchTaxonomiesPage({
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
   }) async {
@@ -839,7 +836,7 @@ class _FakeTaxonomiesRepository
       name: name?.value ?? existing.name,
       appliesTo:
           appliesTo?.map((entry) => entry.value).toList(growable: false) ??
-              existing.appliesTo,
+          existing.appliesTo,
       icon: icon?.value ?? existing.icon,
       color: color?.value ?? existing.color,
     );
@@ -862,7 +859,7 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
-      fetchTermsPage({
+  fetchTermsPage({
     required TenantAdminTaxRepoString taxonomyId,
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,

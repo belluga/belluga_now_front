@@ -1,3 +1,4 @@
+import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';

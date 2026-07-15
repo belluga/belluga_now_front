@@ -109,91 +109,130 @@ class _TenantAdminAccountProfilePickerState
             Text(widget.title, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 12),
             Expanded(
-              child: StreamValueBuilder<String?>(
+              child: StreamValueBuilder<String>(
                 streamValue: widget.errorStreamValue,
-                builder: (context, error) {
-                  return StreamValueBuilder<bool>(
-                    streamValue: widget.isLoadingStreamValue,
-                    builder: (context, isLoading) {
-                      return StreamValueBuilder<bool>(
-                        streamValue: widget.isPageLoadingStreamValue,
-                        builder: (context, isPageLoading) {
-                          return StreamValueBuilder<
-                            List<TenantAdminAccountProfile>
-                          >(
-                            streamValue: widget.candidatesStreamValue,
-                            builder: (context, candidates) {
-                              if (isLoading && candidates.isEmpty) {
-                                return const Center(
-                                  child: CircularProgressIndicator(),
-                                );
-                              }
-                              if (error != null &&
-                                  error.trim().isNotEmpty &&
-                                  candidates.isEmpty) {
-                                return Center(
-                                  child: Text(
-                                    error,
-                                    textAlign: TextAlign.center,
-                                  ),
-                                );
-                              }
-                              if (candidates.isEmpty) {
-                                return Center(child: Text(widget.emptyMessage));
-                              }
-
-                              return ListView.separated(
-                                key: const Key(
-                                  'tenantAdminAccountProfilePickerList',
-                                ),
-                                controller: _scrollController,
-                                itemCount:
-                                    candidates.length + (isPageLoading ? 1 : 0),
-                                separatorBuilder: (_, _) =>
-                                    const SizedBox(height: 8),
-                                itemBuilder: (context, index) {
-                                  if (index >= candidates.length) {
-                                    return const Padding(
-                                      padding: EdgeInsets.symmetric(
-                                        vertical: 12,
-                                      ),
-                                      child: Center(
-                                        child: CircularProgressIndicator(),
-                                      ),
-                                    );
-                                  }
-                                  final profile = candidates[index];
-                                  final selected =
-                                      profile.id == widget.selectedProfileId;
-                                  return Card(
-                                    child: ListTile(
-                                      leading: const Icon(Icons.person_outline),
-                                      title: Text(profile.displayName),
-                                      subtitle: Text(
-                                        profile.slug ?? profile.profileType,
-                                      ),
-                                      trailing: Icon(
-                                        selected
-                                            ? Icons.check_circle
-                                            : Icons.chevron_right,
-                                      ),
-                                      onTap: () => context.router.pop(profile),
-                                    ),
-                                  );
-                                },
-                              );
-                            },
-                          );
-                        },
-                      );
-                    },
-                  );
-                },
+                onNullWidget: _TenantAdminAccountProfilePickerResults(
+                  candidatesStreamValue: widget.candidatesStreamValue,
+                  isLoadingStreamValue: widget.isLoadingStreamValue,
+                  isPageLoadingStreamValue: widget.isPageLoadingStreamValue,
+                  scrollController: _scrollController,
+                  emptyMessage: widget.emptyMessage,
+                  selectedProfileId: widget.selectedProfileId,
+                ),
+                builder: (context, errorMessage) =>
+                    _TenantAdminAccountProfilePickerResults(
+                      candidatesStreamValue: widget.candidatesStreamValue,
+                      isLoadingStreamValue: widget.isLoadingStreamValue,
+                      isPageLoadingStreamValue: widget.isPageLoadingStreamValue,
+                      scrollController: _scrollController,
+                      emptyMessage: widget.emptyMessage,
+                      selectedProfileId: widget.selectedProfileId,
+                      errorMessage: errorMessage,
+                    ),
               ),
             ),
           ],
         ),
       ),
     );
+  }
+}
+
+class _TenantAdminAccountProfilePickerResults extends StatelessWidget {
+  const _TenantAdminAccountProfilePickerResults({
+    required this.candidatesStreamValue,
+    required this.isLoadingStreamValue,
+    required this.isPageLoadingStreamValue,
+    required this.scrollController,
+    required this.emptyMessage,
+    required this.selectedProfileId,
+    this.errorMessage,
+  });
+
+  final StreamValue<List<TenantAdminAccountProfile>> candidatesStreamValue;
+  final StreamValue<bool> isLoadingStreamValue;
+  final StreamValue<bool> isPageLoadingStreamValue;
+  final ScrollController scrollController;
+  final String emptyMessage;
+  final String? selectedProfileId;
+  final String? errorMessage;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamValueBuilder<bool>(
+      streamValue: isLoadingStreamValue,
+      builder: (context, isLoading) {
+        return StreamValueBuilder<bool>(
+          streamValue: isPageLoadingStreamValue,
+          builder: (context, isPageLoading) {
+            return StreamValueBuilder<List<TenantAdminAccountProfile>>(
+              streamValue: candidatesStreamValue,
+              onNullWidget: _emptyState(isLoading),
+              builder: (context, candidates) => _candidateState(
+                context,
+                candidates,
+                isLoading,
+                isPageLoading,
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _emptyState(bool isLoading) {
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    return _messageOrEmptyState();
+  }
+
+  Widget _candidateState(
+    BuildContext context,
+    List<TenantAdminAccountProfile> candidates,
+    bool isLoading,
+    bool isPageLoading,
+  ) {
+    if (isLoading && candidates.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (candidates.isEmpty) {
+      return _messageOrEmptyState();
+    }
+
+    return ListView.separated(
+      key: const Key('tenantAdminAccountProfilePickerList'),
+      controller: scrollController,
+      itemCount: candidates.length + (isPageLoading ? 1 : 0),
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
+      itemBuilder: (context, index) {
+        if (index >= candidates.length) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        final profile = candidates[index];
+        final selected = profile.id == selectedProfileId;
+        return Card(
+          child: ListTile(
+            leading: const Icon(Icons.person_outline),
+            title: Text(profile.displayName),
+            subtitle: Text(profile.slug ?? profile.profileType),
+            trailing: Icon(selected ? Icons.check_circle : Icons.chevron_right),
+            onTap: () => context.router.pop(profile),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _messageOrEmptyState() {
+    final message = errorMessage;
+    if (message != null && message.trim().isNotEmpty) {
+      return Center(child: Text(message, textAlign: TextAlign.center));
+    }
+    return Center(child: Text(emptyMessage));
   }
 }

@@ -135,11 +135,11 @@ class TenantAdminAccountProfilesRequestEncoder {
         ),
       'contact_mode': contactMode.rawValue,
       'contact_source_account_profile_id': ?contactSourceAccountProfileId,
-      'contact_channels': BellugaContactChannelCodec.draftsToJson(
-        contactChannelDrafts,
-      ),
+      'contact_channels': contactChannelDrafts
+          .map(_encodeContactChannelDraft)
+          .toList(growable: false),
     };
-    bubbleSelection.encodeInto(payload);
+    _encodeBubbleSelection(payload, bubbleSelection);
     return payload;
   }
 
@@ -196,11 +196,11 @@ class TenantAdminAccountProfilesRequestEncoder {
           contactSourceAccountProfileId;
     }
     if (contactChannelDrafts != null) {
-      payload['contact_channels'] = BellugaContactChannelCodec.draftsToJson(
-        contactChannelDrafts,
-      );
+      payload['contact_channels'] = contactChannelDrafts
+          .map(_encodeContactChannelDraft)
+          .toList(growable: false);
     }
-    bubbleSelection.encodeInto(payload);
+    _encodeBubbleSelection(payload, bubbleSelection);
     return payload;
   }
 
@@ -275,6 +275,49 @@ class TenantAdminAccountProfilesRequestEncoder {
     TenantAdminProfileTypeCapabilities capabilities,
   ) {
     return Map<String, dynamic>.from(capabilities.toCapabilityMap().toJson());
+  }
+}
+
+Map<String, dynamic> _encodeContactChannelDraft(
+  BellugaContactChannelDraft draft,
+) {
+  return <String, dynamic>{
+    if (draft.id != null) 'id': draft.id,
+    'draft_key': draft.draftKey,
+    'type': draft.type.rawValue,
+    'value': draft.value,
+    if (draft.title != null) 'title': draft.title,
+    if (draft.initialMessages.isNotEmpty)
+      'metadata': <String, dynamic>{
+        'initial_messages': draft.initialMessages
+            .map(
+              (message) => <String, dynamic>{
+                'id': message.id,
+                'cta': message.cta,
+                'mensagem': message.message,
+              },
+            )
+            .toList(growable: false),
+      },
+  };
+}
+
+void _encodeBubbleSelection(
+  Map<String, dynamic> payload,
+  BellugaContactBubbleSelectionMutation selection,
+) {
+  switch (selection) {
+    case BellugaContactBubbleSelectionOmit():
+      return;
+    case BellugaContactBubbleSelectionClear():
+      payload['contact_bubble_channel_id'] = null;
+      return;
+    case BellugaContactBubbleSelectionPersisted(:final channelId):
+      payload['contact_bubble_channel_id'] = channelId;
+      return;
+    case BellugaContactBubbleSelectionDraft(:final draftKey):
+      payload['contact_bubble_channel_draft_key'] = draftKey;
+      return;
   }
 }
 

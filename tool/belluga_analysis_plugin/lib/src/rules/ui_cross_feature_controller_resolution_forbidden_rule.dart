@@ -11,16 +11,16 @@ import '../type_utils.dart';
 
 class UiCrossFeatureControllerResolutionForbiddenRule extends DartLintRule {
   UiCrossFeatureControllerResolutionForbiddenRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'ui_cross_feature_controller_resolution_forbidden',
-            problemMessage:
-                'UI files cannot resolve controllers from another feature scope directly.',
-            correctionMessage:
-                'Treatments: resolve only same-feature controllers in UI; move cross-feature orchestration to shared/owning controller boundaries.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'ui_cross_feature_controller_resolution_forbidden',
+          problemMessage:
+              'UI files cannot resolve controllers from another feature scope directly.',
+          correctionMessage:
+              'Treatments: resolve only same-feature controllers in UI; move cross-feature orchestration to shared/owning controller boundaries.',
+        ),
+      );
 
   @override
   void run(
@@ -48,8 +48,9 @@ class UiCrossFeatureControllerResolutionForbiddenRule extends DartLintRule {
         return;
       }
 
-      final controllerSource =
-          _controllerSourcePathFromTypeArgument(node.typeArguments);
+      final controllerSource = _controllerSourcePathFromTypeArgument(
+        node.typeArguments,
+      );
       if (controllerSource == null) {
         return;
       }
@@ -74,8 +75,9 @@ class UiCrossFeatureControllerResolutionForbiddenRule extends DartLintRule {
         return;
       }
 
-      final controllerSource =
-          _controllerSourcePathFromTypeArgument(node.typeArguments);
+      final controllerSource = _controllerSourcePathFromTypeArgument(
+        node.typeArguments,
+      );
       if (controllerSource == null) {
         return;
       }
@@ -92,7 +94,8 @@ class UiCrossFeatureControllerResolutionForbiddenRule extends DartLintRule {
   }
 
   String? _controllerSourcePathFromTypeArgument(
-      TypeArgumentList? typeArguments) {
+    TypeArgumentList? typeArguments,
+  ) {
     final args = typeArguments?.arguments;
     if (args == null || args.isEmpty) {
       return null;
@@ -105,7 +108,8 @@ class UiCrossFeatureControllerResolutionForbiddenRule extends DartLintRule {
 
     final element = type.element;
     if (element != null) {
-      final source = element.firstFragment.libraryFragment?.source ??
+      final source =
+          element.firstFragment.libraryFragment?.source ??
           element.library?.firstFragment.source;
       if (source != null) {
         return normalizePath(source.fullName);

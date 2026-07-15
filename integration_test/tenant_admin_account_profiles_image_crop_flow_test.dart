@@ -1,3 +1,4 @@
+import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:integration_test/integration_test.dart';
 import 'dart:typed_data';
 
@@ -397,8 +398,7 @@ class _FakeProfilesRepository
     TenantAdminAccountProfilesRepoString? accountId,
     TenantAdminAccountProfilesRepoBool? queryableOnly,
     TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
-  }) async =>
-      [];
+  }) async => [];
 
   @override
   Future<TenantAdminAccountProfile> fetchAccountProfile(
@@ -481,7 +481,8 @@ class _FakeProfilesRepository
 
   @override
   Future<void> deleteAccountProfile(
-      TenantAdminAccountProfilesRepoString accountProfileId) async {
+    TenantAdminAccountProfilesRepoString accountProfileId,
+  ) async {
     throw UnimplementedError();
   }
 
@@ -494,7 +495,8 @@ class _FakeProfilesRepository
 
   @override
   Future<void> forceDeleteAccountProfile(
-      TenantAdminAccountProfilesRepoString accountProfileId) async {
+    TenantAdminAccountProfilesRepoString accountProfileId,
+  ) async {
     throw UnimplementedError();
   }
 
@@ -553,7 +555,8 @@ class _FakeProfilesRepository
 
   @override
   Future<void> deleteProfileType(
-      TenantAdminAccountProfilesRepoString type) async {
+    TenantAdminAccountProfilesRepoString type,
+  ) async {
     throw UnimplementedError();
   }
 }
@@ -621,6 +624,5 @@ class _FakeTaxonomiesRepository
   @override
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
     required TenantAdminTaxRepoString taxonomyId,
-  }) async =>
-      [];
+  }) async => [];
 }

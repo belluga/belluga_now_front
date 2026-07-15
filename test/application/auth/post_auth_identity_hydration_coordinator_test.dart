@@ -346,6 +346,9 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
 
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   @override
+  void clearCurrentIdentityState() {}
+
+  @override
   final confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(
         defaultValue: const <UserEventsRepositoryContractPrimString>{},

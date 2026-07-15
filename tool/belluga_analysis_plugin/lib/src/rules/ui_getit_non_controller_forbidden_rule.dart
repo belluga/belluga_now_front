@@ -8,16 +8,16 @@ import '../type_utils.dart';
 
 class UiGetItNonControllerForbiddenRule extends DartLintRule {
   UiGetItNonControllerForbiddenRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'ui_getit_non_controller_forbidden',
-            problemMessage:
-                'UI files may resolve only controller types via GetIt.',
-            correctionMessage:
-                'Treatments: resolve only feature controllers in UI; delegate all data/service access behind controller APIs.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'ui_getit_non_controller_forbidden',
+          problemMessage:
+              'UI files may resolve only controller types via GetIt.',
+          correctionMessage:
+              'Treatments: resolve only feature controllers in UI; delegate all data/service access behind controller APIs.',
+        ),
+      );
 
   @override
   void run(

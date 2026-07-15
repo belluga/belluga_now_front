@@ -52,7 +52,7 @@ TenantAdminAccountProfile tenantAdminAccountProfileFromRaw({
     galleryGroups: galleryGroups,
     nestedProfileGroups: nestedProfileGroups,
     ownershipState: ownershipState,
-    contactMode: contactMode,
+    contactModeValue: contactMode,
     contactSourceAccountProfileId:
         contactSourceAccountProfileId == null ||
             contactSourceAccountProfileId.trim().isEmpty

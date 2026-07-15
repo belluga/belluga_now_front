@@ -8,7 +8,7 @@ class ControllerStreamValueParameterForbiddenRule extends DartLintRule {
   ControllerStreamValueParameterForbiddenRule()
     : super(
         code: const LintCode(
-          errorSeverity: ErrorSeverity.WARNING,
+          errorSeverity: ErrorSeverity.warning,
           name: 'controller_streamvalue_parameter_forbidden',
           problemMessage:
               'Controller methods must not accept StreamValue parameters.',

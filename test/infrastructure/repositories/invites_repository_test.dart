@@ -23,6 +23,7 @@ import 'package:belluga_now/infrastructure/dal/dto/invites/invite_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_realtime_delta_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invite_contact_import_cache_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/invites/invite_contact_match_cache_dto.dart';
 import 'package:belluga_now/infrastructure/services/invites_backend_contract.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:crypto/crypto.dart';
@@ -1265,6 +1266,25 @@ void main() {
     });
     expect(backend.deletedContactGroupIds, ['group-2']);
   });
+
+  test(
+    'current identity cleanup erases persisted contact-import projections',
+    () async {
+      final cache = _FakeInviteContactImportCache();
+      cache.entries['former-user'] = InviteContactImportCacheEntry(
+        signature: 'former-user-signature',
+        importedAt: DateTime.utc(2026, 7, 14),
+        matches: const <InviteContactMatchCacheDto>[],
+      );
+      final repository = InvitesRepository(contactImportCache: cache);
+
+      await repository.clearCurrentIdentityState();
+
+      expect(cache.clearAllCount, 1);
+      expect(cache.entries, isEmpty);
+      expect(repository.importedContactMatchesStreamValue.value, isNull);
+    },
+  );
 }
 
 SentInviteStatus _sentStatus({
@@ -1290,6 +1310,7 @@ class _FakeInviteContactImportCache
   final entries = <String, InviteContactImportCacheEntry>{};
   int readCount = 0;
   int writeCount = 0;
+  int clearAllCount = 0;
 
   @override
   Future<InviteContactImportCacheEntry?> read(String cacheKey) async {
@@ -1304,6 +1325,12 @@ class _FakeInviteContactImportCache
   ) async {
     writeCount += 1;
     entries[cacheKey] = entry;
+  }
+
+  @override
+  Future<void> clearAll() async {
+    clearAllCount += 1;
+    entries.clear();
   }
 }
 

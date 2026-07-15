@@ -529,6 +529,9 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 
 class _FakeFavoriteRepository implements FavoriteRepositoryContract {
   @override
+  void clearCurrentIdentityState() {}
+
+  @override
   final favoriteResumesStreamValue = StreamValue<List<FavoriteResume>?>(
     defaultValue: null,
   );

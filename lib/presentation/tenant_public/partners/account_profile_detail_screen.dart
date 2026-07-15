@@ -1205,13 +1205,15 @@ class _AccountProfileDetailScreenState
                     contentPadding: EdgeInsets.zero,
                     leading: Icon(_contactIconFor(channel.iconToken)),
                     title: Text(channel.initialMessages[index].cta),
-                    onTap: () async {
-                      await sheetContext.router.maybePop();
-                      await _handleContactCtaTap(
-                        accountProfile,
-                        channel,
-                        channel.initialMessages[index],
-                        origin: origin,
+                    onTap: () {
+                      sheetContext.router.pop();
+                      unawaited(
+                        _handleContactCtaTap(
+                          accountProfile,
+                          channel,
+                          channel.initialMessages[index],
+                          origin: origin,
+                        ),
                       );
                     },
                   ),

@@ -54,25 +54,26 @@ import 'package:belluga_now/testing/invite_model_factory.dart';
 
 void main() {
   test(
-      'anonymous confirm attendance requires authentication and does not persist',
-      () async {
-    final userEventsRepository = _FakeUserEventsRepository();
-    final invitesRepository = _FakeInvitesRepository();
-    final controller = ImmersiveEventDetailController(
-      userEventsRepository: userEventsRepository,
-      invitesRepository: invitesRepository,
-      authRepository: _FakeAuthRepository(authorized: false),
-    );
+    'anonymous confirm attendance requires authentication and does not persist',
+    () async {
+      final userEventsRepository = _FakeUserEventsRepository();
+      final invitesRepository = _FakeInvitesRepository();
+      final controller = ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: false),
+      );
 
-    controller.init(_buildEvent());
+      controller.init(_buildEvent());
 
-    final result = await controller.confirmAttendance();
+      final result = await controller.confirmAttendance();
 
-    expect(result, AttendanceConfirmationResult.requiresAuthentication);
-    expect(userEventsRepository.confirmCalls, 0);
-    expect(invitesRepository.acceptInviteCalls, 0);
-    expect(controller.isLoadingStreamValue.value, isFalse);
-  });
+      expect(result, AttendanceConfirmationResult.requiresAuthentication);
+      expect(userEventsRepository.confirmCalls, 0);
+      expect(invitesRepository.acceptInviteCalls, 0);
+      expect(controller.isLoadingStreamValue.value, isFalse);
+    },
+  );
 
   test('authenticated confirm attendance persists and updates state', () async {
     final userEventsRepository = _FakeUserEventsRepository();
@@ -143,381 +144,400 @@ void main() {
   });
 
   test(
-      'authenticated confirm attendance clears superseded pending invite state',
-      () async {
-    final userEventsRepository = _FakeUserEventsRepository();
-    final invitesRepository = _FakeInvitesRepository();
-    _linkRepositories(userEventsRepository, invitesRepository);
-    final invite = _buildInviteForEvent(
-      id: 'pending-direct-confirm',
-      eventId: '507f1f77bcf86cd799439011',
-    );
-    invitesRepository.pendingInvitesStreamValue.addValue([invite]);
-    invitesRepository.fetchInvitesResult = [invite];
-    invitesRepository.setShareCodeSessionContext(
-      code: invitesRepoString(
-        'SHARE-ABC',
-        defaultValue: '',
-        isRequired: true,
-      ),
-      invite: invite,
-    );
-    final controller = ImmersiveEventDetailController(
-      userEventsRepository: userEventsRepository,
-      invitesRepository: invitesRepository,
-      authRepository: _FakeAuthRepository(authorized: true),
-    );
+    'authenticated confirm attendance clears superseded pending invite state',
+    () async {
+      final userEventsRepository = _FakeUserEventsRepository();
+      final invitesRepository = _FakeInvitesRepository();
+      _linkRepositories(userEventsRepository, invitesRepository);
+      final invite = _buildInviteForEvent(
+        id: 'pending-direct-confirm',
+        eventId: '507f1f77bcf86cd799439011',
+      );
+      invitesRepository.pendingInvitesStreamValue.addValue([invite]);
+      invitesRepository.fetchInvitesResult = [invite];
+      invitesRepository.setShareCodeSessionContext(
+        code: invitesRepoString(
+          'SHARE-ABC',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        invite: invite,
+      );
+      final controller = ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+      );
 
-    controller.init(_buildEvent());
-    await Future<void>.delayed(Duration.zero);
-    expect(controller.receivedInvitesStreamValue.value, hasLength(1));
+      controller.init(_buildEvent());
+      await Future<void>.delayed(Duration.zero);
+      expect(controller.receivedInvitesStreamValue.value, hasLength(1));
 
-    invitesRepository.fetchInvitesResult = const <InviteModel>[];
-    final result = await controller.confirmAttendance();
+      invitesRepository.fetchInvitesResult = const <InviteModel>[];
+      final result = await controller.confirmAttendance();
 
-    expect(result, AttendanceConfirmationResult.confirmed);
-    expect(invitesRepository.fetchInvitesCalls, 1);
-    expect(invitesRepository.pendingInvitesStreamValue.value, isEmpty);
-    expect(invitesRepository.shareCodeSessionContextStreamValue.value, isNull);
-    expect(controller.receivedInvitesStreamValue.value, isEmpty);
-  });
-
-  test(
-      'event detail init rehydrates controller state even when repository already tracks the same selected occurrence',
-      () async {
-    final userEventsRepository = _FakeUserEventsRepository();
-    await userEventsRepository.confirmEventAttendance(
-      userEventsRepoString(
-        '507f1f77bcf86cd799439011',
-        defaultValue: '',
-        isRequired: true,
-      ),
-      occurrenceId: userEventsRepoString(
-        '507f1f77bcf86cd799439012',
-        defaultValue: '',
-        isRequired: true,
-      ),
-    );
-    final invitesRepository = _FakeInvitesRepository();
-    final event = _buildEvent();
-    invitesRepository.setImmersiveSelectedEvent(event);
-    final controller = ImmersiveEventDetailController(
-      userEventsRepository: userEventsRepository,
-      invitesRepository: invitesRepository,
-      authRepository: _FakeAuthRepository(authorized: true),
-    );
-
-    controller.init(event);
-
-    expect(controller.eventStreamValue.value?.selectedOccurrenceId,
-        event.selectedOccurrenceId);
-    expect(controller.isConfirmedStreamValue.value, isTrue);
-    expect(userEventsRepository.refreshConfirmedOccurrenceIdsCalls, 1);
-  });
+      expect(result, AttendanceConfirmationResult.confirmed);
+      expect(invitesRepository.fetchInvitesCalls, 1);
+      expect(invitesRepository.pendingInvitesStreamValue.value, isEmpty);
+      expect(
+        invitesRepository.shareCodeSessionContextStreamValue.value,
+        isNull,
+      );
+      expect(controller.receivedInvitesStreamValue.value, isEmpty);
+    },
+  );
 
   test(
-      'event detail init replaces stale same-target profile groups with route-resolved event',
-      () {
-    final userEventsRepository = _FakeUserEventsRepository();
-    final invitesRepository = _FakeInvitesRepository();
-    final staleEvent = _buildEvent(
-      profileGroups: [
-        _buildProfileGroup(
-          id: 'palco-sexta',
-          label: 'Palco Sexta',
-          order: 0,
-          profiles: [
-            _buildLinkedProfile(
-              id: 'profile-band',
-              displayName: 'Banda Sexta',
-              profileType: 'banda',
-              slug: 'banda-sexta',
+    'event detail init rehydrates controller state even when repository already tracks the same selected occurrence',
+    () async {
+      final userEventsRepository = _FakeUserEventsRepository();
+      await userEventsRepository.confirmEventAttendance(
+        userEventsRepoString(
+          '507f1f77bcf86cd799439011',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        occurrenceId: userEventsRepoString(
+          '507f1f77bcf86cd799439012',
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
+      final invitesRepository = _FakeInvitesRepository();
+      final event = _buildEvent();
+      invitesRepository.setImmersiveSelectedEvent(event);
+      final controller = ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+      );
+
+      controller.init(event);
+
+      expect(
+        controller.eventStreamValue.value?.selectedOccurrenceId,
+        event.selectedOccurrenceId,
+      );
+      expect(controller.isConfirmedStreamValue.value, isTrue);
+      expect(userEventsRepository.refreshConfirmedOccurrenceIdsCalls, 1);
+    },
+  );
+
+  test(
+    'event detail init replaces stale same-target profile groups with route-resolved event',
+    () {
+      final userEventsRepository = _FakeUserEventsRepository();
+      final invitesRepository = _FakeInvitesRepository();
+      final staleEvent = _buildEvent(
+        profileGroups: [
+          _buildProfileGroup(
+            id: 'palco-sexta',
+            label: 'Palco Sexta',
+            order: 0,
+            profiles: [
+              _buildLinkedProfile(
+                id: 'profile-band',
+                displayName: 'Banda Sexta',
+                profileType: 'banda',
+                slug: 'banda-sexta',
+              ),
+            ],
+          ),
+        ],
+      );
+      final freshEvent = _buildEvent(
+        profileGroups: [
+          _buildProfileGroup(
+            id: 'palco-sabado',
+            label: 'Palco Sabado',
+            order: 0,
+            profiles: [
+              _buildLinkedProfile(
+                id: 'profile-band-sabado',
+                displayName: 'Banda Sabado',
+                profileType: 'banda',
+                slug: 'banda-sabado',
+              ),
+            ],
+          ),
+        ],
+      );
+      invitesRepository.setImmersiveSelectedEvent(staleEvent);
+      final controller = ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+      );
+
+      controller.init(freshEvent);
+
+      expect(
+        controller.eventStreamValue.value?.profileGroups.map(
+          (group) => group.id,
+        ),
+        ['palco-sabado'],
+      );
+    },
+  );
+
+  test(
+    'event detail init replaces stale same-target occurrence tags with route-resolved event',
+    () {
+      final userEventsRepository = _FakeUserEventsRepository();
+      final invitesRepository = _FakeInvitesRepository();
+      final staleEvent = _buildEvent(
+        tags: const ['Showcase'],
+        occurrences: [
+          _buildOccurrence(
+            id: '507f1f77bcf86cd799439012',
+            start: DateTime(2026, 3, 15, 20),
+            end: DateTime(2026, 3, 15, 22),
+            isSelected: true,
+            tags: const ['Showcase'],
+          ),
+        ],
+      );
+      final freshEvent = _buildEvent(
+        tags: const ['Instrumental'],
+        occurrences: [
+          _buildOccurrence(
+            id: '507f1f77bcf86cd799439012',
+            start: DateTime(2026, 3, 15, 20),
+            end: DateTime(2026, 3, 15, 22),
+            isSelected: true,
+            tags: const ['Instrumental'],
+          ),
+        ],
+      );
+      invitesRepository.setImmersiveSelectedEvent(staleEvent);
+      final controller = ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+      );
+
+      controller.init(freshEvent);
+
+      expect(controller.eventStreamValue.value?.tags.map((tag) => tag.value), [
+        'Instrumental',
+      ]);
+    },
+  );
+
+  test(
+    'event detail init refreshes sent invite summary for selected occurrence',
+    () async {
+      final userEventsRepository = _FakeUserEventsRepository();
+      final invitesRepository = _FakeInvitesRepository();
+      final controller = ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+      );
+
+      controller.init(_buildEvent());
+      await pumpEventQueue();
+
+      expect(invitesRepository.sentSummaryRefreshes, [
+        {
+          'occurrence_id': '507f1f77bcf86cd799439012',
+          'event_id': '507f1f77bcf86cd799439011',
+          'preview_limit': null,
+        },
+      ]);
+      expect(invitesRepository.sentStatusRefreshes, isEmpty);
+    },
+  );
+
+  test(
+    'event detail init does not refresh confirmed ids on entry and consumes repository cache',
+    () async {
+      final userEventsRepository = _FakeUserEventsRepository();
+      await userEventsRepository.confirmEventAttendance(
+        userEventsRepoString(
+          '507f1f77bcf86cd799439011',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        occurrenceId: userEventsRepoString(
+          'occurrence-selected',
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
+      userEventsRepository.refreshConfirmedOccurrenceIdsCalls = 0;
+      final invitesRepository = _FakeInvitesRepository()
+        ..pendingInvitesStreamValue.addValue([
+          _buildInviteForEvent(
+            id: 'stale-invite',
+            eventId: '507f1f77bcf86cd799439011',
+            occurrenceId: 'occurrence-selected',
+          ),
+        ]);
+      final controller = ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+      );
+
+      controller.init(
+        _buildEvent(
+          occurrences: [
+            _buildOccurrence(
+              id: 'occurrence-selected',
+              start: DateTime(2026, 3, 15, 20),
+              isSelected: true,
             ),
           ],
         ),
-      ],
-    );
-    final freshEvent = _buildEvent(
-      profileGroups: [
-        _buildProfileGroup(
-          id: 'palco-sabado',
-          label: 'Palco Sabado',
-          order: 0,
-          profiles: [
-            _buildLinkedProfile(
-              id: 'profile-band-sabado',
-              displayName: 'Banda Sabado',
-              profileType: 'banda',
-              slug: 'banda-sabado',
-            ),
-          ],
-        ),
-      ],
-    );
-    invitesRepository.setImmersiveSelectedEvent(staleEvent);
-    final controller = ImmersiveEventDetailController(
-      userEventsRepository: userEventsRepository,
-      invitesRepository: invitesRepository,
-      authRepository: _FakeAuthRepository(authorized: true),
-    );
+      );
+      await Future<void>.delayed(Duration.zero);
 
-    controller.init(freshEvent);
-
-    expect(
-      controller.eventStreamValue.value?.profileGroups.map((group) => group.id),
-      ['palco-sabado'],
-    );
-  });
+      expect(controller.isConfirmedStreamValue.value, isTrue);
+      expect(controller.receivedInvitesStreamValue.value, isEmpty);
+      expect(userEventsRepository.refreshConfirmedOccurrenceIdsCalls, 0);
+    },
+  );
 
   test(
-      'event detail init replaces stale same-target occurrence tags with route-resolved event',
-      () {
-    final userEventsRepository = _FakeUserEventsRepository();
-    final invitesRepository = _FakeInvitesRepository();
-    final staleEvent = _buildEvent(
-      tags: const ['Showcase'],
-      occurrences: [
-        _buildOccurrence(
-          id: '507f1f77bcf86cd799439012',
-          start: DateTime(2026, 3, 15, 20),
-          end: DateTime(2026, 3, 15, 22),
-          isSelected: true,
-          tags: const ['Showcase'],
-        ),
-      ],
-    );
-    final freshEvent = _buildEvent(
-      tags: const ['Instrumental'],
-      occurrences: [
-        _buildOccurrence(
-          id: '507f1f77bcf86cd799439012',
-          start: DateTime(2026, 3, 15, 20),
-          end: DateTime(2026, 3, 15, 22),
-          isSelected: true,
-          tags: const ['Instrumental'],
-        ),
-      ],
-    );
-    invitesRepository.setImmersiveSelectedEvent(staleEvent);
-    final controller = ImmersiveEventDetailController(
-      userEventsRepository: userEventsRepository,
-      invitesRepository: invitesRepository,
-      authRepository: _FakeAuthRepository(authorized: true),
-    );
-
-    controller.init(freshEvent);
-
-    expect(
-      controller.eventStreamValue.value?.tags.map((tag) => tag.value),
-      ['Instrumental'],
-    );
-  });
-
-  test(
-      'event detail init refreshes sent invite summary for selected occurrence',
-      () async {
-    final userEventsRepository = _FakeUserEventsRepository();
-    final invitesRepository = _FakeInvitesRepository();
-    final controller = ImmersiveEventDetailController(
-      userEventsRepository: userEventsRepository,
-      invitesRepository: invitesRepository,
-      authRepository: _FakeAuthRepository(authorized: true),
-    );
-
-    controller.init(_buildEvent());
-    await pumpEventQueue();
-
-    expect(invitesRepository.sentSummaryRefreshes, [
-      {
-        'occurrence_id': '507f1f77bcf86cd799439012',
-        'event_id': '507f1f77bcf86cd799439011',
-        'preview_limit': null,
-      },
-    ]);
-    expect(invitesRepository.sentStatusRefreshes, isEmpty);
-  });
-
-  test(
-      'event detail init does not refresh confirmed ids on entry and consumes repository cache',
-      () async {
-    final userEventsRepository = _FakeUserEventsRepository();
-    await userEventsRepository.confirmEventAttendance(
-      userEventsRepoString(
-        '507f1f77bcf86cd799439011',
-        defaultValue: '',
-        isRequired: true,
-      ),
-      occurrenceId: userEventsRepoString(
-        'occurrence-selected',
-        defaultValue: '',
-        isRequired: true,
-      ),
-    );
-    userEventsRepository.refreshConfirmedOccurrenceIdsCalls = 0;
-    final invitesRepository = _FakeInvitesRepository()
-      ..pendingInvitesStreamValue.addValue([
+    'event detail exposes pending invites only for selected occurrence',
+    () async {
+      final userEventsRepository = _FakeUserEventsRepository();
+      final invitesRepository = _FakeInvitesRepository();
+      final pendingInvites = [
         _buildInviteForEvent(
-          id: 'stale-invite',
+          id: 'invite-current-occurrence',
           eventId: '507f1f77bcf86cd799439011',
           occurrenceId: 'occurrence-selected',
         ),
-      ]);
-    final controller = ImmersiveEventDetailController(
-      userEventsRepository: userEventsRepository,
-      invitesRepository: invitesRepository,
-      authRepository: _FakeAuthRepository(authorized: true),
-    );
+        _buildInviteForEvent(
+          id: 'invite-other-occurrence',
+          eventId: '507f1f77bcf86cd799439011',
+          occurrenceId: 'occurrence-other',
+        ),
+      ];
+      invitesRepository.pendingInvitesStreamValue.addValue(pendingInvites);
+      invitesRepository.fetchInvitesResult = pendingInvites;
+      final controller = ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+      );
 
-    controller.init(
-      _buildEvent(
-        occurrences: [
-          _buildOccurrence(
-            id: 'occurrence-selected',
-            start: DateTime(2026, 3, 15, 20),
-            isSelected: true,
-          ),
-        ],
-      ),
-    );
-    await Future<void>.delayed(Duration.zero);
+      controller.init(
+        _buildEvent(
+          occurrences: [
+            _buildOccurrence(
+              id: 'occurrence-selected',
+              start: DateTime(2026, 3, 15, 20),
+              isSelected: true,
+            ),
+            _buildOccurrence(
+              id: 'occurrence-other',
+              start: DateTime(2026, 3, 16, 9),
+            ),
+          ],
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
 
-    expect(controller.isConfirmedStreamValue.value, isTrue);
-    expect(controller.receivedInvitesStreamValue.value, isEmpty);
-    expect(userEventsRepository.refreshConfirmedOccurrenceIdsCalls, 0);
-  });
-
-  test('event detail exposes pending invites only for selected occurrence',
-      () async {
-    final userEventsRepository = _FakeUserEventsRepository();
-    final invitesRepository = _FakeInvitesRepository();
-    final pendingInvites = [
-      _buildInviteForEvent(
-        id: 'invite-current-occurrence',
-        eventId: '507f1f77bcf86cd799439011',
-        occurrenceId: 'occurrence-selected',
-      ),
-      _buildInviteForEvent(
-        id: 'invite-other-occurrence',
-        eventId: '507f1f77bcf86cd799439011',
-        occurrenceId: 'occurrence-other',
-      ),
-    ];
-    invitesRepository.pendingInvitesStreamValue.addValue(pendingInvites);
-    invitesRepository.fetchInvitesResult = pendingInvites;
-    final controller = ImmersiveEventDetailController(
-      userEventsRepository: userEventsRepository,
-      invitesRepository: invitesRepository,
-      authRepository: _FakeAuthRepository(authorized: true),
-    );
-
-    controller.init(
-      _buildEvent(
-        occurrences: [
-          _buildOccurrence(
-            id: 'occurrence-selected',
-            start: DateTime(2026, 3, 15, 20),
-            isSelected: true,
-          ),
-          _buildOccurrence(
-            id: 'occurrence-other',
-            start: DateTime(2026, 3, 16, 9),
-          ),
-        ],
-      ),
-    );
-    await Future<void>.delayed(Duration.zero);
-
-    expect(controller.receivedInvitesStreamValue.value, hasLength(1));
-    expect(
-      controller.receivedInvitesStreamValue.value.first.id,
-      'invite-current-occurrence',
-    );
-    expect(
-      controller.receivedInvitesStreamValue.value.first.occurrenceId,
-      'occurrence-selected',
-    );
-  });
+      expect(controller.receivedInvitesStreamValue.value, hasLength(1));
+      expect(
+        controller.receivedInvitesStreamValue.value.first.id,
+        'invite-current-occurrence',
+      );
+      expect(
+        controller.receivedInvitesStreamValue.value.first.occurrenceId,
+        'occurrence-selected',
+      );
+    },
+  );
 
   test(
-      'event detail exposes share-code session context for selected occurrence',
-      () async {
-    final userEventsRepository = _FakeUserEventsRepository();
-    final invitesRepository = _FakeInvitesRepository();
-    invitesRepository.setShareCodeSessionContext(
-      code: invitesRepoString(
+    'event detail exposes share-code session context for selected occurrence',
+    () async {
+      final userEventsRepository = _FakeUserEventsRepository();
+      final invitesRepository = _FakeInvitesRepository();
+      invitesRepository.setShareCodeSessionContext(
+        code: invitesRepoString(
+          'SHARE-ABC',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        invite: _buildInviteForEvent(
+          id: 'session-preview',
+          eventId: '507f1f77bcf86cd799439011',
+          occurrenceId: 'occurrence-selected',
+        ),
+      );
+      final controller = ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: false),
+      );
+
+      controller.init(
+        _buildEvent(
+          occurrences: [
+            _buildOccurrence(
+              id: 'occurrence-selected',
+              start: DateTime(2026, 3, 15, 20),
+              isSelected: true,
+            ),
+          ],
+        ),
+      );
+
+      expect(controller.receivedInvitesStreamValue.value, hasLength(1));
+      expect(
+        controller.receivedInvitesStreamValue.value.single.id,
+        'session-preview',
+      );
+      expect(controller.shareCodeForSelectedEvent(), 'SHARE-ABC');
+      expect(
+        controller.shareCodeForInvite(
+          controller.receivedInvitesStreamValue.value.single,
+        ),
         'SHARE-ABC',
-        defaultValue: '',
-        isRequired: true,
-      ),
-      invite: _buildInviteForEvent(
-        id: 'session-preview',
-        eventId: '507f1f77bcf86cd799439011',
-        occurrenceId: 'occurrence-selected',
-      ),
-    );
-    final controller = ImmersiveEventDetailController(
-      userEventsRepository: userEventsRepository,
-      invitesRepository: invitesRepository,
-      authRepository: _FakeAuthRepository(authorized: false),
-    );
-
-    controller.init(
-      _buildEvent(
-        occurrences: [
-          _buildOccurrence(
-            id: 'occurrence-selected',
-            start: DateTime(2026, 3, 15, 20),
-            isSelected: true,
-          ),
-        ],
-      ),
-    );
-
-    expect(controller.receivedInvitesStreamValue.value, hasLength(1));
-    expect(
-      controller.receivedInvitesStreamValue.value.single.id,
-      'session-preview',
-    );
-    expect(controller.shareCodeForSelectedEvent(), 'SHARE-ABC');
-    expect(
-      controller.shareCodeForInvite(
-        controller.receivedInvitesStreamValue.value.single,
-      ),
-      'SHARE-ABC',
-    );
-  });
+      );
+    },
+  );
 
   test(
-      'authenticated app session-context invite acceptance uses share-code endpoint',
-      () async {
-    final userEventsRepository = _FakeUserEventsRepository();
-    final invitesRepository = _FakeInvitesRepository();
-    _linkRepositories(userEventsRepository, invitesRepository);
-    invitesRepository.setShareCodeSessionContext(
-      code: invitesRepoString(
-        'SHARE-ABC',
-        defaultValue: '',
-        isRequired: true,
-      ),
-      invite: _buildInviteForEvent(
-        id: 'session-preview',
-        eventId: '507f1f77bcf86cd799439011',
-      ),
-    );
-    final controller = ImmersiveEventDetailController(
-      userEventsRepository: userEventsRepository,
-      invitesRepository: invitesRepository,
-      authRepository: _FakeAuthRepository(authorized: true),
-    );
+    'authenticated app session-context invite acceptance uses share-code endpoint',
+    () async {
+      final userEventsRepository = _FakeUserEventsRepository();
+      final invitesRepository = _FakeInvitesRepository();
+      _linkRepositories(userEventsRepository, invitesRepository);
+      invitesRepository.setShareCodeSessionContext(
+        code: invitesRepoString(
+          'SHARE-ABC',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        invite: _buildInviteForEvent(
+          id: 'session-preview',
+          eventId: '507f1f77bcf86cd799439011',
+        ),
+      );
+      final controller = ImmersiveEventDetailController(
+        userEventsRepository: userEventsRepository,
+        invitesRepository: invitesRepository,
+        authRepository: _FakeAuthRepository(authorized: true),
+      );
 
-    controller.init(_buildEvent());
-    final result = await controller.acceptInvite('session-preview');
+      controller.init(_buildEvent());
+      final result = await controller.acceptInvite('session-preview');
 
-    expect(result.status, 'accepted');
-    expect(invitesRepository.acceptInviteCalls, 0);
-    expect(invitesRepository.acceptedShareCodes, ['SHARE-ABC']);
-    expect(invitesRepository.shareCodeSessionContextStreamValue.value, isNull);
-  });
+      expect(result.status, 'accepted');
+      expect(invitesRepository.acceptInviteCalls, 0);
+      expect(invitesRepository.acceptedShareCodes, ['SHARE-ABC']);
+      expect(
+        invitesRepository.shareCodeSessionContextStreamValue.value,
+        isNull,
+      );
+    },
+  );
 
   test('select occurrence uses the selected occurrence start and end pair', () {
     final controller = ImmersiveEventDetailController(
@@ -568,275 +588,277 @@ void main() {
     expect(selectedEvent?.dateTimeStart.value, secondStart);
     expect(selectedEvent?.dateTimeEnd?.value, secondEnd);
     expect(selectedEvent?.selectedOccurrenceId, 'occurrence-second');
-    expect(
-      selectedEvent?.profileGroups.map((group) => group.label),
-      ['Bandas Customizadas'],
-    );
+    expect(selectedEvent?.profileGroups.map((group) => group.label), [
+      'Bandas Customizadas',
+    ]);
     expect(
       selectedEvent?.profileGroups.single.profiles.single.displayName,
       'Artista Alpha',
     );
   });
 
-  test('select occurrence replaces visible taxonomy tags with occurrence tags',
-      () {
-    final controller = ImmersiveEventDetailController(
-      userEventsRepository: _FakeUserEventsRepository(),
-      invitesRepository: _FakeInvitesRepository(),
-      authRepository: _FakeAuthRepository(authorized: true),
-    );
-    final secondOccurrence = _buildOccurrence(
-      id: 'occurrence-second',
-      start: DateTime(2026, 3, 16, 9),
-      end: DateTime(2026, 3, 16, 14),
-      tags: const ['Instrumental'],
-    );
-    final event = _buildEvent(
-      tags: const ['Showcase'],
-      occurrences: [
-        _buildOccurrence(
-          id: 'occurrence-first',
-          start: DateTime(2026, 3, 15, 20),
-          end: DateTime(2026, 3, 15, 22),
-          isSelected: true,
-          tags: const ['Showcase'],
-        ),
-        secondOccurrence,
-      ],
-    );
+  test(
+    'select occurrence replaces visible taxonomy tags with occurrence tags',
+    () {
+      final controller = ImmersiveEventDetailController(
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        authRepository: _FakeAuthRepository(authorized: true),
+      );
+      final secondOccurrence = _buildOccurrence(
+        id: 'occurrence-second',
+        start: DateTime(2026, 3, 16, 9),
+        end: DateTime(2026, 3, 16, 14),
+        tags: const ['Instrumental'],
+      );
+      final event = _buildEvent(
+        tags: const ['Showcase'],
+        occurrences: [
+          _buildOccurrence(
+            id: 'occurrence-first',
+            start: DateTime(2026, 3, 15, 20),
+            end: DateTime(2026, 3, 15, 22),
+            isSelected: true,
+            tags: const ['Showcase'],
+          ),
+          secondOccurrence,
+        ],
+      );
 
-    controller.init(event);
-    controller.selectOccurrence(event, secondOccurrence);
+      controller.init(event);
+      controller.selectOccurrence(event, secondOccurrence);
 
-    expect(
-      controller.eventStreamValue.value?.tags.map((tag) => tag.value),
-      ['Instrumental'],
-    );
-  });
+      expect(controller.eventStreamValue.value?.tags.map((tag) => tag.value), [
+        'Instrumental',
+      ]);
+    },
+  );
 
   test(
-      'select occurrence preserves aggregate profile groups while selecting programming occurrence',
-      () {
-    final controller = ImmersiveEventDetailController(
-      userEventsRepository: _FakeUserEventsRepository(),
-      invitesRepository: _FakeInvitesRepository(),
-      authRepository: _FakeAuthRepository(authorized: true),
-    );
-    final bandProfile = _buildLinkedProfile(
-      id: 'profile-band',
-      displayName: 'Banda Azul',
-      profileType: 'banda',
-      slug: 'banda-azul',
-    );
-    final exhibitorProfile = _buildLinkedProfile(
-      id: 'profile-exhibitor',
-      displayName: 'Expositor Sol',
-      profileType: 'expositor',
-      slug: 'expositor-sol',
-    );
-    final secondOccurrence = _buildOccurrence(
-      id: 'occurrence-second',
-      start: DateTime(2026, 3, 16, 16),
-      profileGroups: [
-        _buildProfileGroup(
-          id: 'vila-expositores',
-          label: 'Vila Expositores',
-          order: 0,
-          accountProfileIds: ['profile-exhibitor'],
-        ),
-      ],
-    );
-    final event = _buildEvent(
-      linkedAccountProfiles: [bandProfile, exhibitorProfile],
-      profileGroups: [
-        _buildProfileGroup(
-          id: 'palco-bandas',
-          label: 'Palco Bandas',
-          order: 0,
-          accountProfileIds: ['profile-band'],
-        ),
-        _buildProfileGroup(
-          id: 'vila-expositores',
-          label: 'Vila Expositores',
-          order: 1,
-          accountProfileIds: ['profile-exhibitor'],
-        ),
-      ],
-      occurrences: [
-        _buildOccurrence(
-          id: 'occurrence-first',
-          start: DateTime(2026, 3, 15, 18),
-          isSelected: true,
-          profileGroups: [
-            _buildProfileGroup(
-              id: 'palco-bandas',
-              label: 'Palco Bandas',
-              order: 0,
-              accountProfileIds: ['profile-band'],
-            ),
-          ],
-        ),
-        secondOccurrence,
-      ],
-    );
+    'select occurrence preserves aggregate profile groups while selecting programming occurrence',
+    () {
+      final controller = ImmersiveEventDetailController(
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        authRepository: _FakeAuthRepository(authorized: true),
+      );
+      final bandProfile = _buildLinkedProfile(
+        id: 'profile-band',
+        displayName: 'Banda Azul',
+        profileType: 'banda',
+        slug: 'banda-azul',
+      );
+      final exhibitorProfile = _buildLinkedProfile(
+        id: 'profile-exhibitor',
+        displayName: 'Expositor Sol',
+        profileType: 'expositor',
+        slug: 'expositor-sol',
+      );
+      final secondOccurrence = _buildOccurrence(
+        id: 'occurrence-second',
+        start: DateTime(2026, 3, 16, 16),
+        profileGroups: [
+          _buildProfileGroup(
+            id: 'vila-expositores',
+            label: 'Vila Expositores',
+            order: 0,
+            accountProfileIds: ['profile-exhibitor'],
+          ),
+        ],
+      );
+      final event = _buildEvent(
+        linkedAccountProfiles: [bandProfile, exhibitorProfile],
+        profileGroups: [
+          _buildProfileGroup(
+            id: 'palco-bandas',
+            label: 'Palco Bandas',
+            order: 0,
+            accountProfileIds: ['profile-band'],
+          ),
+          _buildProfileGroup(
+            id: 'vila-expositores',
+            label: 'Vila Expositores',
+            order: 1,
+            accountProfileIds: ['profile-exhibitor'],
+          ),
+        ],
+        occurrences: [
+          _buildOccurrence(
+            id: 'occurrence-first',
+            start: DateTime(2026, 3, 15, 18),
+            isSelected: true,
+            profileGroups: [
+              _buildProfileGroup(
+                id: 'palco-bandas',
+                label: 'Palco Bandas',
+                order: 0,
+                accountProfileIds: ['profile-band'],
+              ),
+            ],
+          ),
+          secondOccurrence,
+        ],
+      );
 
-    controller.init(event);
-    controller.selectOccurrence(event, secondOccurrence);
+      controller.init(event);
+      controller.selectOccurrence(event, secondOccurrence);
 
-    final selectedEvent = controller.eventStreamValue.value;
-    expect(selectedEvent?.selectedOccurrenceId, 'occurrence-second');
-    expect(
-      selectedEvent?.profileGroups.map((group) => group.label),
-      ['Palco Bandas', 'Vila Expositores'],
-    );
-    expect(
-      selectedEvent?.profileGroups
-          .singleWhere((group) => group.label == 'Vila Expositores')
-          .accountProfileIdValues
-          .map((id) => id.value),
-      ['profile-exhibitor'],
-    );
-    expect(
-      selectedEvent?.profileGroups
-          .singleWhere((group) => group.label == 'Palco Bandas')
-          .accountProfileIdValues
-          .map((id) => id.value),
-      ['profile-band'],
-    );
-    expect(
-      selectedEvent?.occurrences
-          .singleWhere(
-            (occurrence) => occurrence.occurrenceId == 'occurrence-second',
-          )
-          .profileGroups
-          .single
-          .accountProfileIdValues
-          .map((id) => id.value),
-      ['profile-exhibitor'],
-    );
-    expect(
-      selectedEvent?.linkedAccountProfiles
-          .singleWhere((profile) => profile.id == 'profile-exhibitor')
-          .displayName,
-      'Expositor Sol',
-    );
-  });
-
-  test(
-      'selected occurrence projection can retarget an unselected event payload without refetching',
-      () {
-    final event = _buildEvent(
-      tags: const ['Feira'],
-      occurrences: [
-        _buildOccurrence(
-          id: 'occurrence-first',
-          start: DateTime(2026, 3, 15, 18),
-          isSelected: true,
-          tags: const ['Feira'],
-        ),
-        _buildOccurrence(
-          id: 'occurrence-second',
-          start: DateTime(2026, 3, 16, 21),
-          end: DateTime(2026, 3, 17, 1),
-          tags: const ['Show'],
-          programmingItems: [
-            _buildProgrammingItem(
-              time: '21:00',
-              title: 'Headliner',
-            ),
-          ],
-        ),
-      ],
-      programmingItems: const [],
-    );
-
-    final projected = EventSelectedOccurrenceProjection.project(
-      event,
-      'occurrence-second',
-    );
-
-    expect(projected.selectedOccurrenceId, 'occurrence-second');
-    expect(projected.dateTimeStart.value, DateTime(2026, 3, 16, 21));
-    expect(projected.dateTimeEnd?.value, DateTime(2026, 3, 17, 1));
-    expect(projected.programmingItems.map((item) => item.title), ['Headliner']);
-    expect(projected.tags.map((tag) => tag.value), ['Show']);
-  });
+      final selectedEvent = controller.eventStreamValue.value;
+      expect(selectedEvent?.selectedOccurrenceId, 'occurrence-second');
+      expect(selectedEvent?.profileGroups.map((group) => group.label), [
+        'Palco Bandas',
+        'Vila Expositores',
+      ]);
+      expect(
+        selectedEvent?.profileGroups
+            .singleWhere((group) => group.label == 'Vila Expositores')
+            .accountProfileIdValues
+            .map((id) => id.value),
+        ['profile-exhibitor'],
+      );
+      expect(
+        selectedEvent?.profileGroups
+            .singleWhere((group) => group.label == 'Palco Bandas')
+            .accountProfileIdValues
+            .map((id) => id.value),
+        ['profile-band'],
+      );
+      expect(
+        selectedEvent?.occurrences
+            .singleWhere(
+              (occurrence) => occurrence.occurrenceId == 'occurrence-second',
+            )
+            .profileGroups
+            .single
+            .accountProfileIdValues
+            .map((id) => id.value),
+        ['profile-exhibitor'],
+      );
+      expect(
+        selectedEvent?.linkedAccountProfiles
+            .singleWhere((profile) => profile.id == 'profile-exhibitor')
+            .displayName,
+        'Expositor Sol',
+      );
+    },
+  );
 
   test(
-      'selected occurrence projection aligns stale selected payload while keeping aggregate groups',
-      () {
-    final event = _buildEvent(
-      tags: const ['Feira'],
-      profileGroups: [
-        _buildProfileGroup(
-          id: 'bandas',
-          label: 'Bandas',
-          order: 0,
-          accountProfileIds: ['profile-band'],
-        ),
-        _buildProfileGroup(
-          id: 'expositores',
-          label: 'Expositores',
-          order: 1,
-          accountProfileIds: ['profile-exhibitor'],
-        ),
-      ],
-      occurrences: [
-        _buildOccurrence(
-          id: 'occurrence-first',
-          start: DateTime(2026, 3, 15, 18),
-          profileGroups: [
-            _buildProfileGroup(
-              id: 'bandas',
-              label: 'Bandas',
-              order: 0,
-              accountProfileIds: ['profile-band'],
-            ),
-          ],
-        ),
-        _buildOccurrence(
-          id: 'occurrence-second',
-          start: DateTime(2026, 3, 16, 21),
-          isSelected: true,
-          tags: const ['Show'],
-          programmingItems: [
-            _buildProgrammingItem(
-              time: '21:00',
-              title: 'Headliner',
-            ),
-          ],
-          profileGroups: [
-            _buildProfileGroup(
-              id: 'expositores',
-              label: 'Expositores',
-              order: 1,
-              accountProfileIds: ['profile-exhibitor'],
-            ),
-          ],
-        ),
-      ],
-      programmingItems: const [],
-    );
+    'selected occurrence projection can retarget an unselected event payload without refetching',
+    () {
+      final event = _buildEvent(
+        tags: const ['Feira'],
+        occurrences: [
+          _buildOccurrence(
+            id: 'occurrence-first',
+            start: DateTime(2026, 3, 15, 18),
+            isSelected: true,
+            tags: const ['Feira'],
+          ),
+          _buildOccurrence(
+            id: 'occurrence-second',
+            start: DateTime(2026, 3, 16, 21),
+            end: DateTime(2026, 3, 17, 1),
+            tags: const ['Show'],
+            programmingItems: [
+              _buildProgrammingItem(time: '21:00', title: 'Headliner'),
+            ],
+          ),
+        ],
+        programmingItems: const [],
+      );
 
-    final aligned = EventSelectedOccurrenceProjection.align(event);
+      final projected = EventSelectedOccurrenceProjection.project(
+        event,
+        'occurrence-second',
+      );
 
-    expect(aligned.selectedOccurrenceId, 'occurrence-second');
-    expect(aligned.programmingItems.map((item) => item.title), ['Headliner']);
-    expect(aligned.tags.map((tag) => tag.value), ['Show']);
-    expect(
-      aligned.profileGroups.map((group) => group.label),
-      ['Bandas', 'Expositores'],
-    );
-  });
+      expect(projected.selectedOccurrenceId, 'occurrence-second');
+      expect(projected.dateTimeStart.value, DateTime(2026, 3, 16, 21));
+      expect(projected.dateTimeEnd?.value, DateTime(2026, 3, 17, 1));
+      expect(projected.programmingItems.map((item) => item.title), [
+        'Headliner',
+      ]);
+      expect(projected.tags.map((tag) => tag.value), ['Show']);
+    },
+  );
+
+  test(
+    'selected occurrence projection aligns stale selected payload while keeping aggregate groups',
+    () {
+      final event = _buildEvent(
+        tags: const ['Feira'],
+        profileGroups: [
+          _buildProfileGroup(
+            id: 'bandas',
+            label: 'Bandas',
+            order: 0,
+            accountProfileIds: ['profile-band'],
+          ),
+          _buildProfileGroup(
+            id: 'expositores',
+            label: 'Expositores',
+            order: 1,
+            accountProfileIds: ['profile-exhibitor'],
+          ),
+        ],
+        occurrences: [
+          _buildOccurrence(
+            id: 'occurrence-first',
+            start: DateTime(2026, 3, 15, 18),
+            profileGroups: [
+              _buildProfileGroup(
+                id: 'bandas',
+                label: 'Bandas',
+                order: 0,
+                accountProfileIds: ['profile-band'],
+              ),
+            ],
+          ),
+          _buildOccurrence(
+            id: 'occurrence-second',
+            start: DateTime(2026, 3, 16, 21),
+            isSelected: true,
+            tags: const ['Show'],
+            programmingItems: [
+              _buildProgrammingItem(time: '21:00', title: 'Headliner'),
+            ],
+            profileGroups: [
+              _buildProfileGroup(
+                id: 'expositores',
+                label: 'Expositores',
+                order: 1,
+                accountProfileIds: ['profile-exhibitor'],
+              ),
+            ],
+          ),
+        ],
+        programmingItems: const [],
+      );
+
+      final aligned = EventSelectedOccurrenceProjection.align(event);
+
+      expect(aligned.selectedOccurrenceId, 'occurrence-second');
+      expect(aligned.programmingItems.map((item) => item.title), ['Headliner']);
+      expect(aligned.tags.map((tag) => tag.value), ['Show']);
+      expect(aligned.profileGroups.map((group) => group.label), [
+        'Bandas',
+        'Expositores',
+      ]);
+    },
+  );
 }
 
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   @override
+  void clearCurrentIdentityState() {}
+
+  @override
   final StreamValue<Set<UserEventsRepositoryContractPrimString>>
-      confirmedOccurrenceIdsStream =
+  confirmedOccurrenceIdsStream =
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(
-    defaultValue: const <UserEventsRepositoryContractPrimString>{},
-  );
+        defaultValue: const <UserEventsRepositoryContractPrimString>{},
+      );
 
   int confirmCalls = 0;
   int refreshConfirmedOccurrenceIdsCalls = 0;
@@ -868,12 +890,11 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   @override
   UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
     UserEventsRepositoryContractPrimString eventId,
-  ) =>
-      userEventsRepoBool(
-        _confirmedIds.contains(eventId.value),
-        defaultValue: false,
-        isRequired: true,
-      );
+  ) => userEventsRepoBool(
+    _confirmedIds.contains(eventId.value),
+    defaultValue: false,
+    isRequired: true,
+  );
 
   @override
   Future<void> refreshConfirmedOccurrenceIds() async {
@@ -882,11 +903,8 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
     confirmedOccurrenceIdsStream.addValue(
       _confirmedIds
           .map(
-            (value) => userEventsRepoString(
-              value,
-              defaultValue: '',
-              isRequired: true,
-            ),
+            (value) =>
+                userEventsRepoString(value, defaultValue: '', isRequired: true),
           )
           .toSet(),
     );
@@ -923,7 +941,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteAcceptResult> acceptInvite(
-      InvitesRepositoryContractPrimString inviteId) async {
+    InvitesRepositoryContractPrimString inviteId,
+  ) async {
     acceptInviteCalls += 1;
     await refreshPendingInvites();
     final result = buildInviteAcceptResult(
@@ -940,7 +959,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteAcceptResult> acceptInviteByCode(
-      InvitesRepositoryContractPrimString code) async {
+    InvitesRepositoryContractPrimString code,
+  ) async {
     final occurrenceId = shareCodeSessionContextStreamValue.value?.occurrenceId;
     acceptedShareCodes.add(code.value);
     clearShareCodeSessionContext(code: code);
@@ -972,7 +992,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteDeclineResult> declineInvite(
-      InvitesRepositoryContractPrimString inviteId) async {
+    InvitesRepositoryContractPrimString inviteId,
+  ) async {
     return buildInviteDeclineResult(
       inviteId: inviteId.value,
       status: 'declined',
@@ -981,9 +1002,10 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   }
 
   @override
-  Future<List<InviteModel>> fetchInvites(
-      {InvitesRepositoryContractPrimInt? page,
-      InvitesRepositoryContractPrimInt? pageSize}) async {
+  Future<List<InviteModel>> fetchInvites({
+    InvitesRepositoryContractPrimInt? page,
+    InvitesRepositoryContractPrimInt? pageSize,
+  }) async {
     fetchInvitesCalls += 1;
     if ((page?.value ?? 1) == 1) {
       pendingInvitesStreamValue.addValue(fetchInvitesResult);
@@ -1003,7 +1025,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<List<SentInviteStatus>> getSentInvitesForOccurrence(
-      InvitesRepositoryContractPrimString eventId) async {
+    InvitesRepositoryContractPrimString eventId,
+  ) async {
     return const <SentInviteStatus>[];
   }
 
@@ -1018,8 +1041,9 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       'occurrence_id': occurrenceId.value,
       'event_id': eventId?.value,
       if (recipientAccountProfileIds.isNotEmpty)
-        'recipient_account_profile_ids':
-            recipientAccountProfileIds.map((value) => value.value).toList(),
+        'recipient_account_profile_ids': recipientAccountProfileIds
+            .map((value) => value.value)
+            .toList(),
     });
     return const <SentInviteStatus>[];
   }
@@ -1047,9 +1071,11 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<void> sendInvites(
-      InvitesRepositoryContractPrimString eventId, InviteRecipients recipients,
-      {required InvitesRepositoryContractPrimString occurrenceId,
-      InvitesRepositoryContractPrimString? message}) async {}
+    InvitesRepositoryContractPrimString eventId,
+    InviteRecipients recipients, {
+    required InvitesRepositoryContractPrimString occurrenceId,
+    InvitesRepositoryContractPrimString? message,
+  }) async {}
 
   Future<void> syncAfterAttendanceMutation(String occurrenceId) async {
     clearShareCodeSessionContext(
@@ -1121,20 +1147,24 @@ class _FakeAuthRepository extends AuthRepositoryContract {
   bool get isUserLoggedIn => authorized;
 
   @override
-  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
-      AuthRepositoryContractParamString password) async {}
+  Future<void> loginWithEmailPassword(
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
+  ) async {}
 
   @override
   Future<void> logout() async {}
 
   @override
   Future<void> sendPasswordResetEmail(
-      AuthRepositoryContractParamString email) async {}
+    AuthRepositoryContractParamString email,
+  ) async {}
 
   @override
   Future<void> sendTokenRecoveryPassword(
-      AuthRepositoryContractParamString email,
-      AuthRepositoryContractParamString codigoEnviado) async {}
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString codigoEnviado,
+  ) async {}
 
   @override
   void setUserToken(AuthRepositoryContractParamString? token) {}
@@ -1177,16 +1207,14 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   @override
   Future<AccountProfileModel?> getAccountProfileBySlug(
     AccountProfilesRepositoryContractPrimString slug,
-  ) async =>
-      null;
+  ) async => null;
 
   @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
     AccountProfilesRepositoryContractPrimInt? pageSize,
     List<AccountProfilesRepositoryContractPrimString>? typeFilters,
     List<dynamic>? taxonomyFilters,
-  }) async =>
-      const <AccountProfileModel>[];
+  }) async => const <AccountProfileModel>[];
 
   @override
   Future<void> toggleFavorite(
@@ -1282,8 +1310,9 @@ EventProfileGroup _buildProfileGroup({
     labelValue: EventLinkedAccountProfileTextValue(label),
     orderValue: EventProfileGroupOrderValue(order),
     profiles: profiles,
-    accountProfileIdValues:
-        accountProfileIds.map(EventLinkedAccountProfileTextValue.new).toList(),
+    accountProfileIdValues: accountProfileIds
+        .map(EventLinkedAccountProfileTextValue.new)
+        .toList(),
   );
 }
 
@@ -1334,8 +1363,9 @@ EventProgrammingItem _buildProgrammingItem({
 }) {
   return EventProgrammingItem(
     timeValue: EventProgrammingTimeValue()..parse(time),
-    titleValue:
-        title == null ? null : EventLinkedAccountProfileTextValue(title),
+    titleValue: title == null
+        ? null
+        : EventLinkedAccountProfileTextValue(title),
   );
 }
 

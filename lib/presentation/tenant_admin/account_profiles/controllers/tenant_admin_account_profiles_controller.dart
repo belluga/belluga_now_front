@@ -4,6 +4,7 @@ export 'tenant_admin_account_profile_edit_draft.dart';
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/application/tenant_admin/tenant_admin_account_profile_candidates_page_loader.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
@@ -186,7 +187,6 @@ class TenantAdminAccountProfilesController implements Disposable {
   int _nestedProfileCandidatesRequestToken = 0;
   String _nestedProfileCandidatesQuery = '';
   String? _nestedProfileCandidatesExcludeProfileId;
-  int _contactSourceCandidatesCurrentPage = 0;
   int _contactSourceCandidatesRequestToken = 0;
   String? _contactSourceCandidatesExcludeProfileId;
   bool _isFetchingContactSourceCandidates = false;
@@ -321,7 +321,6 @@ class TenantAdminAccountProfilesController implements Disposable {
 
   Future<void> loadContactSourceCandidates({String? excludeProfileId}) async {
     _contactSourceCandidatesExcludeProfileId = excludeProfileId?.trim();
-    _contactSourceCandidatesCurrentPage = 0;
     final requestToken = _contactSourceCandidatesRequestToken + 1;
     _contactSourceCandidatesRequestToken = requestToken;
     contactSourceCandidatesStreamValue.addValue(const []);
@@ -361,20 +360,21 @@ class TenantAdminAccountProfilesController implements Disposable {
       contactSourceCandidatesPageLoadingStreamValue.addValue(true);
     }
     try {
-      final page = await _profilesRepository.fetchContactSourceCandidatesPage(
-        page: tenantAdminAccountProfilesRepoInt(
-          isInitial ? 1 : _contactSourceCandidatesCurrentPage + 1,
-          defaultValue: 1,
-        ),
-        pageSize: tenantAdminAccountProfilesRepoInt(50, defaultValue: 50),
-        excludeAccountProfileId:
-            _contactSourceCandidatesExcludeProfileId == null ||
-                _contactSourceCandidatesExcludeProfileId!.isEmpty
-            ? null
-            : tenantAdminAccountProfilesRepoString(
-                _contactSourceCandidatesExcludeProfileId!,
-              ),
-      );
+      final excludeAccountProfileId =
+          _contactSourceCandidatesExcludeProfileId == null ||
+              _contactSourceCandidatesExcludeProfileId!.isEmpty
+          ? null
+          : tenantAdminAccountProfilesRepoString(
+              _contactSourceCandidatesExcludeProfileId!,
+            );
+      final page = isInitial
+          ? await _profilesRepository.loadContactSourceCandidates(
+              excludeAccountProfileId: excludeAccountProfileId,
+            )
+          : await _profilesRepository.loadNextContactSourceCandidatesPage();
+      if (page == null) {
+        return;
+      }
       if (_isDisposed || requestToken != _contactSourceCandidatesRequestToken) {
         return;
       }
@@ -384,9 +384,6 @@ class TenantAdminAccountProfilesController implements Disposable {
               contactSourceCandidatesStreamValue.value,
               page.items,
             );
-      _contactSourceCandidatesCurrentPage =
-          page.pagination?.currentPage ??
-          (isInitial ? 1 : _contactSourceCandidatesCurrentPage + 1);
       contactSourceCandidatesStreamValue.addValue(merged);
       contactSourceCandidatesHasMoreStreamValue.addValue(page.hasMore);
       contactSourceCandidatesErrorStreamValue.addValue(null);

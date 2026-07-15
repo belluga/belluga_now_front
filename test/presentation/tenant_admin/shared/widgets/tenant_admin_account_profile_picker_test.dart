@@ -69,4 +69,55 @@ void main() {
       error.dispose();
     },
   );
+
+  testWidgets('renders the controller error when no candidates are available', (
+    tester,
+  ) async {
+    final candidates = StreamValue<List<TenantAdminAccountProfile>>(
+      defaultValue: const <TenantAdminAccountProfile>[],
+    );
+    final loading = StreamValue<bool>(defaultValue: false);
+    final pageLoading = StreamValue<bool>(defaultValue: false);
+    final hasMore = StreamValue<bool>(defaultValue: false);
+    final error = StreamValue<String?>();
+
+    await pumpAutoRouteTestApp(
+      tester,
+      routeName: 'tenant-admin-account-profile-picker-error-test',
+      child: Scaffold(
+        body: Builder(
+          builder: (context) => ElevatedButton(
+            onPressed: () {
+              showTenantAdminAccountProfilePicker(
+                context: context,
+                candidatesStreamValue: candidates,
+                isLoadingStreamValue: loading,
+                isPageLoadingStreamValue: pageLoading,
+                hasMoreStreamValue: hasMore,
+                errorStreamValue: error,
+                loadNextPage: () async {},
+                title: 'Perfil de origem',
+                emptyMessage: 'Nenhum perfil elegível.',
+              );
+            },
+            child: const Text('Abrir seletor'),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Abrir seletor'));
+    await tester.pumpAndSettle();
+    error.addValue('Não foi possível carregar perfis.');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Não foi possível carregar perfis.'), findsOneWidget);
+    expect(find.text('Nenhum perfil elegível.'), findsNothing);
+
+    candidates.dispose();
+    loading.dispose();
+    pageLoading.dispose();
+    hasMore.dispose();
+    error.dispose();
+  });
 }

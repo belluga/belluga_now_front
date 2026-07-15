@@ -9,16 +9,16 @@ import '../type_utils.dart';
 
 class MultiWidgetFileWarningRule extends DartLintRule {
   MultiWidgetFileWarningRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'multi_widget_file_warning',
-            problemMessage:
-                'Screen files should avoid declaring multiple widget classes.',
-            correctionMessage:
-                'Treatments: keep one screen widget per screen file; move extra widgets to dedicated widget files.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'multi_widget_file_warning',
+          problemMessage:
+              'Screen files should avoid declaring multiple widget classes.',
+          correctionMessage:
+              'Treatments: keep one screen widget per screen file; move extra widgets to dedicated widget files.',
+        ),
+      );
 
   @override
   void run(
@@ -50,7 +50,7 @@ class MultiWidgetFileWarningRule extends DartLintRule {
   }
 
   bool _isWidgetClass(ClassDeclaration node) {
-    final name = node.name.lexeme;
+    final name = node.namePart.typeName.lexeme;
     if (name.startsWith('_')) {
       return false;
     }

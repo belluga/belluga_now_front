@@ -1,3 +1,4 @@
+import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
@@ -563,8 +564,8 @@ class _DelayedFetchAccountsRepository extends _FakeAccountsRepository {
 }
 
 class _FakeAccountProfilesRepository
-    with TenantAdminProfileTypesPaginationMixin
-    implements TenantAdminAccountProfilesRepositoryContract {
+    extends TenantAdminAccountProfilesRepositoryContract
+    with TenantAdminProfileTypesPaginationMixin {
   _FakeAccountProfilesRepository({
     required this.withProfile,
     this.profileBio,

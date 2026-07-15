@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/auth/auth_phone_otp_challenge.dart';
+import 'package:belluga_now/domain/auth/account_deletion_journey_state.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/user/user_custom_data.dart';
 import 'package:belluga_now/domain/repositories/value_objects/auth_repository_contract_values.dart';
@@ -18,6 +19,10 @@ abstract class AuthRepositoryContract<T extends UserContract> {
   Object get backend;
 
   final userStreamValue = StreamValue<T?>();
+  final accountDeletionJourneyStreamValue =
+      StreamValue<AccountDeletionJourneyState>(
+        defaultValue: const AccountDeletionJourneyState.idle(),
+      );
 
   T get user => userStreamValue.value!;
 
@@ -47,6 +52,28 @@ abstract class AuthRepositoryContract<T extends UserContract> {
   }
 
   Future<void> autoLogin();
+
+  AccountDeletionJourneyState get accountDeletionJourneyState =>
+      accountDeletionJourneyStreamValue.value;
+
+  Future<AccountDeletionDispatchOutcome> deleteCurrentAccount() {
+    throw UnimplementedError(
+      'Subclasses must implement deleteCurrentAccount().',
+    );
+  }
+
+  Future<void> reconcileUnknownAccountDeletion() {
+    throw UnimplementedError(
+      'Subclasses must implement reconcileUnknownAccountDeletion().',
+    );
+  }
+
+  Future<AccountDeletionContinuationOutcome>
+  continueAnonymouslyAfterConfirmedAccountDeletion() {
+    throw UnimplementedError(
+      'Subclasses must implement explicit anonymous continuation.',
+    );
+  }
 
   Future<void> loginWithEmailPassword(
     AuthRepositoryContractParamString email,

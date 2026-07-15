@@ -7,16 +7,16 @@ import '../repository_registration_utils.dart';
 
 class RepositoryRegistrationLifecycleEnforcedRule extends DartLintRule {
   RepositoryRegistrationLifecycleEnforcedRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'repository_registration_lifecycle_enforced',
-            problemMessage:
-                'Repository registration must use singleton lifecycle, not factory lifecycle.',
-            correctionMessage:
-                'Treatments: use registerLazySingleton/registerSingleton (or module_settings singleton wrappers) for repositories.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'repository_registration_lifecycle_enforced',
+          problemMessage:
+              'Repository registration must use singleton lifecycle, not factory lifecycle.',
+          correctionMessage:
+              'Treatments: use registerLazySingleton/registerSingleton (or module_settings singleton wrappers) for repositories.',
+        ),
+      );
 
   @override
   void run(

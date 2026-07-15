@@ -1241,6 +1241,9 @@ const _testLocalizationDelegates = <LocalizationsDelegate<dynamic>>[
 ];
 
 class _FakeContactsRepository implements ContactsRepositoryContract {
+  @override
+  Future<void> clearCurrentIdentityState() async {}
+
   _FakeContactsRepository({this.contacts = const <ContactModel>[]});
 
   final List<ContactModel> contacts;

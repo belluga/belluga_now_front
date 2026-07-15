@@ -40,7 +40,7 @@ PropertyAccessorElement? resolveStreamValueAccessor(Expression target) {
 }
 
 bool isExplicitStreamGetter(PropertyAccessorElement accessor) {
-  return !accessor.isSynthetic &&
+  return accessor.isOriginDeclaration &&
       dartTypeName(accessor.returnType) == 'StreamValue';
 }
 

@@ -2092,6 +2092,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp.router(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
           locale: const Locale('pt', 'BR'),
           supportedLocales: const <Locale>[Locale('pt', 'BR')],
           localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
@@ -2225,6 +2226,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp.router(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
           locale: const Locale('pt', 'BR'),
           supportedLocales: const <Locale>[Locale('pt', 'BR')],
           localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
@@ -2967,7 +2969,10 @@ Widget _buildRoutedTestApp({
     controller: router,
     stateHash: 0,
     child: MaterialApp(
-      theme: theme,
+      // The Linux widget-test renderer cannot load the app's Vulkan-only
+      // InkSparkle shader. This affects the test harness, not production
+      // interaction behavior, so disable only the test splash animation.
+      theme: theme ?? ThemeData(splashFactory: NoSplash.splashFactory),
       locale: const Locale('pt', 'BR'),
       supportedLocales: const <Locale>[Locale('pt', 'BR')],
       localizationsDelegates: const <LocalizationsDelegate<dynamic>>[

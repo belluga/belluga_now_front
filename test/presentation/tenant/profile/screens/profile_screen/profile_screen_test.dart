@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
+import 'package:belluga_now/domain/auth/account_deletion_journey_state.dart';
 import 'package:belluga_now/domain/auth/value_objects/auth_phone_otp_phone_value.dart';
 import 'package:belluga_now/domain/invites/inviteable_recipient.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_account_profile_id_value.dart';
@@ -42,6 +44,32 @@ import 'package:value_object_pattern/domain/value_objects/email_address_value.da
 import 'package:value_object_pattern/domain/value_objects/full_name_value.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
+const _defaultAccountDeletionDuplicateBurst = 2;
+const _dartDefineAccountDeletionDuplicateBurst = String.fromEnvironment(
+  'DELPHI_RACE_BURST_LEVEL',
+);
+
+int _accountDeletionDuplicateBurstLevel() {
+  // A process environment value takes precedence so frontend_race_probe.sh can
+  // drive the existing compiled test command. A dart-define is the portable
+  // fallback for runners that do not forward process environments.
+  final processValue = int.tryParse(
+    Platform.environment['DELPHI_RACE_BURST_LEVEL'] ?? '',
+  );
+  if (processValue != null && processValue > 1) {
+    return processValue;
+  }
+
+  final dartDefineValue = int.tryParse(
+    _dartDefineAccountDeletionDuplicateBurst,
+  );
+  if (dartDefineValue != null && dartDefineValue > 1) {
+    return dartDefineValue;
+  }
+
+  return _defaultAccountDeletionDuplicateBurst;
+}
+
 class _FakeBackendContract extends Fake implements BackendContract {}
 
 class _FakeAppData extends Fake implements AppData {}
@@ -51,6 +79,8 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
     required this.backend,
     this.authorized = false,
     UserContract? initialUser,
+    this.deletionOutcome = AccountDeletionDispatchOutcome.preEraseRejected,
+    this.deletionCompleter,
   }) {
     userStreamValue.addValue(initialUser);
   }
@@ -59,6 +89,9 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   final BackendContract backend;
 
   final bool authorized;
+  final AccountDeletionDispatchOutcome deletionOutcome;
+  final Completer<AccountDeletionDispatchOutcome>? deletionCompleter;
+  int deleteCurrentAccountCallCount = 0;
 
   @override
   String get userToken => '';
@@ -85,8 +118,35 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
-      AuthRepositoryContractParamString password) async {}
+  Future<AccountDeletionDispatchOutcome> deleteCurrentAccount() {
+    deleteCurrentAccountCallCount += 1;
+    final result = deletionCompleter?.future ?? Future.value(deletionOutcome);
+    return result.then((outcome) {
+      switch (outcome) {
+        case AccountDeletionDispatchOutcome.confirmed:
+          accountDeletionJourneyStreamValue.addValue(
+            const AccountDeletionJourneyState(
+              AccountDeletionJourneyPhase.confirmed,
+            ),
+          );
+        case AccountDeletionDispatchOutcome.unknown:
+          accountDeletionJourneyStreamValue.addValue(
+            const AccountDeletionJourneyState(
+              AccountDeletionJourneyPhase.unknown,
+            ),
+          );
+        case AccountDeletionDispatchOutcome.preEraseRejected:
+          break;
+      }
+      return outcome;
+    });
+  }
+
+  @override
+  Future<void> loginWithEmailPassword(
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
+  ) async {}
 
   @override
   Future<void> signUpWithEmailPassword(
@@ -97,8 +157,9 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> sendTokenRecoveryPassword(
-      AuthRepositoryContractParamString email,
-      AuthRepositoryContractParamString codigoEnviado) async {}
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString codigoEnviado,
+  ) async {}
 
   @override
   Future<void> logout() async {}
@@ -111,7 +172,8 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> sendPasswordResetEmail(
-      AuthRepositoryContractParamString email) async {}
+    AuthRepositoryContractParamString email,
+  ) async {}
 
   @override
   Future<void> updateUser(UserCustomData data) async {}
@@ -121,13 +183,17 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
   _FakeAppDataRepository({
     ThemeMode? initialThemeMode,
     double initialMaxRadiusMeters = 5000,
-  })  : _themeMode = initialThemeMode ?? ThemeMode.light,
-        _maxRadiusMeters = initialMaxRadiusMeters,
-        themeModeStreamValue =
-            StreamValue<ThemeMode?>(defaultValue: initialThemeMode),
-        maxRadiusMetersStreamValue = StreamValue<DistanceInMetersValue>(
-            defaultValue: DistanceInMetersValue.fromRaw(initialMaxRadiusMeters,
-                defaultValue: initialMaxRadiusMeters));
+  }) : _themeMode = initialThemeMode ?? ThemeMode.light,
+       _maxRadiusMeters = initialMaxRadiusMeters,
+       themeModeStreamValue = StreamValue<ThemeMode?>(
+         defaultValue: initialThemeMode,
+       ),
+       maxRadiusMetersStreamValue = StreamValue<DistanceInMetersValue>(
+         defaultValue: DistanceInMetersValue.fromRaw(
+           initialMaxRadiusMeters,
+           defaultValue: initialMaxRadiusMeters,
+         ),
+       );
 
   @override
   final StreamValue<ThemeMode?> themeModeStreamValue;
@@ -144,9 +210,10 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
   ThemeMode get themeMode => _themeMode;
 
   @override
-  DistanceInMetersValue get maxRadiusMeters =>
-      DistanceInMetersValue.fromRaw(_maxRadiusMeters,
-          defaultValue: _maxRadiusMeters);
+  DistanceInMetersValue get maxRadiusMeters => DistanceInMetersValue.fromRaw(
+    _maxRadiusMeters,
+    defaultValue: _maxRadiusMeters,
+  );
 
   @override
   bool get hasPersistedMaxRadiusPreference => false;
@@ -168,9 +235,7 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
 }
 
 class _FakeProfileAvatarStorage implements ProfileAvatarStorageContract {
-  _FakeProfileAvatarStorage({
-    this.throwOnClear = false,
-  });
+  _FakeProfileAvatarStorage({this.throwOnClear = false});
 
   String? _path;
   bool throwOnClear;
@@ -272,10 +337,7 @@ class _FakeInviteablesRepository extends InviteablesRepositoryContract {
 }
 
 class _FakeUser implements UserContract {
-  _FakeUser({
-    required this.uuidValue,
-    required this.profile,
-  });
+  _FakeUser({required this.uuidValue, required this.profile});
 
   @override
   final MongoIDValue uuidValue;
@@ -353,50 +415,47 @@ void main() {
     await GetIt.I.reset();
   });
 
-  test(
-    'ProfileScreenController resolves with only profile dependencies',
-    () {
-      final authRepository =
-          _FakeAuthRepository(backend: _FakeBackendContract());
-      final appDataRepository = _FakeAppDataRepository();
-      final avatarStorage = _FakeProfileAvatarStorage();
-      final selfProfileRepository = _FakeSelfProfileRepository(
-        initialProfile: _buildSelfProfile(
-          userId: 'user-1',
-          accountProfileId: 'profile-1',
-        ),
-      );
-      final inviteablesRepository = _FakeInviteablesRepository();
+  test('ProfileScreenController resolves with only profile dependencies', () {
+    final authRepository = _FakeAuthRepository(backend: _FakeBackendContract());
+    final appDataRepository = _FakeAppDataRepository();
+    final avatarStorage = _FakeProfileAvatarStorage();
+    final selfProfileRepository = _FakeSelfProfileRepository(
+      initialProfile: _buildSelfProfile(
+        userId: 'user-1',
+        accountProfileId: 'profile-1',
+      ),
+    );
+    final inviteablesRepository = _FakeInviteablesRepository();
 
-      GetIt.I.registerSingleton<AuthRepositoryContract>(authRepository);
-      GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
-      GetIt.I.registerSingleton<ProfileAvatarStorageContract>(avatarStorage);
-      GetIt.I.registerSingleton<SelfProfileRepositoryContract>(
-        selfProfileRepository,
-      );
-      GetIt.I.registerSingleton<InviteablesRepositoryContract>(
-        inviteablesRepository,
-      );
-      GetIt.I.registerSingleton<ProximityPreferencesRepositoryContract>(
-        _FakeProximityPreferencesRepository(),
-      );
+    GetIt.I.registerSingleton<AuthRepositoryContract>(authRepository);
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
+    GetIt.I.registerSingleton<ProfileAvatarStorageContract>(avatarStorage);
+    GetIt.I.registerSingleton<SelfProfileRepositoryContract>(
+      selfProfileRepository,
+    );
+    GetIt.I.registerSingleton<InviteablesRepositoryContract>(
+      inviteablesRepository,
+    );
+    GetIt.I.registerSingleton<ProximityPreferencesRepositoryContract>(
+      _FakeProximityPreferencesRepository(),
+    );
 
-      // Guardrail: profile must resolve from repositories, never from another feature controller.
-      expect(
-        () => ProfileScreenController(),
-        returnsNormally,
-      );
-    },
-  );
+    // Guardrail: profile must resolve from repositories, never from another feature controller.
+    expect(() => ProfileScreenController(), returnsNormally);
+  });
 
-  testWidgets('Profile stays visible in user mode (no auto-redirect)',
-      (tester) async {
+  testWidgets('Profile stays visible in user mode (no auto-redirect)', (
+    tester,
+  ) async {
     final controller = _buildController(
       authorized: true,
       initialUser: _buildUser(),
     );
-    await _pumpProfileScreen(tester,
-        controller: controller, router: mockRouter);
+    await _pumpProfileScreen(
+      tester,
+      controller: controller,
+      router: mockRouter,
+    );
 
     await tester.pump();
     await tester.pump();
@@ -427,11 +486,14 @@ void main() {
       expect(find.text('Alterado'), findsNothing);
       expect(find.text('Telefone'), findsOneWidget);
       expect(find.byIcon(Icons.lock_outline), findsOneWidget);
-      expect(find.byKey(const ValueKey<String>('profile-radius-expanded')),
-          findsOneWidget);
+      expect(
+        find.byKey(const ValueKey<String>('profile-radius-expanded')),
+        findsOneWidget,
+      );
 
-      final originPreferenceTile =
-          find.byKey(const Key('profileOriginPreferenceTile'));
+      final originPreferenceTile = find.byKey(
+        const Key('profileOriginPreferenceTile'),
+      );
       await tester.ensureVisible(originPreferenceTile);
       await tester.tap(originPreferenceTile);
       await tester.pumpAndSettle();
@@ -440,18 +502,30 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Selecionar no mapa'), findsOneWidget);
-      expect(find.byKey(const Key('profileSaveOriginPreferenceButton')),
-          findsOneWidget);
+      expect(
+        find.byKey(const Key('profileSaveOriginPreferenceButton')),
+        findsOneWidget,
+      );
     },
   );
 
   testWidgets(
-    'Profile radius picker caps UI at 50 km',
+    'profile deletion confirmation consumes the configured duplicate burst and keeps a pre-erase rejection active',
     (tester) async {
+      final burstLevel = _accountDeletionDuplicateBurstLevel();
+      final deletionCompleter = Completer<AccountDeletionDispatchOutcome>();
+      final authRepository = _FakeAuthRepository(
+        backend: _FakeBackendContract(),
+        authorized: true,
+        initialUser: _buildUser(),
+        deletionCompleter: deletionCompleter,
+      );
       final controller = _buildController(
         authorized: true,
         initialUser: _buildUser(),
+        authRepository: authRepository,
       );
+
       await _pumpProfileScreen(
         tester,
         controller: controller,
@@ -459,15 +533,107 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(
-        find.byKey(const ValueKey<String>('profile-radius-expanded')),
+      final entry = find.byKey(const Key('profileDeleteAccountEntry'));
+      await tester.ensureVisible(entry);
+      await tester.tap(entry);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Excluir conta?'), findsOneWidget);
+      expect(
+        find.text(
+          'Esta ação remove permanentemente sua conta e os dados vinculados a ela. Não será possível recuperar esse conteúdo.',
+        ),
+        findsOneWidget,
+      );
+
+      final confirmButton = find.byKey(
+        const Key('profileConfirmDeleteAccountButton'),
+      );
+      for (var attempt = 0; attempt < burstLevel; attempt++) {
+        await tester.tap(confirmButton, warnIfMissed: false);
+      }
+      await tester.pump();
+
+      expect(authRepository.deleteCurrentAccountCallCount, 1);
+      expect(find.text('Removendo conta...'), findsOneWidget);
+      expect(tester.widget<FilledButton>(confirmButton).onPressed, isNull);
+
+      deletionCompleter.complete(
+        AccountDeletionDispatchOutcome.preEraseRejected,
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('50 km'), findsOneWidget);
-      expect(find.text('100 km'), findsNothing);
+      expect(
+        find.text(
+          'Não foi possível iniciar a remoção. Sua conta continua ativa. Tente novamente.',
+        ),
+        findsOneWidget,
+      );
+      expect(mockRouter.replaceAllCalled, isFalse);
     },
   );
+
+  testWidgets(
+    'profile deletion replaces history with the resolution boundary after confirmation',
+    (tester) async {
+      final authRepository = _FakeAuthRepository(
+        backend: _FakeBackendContract(),
+        authorized: true,
+        initialUser: _buildUser(),
+        deletionOutcome: AccountDeletionDispatchOutcome.confirmed,
+      );
+      final controller = _buildController(
+        authorized: true,
+        initialUser: _buildUser(),
+        authRepository: authRepository,
+      );
+
+      await _pumpProfileScreen(
+        tester,
+        controller: controller,
+        router: mockRouter,
+      );
+      await tester.pumpAndSettle();
+
+      final entry = find.byKey(const Key('profileDeleteAccountEntry'));
+      await tester.ensureVisible(entry);
+      await tester.tap(entry);
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byKey(const Key('profileConfirmDeleteAccountButton')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(authRepository.deleteCurrentAccountCallCount, 1);
+      expect(mockRouter.replaceAllCalled, isTrue);
+      expect(
+        mockRouter.lastRoutes?.single.routeName,
+        AccountDeletionResolutionRoute.name,
+      );
+    },
+  );
+
+  testWidgets('Profile radius picker caps UI at 50 km', (tester) async {
+    final controller = _buildController(
+      authorized: true,
+      initialUser: _buildUser(),
+    );
+    await _pumpProfileScreen(
+      tester,
+      controller: controller,
+      router: mockRouter,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('profile-radius-expanded')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('50 km'), findsOneWidget);
+    expect(find.text('100 km'), findsNothing);
+  });
 
   testWidgets(
     'profile social metrics render sender-side invites sent and accepted',
@@ -501,35 +667,44 @@ void main() {
     },
   );
 
-  testWidgets('profile visible back falls back to home when no history exists',
-      (tester) async {
+  testWidgets(
+    'profile visible back falls back to home when no history exists',
+    (tester) async {
+      final controller = _buildController(
+        authorized: true,
+        initialUser: _buildUser(),
+      );
+      mockRouter.canPopResult = false;
+      await _pumpProfileScreen(
+        tester,
+        controller: controller,
+        router: mockRouter,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.arrow_back));
+      await tester.pumpAndSettle();
+
+      expect(mockRouter.canPopCallCount, 1);
+      expect(mockRouter.popCallCount, 0);
+      expect(mockRouter.replaceAllCalled, isTrue);
+      expect(mockRouter.lastRoutes?.single.routeName, TenantHomeRoute.name);
+    },
+  );
+
+  testWidgets('profile system back falls back to home when no history exists', (
+    tester,
+  ) async {
     final controller = _buildController(
       authorized: true,
       initialUser: _buildUser(),
     );
     mockRouter.canPopResult = false;
-    await _pumpProfileScreen(tester,
-        controller: controller, router: mockRouter);
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.byIcon(Icons.arrow_back));
-    await tester.pumpAndSettle();
-
-    expect(mockRouter.canPopCallCount, 1);
-    expect(mockRouter.popCallCount, 0);
-    expect(mockRouter.replaceAllCalled, isTrue);
-    expect(mockRouter.lastRoutes?.single.routeName, TenantHomeRoute.name);
-  });
-
-  testWidgets('profile system back falls back to home when no history exists',
-      (tester) async {
-    final controller = _buildController(
-      authorized: true,
-      initialUser: _buildUser(),
+    await _pumpProfileScreen(
+      tester,
+      controller: controller,
+      router: mockRouter,
     );
-    mockRouter.canPopResult = false;
-    await _pumpProfileScreen(tester,
-        controller: controller, router: mockRouter);
     await tester.pumpAndSettle();
 
     final popScope = tester.widget<PopScope<dynamic>>(
@@ -550,8 +725,11 @@ void main() {
       initialUser: _buildUser(),
     );
     mockRouter.canPopResult = true;
-    await _pumpProfileScreen(tester,
-        controller: controller, router: mockRouter);
+    await _pumpProfileScreen(
+      tester,
+      controller: controller,
+      router: mockRouter,
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.byIcon(Icons.arrow_back));
@@ -582,8 +760,11 @@ void main() {
       proximityPreferencesRepository: _FakeProximityPreferencesRepository(),
     );
 
-    await _pumpProfileScreen(tester,
-        controller: controller, router: mockRouter);
+    await _pumpProfileScreen(
+      tester,
+      controller: controller,
+      router: mockRouter,
+    );
     await tester.pump();
 
     expect(find.text('Alice Smith'), findsNothing);
@@ -664,35 +845,39 @@ void main() {
     },
   );
 
-  test('Profile controller persists editable fields and rehydrates values',
-      () async {
-    final selfProfileRepository = _FakeSelfProfileRepository(
-      initialProfile: _buildSelfProfile(
-        userId: 'user-1',
-        accountProfileId: 'profile-1',
-        displayName: 'Alice Smith',
-        bio: 'Bio inicial',
-        phone: '+5527999991111',
-      ),
-    );
-    final controller = _buildController(
-      authorized: true,
-      initialUser: _buildUser(),
-      selfProfileRepository: selfProfileRepository,
-    );
+  test(
+    'Profile controller persists editable fields and rehydrates values',
+    () async {
+      final selfProfileRepository = _FakeSelfProfileRepository(
+        initialProfile: _buildSelfProfile(
+          userId: 'user-1',
+          accountProfileId: 'profile-1',
+          displayName: 'Alice Smith',
+          bio: 'Bio inicial',
+          phone: '+5527999991111',
+        ),
+      );
+      final controller = _buildController(
+        authorized: true,
+        initialUser: _buildUser(),
+        selfProfileRepository: selfProfileRepository,
+      );
 
-    await controller.refreshProfile();
-    controller.nameController.text = 'Alice Persistida';
-    controller.descriptionController.text = 'Bio persistida';
+      await controller.refreshProfile();
+      controller.nameController.text = 'Alice Persistida';
+      controller.descriptionController.text = 'Bio persistida';
 
-    await controller.saveProfile();
+      await controller.saveProfile();
 
-    expect(
-        selfProfileRepository.lastDisplayNameValue?.value, 'Alice Persistida');
-    expect(selfProfileRepository.lastBioValue?.value, 'Bio persistida');
-    expect(controller.nameController.text, 'Alice Persistida');
-    expect(controller.descriptionController.text, 'Bio persistida');
-  });
+      expect(
+        selfProfileRepository.lastDisplayNameValue?.value,
+        'Alice Persistida',
+      );
+      expect(selfProfileRepository.lastBioValue?.value, 'Bio persistida');
+      expect(controller.nameController.text, 'Alice Persistida');
+      expect(controller.descriptionController.text, 'Bio persistida');
+    },
+  );
 
   test(
     'Profile controller omits unchanged bio when only the name changes',
@@ -750,8 +935,10 @@ void main() {
 
       await controller.saveProfile();
 
-      expect(selfProfileRepository.lastDisplayNameValue?.value,
-          'Alice Persistida');
+      expect(
+        selfProfileRepository.lastDisplayNameValue?.value,
+        'Alice Persistida',
+      );
       expect(controller.nameController.text, 'Alice Persistida');
       expect(controller.hasPendingChanges, isFalse);
       expect(controller.localAvatarPathStreamValue.value, isNull);
@@ -759,59 +946,61 @@ void main() {
   );
 
   test(
-      'Profile controller hides phone placeholder names coming from profile payload',
-      () async {
-    final controller = _buildController(
-      authorized: true,
-      initialUser: _buildUser(),
-      selfProfileRepository: _FakeSelfProfileRepository(
+    'Profile controller hides phone placeholder names coming from profile payload',
+    () async {
+      final controller = _buildController(
+        authorized: true,
+        initialUser: _buildUser(),
+        selfProfileRepository: _FakeSelfProfileRepository(
+          initialProfile: _buildSelfProfile(
+            userId: 'user-1',
+            accountProfileId: 'profile-1',
+            displayName: '+55 27 99999-1111',
+            bio: '',
+            phone: '+55 27 99999-1111',
+          ),
+        ),
+      );
+
+      await controller.refreshProfile();
+
+      expect(controller.nameController.text, isEmpty);
+    },
+  );
+
+  test(
+    'Profile controller surfaces friendly save errors without raw exception text',
+    () async {
+      final selfProfileRepository = _FakeSelfProfileRepository(
         initialProfile: _buildSelfProfile(
           userId: 'user-1',
           accountProfileId: 'profile-1',
-          displayName: '+55 27 99999-1111',
-          bio: '',
-          phone: '+55 27 99999-1111',
+          displayName: 'Alice Smith',
+          bio: 'Bio inicial',
+          phone: '+5527999991111',
         ),
-      ),
-    );
+      )..updateError = StateError('HTTP 422 profile endpoint exploded');
+      final controller = _buildController(
+        authorized: true,
+        initialUser: _buildUser(),
+        selfProfileRepository: selfProfileRepository,
+      );
 
-    await controller.refreshProfile();
+      await controller.refreshProfile();
+      controller.nameController.text = 'Alice Persistida';
 
-    expect(controller.nameController.text, isEmpty);
-  });
-
-  test(
-      'Profile controller surfaces friendly save errors without raw exception text',
-      () async {
-    final selfProfileRepository = _FakeSelfProfileRepository(
-      initialProfile: _buildSelfProfile(
-        userId: 'user-1',
-        accountProfileId: 'profile-1',
-        displayName: 'Alice Smith',
-        bio: 'Bio inicial',
-        phone: '+5527999991111',
-      ),
-    )..updateError = StateError('HTTP 422 profile endpoint exploded');
-    final controller = _buildController(
-      authorized: true,
-      initialUser: _buildUser(),
-      selfProfileRepository: selfProfileRepository,
-    );
-
-    await controller.refreshProfile();
-    controller.nameController.text = 'Alice Persistida';
-
-    await expectLater(
-      controller.saveProfile(),
-      throwsA(
-        isA<StateError>().having(
-          (error) => error.message,
-          'message',
-          'Nao foi possivel salvar o perfil agora. Tente novamente.',
+      await expectLater(
+        controller.saveProfile(),
+        throwsA(
+          isA<StateError>().having(
+            (error) => error.message,
+            'message',
+            'Nao foi possivel salvar o perfil agora. Tente novamente.',
+          ),
         ),
-      ),
-    );
-  });
+      );
+    },
+  );
 }
 
 Future<void> _pumpProfileScreen(
@@ -837,18 +1026,22 @@ Future<void> _pumpProfileScreen(
 ProfileScreenController _buildController({
   bool authorized = false,
   UserContract? initialUser,
+  AuthRepositoryContract<UserContract>? authRepository,
   ProfileAvatarStorageContract? avatarStorage,
   SelfProfileRepositoryContract? selfProfileRepository,
   InviteablesRepositoryContract? inviteablesRepository,
 }) {
-  final authRepository = _FakeAuthRepository(
-    backend: _FakeBackendContract(),
-    authorized: authorized,
-    initialUser: initialUser,
-  );
+  final resolvedAuthRepository =
+      authRepository ??
+      _FakeAuthRepository(
+        backend: _FakeBackendContract(),
+        authorized: authorized,
+        initialUser: initialUser,
+      );
   final appDataRepository = _FakeAppDataRepository();
   final resolvedAvatarStorage = avatarStorage ?? _FakeProfileAvatarStorage();
-  final profileRepository = selfProfileRepository ??
+  final profileRepository =
+      selfProfileRepository ??
       _FakeSelfProfileRepository(
         initialProfile: _buildSelfProfile(
           userId: initialUser?.uuidValue.value.toString() ?? 'user-1',
@@ -860,7 +1053,7 @@ ProfileScreenController _buildController({
       );
 
   return ProfileScreenController(
-    authRepository: authRepository,
+    authRepository: resolvedAuthRepository,
     appDataRepository: appDataRepository,
     avatarStorage: resolvedAvatarStorage,
     selfProfileRepository: profileRepository,
@@ -870,16 +1063,12 @@ ProfileScreenController _buildController({
   );
 }
 
-Widget _buildRoutedTestApp({
-  required _RecordingStackRouter router,
-}) {
+Widget _buildRoutedTestApp({required _RecordingStackRouter router}) {
   final routeData = RouteData(
     route: _FakeRouteMatch(
       name: ProfileRoute.name,
       fullPath: '/profile',
-      meta: canonicalRouteMeta(
-        family: CanonicalRouteFamily.profileRoot,
-      ),
+      meta: canonicalRouteMeta(family: CanonicalRouteFamily.profileRoot),
     ),
     router: router,
     stackKey: const ValueKey<String>('stack'),
@@ -891,17 +1080,13 @@ Widget _buildRoutedTestApp({
     controller: router,
     stateHash: 0,
     child: MaterialApp(
-      home: RouteDataScope(
-        routeData: routeData,
-        child: const ProfileScreen(),
-      ),
+      theme: ThemeData(splashFactory: NoSplash.splashFactory),
+      home: RouteDataScope(routeData: routeData, child: const ProfileScreen()),
     ),
   );
 }
 
-UserContract _buildUser({
-  String name = 'Alice Smith',
-}) {
+UserContract _buildUser({String name = 'Alice Smith'}) {
   return _FakeUser(
     uuidValue: MongoIDValue()..parse('507f1f77bcf86cd799439011'),
     profile: UserProfileContract(
@@ -932,9 +1117,10 @@ SelfProfile _buildSelfProfile({
   if (accountProfileId.isNotEmpty) {
     accountProfileIdValue.parse(accountProfileId);
   }
-  final displayNameValue =
-      UserDisplayNameValue(isRequired: false, minLenght: null)
-        ..parse(displayName);
+  final displayNameValue = UserDisplayNameValue(
+    isRequired: false,
+    minLenght: null,
+  )..parse(displayName);
   final bioValue = DescriptionValue(defaultValue: '', minLenght: null)
     ..parse(bio);
   final phoneValue = AuthPhoneOtpPhoneValue(isRequired: false, minLenght: null)

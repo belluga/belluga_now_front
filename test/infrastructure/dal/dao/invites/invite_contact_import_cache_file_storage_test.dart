@@ -4,30 +4,29 @@ import 'package:belluga_now/infrastructure/dal/dao/invites/invite_contact_import
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('file storage persists import-cache payload across fresh instances',
-      () async {
-    final tempDirectory = await Directory.systemTemp.createTemp(
-      'invite-contact-import-cache-test',
-    );
-    addTearDown(() async {
-      if (await tempDirectory.exists()) {
-        await tempDirectory.delete(recursive: true);
-      }
-    });
+  test(
+    'file storage persists import-cache payload across fresh instances',
+    () async {
+      final tempDirectory = await Directory.systemTemp.createTemp(
+        'invite-contact-import-cache-test',
+      );
+      addTearDown(() async {
+        if (await tempDirectory.exists()) {
+          await tempDirectory.delete(recursive: true);
+        }
+      });
 
-    final writer = InviteContactImportCacheFileStorage(
-      directoryProvider: () async => tempDirectory,
-    );
-    await writer.write('tenant-user-scope', '{"signature":"abc"}');
+      final writer = InviteContactImportCacheFileStorage(
+        directoryProvider: () async => tempDirectory,
+      );
+      await writer.write('tenant-user-scope', '{"signature":"abc"}');
 
-    final reader = InviteContactImportCacheFileStorage(
-      directoryProvider: () async => tempDirectory,
-    );
-    expect(
-      await reader.read('tenant-user-scope'),
-      '{"signature":"abc"}',
-    );
-  });
+      final reader = InviteContactImportCacheFileStorage(
+        directoryProvider: () async => tempDirectory,
+      );
+      expect(await reader.read('tenant-user-scope'), '{"signature":"abc"}');
+    },
+  );
 
   test('file storage delete removes persisted import-cache payload', () async {
     final tempDirectory = await Directory.systemTemp.createTemp(
@@ -48,4 +47,29 @@ void main() {
 
     expect(await storage.read('tenant-user-scope'), isNull);
   });
+
+  test(
+    'file storage clearAll removes every persisted import-cache payload',
+    () async {
+      final tempDirectory = await Directory.systemTemp.createTemp(
+        'invite-contact-import-cache-clear-all',
+      );
+      addTearDown(() async {
+        if (await tempDirectory.exists()) {
+          await tempDirectory.delete(recursive: true);
+        }
+      });
+
+      final storage = InviteContactImportCacheFileStorage(
+        directoryProvider: () async => tempDirectory,
+      );
+      await storage.write('former-user-one', '{"signature":"one"}');
+      await storage.write('former-user-two', '{"signature":"two"}');
+
+      await storage.clearAll();
+
+      expect(await storage.read('former-user-one'), isNull);
+      expect(await storage.read('former-user-two'), isNull);
+    },
+  );
 }

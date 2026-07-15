@@ -1,3 +1,4 @@
+import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'dart:typed_data';
 
 import 'package:auto_route/auto_route.dart';

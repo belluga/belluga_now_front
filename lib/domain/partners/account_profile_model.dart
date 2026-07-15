@@ -39,7 +39,7 @@ class AccountProfileModel {
   final List<AccountProfileNestedGroup> nestedProfileGroupValues;
   final DomainBooleanValue canOpenPublicDetailValue;
   final AccountProfilePublicDetailPathValue? publicDetailPathValue;
-  final BellugaContactSourceMode contactMode;
+  final BellugaContactSourceMode contactModeValue;
   final AccountProfileContactSourceAccountProfileIdValue?
   contactSourceAccountProfileIdValue;
   final List<BellugaContactChannel> contactChannelValues;
@@ -71,7 +71,7 @@ class AccountProfileModel {
     List<AccountProfileNestedGroup>? nestedProfileGroupValues,
     DomainBooleanValue? canOpenPublicDetailValue,
     this.publicDetailPathValue,
-    BellugaContactSourceMode? contactMode,
+    BellugaContactSourceMode? contactModeValue,
     AccountProfileContactSourceAccountProfileIdValue?
     contactSourceAccountProfileId,
     List<BellugaContactChannel>? contactChannelValues,
@@ -92,7 +92,7 @@ class AccountProfileModel {
        nestedProfileGroupValues = List<AccountProfileNestedGroup>.unmodifiable(
          nestedProfileGroupValues ?? const <AccountProfileNestedGroup>[],
        ),
-       contactMode = contactMode ?? BellugaContactSourceMode.own,
+       contactModeValue = contactModeValue ?? BellugaContactSourceMode.own,
        contactSourceAccountProfileIdValue = contactSourceAccountProfileId,
        contactChannelValues = List<BellugaContactChannel>.unmodifiable(
          contactChannelValues ?? const <BellugaContactChannel>[],
@@ -110,6 +110,8 @@ class AccountProfileModel {
            acceptedInvitesValue ?? AccountProfileAcceptedInvitesValue(),
        distanceMetersValue =
            distanceMetersValue ?? AccountProfileDistanceMetersValue();
+
+  BellugaContactSourceMode get contactMode => contactModeValue;
 
   String get id => idValue.value;
   String get name => nameValue.value;
@@ -166,7 +168,10 @@ class AccountProfileModel {
 
   BellugaContactChannel? get effectiveContactBubbleChannel {
     final channel = effectiveContactBubbleChannelValue;
-    return channel?.isBubbleEligible == true ? channel : null;
+    if (channel?.isBubbleEligible != true) {
+      return null;
+    }
+    return channel;
   }
 
   String? get publicDetailPath {
@@ -199,7 +204,7 @@ class AccountProfileModel {
     List<AccountProfileNestedGroup>? nestedProfileGroupValues,
     DomainBooleanValue? canOpenPublicDetailValue,
     AccountProfilePublicDetailPathValue? publicDetailPathValue,
-    BellugaContactSourceMode? contactMode,
+    BellugaContactSourceMode? contactModeValue,
     AccountProfileContactSourceAccountProfileIdValue?
     contactSourceAccountProfileId,
     List<BellugaContactChannel>? contactChannelValues,
@@ -236,7 +241,7 @@ class AccountProfileModel {
           canOpenPublicDetailValue ?? this.canOpenPublicDetailValue,
       publicDetailPathValue:
           publicDetailPathValue ?? this.publicDetailPathValue,
-      contactMode: contactMode ?? this.contactMode,
+      contactModeValue: contactModeValue ?? this.contactModeValue,
       contactSourceAccountProfileId:
           contactSourceAccountProfileId ?? contactSourceAccountProfileIdValue,
       contactChannelValues: contactChannelValues ?? this.contactChannelValues,

@@ -8,16 +8,16 @@ import '../type_utils.dart';
 
 class DtoMapperPassThroughForbiddenRule extends DartLintRule {
   DtoMapperPassThroughForbiddenRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'dto_mapper_pass_through_forbidden',
-            problemMessage:
-                'Mapper methods converting DTO/primitives to domain are forbidden.',
-            correctionMessage:
-                'Treatments: remove mapper conversion methods and keep DTO->Domain conversion exclusively in DTO.toDomain().',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'dto_mapper_pass_through_forbidden',
+          problemMessage:
+              'Mapper methods converting DTO/primitives to domain are forbidden.',
+          correctionMessage:
+              'Treatments: remove mapper conversion methods and keep DTO->Domain conversion exclusively in DTO.toDomain().',
+        ),
+      );
 
   @override
   void run(

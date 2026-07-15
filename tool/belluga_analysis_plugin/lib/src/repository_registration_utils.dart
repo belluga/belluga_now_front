@@ -32,8 +32,9 @@ bool isRepositoryRegistrationInvocation(MethodInvocation node) {
 }
 
 bool isRepositoryFactoryLifecycleInvocation(MethodInvocation node) {
-  if (!disallowedRepositoryLifecycleMethodNames
-      .contains(node.methodName.name)) {
+  if (!disallowedRepositoryLifecycleMethodNames.contains(
+    node.methodName.name,
+  )) {
     return false;
   }
 
@@ -78,8 +79,9 @@ bool _expressionContainsRepositoryConstructor(Expression expression) {
     if (body is ExpressionFunctionBody) {
       final bodyExpression = body.expression;
       if (bodyExpression is InstanceCreationExpression) {
-        final createdType =
-            normalizeTypeName(bodyExpression.constructorName.type.toSource());
+        final createdType = normalizeTypeName(
+          bodyExpression.constructorName.type.toSource(),
+        );
         return isRepositoryTypeName(createdType);
       }
       if (bodyExpression is MethodInvocation) {
@@ -97,8 +99,9 @@ bool _expressionContainsRepositoryConstructor(Expression expression) {
         }
         final returned = statement.expression;
         if (returned is InstanceCreationExpression) {
-          final createdType =
-              normalizeTypeName(returned.constructorName.type.toSource());
+          final createdType = normalizeTypeName(
+            returned.constructorName.type.toSource(),
+          );
           if (isRepositoryTypeName(createdType)) {
             return true;
           }

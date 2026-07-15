@@ -8,7 +8,6 @@ analyzer:
   exclude:
     - lib/application/configurations/belluga_nattive_icons.dart
     - "**/*.mocks.dart"
-    - tool/belluga_analysis_plugin/**
     - "**/test_fixtures/**"
 
 linter:

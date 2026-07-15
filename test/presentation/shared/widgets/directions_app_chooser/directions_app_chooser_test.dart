@@ -297,6 +297,7 @@ Future<void> _pumpRouteScopedChooserHarness(
 }) {
   return tester.pumpWidget(
     MaterialApp(
+      theme: ThemeData(splashFactory: NoSplash.splashFactory),
       home: RouteInstanceScope(
         child: Builder(
           builder: (context) {

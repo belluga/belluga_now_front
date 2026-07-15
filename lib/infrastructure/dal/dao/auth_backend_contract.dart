@@ -1,9 +1,11 @@
 export 'anonymous_identity_response.dart';
+export 'account_deletion_backend_result.dart';
 export 'auth_registration_response.dart';
 export 'phone_otp_challenge_response.dart';
 export 'phone_otp_verification_response.dart';
 
 import 'package:belluga_now/infrastructure/user/dtos/user_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dao/account_deletion_backend_result.dart';
 import 'package:belluga_now/infrastructure/dal/dao/anonymous_identity_response.dart';
 import 'package:belluga_now/infrastructure/dal/dao/auth_registration_response.dart';
 import 'package:belluga_now/infrastructure/dal/dao/phone_otp_challenge_response.dart';
@@ -16,6 +18,16 @@ abstract class AuthBackendContract {
   );
   Future<void> logout();
   Future<UserDto> loginCheck();
+
+  Future<CurrentAccountDeletionBackendResult> deleteCurrentAccount() {
+    throw UnimplementedError();
+  }
+
+  Future<CurrentIdentityValidationResult>
+  validateCurrentIdentityForDeletionResolution() {
+    throw UnimplementedError();
+  }
+
   Future<AuthRegistrationResponse> registerWithEmailPassword({
     required String name,
     required String email,

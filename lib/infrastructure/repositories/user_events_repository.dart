@@ -133,6 +133,13 @@ class UserEventsRepository implements UserEventsRepositoryContract {
   }
 
   @override
+  void clearCurrentIdentityState() {
+    confirmedOccurrenceIdsStream.addValue(
+      const <UserEventsRepositoryContractPrimString>{},
+    );
+  }
+
+  @override
   Future<List<VenueEventResume>> fetchMyEvents() async {
     final authRepository = _resolvedAuthRepository;
     if (authRepository != null && !authRepository.isAuthorized) {

@@ -26,7 +26,7 @@ void main() {
     'update removes a persisted selected WhatsApp atomically with an explicit clear',
     () {
       final payload = encoder.encodeUpdateAccountProfile(
-        contactChannelDrafts: <BellugaContactChannelDraft>[],
+        contactChannelDrafts: const <BellugaContactChannelDraft>[],
         bubbleSelection: const BellugaContactBubbleSelectionMutation.clear(),
       );
 
@@ -39,24 +39,23 @@ void main() {
   test(
     'create encodes new channel draft and selects it atomically by draft key',
     () {
+      final contactDraft = BellugaContactChannelDraft(
+        draftKey: 'draft-whatsapp-1',
+        type: BellugaContactChannelType.whatsapp,
+        value: '+55 (27) 99999-1111',
+        initialMessages: const <BellugaContactInitialMessage>[
+          BellugaContactInitialMessage(
+            id: 'cta-1',
+            cta: 'Falar agora',
+            message: 'Olá',
+          ),
+        ],
+      );
       final payload = encoder.encodeCreateAccountProfile(
         accountId: 'account-1',
         profileType: 'partner',
         displayName: 'Ananda',
-        contactChannelDrafts: <BellugaContactChannelDraft>[
-          BellugaContactChannelDraft(
-            draftKey: 'draft-whatsapp-1',
-            type: BellugaContactChannelType.whatsapp,
-            value: '+55 (27) 99999-1111',
-            initialMessages: const <BellugaContactInitialMessage>[
-              BellugaContactInitialMessage(
-                id: 'cta-1',
-                cta: 'Falar agora',
-                message: 'Olá',
-              ),
-            ],
-          ),
-        ],
+        contactChannelDrafts: [contactDraft],
         bubbleSelection: BellugaContactBubbleSelectionMutation.setDraft(
           'draft-whatsapp-1',
         ),

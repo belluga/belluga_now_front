@@ -8,16 +8,16 @@ import '../type_utils.dart';
 
 class RepositoryModelStreamValueNullableRequiredRule extends DartLintRule {
   RepositoryModelStreamValueNullableRequiredRule()
-      : super(
-          code: const LintCode(
-            errorSeverity: ErrorSeverity.WARNING,
-            name: 'repository_model_streamvalue_nullable_required',
-            problemMessage:
-                'Repository StreamValue carrying *Model payload must be nullable at top-level.',
-            correctionMessage:
-                'Treatments: use StreamValue<T?> (for example StreamValue<List<EventModel>?>) so null can represent not-yet-fetched state.',
-          ),
-        );
+    : super(
+        code: const LintCode(
+          errorSeverity: ErrorSeverity.warning,
+          name: 'repository_model_streamvalue_nullable_required',
+          problemMessage:
+              'Repository StreamValue carrying *Model payload must be nullable at top-level.',
+          correctionMessage:
+              'Treatments: use StreamValue<T?> (for example StreamValue<List<EventModel>?>) so null can represent not-yet-fetched state.',
+        ),
+      );
 
   @override
   void run(

@@ -1,3 +1,4 @@
+import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'dart:io';
 
 import 'package:auto_route/auto_route.dart';
@@ -243,8 +244,8 @@ class _FakeAccountsRepository
 }
 
 class _FakeAccountProfilesRepository
-    with TenantAdminProfileTypesPaginationMixin
-    implements TenantAdminAccountProfilesRepositoryContract {
+    extends TenantAdminAccountProfilesRepositoryContract
+    with TenantAdminProfileTypesPaginationMixin {
   _FakeAccountProfilesRepository({
     List<TenantAdminProfileTypeDefinition>? profileTypes,
   }) : _profileTypes =

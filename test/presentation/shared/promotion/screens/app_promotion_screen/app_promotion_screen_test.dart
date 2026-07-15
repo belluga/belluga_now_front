@@ -587,6 +587,7 @@ Widget _buildWidget({
     controller: router,
     stateHash: 0,
     child: MaterialApp(
+      theme: ThemeData(splashFactory: NoSplash.splashFactory),
       home: RouteDataScope(
         routeData: routeData,
         child: AppPromotionScreen(redirectPath: redirectPath),
