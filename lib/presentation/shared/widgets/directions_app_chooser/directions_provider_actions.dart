@@ -265,7 +265,20 @@ class _DirectionProviderLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final size = isPrimary
+    final useCompactIcon =
+        compact &&
+        brand.compactIconAssetPath != null &&
+        brand.compactIconAssetType != null &&
+        brand.compactIconSize != null;
+    final assetPath = useCompactIcon
+        ? brand.compactIconAssetPath!
+        : brand.assetPath;
+    final assetType = useCompactIcon
+        ? brand.compactIconAssetType!
+        : brand.assetType;
+    final size = useCompactIcon
+        ? brand.compactIconSize!
+        : isPrimary
         ? brand.primaryLogoSize
         : compact
         ? brand.microLogoSize
@@ -273,15 +286,16 @@ class _DirectionProviderLogo extends StatelessWidget {
     final disabledColor = Theme.of(
       context,
     ).colorScheme.onSurface.withValues(alpha: 0.38);
-    final logo = switch (brand.assetType) {
+    final logo = switch (assetType) {
       DirectionsProviderBrandAssetType.rasterImage => Image.asset(
-        brand.assetPath,
+        assetPath,
         fit: BoxFit.contain,
+        filterQuality: FilterQuality.high,
         errorBuilder: (context, error, stackTrace) =>
             _DirectionProviderLogoFallback(label: brand.label),
       ),
       DirectionsProviderBrandAssetType.svg => SvgPicture.asset(
-        brand.assetPath,
+        assetPath,
         fit: BoxFit.contain,
         colorFilter: !enabled
             ? ColorFilter.mode(disabledColor, BlendMode.srcIn)
@@ -295,8 +309,7 @@ class _DirectionProviderLogo extends StatelessWidget {
       ),
     };
 
-    final child =
-        brand.assetType == DirectionsProviderBrandAssetType.rasterImage
+    final child = assetType == DirectionsProviderBrandAssetType.rasterImage
         ? Opacity(opacity: enabled ? 1 : 0.38, child: logo)
         : logo;
 

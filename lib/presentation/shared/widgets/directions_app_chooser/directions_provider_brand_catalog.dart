@@ -33,6 +33,11 @@ class DirectionsProviderBrandCatalog {
     compactLogoSize: Size(70, 20),
     microLogoSize: Size(30, 10),
     sheetLogoSize: Size(52, 15),
+    compactIconAssetPath: 'assets/brands/directions/waze_app_icon_2026.jpg',
+    compactIconAssetType: DirectionsProviderBrandAssetType.rasterImage,
+    compactIconSize: Size(30, 30),
+    compactIconSourceUrl:
+        'https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/20/16/09/20160991-52e7-cbe5-7c99-6fd7c0539379/AppIcon-0-0-1x_U007epad-0-1-0-85-220.png/512x512bb.jpg',
     compactLogoTint: null,
     sourceUrl:
         'https://upload.wikimedia.org/wikipedia/commons/3/37/Waze_logo_2022.png',
@@ -51,6 +56,11 @@ class DirectionsProviderBrandCatalog {
     compactLogoSize: Size(60, 13),
     microLogoSize: Size(28, 8),
     sheetLogoSize: Size(46, 10),
+    compactIconAssetPath: 'assets/brands/directions/uber_app_icon_2026.jpg',
+    compactIconAssetType: DirectionsProviderBrandAssetType.rasterImage,
+    compactIconSize: Size(28, 28),
+    compactIconSourceUrl:
+        'https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/b0/00/4e/b0004ede-5b3e-88cd-658e-266661f04de0/AppIcon-0-0-1x_U007emarketing-0-8-0-0-85-220.png/512x512bb.jpg',
     compactLogoTint: Color(0xFF111111),
     logoTint: Color(0xFFFFFFFF),
     sourceUrl:

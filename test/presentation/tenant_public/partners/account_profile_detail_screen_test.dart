@@ -30,6 +30,7 @@ import 'package:belluga_now/domain/static_assets/public_static_asset_model.dart'
 import 'package:belluga_now/presentation/tenant_public/partners/account_profile_detail_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_state.dart';
+import 'package:belluga_now/presentation/shared/widgets/account_profile_overlapping_identity_card.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/upcoming_event_card.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_screen_controller.dart';
@@ -1905,6 +1906,10 @@ void main() {
       );
       expect(find.text('Ananda Torres'), findsOneWidget);
       expect(find.text('Música'), findsOneWidget);
+      expect(
+        find.byType(AccountProfileOverlappingIdentityCard),
+        findsOneWidget,
+      );
 
       await tester.tap(
         find.byKey(

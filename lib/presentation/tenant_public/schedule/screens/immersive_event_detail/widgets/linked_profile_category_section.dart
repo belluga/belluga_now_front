@@ -1,7 +1,7 @@
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/presentation/shared/visuals/account_profile_visual_resolver.dart';
 import 'package:belluga_now/presentation/shared/visuals/resolved_account_profile_visual.dart';
-import 'package:belluga_now/presentation/shared/widgets/account_profile_identity_block.dart';
+import 'package:belluga_now/presentation/shared/widgets/account_profile_overlapping_identity_card.dart';
 import 'package:flutter/material.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 
@@ -91,95 +91,50 @@ class _LinkedProfileCard extends StatelessWidget {
     final tags = profile.taxonomyTerms
         .map((term) => term.labelValue.value.trim())
         .where((label) => label.isNotEmpty)
-        .take(4)
         .toList(growable: false);
 
-    return Material(
-      color: Colors.transparent,
-      child: Ink(
-        decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: colorScheme.outlineVariant),
+    return Stack(
+      children: [
+        AccountProfileOverlappingIdentityCard(
+          name: profile.displayName,
+          visual: resolvedVisual,
+          tags: tags,
+          onTap: onTap,
+          tapKey: Key('linkedProfileCardTapTarget_${profile.id}'),
+          titleStyle: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: colorScheme.primary,
+          ),
+          titleMaxLines: 2,
+          avatarSize: 64,
+          avatarLeft: 12,
+          avatarTop: 8,
+          cardLeft: 56,
+          contentLeadingInset: 44,
+          contentTrailingInset: isFavoritable ? 64 : 20,
+          minimumCardHeight: 80,
         ),
-        child: Stack(
-          children: [
-            InkWell(
-              key: Key('linkedProfileCardTapTarget_${profile.id}'),
-              borderRadius: BorderRadius.circular(24),
-              onTap: onTap,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: AccountProfileIdentityBlock(
-                  name: profile.displayName,
-                  avatarUrl: resolvedVisual.identityAvatarUrl,
-                  typeVisual: resolvedVisual.typeVisual,
-                  avatarSize: 44,
-                  typeAvatarSize: 22,
-                  typeAvatarIconSize: 12,
-                  avatarSpacing: 10,
-                  supportingSpacing: 10,
-                  titleStyle: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                  supporting: tags.isEmpty
-                      ? null
-                      : Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: tags
-                              .map(
-                                (tag) => Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: colorScheme.surface,
-                                    borderRadius: BorderRadius.circular(999),
-                                    border: Border.all(
-                                      color: colorScheme.outlineVariant,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    tag,
-                                    style: theme.textTheme.labelLarge?.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                              )
-                              .toList(growable: false),
-                        ),
+        if (isFavoritable)
+          Positioned(
+            top: 8,
+            right: 8,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: colorScheme.surface.withValues(alpha: 0.94),
+              ),
+              child: IconButton(
+                key: Key('linkedProfileFavoriteButton_${profile.id}'),
+                tooltip: favoriteLabel,
+                onPressed: onFavoriteTap,
+                icon: Icon(
+                  isFavorite ? Icons.favorite : Icons.favorite_border,
+                  color: isFavorite ? colorScheme.error : colorScheme.onSurface,
                 ),
               ),
             ),
-            if (isFavoritable)
-              Positioned(
-                top: 8,
-                right: 8,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: colorScheme.surface.withValues(alpha: 0.94),
-                    border: Border.all(color: colorScheme.outlineVariant),
-                  ),
-                  child: IconButton(
-                    key: Key('linkedProfileFavoriteButton_${profile.id}'),
-                    tooltip: favoriteLabel,
-                    onPressed: onFavoriteTap,
-                    icon: Icon(
-                      isFavorite ? Icons.favorite : Icons.favorite_border,
-                      color: isFavorite
-                          ? colorScheme.error
-                          : colorScheme.onSurface,
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
+          ),
+      ],
     );
   }
 }

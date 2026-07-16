@@ -1,10 +1,7 @@
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_contract.dart';
 import 'package:flutter/material.dart';
 
-enum DirectionsProviderBrandAssetType {
-  rasterImage,
-  svg,
-}
+enum DirectionsProviderBrandAssetType { rasterImage, svg }
 
 class DirectionsProviderBrandAsset {
   const DirectionsProviderBrandAsset({
@@ -17,6 +14,10 @@ class DirectionsProviderBrandAsset {
     required this.compactLogoSize,
     required this.microLogoSize,
     required this.sheetLogoSize,
+    this.compactIconAssetPath,
+    this.compactIconAssetType,
+    this.compactIconSize,
+    this.compactIconSourceUrl,
     this.compactLogoTint,
     this.logoTint,
     this.provider,
@@ -33,6 +34,10 @@ class DirectionsProviderBrandAsset {
   final Size compactLogoSize;
   final Size microLogoSize;
   final Size sheetLogoSize;
+  final String? compactIconAssetPath;
+  final DirectionsProviderBrandAssetType? compactIconAssetType;
+  final Size? compactIconSize;
+  final String? compactIconSourceUrl;
   final Color? compactLogoTint;
   final Color? logoTint;
   final DirectionsDirectProvider? provider;

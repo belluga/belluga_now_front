@@ -19,6 +19,7 @@ class ImmersiveDirectionsSection extends StatelessWidget {
     this.extraChildren = const <Widget>[],
     this.padding = const EdgeInsets.all(16),
     this.titleStyle,
+    this.showTitle = true,
     this.mapTileKey,
     this.distanceBadgeKey,
     this.primaryWazeButtonKey,
@@ -36,12 +37,14 @@ class ImmersiveDirectionsSection extends StatelessWidget {
   final Future<void> Function(
     DirectionsDirectProvider provider,
     DirectionsLaunchTarget target,
-  )? onOpenDirectDirections;
+  )?
+  onOpenDirectDirections;
   final Future<void> Function(DirectionsLaunchTarget target)?
-      onOpenOtherDirections;
+  onOpenOtherDirections;
   final List<Widget> extraChildren;
   final EdgeInsetsGeometry padding;
   final TextStyle? titleStyle;
+  final bool showTitle;
   final Key? mapTileKey;
   final Key? distanceBadgeKey;
   final Key? primaryWazeButtonKey;
@@ -57,22 +60,27 @@ class ImmersiveDirectionsSection extends StatelessWidget {
     final badge = distanceLabel?.trim();
     final hasBadge = badge != null && badge.isNotEmpty;
     final addressCardBackground = colorScheme.surface.withValues(alpha: 0.95);
-    final addressCardForeground =
-        _contentColorForBackground(addressCardBackground, colorScheme);
+    final addressCardForeground = _contentColorForBackground(
+      addressCardBackground,
+      colorScheme,
+    );
 
     return Padding(
       padding: padding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            ImmersiveCommonTabs.directionsTitle,
-            style: titleStyle ??
-                theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
-          ),
-          const SizedBox(height: 12),
+          if (showTitle) ...[
+            Text(
+              ImmersiveCommonTabs.directionsTitle,
+              style:
+                  titleStyle ??
+                  theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+            ),
+            const SizedBox(height: 12),
+          ],
           GestureDetector(
             key: mapTileKey,
             onTap: canOpenMap ? onOpenMap : null,
@@ -165,11 +173,11 @@ class ImmersiveDirectionsSection extends StatelessWidget {
                                     subtitle,
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
-                                    style:
-                                        theme.textTheme.titleMedium?.copyWith(
-                                      color: addressCardForeground,
-                                      fontWeight: FontWeight.w800,
-                                    ),
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(
+                                          color: addressCardForeground,
+                                          fontWeight: FontWeight.w800,
+                                        ),
                                   ),
                                 ],
                               ],
@@ -206,10 +214,7 @@ class ImmersiveDirectionsSection extends StatelessWidget {
     );
   }
 
-  Color _contentColorForBackground(
-    Color background,
-    ColorScheme colorScheme,
-  ) {
+  Color _contentColorForBackground(Color background, ColorScheme colorScheme) {
     return ThemeData.estimateBrightnessForColor(background) == Brightness.dark
         ? Colors.white
         : colorScheme.onSurface;

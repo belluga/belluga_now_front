@@ -142,6 +142,30 @@ void main() {
     expect(wazeSize.height, 48);
     expect(uberSize, const Size(48, 48));
     expect(otherSize, const Size(48, 48));
+
+    final compactWazeIcon = tester.widget<Image>(
+      find.descendant(
+        of: find.byKey(const Key('compactWazeButton')),
+        matching: find.byType(Image),
+      ),
+    );
+    final compactWazeAsset = compactWazeIcon.image as AssetImage;
+    expect(
+      compactWazeAsset.assetName,
+      DirectionsProviderBrandCatalog.waze.compactIconAssetPath,
+    );
+
+    final compactUberIcon = tester.widget<Image>(
+      find.descendant(
+        of: find.byKey(const Key('compactUberButton')),
+        matching: find.byType(Image),
+      ),
+    );
+    final compactUberAsset = compactUberIcon.image as AssetImage;
+    expect(
+      compactUberAsset.assetName,
+      DirectionsProviderBrandCatalog.uber.compactIconAssetPath,
+    );
   });
 }
 

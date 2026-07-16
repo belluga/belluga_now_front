@@ -54,6 +54,7 @@ import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_profile_group_order_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
+import 'package:belluga_now/presentation/shared/widgets/account_profile_overlapping_identity_card.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_screen_controller.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_store_platform.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_choice.dart';
@@ -77,6 +78,7 @@ import 'package:belluga_now/presentation/shared/icons/map_marker_visual_resolver
 import 'package:belluga_now/presentation/tenant_public/schedule/routes/immersive_event_detail_route.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/controllers/immersive_event_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/immersive_event_detail_screen.dart';
+import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/event_local_section.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/event_programming_section.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:flutter/material.dart';
@@ -1725,6 +1727,7 @@ void main() {
 
       expect(find.text('Ananda Torres'), findsWidgets);
       expect(find.text('Samba'), findsOneWidget);
+      expect(find.byType(AccountProfileOverlappingIdentityCard), findsWidgets);
       expect(
         find.byKey(const Key('linkedProfileFavoriteButton_artist-1')),
         findsOneWidget,
@@ -3121,7 +3124,13 @@ void main() {
                     coverUrl: 'https://example.com/carvoeiro-cover.png',
                     bio:
                         'Um local com atmosfera forte e vista aberta para o mar.',
-                    taxonomyLabels: const <String>['Beach Club'],
+                    taxonomyLabels: const <String>[
+                      'Beach Club',
+                      'Cultura',
+                      'Música',
+                      'Ao ar livre',
+                      'Acessível',
+                    ],
                     galleryGroups: <AccountProfileGalleryGroup>[
                       _buildGalleryGroup(
                         items: <AccountProfileGalleryItem>[
@@ -3159,24 +3168,24 @@ void main() {
       expect(find.byKey(const Key('eventLocalDescription')), findsOneWidget);
       expect(find.byKey(const Key('eventLocalGalleryStrip')), findsOneWidget);
       expect(
-        find.byKey(const Key('eventLocalPrimaryDirectionsCard')),
+        find.byKey(const Key('eventLocalPrimaryDirectionsMapTile')),
         findsOneWidget,
       );
       expect(find.text('Beach Club'), findsOneWidget);
+      expect(find.text('Acessível'), findsOneWidget);
       expect(
         tester.getSize(find.byKey(const Key('eventLocalGalleryStrip'))).height,
         88,
       );
       expect(
         tester
-            .getSize(find.byKey(const Key('eventLocalPrimaryDirectionsCard')))
+            .getSize(
+              find.byKey(const Key('eventLocalPrimaryDirectionsMapTile')),
+            )
             .height,
-        inInclusiveRange(140, 200),
+        inInclusiveRange(250, 270),
       );
-      expect(
-        find.byKey(const Key('eventLocalPrimaryDirectionsMapAction')),
-        findsOneWidget,
-      );
+      expect(find.text('Ver no mapa'), findsOneWidget);
 
       expect(
         tester.getTopLeft(find.byKey(const Key('eventLocalDescription'))).dy,
@@ -3195,13 +3204,14 @@ void main() {
       expect(
         tester
             .getTopLeft(
-              find.byKey(const Key('eventLocalPrimaryDirectionsCard')),
+              find.byKey(const Key('eventLocalPrimaryDirectionsMapTile')),
             )
             .dy,
         greaterThan(
           tester.getTopLeft(find.byKey(const Key('eventLocalGalleryStrip'))).dy,
         ),
       );
+
     },
   );
 
@@ -3267,16 +3277,59 @@ void main() {
       await _tapImmersiveTab(tester, 2);
 
       expect(
-        find.byKey(const Key('eventLocalCenteredIdentityPlate')),
+        find.byKey(const Key('eventLocalHeroWithoutCover')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('eventLocalIdentityPlate')), findsOneWidget);
+      expect(
+        find.byType(AccountProfileOverlappingIdentityCard),
         findsOneWidget,
       );
       expect(
-        find.byKey(const Key('eventLocalPrimaryDirectionsCard')),
+        find.byKey(const Key('eventLocalPrimaryDirectionsMapTile')),
         findsNothing,
       );
       expect(find.text('Ver no mapa'), findsNothing);
       expect(find.text('Outros endereços relacionados'), findsNothing);
       expect(find.byKey(const Key('eventSecondaryWazeButton')), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'O Local map-card background opens the map without taking direction actions',
+    (tester) async {
+      var mapOpenCount = 0;
+      var directDirectionsCount = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: EventLocalSection(
+              event: _buildEvent(venue: _buildVenueResume()),
+              profileTypeRegistry: null,
+              canOpenMap: true,
+              onOpenMap: () => mapOpenCount += 1,
+              onOpenDirectDirections: (_, _) async {
+                directDirectionsCount += 1;
+              },
+            ),
+          ),
+        ),
+      );
+
+      final mapCardTapTarget = find.byKey(
+        const Key('eventLocalPrimaryDirectionsMapTile'),
+      );
+      await tester.tap(mapCardTapTarget);
+      await tester.pump();
+
+      expect(mapOpenCount, 1);
+      expect(directDirectionsCount, 0);
+
+      await tester.tap(find.byKey(const Key('eventMainWazeButton')));
+      await tester.pump();
+
+      expect(mapOpenCount, 1);
+      expect(directDirectionsCount, 1);
     },
   );
 
@@ -5361,6 +5414,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Outros endereços relacionados'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('eventLocalRelatedHeading')),
+        matching: find.byIcon(Icons.near_me_outlined),
+      ),
+      findsNothing,
+    );
     expect(find.text('Local da programação'), findsNothing);
     expect(
       find.byKey(
@@ -5418,11 +5478,13 @@ void main() {
       ),
       const Size(48, 48),
     );
-    expect(tester.getSize(programmingDestination).height, lessThan(92));
+    expect(tester.getSize(programmingDestination).height, lessThan(120));
 
     await tester.ensureVisible(programmingDestination);
     await tester.pumpAndSettle();
-    await tester.tap(programmingDestination);
+    await tester.tapAt(
+      tester.getTopLeft(programmingDestination) + const Offset(12, 12),
+    );
     await tester.pump();
 
     expect(router.lastPushedPath, '/mapa?poi=account_profile%3Avenue-2');
