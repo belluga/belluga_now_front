@@ -14,6 +14,7 @@ class DirectionsProviderBrandCatalog {
     foregroundColor: Color(0xFF1F1F1F),
     primaryLogoSize: Size(34, 48),
     compactLogoSize: Size(28, 38),
+    microLogoSize: Size(20, 28),
     sheetLogoSize: Size(24, 34),
     sourceUrl:
         'https://upload.wikimedia.org/wikipedia/commons/a/aa/Google_Maps_icon_%282020%29.svg',
@@ -30,7 +31,9 @@ class DirectionsProviderBrandCatalog {
     foregroundColor: Color(0xFF101820),
     primaryLogoSize: Size(86, 25),
     compactLogoSize: Size(70, 20),
+    microLogoSize: Size(30, 10),
     sheetLogoSize: Size(52, 15),
+    compactLogoTint: null,
     sourceUrl:
         'https://upload.wikimedia.org/wikipedia/commons/3/37/Waze_logo_2022.png',
     sourceDescriptionUrl:
@@ -46,7 +49,9 @@ class DirectionsProviderBrandCatalog {
     foregroundColor: Color(0xFFFFFFFF),
     primaryLogoSize: Size(76, 16),
     compactLogoSize: Size(60, 13),
+    microLogoSize: Size(28, 8),
     sheetLogoSize: Size(46, 10),
+    compactLogoTint: Color(0xFF111111),
     logoTint: Color(0xFFFFFFFF),
     sourceUrl:
         'https://upload.wikimedia.org/wikipedia/commons/8/8d/Uber_logotype.svg',
@@ -62,6 +67,7 @@ class DirectionsProviderBrandCatalog {
     foregroundColor: Color(0xFF1F1F1F),
     primaryLogoSize: Size(42, 42),
     compactLogoSize: Size(34, 34),
+    microLogoSize: Size(24, 24),
     sheetLogoSize: Size(34, 34),
     sourceUrl:
         'https://upload.wikimedia.org/wikipedia/commons/2/2a/99_logo.png',

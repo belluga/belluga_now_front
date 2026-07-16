@@ -21,6 +21,8 @@ class InviteHeroCard extends StatelessWidget {
     required this.onClose,
     required this.remainingCount,
     required this.requiresAuthentication,
+    required this.isIssuerPreview,
+    required this.onSharePreview,
   });
 
   final InviteModel invite;
@@ -31,6 +33,8 @@ class InviteHeroCard extends StatelessWidget {
   final VoidCallback onClose;
   final int remainingCount;
   final bool requiresAuthentication;
+  final bool isIssuerPreview;
+  final VoidCallback onSharePreview;
 
   @override
   Widget build(BuildContext context) {
@@ -38,14 +42,16 @@ class InviteHeroCard extends StatelessWidget {
     final heroImage = invite.eventImageUrl;
     final dateLabel = invite.eventDateDetailLabel;
     final host = invite.hostName.isNotEmpty ? invite.hostName : 'Belluga Now';
-    final location =
-        invite.location.isNotEmpty ? invite.location : 'Local a definir';
+    final location = invite.location.isNotEmpty
+        ? invite.location
+        : 'Local a definir';
     final participantGroups = EventRelatedProfileGroups.fromParts(
       profileGroups: invite.profileGroups,
       linkedAccountProfiles: invite.linkedAccountProfiles,
       venueId: invite.venueAccountProfileId,
     );
-    final showHost = participantGroups.isEmpty &&
+    final showHost =
+        participantGroups.isEmpty &&
         host.trim().isNotEmpty &&
         host.trim().toLowerCase() != location.trim().toLowerCase();
     final inviter = invite.inviterName ?? 'Um amigo';
@@ -99,10 +105,12 @@ class InviteHeroCard extends StatelessWidget {
                 Expanded(
                   child: LayoutBuilder(
                     builder: (context, constraints) {
-                      final isCompact = constraints.maxHeight < 520 ||
+                      final isCompact =
+                          constraints.maxHeight < 520 ||
                           constraints.maxWidth < 360;
-                      final horizontalInset =
-                          constraints.maxWidth < 360 ? 8.0 : 16.0;
+                      final horizontalInset = constraints.maxWidth < 360
+                          ? 8.0
+                          : 16.0;
                       final verticalInset = isCompact ? 8.0 : 16.0;
                       final footerGap = isCompact ? 10.0 : 14.0;
                       final contentWidth = math.max(
@@ -113,7 +121,9 @@ class InviteHeroCard extends StatelessWidget {
                         ),
                       );
                       final contentHeight = math.max(
-                          0.0, constraints.maxHeight - verticalInset * 2);
+                        0.0,
+                        constraints.maxHeight - verticalInset * 2,
+                      );
 
                       return Center(
                         child: Padding(
@@ -128,10 +138,14 @@ class InviteHeroCard extends StatelessWidget {
                               children: [
                                 Expanded(
                                   child: SwipeableCard(
-                                    onSwipeRight: requiresAuthentication
+                                    onSwipeRight:
+                                        requiresAuthentication ||
+                                            isIssuerPreview
                                         ? null
                                         : onAccept,
-                                    onSwipeLeft: requiresAuthentication
+                                    onSwipeLeft:
+                                        requiresAuthentication ||
+                                            isIssuerPreview
                                         ? null
                                         : onDecline,
                                     child: InviteContentCard(
@@ -145,31 +159,36 @@ class InviteHeroCard extends StatelessWidget {
                                       extraInviters: extraInviters,
                                       participantGroups: participantGroups,
                                       onViewDetails: onViewDetails,
+                                      isIssuerPreview: isIssuerPreview,
+                                      onSharePreview: onSharePreview,
                                     ),
                                   ),
                                 ),
-                                if (remainingCount > 0) ...[
+                                if (!isIssuerPreview && remainingCount > 0) ...[
                                   SizedBox(height: footerGap),
                                   Text(
                                     'Você tem mais $remainingCount convites',
                                     textAlign: TextAlign.center,
-                                    style:
-                                        theme.textTheme.labelMedium?.copyWith(
-                                      color:
-                                          Colors.white.withValues(alpha: 0.85),
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                                    style: theme.textTheme.labelMedium
+                                        ?.copyWith(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.85,
+                                          ),
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                   ),
                                 ],
-                                SizedBox(height: footerGap),
-                                InviteDecisionFooter(
-                                  onAccept: onAccept,
-                                  onDecline: onDecline,
-                                  onRequestAuthentication:
-                                      onRequestAuthentication,
-                                  requiresAuthentication:
-                                      requiresAuthentication,
-                                ),
+                                if (!isIssuerPreview) ...[
+                                  SizedBox(height: footerGap),
+                                  InviteDecisionFooter(
+                                    onAccept: onAccept,
+                                    onDecline: onDecline,
+                                    onRequestAuthentication:
+                                        onRequestAuthentication,
+                                    requiresAuthentication:
+                                        requiresAuthentication,
+                                  ),
+                                ],
                               ],
                             ),
                           ),

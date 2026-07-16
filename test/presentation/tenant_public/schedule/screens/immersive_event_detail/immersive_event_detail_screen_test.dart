@@ -24,12 +24,16 @@ import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.da
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/partner/partner_resume.dart';
+import 'package:belluga_now/domain/partners/account_profile_gallery_group.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
-import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
-import 'package:belluga_now/domain/partner/value_objects/invite_partner_logo_image_value.dart';
-import 'package:belluga_now/domain/partner/value_objects/invite_partner_name_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_fields.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_tag_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
+import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
+import 'package:belluga_now/domain/partner/value_objects/invite_partner_hero_image_value.dart';
+import 'package:belluga_now/domain/partner/value_objects/invite_partner_logo_image_value.dart';
+import 'package:belluga_now/domain/partner/value_objects/invite_partner_name_value.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
@@ -513,7 +517,33 @@ void main() {
         child: MaterialApp(
           home: _routeScopedHome(
             routeData: routeData,
-            child: ImmersiveEventDetailScreen(event: _buildEvent()),
+            child: ImmersiveEventDetailScreen(
+              event: _buildEvent(
+                venue: _buildVenueResume(),
+                linkedProfiles: [
+                  _buildLinkedAccountProfile(
+                    id: 'artist-1',
+                    displayName: 'Ananda Torres',
+                    profileType: 'artist',
+                    slug: 'ananda-torres',
+                  ),
+                ],
+                profileGroups: [
+                  _buildProfileGroup(
+                    id: 'artists',
+                    label: 'Artists',
+                    profiles: [
+                      _buildLinkedAccountProfile(
+                        id: 'artist-1',
+                        displayName: 'Ananda Torres',
+                        profileType: 'artist',
+                        slug: 'ananda-torres',
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -1175,7 +1205,7 @@ void main() {
     },
   );
 
-  testWidgets('horizontal swipe moves immersive event detail to the next tab', (
+  testWidgets('tab bar activates the next immersive event detail tab', (
     tester,
   ) async {
     final userEventsRepository = _FakeUserEventsRepository();
@@ -1204,7 +1234,9 @@ void main() {
         child: MaterialApp(
           home: _routeScopedHome(
             routeData: routeData,
-            child: ImmersiveEventDetailScreen(event: _buildEvent()),
+            child: ImmersiveEventDetailScreen(
+              event: _buildEvent(venue: _buildVenueResume()),
+            ),
           ),
         ),
       ),
@@ -1214,17 +1246,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.byKey(const Key('immersiveTabSelected_1')), findsNothing);
-
-    final swipeSurface = tester.widget<GestureDetector>(
-      find.byKey(const Key('immersiveSwipeSurface')),
-    );
-    swipeSurface.onHorizontalDragEnd?.call(
-      DragEndDetails(
-        velocity: const Velocity(pixelsPerSecond: Offset(-1000, 0)),
-        primaryVelocity: -1000,
-      ),
-    );
-    await tester.pumpAndSettle();
+    await _tapImmersiveTab(tester, 1);
 
     expect(find.byKey(const Key('immersiveTabSelected_1')), findsOneWidget);
   });
@@ -1258,6 +1280,7 @@ void main() {
 
       EventModel buildEvent() {
         return _buildEvent(
+          venue: _buildVenueResume(),
           contentHtml: '<p>Detalhes</p>',
           occurrences: [
             _buildOccurrence(
@@ -1365,6 +1388,7 @@ void main() {
               routeData: routeData,
               child: ImmersiveEventDetailScreen(
                 event: _buildEvent(
+                  venue: _buildVenueResume(),
                   contentHtml: '<p>Detalhes</p>',
                   occurrences: [
                     _buildOccurrence(
@@ -1447,6 +1471,7 @@ void main() {
               routeData: routeData,
               child: ImmersiveEventDetailScreen(
                 event: _buildEvent(
+                  venue: _buildVenueResume(),
                   contentHtml: '<p>Detalhes</p>',
                   occurrences: [
                     _buildOccurrence(
@@ -1524,6 +1549,7 @@ void main() {
 
       EventModel buildEvent() {
         return _buildEvent(
+          venue: _buildVenueResume(),
           contentHtml: '<p>Detalhes</p>',
           occurrences: [
             _buildOccurrence(
@@ -1689,10 +1715,13 @@ void main() {
       );
       expect(
         tester.widget<Text>(find.byKey(const Key('immersiveTabLabel_3'))).data,
-        'Como Chegar',
+        'O Local',
       );
 
-      await _tapImmersiveTab(tester, 1);
+      await _tapImmersiveTab(tester, 0);
+      await tester.ensureVisible(
+        find.byKey(const Key('linkedProfileCardTapTarget_artist-1')),
+      );
 
       expect(find.text('Ananda Torres'), findsWidgets);
       expect(find.text('Samba'), findsOneWidget);
@@ -1701,18 +1730,18 @@ void main() {
         findsOneWidget,
       );
 
-      await tester.tap(
-        find.byKey(const Key('linkedProfileCardTapTarget_artist-1')),
+      await _tapInkWellByKey(
+        tester,
+        const Key('linkedProfileCardTapTarget_artist-1'),
       );
-      await tester.pumpAndSettle();
 
       expect(router.lastPushedPath, '/parceiro/ananda-torres');
       expect(router.lastPushedRoute, isNull);
 
-      await tester.tap(
-        find.byKey(const Key('linkedProfileFavoriteButton_artist-1')),
+      await _tapIconButtonByKey(
+        tester,
+        const Key('linkedProfileFavoriteButton_artist-1'),
       );
-      await tester.pumpAndSettle();
       expect(accountProfilesRepository.toggleFavoriteCalls, 1);
     },
   );
@@ -1789,11 +1818,14 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      await _tapImmersiveTab(tester, 1);
-      await tester.tap(
+      await _tapImmersiveTab(tester, 0);
+      await tester.ensureVisible(
         find.byKey(const Key('linkedProfileCardTapTarget_artist-path')),
       );
-      await tester.pumpAndSettle();
+      await _tapInkWellByKey(
+        tester,
+        const Key('linkedProfileCardTapTarget_artist-path'),
+      );
 
       expect(router.lastPushedPath, '/perfil-customizado/perfil-com-caminho');
       expect(router.lastPushedRoute, isNull);
@@ -1901,7 +1933,7 @@ void main() {
 
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
-      await _tapImmersiveTab(tester, 1);
+      await _tapImmersiveTab(tester, 0);
 
       final avatarImage = tester.widget<BellugaNetworkImage>(
         find.descendant(
@@ -2008,7 +2040,7 @@ void main() {
 
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
-      await _tapImmersiveTab(tester, 1);
+      await _tapImmersiveTab(tester, 0);
 
       final avatarImage = tester.widget<BellugaNetworkImage>(
         find.descendant(
@@ -2117,7 +2149,7 @@ void main() {
 
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
-      await _tapImmersiveTab(tester, 1);
+      await _tapImmersiveTab(tester, 0);
 
       final avatarImage = tester.widget<BellugaNetworkImage>(
         find.descendant(
@@ -2970,7 +3002,7 @@ void main() {
   );
 
   testWidgets(
-    'event detail uses Sobre html content, Como Chegar naming, and hero summary metadata',
+    'event detail uses Sobre html content, O Local naming, and hero summary metadata',
     (tester) async {
       final userEventsRepository = _FakeUserEventsRepository();
       final invitesRepository = _FakeInvitesRepository();
@@ -3023,11 +3055,11 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.text('O Rolê'), findsNothing);
-      expect(find.text('O Local'), findsNothing);
+      expect(find.text('O Local'), findsWidgets);
       expect(find.text('Sobre'), findsWidgets);
       expect(
         tester.widget<Text>(find.byKey(const Key('immersiveTabLabel_2'))).data,
-        'Como Chegar',
+        'O Local',
       );
       expect(find.text('Show tipo'), findsOneWidget);
       expect(find.text('Ananda Torres'), findsWidgets);
@@ -3046,12 +3078,250 @@ void main() {
       expect(htmlWidget.data, isNot(contains('<a')));
       expect(htmlWidget.data, contains('🎉'));
 
-      await _tapImmersiveTab(tester, 2);
+      await _tapImmersiveTab(tester, 1);
 
       expect(find.text('Ver no mapa'), findsOneWidget);
       expect(find.text('Traçar rota'), findsNothing);
       expect(find.textContaining('Confirmar Presença'), findsOneWidget);
       expect(find.text('Ver perfil do local'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'event detail O Local renders place-first hero, description, and gallery before navigation',
+    (tester) async {
+      final userEventsRepository = _FakeUserEventsRepository();
+      final invitesRepository = _FakeInvitesRepository();
+      GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+        ImmersiveEventDetailController(
+          userEventsRepository: userEventsRepository,
+          invitesRepository: invitesRepository,
+          authRepository: _FakeAuthRepository(authorized: true),
+        ),
+      );
+      final router = _RecordingStackRouter();
+      final routeData = RouteData(
+        route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+        router: router,
+        stackKey: const ValueKey('stack'),
+        pendingChildren: const [],
+        type: const RouteType.material(),
+      );
+
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: _routeScopedHome(
+              routeData: routeData,
+              child: ImmersiveEventDetailScreen(
+                event: _buildEvent(
+                  venue: _buildVenueResume(
+                    coverUrl: 'https://example.com/carvoeiro-cover.png',
+                    bio:
+                        'Um local com atmosfera forte e vista aberta para o mar.',
+                    taxonomyLabels: const <String>['Beach Club'],
+                    galleryGroups: <AccountProfileGalleryGroup>[
+                      _buildGalleryGroup(
+                        items: <AccountProfileGalleryItem>[
+                          _buildGalleryItem(itemId: 'gallery-1'),
+                          _buildGalleryItem(
+                            itemId: 'gallery-2',
+                            imageUrl: 'https://tenant.test/gallery/image-2.jpg',
+                            thumbUrl: 'https://tenant.test/gallery/thumb-2.jpg',
+                            cardUrl: 'https://tenant.test/gallery/card-2.jpg',
+                            modalUrl: 'https://tenant.test/gallery/modal-2.jpg',
+                          ),
+                          _buildGalleryItem(
+                            itemId: 'gallery-3',
+                            imageUrl: 'https://tenant.test/gallery/image-3.jpg',
+                            thumbUrl: 'https://tenant.test/gallery/thumb-3.jpg',
+                            cardUrl: 'https://tenant.test/gallery/card-3.jpg',
+                            modalUrl: 'https://tenant.test/gallery/modal-3.jpg',
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      await _tapImmersiveTab(tester, 1);
+
+      expect(find.byKey(const Key('eventLocalHeroWithCover')), findsOneWidget);
+      expect(find.byKey(const Key('eventLocalDescription')), findsOneWidget);
+      expect(find.byKey(const Key('eventLocalGalleryStrip')), findsOneWidget);
+      expect(
+        find.byKey(const Key('eventLocalPrimaryDirectionsCard')),
+        findsOneWidget,
+      );
+      expect(find.text('Beach Club'), findsOneWidget);
+      expect(
+        tester.getSize(find.byKey(const Key('eventLocalGalleryStrip'))).height,
+        88,
+      );
+      expect(
+        tester
+            .getSize(find.byKey(const Key('eventLocalPrimaryDirectionsCard')))
+            .height,
+        inInclusiveRange(140, 200),
+      );
+      expect(
+        find.byKey(const Key('eventLocalPrimaryDirectionsMapAction')),
+        findsOneWidget,
+      );
+
+      expect(
+        tester.getTopLeft(find.byKey(const Key('eventLocalDescription'))).dy,
+        greaterThan(
+          tester
+              .getTopLeft(find.byKey(const Key('eventLocalIdentityPlate')))
+              .dy,
+        ),
+      );
+      expect(
+        tester.getTopLeft(find.byKey(const Key('eventLocalGalleryStrip'))).dy,
+        greaterThan(
+          tester.getTopLeft(find.byKey(const Key('eventLocalDescription'))).dy,
+        ),
+      );
+      expect(
+        tester
+            .getTopLeft(
+              find.byKey(const Key('eventLocalPrimaryDirectionsCard')),
+            )
+            .dy,
+        greaterThan(
+          tester.getTopLeft(find.byKey(const Key('eventLocalGalleryStrip'))).dy,
+        ),
+      );
+    },
+  );
+
+  testWidgets(
+    'event detail O Local suppresses navigation widgets for legacy non-navigable venues',
+    (tester) async {
+      final userEventsRepository = _FakeUserEventsRepository();
+      final invitesRepository = _FakeInvitesRepository();
+      GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+        ImmersiveEventDetailController(
+          userEventsRepository: userEventsRepository,
+          invitesRepository: invitesRepository,
+          authRepository: _FakeAuthRepository(authorized: true),
+        ),
+      );
+      final router = _RecordingStackRouter();
+      final routeData = RouteData(
+        route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+        router: router,
+        stackKey: const ValueKey('stack'),
+        pendingChildren: const [],
+        type: const RouteType.material(),
+      );
+
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: _routeScopedHome(
+              routeData: routeData,
+              child: ImmersiveEventDetailScreen(
+                event: _buildEvent(
+                  venue: _buildVenueResume(
+                    avatarUrl: null,
+                    coverUrl: null,
+                    supportsPublicNavigation: false,
+                    taxonomyLabels: const <String>['Museu'],
+                  ),
+                  programmingItems: [
+                    _buildProgrammingItem(
+                      time: '11:00',
+                      title: 'Abertura',
+                      locationProfile: _buildLinkedAccountProfile(
+                        id: 'venue-2',
+                        displayName: 'Palco Central',
+                        profileType: 'venue',
+                        slug: 'palco-central',
+                        locationLat: -20.671339,
+                        locationLng: -40.495395,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      await _tapImmersiveTab(tester, 2);
+
+      expect(
+        find.byKey(const Key('eventLocalCenteredIdentityPlate')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('eventLocalPrimaryDirectionsCard')),
+        findsNothing,
+      );
+      expect(find.text('Ver no mapa'), findsNothing);
+      expect(find.text('Outros endereços relacionados'), findsNothing);
+      expect(find.byKey(const Key('eventSecondaryWazeButton')), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'event detail hides O Local when event lacks a sufficient venue reference',
+    (tester) async {
+      final userEventsRepository = _FakeUserEventsRepository();
+      final invitesRepository = _FakeInvitesRepository();
+      GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+        ImmersiveEventDetailController(
+          userEventsRepository: userEventsRepository,
+          invitesRepository: invitesRepository,
+          authRepository: _FakeAuthRepository(authorized: true),
+        ),
+      );
+      final router = _RecordingStackRouter();
+      final routeData = RouteData(
+        route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+        router: router,
+        stackKey: const ValueKey('stack'),
+        pendingChildren: const [],
+        type: const RouteType.material(),
+      );
+
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: _routeScopedHome(
+              routeData: routeData,
+              child: ImmersiveEventDetailScreen(
+                event: _buildEvent(venue: null),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('O Local'), findsNothing);
+      expect(find.text('Como Chegar'), findsNothing);
+      expect(find.byKey(const Key('immersiveTabLabel_0')), findsOneWidget);
     },
   );
 
@@ -5014,7 +5284,7 @@ void main() {
     expect(find.byKey(const Key('immersiveTabSelected_0')), findsOneWidget);
   });
 
-  testWidgets('event detail Como Chegar aggregates and dedupes destinations', (
+  testWidgets('event detail O Local aggregates and dedupes destinations', (
     tester,
   ) async {
     final userEventsRepository = _FakeUserEventsRepository();
@@ -5120,11 +5390,7 @@ void main() {
     expect(find.bySemanticsLabel('Outros'), findsWidgets);
     expect(
       tester.getSize(find.byKey(const Key('eventMainWazeButton'))).height,
-      greaterThan(
-        tester
-            .getSize(find.byKey(const Key('eventSecondaryWazeButton')))
-            .height,
-      ),
+      48,
     );
     expect(
       tester
@@ -5138,6 +5404,21 @@ void main() {
             .width,
       ),
     );
+    expect(
+      tester.getSize(find.byKey(const Key('eventSecondaryWazeButton'))),
+      const Size(48, 48),
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('eventSecondaryUberButton'))),
+      const Size(48, 48),
+    );
+    expect(
+      tester.getSize(
+        find.byKey(const Key('eventSecondaryOtherDirectionsButton')),
+      ),
+      const Size(48, 48),
+    );
+    expect(tester.getSize(programmingDestination).height, lessThan(92));
 
     await tester.ensureVisible(programmingDestination);
     await tester.pumpAndSettle();
@@ -5148,7 +5429,7 @@ void main() {
   });
 
   testWidgets(
-    'event detail Como Chegar hides related addresses heading when only main venue exists',
+    'event detail O Local hides related addresses heading when only main venue exists',
     (tester) async {
       final userEventsRepository = _FakeUserEventsRepository();
       final invitesRepository = _FakeInvitesRepository();
@@ -5267,7 +5548,7 @@ void main() {
     expect(find.byKey(const Key('immersiveTabLabel_0')), findsOneWidget);
     expect(
       tester.widget<Text>(find.byKey(const Key('immersiveTabLabel_0'))).data,
-      'Como Chegar',
+      'O Local',
     );
   });
 
@@ -5352,6 +5633,8 @@ void main() {
 
       await tester.tap(find.byKey(const Key('immersiveTabLabel_1')).last);
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(const Key('eventMainWazeButton')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('eventMainWazeButton')));
       await tester.pumpAndSettle();
 
@@ -5416,6 +5699,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       await tester.tap(find.byKey(const Key('immersiveTabLabel_1')).last);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(const Key('eventMainWazeButton')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('eventMainWazeButton')));
       await tester.pumpAndSettle();
@@ -5988,14 +6273,76 @@ AppData _buildAppData() {
   );
 }
 
-PartnerResume _buildVenueResume() {
+PartnerResume _buildVenueResume({
+  String name = 'Carvoeiro',
+  String? avatarUrl = 'https://example.com/carvoeiro-logo.png',
+  String? coverUrl,
+  String? bio,
+  List<String> taxonomyLabels = const <String>[],
+  List<AccountProfileGalleryGroup> galleryGroups =
+      const <AccountProfileGalleryGroup>[],
+  bool supportsPublicNavigation = true,
+  String profileType = 'venue',
+}) {
   return PartnerResume(
     idValue: MongoIDValue()..parse('507f1f77bcf86cd799439099'),
-    nameValue: InvitePartnerNameValue()..parse('Carvoeiro'),
+    nameValue: InvitePartnerNameValue()..parse(name),
     slugValue: SlugValue()..parse('carvoeiro'),
     type: InviteAccountProfileType.mercadoProducer,
-    logoImageValue: InvitePartnerLogoImageValue()
-      ..parse('https://example.com/carvoeiro-logo.png'),
+    profileTypeValue: AccountProfileTypeValue(profileType),
+    logoImageValue: avatarUrl == null
+        ? null
+        : (InvitePartnerLogoImageValue()..parse(avatarUrl)),
+    heroImageValue: coverUrl == null
+        ? null
+        : (InvitePartnerHeroImageValue()..parse(coverUrl)),
+    bioValue: bio == null
+        ? null
+        : (DescriptionValue(defaultValue: '', minLenght: 0)..parse(bio)),
+    taxonomyLabelValues: taxonomyLabels
+        .map(AccountProfileTagValue.new)
+        .toList(growable: false),
+    galleryGroupValues: galleryGroups,
+    supportsPublicNavigationValue: DomainBooleanValue(
+      defaultValue: true,
+      isRequired: false,
+    )..parse(supportsPublicNavigation.toString()),
+  );
+}
+
+AccountProfileGalleryGroup _buildGalleryGroup({
+  String groupId = 'gallery-group-1',
+  String subtitle = 'Galeria',
+  List<AccountProfileGalleryItem>? items,
+}) {
+  return AccountProfileGalleryGroup(
+    groupIdValue: AccountProfileNestedGroupIdValue(groupId),
+    subtitleValue: AccountProfileNestedGroupLabelValue(subtitle),
+    orderValue: AccountProfileNestedGroupOrderValue(0),
+    items: items ?? <AccountProfileGalleryItem>[_buildGalleryItem()],
+  );
+}
+
+AccountProfileGalleryItem _buildGalleryItem({
+  String itemId = 'gallery-item-1',
+  String imageUrl = 'https://tenant.test/gallery/image.jpg',
+  String thumbUrl = 'https://tenant.test/gallery/thumb.jpg',
+  String cardUrl = 'https://tenant.test/gallery/card.jpg',
+  String modalUrl = 'https://tenant.test/gallery/modal.jpg',
+  String description = 'Vista principal',
+}) {
+  return AccountProfileGalleryItem(
+    itemIdValue: AccountProfileNestedGroupIdValue(itemId),
+    descriptionValue: AccountProfileNestedGroupMemberTextValue(description),
+    orderValue: AccountProfileNestedGroupOrderValue(0),
+    imageUrlValue: ThumbUriValue(defaultValue: Uri.parse(imageUrl))
+      ..parse(imageUrl),
+    thumbUrlValue: ThumbUriValue(defaultValue: Uri.parse(thumbUrl))
+      ..parse(thumbUrl),
+    cardUrlValue: ThumbUriValue(defaultValue: Uri.parse(cardUrl))
+      ..parse(cardUrl),
+    modalUrlValue: ThumbUriValue(defaultValue: Uri.parse(modalUrl))
+      ..parse(modalUrl),
   );
 }
 
@@ -6246,6 +6593,24 @@ Future<void> _tapImmersiveTab(WidgetTester tester, int index) async {
   final inkWell = tester.widget<InkWell>(tab);
   expect(inkWell.onTap, isNotNull);
   inkWell.onTap!.call();
+  await tester.pumpAndSettle();
+}
+
+Future<void> _tapInkWellByKey(WidgetTester tester, Key key) async {
+  final finder = find.byKey(key);
+  expect(finder, findsOneWidget);
+  final inkWell = tester.widget<InkWell>(finder);
+  expect(inkWell.onTap, isNotNull);
+  inkWell.onTap!.call();
+  await tester.pumpAndSettle();
+}
+
+Future<void> _tapIconButtonByKey(WidgetTester tester, Key key) async {
+  final finder = find.byKey(key);
+  expect(finder, findsOneWidget);
+  final button = tester.widget<IconButton>(finder);
+  expect(button.onPressed, isNotNull);
+  button.onPressed!.call();
   await tester.pumpAndSettle();
 }
 

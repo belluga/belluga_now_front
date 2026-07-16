@@ -206,11 +206,15 @@ class TenantHomeAgendaController extends Object
   bool _innerScrollCompactHint = false;
   bool _isFetching = false;
   bool _isRefreshing = false;
+  bool _hasStartedAgendaFetch = false;
   bool _hasMore = true;
   bool _isDisposed = false;
   bool _hasQueuedRefresh = false;
   bool _queuedRefreshPreserveCurrentResults = true;
+  bool _hasCanonicalOriginSubscription = false;
+  bool _requiresInitialOriginRevalidation = false;
   bool _isRevealingDiscoveryFilterPanel = false;
+  int _radiusSelectionRevision = 0;
   Future<void>? _initInFlight;
   double? _effectiveOriginLat;
   double? _effectiveOriginLng;
@@ -405,18 +409,68 @@ class TenantHomeAgendaController extends Object
       return;
     }
 
-    await _resolveEffectiveOrigin(warmUpIfPossible: true);
-    await _awaitPendingInitialEffectiveOriginIfNeeded();
+    await _resolveEffectiveOrigin(warmUpIfPossible: false);
+    final hasCachedEffectiveOrigin =
+        _effectiveOriginLat != null && _effectiveOriginLng != null;
+    if (!hasCachedEffectiveOrigin) {
+      // A proximity query without an origin is invalid. This is the only
+      // initial path that may wait for permission or a live coordinate.
+      await _resolveEffectiveOrigin(warmUpIfPossible: true);
+      await _awaitPendingInitialEffectiveOriginIfNeeded();
+    }
     _ifAlive(
       () => initialLoadingLabelStreamValue.addValue(_loadingNearbyEventsLabel),
     );
+    unawaited(_initializeInvitesInBackground());
+    if (hasCachedEffectiveOrigin) {
+      unawaited(_resolveInitialLiveOriginInBackground());
+    }
+    await _refresh(resolveOrigin: false);
+    _listenForCanonicalOriginChanges();
+    if (_requiresInitialOriginRevalidation) {
+      _requiresInitialOriginRevalidation = false;
+      unawaited(_refresh(preserveCurrentResults: true));
+    }
+  }
+
+  Future<void> _initializeInvitesInBackground() async {
     try {
       await _invitesRepository.init();
     } catch (error) {
       debugPrint('TenantHomeAgendaController.init invites failed: $error');
     }
-    await _refresh(resolveOrigin: false);
-    _listenForCanonicalOriginChanges();
+  }
+
+  Future<void> _resolveInitialLiveOriginInBackground() async {
+    final initialOriginLat = _effectiveOriginLat;
+    final initialOriginLng = _effectiveOriginLng;
+    final initialRadiusMeters = radiusMetersStreamValue.value;
+    final initialRadiusSelectionRevision = _radiusSelectionRevision;
+    try {
+      await _resolveEffectiveOrigin(warmUpIfPossible: true);
+      final originChanged = _didAgendaOriginChange(
+        previousOriginLat: initialOriginLat,
+        previousOriginLng: initialOriginLng,
+        nextOriginLat: _effectiveOriginLat,
+        nextOriginLng: _effectiveOriginLng,
+      );
+      final radiusChangedByWarmUp =
+          (initialRadiusMeters - radiusMetersStreamValue.value).abs() >=
+              0.001 &&
+          initialRadiusSelectionRevision == _radiusSelectionRevision;
+      final agendaQueryChanged = originChanged || radiusChangedByWarmUp;
+      if (agendaQueryChanged && !_hasCanonicalOriginSubscription) {
+        _requiresInitialOriginRevalidation = true;
+      } else if (radiusChangedByWarmUp && !originChanged) {
+        // The stream is emitted before radius seeding completes, so an
+        // unchanged origin still needs one refresh for a new radius.
+        unawaited(_refresh(preserveCurrentResults: true));
+      }
+    } catch (error) {
+      debugPrint(
+        'TenantHomeAgendaController.init location resolution failed: $error',
+      );
+    }
   }
 
   Future<void> _awaitPendingInitialEffectiveOriginIfNeeded() async {
@@ -630,6 +684,7 @@ class TenantHomeAgendaController extends Object
   }) async {
     if (_isFetching) return;
     _isFetching = true;
+    _hasStartedAgendaFetch = true;
     if (append || showPageLoadingForFirstPage) {
       _ifAlive(() => isPageLoadingStreamValue.addValue(true));
     }
@@ -748,6 +803,7 @@ class TenantHomeAgendaController extends Object
     if (meters <= 0) return;
     final clamped = _clampRadiusMeters(meters);
     final previousRadius = radiusMetersStreamValue.value;
+    _radiusSelectionRevision += 1;
     _pendingPersistedRadiusEchoMeters = clamped;
     _ifAlive(() => radiusMetersStreamValue.addValue(clamped));
     if (_didRadiusChangeEffectively(
@@ -978,6 +1034,14 @@ class TenantHomeAgendaController extends Object
       return false;
     }
 
+    final selection = discoveryFilterSelectionStreamValue.value;
+    // Compare the request compiled from the existing catalog with the repaired
+    // runtime query. Replacing the catalog first would hide real transitions.
+    final currentQueryPayload = DiscoveryFilterQueryPayload.compile(
+      catalog: discoveryFilterCatalogStreamValue.value,
+      selection: selection,
+    );
+
     if (!_sameDiscoveryFilterCatalog(
       discoveryFilterCatalogStreamValue.value,
       runtimeCatalog,
@@ -987,7 +1051,6 @@ class TenantHomeAgendaController extends Object
       );
     }
 
-    final selection = discoveryFilterSelectionStreamValue.value;
     final repairedSelection = repairPublicDiscoveryFilterSelection(
       selection,
       catalogOverride: runtimeCatalog,
@@ -1010,8 +1073,37 @@ class TenantHomeAgendaController extends Object
       );
     }
     unawaited(persistPublicDiscoveryFilterSelection(repairedSelection));
-    _queueRefreshRequest(preserveCurrentResults: true);
+    final repairedQueryPayload = DiscoveryFilterQueryPayload.compile(
+      catalog: runtimeCatalog,
+      selection: repairedSelection,
+    );
+    // Runtime metadata can remove stale taxonomy-only state that never changed
+    // the agenda request. Do not replay the same first page in that case.
+    if (!_sameAgendaFilterQuery(currentQueryPayload, repairedQueryPayload)) {
+      _queueRefreshRequest(preserveCurrentResults: true);
+    }
     return true;
+  }
+
+  bool _sameAgendaFilterQuery(
+    DiscoveryFilterQueryPayload left,
+    DiscoveryFilterQueryPayload right,
+  ) {
+    final leftEventTypes = left.typesForEntity('event');
+    final rightEventTypes = right.typesForEntity('event');
+    if (leftEventTypes.length != rightEventTypes.length ||
+        !leftEventTypes.containsAll(rightEventTypes)) {
+      return false;
+    }
+
+    final leftTaxonomy = left.taxonomyEntries
+        .map((entry) => '${entry.type}\u0000${entry.value}')
+        .toSet();
+    final rightTaxonomy = right.taxonomyEntries
+        .map((entry) => '${entry.type}\u0000${entry.value}')
+        .toSet();
+    return leftTaxonomy.length == rightTaxonomy.length &&
+        leftTaxonomy.containsAll(rightTaxonomy);
   }
 
   bool _sameDiscoveryFilterCatalog(
@@ -1041,6 +1133,7 @@ class TenantHomeAgendaController extends Object
 
   void _listenForCanonicalOriginChanges() {
     _effectiveOriginSubscription?.cancel();
+    _hasCanonicalOriginSubscription = true;
     _effectiveOriginSubscription = _locationOriginService
         .effectiveOriginStreamValue
         .stream
@@ -1103,7 +1196,11 @@ class TenantHomeAgendaController extends Object
     if ((current - clamped).abs() < 0.001) {
       return;
     }
+    _radiusSelectionRevision += 1;
     _ifAlive(() => radiusMetersStreamValue.addValue(clamped));
+    if (!_hasStartedAgendaFetch) {
+      return;
+    }
     _scheduleRadiusRefresh();
   }
 
@@ -1158,14 +1255,15 @@ class TenantHomeAgendaController extends Object
     if (!changed) {
       return;
     }
-    if (!_shouldRefreshForOriginChange(
+    final shouldRefresh = _shouldRefreshForOriginChange(
       previousOriginSettings: previousOriginSettings,
       nextOriginSettings: _effectiveOriginSettings,
       previousOriginLat: previousOriginLat,
       previousOriginLng: previousOriginLng,
       nextOriginLat: _effectiveOriginLat,
       nextOriginLng: _effectiveOriginLng,
-    )) {
+    );
+    if (!shouldRefresh) {
       return;
     }
     await _refresh(preserveCurrentResults: true);
@@ -1178,9 +1276,7 @@ class TenantHomeAgendaController extends Object
     final shouldBootstrapOrigin =
         _effectiveOriginLat == null || _effectiveOriginLng == null;
     try {
-      await _resolveEffectiveOrigin(
-        warmUpIfPossible: shouldBootstrapOrigin,
-      );
+      await _resolveEffectiveOrigin(warmUpIfPossible: shouldBootstrapOrigin);
       if (shouldBootstrapOrigin) {
         await _awaitPendingInitialEffectiveOriginIfNeeded();
       }
@@ -1204,6 +1300,10 @@ class TenantHomeAgendaController extends Object
     required double? nextOriginLat,
     required double? nextOriginLng,
   }) {
+    if (previousOriginLat == nextOriginLat &&
+        previousOriginLng == nextOriginLng) {
+      return false;
+    }
     if (!(previousOriginSettings?.sameAs(nextOriginSettings) ??
         nextOriginSettings == null)) {
       return true;
@@ -1216,17 +1316,44 @@ class TenantHomeAgendaController extends Object
       return true;
     }
 
-    final jumpMeters = haversineDistanceMeters(
-      coordinateA: CityCoordinate(
-        latitudeValue: _parseLatitude(previousOriginLat),
-        longitudeValue: _parseLongitude(previousOriginLng),
-      ),
-      coordinateB: CityCoordinate(
-        latitudeValue: _parseLatitude(nextOriginLat),
-        longitudeValue: _parseLongitude(nextOriginLng),
-      ),
-    );
-    return jumpMeters.value >= _locationRefreshMinJumpMeters;
+    return haversineDistanceMeters(
+          coordinateA: CityCoordinate(
+            latitudeValue: _parseLatitude(previousOriginLat),
+            longitudeValue: _parseLongitude(previousOriginLng),
+          ),
+          coordinateB: CityCoordinate(
+            latitudeValue: _parseLatitude(nextOriginLat),
+            longitudeValue: _parseLongitude(nextOriginLng),
+          ),
+        ).value >=
+        _locationRefreshMinJumpMeters;
+  }
+
+  bool _didAgendaOriginChange({
+    required double? previousOriginLat,
+    required double? previousOriginLng,
+    required double? nextOriginLat,
+    required double? nextOriginLng,
+  }) {
+    if (previousOriginLat == null ||
+        previousOriginLng == null ||
+        nextOriginLat == null ||
+        nextOriginLng == null) {
+      return previousOriginLat != nextOriginLat ||
+          previousOriginLng != nextOriginLng;
+    }
+
+    return haversineDistanceMeters(
+          coordinateA: CityCoordinate(
+            latitudeValue: _parseLatitude(previousOriginLat),
+            longitudeValue: _parseLongitude(previousOriginLng),
+          ),
+          coordinateB: CityCoordinate(
+            latitudeValue: _parseLatitude(nextOriginLat),
+            longitudeValue: _parseLongitude(nextOriginLng),
+          ),
+        ).value >=
+        _locationRefreshMinJumpMeters;
   }
 
   LatitudeValue _parseLatitude(double raw) =>
@@ -1254,6 +1381,10 @@ class TenantHomeAgendaController extends Object
   }
 
   bool _applyResolvedEffectiveOrigin(LocationOriginResolution resolution) {
+    if (_isDisposed) {
+      return false;
+    }
+
     final currentLat = _effectiveOriginLat;
     final currentLng = _effectiveOriginLng;
     final currentSettings = _effectiveOriginSettings;

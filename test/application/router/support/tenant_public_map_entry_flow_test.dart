@@ -47,9 +47,9 @@ void main() {
       (router.pushCalls.single as LocationPermissionRoute)
           .args
           ?.popRouteAfterResult,
-      isFalse,
+      isTrue,
     );
-    expect(router.maybePopCalls, 1);
+    expect(router.maybePopCalls, 0);
     expect(router.replaceCalls, isEmpty);
   });
 

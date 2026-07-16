@@ -133,6 +133,33 @@ void main() {
     );
 
     test(
+      'does not queue a duplicate first page while applying initial external radius',
+      () async {
+        final appData = _buildAppData(minKm: 2, defaultKm: 7, maxKm: 15);
+        final scheduleRepository = _FakeScheduleRepository();
+        final controller = _buildAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(appData),
+          proximityPreferencesRepository: _FakeProximityPreferencesRepository(
+            preference: _proximityPreference(9000),
+          ),
+          radiusRefreshDebounce: const Duration(milliseconds: 40),
+        );
+
+        await controller.init();
+        await Future<void>.delayed(const Duration(milliseconds: 80));
+
+        expect(controller.radiusMetersStreamValue.value, 9000);
+        expect(scheduleRepository.getEventsPageCallCount, 1);
+
+        controller.onDispose();
+      },
+    );
+
+    test(
       'seeds initial radius from distance to tenant origin when no preference exists',
       () async {
         final appData = _buildAppData(minKm: 1, defaultKm: 5, maxKm: 50);
@@ -555,10 +582,11 @@ void main() {
     });
 
     test(
-      'switches from location loading label before invite bootstrap completes',
+      'loads the first agenda page while invite bootstrap is pending',
       () async {
         final appData = _buildAppData(minKm: 1, defaultKm: 5, maxKm: 10);
         final invitesRepository = _GatedInvitesRepository();
+        final scheduleRepository = _FakeScheduleRepository();
         final locationRepository = _FakeUserLocationRepository()
           ..userLocationStreamValue.addValue(
             CityCoordinate(
@@ -567,7 +595,7 @@ void main() {
             ),
           );
         final controller = _buildAgendaController(
-          scheduleRepository: _FakeScheduleRepository(),
+          scheduleRepository: scheduleRepository,
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: invitesRepository,
           userLocationRepository: locationRepository,
@@ -576,14 +604,205 @@ void main() {
 
         final initFuture = controller.init();
         await invitesRepository.fetchSettingsStarted.future;
+        await Future<void>.delayed(Duration.zero);
 
-        expect(
-          controller.initialLoadingLabelStreamValue.value,
-          'Buscando eventos perto de você...',
-        );
+        expect(scheduleRepository.getEventsPageCallCount, 1);
 
         invitesRepository.release();
         await initFuture;
+
+        controller.onDispose();
+      },
+    );
+
+    test(
+      'loads from the cached origin while location warm-up is still pending',
+      () async {
+        final appData = _buildAppData(minKm: 1, defaultKm: 5, maxKm: 10);
+        final scheduleRepository = _FakeScheduleRepository();
+        final locationRepository = _FakeUserLocationRepository()
+          ..neverCompleteWarmUp = true;
+        final controller = _buildAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: locationRepository,
+          appDataRepository: _FakeAppDataRepository(appData),
+          locationWarmUpTimeout: const Duration(milliseconds: 20),
+          locationPermissionTimeout: const Duration(milliseconds: 20),
+        );
+
+        final initFuture = controller.init();
+        await Future<void>.delayed(Duration.zero);
+
+        expect(scheduleRepository.getEventsPageCallCount, 1);
+        expect(scheduleRepository.lastOriginLat, closeTo(-20.671339, 0.000001));
+        expect(scheduleRepository.lastOriginLng, closeTo(-40.495395, 0.000001));
+
+        await initFuture;
+        controller.onDispose();
+      },
+    );
+
+    test(
+      'does not revalidate the first page when location warm-up keeps the same tenant default origin',
+      () async {
+        final appData = _buildAppData(minKm: 1, defaultKm: 5, maxKm: 10);
+        final scheduleRepository = _FakeScheduleRepository();
+        final locationRepository = _FakeUserLocationRepository()
+          ..warmUpResult = false;
+        final controller = _buildAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: locationRepository,
+          appDataRepository: _FakeAppDataRepository(appData),
+        );
+
+        await controller.init();
+        await Future<void>.delayed(const Duration(milliseconds: 350));
+
+        expect(scheduleRepository.getEventsPageCallCount, 1);
+
+        controller.onDispose();
+      },
+    );
+
+    test(
+      'does not revalidate when warm-up changes location status but not the agenda query',
+      () async {
+        final appData = _buildAppData(minKm: 1, defaultKm: 10, maxKm: 10);
+        final scheduleRepository = _FakeScheduleRepository();
+        final locationRepository = _FakeUserLocationRepository()
+          ..warmUpResult = true
+          ..resolvedCoordinateAfterWarmUp = CityCoordinate(
+            latitudeValue: LatitudeValue()..parse('-23.550520'),
+            longitudeValue: LongitudeValue()..parse('-46.633308'),
+          );
+        final controller = _buildAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: locationRepository,
+          appDataRepository: _FakeAppDataRepository(appData),
+        );
+
+        await controller.init();
+        await Future<void>.delayed(const Duration(milliseconds: 350));
+
+        expect(scheduleRepository.getEventsPageCallCount, 1);
+        expect(scheduleRepository.lastOriginLat, closeTo(-20.671339, 0.000001));
+        expect(scheduleRepository.lastOriginLng, closeTo(-40.495395, 0.000001));
+
+        controller.onDispose();
+      },
+    );
+
+    test(
+      'does not refetch when runtime catalog repair leaves the agenda query empty',
+      () async {
+        const runtimeCatalog = DiscoveryFilterCatalog(
+          surface: 'home.events',
+          filters: <DiscoveryFilterCatalogItem>[
+            DiscoveryFilterCatalogItem(
+              key: 'artist',
+              label: 'Artistas',
+              entities: <String>{'event'},
+              types: <String>{'show'},
+              typesByEntity: <String, Set<String>>{
+                'event': <String>{'show'},
+              },
+            ),
+          ],
+        );
+        final scheduleRepository = _FakeScheduleRepository(
+          homeAgendaRuntimeCatalog: runtimeCatalog,
+        );
+        final controller = _buildAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(
+            _buildAppData(minKm: 1, defaultKm: 5, maxKm: 10),
+          ),
+        );
+        controller.discoveryFilterSelectionStreamValue.addValue(
+          const DiscoveryFilterSelection(
+            taxonomyTermKeys: <String, Set<String>>{
+              'genre': <String>{'rock'},
+            },
+          ),
+        );
+
+        await controller.init();
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+
+        expect(scheduleRepository.getEventsPageCallCount, 1);
+        expect(
+          controller.discoveryFilterSelectionStreamValue.value.isEmpty,
+          isTrue,
+        );
+
+        controller.onDispose();
+      },
+    );
+
+    test(
+      'refetches when runtime catalog repair changes the selected event type',
+      () async {
+        const preloadedCatalog = DiscoveryFilterCatalog(
+          surface: 'home.events',
+          filters: <DiscoveryFilterCatalogItem>[
+            DiscoveryFilterCatalogItem(
+              key: 'empty-type',
+              label: 'Tipo Vazio',
+              entities: <String>{'event'},
+              types: <String>{'empty-type'},
+              typesByEntity: <String, Set<String>>{
+                'event': <String>{'empty-type'},
+              },
+            ),
+          ],
+        );
+        const runtimeCatalog = DiscoveryFilterCatalog(
+          surface: 'home.events',
+          filters: <DiscoveryFilterCatalogItem>[
+            DiscoveryFilterCatalogItem(
+              key: 'artist',
+              label: 'Artistas',
+              entities: <String>{'event'},
+              types: <String>{'show'},
+              typesByEntity: <String, Set<String>>{
+                'event': <String>{'show'},
+              },
+            ),
+          ],
+        );
+        final scheduleRepository = _FakeScheduleRepository(
+          homeAgendaRuntimeCatalog: runtimeCatalog,
+        );
+        final controller = _buildAgendaController(
+          scheduleRepository: scheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
+            catalog: preloadedCatalog,
+          ),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: _FakeAppDataRepository(
+            _buildAppData(minKm: 1, defaultKm: 5, maxKm: 10),
+          ),
+        );
+        controller.discoveryFilterSelectionStreamValue.addValue(
+          const DiscoveryFilterSelection(primaryKeys: <String>{'empty-type'}),
+        );
+
+        await controller.init();
+        await _waitForScheduleCallCount(scheduleRepository, 2);
+
+        expect(scheduleRepository.getEventsPageCallCount, 2);
+        expect(scheduleRepository.lastCategories, isNull);
 
         controller.onDispose();
       },
@@ -6422,6 +6641,7 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   bool neverCompleteWarmUp = false;
   int resolveUserLocationCallCount = 0;
   CityCoordinate? resolvedCoordinateAfterPermission;
+  CityCoordinate? resolvedCoordinateAfterWarmUp;
   Duration resolvedCoordinateEmitDelay = Duration.zero;
 
   @override
@@ -6466,6 +6686,12 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
     warmUpCalled = true;
     if (neverCompleteWarmUp) {
       return Completer<bool>().future;
+    }
+    final resolvedCoordinate = resolvedCoordinateAfterWarmUp;
+    if (resolvedCoordinate != null) {
+      userLocationStreamValue.addValue(resolvedCoordinate);
+      lastKnownLocationStreamValue.addValue(resolvedCoordinate);
+      lastKnownCapturedAtStreamValue.addValue(DateTime.now());
     }
     return warmUpResult;
   }

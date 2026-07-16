@@ -68,11 +68,13 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   _FakeInvitesRepository({
     required List<InviteModel> initialInvites,
     this.materializedInviteId,
+    this.materializeStatus,
   }) : _invites = List<InviteModel>.from(initialInvites);
 
   final List<InviteModel> _invites;
   final List<String> previewedShareCodes = <String>[];
   final String? materializedInviteId;
+  final String? materializeStatus;
   final List<String> materializedShareCodes = <String>[];
   final List<String> acceptedInviteIds = <String>[];
   final List<String> acceptedShareCodes = <String>[];
@@ -146,7 +148,9 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     materializedShareCodes.add(code.value);
     return buildInviteMaterializeResult(
       inviteId: materializedInviteId ?? '',
-      status: materializedInviteId == null ? 'expired' : 'pending',
+      status:
+          materializeStatus ??
+          (materializedInviteId == null ? 'expired' : 'pending'),
       creditedAcceptance: false,
       attendancePolicy: 'free_confirmation_only',
     );
@@ -510,6 +514,7 @@ void main() {
     expect(find.text('Recusar'), findsOneWidget);
     expect(find.text('Aceitar'), findsOneWidget);
     expect(find.text('Ver detalhes'), findsOneWidget);
+    expect(find.bySemanticsLabel(invite.eventName), findsWidgets);
     expect(find.byIcon(Icons.swipe), findsOneWidget);
     expect(find.text('Entre para Aceitar ou Recusar'), findsNothing);
   });
@@ -775,6 +780,14 @@ void main() {
       expect(
         find.textContaining('Expositores: QA Discovery Tag Sem Tags'),
         findsOneWidget,
+      );
+      expect(
+        find.bySemanticsLabel(
+          RegExp(
+            'Promotion Smoke Perfil Público.*Bandas: Du Jorge.*Expositores: QA Discovery Tag Sem Tags',
+          ),
+        ),
+        findsWidgets,
       );
       expect(find.byIcon(Icons.storefront_outlined), findsNothing);
     },
@@ -1253,6 +1266,63 @@ void main() {
 
       expect(repository.declinedInviteIds, ['decline-1']);
       expect(repository.materializedShareCodes, ['31F8RN5QJ9']);
+    },
+  );
+
+  testWidgets(
+    'Self issuer preview replaces recipient actions with preview alert and share action',
+    (tester) async {
+      final invite = _buildInviteWithPrimaryInviter('self-preview');
+      final repository = _FakeInvitesRepository(
+        initialInvites: [invite],
+        materializeStatus: 'self_issuer_preview',
+      );
+      final controller = InviteFlowScreenController(
+        repository: repository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        telemetryRepository: _FakeTelemetryRepository(),
+        authRepository: _FakeAuthRepository(authorized: true),
+      );
+      GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
+
+      final router = _RecordingStackRouter(canPopValue: true);
+      final routeData = _buildRouteData(
+        router,
+        path: '/invite',
+        queryParams: const {'code': '31F8RN5QJ9'},
+      );
+
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: RouteDataScope(
+              routeData: routeData,
+              child: const InviteFlowScreen(),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      controller.markImageLoaded(invite.eventImageUrl);
+      await tester.pump();
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 150));
+        if (find.text('Prévia do seu convite').evaluate().isNotEmpty) {
+          break;
+        }
+      }
+
+      expect(repository.materializedShareCodes, ['31F8RN5QJ9']);
+      expect(repository.previewedShareCodes, ['31F8RN5QJ9']);
+      expect(find.text('Prévia do seu convite'), findsOneWidget);
+      expect(find.text('Compartilhar'), findsOneWidget);
+      expect(find.text('Ver detalhes'), findsOneWidget);
+      expect(find.text('Aceitar'), findsNothing);
+      expect(find.text('Recusar'), findsNothing);
+      expect(find.byIcon(Icons.swipe), findsNothing);
     },
   );
 

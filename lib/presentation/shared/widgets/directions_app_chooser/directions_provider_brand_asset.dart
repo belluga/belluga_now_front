@@ -15,7 +15,9 @@ class DirectionsProviderBrandAsset {
     required this.foregroundColor,
     required this.primaryLogoSize,
     required this.compactLogoSize,
+    required this.microLogoSize,
     required this.sheetLogoSize,
+    this.compactLogoTint,
     this.logoTint,
     this.provider,
     required this.sourceUrl,
@@ -29,7 +31,9 @@ class DirectionsProviderBrandAsset {
   final Color foregroundColor;
   final Size primaryLogoSize;
   final Size compactLogoSize;
+  final Size microLogoSize;
   final Size sheetLogoSize;
+  final Color? compactLogoTint;
   final Color? logoTint;
   final DirectionsDirectProvider? provider;
   final String sourceUrl;
