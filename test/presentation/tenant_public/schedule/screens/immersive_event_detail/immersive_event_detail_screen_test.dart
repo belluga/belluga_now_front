@@ -1938,11 +1938,21 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
       await _tapImmersiveTab(tester, 0);
 
+      final profileCardFinder = find.ancestor(
+        of: find.byKey(const Key('linkedProfileCard_artist-relative')),
+        matching: find.byType(AccountProfileOverlappingIdentityCard),
+      );
+      expect(profileCardFinder, findsOneWidget);
+      expect(
+        tester
+            .widget<AccountProfileOverlappingIdentityCard>(profileCardFinder)
+            .visual
+            .identityAvatarUrl,
+        expectedAvatarUrl,
+      );
       final avatarImage = tester.widget<BellugaNetworkImage>(
         find.descendant(
-          of: find.byKey(
-            const Key('linkedProfileCardTapTarget_artist-relative'),
-          ),
+          of: profileCardFinder,
           matching: find.byType(BellugaNetworkImage),
         ),
       );
@@ -2045,11 +2055,21 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
       await _tapImmersiveTab(tester, 0);
 
+      final profileCardFinder = find.ancestor(
+        of: find.byKey(const Key('linkedProfileCard_artist-relative')),
+        matching: find.byType(AccountProfileOverlappingIdentityCard),
+      );
+      expect(profileCardFinder, findsOneWidget);
+      expect(
+        tester
+            .widget<AccountProfileOverlappingIdentityCard>(profileCardFinder)
+            .visual
+            .identityAvatarUrl,
+        expectedAvatarUrl,
+      );
       final avatarImage = tester.widget<BellugaNetworkImage>(
         find.descendant(
-          of: find.byKey(
-            const Key('linkedProfileCardTapTarget_artist-relative'),
-          ),
+          of: profileCardFinder,
           matching: find.byType(BellugaNetworkImage),
         ),
       );
@@ -2154,11 +2174,21 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
       await _tapImmersiveTab(tester, 0);
 
+      final profileCardFinder = find.ancestor(
+        of: find.byKey(const Key('linkedProfileCard_artist-relative')),
+        matching: find.byType(AccountProfileOverlappingIdentityCard),
+      );
+      expect(profileCardFinder, findsOneWidget);
+      expect(
+        tester
+            .widget<AccountProfileOverlappingIdentityCard>(profileCardFinder)
+            .visual
+            .identityAvatarUrl,
+        expectedAvatarUrl,
+      );
       final avatarImage = tester.widget<BellugaNetworkImage>(
         find.descendant(
-          of: find.byKey(
-            const Key('linkedProfileCardTapTarget_artist-relative'),
-          ),
+          of: profileCardFinder,
           matching: find.byType(BellugaNetworkImage),
         ),
       );
@@ -2168,7 +2198,7 @@ void main() {
   );
 
   testWidgets(
-    'does not navigate linked profile card without public detail permission',
+    'does not expose a navigable linked profile card without public detail permission',
     (tester) async {
       final userEventsRepository = _FakeUserEventsRepository();
       final invitesRepository = _FakeInvitesRepository();
@@ -2238,10 +2268,14 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
       await _tapImmersiveTab(tester, 1);
       expect(find.byTooltip('Favoritar'), findsOneWidget);
-      await tester.tap(
-        find.byKey(const Key('linkedProfileCardTapTarget_artist-static')),
+      expect(
+        find.byKey(const Key('linkedProfileCard_artist-static')),
+        findsOneWidget,
       );
-      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const Key('linkedProfileCardTapTarget_artist-static')),
+        findsNothing,
+      );
 
       expect(router.lastPushedRoute, isNull);
     },
@@ -3211,7 +3245,6 @@ void main() {
           tester.getTopLeft(find.byKey(const Key('eventLocalGalleryStrip'))).dy,
         ),
       );
-
     },
   );
 

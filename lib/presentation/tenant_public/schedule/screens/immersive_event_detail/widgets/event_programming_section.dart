@@ -411,10 +411,10 @@ class _ProgrammingDateChip extends StatelessWidget {
       selected: isSelected,
       button: !isSelected,
       child: Card(
-        key: Key('eventDateCard_${occurrence.occurrenceId}'),
         clipBehavior: Clip.antiAlias,
         color: isSelected ? colorScheme.primaryContainer : null,
         child: InkWell(
+          key: Key('eventDateCard_${occurrence.occurrenceId}'),
           onTap: isSelected ? null : onTap,
           child: ConstrainedBox(
             constraints: const BoxConstraints(minWidth: 132, minHeight: 62),

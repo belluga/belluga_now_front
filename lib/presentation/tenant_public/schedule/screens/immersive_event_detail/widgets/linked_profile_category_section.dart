@@ -96,6 +96,7 @@ class _LinkedProfileCard extends StatelessWidget {
     return Stack(
       children: [
         AccountProfileOverlappingIdentityCard(
+          cardKey: Key('linkedProfileCard_${profile.id}'),
           name: profile.displayName,
           visual: resolvedVisual,
           tags: tags,
