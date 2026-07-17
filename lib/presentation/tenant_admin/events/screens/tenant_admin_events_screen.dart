@@ -1433,6 +1433,7 @@ class _TenantAdminEventCard extends StatelessWidget {
                       key: ValueKey<String>(
                         'tenant-admin-event-menu-${event.eventId}',
                       ),
+                      tooltip: 'Ações do evento ${event.title}',
                       onSelected: (value) {
                         if (value == 'edit') {
                           onEdit();
