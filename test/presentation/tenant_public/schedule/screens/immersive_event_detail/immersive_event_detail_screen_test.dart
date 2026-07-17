@@ -3682,7 +3682,7 @@ void main() {
       expect(find.text('Agro Sul'), findsWidgets);
 
       await _tapImmersiveTab(tester, 1);
-      await tester.tap(find.byKey(const Key('eventDateCard_occ-2')));
+      await tester.tap(find.byKey(const Key('eventDateCardTap_occ-2')));
       await tester.pump();
       await tester.pumpAndSettle();
 
@@ -3900,7 +3900,7 @@ void main() {
       );
 
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('eventDateCard_occ-5')));
+      await tester.tap(find.byKey(const Key('eventDateCardTap_occ-5')));
       await tester.pumpAndSettle();
 
       final selectedCard = find.byKey(const Key('eventDateCard_occ-5'));
@@ -3972,7 +3972,7 @@ void main() {
       await tester.pumpAndSettle();
       centerAnimationStarts = 0;
 
-      await tester.tap(find.byKey(const Key('eventDateCard_occ-5')));
+      await tester.tap(find.byKey(const Key('eventDateCardTap_occ-5')));
       await tester.pump();
       await tester.pumpAndSettle();
 
@@ -4044,7 +4044,7 @@ void main() {
       await tester.pumpAndSettle();
       centerAnimationStarts = 0;
 
-      await tester.tap(find.byKey(const Key('eventDateCard_occ-5')));
+      await tester.tap(find.byKey(const Key('eventDateCardTap_occ-5')));
       await tester.pump();
       await tester.pumpAndSettle();
 
@@ -4636,7 +4636,7 @@ void main() {
     expect(find.byKey(const Key('eventDateCard_occ-2')), findsOneWidget);
     expect(find.byKey(const Key('eventProgrammingItem_0')), findsOneWidget);
 
-    await tester.tap(find.byKey(const Key('eventDateCard_occ-1')));
+    await tester.tap(find.byKey(const Key('eventDateCardTap_occ-1')));
     await tester.pump();
 
     expect(router.lastReplacedRoute, isNull);
@@ -4742,7 +4742,7 @@ void main() {
 
       emittedOccurrenceIds.clear();
 
-      await tester.tap(find.byKey(const Key('eventDateCard_occ-5')));
+      await tester.tap(find.byKey(const Key('eventDateCardTap_occ-5')));
       await tester.pump();
       await tester.pumpAndSettle();
 
@@ -4864,7 +4864,9 @@ void main() {
           maxIteration: 20,
           continuous: true,
         );
-        final card = tester.widget<InkWell>(cardFinder);
+        final card = tester.widget<InkWell>(
+          find.byKey(Key('eventDateCardTap_$occurrenceId')),
+        );
         expect(card.onTap, isNotNull);
         card.onTap!.call();
         await tester.pump();
@@ -5149,7 +5151,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 450));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('eventDateCard_occ-2')));
+      await tester.tap(find.byKey(const Key('eventDateCardTap_occ-2')));
       await tester.pump();
       await tester.pumpAndSettle();
 
