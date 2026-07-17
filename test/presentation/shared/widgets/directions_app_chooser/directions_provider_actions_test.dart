@@ -54,10 +54,7 @@ void main() {
       ),
     );
     final wazeAsset = wazeImage.image as AssetImage;
-    expect(
-      wazeAsset.assetName,
-      DirectionsProviderBrandCatalog.waze.assetPath,
-    );
+    expect(wazeAsset.assetName, DirectionsProviderBrandCatalog.waze.assetPath);
     expect(
       find.descendant(
         of: find.byKey(const Key('wazeButton')),
@@ -106,13 +103,74 @@ void main() {
       DirectionsDirectProvider.uber,
     ]);
   });
+
+  testWidgets('compact mode keeps all provider actions as compact pills', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
+        home: Scaffold(
+          body: SizedBox(
+            width: 260,
+            child: DirectionsProviderActions(
+              target: const DirectionsLaunchTarget(
+                destinationName: 'Palco Central',
+                latitude: -20.7389,
+                longitude: -40.8212,
+              ),
+              isPrimary: false,
+              compact: true,
+              wazeButtonKey: const Key('compactWazeButton'),
+              uberButtonKey: const Key('compactUberButton'),
+              otherButtonKey: const Key('compactOtherDirectionsButton'),
+              onOpenDirectDirections: (_, _) async {},
+              onOpenOtherDirections: (_) async {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final wazeSize = tester.getSize(find.byKey(const Key('compactWazeButton')));
+    final uberSize = tester.getSize(find.byKey(const Key('compactUberButton')));
+    final otherSize = tester.getSize(
+      find.byKey(const Key('compactOtherDirectionsButton')),
+    );
+
+    expect(wazeSize.width, 48);
+    expect(wazeSize.height, 48);
+    expect(uberSize, const Size(48, 48));
+    expect(otherSize, const Size(48, 48));
+
+    final compactWazeIcon = tester.widget<Image>(
+      find.descendant(
+        of: find.byKey(const Key('compactWazeButton')),
+        matching: find.byType(Image),
+      ),
+    );
+    final compactWazeAsset = compactWazeIcon.image as AssetImage;
+    expect(
+      compactWazeAsset.assetName,
+      DirectionsProviderBrandCatalog.waze.compactIconAssetPath,
+    );
+
+    final compactUberIcon = tester.widget<Image>(
+      find.descendant(
+        of: find.byKey(const Key('compactUberButton')),
+        matching: find.byType(Image),
+      ),
+    );
+    final compactUberAsset = compactUberIcon.image as AssetImage;
+    expect(
+      compactUberAsset.assetName,
+      DirectionsProviderBrandCatalog.uber.compactIconAssetPath,
+    );
+  });
 }
 
 FilledButton _filledButtonUnder(WidgetTester tester, Key key) {
   return tester.widget<FilledButton>(
-    find.descendant(
-      of: find.byKey(key),
-      matching: find.byType(FilledButton),
-    ),
+    find.descendant(of: find.byKey(key), matching: find.byType(FilledButton)),
   );
 }

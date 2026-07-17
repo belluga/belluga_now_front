@@ -108,11 +108,13 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     required List<InviteModel> initialInvites,
     this.previewInvite,
     this.materializedInviteId,
+    this.materializeStatus,
   }) : _invites = List<InviteModel>.from(initialInvites);
 
   final List<InviteModel> _invites;
   final InviteModel? previewInvite;
   final String? materializedInviteId;
+  final String? materializeStatus;
   final List<String> materializedShareCodes = <String>[];
   final List<String> previewedShareCodes = <String>[];
   final List<String> acceptedInviteIds = <String>[];
@@ -193,7 +195,9 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     materializedShareCodes.add(code.value);
     return buildInviteMaterializeResult(
       inviteId: materializedInviteId ?? '',
-      status: materializedInviteId == null ? 'expired' : 'pending',
+      status:
+          materializeStatus ??
+          (materializedInviteId == null ? 'expired' : 'pending'),
       creditedAcceptance: false,
       attendancePolicy: 'free_confirmation_only',
     );
@@ -599,6 +603,37 @@ void main() {
       expect(repository.materializedShareCodes, ['SHARE-ABC']);
       expect(repository.declinedInviteIds, ['preview']);
       expect(controller.displayInvitesStreamValue.value, isEmpty);
+      await controller.onDispose();
+    },
+  );
+
+  test(
+    'self issuer preview materialization keeps preview visible and blocks invite decisions',
+    () async {
+      final previewInvite = _buildInvite('preview');
+      final repository = _FakeInvitesRepository(
+        initialInvites: const [],
+        previewInvite: previewInvite,
+        materializeStatus: 'self_issuer_preview',
+      );
+      final controller = InviteFlowScreenController(
+        repository: repository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        telemetryRepository: _FakeTelemetryRepository(),
+        authRepository: _FakeAuthRepository(authorized: true),
+      );
+
+      await controller.init(shareCode: 'SHARE-ABC');
+      await controller.requestDecision(InviteDecision.accepted);
+      await controller.requestDecision(InviteDecision.declined);
+
+      expect(repository.materializedShareCodes, ['SHARE-ABC']);
+      expect(repository.previewedShareCodes, ['SHARE-ABC']);
+      expect(controller.currentInvite?.id, 'preview');
+      expect(controller.displayInvitesStreamValue.value, [previewInvite]);
+      expect(repository.acceptedShareCodes, isEmpty);
+      expect(repository.acceptedInviteIds, isEmpty);
+      expect(repository.declinedInviteIds, isEmpty);
       await controller.onDispose();
     },
   );

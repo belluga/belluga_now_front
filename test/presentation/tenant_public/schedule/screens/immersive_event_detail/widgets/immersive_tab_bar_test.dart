@@ -20,7 +20,7 @@ void main() {
                     'Programação',
                     'Artistas',
                     'Gastronomia',
-                    'Como Chegar',
+                    'O Local',
                   ],
                   selectedIndex: 4,
                   onTabTapped: (_) {},

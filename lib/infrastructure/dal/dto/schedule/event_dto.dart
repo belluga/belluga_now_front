@@ -7,6 +7,9 @@ import 'package:belluga_now/domain/partner/value_objects/invite_partner_hero_ima
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_logo_image_value.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_name_value.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_tagline_value.dart';
+import 'package:belluga_now/domain/partners/account_profile_gallery_group.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_fields.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_public_detail_path_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_tag_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
@@ -1039,19 +1042,26 @@ class EventDTO {
     }
 
     InvitePartnerLogoImageValue? logoImageValue;
-    final logoUrl = normalizeTenantPublicMediaUrl(dto['logo_url']?.toString());
+    final logoUrl = normalizeTenantPublicMediaUrl(
+      dto['logo_url']?.toString() ?? dto['avatar_url']?.toString(),
+    );
     if (logoUrl != null && logoUrl.isNotEmpty) {
       logoImageValue = InvitePartnerLogoImageValue()..parse(logoUrl);
     }
 
     InvitePartnerHeroImageValue? heroImageValue;
     final heroUrl = normalizeTenantPublicMediaUrl(
-      dto['hero_image_url']?.toString(),
+      dto['hero_image_url']?.toString() ?? dto['cover_url']?.toString(),
     );
     if (heroUrl != null && heroUrl.isNotEmpty) {
       heroImageValue = InvitePartnerHeroImageValue()..parse(heroUrl);
     }
     final publicDetailPath = dto['public_detail_path']?.toString().trim() ?? '';
+    final bio = _asNullableString(dto['bio'])?.trim();
+    final taxonomyLabels = _extractTaxonomyLabels(dto['taxonomy_terms']);
+    final galleryGroups = _mapAccountProfileGalleryGroups(
+      dto['gallery_groups'],
+    );
 
     return PartnerResume(
       idValue: MongoIDValue()..parse(dto['id']?.toString() ?? ''),
@@ -1059,6 +1069,9 @@ class EventDTO {
         ..parse(dto['display_name']?.toString() ?? ''),
       slugValue: slugValue,
       type: InviteAccountProfileType.mercadoProducer,
+      profileTypeValue: AccountProfileTypeValue(
+        _asNullableString(dto['profile_type'])?.trim() ?? '',
+      ),
       canOpenPublicDetailValue:
           DomainBooleanValue(defaultValue: false, isRequired: false)..parse(
             (_asBool(dto['can_open_public_detail']) &&
@@ -1071,7 +1084,132 @@ class EventDTO {
       taglineValue: taglineValue,
       logoImageValue: logoImageValue,
       heroImageValue: heroImageValue,
+      bioValue: bio == null || bio.isEmpty
+          ? null
+          : (DescriptionValue(defaultValue: '', minLenght: 0)..parse(bio)),
+      taxonomyLabelValues: taxonomyLabels
+          .map(AccountProfileTagValue.new)
+          .toList(growable: false),
+      galleryGroupValues: galleryGroups,
+      supportsPublicNavigationValue:
+          DomainBooleanValue(defaultValue: true, isRequired: false)..parse(
+            (_asBool(dto['supports_public_navigation']) ||
+                    !dto.containsKey('supports_public_navigation'))
+                .toString(),
+          ),
     );
+  }
+
+  static List<String> _extractTaxonomyLabels(Object? raw) {
+    if (raw is! List) {
+      return const <String>[];
+    }
+
+    final labels = <String>[];
+    final seen = <String>{};
+    for (final entry in raw) {
+      final term = _asMap(entry);
+      final label =
+          _asNullableString(term['label'])?.trim() ??
+          _asNullableString(term['name'])?.trim() ??
+          _asNullableString(term['value'])?.trim() ??
+          '';
+      if (label.isEmpty || !seen.add(label.toLowerCase())) {
+        continue;
+      }
+      labels.add(label);
+    }
+
+    return List<String>.unmodifiable(labels);
+  }
+
+  static List<AccountProfileGalleryGroup> _mapAccountProfileGalleryGroups(
+    Object? raw,
+  ) {
+    if (raw is! List) {
+      return const <AccountProfileGalleryGroup>[];
+    }
+
+    final groups = <AccountProfileGalleryGroup>[];
+    for (var groupIndex = 0; groupIndex < raw.length; groupIndex++) {
+      final group = _asMap(raw[groupIndex]);
+      final subtitle = _asNullableString(group['subtitle'])?.trim() ?? '';
+      final itemsRaw = _asOrderedList(group['items']);
+      if (subtitle.isEmpty || itemsRaw.isEmpty) {
+        continue;
+      }
+
+      final items = <AccountProfileGalleryItem>[];
+      for (var itemIndex = 0; itemIndex < itemsRaw.length; itemIndex++) {
+        final item = _asMap(itemsRaw[itemIndex]);
+        final imageUrl = normalizeTenantPublicMediaUrl(
+          _asNullableString(item['image_url']),
+        );
+        final thumbUrl = normalizeTenantPublicMediaUrl(
+          _asNullableString(item['thumb_url']),
+        );
+        final cardUrl = normalizeTenantPublicMediaUrl(
+          _asNullableString(item['card_url']),
+        );
+        final modalUrl = normalizeTenantPublicMediaUrl(
+          _asNullableString(item['modal_url']),
+        );
+        final resolvedImageUrl = imageUrl ?? cardUrl ?? thumbUrl ?? modalUrl;
+        final resolvedThumbUrl = thumbUrl ?? cardUrl ?? imageUrl ?? modalUrl;
+        final resolvedCardUrl = cardUrl ?? thumbUrl ?? imageUrl ?? modalUrl;
+        final resolvedModalUrl = modalUrl ?? imageUrl ?? cardUrl ?? thumbUrl;
+        if (resolvedImageUrl == null ||
+            resolvedThumbUrl == null ||
+            resolvedCardUrl == null ||
+            resolvedModalUrl == null) {
+          continue;
+        }
+
+        items.add(
+          AccountProfileGalleryItem(
+            itemIdValue: AccountProfileNestedGroupIdValue(
+              _asNullableString(item['item_id'])?.trim() ??
+                  'gallery-item-$groupIndex-$itemIndex',
+            ),
+            descriptionValue: AccountProfileNestedGroupMemberTextValue(
+              _asNullableString(item['description']) ?? '',
+            ),
+            orderValue: AccountProfileNestedGroupOrderValue(
+              _asInt(item['order']),
+            ),
+            imageUrlValue: _requiredThumbUriValue(resolvedImageUrl),
+            thumbUrlValue: _requiredThumbUriValue(resolvedThumbUrl),
+            cardUrlValue: _requiredThumbUriValue(resolvedCardUrl),
+            modalUrlValue: _requiredThumbUriValue(resolvedModalUrl),
+          ),
+        );
+      }
+
+      if (items.isEmpty) {
+        continue;
+      }
+
+      groups.add(
+        AccountProfileGalleryGroup(
+          groupIdValue: AccountProfileNestedGroupIdValue(
+            _asNullableString(group['group_id'])?.trim() ??
+                'gallery-group-$groupIndex',
+          ),
+          subtitleValue: AccountProfileNestedGroupLabelValue(subtitle),
+          orderValue: AccountProfileNestedGroupOrderValue(
+            _asInt(group['order']),
+          ),
+          items: items,
+        ),
+      );
+    }
+
+    return List<AccountProfileGalleryGroup>.unmodifiable(groups);
+  }
+
+  static ThumbUriValue _requiredThumbUriValue(String url) {
+    return ThumbUriValue(defaultValue: Uri.parse(url), isRequired: true)
+      ..parse(url);
   }
 
   Map<String, dynamic> toJson() {

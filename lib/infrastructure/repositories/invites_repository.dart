@@ -494,7 +494,7 @@ class InvitesRepository extends InvitesRepositoryContract
   ) async {
     final response = await _backend.materializeShareCode(code.value);
     return InviteMaterializeResult(
-      inviteIdValue: _buildInviteIdValue(_stringOrEmpty(response['invite_id'])),
+      inviteIdValue: _buildInviteIdValueOrNull(response['invite_id']),
       statusValue: _buildMaterializationStatusValue(
         _stringOrEmpty(response['status']),
       ),
@@ -1280,6 +1280,14 @@ class InvitesRepository extends InvitesRepositoryContract
   InviteIdValue _buildInviteIdValue(String value) {
     final inviteIdValue = InviteIdValue()..parse(value);
     return inviteIdValue;
+  }
+
+  InviteIdValue? _buildInviteIdValueOrNull(Object? rawValue) {
+    final value = _stringOrEmpty(rawValue);
+    if (value.isEmpty) {
+      return null;
+    }
+    return _buildInviteIdValue(value);
   }
 
   InviteMaterializationStatusValue _buildMaterializationStatusValue(
