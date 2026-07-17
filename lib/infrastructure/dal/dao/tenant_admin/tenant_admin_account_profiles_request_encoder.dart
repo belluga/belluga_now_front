@@ -283,7 +283,7 @@ Map<String, dynamic> _encodeContactChannelDraft(
 ) {
   return <String, dynamic>{
     if (draft.id != null) 'id': draft.id,
-    'draft_key': draft.draftKey,
+    if (!draft.isPersisted) 'draft_key': draft.draftKey,
     'type': draft.type.rawValue,
     'value': draft.value,
     if (draft.title != null) 'title': draft.title,

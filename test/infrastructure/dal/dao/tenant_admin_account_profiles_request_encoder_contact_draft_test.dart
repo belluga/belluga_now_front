@@ -81,4 +81,25 @@ void main() {
       ]);
     },
   );
+
+  test('update keeps persisted WhatsApp draft keys local to the client', () {
+    final persistedDraft = BellugaContactChannelDraft(
+      draftKey: 'persisted:channel-whatsapp-1',
+      id: 'channel-whatsapp-1',
+      type: BellugaContactChannelType.whatsapp,
+      value: '+55 (27) 99999-1111',
+    );
+
+    final payload = encoder.encodeUpdateAccountProfile(
+      contactChannelDrafts: <BellugaContactChannelDraft>[persistedDraft],
+    );
+
+    expect(payload['contact_channels'], <Map<String, dynamic>>[
+      <String, dynamic>{
+        'id': 'channel-whatsapp-1',
+        'type': 'whatsapp',
+        'value': '+55 (27) 99999-1111',
+      },
+    ]);
+  });
 }
