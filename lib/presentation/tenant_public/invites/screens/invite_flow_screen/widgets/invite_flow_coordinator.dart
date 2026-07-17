@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/schedule/event_related_profile_groups.dart';
+import 'package:belluga_now/application/sharing/event_invite_share_payload.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
 import 'package:belluga_now/application/router/support/route_back_policy.dart';
@@ -12,11 +14,13 @@ import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/widgets/invite_hero_card.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/widgets/invite_candidate_picker.dart';
+import 'package:belluga_now/presentation/shared/sharing/public_share_launcher.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/widgets/app_promotion_modal.dart';
 import 'package:belluga_now/presentation/shared/widgets/route_back_scope.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class InviteFlowCoordinator extends StatefulWidget {
@@ -102,6 +106,10 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
           onClose: backPolicy.handleBack,
           remainingCount: remaining,
           requiresAuthentication: widget.requiresAuthentication,
+          isIssuerPreview: _controller.isSelfIssuerPreview,
+          onSharePreview: () {
+            unawaited(_shareIssuerPreview(invite));
+          },
           onRequestAuthentication: () => _openAuthForInviteDecision(invite),
         );
       },
@@ -177,6 +185,10 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
     InviteModel invite,
     InviteDecision decision,
   ) async {
+    if (_controller.isSelfIssuerPreview) {
+      return;
+    }
+
     if (widget.isWebRuntime && !_controller.isAuthorized) {
       await _showWebInviteDecisionPromotion(invite: invite, decision: decision);
       return;
@@ -207,6 +219,42 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
       return;
     }
     await _controller.requestDecisionForInvite(decision, inviteId);
+  }
+
+  Future<void> _shareIssuerPreview(InviteModel invite) async {
+    final shareUri = _controller.currentShareUriFor(invite);
+    if (shareUri == null) {
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Este convite ainda não está pronto para compartilhamento.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final participantGroups =
+        EventRelatedProfileGroups.fromParts(
+              profileGroups: invite.profileGroups,
+              linkedAccountProfiles: invite.linkedAccountProfiles,
+              venueId: invite.venueAccountProfileId,
+            )
+            .map((group) => (label: group.label, names: group.profileNames))
+            .toList(growable: false);
+
+    final payload = EventInviteSharePayloadBuilder.buildInvitation(
+      eventName: invite.eventName,
+      location: invite.location,
+      eventScheduleLabel: invite.eventDateFlyerLabel,
+      inviteUri: shareUri,
+      inviterName: invite.inviterName,
+      participantGroups: participantGroups,
+    );
+
+    await PublicShareLauncher.launchSystemShare(
+      ShareParams(text: payload.message, subject: payload.subject),
+    );
   }
 
   void _openAuthForInviteDecision(InviteModel invite) {

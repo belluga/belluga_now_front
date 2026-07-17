@@ -380,6 +380,35 @@ void main() {
   });
 
   testWidgets(
+      'guarded cancellation falls back to home when dismissal is requested without stack history',
+      (tester) async {
+    final controller = LocationPermissionController(isWeb: false);
+    final router = _RecordingStackRouter();
+    LocationPermissionGateResult? capturedResult;
+    GetIt.I.registerSingleton<LocationPermissionController>(controller);
+
+    await tester.pumpWidget(
+      _buildWidget(
+        router: router,
+        child: LocationPermissionScreen(
+          initialState: LocationPermissionState.denied,
+          popRouteAfterResult: true,
+          onResult: (result) => capturedResult = result,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('Voltar'));
+    await tester.pumpAndSettle();
+
+    expect(capturedResult, LocationPermissionGateResult.cancelled);
+    expect(router.popCalls, 0);
+    expect(router.replaceAllCalls, 1);
+    expect(router.lastReplaceAllRoutes?.single.routeName, TenantHomeRoute.name);
+  });
+
+  testWidgets(
       'granted result stays owned by guarded callback even when boundary dismissal is enabled',
       (tester) async {
     final controller = LocationPermissionController(isWeb: false);

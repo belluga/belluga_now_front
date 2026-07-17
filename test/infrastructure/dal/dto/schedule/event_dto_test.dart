@@ -115,6 +115,71 @@ void main() {
     expect(dto.toDomain().taxonomyTags, isEmpty);
   });
 
+  test('maps venue editorial payload for O Local projection', () {
+    final dto = EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439120',
+      'slug': 'local-editorial',
+      'type': {
+        'id': 'type-1',
+        'name': 'Show',
+        'slug': 'show',
+        'description': '',
+      },
+      'title': 'Evento com local editorial',
+      'content': '',
+      'location': 'Guarapari',
+      'date_time_start': '2026-03-03T10:00:00+00:00',
+      'venue': {
+        'id': '507f1f77bcf86cd799439012',
+        'display_name': 'Arena Central',
+        'slug': 'arena-central',
+        'profile_type': 'venue',
+        'supports_public_navigation': false,
+        'avatar_url':
+            'https://tenant.test/api/v1/media/account-profiles/arena/avatar?v=1',
+        'cover_url':
+            'https://tenant.test/api/v1/media/account-profiles/arena/cover?v=2',
+        'bio': 'Espaço amplo para eventos e experiências noturnas.',
+        'taxonomy_terms': [
+          {'type': 'kind', 'value': 'beach-club', 'label': 'Beach Club'},
+        ],
+        'gallery_groups': [
+          {
+            'group_id': 'hero',
+            'subtitle': 'Galeria',
+            'items': [
+              {
+                'item_id': 'gallery-1',
+                'image_url': 'https://tenant.test/gallery/image.jpg',
+                'thumb_url': 'https://tenant.test/gallery/thumb.jpg',
+                'card_url': 'https://tenant.test/gallery/card.jpg',
+                'modal_url': 'https://tenant.test/gallery/modal.jpg',
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    final venue = dto.toDomain().venue;
+
+    expect(venue, isNotNull);
+    expect(venue!.bio, contains('Espaço amplo'));
+    expect(venue.logoImageUrl, contains('/arena/avatar?v=1'));
+    expect(venue.heroImageUrl, contains('/arena/cover?v=2'));
+    expect(
+      venue.taxonomyLabels.map((label) => label.value).toList(growable: false),
+      ['Beach Club'],
+    );
+    expect(venue.galleryGroups, hasLength(1));
+    expect(
+      venue.galleryGroups.first.items.single.previewUrl,
+      contains('thumb'),
+    );
+    expect(venue.supportsPublicNavigation, isFalse);
+    expect(venue.normalizedProfileType, 'venue');
+  });
+
   test('parses public profile groups for custom dynamic event tabs', () {
     final dto = EventDTO.fromJson({
       'event_id': '507f1f77bcf86cd799439022',
@@ -1230,7 +1295,10 @@ void main() {
     expect(domain.programmingItems[0].displayTitle, '<p>Entrada da corte</p>');
     expect(domain.programmingItems[1].hasTime, isFalse);
     expect(domain.programmingItems[1].time, isEmpty);
-    expect(domain.programmingItems[1].displayTitle, '<p>Apresentacao final</p>');
+    expect(
+      domain.programmingItems[1].displayTitle,
+      '<p>Apresentacao final</p>',
+    );
   });
 
   test(

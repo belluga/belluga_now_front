@@ -783,6 +783,119 @@ void main() {
   });
 
   test(
+    'switching create contact mode to mirrored clears draft bubble selection and omits local drafts from save payload',
+    () {
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: _FakeAccountProfilesRepository(
+          const <TenantAdminAccountProfile>[],
+          const <TenantAdminProfileTypeDefinition>[],
+        ),
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+
+      controller.addCreateContactChannel(BellugaContactChannelType.whatsapp);
+      final draft = controller.createStateStreamValue.value.contactChannelDrafts
+          .single
+          .copyWith(value: '+55 (27) 99999-0000');
+      controller.updateCreateContactChannel(draft);
+      controller.selectCreateContactBubble(draft, true);
+
+      expect(
+        controller.createBubbleSelection(capabilityEnabled: true),
+        isA<BellugaContactBubbleSelectionDraft>(),
+      );
+
+      controller.updateCreateContactMode(
+        BellugaContactSourceMode.mirroredAccountProfile,
+      );
+
+      expect(
+        controller.createBubbleSelection(capabilityEnabled: true),
+        isA<BellugaContactBubbleSelectionClear>(),
+      );
+      expect(
+        controller.buildCreateContactChannelDrafts(capabilityEnabled: true),
+        isEmpty,
+      );
+    },
+  );
+
+  test(
+    'switching edit contact mode to mirrored clears draft bubble selection and preserves persisted mirrored selections',
+    () async {
+      final profile = tenantAdminAccountProfileFromRaw(
+        id: 'profile-1',
+        accountId: 'acc-1',
+        profileType: 'venue',
+        displayName: 'Perfil',
+        contactMode: BellugaContactSourceMode.own,
+        contactChannels: <BellugaContactChannel>[
+          BellugaContactChannel(
+            id: 'channel-1',
+            type: BellugaContactChannelType.whatsapp,
+            value: '+55 (27) 99999-1111',
+          ),
+        ],
+      );
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: _FakeAccountProfilesRepository(
+          <TenantAdminAccountProfile>[profile],
+          const <TenantAdminProfileTypeDefinition>[],
+        ),
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+
+      await controller.loadEditProfile('profile-1');
+      controller.addEditContactChannel(BellugaContactChannelType.whatsapp);
+      final draft = controller.editStateStreamValue.value.contactChannelDrafts
+          .last
+          .copyWith(value: '+55 (27) 99999-2222');
+      controller.updateEditContactChannel(draft);
+      controller.selectEditContactBubble(draft, true);
+
+      expect(
+        controller.editBubbleSelection(capabilityEnabled: true),
+        isA<BellugaContactBubbleSelectionDraft>(),
+      );
+
+      controller.updateEditContactMode(
+        BellugaContactSourceMode.mirroredAccountProfile,
+      );
+
+      expect(
+        controller.editBubbleSelection(capabilityEnabled: true),
+        isA<BellugaContactBubbleSelectionClear>(),
+      );
+      expect(
+        controller.buildEditContactChannelDrafts(capabilityEnabled: true),
+        isEmpty,
+      );
+
+      controller.updateEditContactBubbleChannelId('mirrored-channel-1');
+      controller.updateEditContactMode(BellugaContactSourceMode.own);
+      controller.updateEditContactMode(
+        BellugaContactSourceMode.mirroredAccountProfile,
+      );
+
+      final mirroredSelection = controller.editBubbleSelection(
+        capabilityEnabled: true,
+      );
+      expect(
+        mirroredSelection,
+        isA<BellugaContactBubbleSelectionPersisted>(),
+      );
+      expect(
+        (mirroredSelection as BellugaContactBubbleSelectionPersisted).channelId,
+        'mirrored-channel-1',
+      );
+    },
+  );
+
+  test(
     'submit profile drops duplicate contact saves while the first request is in flight',
     () async {
       final burstLevel =

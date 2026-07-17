@@ -96,6 +96,27 @@ void main() {
     }
   });
 
+  testWidgets('event card exposes an accessible actions menu', (tester) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      final controller = TenantAdminEventsController(
+        eventsRepository: _EventsRepositoryWithSeedData(),
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+      );
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpEventsRouter(tester);
+
+      expect(
+        find.byTooltip('Ações do evento Seed Event'),
+        findsOneWidget,
+      );
+    } finally {
+      semantics.dispose();
+    }
+  });
+
   testWidgets(
       'event list materializes one card per occurrence and edits selected date',
       (tester) async {

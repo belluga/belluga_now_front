@@ -3,6 +3,7 @@ export 'invite_decision_result.dart';
 import 'dart:async';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/application/sharing/invite_share_uri_builder.dart';
 import 'package:belluga_now/application/router/support/tenant_public_event_path.dart';
 import 'package:belluga_now/domain/invites/invite_decision.dart';
 import 'package:belluga_now/domain/invites/invite_inviter_type.dart';
@@ -68,6 +69,8 @@ class InviteFlowScreenController with Disposable {
   );
   final initializedStreamValue = StreamValue<bool>(defaultValue: false);
   final redirectPathStreamValue = StreamValue<String?>(defaultValue: null);
+  final materializedShareResultStreamValue =
+      StreamValue<InviteMaterializeResult?>(defaultValue: null);
 
   StreamValue<List<InviteModel>> get pendingInvitesStreamValue =>
       _repository.inviteFlowPendingInvitesStreamValue;
@@ -79,6 +82,8 @@ class InviteFlowScreenController with Disposable {
   bool get requiresAuthenticationForDecision =>
       authRequiredForDecisionStreamValue.value;
   bool get isAuthorized => _isAuthorized;
+  bool get isSelfIssuerPreview =>
+      materializedShareResultStreamValue.value?.isSelfIssuerPreview ?? false;
   String? get redirectPath => redirectPathStreamValue.value;
   String get tenantName => _appData?.nameValue.value ?? '';
 
@@ -113,6 +118,7 @@ class InviteFlowScreenController with Disposable {
     }
     _setRedirectPath(redirectPath);
     _activeMaterializedInviteId = null;
+    materializedShareResultStreamValue.addValue(null);
     final normalizedShareCode = shareCode?.trim() ?? '';
 
     if (kIsWeb && !_isAuthorized) {
@@ -143,6 +149,7 @@ class InviteFlowScreenController with Disposable {
       _ensureInviteTrackingSubscription();
       if (normalizedShareCode.isNotEmpty) {
         final materialized = await _materializeShareCode(normalizedShareCode);
+        materializedShareResultStreamValue.addValue(materialized);
         final materializedInviteId = materialized?.inviteId.trim() ?? '';
         if (materialized != null &&
             materialized.isPending &&
@@ -154,6 +161,14 @@ class InviteFlowScreenController with Disposable {
             normalizedShareCode,
             inviteId: materializedInviteId,
           );
+        } else if (materialized != null && materialized.isSelfIssuerPreview) {
+          final preview = await _fetchAnonymousPreviewInvites(
+            normalizedShareCode,
+          );
+          _setPendingInvites(const <InviteModel>[]);
+          _setDisplayInvites(preview);
+          _seedShareCodeSessionContext(normalizedShareCode);
+          _ensureTopIndexBounds(preview.length);
         } else {
           _repository.clearShareCodeSessionContext(
             code: invitesRepoString(
@@ -301,7 +316,7 @@ class InviteFlowScreenController with Disposable {
   }
 
   void _syncDisplayInvitesWithPending() {
-    if (authRequiredForDecisionStreamValue.value) {
+    if (authRequiredForDecisionStreamValue.value || isSelfIssuerPreview) {
       return;
     }
     _setDisplayInvites(List<InviteModel>.from(pendingInvitesStreamValue.value));
@@ -433,6 +448,10 @@ class InviteFlowScreenController with Disposable {
     String? inviteId,
   }) async {
     if (!_isAuthorized || authRequiredForDecisionStreamValue.value) {
+      return null;
+    }
+
+    if (isSelfIssuerPreview) {
       return null;
     }
 
@@ -715,17 +734,20 @@ class InviteFlowScreenController with Disposable {
       return;
     }
     final pendingInvites = pendingInvitesStreamValue.value;
+    final displayInvites = displayInvitesStreamValue.value;
     InviteModel? matchedInvite;
     if (inviteId != null && inviteId.isNotEmpty) {
       final inviteIdValue = _inviteIdValue(inviteId);
-      for (final invite in pendingInvites) {
+      for (final invite in [...pendingInvites, ...displayInvites]) {
         if (invite.id == inviteId || invite.containsInviteId(inviteIdValue)) {
           matchedInvite = invite;
           break;
         }
       }
     }
-    matchedInvite ??= pendingInvites.isEmpty ? null : pendingInvites.first;
+    matchedInvite ??= pendingInvites.isNotEmpty
+        ? pendingInvites.first
+        : (displayInvites.isEmpty ? null : displayInvites.first);
     if (matchedInvite == null) {
       _repository.clearShareCodeSessionContext(
         code: invitesRepoString(
@@ -762,6 +784,20 @@ class InviteFlowScreenController with Disposable {
     return shareCode.isEmpty ? null : shareCode;
   }
 
+  Uri? currentShareUriFor(InviteModel invite) {
+    final shareCode = _resolveShareCodeForInvite(invite);
+    if (shareCode == null || shareCode.isEmpty) {
+      return null;
+    }
+
+    return buildInviteShareUri(
+      origin: _appData?.mainDomainValue.value.origin,
+      shareCode: shareCode,
+      eventSlug: invite.eventSlug,
+      occurrenceId: invite.occurrenceId,
+    );
+  }
+
   InviteIdValue _inviteIdValue(String raw) {
     final value = InviteIdValue();
     value.parse(raw);
@@ -778,6 +814,7 @@ class InviteFlowScreenController with Disposable {
     _pendingInvitesSubscription = null;
     _finishActiveInviteTimedEvent();
     decisionsStreamValue.dispose();
+    materializedShareResultStreamValue.dispose();
     _repository.clearInviteFlowState();
     authRequiredForDecisionStreamValue.dispose();
     initializedStreamValue.dispose();

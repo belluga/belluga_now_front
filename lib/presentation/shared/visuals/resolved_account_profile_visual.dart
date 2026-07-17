@@ -18,5 +18,5 @@ class ResolvedAccountProfileVisual {
   final String? identityAvatarUrl;
   final Color? themeSeedColor;
 
-  bool get hasIdentityAvatar => identityAvatarUrl != null;
+  bool get hasIdentityAvatar => identityAvatarUrl?.trim().isNotEmpty ?? false;
 }

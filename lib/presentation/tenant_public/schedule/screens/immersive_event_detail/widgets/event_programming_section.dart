@@ -410,53 +410,47 @@ class _ProgrammingDateChip extends StatelessWidget {
       label: weekdayLabel.isEmpty ? dateLabel : '$dateLabel, $weekdayLabel',
       selected: isSelected,
       button: !isSelected,
-      child: InkWell(
+      child: Card(
         key: Key('eventDateCard_${occurrence.occurrenceId}'),
-        onTap: isSelected ? null : onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          constraints: const BoxConstraints(minWidth: 132, minHeight: 62),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? colorScheme.primaryContainer
-                : colorScheme.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: isSelected
-                  ? colorScheme.primary
-                  : colorScheme.outlineVariant,
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text(
-                dateLabel,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  color: isSelected
-                      ? colorScheme.onPrimaryContainer
-                      : colorScheme.onSurface,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              if (weekdayLabel.isNotEmpty) ...[
-                const SizedBox(height: 2),
-                Text(
-                  weekdayLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.visible,
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: isSelected
-                        ? colorScheme.onPrimaryContainer
-                        : colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w700,
+        clipBehavior: Clip.antiAlias,
+        color: isSelected ? colorScheme.primaryContainer : null,
+        child: InkWell(
+          key: Key('eventDateCardTap_${occurrence.occurrenceId}'),
+          onTap: isSelected ? null : onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 132, minHeight: 62),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    dateLabel,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: isSelected
+                          ? colorScheme.onPrimaryContainer
+                          : colorScheme.onSurface,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
-                ),
-              ],
-            ],
+                  if (weekdayLabel.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      weekdayLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.visible,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: isSelected
+                            ? colorScheme.onPrimaryContainer
+                            : colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -482,20 +476,19 @@ class _ProgrammingEmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      key: const Key('eventProgrammingEmptyState'),
+    return SizedBox(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: colorScheme.outlineVariant),
-      ),
-      child: Text(
-        'Esta data ainda não tem programação cadastrada.',
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: colorScheme.onSurfaceVariant,
-          fontWeight: FontWeight.w600,
+      child: Card(
+        key: const Key('eventProgrammingEmptyState'),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Text(
+            'Esta data ainda não tem programação cadastrada.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
       ),
     );
@@ -594,13 +587,9 @@ class _ProgrammingCard extends StatelessWidget {
     final timeLabel = hasTime
         ? (item.endTime == null ? item.time : '${item.time} às ${item.endTime}')
         : null;
-    return DecoratedBox(
+    return Card(
       key: Key('eventProgrammingItem_$itemIndex'),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: colorScheme.outlineVariant),
-      ),
+      clipBehavior: Clip.antiAlias,
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(

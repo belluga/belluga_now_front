@@ -6,24 +6,25 @@ import 'package:belluga_now/domain/invites/value_objects/invite_materialization_
 
 class InviteMaterializeResult {
   InviteMaterializeResult({
-    required this.inviteIdValue,
+    this.inviteIdValue,
     required this.statusValue,
     required this.creditedAcceptanceValue,
     required this.attendancePolicyValue,
     required this.acceptedAtValue,
   });
 
-  final InviteIdValue inviteIdValue;
+  final InviteIdValue? inviteIdValue;
   final InviteMaterializationStatusValue statusValue;
   final InviteCreditedAcceptanceValue creditedAcceptanceValue;
   final InviteAttendancePolicyValue attendancePolicyValue;
   final InviteAcceptedAtValue acceptedAtValue;
 
-  String get inviteId => inviteIdValue.value;
+  String get inviteId => inviteIdValue?.value ?? '';
   String get status => statusValue.value;
   bool get creditedAcceptance => creditedAcceptanceValue.value;
   String get attendancePolicy => attendancePolicyValue.value;
   DateTime? get acceptedAt => acceptedAtValue.value;
 
   bool get isPending => status == 'pending';
+  bool get isSelfIssuerPreview => status == 'self_issuer_preview';
 }

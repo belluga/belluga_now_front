@@ -38,11 +38,11 @@ import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/r
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/controllers/immersive_event_detail_controller.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/dynamic_footer.dart';
+import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/event_local_section.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/event_info_section.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/event_programming_section.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/immersive_hero.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/linked_profile_category_section.dart';
-import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/location_section.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/overlapped_invite_avatars.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/swipeable_invite_widget.dart';
 import 'package:flutter/foundation.dart';
@@ -220,22 +220,26 @@ class _ImmersiveEventDetailScreenState
                                 favoriteAccountProfileIds:
                                     favoriteAccountProfileIds,
                               ),
-                              ImmersiveCommonTabs.directions(
-                                content: LocationSection(
-                                  event: resolvedEvent,
-                                  canOpenMap: _canOpenEventMap(resolvedEvent),
-                                  onOpenMap: _canOpenEventMap(resolvedEvent)
-                                      ? () => _openEventMap(resolvedEvent)
-                                      : null,
-                                  onOpenDestinationMap:
-                                      _openProgrammingLocationMap,
-                                  onOpenDirectDirections:
-                                      _launchDirectDirections,
-                                  onOpenOtherDirections:
-                                      _presentDirectionsChooserForTarget,
+                              if (_shouldShowLocalTab(resolvedEvent))
+                                ImmersiveCommonTabs.custom(
+                                  title: 'O Local',
+                                  content: EventLocalSection(
+                                    event: resolvedEvent,
+                                    profileTypeRegistry:
+                                        _controller.profileTypeRegistry,
+                                    canOpenMap: _canOpenEventMap(resolvedEvent),
+                                    onOpenMap: _canOpenEventMap(resolvedEvent)
+                                        ? () => _openEventMap(resolvedEvent)
+                                        : null,
+                                    onOpenDestinationMap:
+                                        _openProgrammingLocationMap,
+                                    onOpenDirectDirections:
+                                        _launchDirectDirections,
+                                    onOpenOtherDirections:
+                                        _presentDirectionsChooserForTarget,
+                                  ),
+                                  footer: null,
                                 ),
-                                footer: null,
-                              ),
                             ];
 
                             final footer =
@@ -318,6 +322,14 @@ class _ImmersiveEventDetailScreenState
   bool _hasAboutContent(EventModel event) {
     final rawHtml = event.content.value ?? '';
     return InviteFromEventFactory.stripHtml(rawHtml).isNotEmpty;
+  }
+
+  bool _shouldShowLocalTab(EventModel event) {
+    final venue = event.venue;
+    if (venue == null) {
+      return false;
+    }
+    return venue.displayName.trim().isNotEmpty;
   }
 
   List<ImmersiveHeroAction> _buildHeroActions(EventModel event) {

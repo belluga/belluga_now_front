@@ -8,15 +8,21 @@ class InviteDecisionFooter extends StatelessWidget {
     required this.onDecline,
     required this.onRequestAuthentication,
     required this.requiresAuthentication,
+    this.isIssuerPreview = false,
   });
 
   final VoidCallback onAccept;
   final VoidCallback onDecline;
   final VoidCallback onRequestAuthentication;
   final bool requiresAuthentication;
+  final bool isIssuerPreview;
 
   @override
   Widget build(BuildContext context) {
+    if (isIssuerPreview) {
+      return const SizedBox.shrink();
+    }
+
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isCompact = MediaQuery.sizeOf(context).width < 360;
@@ -75,8 +81,9 @@ class InviteDecisionFooter extends StatelessWidget {
                     ),
                   ),
                   Padding(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: isCompact ? 6 : 10),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isCompact ? 6 : 10,
+                    ),
                     child: Icon(
                       Icons.swipe,
                       color: Colors.white.withValues(alpha: 0.85),
