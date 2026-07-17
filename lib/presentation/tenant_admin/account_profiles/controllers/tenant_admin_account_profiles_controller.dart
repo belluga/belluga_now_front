@@ -710,7 +710,16 @@ class TenantAdminAccountProfilesController implements Disposable {
   }
 
   void updateEditContactMode(BellugaContactSourceMode mode) {
-    _updateEditState(editStateStreamValue.value.copyWith(contactMode: mode));
+    final state = editStateStreamValue.value;
+    _updateEditState(
+      state.copyWith(
+        contactMode: mode,
+        contactBubbleSelection: _normalizeBubbleSelectionForMode(
+          mode: mode,
+          selection: state.contactBubbleSelection,
+        ),
+      ),
+    );
   }
 
   void updateEditContactSourceAccountProfileId(String? profileId) {
@@ -1287,8 +1296,15 @@ class TenantAdminAccountProfilesController implements Disposable {
   }
 
   void updateCreateContactMode(BellugaContactSourceMode mode) {
+    final state = createStateStreamValue.value;
     _updateCreateState(
-      createStateStreamValue.value.copyWith(contactMode: mode),
+      state.copyWith(
+        contactMode: mode,
+        contactBubbleSelection: _normalizeBubbleSelectionForMode(
+          mode: mode,
+          selection: state.contactBubbleSelection,
+        ),
+      ),
     );
   }
 
@@ -2477,6 +2493,19 @@ class TenantAdminAccountProfilesController implements Disposable {
     }
     if (selection is BellugaContactBubbleSelectionPersisted &&
         selection.channelId == removedDraft?.id) {
+      return const BellugaContactBubbleSelectionMutation.clear();
+    }
+    return selection;
+  }
+
+  BellugaContactBubbleSelectionMutation _normalizeBubbleSelectionForMode({
+    required BellugaContactSourceMode mode,
+    required BellugaContactBubbleSelectionMutation selection,
+  }) {
+    if (mode == BellugaContactSourceMode.own) {
+      return selection;
+    }
+    if (selection is BellugaContactBubbleSelectionDraft) {
       return const BellugaContactBubbleSelectionMutation.clear();
     }
     return selection;

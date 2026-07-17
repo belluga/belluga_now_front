@@ -361,6 +361,31 @@ void main() {
   );
 
   test(
+    'materializeShareCode maps self issuer preview state from canonical payload',
+    () async {
+      final repository = InvitesRepository(
+        backend: _FakeInvitesBackend(
+          materializeResponse: {
+            'invite_id': null,
+            'status': 'self_issuer_preview',
+            'credited_acceptance': false,
+            'attendance_policy': 'free_confirmation_only',
+            'accepted_at': null,
+          },
+        ),
+      );
+
+      final result = await repository.materializeShareCode(
+        invitesRepoString('ABCD1234', defaultValue: '', isRequired: true),
+      );
+
+      expect(result.status, 'self_issuer_preview');
+      expect(result.isPending, isFalse);
+      expect(result.creditedAcceptance, isFalse);
+    },
+  );
+
+  test(
     'declineInvite maps canonical payload and refreshes pending invites',
     () async {
       final backend = _FakeInvitesBackend(

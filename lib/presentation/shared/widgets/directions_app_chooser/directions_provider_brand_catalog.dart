@@ -14,6 +14,7 @@ class DirectionsProviderBrandCatalog {
     foregroundColor: Color(0xFF1F1F1F),
     primaryLogoSize: Size(34, 48),
     compactLogoSize: Size(28, 38),
+    microLogoSize: Size(20, 28),
     sheetLogoSize: Size(24, 34),
     sourceUrl:
         'https://upload.wikimedia.org/wikipedia/commons/a/aa/Google_Maps_icon_%282020%29.svg',
@@ -30,7 +31,14 @@ class DirectionsProviderBrandCatalog {
     foregroundColor: Color(0xFF101820),
     primaryLogoSize: Size(86, 25),
     compactLogoSize: Size(70, 20),
+    microLogoSize: Size(30, 10),
     sheetLogoSize: Size(52, 15),
+    compactIconAssetPath: 'assets/brands/directions/waze_app_icon_2026.jpg',
+    compactIconAssetType: DirectionsProviderBrandAssetType.rasterImage,
+    compactIconSize: Size(30, 30),
+    compactIconSourceUrl:
+        'https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/20/16/09/20160991-52e7-cbe5-7c99-6fd7c0539379/AppIcon-0-0-1x_U007epad-0-1-0-85-220.png/512x512bb.jpg',
+    compactLogoTint: null,
     sourceUrl:
         'https://upload.wikimedia.org/wikipedia/commons/3/37/Waze_logo_2022.png',
     sourceDescriptionUrl:
@@ -46,7 +54,14 @@ class DirectionsProviderBrandCatalog {
     foregroundColor: Color(0xFFFFFFFF),
     primaryLogoSize: Size(76, 16),
     compactLogoSize: Size(60, 13),
+    microLogoSize: Size(28, 8),
     sheetLogoSize: Size(46, 10),
+    compactIconAssetPath: 'assets/brands/directions/uber_app_icon_2026.jpg',
+    compactIconAssetType: DirectionsProviderBrandAssetType.rasterImage,
+    compactIconSize: Size(28, 28),
+    compactIconSourceUrl:
+        'https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/b0/00/4e/b0004ede-5b3e-88cd-658e-266661f04de0/AppIcon-0-0-1x_U007emarketing-0-8-0-0-85-220.png/512x512bb.jpg',
+    compactLogoTint: Color(0xFF111111),
     logoTint: Color(0xFFFFFFFF),
     sourceUrl:
         'https://upload.wikimedia.org/wikipedia/commons/8/8d/Uber_logotype.svg',
@@ -62,6 +77,7 @@ class DirectionsProviderBrandCatalog {
     foregroundColor: Color(0xFF1F1F1F),
     primaryLogoSize: Size(42, 42),
     compactLogoSize: Size(34, 34),
+    microLogoSize: Size(24, 24),
     sheetLogoSize: Size(34, 34),
     sourceUrl:
         'https://upload.wikimedia.org/wikipedia/commons/2/2a/99_logo.png',

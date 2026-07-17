@@ -13,7 +13,7 @@ InviteMaterializeResult buildInviteMaterializeResult({
   DateTime? acceptedAt,
 }) {
   return InviteMaterializeResult(
-    inviteIdValue: _buildInviteIdValue(inviteId),
+    inviteIdValue: _buildInviteIdValueOrNull(inviteId),
     statusValue: _buildMaterializationStatusValue(status),
     creditedAcceptanceValue: _buildCreditedAcceptanceValue(creditedAcceptance),
     attendancePolicyValue: _buildAttendancePolicyValue(attendancePolicy),
@@ -21,7 +21,10 @@ InviteMaterializeResult buildInviteMaterializeResult({
   );
 }
 
-InviteIdValue _buildInviteIdValue(String value) {
+InviteIdValue? _buildInviteIdValueOrNull(String value) {
+  if (value.trim().isEmpty) {
+    return null;
+  }
   final inviteIdValue = InviteIdValue()..parse(value);
   return inviteIdValue;
 }

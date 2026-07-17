@@ -64,7 +64,7 @@ Future<void> _openTenantPublicMapEntryFlow(
     LocationPermissionRoute(
       initialState: blocker,
       allowContinueWithoutLocation: true,
-      popRouteAfterResult: false,
+      popRouteAfterResult: true,
       onResult: (result) {
         if (didResolvePermissionRoute) {
           return;
@@ -102,7 +102,6 @@ Future<void> _openTenantPublicMapEntryFlow(
             completeResolution();
             return;
           case LocationPermissionGateResult.cancelled:
-            unawaited(router.maybePop());
             completeResolution();
             return;
         }

@@ -20,6 +20,7 @@ import 'package:belluga_now/presentation/shared/favorites/account_profile_favori
 import 'package:belluga_now/presentation/shared/sharing/public_share_launcher.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
 import 'package:belluga_now/presentation/shared/visuals/resolved_profile_type_visual.dart';
+import 'package:belluga_now/presentation/shared/widgets/account_profile_overlapping_identity_card.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/shared/widgets/account_profile_identity_block.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser.dart';
@@ -2938,26 +2939,14 @@ class _AccountProfileDetailScreenState
     return Padding(
       key: Key('accountProfileNestedGroup_${group.id}'),
       padding: const EdgeInsets.all(16),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final width = constraints.maxWidth;
-          final columns = width >= 720 ? 3 : (width >= 460 ? 2 : 1);
-          return GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: columns,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              mainAxisExtent: columns == 1 ? 124 : 136,
-            ),
-            itemCount: group.profiles.length,
-            itemBuilder: (context, index) {
-              final member = group.profiles[index];
-              return _nestedProfileMemberCard(group, member);
-            },
-          );
-        },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final entry in group.profiles.asMap().entries) ...[
+            if (entry.key > 0) const SizedBox(height: 12),
+            _nestedProfileMemberCard(group, entry.value),
+          ],
+        ],
       ),
     );
   }
@@ -2966,6 +2955,7 @@ class _AccountProfileDetailScreenState
     AccountProfileNestedGroup group,
     AccountProfileNestedGroupMember member,
   ) {
+    final theme = Theme.of(context);
     final colorScheme = Theme.of(context).colorScheme;
     final memberProfile = _profileFromNestedMember(member);
     final resolvedVisual = _controller.resolvedVisualFor(memberProfile);
@@ -2973,80 +2963,49 @@ class _AccountProfileDetailScreenState
     final labels = member.tags
         .map((tag) => tag.value.trim())
         .where((label) => label.isNotEmpty)
-        .take(2)
         .toList(growable: false);
-    return Material(
-      key: Key('accountProfileNestedCard_${group.id}_${member.id}'),
-      color: colorScheme.surfaceContainerLow,
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: memberPath == null
-            ? null
-            : () => _safeRouterPushPath(memberPath),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: AccountProfileIdentityBlock(
-                  name: member.name,
-                  avatarUrl: resolvedVisual.identityAvatarUrl,
-                  typeVisual: resolvedVisual.typeVisual,
-                  avatarSize: 48,
-                  avatarSpacing: 10,
-                  typeAvatarSize: 24,
-                  typeAvatarIconSize: 14,
-                  titleSpacing: 6,
-                  titleStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.w900,
+    return Stack(
+      children: [
+        AccountProfileOverlappingIdentityCard(
+          cardKey: Key('accountProfileNestedCard_${group.id}_${member.id}'),
+          tapKey: Key(
+            'accountProfileNestedCardTapTarget_${group.id}_${member.id}',
+          ),
+          name: member.name,
+          visual: resolvedVisual,
+          tags: labels,
+          onTap: memberPath == null
+              ? null
+              : () => _safeRouterPushPath(memberPath),
+          titleStyle: theme.textTheme.titleMedium?.copyWith(
+            color: colorScheme.primary,
+            fontWeight: FontWeight.w800,
+          ),
+          titleMaxLines: 2,
+          avatarSize: 64,
+          avatarLeft: 12,
+          avatarTop: 8,
+          cardLeft: 56,
+          contentLeadingInset: 44,
+          contentTrailingInset: memberPath == null ? 20 : 48,
+          minimumCardHeight: 124,
+        ),
+        if (memberPath != null)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: Icon(
+                    Icons.chevron_right,
+                    color: colorScheme.onSurfaceVariant,
                   ),
-                  supporting: labels.isEmpty
-                      ? null
-                      : Wrap(
-                          spacing: 6,
-                          runSpacing: 6,
-                          children: labels
-                              .map(
-                                (label) => Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: colorScheme.secondaryContainer,
-                                    borderRadius: BorderRadius.circular(999),
-                                  ),
-                                  child: Text(
-                                    label,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelSmall
-                                        ?.copyWith(
-                                          color: _contentColorForBackground(
-                                            colorScheme.secondaryContainer,
-                                          ),
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                  ),
-                                ),
-                              )
-                              .toList(growable: false),
-                        ),
                 ),
               ),
-              if (memberPath != null) ...[
-                const SizedBox(width: 10),
-                Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant),
-              ],
-            ],
+            ),
           ),
-        ),
-      ),
+      ],
     );
   }
 
