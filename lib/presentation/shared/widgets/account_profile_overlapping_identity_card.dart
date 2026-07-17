@@ -46,7 +46,7 @@ class AccountProfileOverlappingIdentityCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final hasAvatar = visual.identityAvatarUrl != null;
+    final hasAvatar = visual.hasIdentityAvatar;
     final hasLeadingVisual = hasAvatar || visual.typeVisual != null;
     final effectiveCardLeft = hasLeadingVisual ? cardLeft : 0.0;
     final effectiveLeadingInset = hasLeadingVisual ? contentLeadingInset : 20.0;
