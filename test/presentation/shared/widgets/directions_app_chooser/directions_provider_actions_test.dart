@@ -3,6 +3,7 @@ import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/d
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_provider_actions.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_provider_brand_catalog.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -166,6 +167,158 @@ void main() {
       compactUberAsset.assetName,
       DirectionsProviderBrandCatalog.uber.compactIconAssetPath,
     );
+  });
+
+  testWidgets('enabled providers expose one tappable semantic node', (
+    tester,
+  ) async {
+    for (final compact in <bool>[false, true]) {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: DirectionsProviderActions(
+              target: const DirectionsLaunchTarget(
+                destinationName: 'Casa Marracini',
+                latitude: -20.7389,
+                longitude: -40.8212,
+              ),
+              isPrimary: !compact,
+              compact: compact,
+              onOpenDirectDirections: (_, _) async {},
+              onOpenOtherDirections: (_) async {},
+            ),
+          ),
+        ),
+      );
+
+      for (final label in <String>['Waze', 'Uber', 'Outros']) {
+        final semanticFinder = find.semantics.byLabel(label);
+
+        expect(semanticFinder.evaluate(), hasLength(1));
+        expect(
+          semanticFinder.evaluate().single.getSemanticsData().hasAction(
+            SemanticsAction.tap,
+          ),
+          isTrue,
+        );
+      }
+    }
+  });
+
+  testWidgets('semantic and pointer activation share each callback once', (
+    tester,
+  ) async {
+    final directProviders = <DirectionsDirectProvider>[];
+    var otherDirectionsCount = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: DirectionsProviderActions(
+            target: const DirectionsLaunchTarget(
+              destinationName: 'Casa Marracini',
+              latitude: -20.7389,
+              longitude: -40.8212,
+            ),
+            isPrimary: true,
+            wazeButtonKey: const Key('semanticWazeButton'),
+            uberButtonKey: const Key('semanticUberButton'),
+            otherButtonKey: const Key('semanticOtherButton'),
+            onOpenDirectDirections: (provider, _) async {
+              directProviders.add(provider);
+            },
+            onOpenOtherDirections: (_) async {
+              otherDirectionsCount += 1;
+            },
+          ),
+        ),
+      ),
+    );
+
+    tester.semantics.tap(find.semantics.byLabel('Waze'));
+    await tester.pump();
+    expect(directProviders, <DirectionsDirectProvider>[
+      DirectionsDirectProvider.waze,
+    ]);
+
+    await tester.tap(find.byKey(const Key('semanticWazeButton')));
+    await tester.pump();
+    expect(directProviders, <DirectionsDirectProvider>[
+      DirectionsDirectProvider.waze,
+      DirectionsDirectProvider.waze,
+    ]);
+
+    tester.semantics.tap(find.semantics.byLabel('Uber'));
+    await tester.pump();
+    expect(directProviders, <DirectionsDirectProvider>[
+      DirectionsDirectProvider.waze,
+      DirectionsDirectProvider.waze,
+      DirectionsDirectProvider.uber,
+    ]);
+
+    await tester.tap(find.byKey(const Key('semanticUberButton')));
+    await tester.pump();
+    expect(directProviders, <DirectionsDirectProvider>[
+      DirectionsDirectProvider.waze,
+      DirectionsDirectProvider.waze,
+      DirectionsDirectProvider.uber,
+      DirectionsDirectProvider.uber,
+    ]);
+
+    tester.semantics.tap(find.semantics.byLabel('Outros'));
+    await tester.pump();
+    expect(otherDirectionsCount, 1);
+
+    await tester.tap(find.byKey(const Key('semanticOtherButton')));
+    await tester.pump();
+    expect(otherDirectionsCount, 2);
+  });
+
+  testWidgets('disabled providers expose no executable semantic action', (
+    tester,
+  ) async {
+    final directProviders = <DirectionsDirectProvider>[];
+
+    for (final compact in <bool>[false, true]) {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: DirectionsProviderActions(
+              target: const DirectionsLaunchTarget(
+                destinationName: 'Sem mapa',
+                address: 'Rua sem coordenadas',
+              ),
+              isPrimary: !compact,
+              compact: compact,
+              uberButtonKey: const Key('disabledUberButton'),
+              otherButtonKey: const Key('disabledOtherButton'),
+              onOpenDirectDirections: (provider, _) async {
+                directProviders.add(provider);
+              },
+              onOpenOtherDirections: null,
+            ),
+          ),
+        ),
+      );
+
+      final disabledControls = <(String, Key)>[
+        ('Uber', const Key('disabledUberButton')),
+        ('Outros', const Key('disabledOtherButton')),
+      ];
+
+      for (final (label, key) in disabledControls) {
+        final data = tester.getSemantics(find.byKey(key)).getSemanticsData();
+
+        expect(data.label, label);
+        expect(data.flagsCollection.isEnabled.toBoolOrNull(), isFalse);
+        expect(data.hasAction(SemanticsAction.tap), isFalse);
+      }
+
+      await tester.tap(find.byKey(const Key('disabledUberButton')));
+      await tester.tap(find.byKey(const Key('disabledOtherButton')));
+      await tester.pump();
+      expect(directProviders, isEmpty);
+    }
   });
 }
 

@@ -245,6 +245,7 @@ class _DirectionProviderButton extends StatelessWidget {
       button: true,
       enabled: enabled,
       label: accessibleLabel,
+      onTap: onPressed,
       child: ExcludeSemantics(child: button),
     );
   }
