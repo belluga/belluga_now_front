@@ -193,6 +193,63 @@ void main() {
     expect(find.text('Do tenant'), findsOneWidget);
   });
 
+  testWidgets(
+    'keeps the profile type selector within a narrow edit form for long labels',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(360, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+      profilesRepository.profileTypesToReturn = [
+        _profileType(
+          hasGallery: false,
+          hasNestedProfileGroups: false,
+          type: 'poi',
+          label: 'POI',
+        ),
+        _profileType(
+          hasGallery: false,
+          hasNestedProfileGroups: false,
+          type: 'long-label',
+          label: 'Tipo de perfil com um rotulo muito longo para o celular',
+        ),
+      ];
+      profilesRepository.profileToReturn = _profile(
+        id: 'route-profile',
+        profileType: 'poi',
+      );
+
+      await _pumpScreen(
+        tester,
+        const TenantAdminAccountProfileEditScreen(
+          accountSlug: 'route-account',
+          accountProfileId: 'route-profile',
+        ),
+      );
+
+      final profileTypeDropdown = find.byWidgetPredicate(
+        (widget) =>
+            widget is DropdownButtonFormField<String> &&
+            widget.decoration.labelText == 'Tipo de perfil',
+      );
+      final dropdown = tester.widget<DropdownButtonFormField<String>>(
+        profileTypeDropdown,
+      );
+      final innerDropdown = tester.widget<DropdownButton<String>>(
+        find.descendant(
+          of: profileTypeDropdown,
+          matching: find.byType(DropdownButton<String>),
+        ),
+      );
+
+      expect(dropdown.decoration.labelText, 'Tipo de perfil');
+      expect(innerDropdown.isExpanded, isTrue);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('renders display name field in edit form', (tester) async {
     final profilesRepository =
         GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
@@ -1141,10 +1198,12 @@ TenantAdminProfileTypeDefinition _profileType({
   required bool hasGallery,
   required bool hasNestedProfileGroups,
   bool hasContactChannels = false,
+  String type = 'poi',
+  String label = 'POI',
 }) {
   return tenantAdminProfileTypeDefinitionFromRaw(
-    type: 'poi',
-    label: 'POI',
+    type: type,
+    label: label,
     allowedTaxonomies: [],
     capabilities: TenantAdminProfileTypeCapabilities(
       isFavoritable: TenantAdminFlagValue(false),

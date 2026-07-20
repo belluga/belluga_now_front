@@ -82,6 +82,26 @@ class TenantAdminAccountProfilesRequestEncoder {
     return payload;
   }
 
+  Map<String, dynamic> encodeFetchAccountProfileCandidatesQuery({
+    required String scope,
+    required String search,
+    required int page,
+    required int perPage,
+    String? excludeAccountProfileId,
+  }) {
+    final payload = <String, dynamic>{
+      'scope': scope,
+      'search': search.trim(),
+      'page': page,
+      'per_page': perPage,
+    };
+    if (excludeAccountProfileId != null &&
+        excludeAccountProfileId.trim().isNotEmpty) {
+      payload['exclude_account_profile_id'] = excludeAccountProfileId.trim();
+    }
+    return payload;
+  }
+
   Map<String, dynamic> encodeFetchContactSourceCandidatesQuery({
     required int page,
     required int pageSize,
@@ -93,6 +113,32 @@ class TenantAdminAccountProfilesRequestEncoder {
       payload['exclude_account_profile_id'] = excludeAccountProfileId.trim();
     }
     return payload;
+  }
+
+  Map<String, dynamic> encodeFetchNestedGroupMembersQuery({
+    int? perPage,
+    String? cursor,
+  }) {
+    final payload = <String, dynamic>{};
+    if (perPage != null && perPage > 0) {
+      payload['per_page'] = perPage;
+    }
+    if (cursor != null && cursor.trim().isNotEmpty) {
+      payload['cursor'] = cursor.trim();
+    }
+    return payload;
+  }
+
+  Map<String, dynamic> encodePatchNestedGroupMembers({
+    required int aggregateRevision,
+    List<String> addIds = const <String>[],
+    List<String> removeIds = const <String>[],
+  }) {
+    return <String, dynamic>{
+      'aggregate_revision': aggregateRevision,
+      'add_ids': addIds,
+      'remove_ids': removeIds,
+    };
   }
 
   Map<String, dynamic> encodeCreateAccountProfile({
@@ -130,7 +176,7 @@ class TenantAdminAccountProfilesRequestEncoder {
       'avatar_url': ?avatarUrl,
       'cover_url': ?coverUrl,
       if (nestedProfileGroups.isNotEmpty)
-        'nested_profile_groups': encodeTenantAdminNestedProfileGroups(
+        'nested_profile_groups': encodeTenantAdminNestedProfileGroupMetadata(
           nestedProfileGroups,
         ),
       'contact_mode': contactMode.rawValue,
@@ -184,7 +230,8 @@ class TenantAdminAccountProfilesRequestEncoder {
     if (removeAvatar == true) payload['remove_avatar'] = true;
     if (removeCover == true) payload['remove_cover'] = true;
     if (nestedProfileGroups != null) {
-      payload['nested_profile_groups'] = encodeTenantAdminNestedProfileGroups(
+      payload['nested_profile_groups'] =
+          encodeTenantAdminNestedProfileGroupMetadata(
         nestedProfileGroups,
       );
     }

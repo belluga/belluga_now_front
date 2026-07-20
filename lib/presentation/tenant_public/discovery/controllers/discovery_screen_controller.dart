@@ -74,6 +74,7 @@ class DiscoveryScreenController extends Object
   final AuthRepositoryContract? _authRepository;
 
   static const Duration _searchDebounceDuration = Duration(milliseconds: 350);
+  static const int _minimumSearchGraphemes = 2;
   static const String _discoveryAccountProfilesSurface =
       'discovery.account_profiles';
   static const DiscoveryFilterPolicy _discoveryAccountProfilesFilterPolicy =
@@ -356,6 +357,7 @@ class DiscoveryScreenController extends Object
 
     try {
       final query = searchQueryStreamValue.value.trim();
+      final effectiveQuery = _effectiveSearchQuery(query);
       final selectedType = selectedTypeFilterStreamValue.value;
       final typeFilters = _selectedAccountProfileTypeFilters();
       final taxonomyFilters = _selectedAccountProfileTaxonomyFilters();
@@ -364,9 +366,11 @@ class DiscoveryScreenController extends Object
           _accountProfilesRepository.currentPagedAccountProfilesPage.value <= 0;
       if (shouldLoadFirstPage) {
         await _accountProfilesRepository.loadAccountProfilesPage(
-          query: query.isEmpty
+          query: effectiveQuery == null
               ? null
-              : AccountProfilesRepositoryContractPrimString.fromRaw(query),
+              : AccountProfilesRepositoryContractPrimString.fromRaw(
+                  effectiveQuery,
+                ),
           typeFilter: selectedType == null
               ? null
               : AccountProfilesRepositoryContractPrimString.fromRaw(
@@ -377,9 +381,11 @@ class DiscoveryScreenController extends Object
         );
       } else {
         await _accountProfilesRepository.loadNextAccountProfilesPage(
-          query: query.isEmpty
+          query: effectiveQuery == null
               ? null
-              : AccountProfilesRepositoryContractPrimString.fromRaw(query),
+              : AccountProfilesRepositoryContractPrimString.fromRaw(
+                  effectiveQuery,
+                ),
           typeFilter: selectedType == null
               ? null
               : AccountProfilesRepositoryContractPrimString.fromRaw(
@@ -414,7 +420,7 @@ class DiscoveryScreenController extends Object
         return;
       }
       if (_shouldSyncNearby(
-        query: query,
+        query: effectiveQuery ?? '',
         selectedType: selectedType,
         typeFilters: typeFilters,
         taxonomyFilters: taxonomyFilters,
@@ -527,6 +533,17 @@ class DiscoveryScreenController extends Object
     _searchDebounce = Timer(_searchDebounceDuration, () {
       unawaited(_reloadPartners());
     });
+  }
+
+  String? _effectiveSearchQuery(String query) {
+    final normalized = query.trim();
+    if (normalized.isEmpty) {
+      return null;
+    }
+
+    return normalized.characters.length < _minimumSearchGraphemes
+        ? null
+        : normalized;
   }
 
   void toggleSearch() {

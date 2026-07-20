@@ -1697,6 +1697,39 @@ void main() {
   );
 
   test(
+    'discovery search suppresses one-grapheme requests and keeps the baseline page query',
+    () async {
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: [
+              _profile(id: _mongoId('min-1'), type: 'artist', name: 'Baseline'),
+            ],
+            hasMore: false,
+          ),
+        },
+      );
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+      );
+
+      await controller.init();
+      final initialRequestCount = repository.pageRequests.length;
+      controller.setSearchQuery('v');
+      await Future<void>.delayed(const Duration(milliseconds: 450));
+
+      expect(repository.pageRequests.length, initialRequestCount + 1);
+      expect(repository.pageRequests.last.query, isNull);
+      expect(controller.filteredPartnersStreamValue.value, hasLength(1));
+      expect(
+        controller.filteredPartnersStreamValue.value.first.name,
+        'Baseline',
+      );
+      controller.onDispose();
+    },
+  );
+
+  test(
     'discovery search keeps backend matches even when local name/tags do not match',
     () async {
       final repository = _FakeAccountProfilesRepository(
@@ -2275,17 +2308,18 @@ DiscoveryScreenController _buildDiscoveryController({
       ),
     );
   }
-  if (!GetIt.I.isRegistered<LocationOriginServiceContract>()) {
-    GetIt.I.registerSingleton<LocationOriginServiceContract>(
-      LocationOriginService(
-        appDataRepository: GetIt.I.get<AppDataRepositoryContract>(),
-        userLocationRepository:
-            GetIt.I.isRegistered<UserLocationRepositoryContract>()
-            ? GetIt.I.get<UserLocationRepositoryContract>()
-            : null,
-      ),
-    );
+  if (GetIt.I.isRegistered<LocationOriginServiceContract>()) {
+    GetIt.I.unregister<LocationOriginServiceContract>();
   }
+  GetIt.I.registerSingleton<LocationOriginServiceContract>(
+    LocationOriginService(
+      appDataRepository: GetIt.I.get<AppDataRepositoryContract>(),
+      userLocationRepository:
+          GetIt.I.isRegistered<UserLocationRepositoryContract>()
+          ? GetIt.I.get<UserLocationRepositoryContract>()
+          : null,
+    ),
+  );
   return DiscoveryScreenController(
     accountProfilesRepository: accountProfilesRepository,
     discoveryFiltersRepository: discoveryFiltersRepository,

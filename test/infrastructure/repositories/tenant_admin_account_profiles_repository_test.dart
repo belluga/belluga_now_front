@@ -282,44 +282,88 @@ void main() {
     },
   );
 
-  test('updateAccountProfile sends nested profile group payload', () async {
-    final adapter = _CaptureAdapter();
-    final dio = Dio()..httpClientAdapter = adapter;
-    final repository = TenantAdminAccountProfilesRepository(dio: dio);
+  test(
+    'createAccountProfile sends nested profile group metadata only',
+    () async {
+      final adapter = _CaptureAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminAccountProfilesRepository(dio: dio);
 
-    await repository.updateAccountProfile(
-      accountProfileId: tenantAdminAccountProfilesRepoString(
-        'profile-1',
-        defaultValue: '',
-        isRequired: true,
-      ),
-      nestedProfileGroups: <TenantAdminNestedProfileGroup>[
-        TenantAdminNestedProfileGroup(
-          idValue: TenantAdminNestedProfileGroupTextValue('parceiros'),
-          labelValue: TenantAdminNestedProfileGroupTextValue('Parceiros'),
-          orderValue: TenantAdminNestedProfileGroupOrderValue(0),
-          accountProfileIdValues: <TenantAdminNestedProfileGroupTextValue>[
-            TenantAdminNestedProfileGroupTextValue('507f1f77bcf86cd799439081'),
-            TenantAdminNestedProfileGroupTextValue('507f1f77bcf86cd799439082'),
-          ],
+      await repository.createAccountProfile(
+        accountId: tenantAdminAccountProfilesRepoString(
+          'account-1',
+          defaultValue: '',
+          isRequired: true,
         ),
-      ],
-    );
-
-    final data = adapter.lastRequest?.data;
-    expect(data, isA<Map<String, dynamic>>());
-    expect((data as Map<String, dynamic>)['nested_profile_groups'], [
-      {
-        'id': 'parceiros',
-        'label': 'Parceiros',
-        'order': 0,
-        'account_profile_ids': [
-          '507f1f77bcf86cd799439081',
-          '507f1f77bcf86cd799439082',
+        profileType: tenantAdminAccountProfilesRepoString(
+          'personal',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        displayName: tenantAdminAccountProfilesRepoString(
+          'Profile',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        nestedProfileGroups: <TenantAdminNestedProfileGroup>[
+          TenantAdminNestedProfileGroup(
+            idValue: TenantAdminNestedProfileGroupTextValue('parceiros'),
+            labelValue: TenantAdminNestedProfileGroupTextValue('Parceiros'),
+            orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+            accountProfileIdValues: <TenantAdminNestedProfileGroupTextValue>[
+              TenantAdminNestedProfileGroupTextValue(
+                '507f1f77bcf86cd799439081',
+              ),
+            ],
+          ),
         ],
-      },
-    ]);
-  });
+      );
+
+      final data = adapter.lastRequest?.data;
+      expect(data, isA<Map<String, dynamic>>());
+      expect((data as Map<String, dynamic>)['nested_profile_groups'], [
+        {'id': 'parceiros', 'label': 'Parceiros', 'order': 0},
+      ]);
+    },
+  );
+
+  test(
+    'updateAccountProfile sends nested profile group metadata only',
+    () async {
+      final adapter = _CaptureAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+      await repository.updateAccountProfile(
+        accountProfileId: tenantAdminAccountProfilesRepoString(
+          'profile-1',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        nestedProfileGroups: <TenantAdminNestedProfileGroup>[
+          TenantAdminNestedProfileGroup(
+            idValue: TenantAdminNestedProfileGroupTextValue('parceiros'),
+            labelValue: TenantAdminNestedProfileGroupTextValue('Parceiros'),
+            orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+            accountProfileIdValues: <TenantAdminNestedProfileGroupTextValue>[
+              TenantAdminNestedProfileGroupTextValue(
+                '507f1f77bcf86cd799439081',
+              ),
+              TenantAdminNestedProfileGroupTextValue(
+                '507f1f77bcf86cd799439082',
+              ),
+            ],
+          ),
+        ],
+      );
+
+      final data = adapter.lastRequest?.data;
+      expect(data, isA<Map<String, dynamic>>());
+      expect((data as Map<String, dynamic>)['nested_profile_groups'], [
+        {'id': 'parceiros', 'label': 'Parceiros', 'order': 0},
+      ]);
+    },
+  );
 
   test('updateAccountProfile encodes mirrored contact payload', () async {
     final adapter = _CaptureAdapter();
@@ -352,6 +396,162 @@ void main() {
     expect(data['contact_channels'], const <Map<String, dynamic>>[]);
     expect(data['contact_bubble_channel_id'], 'whatsapp-primary');
   });
+
+  test(
+    'fetchNestedGroupMembersPage uses canonical members subresource contract',
+    () async {
+      final adapter = _CaptureAdapter(
+        responseBody: <String, dynamic>{
+          'data': <Map<String, dynamic>>[
+            <String, dynamic>{
+              'id': '507f1f77bcf86cd799439081',
+              'display_name': 'Active artist',
+              'is_queryable_candidate': true,
+            },
+            <String, dynamic>{
+              'id': '507f1f77bcf86cd799439082',
+              'display_name': null,
+              'is_queryable_candidate': false,
+            },
+          ],
+          'next_cursor': 'cursor-2',
+          'aggregate_revision': 4,
+        },
+      );
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+      final page = await repository.fetchNestedGroupMembersPage(
+        accountProfileId: tenantAdminAccountProfilesRepoString(
+          'profile-1',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        groupId: tenantAdminAccountProfilesRepoString(
+          'linked',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        perPage: tenantAdminAccountProfilesRepoInt(20, defaultValue: 20),
+      );
+
+      expect(
+        adapter.lastRequest?.path,
+        contains(
+          'https://tenant.test/admin/api/v1/account_profiles/profile-1/nested_profile_groups/linked/members',
+        ),
+      );
+      expect(adapter.lastRequest?.queryParameters, <String, dynamic>{
+        'per_page': 20,
+      });
+      expect(page.aggregateRevision, 4);
+      expect(page.nextCursor, 'cursor-2');
+      expect(page.items, hasLength(2));
+      expect(page.items.first.id, '507f1f77bcf86cd799439081');
+      expect(page.items.first.displayName, 'Active artist');
+      expect(page.items.first.isQueryableCandidate, isTrue);
+      expect(page.items.last.id, '507f1f77bcf86cd799439082');
+      expect(page.items.last.displayName, isNull);
+      expect(page.items.last.isQueryableCandidate, isFalse);
+    },
+  );
+
+  test(
+    'fetchNestedGroupMembersPage sends cursor without conflicting per_page',
+    () async {
+      final adapter = _CaptureAdapter(
+        responseBody: <String, dynamic>{
+          'data': const <Map<String, dynamic>>[],
+          'next_cursor': null,
+          'aggregate_revision': 4,
+        },
+      );
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+      await repository.fetchNestedGroupMembersPage(
+        accountProfileId: tenantAdminAccountProfilesRepoString(
+          'profile-1',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        groupId: tenantAdminAccountProfilesRepoString(
+          'linked',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        perPage: tenantAdminAccountProfilesRepoInt(20, defaultValue: 20),
+        cursor: tenantAdminAccountProfilesRepoString(
+          'cursor-2',
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
+
+      expect(adapter.lastRequest?.queryParameters, <String, dynamic>{
+        'cursor': 'cursor-2',
+      });
+    },
+  );
+
+  test(
+    'patchNestedGroupMembers sends aggregate revision and delta ids',
+    () async {
+      final adapter = _CaptureAdapter(
+        responseBody: <String, dynamic>{
+          'data': <String, dynamic>{'member_count': 2, 'aggregate_revision': 5},
+        },
+      );
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+      final result = await repository.patchNestedGroupMembers(
+        accountProfileId: tenantAdminAccountProfilesRepoString(
+          'profile-1',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        groupId: tenantAdminAccountProfilesRepoString(
+          'linked',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        aggregateRevision: tenantAdminAccountProfilesRepoInt(
+          4,
+          defaultValue: 4,
+        ),
+        addIds: <TenantAdminAccountProfilesRepoString>[
+          tenantAdminAccountProfilesRepoString(
+            '507f1f77bcf86cd799439081',
+            defaultValue: '',
+            isRequired: true,
+          ),
+        ],
+        removeIds: <TenantAdminAccountProfilesRepoString>[
+          tenantAdminAccountProfilesRepoString(
+            '507f1f77bcf86cd799439082',
+            defaultValue: '',
+            isRequired: true,
+          ),
+        ],
+      );
+
+      expect(adapter.lastRequest?.method, 'PATCH');
+      expect(
+        adapter.lastRequest?.path,
+        contains(
+          'https://tenant.test/admin/api/v1/account_profiles/profile-1/nested_profile_groups/linked/members',
+        ),
+      );
+      expect(adapter.lastRequest?.data, <String, dynamic>{
+        'aggregate_revision': 4,
+        'add_ids': <String>['507f1f77bcf86cd799439081'],
+        'remove_ids': <String>['507f1f77bcf86cd799439082'],
+      });
+      expect(result.memberCount, 2);
+      expect(result.aggregateRevision, 5);
+    },
+  );
 
   test(
     'updateAccountProfileGallery sends multipart patch tunnel with encoded groups and uploads',
@@ -1141,8 +1341,12 @@ class _StubTenantScope implements TenantAdminTenantScopeContract {
 }
 
 class _CaptureAdapter implements HttpClientAdapter {
+  _CaptureAdapter({this.responseBody});
+
   RequestOptions? lastRequest;
   final List<RequestOptions> requests = <RequestOptions>[];
+  final Object? responseBody;
+  final int statusCode = 200;
 
   @override
   void close({bool force = false}) {}
@@ -1155,6 +1359,15 @@ class _CaptureAdapter implements HttpClientAdapter {
   ) async {
     lastRequest = options;
     requests.add(options);
+    if (responseBody != null) {
+      return ResponseBody.fromString(
+        jsonEncode(responseBody),
+        statusCode,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
     if (options.path.endsWith('/map_poi_projection_impact')) {
       return ResponseBody.fromString(
         jsonEncode({
