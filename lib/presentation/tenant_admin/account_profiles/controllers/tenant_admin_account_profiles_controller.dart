@@ -2338,40 +2338,45 @@ class TenantAdminAccountProfilesController implements Disposable {
       bubbleSelection: bubbleSelection,
     );
     var aggregateRevision = profile.aggregateRevision ?? 0;
-    for (final group in nestedProfileGroups) {
-      final addIds = group.accountProfileIdValues
-          .map((entry) => entry.value.trim())
-          .where((entry) => entry.isNotEmpty)
-          .toSet()
-          .map(
-            (entry) => tenantAdminAccountProfilesRepoString(
-              entry,
-              defaultValue: '',
-              isRequired: true,
-            ),
-          )
-          .toList(growable: false);
-      if (addIds.isEmpty) {
-        continue;
+    try {
+      for (final group in nestedProfileGroups) {
+        final addIds = group.accountProfileIdValues
+            .map((entry) => entry.value.trim())
+            .where((entry) => entry.isNotEmpty)
+            .toSet()
+            .map(
+              (entry) => tenantAdminAccountProfilesRepoString(
+                entry,
+                defaultValue: '',
+                isRequired: true,
+              ),
+            )
+            .toList(growable: false);
+        if (addIds.isEmpty) {
+          continue;
+        }
+        final mutation = await _profilesRepository.patchNestedGroupMembers(
+          accountProfileId: tenantAdminAccountProfilesRepoString(
+            profile.id,
+            defaultValue: '',
+            isRequired: true,
+          ),
+          groupId: tenantAdminAccountProfilesRepoString(
+            group.id,
+            defaultValue: '',
+            isRequired: true,
+          ),
+          aggregateRevision: tenantAdminAccountProfilesRepoInt(
+            aggregateRevision,
+            defaultValue: aggregateRevision,
+          ),
+          addIds: addIds,
+        );
+        aggregateRevision = mutation.aggregateRevision;
       }
-      final mutation = await _profilesRepository.patchNestedGroupMembers(
-        accountProfileId: tenantAdminAccountProfilesRepoString(
-          profile.id,
-          defaultValue: '',
-          isRequired: true,
-        ),
-        groupId: tenantAdminAccountProfilesRepoString(
-          group.id,
-          defaultValue: '',
-          isRequired: true,
-        ),
-        aggregateRevision: tenantAdminAccountProfilesRepoInt(
-          aggregateRevision,
-          defaultValue: aggregateRevision,
-        ),
-        addIds: addIds,
-      );
-      aggregateRevision = mutation.aggregateRevision;
+    } catch (error) {
+      await _rollbackCreatedProfile(profile.id);
+      rethrow;
     }
     if (aggregateRevision != (profile.aggregateRevision ?? 0)) {
       profile = await fetchProfile(profile.id);
@@ -2381,6 +2386,29 @@ class TenantAdminAccountProfilesController implements Disposable {
     }
     await loadProfiles(accountId);
     return profile;
+  }
+
+  Future<void> _rollbackCreatedProfile(String accountProfileId) async {
+    final profileId = accountProfileId.trim();
+    if (profileId.isEmpty) {
+      return;
+    }
+
+    final profileIdValue = tenantAdminAccountProfilesRepoString(
+      profileId,
+      defaultValue: '',
+      isRequired: true,
+    );
+
+    try {
+      await _profilesRepository.forceDeleteAccountProfile(profileIdValue);
+    } catch (_) {
+      try {
+        await _profilesRepository.deleteAccountProfile(profileIdValue);
+      } catch (_) {
+        // Preserve the original create-flow failure; cleanup is best effort.
+      }
+    }
   }
 
   Future<TenantAdminAccountProfile> updateProfile({

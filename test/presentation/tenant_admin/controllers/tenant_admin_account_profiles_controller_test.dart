@@ -269,6 +269,9 @@ class _FakeAccountProfilesRepository
   int? lastPatchNestedGroupMembersAggregateRevision;
   List<String> lastPatchNestedGroupAddIds = <String>[];
   List<String> lastPatchNestedGroupRemoveIds = <String>[];
+  Object? patchNestedGroupMembersError;
+  int forceDeleteAccountProfileCalls = 0;
+  int deleteAccountProfileCalls = 0;
   final Map<String, List<TenantAdminNestedGroupMemberPage>>
   nestedGroupMemberPagesByGroupId =
       <String, List<TenantAdminNestedGroupMemberPage>>{};
@@ -561,7 +564,9 @@ class _FakeAccountProfilesRepository
         ];
     final allItems = pages.expand((page) => page.items).toList(growable: false);
     final lastPage = pages.last;
-    lastNestedGroupMembersCursor = pages.length > 1 ? pages.first.nextCursor : null;
+    lastNestedGroupMembersCursor = pages.length > 1
+        ? pages.first.nextCursor
+        : null;
     return TenantAdminNestedGroupMemberPage(
       items: allItems,
       aggregateRevisionValue: lastPage.aggregateRevisionValue,
@@ -577,6 +582,10 @@ class _FakeAccountProfilesRepository
     List<TenantAdminAccountProfilesRepoString> addIds = const [],
     List<TenantAdminAccountProfilesRepoString> removeIds = const [],
   }) async {
+    final error = patchNestedGroupMembersError;
+    if (error != null) {
+      throw error;
+    }
     lastPatchNestedGroupMembersProfileId = accountProfileId.value;
     lastPatchNestedGroupMembersGroupId = groupId.value;
     lastPatchNestedGroupMembersAggregateRevision = aggregateRevision.value;
@@ -586,15 +595,18 @@ class _FakeAccountProfilesRepository
         .toList();
     return TenantAdminNestedGroupMemberMutationResult(
       memberCountValue: TenantAdminCountValue(2),
-      aggregateRevisionValue:
-          TenantAdminAccountProfileAggregateRevisionValue(5),
+      aggregateRevisionValue: TenantAdminAccountProfileAggregateRevisionValue(
+        5,
+      ),
     );
   }
 
   @override
   Future<void> deleteAccountProfile(
     TenantAdminAccountProfilesRepoString accountProfileId,
-  ) async {}
+  ) async {
+    deleteAccountProfileCalls += 1;
+  }
 
   @override
   Future<TenantAdminAccountProfile> restoreAccountProfile(
@@ -606,7 +618,9 @@ class _FakeAccountProfilesRepository
   @override
   Future<void> forceDeleteAccountProfile(
     TenantAdminAccountProfilesRepoString accountProfileId,
-  ) async {}
+  ) async {
+    forceDeleteAccountProfileCalls += 1;
+  }
 
   @override
   Future<TenantAdminProfileTypeDefinition> createProfileType({
@@ -984,6 +998,74 @@ void main() {
   );
 
   test(
+    'createProfile rolls back the created profile when nested member delta fails',
+    () async {
+      final createdProfile = tenantAdminAccountProfileFromRaw(
+        id: 'profile-1',
+        accountId: 'acc-1',
+        profileType: 'venue',
+        displayName: 'Perfil',
+        aggregateRevision: 1,
+      );
+      final profilesRepository = _FakeAccountProfilesRepository(
+        const <TenantAdminAccountProfile>[],
+        <TenantAdminProfileTypeDefinition>[
+          tenantAdminProfileTypeDefinitionFromRaw(
+            type: 'venue',
+            label: 'Venue',
+            allowedTaxonomies: [],
+            capabilities: TenantAdminProfileTypeCapabilities(
+              isFavoritable: TenantAdminFlagValue(true),
+              isPoiEnabled: TenantAdminFlagValue(true),
+              hasBio: TenantAdminFlagValue(false),
+              hasContent: TenantAdminFlagValue(false),
+              hasTaxonomies: TenantAdminFlagValue(false),
+              hasAvatar: TenantAdminFlagValue(false),
+              hasCover: TenantAdminFlagValue(false),
+              hasEvents: TenantAdminFlagValue(false),
+            ),
+          ),
+        ],
+      );
+      profilesRepository._profiles = <TenantAdminAccountProfile>[
+        createdProfile,
+      ];
+      profilesRepository.patchNestedGroupMembersError = StateError(
+        'delta failed',
+      );
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+
+      await expectLater(
+        controller.createProfile(
+          accountId: 'acc-1',
+          profileType: 'venue',
+          displayName: 'Perfil',
+          nestedProfileGroups: <TenantAdminNestedProfileGroup>[
+            TenantAdminNestedProfileGroup(
+              idValue: TenantAdminNestedProfileGroupTextValue('parceiros'),
+              labelValue: TenantAdminNestedProfileGroupTextValue('Parceiros'),
+              orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+              accountProfileIdValues: <TenantAdminNestedProfileGroupTextValue>[
+                TenantAdminNestedProfileGroupTextValue('profile-a'),
+              ],
+            ),
+          ],
+        ),
+        throwsA(isA<StateError>()),
+      );
+
+      expect(profilesRepository.createProfileCalls, 1);
+      expect(profilesRepository.forceDeleteAccountProfileCalls, 1);
+      expect(profilesRepository.deleteAccountProfileCalls, 0);
+    },
+  );
+
+  test(
     'switching create contact mode to mirrored clears draft bubble selection and omits local drafts from save payload',
     () {
       final controller = TenantAdminAccountProfilesController(
@@ -997,7 +1079,10 @@ void main() {
       );
 
       controller.addCreateContactChannel(BellugaContactChannelType.whatsapp);
-      final draft = controller.createStateStreamValue.value.contactChannelDrafts
+      final draft = controller
+          .createStateStreamValue
+          .value
+          .contactChannelDrafts
           .single
           .copyWith(value: '+55 (27) 99999-0000');
       controller.updateCreateContactChannel(draft);
@@ -1052,7 +1137,10 @@ void main() {
 
       await controller.loadEditProfile('profile-1');
       controller.addEditContactChannel(BellugaContactChannelType.whatsapp);
-      final draft = controller.editStateStreamValue.value.contactChannelDrafts
+      final draft = controller
+          .editStateStreamValue
+          .value
+          .contactChannelDrafts
           .last
           .copyWith(value: '+55 (27) 99999-2222');
       controller.updateEditContactChannel(draft);
@@ -1085,10 +1173,7 @@ void main() {
       final mirroredSelection = controller.editBubbleSelection(
         capabilityEnabled: true,
       );
-      expect(
-        mirroredSelection,
-        isA<BellugaContactBubbleSelectionPersisted>(),
-      );
+      expect(mirroredSelection, isA<BellugaContactBubbleSelectionPersisted>());
       expect(
         (mirroredSelection as BellugaContactBubbleSelectionPersisted).channelId,
         'mirrored-channel-1',
@@ -1344,7 +1429,8 @@ void main() {
               ],
               aggregateRevisionValue:
                   TenantAdminAccountProfileAggregateRevisionValue(4),
-              nextCursorValue: TenantAdminOptionalTextValue()..parse('cursor-2'),
+              nextCursorValue: TenantAdminOptionalTextValue()
+                ..parse('cursor-2'),
             ),
             TenantAdminNestedGroupMemberPage(
               items: <TenantAdminAccountProfileSelectionSummary>[
