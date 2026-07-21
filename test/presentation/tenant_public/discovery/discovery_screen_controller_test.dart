@@ -57,7 +57,7 @@ void main() {
   });
 
   test(
-    'available discovery types include only publicly discoverable profile types',
+    'available discovery types come from the public registry while partner rows stay server-authoritative',
     () async {
       final repository = _FakeAccountProfilesRepository(
         pages: {
@@ -77,8 +77,11 @@ void main() {
       await controller.init();
 
       expect(controller.availableTypesStreamValue.value, ['artist']);
-      expect(controller.filteredPartnersStreamValue.value, hasLength(1));
-      expect(controller.filteredPartnersStreamValue.value.first.type, 'artist');
+      expect(controller.filteredPartnersStreamValue.value, hasLength(2));
+      expect(
+        controller.filteredPartnersStreamValue.value.map((profile) => profile.type),
+        ['artist', 'curator'],
+      );
       expect(repository.allAccountProfilesStreamValue.value, hasLength(2));
       controller.onDispose();
     },
