@@ -1416,6 +1416,9 @@ class TenantAdminAccountProfilesController implements Disposable {
   }
 
   void resetEditState() {
+    if (_isDisposed) {
+      return;
+    }
     _loadedEditProfileSnapshot = null;
     _updateEditState(TenantAdminAccountProfileEditDraft.initial());
     editLoadingStreamValue.addValue(false);
@@ -2102,6 +2105,9 @@ class TenantAdminAccountProfilesController implements Disposable {
   }
 
   void resetFormControllers() {
+    if (_isDisposed) {
+      return;
+    }
     slugController.clear();
     displayNameController.clear();
     bioController.clear();
@@ -2152,6 +2158,9 @@ class TenantAdminAccountProfilesController implements Disposable {
   }
 
   void resetCreateState() {
+    if (_isDisposed) {
+      return;
+    }
     _updateCreateState(TenantAdminAccountProfileCreateDraft.initial());
   }
 
