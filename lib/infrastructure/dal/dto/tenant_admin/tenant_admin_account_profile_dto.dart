@@ -11,6 +11,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dar
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 
@@ -106,6 +107,7 @@ class TenantAdminAccountProfileDTO {
             id: groupJson['id'] ?? groupJson['key'],
             label: groupJson['label'],
             order: groupJson['order'],
+            memberCount: groupJson['member_count'],
             accountProfileIds: rawIds is Iterable
                 ? rawIds.cast<Object?>()
                 : const <Object?>[],
@@ -297,6 +299,7 @@ TenantAdminNestedProfileGroup _nestedProfileGroupFromRaw({
   required Object? id,
   required Object? label,
   Object? order,
+  Object? memberCount,
   Iterable<Object?> accountProfileIds = const <Object?>[],
 }) {
   return TenantAdminNestedProfileGroup(
@@ -309,6 +312,7 @@ TenantAdminNestedProfileGroup _nestedProfileGroupFromRaw({
     orderValue: TenantAdminNestedProfileGroupOrderValue(
       order is num ? order.toInt() : int.tryParse(order?.toString() ?? '') ?? 0,
     ),
+    memberCountValue: TenantAdminCountValue(_toInt(memberCount) ?? 0),
     accountProfileIdValues: accountProfileIds
         .map(
           (entry) => TenantAdminNestedProfileGroupTextValue(
