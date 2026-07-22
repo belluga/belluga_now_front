@@ -11,6 +11,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dar
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 
@@ -20,6 +21,7 @@ class TenantAdminAccountProfileDTO {
     required this.accountId,
     required this.profileType,
     required this.displayName,
+    this.aggregateRevision,
     this.slug,
     this.avatarUrl,
     this.coverUrl,
@@ -44,6 +46,7 @@ class TenantAdminAccountProfileDTO {
   final String accountId;
   final String profileType;
   final String displayName;
+  final int? aggregateRevision;
   final String? slug;
   final String? avatarUrl;
   final String? coverUrl;
@@ -104,8 +107,10 @@ class TenantAdminAccountProfileDTO {
             id: groupJson['id'] ?? groupJson['key'],
             label: groupJson['label'],
             order: groupJson['order'],
-            accountProfileIds:
-                rawIds is Iterable ? rawIds.cast<Object?>() : const <Object?>[],
+            memberCount: groupJson['member_count'],
+            accountProfileIds: rawIds is Iterable
+                ? rawIds.cast<Object?>()
+                : const <Object?>[],
           ),
         );
       }
@@ -115,6 +120,7 @@ class TenantAdminAccountProfileDTO {
       accountId: json['account_id']?.toString() ?? '',
       profileType: json['profile_type']?.toString() ?? '',
       displayName: json['display_name']?.toString() ?? '',
+      aggregateRevision: _toInt(json['aggregate_revision']),
       slug: json['slug']?.toString(),
       avatarUrl: json['avatar_url']?.toString(),
       coverUrl: json['cover_url']?.toString(),
@@ -127,8 +133,8 @@ class TenantAdminAccountProfileDTO {
       nestedProfileGroups: nestedGroups,
       ownershipState: json['ownership_state']?.toString(),
       contactMode: json['contact_mode']?.toString(),
-      contactSourceAccountProfileId:
-          json['contact_source_account_profile_id']?.toString(),
+      contactSourceAccountProfileId: json['contact_source_account_profile_id']
+          ?.toString(),
       contactChannels: BellugaContactChannelCodec.channelsFromJson(
         json['contact_channels'],
       ),
@@ -167,6 +173,7 @@ class TenantAdminAccountProfileDTO {
       accountId: accountId,
       profileType: profileType,
       displayName: displayName,
+      aggregateRevision: aggregateRevision,
       slug: slug,
       avatarUrl: avatarUrl,
       coverUrl: coverUrl,
@@ -205,8 +212,7 @@ AccountProfileContactSourceSummary? _contactSourceSummaryFromRaw(Object? raw) {
   return AccountProfileContactSourceSummary(
     idValue: AccountProfileContactSourceAccountProfileIdValue(id),
     displayNameValue: TitleValue()..parse(displayName),
-    slugValue:
-        slug == null || slug.isEmpty ? null : (SlugValue()..parse(slug)),
+    slugValue: slug == null || slug.isEmpty ? null : (SlugValue()..parse(slug)),
     profileTypeValue: AccountProfileTypeValue(profileType),
   );
 }
@@ -293,6 +299,7 @@ TenantAdminNestedProfileGroup _nestedProfileGroupFromRaw({
   required Object? id,
   required Object? label,
   Object? order,
+  Object? memberCount,
   Iterable<Object?> accountProfileIds = const <Object?>[],
 }) {
   return TenantAdminNestedProfileGroup(
@@ -305,10 +312,13 @@ TenantAdminNestedProfileGroup _nestedProfileGroupFromRaw({
     orderValue: TenantAdminNestedProfileGroupOrderValue(
       order is num ? order.toInt() : int.tryParse(order?.toString() ?? '') ?? 0,
     ),
+    memberCountValue: TenantAdminCountValue(_toInt(memberCount) ?? 0),
     accountProfileIdValues: accountProfileIds
-        .map((entry) => TenantAdminNestedProfileGroupTextValue(
-              entry?.toString().trim() ?? '',
-            ))
+        .map(
+          (entry) => TenantAdminNestedProfileGroupTextValue(
+            entry?.toString().trim() ?? '',
+          ),
+        )
         .where((entry) => entry.value.isNotEmpty)
         .toList(growable: false),
   );

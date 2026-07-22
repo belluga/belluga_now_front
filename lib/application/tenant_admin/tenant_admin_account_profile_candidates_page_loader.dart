@@ -4,8 +4,8 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 
 final class TenantAdminAccountProfileCandidatesPageLoader {
   const TenantAdminAccountProfileCandidatesPageLoader({
-    required this._profilesRepository,
-  });
+    required TenantAdminAccountProfilesRepositoryContract profilesRepository,
+  }) : _profilesRepository = profilesRepository;
 
   static const int _defaultPageSize = 20;
 

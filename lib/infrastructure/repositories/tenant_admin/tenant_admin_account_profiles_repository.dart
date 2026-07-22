@@ -3,11 +3,15 @@ import 'package:belluga_now/domain/repositories/landlord_auth_repository_contrac
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_mutation_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_page.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_account_profiles_request_encoder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_media_form_data_builder.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_account_profiles_response_decoder.dart';
@@ -121,6 +125,34 @@ class TenantAdminAccountProfilesRepository
         currentPage: currentPage,
         pageSize: resolvedPageSize,
       );
+    } on DioException catch (error) {
+      throw _wrapError(error, 'load account profile candidates page');
+    }
+  }
+
+  @override
+  Future<TenantAdminAccountProfileCandidatePage>
+  fetchAccountProfileCandidatesPage({
+    required TenantAdminAccountProfileCandidateScope scope,
+    required TenantAdminAccountProfilesRepoString search,
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '$_apiBaseUrl/v1/account_profiles/candidates',
+        queryParameters: _requestEncoder
+            .encodeFetchAccountProfileCandidatesQuery(
+              scope: scope.wireValue,
+              search: search.value,
+              page: page.value,
+              perPage: pageSize.value,
+              excludeAccountProfileId: excludeAccountProfileId?.value,
+            ),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodeCandidatePage(response.data).toDomain();
     } on DioException catch (error) {
       throw _wrapError(error, 'load account profile candidates page');
     }
@@ -309,6 +341,97 @@ class TenantAdminAccountProfilesRepository
       return dto.toDomain();
     } on DioException catch (error) {
       throw _wrapError(error, 'update account profile');
+    }
+  }
+
+  @override
+  Future<TenantAdminNestedGroupMemberPage> fetchNestedGroupMembersPage({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    TenantAdminAccountProfilesRepoInt? perPage,
+    TenantAdminAccountProfilesRepoString? cursor,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}'
+        '/nested_profile_groups/${groupId.value}/members',
+        queryParameters: _requestEncoder.encodeFetchNestedGroupMembersQuery(
+          perPage: cursor == null ? perPage?.value : null,
+          cursor: cursor?.value,
+        ),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder
+          .decodeNestedGroupMemberPage(response.data)
+          .toDomain();
+    } on DioException catch (error) {
+      throw _wrapError(error, 'load nested group members page');
+    }
+  }
+
+  @override
+  Future<TenantAdminNestedGroupMemberPage> fetchAllNestedGroupMembers({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+  }) async {
+    final items = <TenantAdminAccountProfileSelectionSummary>[];
+    TenantAdminAccountProfilesRepoString? cursor;
+    TenantAdminNestedGroupMemberPage? lastPage;
+
+    do {
+      final page = await fetchNestedGroupMembersPage(
+        accountProfileId: accountProfileId,
+        groupId: groupId,
+        perPage: cursor == null
+            ? (TenantAdminAccountProfilesRepoInt(defaultValue: 50)
+              ..set(50))
+            : null,
+        cursor: cursor,
+      );
+      lastPage = page;
+      items.addAll(page.items);
+      final rawCursor = page.nextCursor;
+      cursor = rawCursor == null || rawCursor.isEmpty
+          ? null
+          : (TenantAdminAccountProfilesRepoString(
+              defaultValue: '',
+              isRequired: true,
+            )..parse(rawCursor));
+    } while (cursor != null);
+
+    return TenantAdminNestedGroupMemberPage(
+      items: items,
+      aggregateRevisionValue: lastPage.aggregateRevisionValue,
+      nextCursorValue: TenantAdminOptionalTextValue(),
+    );
+  }
+
+  @override
+  Future<TenantAdminNestedGroupMemberMutationResult> patchNestedGroupMembers({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminAccountProfilesRepoInt aggregateRevision,
+    List<TenantAdminAccountProfilesRepoString> addIds = const [],
+    List<TenantAdminAccountProfilesRepoString> removeIds = const [],
+  }) async {
+    try {
+      final response = await _dio.patch(
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}'
+        '/nested_profile_groups/${groupId.value}/members',
+        data: _requestEncoder.encodePatchNestedGroupMembers(
+          aggregateRevision: aggregateRevision.value,
+          addIds: addIds.map((entry) => entry.value).toList(growable: false),
+          removeIds: removeIds
+              .map((entry) => entry.value)
+              .toList(growable: false),
+        ),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder
+          .decodeNestedGroupMemberMutationResult(response.data)
+          .toDomain();
+    } on DioException catch (error) {
+      throw _wrapError(error, 'patch nested group members');
     }
   }
 

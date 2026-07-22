@@ -494,7 +494,7 @@ class TenantAdminAccountCreateController implements Disposable {
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
         const <TenantAdminNestedProfileGroup>[],
   }) async {
-    return _accountsRepository.createAccountOnboarding(
+    var onboarding = await _accountsRepository.createAccountOnboarding(
       name: TenantAdminAccountsRepositoryContractPrimString.fromRaw(
         name.trim(),
         defaultValue: '',
@@ -523,6 +523,81 @@ class TenantAdminAccountCreateController implements Disposable {
       avatarUpload: avatarUpload,
       coverUpload: coverUpload,
       nestedProfileGroups: nestedProfileGroups,
+    );
+    onboarding = await _applyNestedProfileGroupMembersAfterOnboarding(
+      onboarding: onboarding,
+      nestedProfileGroups: nestedProfileGroups,
+    );
+    return onboarding;
+  }
+
+  Future<TenantAdminAccountOnboardingResult>
+  _applyNestedProfileGroupMembersAfterOnboarding({
+    required TenantAdminAccountOnboardingResult onboarding,
+    required List<TenantAdminNestedProfileGroup> nestedProfileGroups,
+  }) async {
+    if (nestedProfileGroups.isEmpty) {
+      return onboarding;
+    }
+
+    final profileId = onboarding.accountProfile.id.trim();
+    if (profileId.isEmpty) {
+      return onboarding;
+    }
+
+    var aggregateRevision = onboarding.accountProfile.aggregateRevision ?? 0;
+    for (final group in nestedProfileGroups) {
+      final addIds = group.accountProfileIdValues
+          .map((entry) => entry.value.trim())
+          .where((entry) => entry.isNotEmpty)
+          .toSet()
+          .map(
+            (entry) => tenantAdminAccountProfilesRepoString(
+              entry,
+              defaultValue: '',
+              isRequired: true,
+            ),
+          )
+          .toList(growable: false);
+      if (addIds.isEmpty) {
+        continue;
+      }
+
+      final mutation = await _profilesRepository.patchNestedGroupMembers(
+        accountProfileId: tenantAdminAccountProfilesRepoString(
+          profileId,
+          defaultValue: '',
+          isRequired: true,
+        ),
+        groupId: tenantAdminAccountProfilesRepoString(
+          group.id,
+          defaultValue: '',
+          isRequired: true,
+        ),
+        aggregateRevision: tenantAdminAccountProfilesRepoInt(
+          aggregateRevision,
+          defaultValue: aggregateRevision,
+        ),
+        addIds: addIds,
+      );
+      aggregateRevision = mutation.aggregateRevision;
+    }
+
+    if (aggregateRevision ==
+        (onboarding.accountProfile.aggregateRevision ?? 0)) {
+      return onboarding;
+    }
+
+    final refreshed = await _profilesRepository.fetchAccountProfile(
+      tenantAdminAccountProfilesRepoString(
+        profileId,
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
+    return TenantAdminAccountOnboardingResult(
+      account: onboarding.account,
+      accountProfile: refreshed,
     );
   }
 

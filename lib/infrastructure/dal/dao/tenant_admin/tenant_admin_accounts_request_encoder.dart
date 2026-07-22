@@ -51,7 +51,7 @@ class TenantAdminAccountsRequestEncoder {
       'bio': ?bio,
       'content': ?content,
       if (nestedProfileGroups.isNotEmpty)
-        'nested_profile_groups': encodeTenantAdminNestedProfileGroups(
+        'nested_profile_groups': encodeTenantAdminNestedProfileGroupMetadata(
           nestedProfileGroups,
         ),
     };

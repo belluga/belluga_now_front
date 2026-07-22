@@ -3,10 +3,13 @@ import 'dart:math' as math;
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/domain/repositories/value_objects/tenant_admin_account_profiles_repository_contract_values.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_update.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_mutation_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_page.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
@@ -59,6 +62,20 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     throw UnimplementedError(
       'fetchAccountProfilesPage must be implemented by paginated '
       'tenant-admin account-profile repositories.',
+    );
+  }
+
+  Future<TenantAdminAccountProfileCandidatePage>
+  fetchAccountProfileCandidatesPage({
+    required TenantAdminAccountProfileCandidateScope scope,
+    required TenantAdminAccountProfilesRepoString search,
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
+  }) async {
+    throw UnimplementedError(
+      'fetchAccountProfileCandidatesPage must be implemented by tenant-admin '
+      'account-profile repositories.',
     );
   }
 
@@ -169,6 +186,41 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
         const <TenantAdminAccountProfileGalleryUpdateGroup>[],
   }) async {
     return fetchAccountProfile(accountProfileId);
+  }
+
+  Future<TenantAdminNestedGroupMemberPage> fetchNestedGroupMembersPage({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    TenantAdminAccountProfilesRepoInt? perPage,
+    TenantAdminAccountProfilesRepoString? cursor,
+  }) async {
+    throw UnimplementedError(
+      'fetchNestedGroupMembersPage must be implemented by tenant-admin '
+      'account-profile repositories.',
+    );
+  }
+
+  Future<TenantAdminNestedGroupMemberPage> fetchAllNestedGroupMembers({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+  }) async {
+    throw UnimplementedError(
+      'fetchAllNestedGroupMembers must be implemented by tenant-admin '
+      'account-profile repositories.',
+    );
+  }
+
+  Future<TenantAdminNestedGroupMemberMutationResult> patchNestedGroupMembers({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminAccountProfilesRepoInt aggregateRevision,
+    List<TenantAdminAccountProfilesRepoString> addIds = const [],
+    List<TenantAdminAccountProfilesRepoString> removeIds = const [],
+  }) async {
+    throw UnimplementedError(
+      'patchNestedGroupMembers must be implemented by tenant-admin '
+      'account-profile repositories.',
+    );
   }
 
   Future<void> deleteAccountProfile(

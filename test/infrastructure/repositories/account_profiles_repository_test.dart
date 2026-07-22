@@ -711,7 +711,7 @@ void main() {
   );
 
   test(
-    'fetchNearbyAccountProfiles keeps only favoritable registry types',
+    'fetchNearbyAccountProfiles delegates nearby filtering authority to the backend',
     () async {
       final artistId = _generateMongoId();
       final curatorId = _generateMongoId();
@@ -741,8 +741,9 @@ void main() {
         pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(10),
       );
 
-      expect(nearby, hasLength(1));
+      expect(nearby, hasLength(2));
       expect(nearby.first.type, 'artist');
+      expect(nearby.last.type, 'curator');
     },
   );
 
@@ -917,6 +918,48 @@ void main() {
             .map((profile) => profile.name)
             .toList(),
         ['Nearest Venue', 'Second Venue'],
+      );
+    },
+  );
+
+  test(
+    'discovery nearby stream keeps backend-authoritative nearby types',
+    () async {
+      final backend = _StubAccountProfilesBackend(
+        accountProfiles: const <AccountProfileModel>[],
+        nearbyProfiles: [
+          buildAccountProfileModelFromPrimitives(
+            id: _generateMongoId(),
+            name: 'Nearby Artist',
+            slug: 'nearby-artist',
+            type: 'artist',
+            distanceMeters: 120,
+          ),
+          buildAccountProfileModelFromPrimitives(
+            id: _generateMongoId(),
+            name: 'Nearby Curator',
+            slug: 'nearby-curator',
+            type: 'curator',
+            distanceMeters: 340,
+          ),
+        ],
+      );
+      final repository = AccountProfilesRepository(
+        backend: backend,
+        favoriteBackend: _StubFavoriteBackend(favorites: const []),
+        favoriteAccountProfileIds: const {},
+      );
+
+      await repository.syncDiscoveryNearbyAccountProfiles(
+        pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(10),
+      );
+
+      expect(backend.fetchNearbyCalls, 1);
+      expect(
+        repository.discoveryNearbyAccountProfilesStreamValue.value
+            .map((profile) => profile.type)
+            .toList(),
+        ['artist', 'curator'],
       );
     },
   );

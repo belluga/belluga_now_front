@@ -1199,6 +1199,7 @@ class _TenantAdminAccountProfileEditScreenState
               return DropdownButtonFormField<String>(
                 key: ValueKey(effectiveSelected),
                 initialValue: effectiveSelected,
+                isExpanded: true,
                 decoration: const InputDecoration(labelText: 'Tipo de perfil'),
                 items: uniqueTypes
                     .map(
