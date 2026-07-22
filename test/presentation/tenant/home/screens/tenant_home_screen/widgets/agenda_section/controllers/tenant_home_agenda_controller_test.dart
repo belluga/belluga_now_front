@@ -1192,15 +1192,13 @@ void main() {
         final primaryFilter = catalog.filters.single;
         final taxonomyGroup = catalog.taxonomyOptionsByKey.values.single;
         final taxonomyTerm = taxonomyGroup.terms.single;
-        final scheduleRepository = _FakeScheduleRepository();
-        final filtersRepository = _FakeDiscoveryFiltersRepository(
-          catalog: catalog,
+        final scheduleRepository = _FakeScheduleRepository(
+          homeAgendaRuntimeCatalog: catalog,
         );
         final controller = _buildAgendaController(
           scheduleRepository: scheduleRepository,
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
-          discoveryFiltersRepository: filtersRepository,
           userLocationRepository: _FakeUserLocationRepository(),
           appDataRepository: _FakeAppDataRepository(
             _buildAppData(minKm: 1, defaultKm: 5, maxKm: 15),
@@ -1218,7 +1216,6 @@ void main() {
         );
         await Future<void>.delayed(const Duration(milliseconds: 20));
 
-        expect(filtersRepository.requestedSurfaces, ['home.events']);
         expect(
           scheduleRepository.lastCategories,
           primaryFilter.typesByEntity['event']!.toList(),

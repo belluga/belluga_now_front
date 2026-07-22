@@ -210,20 +210,6 @@ class DiscoveryScreenController extends Object
         )) {
       discoveryFilterSelectionStreamValue.addValue(restoredSelection);
     }
-    final mustAwaitCatalogBeforeResults =
-        restoredSelection?.isEmpty == false ||
-        discoveryFilterSelectionStreamValue.value.isNotEmpty;
-    final catalogFuture =
-        loadPublicDiscoveryFilterCatalog(
-          restoredSelection: restoredSelection,
-        ).then((_) {
-          _reconcileRuntimeDiscoveryFilterCatalog();
-        });
-    if (mustAwaitCatalogBeforeResults) {
-      await catalogFuture;
-    } else {
-      unawaited(catalogFuture);
-    }
     await _reloadPartners(showFullScreenLoader: false);
   }
 

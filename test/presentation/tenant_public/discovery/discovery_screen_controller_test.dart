@@ -1242,35 +1242,6 @@ void main() {
   testWidgets(
     'DiscoveryScreen replaces the baseline catalog with the canonical runtime catalog from the paged query',
     (tester) async {
-      const baselineCatalog = DiscoveryFilterCatalog(
-        surface: 'discovery.account_profiles',
-        filters: <DiscoveryFilterCatalogItem>[
-          DiscoveryFilterCatalogItem(
-            key: 'artist',
-            label: 'Artistas',
-            entities: <String>{'account_profile'},
-            types: <String>{'artist'},
-            typesByEntity: <String, Set<String>>{
-              'account_profile': <String>{'artist'},
-            },
-          ),
-          DiscoveryFilterCatalogItem(
-            key: 'empty-type',
-            label: 'Tipo Vazio',
-            entities: <String>{'account_profile'},
-            types: <String>{'empty-type'},
-            typesByEntity: <String, Set<String>>{
-              'account_profile': <String>{'empty-type'},
-            },
-          ),
-        ],
-        typeOptionsByEntity: <String, List<DiscoveryFilterTypeOption>>{
-          'account_profile': <DiscoveryFilterTypeOption>[
-            DiscoveryFilterTypeOption(value: 'artist', label: 'Artistas'),
-            DiscoveryFilterTypeOption(value: 'empty-type', label: 'Tipo Vazio'),
-          ],
-        },
-      );
       const runtimeCatalog = DiscoveryFilterCatalog(
         surface: 'discovery.account_profiles',
         filters: <DiscoveryFilterCatalogItem>[
@@ -1307,9 +1278,6 @@ void main() {
       );
       final controller = _buildDiscoveryController(
         accountProfilesRepository: repository,
-        discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-          catalog: baselineCatalog,
-        ),
       );
       GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
 
@@ -1829,12 +1797,8 @@ void main() {
       final primaryFilter = catalog.filters.single;
       final taxonomyGroup = catalog.taxonomyOptionsByKey.values.first;
       final taxonomyTerm = taxonomyGroup.terms.single;
-      final filtersRepository = _FakeDiscoveryFiltersRepository(
-        catalog: catalog,
-      );
       final controller = _buildDiscoveryController(
         accountProfilesRepository: repository,
-        discoveryFiltersRepository: filtersRepository,
       );
 
       await controller.init();
@@ -1848,9 +1812,6 @@ void main() {
       );
       await Future<void>.delayed(const Duration(milliseconds: 20));
 
-      expect(filtersRepository.requestedSurfaces, [
-        'discovery.account_profiles',
-      ]);
       expect(
         repository.pageRequests.last.typeFilters,
         primaryFilter.typesByEntity['account_profile']!.toList(),
