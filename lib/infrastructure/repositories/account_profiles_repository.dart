@@ -1,9 +1,5 @@
-import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
-import 'package:belluga_now/domain/partners/profile_type_registry.dart';
-import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
-import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/account_profiles_repository_contract_values.dart';
@@ -23,7 +19,6 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
     BackendContract? backendContract,
     Set<String>? favoriteAccountProfileIds,
     FavoriteRepositoryContract? favoriteRepository,
-    AppDataRepositoryContract? appDataRepository,
     TelemetryRepositoryContract? telemetryRepository,
   }) : this._internal(
          backend ??
@@ -33,7 +28,6 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
              _resolveFavoriteBackend(backendContract: backendContract),
          Set<String>.from(favoriteAccountProfileIds ?? const <String>{}),
          favoriteRepository ?? _resolveFavoriteRepositoryOrNull(),
-         appDataRepository,
          telemetryRepository ?? GetIt.I.get<TelemetryRepositoryContract>(),
        );
 
@@ -42,7 +36,6 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
     this._favoriteBackend,
     this._favoriteAccountProfileIds,
     this._favoriteRepository,
-    this._appDataRepository,
     this._telemetryRepository,
   );
 
@@ -50,7 +43,6 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
   final FavoriteBackendContract _favoriteBackend;
   final Set<String> _favoriteAccountProfileIds;
   final FavoriteRepositoryContract? _favoriteRepository;
-  AppDataRepositoryContract? _appDataRepository;
   final TelemetryRepositoryContract _telemetryRepository;
 
   @override
@@ -95,9 +87,8 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
           : null,
       taxonomyFilters: _normalizeTaxonomyFilters(taxonomyFilters),
     );
-    final filtered = _filterByRegistry(result.profiles);
     return pagedAccountProfilesResultFromRaw(
-      profiles: filtered,
+      profiles: result.profiles,
       hasMore: result.hasMore,
       discoveryFilterFacets: result.discoveryFilterFacets,
       discoveryFilterCatalog: result.discoveryFilterCatalog,
@@ -111,27 +102,18 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
     List<AccountProfilesRepositoryTaxonomyFilter>? taxonomyFilters,
   }) async {
     final effectivePageSize = pageSize ?? _toIntValue(10, defaultValue: 10);
-    final profiles = await _backend.fetchNearbyAccountProfiles(
+    return _backend.fetchNearbyAccountProfiles(
       pageSize: effectivePageSize.value,
       typeFilters: _normalizeTypeFilters(typeFilters: typeFilters),
       taxonomyFilters: _normalizeTaxonomyFilters(taxonomyFilters),
     );
-    return _filterByRegistry(profiles);
   }
 
   @override
   Future<AccountProfileModel?> getAccountProfileBySlug(
     AccountProfilesRepositoryContractPrimString slug,
   ) async {
-    final profile = await _backend.fetchAccountProfileBySlug(slug.value);
-    if (profile == null) return null;
-    final registry = _resolveRegistry();
-    if (registry == null || registry.isEmpty) {
-      return profile;
-    }
-    return registry.contains(ProfileTypeKeyValue(profile.profileType))
-        ? (_isAccountProfileTypeEnabled(profile) ? profile : null)
-        : profile;
+    return _backend.fetchAccountProfileBySlug(slug.value);
   }
 
   @override
@@ -223,45 +205,6 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
         .toList();
   }
 
-  List<AccountProfileModel> _filterByRegistry(
-    List<AccountProfileModel> profiles,
-  ) {
-    final registry = _resolveRegistry();
-    if (registry == null || registry.isEmpty) {
-      return profiles;
-    }
-    return profiles
-        .where(_shouldKeepProfileForPublicSurface)
-        .toList(growable: false);
-  }
-
-  bool _shouldKeepProfileForPublicSurface(AccountProfileModel profile) {
-    final registry = _resolveRegistry();
-    if (registry == null || registry.isEmpty) {
-      return true;
-    }
-    final typeValue = ProfileTypeKeyValue(profile.profileType);
-    if (!registry.contains(typeValue)) {
-      return true;
-    }
-    return _isAccountProfileTypeEnabled(profile) &&
-        _isAccountProfileTypePubliclyDiscoverable(profile);
-  }
-
-  bool _isAccountProfileTypeEnabled(AccountProfileModel profile) {
-    final registry = _resolveRegistry();
-    return registry?.isEnabledFor(ProfileTypeKeyValue(profile.profileType)) ??
-        false;
-  }
-
-  bool _isAccountProfileTypePubliclyDiscoverable(AccountProfileModel profile) {
-    final registry = _resolveRegistry();
-    return registry?.isPubliclyDiscoverableFor(
-          ProfileTypeKeyValue(profile.profileType),
-        ) ??
-        false;
-  }
-
   List<String> _normalizeTypeFilters({
     AccountProfilesRepositoryContractPrimString? singleTypeFilter,
     List<AccountProfilesRepositoryContractPrimString>? typeFilters,
@@ -289,28 +232,6 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
       }
     }
     return normalized;
-  }
-
-  ProfileTypeRegistry? _resolveRegistry() {
-    final repository = _resolvedAppDataRepository;
-    if (repository != null) {
-      return repository.appData.profileTypeRegistry;
-    }
-    if (!GetIt.I.isRegistered<AppData>()) {
-      return null;
-    }
-    return GetIt.I.get<AppData>().profileTypeRegistry;
-  }
-
-  AppDataRepositoryContract? get _resolvedAppDataRepository {
-    if (_appDataRepository != null) {
-      return _appDataRepository;
-    }
-    if (!GetIt.I.isRegistered<AppDataRepositoryContract>()) {
-      return null;
-    }
-    _appDataRepository = GetIt.I.get<AppDataRepositoryContract>();
-    return _appDataRepository;
   }
 
   Future<Set<String>> _loadRemoteFavoriteIds() async {

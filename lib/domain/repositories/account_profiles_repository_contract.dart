@@ -163,9 +163,7 @@ abstract class AccountProfilesRepositoryContract {
       taxonomyFilters: taxonomyFilters,
     );
     discoveryNearbyAccountProfilesStreamValue.addValue(
-      _filterDiscoveryMvpProfiles(
-        profiles,
-      ).take(effectivePageSize.value).toList(growable: false),
+      profiles.take(effectivePageSize.value).toList(growable: false),
     );
   }
 
@@ -267,7 +265,7 @@ abstract class AccountProfilesRepositoryContract {
         ),
       );
       discoveryFilteredAccountProfilesStreamValue.addValue(
-        _filterDiscoveryMvpProfiles(accumulatedProfiles),
+        accumulatedProfiles,
       );
       pagedAccountProfilesErrorStreamValue.addValue(null);
     } catch (error) {
@@ -352,13 +350,6 @@ abstract class AccountProfilesRepositoryContract {
     publicDiscoveryFilterCatalogStreamValue.addValue(null);
   }
 
-  List<AccountProfileModel> _filterDiscoveryMvpProfiles(
-    List<AccountProfileModel> profiles,
-  ) {
-    return profiles
-        .where((profile) => profile.type != 'curator')
-        .toList(growable: false);
-  }
 }
 
 class _AccountProfilesPaginationState {

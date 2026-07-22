@@ -14,12 +14,15 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dar
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_accounts_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_aggregate_revision_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
@@ -302,6 +305,7 @@ class _FakeAccountsRepository
       accountId: account.id,
       profileType: profileType.value,
       displayName: name.value,
+      aggregateRevision: 1,
       location: location,
       taxonomyTerms: taxonomyTerms,
       bio: bio?.value,
@@ -356,6 +360,11 @@ class _FakeAccountProfilesRepository
 
   final List<TenantAdminProfileTypeDefinition> _types;
   List<TenantAdminAccountProfile> profilesToReturn = const [];
+  String? lastPatchNestedGroupMembersProfileId;
+  String? lastPatchNestedGroupMembersGroupId;
+  int? lastPatchNestedGroupMembersAggregateRevision;
+  List<String> lastPatchNestedGroupAddIds = <String>[];
+  List<String> lastPatchNestedGroupRemoveIds = <String>[];
   int createProfileCalls = 0;
   String? lastCreateDisplayName;
   String? lastCreateBio;
@@ -580,6 +589,29 @@ class _FakeAccountProfilesRepository
         const <TenantAdminAccountProfileGalleryUpdateGroup>[],
   }) async {
     return fetchAccountProfile(accountProfileId);
+  }
+
+  @override
+  Future<TenantAdminNestedGroupMemberMutationResult> patchNestedGroupMembers({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminAccountProfilesRepoInt aggregateRevision,
+    List<TenantAdminAccountProfilesRepoString> addIds = const [],
+    List<TenantAdminAccountProfilesRepoString> removeIds = const [],
+  }) async {
+    lastPatchNestedGroupMembersProfileId = accountProfileId.value;
+    lastPatchNestedGroupMembersGroupId = groupId.value;
+    lastPatchNestedGroupMembersAggregateRevision = aggregateRevision.value;
+    lastPatchNestedGroupAddIds = addIds.map((entry) => entry.value).toList();
+    lastPatchNestedGroupRemoveIds = removeIds
+        .map((entry) => entry.value)
+        .toList();
+    return TenantAdminNestedGroupMemberMutationResult(
+      memberCountValue: TenantAdminCountValue(addIds.length),
+      aggregateRevisionValue: TenantAdminAccountProfileAggregateRevisionValue(
+        aggregateRevision.value + 1,
+      ),
+    );
   }
 
   @override
@@ -1122,62 +1154,72 @@ void main() {
       );
     });
 
-    test('createAccountOnboarding forwards nested profile groups', () async {
-      final accountsRepository = _FakeAccountsRepository([]);
-      final profilesRepository = _FakeAccountProfilesRepository([
-        tenantAdminProfileTypeDefinitionFromRaw(
-          type: 'venue',
-          label: 'Venue',
-          allowedTaxonomies: [],
-          capabilities: TenantAdminProfileTypeCapabilities(
-            isFavoritable: TenantAdminFlagValue(true),
-            isPoiEnabled: TenantAdminFlagValue(false),
-            hasBio: TenantAdminFlagValue(false),
-            hasContent: TenantAdminFlagValue(false),
-            hasTaxonomies: TenantAdminFlagValue(false),
-            hasAvatar: TenantAdminFlagValue(false),
-            hasCover: TenantAdminFlagValue(false),
-            hasEvents: TenantAdminFlagValue(false),
-            hasNestedProfileGroups: TenantAdminFlagValue(true),
+    test(
+      'createAccountOnboarding replays nested member selections through canonical member deltas',
+      () async {
+        final accountsRepository = _FakeAccountsRepository([]);
+        final profilesRepository = _FakeAccountProfilesRepository([
+          tenantAdminProfileTypeDefinitionFromRaw(
+            type: 'venue',
+            label: 'Venue',
+            allowedTaxonomies: [],
+            capabilities: TenantAdminProfileTypeCapabilities(
+              isFavoritable: TenantAdminFlagValue(true),
+              isPoiEnabled: TenantAdminFlagValue(false),
+              hasBio: TenantAdminFlagValue(false),
+              hasContent: TenantAdminFlagValue(false),
+              hasTaxonomies: TenantAdminFlagValue(false),
+              hasAvatar: TenantAdminFlagValue(false),
+              hasCover: TenantAdminFlagValue(false),
+              hasEvents: TenantAdminFlagValue(false),
+              hasNestedProfileGroups: TenantAdminFlagValue(true),
+            ),
           ),
-        ),
-      ]);
-      final controller = _buildCreateController(
-        accountsRepository: accountsRepository,
-        profilesRepository: profilesRepository,
-      );
+        ]);
+        final controller = _buildCreateController(
+          accountsRepository: accountsRepository,
+          profilesRepository: profilesRepository,
+        );
 
-      await controller.createAccountOnboarding(
-        name: 'Nova Conta',
-        ownershipState: TenantAdminOwnershipState.tenantOwned,
-        profileType: 'venue',
-        nestedProfileGroups: [
-          TenantAdminNestedProfileGroup(
-            idValue: TenantAdminNestedProfileGroupTextValue('integrantes'),
-            labelValue: TenantAdminNestedProfileGroupTextValue('Integrantes'),
-            orderValue: TenantAdminNestedProfileGroupOrderValue(0),
-            accountProfileIdValues: [
-              TenantAdminNestedProfileGroupTextValue('profile-1'),
-            ],
-          ),
-        ],
-      );
+        await controller.createAccountOnboarding(
+          name: 'Nova Conta',
+          ownershipState: TenantAdminOwnershipState.tenantOwned,
+          profileType: 'venue',
+          nestedProfileGroups: [
+            TenantAdminNestedProfileGroup(
+              idValue: TenantAdminNestedProfileGroupTextValue('integrantes'),
+              labelValue: TenantAdminNestedProfileGroupTextValue('Integrantes'),
+              orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+              accountProfileIdValues: [
+                TenantAdminNestedProfileGroupTextValue('profile-1'),
+              ],
+            ),
+          ],
+        );
 
-      expect(accountsRepository.lastOnboardingNestedGroups, hasLength(1));
-      expect(
-        accountsRepository.lastOnboardingNestedGroups.single.label,
-        'Integrantes',
-      );
-      expect(
-        accountsRepository
-            .lastOnboardingNestedGroups
-            .single
-            .accountProfileIdValues
-            .single
-            .value,
-        'profile-1',
-      );
-    });
+        expect(accountsRepository.lastOnboardingNestedGroups, hasLength(1));
+        expect(
+          accountsRepository.lastOnboardingNestedGroups.single.label,
+          'Integrantes',
+        );
+        expect(
+          profilesRepository.lastPatchNestedGroupMembersProfileId,
+          'profile-onboarding-1',
+        );
+        expect(
+          profilesRepository.lastPatchNestedGroupMembersGroupId,
+          'integrantes',
+        );
+        expect(
+          profilesRepository.lastPatchNestedGroupMembersAggregateRevision,
+          1,
+        );
+        expect(profilesRepository.lastPatchNestedGroupAddIds, <String>[
+          'profile-1',
+        ]);
+        expect(profilesRepository.lastPatchNestedGroupRemoveIds, isEmpty);
+      },
+    );
 
     test(
       'loadNextNestedProfileCandidatesPage appends backend pages for onboarding picker',

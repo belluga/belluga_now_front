@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dar
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/shared/account_profile_contact_source_summary.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_aggregate_revision_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 
@@ -15,6 +16,7 @@ TenantAdminAccountProfile tenantAdminAccountProfileFromRaw({
   required Object? accountId,
   required Object? profileType,
   required Object? displayName,
+  int? aggregateRevision,
   Object? slug,
   Object? avatarUrl,
   Object? coverUrl,
@@ -42,6 +44,12 @@ TenantAdminAccountProfile tenantAdminAccountProfileFromRaw({
     accountIdValue: tenantAdminRequiredText(accountId),
     profileTypeValue: tenantAdminRequiredText(profileType),
     displayNameValue: tenantAdminRequiredText(displayName),
+    aggregateRevisionValue:
+        aggregateRevision == null
+            ? null
+            : TenantAdminAccountProfileAggregateRevisionValue(
+                aggregateRevision,
+              ),
     slugValue: tenantAdminOptionalText(slug),
     avatarUrlValue: tenantAdminOptionalUrl(avatarUrl),
     coverUrlValue: tenantAdminOptionalUrl(coverUrl),
