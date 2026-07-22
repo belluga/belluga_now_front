@@ -1318,6 +1318,21 @@ void main() {
   test(
     'submitUpdateProfile forwards nested profile groups to repository update',
     () async {
+      final refreshedProfile = tenantAdminAccountProfileFromRaw(
+        id: 'profile-1',
+        accountId: 'acc-1',
+        profileType: 'venue',
+        displayName: 'Perfil atualizado',
+        aggregateRevision: 5,
+        nestedProfileGroups: <TenantAdminNestedProfileGroup>[
+          TenantAdminNestedProfileGroup(
+            idValue: TenantAdminNestedProfileGroupTextValue('parceiros'),
+            labelValue: TenantAdminNestedProfileGroupTextValue('Parceiros'),
+            orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+            memberCountValue: TenantAdminCountValue(1),
+          ),
+        ],
+      );
       final profilesRepository = _FakeAccountProfilesRepository(
         [
           tenantAdminAccountProfileFromRaw(
@@ -1326,6 +1341,7 @@ void main() {
             profileType: 'venue',
             displayName: 'Perfil',
             slug: 'perfil-original',
+            aggregateRevision: 4,
           ),
         ],
         [
@@ -1346,6 +1362,24 @@ void main() {
           ),
         ],
       );
+      profilesRepository.nestedGroupMemberPagesByGroupId['parceiros'] =
+          <TenantAdminNestedGroupMemberPage>[
+            TenantAdminNestedGroupMemberPage(
+              items: <TenantAdminAccountProfileSelectionSummary>[
+                TenantAdminAccountProfileSelectionSummary(
+                  idValue: TenantAdminAccountProfileIdValue('profile-legacy'),
+                  displayNameValue: TenantAdminOptionalTextValue()
+                    ..parse('Perfil legado'),
+                  isQueryableCandidateValue: TenantAdminFlagValue(true),
+                ),
+              ],
+              aggregateRevisionValue:
+                  TenantAdminAccountProfileAggregateRevisionValue(4),
+              nextCursorValue: TenantAdminOptionalTextValue(),
+            ),
+          ];
+      profilesRepository.accountProfileFetchOverrides['profile-1'] =
+          refreshedProfile;
       final accountsRepository = _FakeAccountsRepository();
       final TenantAdminLocationSelectionContract locationSelectionService =
           TenantAdminLocationSelectionService();
@@ -1385,6 +1419,25 @@ void main() {
       );
 
       expect(profilesRepository.lastUpdateNestedProfileGroups, groups);
+      expect(
+        profilesRepository.lastPatchNestedGroupMembersProfileId,
+        'profile-1',
+      );
+      expect(
+        profilesRepository.lastPatchNestedGroupMembersGroupId,
+        'parceiros',
+      );
+      expect(
+        profilesRepository.lastPatchNestedGroupMembersAggregateRevision,
+        4,
+      );
+      expect(profilesRepository.lastPatchNestedGroupAddIds, <String>[
+        'profile-2',
+      ]);
+      expect(profilesRepository.lastPatchNestedGroupRemoveIds, <String>[
+        'profile-legacy',
+      ]);
+      expect(controller.accountProfileStreamValue.value?.aggregateRevision, 5);
     },
   );
 
