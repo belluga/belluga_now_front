@@ -31,6 +31,9 @@ final class EventRelatedProfileGroups {
       eventProfileGroups: event.profileGroups,
       occurrenceProfileGroups:
           event.occurrences.map((occurrence) => occurrence.profileGroups),
+      occurrenceLinkedAccountProfiles: event.occurrences.map(
+        (occurrence) => occurrence.linkedAccountProfiles,
+      ),
       linkedAccountProfiles: event.linkedAccountProfiles,
       venueId: event.venue?.id,
       labelResolver: labelResolver,
@@ -40,6 +43,8 @@ final class EventRelatedProfileGroups {
   static List<EventRelatedProfileGroupSummary> fromAggregatedParts({
     required List<EventProfileGroup> eventProfileGroups,
     required Iterable<List<EventProfileGroup>> occurrenceProfileGroups,
+    Iterable<List<EventLinkedAccountProfile>> occurrenceLinkedAccountProfiles =
+        const [],
     required List<EventLinkedAccountProfile> linkedAccountProfiles,
     String? venueId,
     EventRelatedProfileGroupLabelResolver? labelResolver,
@@ -49,10 +54,15 @@ final class EventRelatedProfileGroups {
       for (final occurrenceGroups in occurrenceProfileGroups)
         ..._orderedGroups(occurrenceGroups),
     ];
+    final aggregatedLinkedAccountProfiles = _dedupeProfiles([
+      ...linkedAccountProfiles,
+      for (final occurrenceProfiles in occurrenceLinkedAccountProfiles)
+        ...occurrenceProfiles,
+    ]);
 
     final summaries = _mergedSummaries(
       profileGroups: groups,
-      linkedAccountProfiles: linkedAccountProfiles,
+      linkedAccountProfiles: aggregatedLinkedAccountProfiles,
       venueId: venueId,
     );
     if (summaries.isNotEmpty) {
@@ -61,7 +71,7 @@ final class EventRelatedProfileGroups {
 
     return fromParts(
       profileGroups: const [],
-      linkedAccountProfiles: linkedAccountProfiles,
+      linkedAccountProfiles: aggregatedLinkedAccountProfiles,
       venueId: venueId,
       labelResolver: labelResolver,
     );

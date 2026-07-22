@@ -158,6 +158,48 @@ void main() {
   });
 
   test(
+      'aggregated groups resolve legacy event group ids from occurrence-linked profiles when root event has no expanded participants',
+      () {
+    final festivalArtist = _profile(
+      id: 'artist-14bis',
+      displayName: '14 Bis',
+      profileType: 'artist',
+    );
+    final invitedArtist = _profile(
+      id: 'artist-andre',
+      displayName: 'André Prando',
+      profileType: 'artist',
+    );
+
+    final groups = EventRelatedProfileGroups.fromAggregatedParts(
+      eventProfileGroups: [
+        _group(
+          id: 'artist',
+          label: 'Artistas/Professor',
+          accountProfileIds: ['artist-14bis', 'artist-andre'],
+        ),
+      ],
+      occurrenceProfileGroups: [
+        [
+          _group(
+            id: 'artist',
+            label: 'Artistas/Professor',
+            accountProfileIds: ['artist-14bis', 'artist-andre'],
+          ),
+        ],
+      ],
+      occurrenceLinkedAccountProfiles: [
+        [festivalArtist, invitedArtist],
+      ],
+      linkedAccountProfiles: const [],
+    );
+
+    expect(groups, hasLength(1));
+    expect(groups.single.label, 'Artistas/Professor');
+    expect(groups.single.profileNames, ['14 Bis', 'André Prando']);
+  });
+
+  test(
       'aggregated groups keep event-level members first when labels overlap with occurrences',
       () {
     final eventBand = _profile(
