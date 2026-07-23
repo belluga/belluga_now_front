@@ -5,6 +5,7 @@ import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/domain/app_data/discovery_filter_selection_snapshot.dart';
 import 'package:belluga_now/domain/app_data/location_origin_settings.dart';
 import 'package:belluga_now/domain/app_data/location_origin_resolution.dart';
+import 'package:belluga_now/domain/app_data/value_object/app_data_discovery_filter_token_value.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
@@ -985,9 +986,11 @@ class TenantHomeAgendaController extends Object
         allowPersistedFallback &&
         _canUsePersistedDiscoveryFilterSelectionSnapshot(selection)) {
       categories.addAll(
-        _persistedDiscoveryFilterSelectionSnapshot!.typeFiltersByEntity['event']
-                ?.map((value) => value.value) ??
-            const <String>[],
+        _persistedDiscoveryFilterSelectionSnapshot!
+            .typeFiltersForEntity(
+              AppDataDiscoveryFilterTokenValue.fromRaw('event'),
+            )
+            .map((value) => value.value),
       );
     }
     if (categories.isEmpty) {
@@ -1166,7 +1169,7 @@ class TenantHomeAgendaController extends Object
     DiscoveryFilterSelection selection,
   ) {
     final snapshot = _persistedDiscoveryFilterSelectionSnapshot;
-    if (snapshot == null || snapshot.typeFiltersByEntity.isEmpty) {
+    if (snapshot == null || !snapshot.hasTypeFilterSelections) {
       return false;
     }
     return samePublicDiscoveryFilterSelection(

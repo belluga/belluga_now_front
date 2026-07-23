@@ -156,15 +156,18 @@ mixin PublicDiscoveryFilterControllerMixin {
           )
           .where((selection) => !selection.isEmpty)
           .toList(growable: false),
-      typeFiltersByEntity: <String, List<AppDataDiscoveryFilterTokenValue>>{
+      typeFilterSelections: <AppDataDiscoveryFilterEntityTypeSelection>[
         for (final entity in entityKeys)
           if (payload.typesForEntity(entity).isNotEmpty)
-            entity: payload
-                .typesForEntity(entity)
-                .map(AppDataDiscoveryFilterTokenValue.fromRaw)
-                .where((value) => value.value.isNotEmpty)
-                .toList(growable: false),
-      },
+            AppDataDiscoveryFilterEntityTypeSelection(
+              entityKey: AppDataDiscoveryFilterTokenValue.fromRaw(entity),
+              typeKeys: payload
+                  .typesForEntity(entity)
+                  .map(AppDataDiscoveryFilterTokenValue.fromRaw)
+                  .where((value) => value.value.isNotEmpty)
+                  .toList(growable: false),
+            ),
+      ],
     );
   }
 

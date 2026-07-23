@@ -5,6 +5,7 @@ import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/discovery_filter_selection_snapshot.dart';
 import 'package:belluga_now/domain/app_data/location_origin_resolution.dart';
+import 'package:belluga_now/domain/app_data/value_object/app_data_discovery_filter_token_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
@@ -697,9 +698,10 @@ class DiscoveryScreenController extends Object
         _canUsePersistedDiscoveryFilterSelectionSnapshot(selection)) {
       values.addAll(
         _persistedDiscoveryFilterSelectionSnapshot!
-                .typeFiltersByEntity['account_profile']
-                ?.map((value) => value.value) ??
-            const <String>[],
+            .typeFiltersForEntity(
+              AppDataDiscoveryFilterTokenValue.fromRaw('account_profile'),
+            )
+            .map((value) => value.value),
       );
     }
 
@@ -854,7 +856,7 @@ class DiscoveryScreenController extends Object
     DiscoveryFilterSelection selection,
   ) {
     final snapshot = _persistedDiscoveryFilterSelectionSnapshot;
-    if (snapshot == null || snapshot.typeFiltersByEntity.isEmpty) {
+    if (snapshot == null || !snapshot.hasTypeFilterSelections) {
       return false;
     }
     return samePublicDiscoveryFilterSelection(

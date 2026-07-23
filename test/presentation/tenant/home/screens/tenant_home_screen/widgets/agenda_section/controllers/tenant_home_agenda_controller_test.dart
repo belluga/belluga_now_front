@@ -4581,15 +4581,18 @@ AppDataDiscoveryFilterSelectionSnapshot _appDataSelectionSnapshot(
           ),
         )
         .toList(growable: false),
-    typeFiltersByEntity: <String, List<AppDataDiscoveryFilterTokenValue>>{
+    typeFilterSelections: [
       for (final entry
           in (payload?.typesByEntity.entries ??
               const <MapEntry<String, Set<String>>>[]))
         if (entry.value.isNotEmpty)
-          entry.key: entry.value
-              .map(AppDataDiscoveryFilterTokenValue.fromRaw)
-              .toList(growable: false),
-    },
+          AppDataDiscoveryFilterEntityTypeSelection(
+            entityKey: AppDataDiscoveryFilterTokenValue.fromRaw(entry.key),
+            typeKeys: entry.value
+                .map(AppDataDiscoveryFilterTokenValue.fromRaw)
+                .toList(growable: false),
+          ),
+    ],
   );
 }
 
