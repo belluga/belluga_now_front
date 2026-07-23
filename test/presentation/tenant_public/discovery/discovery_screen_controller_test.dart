@@ -1689,7 +1689,11 @@ void main() {
       await controller.init();
       final initialRequestCount = repository.pageRequests.length;
       controller.setSearchQuery('v');
-      await Future<void>.delayed(const Duration(milliseconds: 450));
+      final deadline = DateTime.now().add(const Duration(seconds: 2));
+      while (repository.pageRequests.length < initialRequestCount + 1 &&
+          DateTime.now().isBefore(deadline)) {
+        await Future<void>.delayed(const Duration(milliseconds: 25));
+      }
 
       expect(repository.pageRequests.length, initialRequestCount + 1);
       expect(repository.pageRequests.last.query, isNull);
