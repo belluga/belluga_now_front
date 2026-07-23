@@ -19,7 +19,6 @@ import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/discovery_filters_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_bool_value.dart';
@@ -1074,13 +1073,11 @@ void main() {
         },
       );
       final catalog = _accountProfileDiscoveryFilterCatalogWithMultipleTypes();
+      repository.fallbackRuntimeCatalog = catalog;
       final primaryFilter = catalog.filters.first;
       final taxonomyGroup = catalog.taxonomyOptionsByKey.values.single;
       final controller = _buildDiscoveryController(
         accountProfilesRepository: repository,
-        discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-          catalog: catalog,
-        ),
       );
       GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
 
@@ -1191,12 +1188,10 @@ void main() {
         },
       );
       final catalog = _accountProfileDiscoveryFilterCatalogWithMultipleTypes();
+      repository.fallbackRuntimeCatalog = catalog;
       final primaryFilter = catalog.filters.first;
       final controller = _buildDiscoveryController(
         accountProfilesRepository: repository,
-        discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-          catalog: catalog,
-        ),
       );
       GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
 
@@ -1339,6 +1334,7 @@ void main() {
       );
       final catalog =
           _accountProfileDiscoveryFilterCatalogWithTwoTaxonomyGroups();
+      repository.fallbackRuntimeCatalog = catalog;
       final primaryFilter = catalog.filters.single;
       final taxonomyGroups = catalog.taxonomyOptionsByKey.values.toList();
       final firstTaxonomyGroup = taxonomyGroups.first;
@@ -1347,9 +1343,6 @@ void main() {
       final secondTaxonomyTerm = secondTaxonomyGroup.terms.single;
       final controller = _buildDiscoveryController(
         accountProfilesRepository: repository,
-        discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-          catalog: catalog,
-        ),
       );
       GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
 
@@ -1845,15 +1838,13 @@ void main() {
         },
       );
       final catalog = _accountProfileDiscoveryFilterCatalogWithMultipleTypes();
+      repository.fallbackRuntimeCatalog = catalog;
       final primaryFilter = catalog.filters.first;
       final secondaryFilter = catalog.filters.last;
       final taxonomyGroup = catalog.taxonomyOptionsByKey.values.single;
       final taxonomyTerm = taxonomyGroup.terms.single;
       final controller = _buildDiscoveryController(
         accountProfilesRepository: repository,
-        discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-          catalog: catalog,
-        ),
       );
 
       await controller.init();
@@ -1940,11 +1931,9 @@ void main() {
           ),
         },
       );
+      repository.fallbackRuntimeCatalog = catalog;
       final controller = _buildDiscoveryController(
         accountProfilesRepository: repository,
-        discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-          catalog: catalog,
-        ),
       );
 
       await controller.init();
@@ -1977,12 +1966,10 @@ void main() {
       },
     );
     final catalog = _accountProfileDiscoveryFilterCatalogWithMultipleTypes();
+    repository.fallbackRuntimeCatalog = catalog;
     final primaryFilter = catalog.filters.first;
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-        catalog: catalog,
-      ),
     );
 
     await controller.init();
@@ -2345,7 +2332,6 @@ ValueKey<String> _taxonomyChipKey(
 
 DiscoveryScreenController _buildDiscoveryController({
   required AccountProfilesRepositoryContract accountProfilesRepository,
-  DiscoveryFiltersRepositoryContract? discoveryFiltersRepository,
   ScheduleRepositoryContract? scheduleRepository,
   AuthRepositoryContract? authRepository,
 }) {
@@ -2377,34 +2363,12 @@ DiscoveryScreenController _buildDiscoveryController({
           : null,
     ),
   );
-  if (accountProfilesRepository is _FakeAccountProfilesRepository &&
-      discoveryFiltersRepository is _FakeDiscoveryFiltersRepository) {
-    accountProfilesRepository.fallbackRuntimeCatalog =
-        discoveryFiltersRepository.catalog;
-  }
   return DiscoveryScreenController(
     accountProfilesRepository: accountProfilesRepository,
-    discoveryFiltersRepository: discoveryFiltersRepository,
     scheduleRepository: scheduleRepository,
     locationOriginService: GetIt.I.get<LocationOriginServiceContract>(),
     authRepository: authRepository,
   );
-}
-
-class _FakeDiscoveryFiltersRepository
-    implements DiscoveryFiltersRepositoryContract {
-  _FakeDiscoveryFiltersRepository({required this.catalog});
-
-  final DiscoveryFilterCatalog catalog;
-  final List<String> requestedSurfaces = <String>[];
-
-  @override
-  Future<DiscoveryFilterCatalog> fetchCatalog(
-    DiscoveryFiltersRepoText surface,
-  ) async {
-    requestedSurfaces.add(surface.value);
-    return catalog;
-  }
 }
 
 class _RecordingStackRouter extends Mock implements StackRouter {

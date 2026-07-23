@@ -4,13 +4,10 @@ import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/domain/app_data/discovery_filter_selection_snapshot.dart';
 import 'package:belluga_now/domain/app_data/value_object/app_data_discovery_filter_token_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/discovery_filters_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/value_objects/discovery_filters_repository_contract_values.dart';
 import 'package:flutter/foundation.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 mixin PublicDiscoveryFilterControllerMixin {
-  DiscoveryFiltersRepositoryContract? get publicDiscoveryFiltersRepository;
   AppDataRepositoryContract? get publicDiscoveryFilterAppDataRepository;
   String get publicDiscoveryFilterSurface;
   DiscoveryFilterPolicy get discoveryFilterPolicy;
@@ -68,60 +65,6 @@ mixin PublicDiscoveryFilterControllerMixin {
     );
     unawaited(persistPublicDiscoveryFilterSelection(repaired));
     onPublicDiscoveryFilterSelectionChanged(repaired);
-  }
-
-  Future<void> loadPublicDiscoveryFilterCatalog({
-    DiscoveryFilterSelection? restoredSelection,
-  }) async {
-    final repository = publicDiscoveryFiltersRepository;
-    if (repository == null) {
-      return;
-    }
-
-    writePublicDiscoveryFilterState(
-      () => isDiscoveryFilterCatalogLoadingStreamValue.addValue(true),
-    );
-    try {
-      final catalog = await repository.fetchCatalog(
-        discoveryFiltersRepoText(publicDiscoveryFilterSurface),
-      );
-      writePublicDiscoveryFilterState(
-        () => discoveryFilterCatalogStreamValue.addValue(catalog),
-      );
-
-      final selectionToRestore =
-          restoredSelection ??
-          await loadPersistedPublicDiscoveryFilterSelection();
-      final repaired = repairPublicDiscoveryFilterSelection(
-        selectionToRestore ?? discoveryFilterSelectionStreamValue.value,
-        catalogOverride: catalog,
-      );
-      if (!samePublicDiscoveryFilterSelection(
-        discoveryFilterSelectionStreamValue.value,
-        repaired,
-      )) {
-        writePublicDiscoveryFilterState(
-          () => discoveryFilterSelectionStreamValue.addValue(repaired),
-        );
-      }
-      if (selectionToRestore != null &&
-          !samePublicDiscoveryFilterSelection(selectionToRestore, repaired)) {
-        unawaited(persistPublicDiscoveryFilterSelection(repaired));
-      }
-    } catch (error) {
-      debugPrint(
-        '$publicDiscoveryFilterLogLabel.loadPublicDiscoveryFilterCatalog failed: $error',
-      );
-      writePublicDiscoveryFilterState(
-        () => discoveryFilterCatalogStreamValue.addValue(
-          DiscoveryFilterCatalog(surface: publicDiscoveryFilterSurface),
-        ),
-      );
-    } finally {
-      writePublicDiscoveryFilterState(
-        () => isDiscoveryFilterCatalogLoadingStreamValue.addValue(false),
-      );
-    }
   }
 
   Future<DiscoveryFilterSelection?>

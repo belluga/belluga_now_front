@@ -11,7 +11,6 @@ import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/discovery_filters_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/account_profiles_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
@@ -34,7 +33,6 @@ class DiscoveryScreenController extends Object
     implements Disposable {
   DiscoveryScreenController({
     AccountProfilesRepositoryContract? accountProfilesRepository,
-    DiscoveryFiltersRepositoryContract? discoveryFiltersRepository,
     AppDataRepositoryContract? appDataRepository,
     ScheduleRepositoryContract? scheduleRepository,
     LocationOriginServiceContract? locationOriginService,
@@ -42,10 +40,6 @@ class DiscoveryScreenController extends Object
   }) : this._internal(
          accountProfilesRepository ??
              GetIt.I.get<AccountProfilesRepositoryContract>(),
-         discoveryFiltersRepository ??
-             (GetIt.I.isRegistered<DiscoveryFiltersRepositoryContract>()
-                 ? GetIt.I.get<DiscoveryFiltersRepositoryContract>()
-                 : null),
          appDataRepository ??
              (GetIt.I.isRegistered<AppDataRepositoryContract>()
                  ? GetIt.I.get<AppDataRepositoryContract>()
@@ -60,7 +54,6 @@ class DiscoveryScreenController extends Object
 
   DiscoveryScreenController._internal(
     this._accountProfilesRepository,
-    this._discoveryFiltersRepository,
     this._appDataRepository,
     this._scheduleRepository,
     this._locationOriginService,
@@ -68,7 +61,6 @@ class DiscoveryScreenController extends Object
   );
 
   final AccountProfilesRepositoryContract _accountProfilesRepository;
-  final DiscoveryFiltersRepositoryContract? _discoveryFiltersRepository;
   final AppDataRepositoryContract? _appDataRepository;
   ScheduleRepositoryContract? _scheduleRepository;
   final LocationOriginServiceContract _locationOriginService;
@@ -147,10 +139,6 @@ class DiscoveryScreenController extends Object
       _accountProfilesRepository.discoveryFilteredAccountProfilesStreamValue;
   StreamValue<List<AccountProfileModel>> get nearbyStreamValue =>
       _accountProfilesRepository.discoveryNearbyAccountProfilesStreamValue;
-
-  @override
-  DiscoveryFiltersRepositoryContract? get publicDiscoveryFiltersRepository =>
-      _discoveryFiltersRepository;
 
   @override
   AppDataRepositoryContract? get publicDiscoveryFilterAppDataRepository =>

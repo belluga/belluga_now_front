@@ -4,22 +4,27 @@
 - Architecture diagnostics are enforced by `belluga_analysis_plugin` via analyzer plugin.
 - `custom_lint` is decommissioned for architecture gating.
 
-## Official Commands
-- Full project analyzer gate (local + CI, run at repository root):
-  - `fvm dart analyze --format machine`
-- Local analyzer-state reset and warmup (run from `flutter-app` root when CLI results go false-clean, stale, or hang unexpectedly):
+## Official Evidence and Commands
+- Local Flutter `Problems` source of truth in an editor-managed workspace:
+  - do not run `fvm dart analyze`, `fvm flutter analyze`, or `custom_lint` to recreate current local diagnostics;
+  - query the read-only VS Code Problems bridge described in `../../../../delphi-ai/tools/vscode_diagnostics_bridge/README.md`;
+  - capture `GET http://127.0.0.1:40361/health` and then `GET /diagnostics?scope=<absolute-path-to-flutter-app>`;
+  - if the bridge is unavailable, unstable, or scoped to the wrong workspace, local static analysis is blocked and must not fall back to CLI analyzer commands.
+- Local analyzer-state reset and warmup (run from `flutter-app` root when the bridge snapshot looks stale, false-clean, or otherwise inconsistent):
   - `bash ./scripts/reset_analyzer_state.sh`
+- CI / pipeline-owned analyzer gate:
+  - `fvm dart analyze --format machine`
 - Important:
   - Do not use `fvm dart analyze lib` as architecture source-of-truth in this repo.
-  - If the root analyzer output looks false-clean, stale, or hangs unexpectedly, reset local analyzer state with `bash ./scripts/reset_analyzer_state.sh` and rerun `fvm dart analyze --format machine`.
-  - The first analyzer run after `./scripts/reset_analyzer_state.sh` can be significantly slower while `~/.dartServer/.plugin_manager` rebuilds the plugin AOT snapshot.
-  - After creating or altering analyzer rules, treat the next analyzer run as a cold plugin rebuild window:
-    - do not launch multiple `dart analyze` processes in parallel,
-    - let one analyzer process finish rebuilding `~/.dartServer/.plugin_manager` first,
-    - then re-run validation commands.
+  - After `bash ./scripts/reset_analyzer_state.sh`, use `Dart: Restart Analysis Server` and re-check the bridge snapshot instead of launching local analyzer CLI commands.
+  - The first editor/plugin rebuild after `./scripts/reset_analyzer_state.sh` can be significantly slower while `~/.dartServer/.plugin_manager` rebuilds the plugin AOT snapshot.
+  - After creating or altering analyzer rules, treat the next editor/plugin rebuild as a cold window:
+    - do not launch competing local analyzer processes,
+    - let the Analysis Server/plugin rebuild settle,
+    - then re-capture the bridge snapshot and run any required deterministic validation.
   - Cold rebuilds after rule changes can transiently produce corrupted plugin snapshots (`plugin.aot: file too short` / `IsolateSpawnException`) if the plugin manager rebuild is interrupted or raced.
   - Legacy orphan artifacts under `tool/belluga_custom_lint/` can still pollute local editor/analyzer state even though `custom_lint` is decommissioned. The reset script clears those artifacts as part of analyzer recovery.
-  - A successful plugin-cache rebuild is necessary, but does not by itself prove root-command parity; if root remains false-clean while explicit-file analyze reports real diagnostics, treat root parity as unresolved and continue under `TODO-v1-analyzer-cli-parity-deterministic-runner.md`.
+  - Pipeline-owned analyzer evidence is separate from local bridge evidence; neither should be mislabeled as the other.
 - Rule matrix anti-regression gate:
   - `bash tool/belluga_analysis_plugin/bin/validate_rule_matrix.sh`
 
