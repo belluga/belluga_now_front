@@ -89,7 +89,8 @@ mixin PublicDiscoveryFilterControllerMixin {
         () => discoveryFilterCatalogStreamValue.addValue(catalog),
       );
 
-      final selectionToRestore = restoredSelection ??
+      final selectionToRestore =
+          restoredSelection ??
           await loadPersistedPublicDiscoveryFilterSelection();
       final repaired = repairPublicDiscoveryFilterSelection(
         selectionToRestore ?? discoveryFilterSelectionStreamValue.value,
@@ -124,18 +125,23 @@ mixin PublicDiscoveryFilterControllerMixin {
   }
 
   Future<DiscoveryFilterSelection?>
-      loadPersistedPublicDiscoveryFilterSelection() async {
-    final repository = publicDiscoveryFilterAppDataRepository;
-    if (repository == null) {
-      return null;
-    }
-    final stored = await repository.getDiscoveryFilterSelection(
-      AppDataDiscoveryFilterTokenValue.fromRaw(publicDiscoveryFilterSurface),
-    );
+  loadPersistedPublicDiscoveryFilterSelection() async {
+    final stored = await loadPersistedPublicDiscoveryFilterSelectionSnapshot();
     if (stored == null) {
       return null;
     }
     return discoveryFilterSelectionFromSnapshot(stored);
+  }
+
+  Future<AppDataDiscoveryFilterSelectionSnapshot?>
+  loadPersistedPublicDiscoveryFilterSelectionSnapshot() async {
+    final repository = publicDiscoveryFilterAppDataRepository;
+    if (repository == null) {
+      return null;
+    }
+    return repository.getDiscoveryFilterSelection(
+      AppDataDiscoveryFilterTokenValue.fromRaw(publicDiscoveryFilterSurface),
+    );
   }
 
   Future<void> persistPublicDiscoveryFilterSelection(
@@ -179,6 +185,17 @@ mixin PublicDiscoveryFilterControllerMixin {
   AppDataDiscoveryFilterSelectionSnapshot discoveryFilterSelectionSnapshot(
     DiscoveryFilterSelection selection,
   ) {
+    final payload = DiscoveryFilterQueryPayload.compile(
+      catalog: discoveryFilterCatalogStreamValue.value,
+      selection: selection,
+    );
+    final entityKeys = <String>{
+      ...discoveryFilterCatalogStreamValue.value.filters.expand(
+        (filter) => filter.typesByEntity.keys,
+      ),
+      ...discoveryFilterCatalogStreamValue.value.typeOptionsByEntity.keys,
+    };
+
     return AppDataDiscoveryFilterSelectionSnapshot(
       primaryKeys: selection.primaryKeys
           .map(AppDataDiscoveryFilterTokenValue.fromRaw)
@@ -196,6 +213,15 @@ mixin PublicDiscoveryFilterControllerMixin {
           )
           .where((selection) => !selection.isEmpty)
           .toList(growable: false),
+      typeFiltersByEntity: <String, List<AppDataDiscoveryFilterTokenValue>>{
+        for (final entity in entityKeys)
+          if (payload.typesForEntity(entity).isNotEmpty)
+            entity: payload
+                .typesForEntity(entity)
+                .map(AppDataDiscoveryFilterTokenValue.fromRaw)
+                .where((value) => value.value.isNotEmpty)
+                .toList(growable: false),
+      },
     );
   }
 

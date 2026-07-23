@@ -7,10 +7,13 @@ class AppDataDiscoveryFilterSelectionSnapshot {
   const AppDataDiscoveryFilterSelectionSnapshot({
     this.primaryKeys = const <AppDataDiscoveryFilterTokenValue>[],
     this.taxonomySelections = const <AppDataDiscoveryFilterTaxonomySelection>[],
+    this.typeFiltersByEntity =
+        const <String, List<AppDataDiscoveryFilterTokenValue>>{},
   });
 
   final List<AppDataDiscoveryFilterTokenValue> primaryKeys;
   final List<AppDataDiscoveryFilterTaxonomySelection> taxonomySelections;
+  final Map<String, List<AppDataDiscoveryFilterTokenValue>> typeFiltersByEntity;
 
   bool get isEmpty {
     if (primaryKeys.isNotEmpty) {
