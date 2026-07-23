@@ -701,6 +701,20 @@ void main() {
     test(
       'does not refetch when runtime catalog repair leaves the agenda query empty',
       () async {
+        const persistedCatalog = DiscoveryFilterCatalog(
+          surface: 'home.events',
+          filters: <DiscoveryFilterCatalogItem>[
+            DiscoveryFilterCatalogItem(
+              key: 'stale-hidden',
+              label: 'Hidden',
+              entities: <String>{'event'},
+              types: <String>{'hidden'},
+              typesByEntity: <String, Set<String>>{
+                'event': <String>{'hidden'},
+              },
+            ),
+          ],
+        );
         const runtimeCatalog = DiscoveryFilterCatalog(
           surface: 'home.events',
           filters: <DiscoveryFilterCatalogItem>[
@@ -725,13 +739,15 @@ void main() {
           userLocationRepository: _FakeUserLocationRepository(),
           appDataRepository: _FakeAppDataRepository(
             _buildAppData(minKm: 1, defaultKm: 5, maxKm: 10),
-          ),
-        );
-        controller.discoveryFilterSelectionStreamValue.addValue(
-          const DiscoveryFilterSelection(
-            taxonomyTermKeys: <String, Set<String>>{
-              'genre': <String>{'rock'},
-            },
+            discoveryFilterSelections:
+                <String, AppDataDiscoveryFilterSelectionSnapshot>{
+                  'home.events': _appDataSelectionSnapshot(
+                    const DiscoveryFilterSelection(
+                      primaryKeys: <String>{'stale-hidden'},
+                    ),
+                    catalog: persistedCatalog,
+                  ),
+                },
           ),
         );
 
@@ -739,6 +755,7 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 50));
 
         expect(scheduleRepository.getEventsPageCallCount, 1);
+        expect(scheduleRepository.lastCategories, <String>['hidden']);
         expect(
           controller.discoveryFilterSelectionStreamValue.value.isEmpty,
           isTrue,
@@ -755,8 +772,8 @@ void main() {
           surface: 'home.events',
           filters: <DiscoveryFilterCatalogItem>[
             DiscoveryFilterCatalogItem(
-              key: 'empty-type',
-              label: 'Tipo Vazio',
+              key: 'artist',
+              label: 'Artistas',
               entities: <String>{'event'},
               types: <String>{'empty-type'},
               typesByEntity: <String, Set<String>>{
@@ -786,23 +803,26 @@ void main() {
           scheduleRepository: scheduleRepository,
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
-          discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-            catalog: preloadedCatalog,
-          ),
           userLocationRepository: _FakeUserLocationRepository(),
           appDataRepository: _FakeAppDataRepository(
             _buildAppData(minKm: 1, defaultKm: 5, maxKm: 10),
+            discoveryFilterSelections:
+                <String, AppDataDiscoveryFilterSelectionSnapshot>{
+                  'home.events': _appDataSelectionSnapshot(
+                    const DiscoveryFilterSelection(
+                      primaryKeys: <String>{'artist'},
+                    ),
+                    catalog: preloadedCatalog,
+                  ),
+                },
           ),
-        );
-        controller.discoveryFilterSelectionStreamValue.addValue(
-          const DiscoveryFilterSelection(primaryKeys: <String>{'empty-type'}),
         );
 
         await controller.init();
         await _waitForScheduleCallCount(scheduleRepository, 2);
 
         expect(scheduleRepository.getEventsPageCallCount, 2);
-        expect(scheduleRepository.lastCategories, isNull);
+        expect(scheduleRepository.lastCategories, <String>['show']);
 
         controller.onDispose();
       },
@@ -1405,7 +1425,9 @@ void main() {
         final primaryFilter = catalog.filters.single;
         final taxonomyGroup = catalog.taxonomyOptionsByKey.values.single;
         final taxonomyTerm = taxonomyGroup.terms.single;
-        final scheduleRepository = _FakeScheduleRepository();
+        final scheduleRepository = _FakeScheduleRepository(
+          homeAgendaRuntimeCatalog: catalog,
+        );
         final appDataRepository = _FakeAppDataRepository(
           _buildAppData(minKm: 1, defaultKm: 5, maxKm: 15),
           discoveryFilterSelections:
@@ -1417,6 +1439,7 @@ void main() {
                       taxonomyGroup.key: <String>{taxonomyTerm.value},
                     },
                   ),
+                  catalog: catalog,
                 ),
               },
         );
@@ -1424,9 +1447,6 @@ void main() {
           scheduleRepository: scheduleRepository,
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
-          discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-            catalog: catalog,
-          ),
           userLocationRepository: _FakeUserLocationRepository(),
           appDataRepository: appDataRepository,
         );
@@ -4216,6 +4236,11 @@ TenantHomeAgendaController _buildAgendaController({
   Duration? locationPermissionTimeout,
   Duration? radiusRefreshDebounce,
 }) {
+  if (scheduleRepository is _FakeScheduleRepository &&
+      discoveryFiltersRepository is _FakeDiscoveryFiltersRepository) {
+    scheduleRepository.fallbackHomeAgendaRuntimeCatalog =
+        discoveryFiltersRepository.catalog;
+  }
   return TenantHomeAgendaController(
     scheduleRepository: scheduleRepository,
     userEventsRepository: userEventsRepository,
@@ -4626,8 +4651,15 @@ class _DelayedTenantDefaultLocationOriginService
 }
 
 AppDataDiscoveryFilterSelectionSnapshot _appDataSelectionSnapshot(
-  DiscoveryFilterSelection selection,
-) {
+  DiscoveryFilterSelection selection, {
+  DiscoveryFilterCatalog? catalog,
+}) {
+  final payload = catalog == null
+      ? null
+      : DiscoveryFilterQueryPayload.compile(
+          catalog: catalog,
+          selection: selection,
+        );
   return AppDataDiscoveryFilterSelectionSnapshot(
     primaryKeys: selection.primaryKeys
         .map(AppDataDiscoveryFilterTokenValue.fromRaw)
@@ -4642,6 +4674,15 @@ AppDataDiscoveryFilterSelectionSnapshot _appDataSelectionSnapshot(
           ),
         )
         .toList(growable: false),
+    typeFiltersByEntity: <String, List<AppDataDiscoveryFilterTokenValue>>{
+      for (final entry
+          in (payload?.typesByEntity.entries ??
+              const <MapEntry<String, Set<String>>>[]))
+        if (entry.value.isNotEmpty)
+          entry.key: entry.value
+              .map(AppDataDiscoveryFilterTokenValue.fromRaw)
+              .toList(growable: false),
+    },
   );
 }
 
@@ -4684,6 +4725,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   final Map<int, List<EventModel>> pages;
   final DiscoveryFilterRuntimeFacets? homeAgendaRuntimeFacets;
   final DiscoveryFilterCatalog? homeAgendaRuntimeCatalog;
+  DiscoveryFilterCatalog? fallbackHomeAgendaRuntimeCatalog;
   int getEventsPageCallCount = 0;
   double? lastOriginLat;
   double? lastOriginLng;
@@ -4805,7 +4847,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
       homeAgendaRuntimeFacets,
     );
     homeAgendaDiscoveryFilterCatalogStreamValue.addValue(
-      homeAgendaRuntimeCatalog,
+      homeAgendaRuntimeCatalog ?? fallbackHomeAgendaRuntimeCatalog,
     );
     return events;
   }
@@ -4860,7 +4902,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
       homeAgendaRuntimeFacets,
     );
     homeAgendaDiscoveryFilterCatalogStreamValue.addValue(
-      homeAgendaRuntimeCatalog,
+      homeAgendaRuntimeCatalog ?? fallbackHomeAgendaRuntimeCatalog,
     );
     return nextEvents;
   }

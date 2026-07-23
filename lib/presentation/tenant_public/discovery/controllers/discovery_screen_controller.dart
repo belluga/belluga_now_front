@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/app_data/discovery_filter_selection_snapshot.dart';
 import 'package:belluga_now/domain/app_data/location_origin_resolution.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
@@ -101,6 +102,8 @@ class DiscoveryScreenController extends Object
   bool _isProgrammaticSearchTextChange = false;
   bool _isRevealingDiscoveryFilterPanel = false;
   String? _lastOriginSignature;
+  AppDataDiscoveryFilterSelectionSnapshot?
+  _persistedDiscoveryFilterSelectionSnapshot;
   final ScrollController scrollController = ScrollController();
   final searchQueryStreamValue = StreamValue<String>(defaultValue: '');
   final selectedTypeFilterStreamValue = StreamValue<String?>();
@@ -166,6 +169,8 @@ class DiscoveryScreenController extends Object
   void onPublicDiscoveryFilterSelectionChanged(
     DiscoveryFilterSelection selection,
   ) {
+    _persistedDiscoveryFilterSelectionSnapshot =
+        discoveryFilterSelectionSnapshot(selection);
     _scheduleReload(immediate: true);
   }
 
@@ -201,8 +206,12 @@ class DiscoveryScreenController extends Object
         });
     await _loadFavoriteIds();
     _hydrateFromRepositoryCache();
-    final restoredSelection =
-        await loadPersistedPublicDiscoveryFilterSelection();
+    final restoredSelectionSnapshot =
+        await loadPersistedPublicDiscoveryFilterSelectionSnapshot();
+    _persistedDiscoveryFilterSelectionSnapshot = restoredSelectionSnapshot;
+    final restoredSelection = restoredSelectionSnapshot == null
+        ? null
+        : discoveryFilterSelectionFromSnapshot(restoredSelectionSnapshot);
     if (restoredSelection != null &&
         !samePublicDiscoveryFilterSelection(
           discoveryFilterSelectionStreamValue.value,
@@ -683,13 +692,28 @@ class DiscoveryScreenController extends Object
   }
 
   List<AccountProfilesRepositoryContractPrimString>
-  _selectedAccountProfileTypeFilters() {
-    final selection = discoveryFilterSelectionStreamValue.value;
+  _selectedAccountProfileTypeFilters({
+    DiscoveryFilterCatalog? catalogOverride,
+    DiscoveryFilterSelection? selectionOverride,
+    bool allowPersistedFallback = true,
+  }) {
+    final selection =
+        selectionOverride ?? discoveryFilterSelectionStreamValue.value;
     final payload = DiscoveryFilterQueryPayload.compile(
-      catalog: discoveryFilterCatalogStreamValue.value,
+      catalog: catalogOverride ?? discoveryFilterCatalogStreamValue.value,
       selection: selection,
     );
     final values = <String>{...payload.typesForEntity('account_profile')};
+    if (values.isEmpty &&
+        allowPersistedFallback &&
+        _canUsePersistedDiscoveryFilterSelectionSnapshot(selection)) {
+      values.addAll(
+        _persistedDiscoveryFilterSelectionSnapshot!
+                .typeFiltersByEntity['account_profile']
+                ?.map((value) => value.value) ??
+            const <String>[],
+      );
+    }
 
     return values
         .map(
@@ -703,12 +727,32 @@ class DiscoveryScreenController extends Object
   }
 
   List<AccountProfilesRepositoryTaxonomyFilter>
-  _selectedAccountProfileTaxonomyFilters() {
+  _selectedAccountProfileTaxonomyFilters({
+    DiscoveryFilterCatalog? catalogOverride,
+    DiscoveryFilterSelection? selectionOverride,
+    bool allowPersistedFallback = true,
+  }) {
+    final selection =
+        selectionOverride ?? discoveryFilterSelectionStreamValue.value;
     final payload = DiscoveryFilterQueryPayload.compile(
-      catalog: discoveryFilterCatalogStreamValue.value,
-      selection: discoveryFilterSelectionStreamValue.value,
+      catalog: catalogOverride ?? discoveryFilterCatalogStreamValue.value,
+      selection: selection,
     );
-    return payload.taxonomyEntries
+    final payloadTaxonomyEntries = payload.taxonomyEntries
+        .map((entry) => (type: entry.type, value: entry.value))
+        .toList(growable: false);
+    final taxonomyEntries =
+        payloadTaxonomyEntries.isNotEmpty ||
+            !allowPersistedFallback ||
+            !_canUsePersistedDiscoveryFilterSelectionSnapshot(selection)
+        ? payloadTaxonomyEntries
+        : selection.taxonomyTermKeys.entries
+              .expand(
+                (entry) =>
+                    entry.value.map((value) => (type: entry.key, value: value)),
+              )
+              .toList(growable: false);
+    return taxonomyEntries
         .map(
           (entry) => AccountProfilesRepositoryTaxonomyFilter.fromRaw(
             type: entry.type,
@@ -731,6 +775,15 @@ class DiscoveryScreenController extends Object
       return false;
     }
 
+    final selection = discoveryFilterSelectionStreamValue.value;
+    final canUsePersistedFallback =
+        _canUsePersistedDiscoveryFilterSelectionSnapshot(selection);
+    final currentTypeFilters = _selectedAccountProfileTypeFilters(
+      selectionOverride: selection,
+    );
+    final currentTaxonomyFilters = _selectedAccountProfileTaxonomyFilters(
+      selectionOverride: selection,
+    );
     if (!_sameDiscoveryFilterCatalog(
       discoveryFilterCatalogStreamValue.value,
       runtimeCatalog,
@@ -738,17 +791,66 @@ class DiscoveryScreenController extends Object
       discoveryFilterCatalogStreamValue.addValue(runtimeCatalog);
     }
 
-    final selection = discoveryFilterSelectionStreamValue.value;
     final repairedSelection = repairPublicDiscoveryFilterSelection(
       selection,
       catalogOverride: runtimeCatalog,
     );
-    if (samePublicDiscoveryFilterSelection(selection, repairedSelection)) {
+    final selectionChanged = !samePublicDiscoveryFilterSelection(
+      selection,
+      repairedSelection,
+    );
+    if (selectionChanged) {
+      discoveryFilterSelectionStreamValue.addValue(repairedSelection);
+      unawaited(persistPublicDiscoveryFilterSelection(repairedSelection));
+      _persistedDiscoveryFilterSelectionSnapshot =
+          discoveryFilterSelectionSnapshot(repairedSelection);
+    }
+    final repairedTypeFilters = _selectedAccountProfileTypeFilters(
+      catalogOverride: runtimeCatalog,
+      selectionOverride: repairedSelection,
+      allowPersistedFallback: false,
+    );
+    final repairedTaxonomyFilters = _selectedAccountProfileTaxonomyFilters(
+      catalogOverride: runtimeCatalog,
+      selectionOverride: repairedSelection,
+      allowPersistedFallback: false,
+    );
+    final repairedQueryEmpty =
+        repairedTypeFilters.isEmpty && repairedTaxonomyFilters.isEmpty;
+    final queryChanged =
+        !_sameAccountProfileTypeFilters(
+          currentTypeFilters,
+          repairedTypeFilters,
+        ) ||
+        !_sameAccountProfileTaxonomyFilters(
+          currentTaxonomyFilters,
+          repairedTaxonomyFilters,
+        );
+    if (selectionChanged || queryChanged) {
+      unawaited(persistPublicDiscoveryFilterSelection(repairedSelection));
+      _persistedDiscoveryFilterSelectionSnapshot =
+          discoveryFilterSelectionSnapshot(repairedSelection);
+    }
+    if (!queryChanged) {
       return false;
     }
 
-    discoveryFilterSelectionStreamValue.addValue(repairedSelection);
-    unawaited(persistPublicDiscoveryFilterSelection(repairedSelection));
+    if (canUsePersistedFallback && repairedQueryEmpty) {
+      final effectiveQuery =
+          _effectiveSearchQuery(searchQueryStreamValue.value.trim()) ?? '';
+      if (_shouldSyncNearby(
+        query: effectiveQuery,
+        selectedType: selectedTypeFilterStreamValue.value,
+        typeFilters: repairedTypeFilters,
+        taxonomyFilters: repairedTaxonomyFilters,
+      )) {
+        unawaited(
+          _accountProfilesRepository.syncDiscoveryNearbyAccountProfiles(),
+        );
+      }
+      return false;
+    }
+
     _scheduleReload(immediate: true);
     return true;
   }
@@ -758,6 +860,43 @@ class DiscoveryScreenController extends Object
     DiscoveryFilterCatalog right,
   ) {
     return jsonEncode(left.toJson()) == jsonEncode(right.toJson());
+  }
+
+  bool _canUsePersistedDiscoveryFilterSelectionSnapshot(
+    DiscoveryFilterSelection selection,
+  ) {
+    final snapshot = _persistedDiscoveryFilterSelectionSnapshot;
+    if (snapshot == null || snapshot.typeFiltersByEntity.isEmpty) {
+      return false;
+    }
+    return samePublicDiscoveryFilterSelection(
+      selection,
+      discoveryFilterSelectionFromSnapshot(snapshot),
+    );
+  }
+
+  bool _sameAccountProfileTypeFilters(
+    List<AccountProfilesRepositoryContractPrimString> left,
+    List<AccountProfilesRepositoryContractPrimString> right,
+  ) {
+    final leftValues = left.map((value) => value.value).toSet();
+    final rightValues = right.map((value) => value.value).toSet();
+    return leftValues.length == rightValues.length &&
+        leftValues.containsAll(rightValues);
+  }
+
+  bool _sameAccountProfileTaxonomyFilters(
+    List<AccountProfilesRepositoryTaxonomyFilter> left,
+    List<AccountProfilesRepositoryTaxonomyFilter> right,
+  ) {
+    final leftValues = left
+        .map((value) => '${value.type.value}:${value.term.value}')
+        .toSet();
+    final rightValues = right
+        .map((value) => '${value.type.value}:${value.term.value}')
+        .toSet();
+    return leftValues.length == rightValues.length &&
+        leftValues.containsAll(rightValues);
   }
 
   void _updateAvailableTypes() {

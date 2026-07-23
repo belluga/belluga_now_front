@@ -79,7 +79,9 @@ void main() {
       expect(controller.availableTypesStreamValue.value, ['artist']);
       expect(controller.filteredPartnersStreamValue.value, hasLength(2));
       expect(
-        controller.filteredPartnersStreamValue.value.map((profile) => profile.type),
+        controller.filteredPartnersStreamValue.value.map(
+          (profile) => profile.type,
+        ),
         ['artist', 'curator'],
       );
       expect(repository.allAccountProfilesStreamValue.value, hasLength(2));
@@ -1781,6 +1783,8 @@ void main() {
   test(
     'discovery canonical filter selection sends type and taxonomy filters to backend',
     () async {
+      final catalog =
+          _accountProfileDiscoveryFilterCatalogWithTwoTaxonomyGroups();
       final repository = _FakeAccountProfilesRepository(
         pages: {
           1: pagedAccountProfilesResultFromRaw(
@@ -1789,11 +1793,10 @@ void main() {
               _profile(id: _mongoId('cf2'), type: 'venue', name: 'Venue One'),
             ],
             hasMore: false,
+            discoveryFilterCatalog: catalog,
           ),
         },
       );
-      final catalog =
-          _accountProfileDiscoveryFilterCatalogWithTwoTaxonomyGroups();
       final primaryFilter = catalog.filters.single;
       final taxonomyGroup = catalog.taxonomyOptionsByKey.values.first;
       final taxonomyTerm = taxonomyGroup.terms.single;
@@ -2014,6 +2017,7 @@ void main() {
                     taxonomyGroup.key: <String>{taxonomyTerm.value},
                   },
                 ),
+                catalog: catalog,
               ),
             },
       );
@@ -2027,14 +2031,12 @@ void main() {
               _profile(id: _mongoId('pf2'), type: 'venue', name: 'Venue One'),
             ],
             hasMore: false,
+            discoveryFilterCatalog: catalog,
           ),
         },
       );
       final controller = _buildDiscoveryController(
         accountProfilesRepository: repository,
-        discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-          catalog: catalog,
-        ),
       );
 
       await controller.init();
@@ -2050,6 +2052,93 @@ void main() {
       expect(repository.pageRequests.last.taxonomyFilters, [
         _encodedTaxonomyFilter(taxonomyGroup, taxonomyTerm),
       ]);
+      controller.onDispose();
+    },
+  );
+
+  test(
+    'discovery clears a stale persisted filter without refetch when backend already falls back to baseline',
+    () async {
+      const persistedCatalog = DiscoveryFilterCatalog(
+        surface: 'discovery.account_profiles',
+        filters: <DiscoveryFilterCatalogItem>[
+          DiscoveryFilterCatalogItem(
+            key: 'stale-hidden',
+            label: 'Hidden',
+            entities: <String>{'account_profile'},
+            types: <String>{'hidden'},
+            typesByEntity: <String, Set<String>>{
+              'account_profile': <String>{'hidden'},
+            },
+          ),
+        ],
+      );
+      const runtimeCatalog = DiscoveryFilterCatalog(
+        surface: 'discovery.account_profiles',
+        filters: <DiscoveryFilterCatalogItem>[
+          DiscoveryFilterCatalogItem(
+            key: 'artist',
+            label: 'Artists',
+            entities: <String>{'account_profile'},
+            types: <String>{'artist'},
+            typesByEntity: <String, Set<String>>{
+              'account_profile': <String>{'artist'},
+            },
+          ),
+        ],
+      );
+      final appDataRepository = _FakeAppDataRepository(
+        appData: _buildAppData(),
+        maxRadiusMeters: _buildAppData().mapRadiusDefaultMeters,
+        discoveryFilterSelections:
+            <String, AppDataDiscoveryFilterSelectionSnapshot>{
+              'discovery.account_profiles': _appDataSelectionSnapshot(
+                const DiscoveryFilterSelection(
+                  primaryKeys: <String>{'stale-hidden'},
+                ),
+                catalog: persistedCatalog,
+              ),
+            },
+      );
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
+
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: [
+              _profile(
+                id: _mongoId('stale-fallback-1'),
+                type: 'artist',
+                name: 'Artist One',
+              ),
+            ],
+            hasMore: false,
+            discoveryFilterCatalog: runtimeCatalog,
+          ),
+        },
+        filterRequestAgainstFixtures: false,
+      );
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+      );
+
+      await controller.init();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(repository.pageRequests, hasLength(1));
+      expect(repository.pageRequests.single.typeFilters, <String>['hidden']);
+      expect(
+        controller.discoveryFilterSelectionStreamValue.value.isEmpty,
+        isTrue,
+      );
+      final persistedSelection = await appDataRepository
+          .getDiscoveryFilterSelection(
+            AppDataDiscoveryFilterTokenValue.fromRaw(
+              'discovery.account_profiles',
+            ),
+          );
+      expect(persistedSelection?.primaryKeys, isEmpty);
+
       controller.onDispose();
     },
   );
@@ -2284,6 +2373,11 @@ DiscoveryScreenController _buildDiscoveryController({
           : null,
     ),
   );
+  if (accountProfilesRepository is _FakeAccountProfilesRepository &&
+      discoveryFiltersRepository is _FakeDiscoveryFiltersRepository) {
+    accountProfilesRepository.fallbackRuntimeCatalog =
+        discoveryFiltersRepository.catalog;
+  }
   return DiscoveryScreenController(
     accountProfilesRepository: accountProfilesRepository,
     discoveryFiltersRepository: discoveryFiltersRepository,
@@ -2428,11 +2522,14 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
     required this.pages,
     this.nearbyProfiles = const <AccountProfileModel>[],
     this.failingPages = const <int>{},
+    this.filterRequestAgainstFixtures = true,
   });
 
   final Map<int, PagedAccountProfilesResult> pages;
   final List<AccountProfileModel> nearbyProfiles;
   final Set<int> failingPages;
+  final bool filterRequestAgainstFixtures;
+  DiscoveryFilterCatalog? fallbackRuntimeCatalog;
   final List<String> toggleCalls = <String>[];
   final List<_PageRequest> pageRequests = <_PageRequest>[];
   final Map<String, AccountProfileModel> _bySlug =
@@ -2492,36 +2589,39 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
         );
 
     var profiles = result.profiles;
-    final normalizedType = normalizedTypeInput?.trim();
-    if (normalizedType != null && normalizedType.isNotEmpty) {
-      profiles = profiles
-          .where((profile) => profile.type == normalizedType)
-          .toList(growable: false);
-    }
-    if (normalizedTypeFilters.isNotEmpty) {
-      profiles = profiles
-          .where((profile) => normalizedTypeFilters.contains(profile.type))
-          .toList(growable: false);
-    }
+    if (filterRequestAgainstFixtures) {
+      final normalizedType = normalizedTypeInput?.trim();
+      if (normalizedType != null && normalizedType.isNotEmpty) {
+        profiles = profiles
+            .where((profile) => profile.type == normalizedType)
+            .toList(growable: false);
+      }
+      if (normalizedTypeFilters.isNotEmpty) {
+        profiles = profiles
+            .where((profile) => normalizedTypeFilters.contains(profile.type))
+            .toList(growable: false);
+      }
 
-    final normalizedQuery = normalizedQueryInput?.trim().toLowerCase();
-    if (normalizedQuery != null && normalizedQuery.isNotEmpty) {
-      profiles = profiles
-          .where((profile) {
-            return profile.name.toLowerCase().contains(normalizedQuery) ||
-                profile.slug.toLowerCase().contains(normalizedQuery) ||
-                profile.tags.any(
-                  (tag) => tag.value.toLowerCase().contains(normalizedQuery),
-                );
-          })
-          .toList(growable: false);
+      final normalizedQuery = normalizedQueryInput?.trim().toLowerCase();
+      if (normalizedQuery != null && normalizedQuery.isNotEmpty) {
+        profiles = profiles
+            .where((profile) {
+              return profile.name.toLowerCase().contains(normalizedQuery) ||
+                  profile.slug.toLowerCase().contains(normalizedQuery) ||
+                  profile.tags.any(
+                    (tag) => tag.value.toLowerCase().contains(normalizedQuery),
+                  );
+            })
+            .toList(growable: false);
+      }
     }
 
     result = pagedAccountProfilesResultFromRaw(
       profiles: profiles,
       hasMore: result.hasMore,
       discoveryFilterFacets: result.discoveryFilterFacets,
-      discoveryFilterCatalog: result.discoveryFilterCatalog,
+      discoveryFilterCatalog:
+          result.discoveryFilterCatalog ?? fallbackRuntimeCatalog,
     );
 
     return result;
@@ -3073,8 +3173,15 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
 }
 
 AppDataDiscoveryFilterSelectionSnapshot _appDataSelectionSnapshot(
-  DiscoveryFilterSelection selection,
-) {
+  DiscoveryFilterSelection selection, {
+  DiscoveryFilterCatalog? catalog,
+}) {
+  final payload = catalog == null
+      ? null
+      : DiscoveryFilterQueryPayload.compile(
+          catalog: catalog,
+          selection: selection,
+        );
   return AppDataDiscoveryFilterSelectionSnapshot(
     primaryKeys: selection.primaryKeys
         .map(AppDataDiscoveryFilterTokenValue.fromRaw)
@@ -3089,6 +3196,15 @@ AppDataDiscoveryFilterSelectionSnapshot _appDataSelectionSnapshot(
           ),
         )
         .toList(growable: false),
+    typeFiltersByEntity: <String, List<AppDataDiscoveryFilterTokenValue>>{
+      for (final entry
+          in (payload?.typesByEntity.entries ??
+              const <MapEntry<String, Set<String>>>[]))
+        if (entry.value.isNotEmpty)
+          entry.key: entry.value
+              .map(AppDataDiscoveryFilterTokenValue.fromRaw)
+              .toList(growable: false),
+    },
   );
 }
 
