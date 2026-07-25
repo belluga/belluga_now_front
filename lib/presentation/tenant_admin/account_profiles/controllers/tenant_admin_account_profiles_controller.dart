@@ -192,6 +192,9 @@ class TenantAdminAccountProfilesController implements Disposable {
       <String, TenantAdminAccountProfile>{};
   final Map<String, TenantAdminAccountProfile> _selectedContactSourceCache =
       <String, TenantAdminAccountProfile>{};
+  final Map<String, Future<TenantAdminAccountProfile?>>
+  _selectedContactSourceHydrationInFlight =
+      <String, Future<TenantAdminAccountProfile?>>{};
   int _nestedProfileCandidatesCurrentPage = 0;
   int _nestedProfileCandidatesRequestToken = 0;
   String _nestedProfileCandidatesQuery = '';
@@ -467,6 +470,14 @@ class TenantAdminAccountProfilesController implements Disposable {
   }
 
   Future<void> loadContactSourceCandidates({String? excludeProfileId}) async {
+    _resetContactSourceCandidates(excludeProfileId: excludeProfileId);
+    await _loadContactSourceCandidatesPage(
+      isInitial: true,
+      requestToken: _contactSourceCandidatesRequestToken,
+    );
+  }
+
+  void _resetContactSourceCandidates({String? excludeProfileId}) {
     _contactSourceSearchDebounce?.cancel();
     _contactSourceCandidatesExcludeProfileId = excludeProfileId?.trim();
     _contactSourceCandidatesQuery = '';
@@ -477,10 +488,20 @@ class TenantAdminAccountProfilesController implements Disposable {
     contactSourceCandidatesStreamValue.addValue(const []);
     contactSourceCandidatesHasMoreStreamValue.addValue(false);
     contactSourceCandidatesErrorStreamValue.addValue(null);
-    await _loadContactSourceCandidatesPage(
-      isInitial: true,
-      requestToken: requestToken,
-    );
+    contactSourceCandidatesLoadingStreamValue.addValue(false);
+    contactSourceCandidatesPageLoadingStreamValue.addValue(false);
+    _contactSourceCandidatesReloadQueued = false;
+  }
+
+  void _syncContactSourceCandidatesForMode(
+    BellugaContactSourceMode mode, {
+    String? excludeProfileId,
+  }) {
+    if (mode == BellugaContactSourceMode.mirroredAccountProfile) {
+      unawaited(loadContactSourceCandidates(excludeProfileId: excludeProfileId));
+      return;
+    }
+    _resetContactSourceCandidates(excludeProfileId: excludeProfileId);
   }
 
   Future<void> loadNextContactSourceCandidatesPage() async {
@@ -896,7 +917,10 @@ class TenantAdminAccountProfilesController implements Disposable {
             .syncRemoteState(profile),
       );
       unawaited(loadNestedProfileCandidates(excludeProfileId: profile.id));
-      unawaited(loadContactSourceCandidates(excludeProfileId: profile.id));
+      _syncContactSourceCandidatesForMode(
+        profile.contactMode,
+        excludeProfileId: profile.id,
+      );
       _removeAvatarOnSubmit = false;
       _removeCoverOnSubmit = false;
     } catch (error) {
@@ -925,6 +949,10 @@ class TenantAdminAccountProfilesController implements Disposable {
           selection: state.contactBubbleSelection,
         ),
       ),
+    );
+    _syncContactSourceCandidatesForMode(
+      mode,
+      excludeProfileId: accountProfileStreamValue.value?.id,
     );
   }
 
@@ -1087,7 +1115,10 @@ class TenantAdminAccountProfilesController implements Disposable {
     _updateEditState(
       editStateStreamValue.value.copyWith().syncRemoteState(profile),
     );
-    unawaited(loadContactSourceCandidates(excludeProfileId: profile.id));
+    _syncContactSourceCandidatesForMode(
+      profile.contactMode,
+      excludeProfileId: profile.id,
+    );
     _removeAvatarOnSubmit = false;
     _removeCoverOnSubmit = false;
   }
@@ -1518,6 +1549,7 @@ class TenantAdminAccountProfilesController implements Disposable {
         ),
       ),
     );
+    _syncContactSourceCandidatesForMode(mode);
   }
 
   void updateCreateContactSourceAccountProfileId(String? profileId) {
@@ -2186,27 +2218,55 @@ class TenantAdminAccountProfilesController implements Disposable {
       if (_selectedContactSourceCache.containsKey(profileId)) {
         continue;
       }
-      try {
-        final profile = await _profilesRepository.fetchAccountProfile(
-          tenantAdminAccountProfilesRepoString(
-            profileId,
-            defaultValue: '',
-            isRequired: true,
-          ),
-        );
-        if (_isDisposed) {
-          return;
-        }
-        final refreshedSelectedIds = _selectedContactSourceIdsAcrossDrafts();
-        if (!refreshedSelectedIds.contains(profileId)) {
-          continue;
-        }
-        _selectedContactSourceCache[profileId] = profile;
-      } catch (_) {
-        if (_isDisposed) {
-          return;
-        }
+      final profile = await _hydrateSelectedContactSourceProfile(profileId);
+      if (_isDisposed) {
+        return;
       }
+      if (profile == null) {
+        continue;
+      }
+      final refreshedSelectedIds = _selectedContactSourceIdsAcrossDrafts();
+      if (!refreshedSelectedIds.contains(profileId)) {
+        continue;
+      }
+      _selectedContactSourceCache[profileId] = profile;
+    }
+  }
+
+  Future<TenantAdminAccountProfile?> _hydrateSelectedContactSourceProfile(
+    String profileId,
+  ) async {
+    final inFlight = _selectedContactSourceHydrationInFlight[profileId];
+    if (inFlight != null) {
+      return inFlight;
+    }
+    final future = _fetchSelectedContactSourceProfile(profileId);
+    _selectedContactSourceHydrationInFlight[profileId] = future;
+    try {
+      return await future;
+    } finally {
+      if (identical(
+        _selectedContactSourceHydrationInFlight[profileId],
+        future,
+      )) {
+        _selectedContactSourceHydrationInFlight.remove(profileId);
+      }
+    }
+  }
+
+  Future<TenantAdminAccountProfile?> _fetchSelectedContactSourceProfile(
+    String profileId,
+  ) async {
+    try {
+      return await _profilesRepository.fetchAccountProfile(
+        tenantAdminAccountProfilesRepoString(
+          profileId,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
+    } catch (_) {
+      return null;
     }
   }
 

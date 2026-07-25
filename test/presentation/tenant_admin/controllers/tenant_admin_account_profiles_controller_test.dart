@@ -267,6 +267,7 @@ class _FakeAccountProfilesRepository
   List<TenantAdminNestedProfileGroup>? lastCreateNestedProfileGroups;
   List<TenantAdminNestedProfileGroup>? lastUpdateNestedProfileGroups;
   List<TenantAdminAccountProfileGalleryUpdateGroup>? lastGalleryGroups;
+  Object? createAccountProfileError;
   String? lastNestedGroupMembersProfileId;
   String? lastNestedGroupMembersGroupId;
   int? lastNestedGroupMembersPerPage;
@@ -393,6 +394,10 @@ class _FakeAccountProfilesRepository
     createProfileCalls += 1;
     final gate = createProfileGate;
     if (gate != null) await gate.future;
+    final createError = createAccountProfileError;
+    if (createError != null) {
+      throw createError;
+    }
     lastCreateNestedProfileGroups = nestedProfileGroups;
     final created = tenantAdminAccountProfileFromRaw(
       id: 'profile-$createProfileCalls',
@@ -930,30 +935,8 @@ void main() {
   });
 
   test(
-    'createProfile persists nested member selections through canonical member deltas after create',
+    'createProfile forwards nested groups inline through createAccountProfile without members subresource delta',
     () async {
-      final createdProfile = tenantAdminAccountProfileFromRaw(
-        id: 'profile-1',
-        accountId: 'acc-1',
-        profileType: 'venue',
-        displayName: 'Perfil',
-        aggregateRevision: 1,
-      );
-      final refreshedProfile = tenantAdminAccountProfileFromRaw(
-        id: 'profile-1',
-        accountId: 'acc-1',
-        profileType: 'venue',
-        displayName: 'Perfil',
-        aggregateRevision: 2,
-        nestedProfileGroups: <TenantAdminNestedProfileGroup>[
-          TenantAdminNestedProfileGroup(
-            idValue: TenantAdminNestedProfileGroupTextValue('parceiros'),
-            labelValue: TenantAdminNestedProfileGroupTextValue('Parceiros'),
-            orderValue: TenantAdminNestedProfileGroupOrderValue(0),
-            memberCountValue: TenantAdminCountValue(1),
-          ),
-        ],
-      );
       final profilesRepository = _FakeAccountProfilesRepository(
         const <TenantAdminAccountProfile>[],
         <TenantAdminProfileTypeDefinition>[
@@ -974,66 +957,54 @@ void main() {
           ),
         ],
       );
-      profilesRepository.accountProfileFetchOverrides['profile-1'] =
-          refreshedProfile;
-      profilesRepository._profiles = <TenantAdminAccountProfile>[
-        createdProfile,
-      ];
       final controller = TenantAdminAccountProfilesController(
         profilesRepository: profilesRepository,
         accountsRepository: _FakeAccountsRepository(),
         taxonomiesRepository: _FakeTaxonomiesRepository(),
         locationSelectionService: TenantAdminLocationSelectionService(),
       );
+      final groups = <TenantAdminNestedProfileGroup>[
+        TenantAdminNestedProfileGroup(
+          idValue: TenantAdminNestedProfileGroupTextValue('parceiros'),
+          labelValue: TenantAdminNestedProfileGroupTextValue('Parceiros'),
+          orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+          accountProfileIdValues: <TenantAdminNestedProfileGroupTextValue>[
+            TenantAdminNestedProfileGroupTextValue('profile-a'),
+          ],
+        ),
+      ];
 
       final created = await controller.createProfile(
         accountId: 'acc-1',
         profileType: 'venue',
         displayName: 'Perfil',
-        nestedProfileGroups: <TenantAdminNestedProfileGroup>[
-          TenantAdminNestedProfileGroup(
-            idValue: TenantAdminNestedProfileGroupTextValue('parceiros'),
-            labelValue: TenantAdminNestedProfileGroupTextValue('Parceiros'),
-            orderValue: TenantAdminNestedProfileGroupOrderValue(0),
-            accountProfileIdValues: <TenantAdminNestedProfileGroupTextValue>[
-              TenantAdminNestedProfileGroupTextValue('profile-a'),
-            ],
-          ),
-        ],
+        nestedProfileGroups: groups,
       );
 
       expect(profilesRepository.createProfileCalls, 1);
+      expect(profilesRepository.lastCreateNestedProfileGroups, groups);
       expect(
         profilesRepository.lastPatchNestedGroupMembersProfileId,
-        'profile-1',
+        isNull,
       );
       expect(
         profilesRepository.lastPatchNestedGroupMembersGroupId,
-        'parceiros',
+        isNull,
       );
       expect(
         profilesRepository.lastPatchNestedGroupMembersAggregateRevision,
-        1,
+        isNull,
       );
-      expect(profilesRepository.lastPatchNestedGroupAddIds, <String>[
-        'profile-a',
-      ]);
+      expect(profilesRepository.lastPatchNestedGroupAddIds, isEmpty);
       expect(profilesRepository.lastPatchNestedGroupRemoveIds, isEmpty);
-      expect(created.aggregateRevision, 2);
-      expect(controller.accountProfileStreamValue.value?.aggregateRevision, 2);
+      expect(created.aggregateRevision, 1);
+      expect(controller.accountProfileStreamValue.value?.aggregateRevision, 1);
     },
   );
 
   test(
-    'createProfile rolls back the created profile when nested member delta fails',
+    'createProfile propagates repository create failure without compensating controller delete',
     () async {
-      final createdProfile = tenantAdminAccountProfileFromRaw(
-        id: 'profile-1',
-        accountId: 'acc-1',
-        profileType: 'venue',
-        displayName: 'Perfil',
-        aggregateRevision: 1,
-      );
       final profilesRepository = _FakeAccountProfilesRepository(
         const <TenantAdminAccountProfile>[],
         <TenantAdminProfileTypeDefinition>[
@@ -1054,11 +1025,8 @@ void main() {
           ),
         ],
       );
-      profilesRepository._profiles = <TenantAdminAccountProfile>[
-        createdProfile,
-      ];
-      profilesRepository.patchNestedGroupMembersError = StateError(
-        'delta failed',
+      profilesRepository.createAccountProfileError = StateError(
+        'create failed',
       );
       final controller = TenantAdminAccountProfilesController(
         profilesRepository: profilesRepository,
@@ -1087,7 +1055,8 @@ void main() {
       );
 
       expect(profilesRepository.createProfileCalls, 1);
-      expect(profilesRepository.forceDeleteAccountProfileCalls, 1);
+      expect(profilesRepository.lastPatchNestedGroupMembersProfileId, isNull);
+      expect(profilesRepository.forceDeleteAccountProfileCalls, 0);
       expect(profilesRepository.deleteAccountProfileCalls, 0);
     },
   );
@@ -1204,6 +1173,72 @@ void main() {
       expect(
         (mirroredSelection as BellugaContactBubbleSelectionPersisted).channelId,
         'mirrored-channel-1',
+      );
+    },
+  );
+
+  test(
+    'loadEditProfile does not preload mirrored contact candidates when persisted mode is own',
+    () async {
+      final profilesRepository = _FakeAccountProfilesRepository([
+        tenantAdminAccountProfileFromRaw(
+          id: 'profile-1',
+          accountId: 'acc-1',
+          profileType: 'venue',
+          displayName: 'Perfil',
+          contactMode: BellugaContactSourceMode.own,
+        ),
+      ], const []);
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+
+      await controller.loadEditProfile('profile-1');
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        profilesRepository.fetchAccountProfilesPageContactModes,
+        isNot(contains('own')),
+      );
+      expect(
+        profilesRepository.fetchAccountProfilesPageContactChannelsEnabledOnly,
+        isNot(contains(isTrue)),
+      );
+    },
+  );
+
+  test(
+    'loadEditProfile preloads mirrored contact candidates only when persisted mode is mirrored',
+    () async {
+      final profilesRepository = _FakeAccountProfilesRepository([
+        tenantAdminAccountProfileFromRaw(
+          id: 'profile-1',
+          accountId: 'acc-1',
+          profileType: 'venue',
+          displayName: 'Perfil',
+          contactMode: BellugaContactSourceMode.mirroredAccountProfile,
+        ),
+      ], const []);
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+
+      await controller.loadEditProfile('profile-1');
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        profilesRepository.fetchAccountProfilesPageContactModes,
+        contains('own'),
+      );
+      expect(
+        profilesRepository.fetchAccountProfilesPageContactChannelsEnabledOnly,
+        contains(isTrue),
       );
     },
   );

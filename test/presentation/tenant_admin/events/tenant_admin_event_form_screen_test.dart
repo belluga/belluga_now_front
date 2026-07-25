@@ -5230,6 +5230,12 @@ void main() {
         ['artist-1'],
       );
 
+      await _openProfileGroupSelector(
+        tester,
+        keyPrefix: 'EventProfile',
+        groupId: groupId,
+      );
+
       final candidateKey = Key(
         'EventProfileNestedAccountCandidate_${groupId}_artist-1',
       );
@@ -5239,6 +5245,8 @@ void main() {
       expect(selectedTile.value, isTrue);
 
       await tester.tap(find.byKey(candidateKey));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Concluir'));
       await tester.pumpAndSettle();
 
       expect(
