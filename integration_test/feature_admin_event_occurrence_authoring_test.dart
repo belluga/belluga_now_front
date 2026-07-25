@@ -2,7 +2,9 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_batch_terms_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_scoped_lookup_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
@@ -12,6 +14,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms_by_taxonomy_id.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
@@ -56,12 +59,11 @@ void main() {
 
       await _tapAddOccurrenceFab(tester);
 
-      await tester.tap(
-        find.byKey(const Key('tenantAdminOccurrenceAddProfileButton')),
+      final occurrenceGroupId = await _addOccurrenceProfileGroup(
+        tester,
+        controller: controller,
+        label: 'Bandas',
       );
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Artist A').last);
-      await tester.pumpAndSettle();
 
       await tester.scrollUntilVisible(
         find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
@@ -79,11 +81,18 @@ void main() {
       );
       await _enterProgrammingTitle(tester, 'Apresentacao especial');
       await _dismissKeyboard(tester);
+      final linkOccurrenceProfileButton = tester.widget<OutlinedButton>(
+        find.byKey(
+          const Key('tenantAdminProgrammingLinkOccurrenceProfileButton'),
+        ),
+      );
+      expect(linkOccurrenceProfileButton.onPressed, isNull);
       await _tapVisibleByKey(
         tester,
-        const Key('tenantAdminProgrammingLinkOccurrenceProfileButton'),
+        Key(
+          'tenantAdminProgrammingAddOccurrenceProfileButton_$occurrenceGroupId',
+        ),
       );
-      await tester.pumpAndSettle();
       await tester.tap(find.text('Artist A').last);
       await tester.pumpAndSettle();
       await _tapVisibleByKey(
@@ -91,7 +100,9 @@ void main() {
         const Key('tenantAdminProgrammingLocationProfileDropdown'),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Venue A').last);
+      await tester.tap(
+        find.byKey(const Key('tenantAdminProgrammingLocationOption_venue-1')),
+      );
       await tester.pumpAndSettle();
       await _tapProgrammingSaveButton(tester);
       expect(find.text('Local: Venue A'), findsOneWidget);
@@ -99,26 +110,36 @@ void main() {
       await _closeOccurrenceSheet(tester);
 
       expect(find.text('Datas'), findsOneWidget);
-      expect(find.byKey(const Key('tenantAdminEventOccurrenceCard_0')),
-          findsOneWidget);
-      expect(find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),
-          findsOneWidget);
+      expect(
+        find.byKey(const Key('tenantAdminEventOccurrenceCard_0')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),
+        findsOneWidget,
+      );
 
       await _tapFormSubmitButton(tester, 'Criar evento');
 
       expect(eventsRepository.createEventCalls, 1);
+      expect(
+        eventsRepository.lastCreateDraft?.relatedAccountProfileIds,
+        isEmpty,
+      );
       final submittedOccurrence =
           eventsRepository.lastCreateDraft?.occurrences[1];
       expect(submittedOccurrence, isNotNull);
       expect(
-        submittedOccurrence!.relatedAccountProfileIds
-            .map((value) => value.value),
+        submittedOccurrence!.relatedAccountProfileIds.map(
+          (value) => value.value,
+        ),
         contains('artist-1'),
       );
       expect(submittedOccurrence.programmingItems.single.time, '13:00');
       expect(
-        submittedOccurrence.programmingItems.single.accountProfileIds
-            .map((value) => value.value),
+        submittedOccurrence.programmingItems.single.accountProfileIds.map(
+          (value) => value.value,
+        ),
         contains('artist-1'),
       );
       expect(
@@ -159,8 +180,10 @@ void main() {
       await _tapAddOccurrenceFab(tester);
       await _closeOccurrenceSheet(tester);
 
-      expect(find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),
-          findsOneWidget);
+      expect(
+        find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),
+        findsOneWidget,
+      );
 
       await _tapFormSubmitButton(tester, 'Salvar alterações');
 
@@ -180,36 +203,45 @@ void main() {
         eventsRepository: eventsRepository,
         taxonomiesRepository: taxonomiesRepository,
       );
+      final eventType = TenantAdminEventType.withAllowedTaxonomies(
+        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439024'),
+        nameValue: tenantAdminRequiredText('Feira'),
+        slugValue: tenantAdminRequiredText('feira'),
+        allowedTaxonomiesValue: tenantAdminTrimmedStringList(const [
+          'music_genre',
+        ]),
+      );
 
-      eventsRepository.eventTypes = [
-        TenantAdminEventType.withAllowedTaxonomies(
-          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439024'),
-          nameValue: tenantAdminRequiredText('Feira'),
-          slugValue: tenantAdminRequiredText('feira'),
-          allowedTaxonomiesValue: tenantAdminTrimmedStringList(
-            const ['music_genre'],
-          ),
-        ),
-      ];
+      eventsRepository.eventTypes = [eventType];
       GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
 
       await _pumpWithAutoRoute(
         tester,
-        const Scaffold(body: TenantAdminEventFormScreen()),
+        Scaffold(
+          body: TenantAdminEventFormScreen(
+            existingEvent: _existingEvent(eventType),
+          ),
+        ),
       );
-      await _fillRequiredFields(tester, controller: controller);
-
-      await _tapAddOccurrenceFab(tester);
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('tenantAdminEventEditPrimaryOccurrenceButton')),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('tenantAdminEventEditPrimaryOccurrenceButton')),
+      );
+      await tester.pumpAndSettle();
 
       const rockKey = Key('tenantAdminOccurrenceTaxonomy_music_genre_rock');
-      await tester.scrollUntilVisible(
+      await _pumpUntilFinder(
+        tester,
         find.byKey(rockKey),
-        250,
-        scrollable: find.byType(Scrollable).last,
+        reason:
+            'occurrence taxonomy chip should render after taxonomy hydration',
       );
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(rockKey));
-      await tester.pumpAndSettle();
+      await _tapVisibleByKey(tester, rockKey);
 
       await tester.scrollUntilVisible(
         find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
@@ -234,10 +266,10 @@ void main() {
       await _tapProgrammingSaveButton(tester);
       await _closeOccurrenceSheet(tester);
 
-      await _tapFormSubmitButton(tester, 'Criar evento');
+      await _tapFormSubmitButton(tester, 'Salvar alterações');
 
       final submittedOccurrence =
-          eventsRepository.lastCreateDraft?.occurrences[1];
+          eventsRepository.lastUpdateDraft?.occurrences.first;
       expect(submittedOccurrence, isNotNull);
       expect(
         submittedOccurrence!.taxonomyTerms
@@ -248,7 +280,10 @@ void main() {
       final programmingItem = submittedOccurrence.programmingItems.single;
       expect(programmingItem.time, '17:00');
       expect(programmingItem.endTime, '18:30');
-      expect(programmingItem.title, 'Show com encerramento');
+      expect(
+        programmingItem.title,
+        _programmingTitleContains('Show com encerramento'),
+      );
     },
     timeout: const Timeout(Duration(minutes: 3)),
   );
@@ -313,16 +348,16 @@ void main() {
       expect(programmingItem.isSequential, isTrue);
       expect(programmingItem.time, isEmpty);
       expect(programmingItem.endTime, isNull);
-      expect(programmingItem.title, 'Logo após o bloco anterior');
+      expect(
+        programmingItem.title,
+        _programmingTitleContains('Logo após o bloco anterior'),
+      );
     },
     timeout: const Timeout(Duration(minutes: 3)),
   );
 }
 
-Future<void> _pumpWithAutoRoute(
-  WidgetTester tester,
-  Widget child,
-) async {
+Future<void> _pumpWithAutoRoute(WidgetTester tester, Widget child) async {
   final router = RootStackRouter.build(
     routes: [
       NamedRouteDef(
@@ -400,11 +435,7 @@ Future<void> _tapVisibleByKey(
   if (scrollable == null) {
     await tester.ensureVisible(target);
   } else {
-    await tester.scrollUntilVisible(
-      target,
-      250,
-      scrollable: scrollable,
-    );
+    await tester.scrollUntilVisible(target, 250, scrollable: scrollable);
   }
   await tester.pumpAndSettle();
   await tester.tap(target);
@@ -413,16 +444,10 @@ Future<void> _tapVisibleByKey(
 
 Future<void> _closeOccurrenceSheet(WidgetTester tester) async {
   await _dismissKeyboard(tester);
-  await _tapVisibleByKey(
-    tester,
-    const Key('tenantAdminOccurrenceCloseButton'),
-  );
+  await _tapVisibleByKey(tester, const Key('tenantAdminOccurrenceCloseButton'));
 }
 
-Future<void> _tapFormSubmitButton(
-  WidgetTester tester,
-  String label,
-) async {
+Future<void> _tapFormSubmitButton(WidgetTester tester, String label) async {
   final button = find.widgetWithText(FilledButton, label);
   await tester.scrollUntilVisible(
     button,
@@ -436,10 +461,7 @@ Future<void> _tapFormSubmitButton(
 
 Future<void> _tapProgrammingSaveButton(WidgetTester tester) async {
   await _dismissKeyboard(tester);
-  await _tapVisibleByKey(
-    tester,
-    const Key('tenantAdminProgrammingSaveButton'),
-  );
+  await _tapVisibleByKey(tester, const Key('tenantAdminProgrammingSaveButton'));
 }
 
 Future<void> _enterProgrammingTitle(WidgetTester tester, String title) async {
@@ -447,6 +469,72 @@ Future<void> _enterProgrammingTitle(WidgetTester tester, String title) async {
   final editorWidget = tester.widget(editor) as dynamic;
   editorWidget.controller.text = title;
   await tester.pumpAndSettle();
+}
+
+Future<void> _pumpUntilFinder(
+  WidgetTester tester,
+  Finder finder, {
+  required String reason,
+  Duration step = const Duration(milliseconds: 100),
+  int maxTicks = 30,
+}) async {
+  for (var tick = 0; tick < maxTicks; tick++) {
+    if (finder.evaluate().isNotEmpty) {
+      return;
+    }
+    await tester.pump(step);
+  }
+  expect(finder, findsOneWidget, reason: reason);
+}
+
+Future<String> _addOccurrenceProfileGroup(
+  WidgetTester tester, {
+  required TenantAdminEventsController controller,
+  String? label,
+}) async {
+  await _tapVisibleByKey(
+    tester,
+    const Key('TenantAdminOccurrenceProfileGroupAdd'),
+    scrollable: find.byType(Scrollable).last,
+  );
+  final group = controller
+      .eventFormStateStreamValue
+      .value
+      .occurrences[1]
+      .profileGroups
+      .last;
+  if (label != null) {
+    await tester.enterText(
+      find.byKey(Key('OccurrenceProfileNestedGroupLabel_${group.id}')),
+      label,
+    );
+    await tester.pumpAndSettle();
+  }
+  return group.id;
+}
+
+Matcher _programmingTitleContains(String expected) {
+  return predicate<String?>(
+    (value) => _programmingTitlePlainText(value).contains(expected),
+    'programming title containing "$expected" after HTML normalization',
+  );
+}
+
+String _programmingTitlePlainText(String? title) {
+  final normalized = title?.trim();
+  if (normalized == null || normalized.isEmpty) {
+    return '';
+  }
+  return normalized
+      .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n')
+      .replaceAll(RegExp(r'</p\s*>', caseSensitive: false), '\n')
+      .replaceAll(RegExp(r'<[^>]+>'), '')
+      .replaceAll('&nbsp;', ' ')
+      .replaceAll('&amp;', '&')
+      .replaceAll('&lt;', '<')
+      .replaceAll('&gt;', '>')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
 }
 
 Future<void> _setProgrammingTimedState(
@@ -483,9 +571,7 @@ TenantAdminEvent _existingEvent(TenantAdminEventType eventType) {
     type: eventType,
     occurrences: <TenantAdminEventOccurrence>[
       TenantAdminEventOccurrence(
-        dateTimeStartValue: tenantAdminDateTime(
-          DateTime.utc(2026, 3, 5, 20),
-        ),
+        dateTimeStartValue: tenantAdminDateTime(DateTime.utc(2026, 3, 5, 20)),
       ),
     ],
     publication: TenantAdminEventPublication(
@@ -574,39 +660,37 @@ class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
 
   @override
   Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-      fetchEventAccountProfileCandidatesPage({
+  fetchEventAccountProfileCandidatesPage({
     required TenantAdminEventAccountProfileCandidateType candidateType,
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     final items = switch (candidateType) {
       TenantAdminEventAccountProfileCandidateType.physicalHost => [
-          tenantAdminAccountProfileFromRaw(
-            id: 'venue-1',
-            accountId: 'acc-venue',
-            profileType: 'venue',
-            displayName: 'Venue A',
-            location: tenantAdminLocationFromRaw(
-              latitude: -20.611121,
-              longitude: -40.498617,
-            ),
+        tenantAdminAccountProfileFromRaw(
+          id: 'venue-1',
+          accountId: 'acc-venue',
+          profileType: 'venue',
+          displayName: 'Venue A',
+          location: tenantAdminLocationFromRaw(
+            latitude: -20.611121,
+            longitude: -40.498617,
           ),
-        ],
+        ),
+      ],
       TenantAdminEventAccountProfileCandidateType.relatedAccountProfile => [
-          tenantAdminAccountProfileFromRaw(
-            id: 'artist-1',
-            accountId: 'acc-artist',
-            profileType: 'artist',
-            displayName: 'Artist A',
-          ),
-        ],
+        tenantAdminAccountProfileFromRaw(
+          id: 'artist-1',
+          accountId: 'acc-artist',
+          profileType: 'artist',
+          displayName: 'Artist A',
+        ),
+      ],
     };
-    return tenantAdminPagedResultFromRaw(
-      items: items,
-      hasMore: false,
-    );
+    return tenantAdminPagedResultFromRaw(items: items, hasMore: false);
   }
 
   @override
@@ -622,7 +706,7 @@ class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
 
   @override
   Future<TenantAdminLegacyEventPartiesSummary>
-      fetchLegacyEventPartiesSummary() async {
+  fetchLegacyEventPartiesSummary() async {
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(0),
       invalidValue: TenantAdminCountValue(0),
@@ -634,7 +718,7 @@ class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
 
   @override
   Future<TenantAdminLegacyEventPartiesSummary>
-      repairLegacyEventParties() async {
+  repairLegacyEventParties() async {
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(0),
       invalidValue: TenantAdminCountValue(0),
@@ -663,7 +747,10 @@ class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
 
 class _FakeTaxonomiesRepository
     with TenantAdminTaxonomiesPaginationMixin
-    implements TenantAdminTaxonomiesRepositoryContract {
+    implements
+        TenantAdminTaxonomiesRepositoryContract,
+        TenantAdminTaxonomiesScopedLookupRepositoryContract,
+        TenantAdminTaxonomiesBatchTermsRepositoryContract {
   @override
   Future<TenantAdminTaxonomyDefinition> createTaxonomy({
     required TenantAdminTaxRepoString slug,
@@ -713,15 +800,33 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
-      fetchTaxonomiesPage({
+  fetchTaxonomiesPage({
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
   }) async {
     final taxonomies = await fetchTaxonomies();
-    return tenantAdminPagedResultFromRaw(
-      items: taxonomies,
-      hasMore: false,
-    );
+    return tenantAdminPagedResultFromRaw(items: taxonomies, hasMore: false);
+  }
+
+  @override
+  Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomiesBySlugs({
+    required List<TenantAdminTaxRepoString> slugs,
+    TenantAdminTaxRepoString? appliesTo,
+  }) async {
+    final allowedSlugs = slugs
+        .map((entry) => entry.value.trim())
+        .where((entry) => entry.isNotEmpty)
+        .toSet();
+    final appliesToFilter = appliesTo?.value.trim();
+    return (await fetchTaxonomies())
+        .where((taxonomy) => allowedSlugs.contains(taxonomy.slug))
+        .where(
+          (taxonomy) =>
+              appliesToFilter == null ||
+              appliesToFilter.isEmpty ||
+              taxonomy.appliesTo.contains(appliesToFilter),
+        )
+        .toList(growable: false);
   }
 
   @override
@@ -739,17 +844,38 @@ class _FakeTaxonomiesRepository
   }
 
   @override
+  Future<TenantAdminTaxonomyTermsByTaxonomyId> fetchTermsByTaxonomyIds({
+    required List<TenantAdminTaxRepoString> taxonomyIds,
+    TenantAdminTaxRepoInt? termLimit,
+  }) async {
+    return TenantAdminTaxonomyTermsByTaxonomyId(
+      entries: taxonomyIds
+          .map(
+            (taxonomyId) => TenantAdminTaxonomyTermsForTaxonomyId(
+              taxonomyIdValue: tenantAdminRequiredText(taxonomyId.value),
+              terms: [
+                tenantAdminTaxonomyTermDefinitionFromRaw(
+                  id: 'term-1',
+                  taxonomyId: taxonomyId.value,
+                  slug: 'rock',
+                  name: 'Rock',
+                ),
+              ],
+            ),
+          )
+          .toList(growable: false),
+    );
+  }
+
+  @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
-      fetchTermsPage({
+  fetchTermsPage({
     required TenantAdminTaxRepoString taxonomyId,
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
   }) async {
     final terms = await fetchTerms(taxonomyId: taxonomyId);
-    return tenantAdminPagedResultFromRaw(
-      items: terms,
-      hasMore: false,
-    );
+    return tenantAdminPagedResultFromRaw(items: terms, hasMore: false);
   }
 
   @override

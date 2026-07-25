@@ -575,6 +575,7 @@ class TenantAdminEventsRepository
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     try {
@@ -592,6 +593,8 @@ class TenantAdminEventsRepository
           'page_size': pageSize.value,
           if (search != null && search.value.trim().isNotEmpty)
             'search': search.value,
+          if (profileType != null && profileType.value.trim().isNotEmpty)
+            'profile_type': profileType.value,
         },
         options: Options(
           headers: isAccountScoped

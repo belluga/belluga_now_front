@@ -920,6 +920,34 @@ void main() {
   );
 
   test(
+    'fetchEventAccountProfileCandidatesPage sends an optional related profile type filter',
+    () async {
+      final adapter = _AccountProfileCandidatesAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      await repository.fetchEventAccountProfileCandidatesPage(
+        candidateType:
+            TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
+        page: _repoInt(1),
+        pageSize: _repoInt(20),
+        profileType: _repoText('fixture_profile_type'),
+      );
+
+      final request = adapter.requests.singleWhere(
+        (candidate) => candidate.path.endsWith(
+          '/admin/api/v1/events/account_profile_candidates',
+        ),
+      );
+      expect(request.queryParameters['profile_type'], 'fixture_profile_type');
+    },
+  );
+
+  test(
     'fetchEventAccountProfileCandidatesPage derives hasMore from backend pagination metadata',
     () async {
       final adapter = _AccountProfileCandidatesAdapter();

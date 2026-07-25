@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
@@ -420,65 +421,81 @@ class _TenantAdminEventOccurrenceEditorSheetState
             ),
             _buildOccurrenceTaxonomySection(context),
             const Divider(height: 28),
-            TenantAdminNestedProfileGroupsEditor(
-              keyPrefix: 'OccurrenceProfile',
-              title: 'Abas de perfis próprios da ocorrência',
-              selectorTitle: 'Perfis',
-              emptyCandidatesText: 'Nenhum perfil disponivel.',
-              emptySelectionText: 'Selecionar perfis',
-              selectedCountLabel: 'perfil(is) selecionado(s)',
-              searchLabelText: 'Buscar perfil',
-              emptySearchText: 'Nenhum perfil encontrado.',
-              groups: widget.occurrence.profileGroups,
-              candidatesStreamValue:
-                  widget.controller.relatedAccountProfileCandidatesStreamValue,
-              onSearchChanged: (query) => unawaited(
-                widget.controller
-                    .searchRelatedAccountProfileCandidatesForNestedGroups(
-                      query,
+            StreamValueBuilder<List<TenantAdminProfileTypeDefinition>>(
+              streamValue:
+                  widget.controller.relatedAccountProfileTypesStreamValue,
+              builder: (context, profileTypes) => StreamValueBuilder<String?>(
+                streamValue: widget
+                    .controller
+                    .relatedAccountProfileSelectedTypeStreamValue,
+                builder: (context, selectedProfileType) =>
+                    TenantAdminNestedProfileGroupsEditor(
+                      keyPrefix: 'OccurrenceProfile',
+                      title: 'Abas de perfis próprios da ocorrência',
+                      selectorTitle: 'Perfis',
+                      emptyCandidatesText: 'Nenhum perfil disponivel.',
+                      emptySelectionText: 'Selecionar perfis',
+                      selectedCountLabel: 'perfil(is) selecionado(s)',
+                      searchLabelText: 'Buscar perfil',
+                      emptySearchText: 'Nenhum perfil encontrado.',
+                      groups: widget.occurrence.profileGroups,
+                      candidatesStreamValue: widget
+                          .controller
+                          .relatedAccountProfileCandidatesStreamValue,
+                      onSearchChanged: (query) => unawaited(
+                        widget.controller
+                            .searchRelatedAccountProfileCandidatesForNestedGroups(
+                              query,
+                            ),
+                      ),
+                      onLoadMore: widget
+                          .controller
+                          .loadNextRelatedAccountProfileCandidatesForNestedGroups,
+                      searchLoadingStreamValue: widget
+                          .controller
+                          .relatedAccountProfileSearchLoadingStreamValue,
+                      searchPageLoadingStreamValue: widget
+                          .controller
+                          .relatedAccountProfileSearchPageLoadingStreamValue,
+                      searchHasMoreStreamValue: widget
+                          .controller
+                          .relatedAccountProfileSearchHasMoreStreamValue,
+                      profileTypes: profileTypes,
+                      selectedProfileType: selectedProfileType,
+                      onProfileTypeChanged: widget
+                          .controller
+                          .filterRelatedAccountProfileCandidatesByProfileType,
+                      addButtonKey: const Key(
+                        'TenantAdminOccurrenceProfileGroupAdd',
+                      ),
+                      onAddGroup: () => widget.controller
+                          .addOccurrenceProfileGroup(widget.occurrenceKey),
+                      onRenameGroup: (groupId, label) =>
+                          widget.controller.renameOccurrenceProfileGroup(
+                            occurrenceKey: widget.occurrenceKey,
+                            groupId: groupId,
+                            label: label,
+                          ),
+                      onMoveGroup: (groupId, delta) =>
+                          widget.controller.moveOccurrenceProfileGroup(
+                            occurrenceKey: widget.occurrenceKey,
+                            groupId: groupId,
+                            delta: delta,
+                          ),
+                      onRemoveGroup: (groupId) =>
+                          widget.controller.removeOccurrenceProfileGroup(
+                            occurrenceKey: widget.occurrenceKey,
+                            groupId: groupId,
+                          ),
+                      onSelectionChanged: (groupId, profileId, selected) =>
+                          widget.controller.toggleOccurrenceProfileGroupMember(
+                            occurrenceKey: widget.occurrenceKey,
+                            groupId: groupId,
+                            profileId: profileId,
+                            selected: selected,
+                          ),
                     ),
               ),
-              onLoadMore: widget
-                  .controller
-                  .loadNextRelatedAccountProfileCandidatesForNestedGroups,
-              searchLoadingStreamValue: widget
-                  .controller
-                  .relatedAccountProfileSearchLoadingStreamValue,
-              searchPageLoadingStreamValue: widget
-                  .controller
-                  .relatedAccountProfileSearchPageLoadingStreamValue,
-              searchHasMoreStreamValue: widget
-                  .controller
-                  .relatedAccountProfileSearchHasMoreStreamValue,
-              profileTypes: const [],
-              addButtonKey: const Key('TenantAdminOccurrenceProfileGroupAdd'),
-              onAddGroup: () => widget.controller.addOccurrenceProfileGroup(
-                widget.occurrenceKey,
-              ),
-              onRenameGroup: (groupId, label) =>
-                  widget.controller.renameOccurrenceProfileGroup(
-                    occurrenceKey: widget.occurrenceKey,
-                    groupId: groupId,
-                    label: label,
-                  ),
-              onMoveGroup: (groupId, delta) =>
-                  widget.controller.moveOccurrenceProfileGroup(
-                    occurrenceKey: widget.occurrenceKey,
-                    groupId: groupId,
-                    delta: delta,
-                  ),
-              onRemoveGroup: (groupId) =>
-                  widget.controller.removeOccurrenceProfileGroup(
-                    occurrenceKey: widget.occurrenceKey,
-                    groupId: groupId,
-                  ),
-              onSelectionChanged: (groupId, profileId, selected) =>
-                  widget.controller.toggleOccurrenceProfileGroupMember(
-                    occurrenceKey: widget.occurrenceKey,
-                    groupId: groupId,
-                    profileId: profileId,
-                    selected: selected,
-                  ),
             ),
             const Divider(height: 28),
             Text('Programação', style: Theme.of(context).textTheme.titleSmall),

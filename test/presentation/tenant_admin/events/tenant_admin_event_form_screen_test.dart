@@ -2,6 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_form_validation/belluga_form_validation.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
@@ -12,6 +13,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_partie
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
@@ -29,6 +31,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
+import 'package:stream_value/core/stream_value.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -5260,6 +5263,98 @@ void main() {
   );
 
   testWidgets(
+    'related account profile picker renders backend type options and sends the selected filter to the server',
+    (tester) async {
+      final profileTypes = <TenantAdminProfileTypeDefinition>[
+        _fixtureProfileType(
+          type: 'fixture_type_alpha',
+          label: 'Fixture Type Alpha',
+        ),
+        _fixtureProfileType(
+          type: 'fixture_type_beta',
+          label: 'Fixture Type Beta',
+        ),
+        _fixtureProfileType(
+          type: 'fixture_type_gamma',
+          label: 'Fixture Type Gamma',
+        ),
+      ];
+      final eventsRepository = _FakeEventsRepository()
+        ..relatedAccountProfileCandidates = profileTypes
+            .map(
+              (profileType) => tenantAdminAccountProfileFromRaw(
+                id: 'profile-${profileType.type}',
+                accountId: 'account-${profileType.type}',
+                profileType: profileType.type,
+                displayName: 'Profile ${profileType.label}',
+              ),
+            )
+            .toList(growable: false);
+      eventsRepository.eventTypes = [
+        TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439141'),
+          nameValue: tenantAdminRequiredText('Show'),
+          slugValue: tenantAdminRequiredText('show'),
+        ),
+      ];
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final profileTypesRepository = _FakeProfileTypesRepository(
+        profileTypes: profileTypes,
+      );
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        accountProfilesRepository: profileTypesRepository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+      controller.filterRelatedAccountProfileCandidatesByProfileType(
+        profileTypes.first.type,
+      );
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(body: TenantAdminEventFormScreen()),
+      );
+
+      final groupId = await _addEventProfileGroup(
+        tester,
+        controller,
+        label: 'Participantes',
+      );
+      await _openProfileGroupSelector(
+        tester,
+        keyPrefix: 'EventProfile',
+        groupId: groupId,
+      );
+
+      final typeFilterKey = Key('EventProfileNestedAccountTypeFilter_$groupId');
+      await tester.tap(find.byKey(typeFilterKey));
+      await tester.pumpAndSettle();
+
+      for (final profileType in profileTypes) {
+        expect(find.text(profileType.label), findsWidgets);
+      }
+
+      final selectedType = profileTypes.last;
+      controller.filterRelatedAccountProfileCandidatesByProfileType(
+        selectedType.type,
+      );
+      await tester.pumpAndSettle();
+
+      expect(eventsRepository.lastRelatedProfileType, selectedType.type);
+      expect(
+        find.byKey(
+          Key(
+            'EventProfileNestedAccountCandidate_${groupId}_profile-${selectedType.type}',
+          ),
+        ),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
     'shows explicit empty states when no host/related profile candidates',
     (tester) async {
       final eventsRepository = _EmptyCandidatesEventsRepository();
@@ -5344,11 +5439,15 @@ void main() {
       );
 
       expect(
-        find.byKey(Key('EventProfileNestedAccountCandidate_${groupId}_artist-1')),
+        find.byKey(
+          Key('EventProfileNestedAccountCandidate_${groupId}_artist-1'),
+        ),
         findsOneWidget,
       );
       expect(
-        find.byKey(Key('EventProfileNestedAccountCandidate_${groupId}_artist-2')),
+        find.byKey(
+          Key('EventProfileNestedAccountCandidate_${groupId}_artist-2'),
+        ),
         findsOneWidget,
       );
 
@@ -5360,11 +5459,15 @@ void main() {
       );
 
       expect(
-        find.byKey(Key('EventProfileNestedAccountCandidate_${groupId}_artist-2')),
+        find.byKey(
+          Key('EventProfileNestedAccountCandidate_${groupId}_artist-2'),
+        ),
         findsOneWidget,
       );
       expect(
-        find.byKey(Key('EventProfileNestedAccountCandidate_${groupId}_artist-1')),
+        find.byKey(
+          Key('EventProfileNestedAccountCandidate_${groupId}_artist-1'),
+        ),
         findsNothing,
       );
     },
@@ -6655,6 +6758,7 @@ class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
   int createEventCalls = 0;
   int createOwnEventCalls = 0;
   int updateEventCalls = 0;
+  String? lastRelatedProfileType;
 
   @override
   Future<TenantAdminEvent> createEvent({
@@ -6735,6 +6839,7 @@ class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     final sourceItems = switch (candidateType) {
@@ -6744,15 +6849,25 @@ class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
         relatedAccountProfileCandidates,
     };
     final normalizedSearch = search?.value.trim().toLowerCase() ?? '';
-    final items = normalizedSearch.isEmpty
+    final normalizedProfileType = profileType?.value.trim();
+    if (candidateType ==
+        TenantAdminEventAccountProfileCandidateType.relatedAccountProfile) {
+      lastRelatedProfileType = normalizedProfileType;
+    }
+    final searchFilteredItems = normalizedSearch.isEmpty
         ? sourceItems
         : sourceItems
               .where((profile) {
                 final displayName = profile.displayName.toLowerCase();
-                final profileType = profile.profileType.toLowerCase();
+                final candidateProfileType = profile.profileType.toLowerCase();
                 return displayName.contains(normalizedSearch) ||
-                    profileType.contains(normalizedSearch);
+                    candidateProfileType.contains(normalizedSearch);
               })
+              .toList(growable: false);
+    final items = normalizedProfileType == null || normalizedProfileType.isEmpty
+        ? searchFilteredItems
+        : searchFilteredItems
+              .where((profile) => profile.profileType == normalizedProfileType)
               .toList(growable: false);
     return tenantAdminPagedResultFromRaw(items: items, hasMore: false);
   }
@@ -6819,6 +6934,46 @@ String _fixtureTermSlug(int index) => 'fixture_term_$index';
 String _fixtureTaxonomyLabel(int index) => 'Fixture Taxonomy $index';
 
 String _fixtureTermLabel(int index) => 'Fixture Term $index';
+
+TenantAdminProfileTypeDefinition _fixtureProfileType({
+  required String type,
+  required String label,
+}) {
+  return tenantAdminProfileTypeDefinitionFromRaw(
+    type: type,
+    label: label,
+    allowedTaxonomies: const <String>[],
+    capabilities: TenantAdminProfileTypeCapabilities(
+      isQueryable: TenantAdminFlagValue(false),
+      isFavoritable: TenantAdminFlagValue(false),
+      isPoiEnabled: TenantAdminFlagValue(false),
+      hasBio: TenantAdminFlagValue(false),
+      hasContent: TenantAdminFlagValue(false),
+      hasTaxonomies: TenantAdminFlagValue(false),
+      hasAvatar: TenantAdminFlagValue(false),
+      hasCover: TenantAdminFlagValue(false),
+      hasEvents: TenantAdminFlagValue(false),
+    ),
+  );
+}
+
+class _FakeProfileTypesRepository extends Fake
+    implements TenantAdminAccountProfilesRepositoryContract {
+  _FakeProfileTypesRepository({required this.profileTypes});
+
+  final List<TenantAdminProfileTypeDefinition> profileTypes;
+  @override
+  final StreamValue<List<TenantAdminProfileTypeDefinition>?>
+  profileTypesStreamValue =
+      StreamValue<List<TenantAdminProfileTypeDefinition>?>();
+
+  @override
+  Future<void> loadAllProfileTypes({
+    TenantAdminAccountProfilesRepoInt? pageSize,
+  }) async {
+    profileTypesStreamValue.addValue(List.unmodifiable(profileTypes));
+  }
+}
 
 TenantAdminEvent _buildMountedReuseEditEvent({
   required TenantAdminEventType type,
@@ -7105,6 +7260,7 @@ class _SearchDrivenPhysicalHostCandidatesEventsRepository
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     if (candidateType !=
@@ -7169,6 +7325,7 @@ class _EmptyBootstrapSearchDrivenPhysicalHostCandidatesEventsRepository
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     if (candidateType !=
@@ -7232,6 +7389,7 @@ class _PagedPhysicalHostCandidatesEventsRepository
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     if (candidateType !=
@@ -7285,6 +7443,7 @@ class _MultipleRelatedCandidatesEventsRepository extends _FakeEventsRepository {
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     if (candidateType ==
@@ -7321,10 +7480,7 @@ class _MultipleRelatedCandidatesEventsRepository extends _FakeEventsRepository {
                 ),
               )
               .toList(growable: false);
-    return tenantAdminPagedResultFromRaw(
-      items: items,
-      hasMore: false,
-    );
+    return tenantAdminPagedResultFromRaw(items: items, hasMore: false);
   }
 }
 
@@ -7336,6 +7492,7 @@ class _EmptyCandidatesEventsRepository extends _FakeEventsRepository {
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     return tenantAdminPagedResultFromRaw(
@@ -7353,6 +7510,7 @@ class _PagedRelatedCandidatesEventsRepository extends _FakeEventsRepository {
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     if (candidateType ==
@@ -7403,6 +7561,7 @@ class _DelayedRelatedCandidatesEventsRepository extends _FakeEventsRepository {
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     if (candidateType ==
@@ -7438,6 +7597,7 @@ class _AccountScopedDelayedCandidatesEventsRepository
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     if (candidateType ==
@@ -7472,6 +7632,7 @@ class _FailingRelatedCandidatesEventsRepository extends _FakeEventsRepository {
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     if (candidateType ==
