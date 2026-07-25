@@ -894,7 +894,7 @@ void main() {
       expect(request.queryParameters['search'], 'perfil');
       expect(request.queryParameters['profile_type'], 'venue');
       expect(request.queryParameters['contact_mode'], 'own');
-      expect(request.queryParameters['contact_channels_enabled_only'], 1);
+      expect(request.queryParameters['contact_channels_enabled_only'], isTrue);
       expect(
         request.queryParameters['exclude_account_profile_id'],
         'profile-own-2',
