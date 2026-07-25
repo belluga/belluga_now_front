@@ -448,6 +448,8 @@ class _TenantAdminEventOccurrenceEditorSheetState
                               query,
                             ),
                       ),
+                      onOpenPicker: () => widget.controller
+                          .prepareRelatedAccountProfilePicker(),
                       onLoadMore: widget
                           .controller
                           .loadNextRelatedAccountProfileCandidatesForNestedGroups,

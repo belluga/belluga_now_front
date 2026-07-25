@@ -920,6 +920,10 @@ class _TenantAdminEventFormScreenState
                             query,
                           ),
                     ),
+                    onOpenPicker: () => _controller
+                        .prepareRelatedAccountProfilePicker(
+                          accountSlug: widget.accountSlugForOwnCreate,
+                        ),
                     onLoadMore: _controller
                         .loadNextRelatedAccountProfileCandidatesForNestedGroups,
                     searchLoadingStreamValue: _controller

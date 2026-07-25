@@ -38,6 +38,7 @@ class TenantAdminNestedProfileGroupsEditor extends StatelessWidget {
     this.emptySearchText = 'Nenhum perfil encontrado.',
     this.onSearchChanged,
     this.onProfileTypeChanged,
+    this.onOpenPicker,
     this.onLoadMore,
     this.selectedProfileType,
     this.searchLoadingStreamValue,
@@ -64,6 +65,7 @@ class TenantAdminNestedProfileGroupsEditor extends StatelessWidget {
   final String emptySearchText;
   final ValueChanged<String>? onSearchChanged;
   final ValueChanged<String?>? onProfileTypeChanged;
+  final Future<void> Function()? onOpenPicker;
   final Future<void> Function()? onLoadMore;
   final String? selectedProfileType;
   final StreamValue<bool>? searchLoadingStreamValue;
@@ -97,6 +99,7 @@ class TenantAdminNestedProfileGroupsEditor extends StatelessWidget {
               emptySearchText: emptySearchText,
               onSearchChanged: onSearchChanged,
               onProfileTypeChanged: onProfileTypeChanged,
+              onOpenPicker: onOpenPicker,
               onLoadMore: onLoadMore,
               selectedProfileType: selectedProfileType,
               searchLoadingStreamValue: searchLoadingStreamValue,
@@ -137,6 +140,7 @@ class _TenantAdminNestedProfileGroupEditor extends StatelessWidget {
     required this.emptySearchText,
     required this.onSearchChanged,
     required this.onProfileTypeChanged,
+    required this.onOpenPicker,
     required this.onLoadMore,
     required this.selectedProfileType,
     required this.searchLoadingStreamValue,
@@ -162,6 +166,7 @@ class _TenantAdminNestedProfileGroupEditor extends StatelessWidget {
   final String emptySearchText;
   final ValueChanged<String>? onSearchChanged;
   final ValueChanged<String?>? onProfileTypeChanged;
+  final Future<void> Function()? onOpenPicker;
   final Future<void> Function()? onLoadMore;
   final String? selectedProfileType;
   final StreamValue<bool>? searchLoadingStreamValue;
@@ -249,6 +254,7 @@ class _TenantAdminNestedProfileGroupEditor extends StatelessWidget {
                       emptySearchText: emptySearchText,
                       onSearchChanged: onSearchChanged,
                       onProfileTypeChanged: onProfileTypeChanged,
+                      onOpenPicker: onOpenPicker,
                       onLoadMore: onLoadMore,
                       selectedProfileType: selectedProfileType,
                       searchLoadingStreamValue: searchLoadingStreamValue,
@@ -282,6 +288,7 @@ class _TenantAdminNestedAccountSelector extends StatefulWidget {
     required this.emptySearchText,
     required this.onSearchChanged,
     required this.onProfileTypeChanged,
+    required this.onOpenPicker,
     required this.onLoadMore,
     required this.selectedProfileType,
     required this.searchLoadingStreamValue,
@@ -302,6 +309,7 @@ class _TenantAdminNestedAccountSelector extends StatefulWidget {
   final String emptySearchText;
   final ValueChanged<String>? onSearchChanged;
   final ValueChanged<String?>? onProfileTypeChanged;
+  final Future<void> Function()? onOpenPicker;
   final Future<void> Function()? onLoadMore;
   final String? selectedProfileType;
   final StreamValue<bool>? searchLoadingStreamValue;
@@ -351,6 +359,10 @@ class _TenantAdminNestedAccountSelectorState
   }
 
   Future<void> _openCanonicalPicker() async {
+    final onOpenPicker = widget.onOpenPicker;
+    if (onOpenPicker != null) {
+      await onOpenPicker();
+    }
     await showTenantAdminAccountProfileMultiPicker(
       context: context,
       candidatesStreamValue: widget.candidatesStreamValue,

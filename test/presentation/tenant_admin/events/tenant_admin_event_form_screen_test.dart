@@ -5306,9 +5306,6 @@ void main() {
         accountProfilesRepository: profileTypesRepository,
         taxonomiesRepository: taxonomiesRepository,
       );
-      controller.filterRelatedAccountProfileCandidatesByProfileType(
-        profileTypes.first.type,
-      );
 
       GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
 
@@ -5337,9 +5334,11 @@ void main() {
       }
 
       final selectedType = profileTypes.last;
-      controller.filterRelatedAccountProfileCandidatesByProfileType(
-        selectedType.type,
+      final typeFilter = tester.widget<DropdownButtonFormField<String>>(
+        find.byKey(typeFilterKey),
       );
+      typeFilter.onChanged?.call(selectedType.type);
+      await tester.pump();
       await tester.pumpAndSettle();
 
       expect(eventsRepository.lastRelatedProfileType, selectedType.type);
