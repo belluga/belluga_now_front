@@ -10,7 +10,6 @@ void main() {
       'Icons.arrow_back_ios',
       'Icons.arrow_back_ios_new',
       'Icons.arrow_back_rounded',
-      'Icons.chevron_left',
       'Icons.keyboard_arrow_left',
     ];
     final offenders = <String>[];
@@ -31,7 +30,9 @@ void main() {
     expect(
       offenders,
       isEmpty,
-      reason: 'Use IconButton/Icons.arrow_back for every back affordance.',
+      reason:
+          'Use IconButton/Icons.arrow_back for every back affordance; '
+          'generic directional chevrons are allowed outside back controls.',
     );
   });
 }
