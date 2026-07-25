@@ -1972,6 +1972,53 @@ void main() {
   );
 
   testWidgets(
+    'keeps Contato as the last account detail tab when nested profile groups are present',
+    (tester) async {
+      await GetIt.I.reset(dispose: false);
+      GetIt.I.registerSingleton<AppData>(
+        _buildAppData(artistContactChannelsEnabled: true),
+      );
+      final repository = _FakeAccountProfilesRepository();
+      final controller = AccountProfileDetailController(
+        accountProfilesRepository: repository,
+      );
+      GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+      await tester.pumpWidget(
+        _buildRoutedTestApp(
+          router: _RecordingStackRouter(),
+          child: AccountProfileDetailScreen(
+            accountProfile:
+                _buildArtistProfileWithContact(
+                  withAgenda: true,
+                  withBio: true,
+                ).copyWith(
+                  nestedProfileGroupValues: [
+                    _buildNestedAccountProfileGroup(),
+                    _buildSecondaryNestedAccountProfileGroup(),
+                  ],
+                ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final immersiveDetail = tester.widget<ImmersiveDetailScreen>(
+        find.byType(ImmersiveDetailScreen),
+      );
+      final tabTitles = immersiveDetail.tabs
+          .map((tab) => tab.title)
+          .toList(growable: false);
+
+      expect(
+        tabTitles,
+        containsAll(<String>['Agenda', 'Parceiros', 'Novo grupo 3', 'Contato']),
+      );
+      expect(immersiveDetail.tabs.last.title, 'Contato');
+    },
+  );
+
+  testWidgets(
     'renders non navigable nested members without chevron and does not navigate',
     (tester) async {
       final repository = _FakeAccountProfilesRepository();

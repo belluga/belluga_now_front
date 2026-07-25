@@ -842,10 +842,10 @@ class _AccountProfileDetailScreenState
       (left, right) =>
           _tabOrderRank(left.title).compareTo(_tabOrderRank(right.title)),
     );
+    tabs.addAll(_buildNestedProfileGroupTabs(accountProfile));
     if (_controller.shouldRenderContactTab(accountProfile)) {
       tabs.add(_buildContactTab(accountProfile));
     }
-    tabs.addAll(_buildNestedProfileGroupTabs(accountProfile));
 
     return tabs;
   }
