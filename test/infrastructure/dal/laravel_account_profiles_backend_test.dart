@@ -564,6 +564,69 @@ void main() {
   );
 
   test(
+    'fetchAccountProfileBySlug parses mirrored effective contact projection for public detail',
+    () async {
+      final validId = _generateMongoId();
+      final sourceId = _generateMongoId();
+      final adapter = _RecordingAdapter(
+        response: {
+          'data': {
+            'id': validId,
+            'display_name': 'Mirror Detail Artist',
+            'slug': 'mirror-detail-artist',
+            'profile_type': 'artist',
+            'contact_mode': 'mirrored_account_profile',
+            'contact_source_account_profile_id': sourceId,
+            'contact_channels': const [],
+            'effective_contact_source': {
+              'id': sourceId,
+              'display_name': 'Mirror Source',
+              'profile_type': 'artist',
+              'slug': 'mirror-source',
+            },
+            'effective_contact_channels': const [
+              {
+                'id': 'whatsapp-source',
+                'type': 'whatsapp',
+                'value': '+55 (27) 99999-1111',
+                'title': 'Atendimento',
+              },
+            ],
+            'effective_contact_bubble_channel': const {
+              'id': 'whatsapp-source',
+              'type': 'whatsapp',
+              'value': '+55 (27) 99999-1111',
+              'title': 'Atendimento',
+            },
+            'taxonomy_terms': const [],
+          },
+        },
+      );
+      final dio = Dio()..httpClientAdapter = adapter;
+      final backend = LaravelAccountProfilesBackend(
+        dio: dio,
+        locationOriginService: LocationOriginService(
+          appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+        ),
+      );
+
+      final profile = await backend.fetchAccountProfileBySlug(
+        'mirror-detail-artist',
+      );
+
+      expect(profile, isNotNull);
+      expect(profile?.contactMode.rawValue, 'mirrored_account_profile');
+      expect(profile?.contactChannels, isEmpty);
+      expect(profile?.contactSourceAccountProfileId, sourceId);
+      expect(profile?.effectiveContactSourceProfile?.id, sourceId);
+      expect(profile?.effectiveContactSourceProfile?.slug, 'mirror-source');
+      expect(profile?.effectiveContactChannels, hasLength(1));
+      expect(profile?.effectiveContactChannels.single.id, 'whatsapp-source');
+      expect(profile?.effectiveContactBubbleChannel?.id, 'whatsapp-source');
+    },
+  );
+
+  test(
     'fetchAccountProfileBySlug parses nested account profile groups',
     () async {
       final parentId = _generateMongoId();
@@ -582,6 +645,8 @@ void main() {
                 'id': 'parceiros',
                 'label': 'Parceiros',
                 'order': 1,
+                'members_path':
+                    '/api/v1/account_profiles/parent-profile/nested_profile_groups/parceiros/members',
                 'profiles': [
                   {
                     'id': partnerBId,
@@ -653,6 +718,8 @@ void main() {
                 'id': 'parceiros',
                 'label': 'Parceiros',
                 'order': 1,
+                'members_path':
+                    '/api/v1/account_profiles/parent-profile/nested_profile_groups/parceiros/members',
                 'profiles': [
                   {
                     'id': partnerId,
@@ -686,6 +753,83 @@ void main() {
   );
 
   test(
+    'fetchAccountProfileBySlug preserves nested groups when member media urls are relative',
+    () async {
+      final parentId = _generateMongoId();
+      final firstPartnerId = _generateMongoId();
+      final secondPartnerId = _generateMongoId();
+      final relativeAvatarPath =
+          '/api/v1/media/account-profiles/$secondPartnerId/avatar?v=1234abcd';
+      final adapter = _RecordingAdapter(
+        response: {
+          'data': {
+            'id': parentId,
+            'display_name': 'Public Partner A',
+            'slug': 'public-partner-a',
+            'profile_type': 'venue',
+            'taxonomy_terms': const [],
+            'nested_profile_groups': [
+              {
+                'id': 'grupo-1',
+                'label': 'Novo grupo',
+                'order': 0,
+                'profiles': [
+                  {
+                    'id': firstPartnerId,
+                    'display_name': 'Nested Public Parent',
+                    'slug': 'nested-public-parent',
+                    'profile_type': 'venue',
+                    'can_open_public_detail': true,
+                    'public_detail_path': '/parceiro/nested-public-parent',
+                  },
+                ],
+              },
+              {
+                'id': 'grupo-2',
+                'label': 'Novo grupo 3',
+                'order': 1,
+                'profiles': [
+                  {
+                    'id': secondPartnerId,
+                    'display_name': 'Public Partner B',
+                    'slug': 'public-partner-b',
+                    'profile_type': 'venue',
+                    'avatar_url': relativeAvatarPath,
+                    'can_open_public_detail': true,
+                    'public_detail_path': '/parceiro/public-partner-b',
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      );
+      final dio = Dio()..httpClientAdapter = adapter;
+      final backend = LaravelAccountProfilesBackend(
+        dio: dio,
+        locationOriginService: LocationOriginService(
+          appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+        ),
+      );
+
+      final profile = await backend.fetchAccountProfileBySlug('public-partner-a');
+
+      expect(profile, isNotNull);
+      expect(profile!.nestedProfileGroups, hasLength(2));
+      expect(
+        profile.nestedProfileGroups.map((group) => group.label).toList(),
+        <String>['Novo grupo', 'Novo grupo 3'],
+      );
+      final secondMember = profile.nestedProfileGroups.last.profiles.single;
+      expect(secondMember.name, 'Public Partner B');
+      expect(
+        secondMember.avatarUrl,
+        'https://tenant.test$relativeAvatarPath',
+      );
+    },
+  );
+
+  test(
     'fetchAccountProfileBySlug applies short-name and fallback rules to nested members',
     () async {
       final parentId = _generateMongoId();
@@ -704,6 +848,8 @@ void main() {
                 'id': 'parceiros',
                 'label': 'Parceiros',
                 'order': 1,
+                'members_path':
+                    '/api/v1/account_profiles/parent-profile/nested_profile_groups/parceiros/members',
                 'profiles': [
                   {
                     'id': shortNameId,

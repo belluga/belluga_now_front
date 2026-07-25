@@ -89,12 +89,18 @@ class TenantAdminAccountProfilesRepository
     required TenantAdminAccountProfilesRepoInt pageSize,
     TenantAdminAccountProfilesRepoString? search,
     TenantAdminAccountProfilesRepoString? accountId,
+    TenantAdminAccountProfilesRepoString? profileType,
+    TenantAdminAccountProfilesRepoString? contactMode,
+    TenantAdminAccountProfilesRepoBool? contactChannelsEnabledOnly,
     TenantAdminAccountProfilesRepoBool? queryableOnly,
     TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async {
     try {
       final queryParameters = _requestEncoder.encodeFetchAccountProfilesQuery(
         accountId: accountId?.value,
+        profileType: profileType?.value,
+        contactMode: contactMode?.value,
+        contactChannelsEnabledOnly: contactChannelsEnabledOnly?.value ?? false,
         queryableOnly: queryableOnly?.value ?? false,
         excludeAccountProfileId: excludeAccountProfileId?.value,
         search: search?.value,
@@ -155,44 +161,6 @@ class TenantAdminAccountProfilesRepository
       return _responseDecoder.decodeCandidatePage(response.data).toDomain();
     } on DioException catch (error) {
       throw _wrapError(error, 'load account profile candidates page');
-    }
-  }
-
-  @override
-  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-  fetchContactSourceCandidatesPage({
-    required TenantAdminAccountProfilesRepoInt page,
-    required TenantAdminAccountProfilesRepoInt pageSize,
-    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
-  }) async {
-    try {
-      final response = await _dio.get(
-        '$_apiBaseUrl/v1/account_profiles/contact_sources',
-        queryParameters: _requestEncoder
-            .encodeFetchContactSourceCandidatesQuery(
-              page: page.value,
-              pageSize: pageSize.value,
-              excludeAccountProfileId: excludeAccountProfileId?.value,
-            ),
-        options: Options(headers: _buildHeaders()),
-      );
-      final rawResponse = response.data;
-      final currentPage =
-          tenantAdminReadPageValue(rawResponse, 'current_page') ?? page.value;
-      final resolvedPageSize =
-          tenantAdminReadPageValue(rawResponse, 'per_page') ?? pageSize.value;
-      final dtos = _responseDecoder.decodeAccountProfileList(rawResponse);
-      return tenantAdminPagedResultFromRaw(
-        items: dtos.map((dto) => dto.toDomain()).toList(growable: false),
-        hasMore: tenantAdminResolveHasMore(
-          rawResponse: rawResponse,
-          requestedPage: currentPage,
-        ),
-        currentPage: currentPage,
-        pageSize: resolvedPageSize,
-      );
-    } on DioException catch (error) {
-      throw _wrapError(error, 'load contact source candidates page');
     }
   }
 
@@ -281,6 +249,7 @@ class TenantAdminAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? profileType,
     TenantAdminAccountProfilesRepoString? displayName,
     TenantAdminAccountProfilesRepoString? slug,
+    TenantAdminAccountProfilesRepoInt? aggregateRevision,
     TenantAdminLocation? location,
     TenantAdminTaxonomyTerms? taxonomyTerms,
     TenantAdminAccountProfilesRepoString? bio,
@@ -303,6 +272,7 @@ class TenantAdminAccountProfilesRepository
         profileType: profileType?.value,
         displayName: displayName?.value,
         slug: slug?.value,
+        aggregateRevision: aggregateRevision?.value,
         location: location,
         taxonomyTerms: taxonomyTerms,
         bio: bio?.value,
@@ -383,8 +353,7 @@ class TenantAdminAccountProfilesRepository
         accountProfileId: accountProfileId,
         groupId: groupId,
         perPage: cursor == null
-            ? (TenantAdminAccountProfilesRepoInt(defaultValue: 50)
-              ..set(50))
+            ? (TenantAdminAccountProfilesRepoInt(defaultValue: 50)..set(50))
             : null,
         cursor: cursor,
       );

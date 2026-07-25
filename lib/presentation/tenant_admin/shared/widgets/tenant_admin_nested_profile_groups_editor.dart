@@ -1,28 +1,20 @@
-import 'dart:math' as math;
-
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_account_profile_picker.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
-typedef TenantAdminNestedProfileGroupRename = void Function(
-  String groupId,
-  String label,
-);
+typedef TenantAdminNestedProfileGroupRename =
+    void Function(String groupId, String label);
 
-typedef TenantAdminNestedProfileGroupMove = void Function(
-  String groupId,
-  int delta,
-);
+typedef TenantAdminNestedProfileGroupMove =
+    void Function(String groupId, int delta);
 
-typedef TenantAdminNestedProfileGroupSelectionChanged = void Function(
-  String groupId,
-  String profileId,
-  bool selected,
-);
+typedef TenantAdminNestedProfileGroupSelectionChanged =
+    void Function(String groupId, String profileId, bool selected);
 
 class TenantAdminNestedProfileGroupsEditor extends StatelessWidget {
   const TenantAdminNestedProfileGroupsEditor({
@@ -38,14 +30,16 @@ class TenantAdminNestedProfileGroupsEditor extends StatelessWidget {
     required this.onRemoveGroup,
     required this.onSelectionChanged,
     this.title = 'Abas de contas vinculadas',
-    this.selectorTitle = 'Accounts',
-    this.emptyCandidatesText = 'Nenhuma Account disponivel.',
-    this.emptySelectionText = 'Selecionar Accounts',
-    this.selectedCountLabel = 'Account(s) selecionada(s)',
-    this.searchLabelText = 'Buscar Account',
-    this.emptySearchText = 'Nenhuma Account encontrada.',
+    this.selectorTitle = 'Perfis',
+    this.emptyCandidatesText = 'Nenhum perfil disponivel.',
+    this.emptySelectionText = 'Selecionar perfis',
+    this.selectedCountLabel = 'perfil(is) selecionado(s)',
+    this.searchLabelText = 'Buscar perfil',
+    this.emptySearchText = 'Nenhum perfil encontrado.',
     this.onSearchChanged,
+    this.onProfileTypeChanged,
     this.onLoadMore,
+    this.selectedProfileType,
     this.searchLoadingStreamValue,
     this.searchPageLoadingStreamValue,
     this.searchHasMoreStreamValue,
@@ -69,7 +63,9 @@ class TenantAdminNestedProfileGroupsEditor extends StatelessWidget {
   final String searchLabelText;
   final String emptySearchText;
   final ValueChanged<String>? onSearchChanged;
+  final ValueChanged<String?>? onProfileTypeChanged;
   final Future<void> Function()? onLoadMore;
+  final String? selectedProfileType;
   final StreamValue<bool>? searchLoadingStreamValue;
   final StreamValue<bool>? searchPageLoadingStreamValue;
   final StreamValue<bool>? searchHasMoreStreamValue;
@@ -100,7 +96,9 @@ class TenantAdminNestedProfileGroupsEditor extends StatelessWidget {
               searchLabelText: searchLabelText,
               emptySearchText: emptySearchText,
               onSearchChanged: onSearchChanged,
+              onProfileTypeChanged: onProfileTypeChanged,
               onLoadMore: onLoadMore,
+              selectedProfileType: selectedProfileType,
               searchLoadingStreamValue: searchLoadingStreamValue,
               searchPageLoadingStreamValue: searchPageLoadingStreamValue,
               searchHasMoreStreamValue: searchHasMoreStreamValue,
@@ -138,7 +136,9 @@ class _TenantAdminNestedProfileGroupEditor extends StatelessWidget {
     required this.searchLabelText,
     required this.emptySearchText,
     required this.onSearchChanged,
+    required this.onProfileTypeChanged,
     required this.onLoadMore,
+    required this.selectedProfileType,
     required this.searchLoadingStreamValue,
     required this.searchPageLoadingStreamValue,
     required this.searchHasMoreStreamValue,
@@ -161,7 +161,9 @@ class _TenantAdminNestedProfileGroupEditor extends StatelessWidget {
   final String searchLabelText;
   final String emptySearchText;
   final ValueChanged<String>? onSearchChanged;
+  final ValueChanged<String?>? onProfileTypeChanged;
   final Future<void> Function()? onLoadMore;
+  final String? selectedProfileType;
   final StreamValue<bool>? searchLoadingStreamValue;
   final StreamValue<bool>? searchPageLoadingStreamValue;
   final StreamValue<bool>? searchHasMoreStreamValue;
@@ -191,8 +193,9 @@ class _TenantAdminNestedProfileGroupEditor extends StatelessWidget {
                       child: TextFormField(
                         key: Key('${keyPrefix}NestedGroupLabel_${group.id}'),
                         initialValue: group.label,
-                        decoration:
-                            const InputDecoration(labelText: 'Nome da aba'),
+                        decoration: const InputDecoration(
+                          labelText: 'Nome da aba',
+                        ),
                         onChanged: (value) => onRenameGroup(group.id, value),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
@@ -204,8 +207,9 @@ class _TenantAdminNestedProfileGroupEditor extends StatelessWidget {
                     ),
                     IconButton(
                       tooltip: 'Mover para cima',
-                      onPressed:
-                          index == 0 ? null : () => onMoveGroup(group.id, -1),
+                      onPressed: index == 0
+                          ? null
+                          : () => onMoveGroup(group.id, -1),
                       icon: const Icon(Icons.arrow_upward),
                     ),
                     IconButton(
@@ -234,6 +238,7 @@ class _TenantAdminNestedProfileGroupEditor extends StatelessWidget {
                     return _TenantAdminNestedAccountSelector(
                       keyPrefix: keyPrefix,
                       group: group,
+                      candidatesStreamValue: candidatesStreamValue,
                       candidates: candidates,
                       profileTypes: profileTypes,
                       onSelectionChanged: onSelectionChanged,
@@ -243,7 +248,9 @@ class _TenantAdminNestedProfileGroupEditor extends StatelessWidget {
                       searchLabelText: searchLabelText,
                       emptySearchText: emptySearchText,
                       onSearchChanged: onSearchChanged,
+                      onProfileTypeChanged: onProfileTypeChanged,
                       onLoadMore: onLoadMore,
+                      selectedProfileType: selectedProfileType,
                       searchLoadingStreamValue: searchLoadingStreamValue,
                       searchPageLoadingStreamValue:
                           searchPageLoadingStreamValue,
@@ -264,6 +271,7 @@ class _TenantAdminNestedAccountSelector extends StatefulWidget {
   const _TenantAdminNestedAccountSelector({
     required this.keyPrefix,
     required this.group,
+    required this.candidatesStreamValue,
     required this.candidates,
     required this.profileTypes,
     required this.onSelectionChanged,
@@ -273,7 +281,9 @@ class _TenantAdminNestedAccountSelector extends StatefulWidget {
     required this.searchLabelText,
     required this.emptySearchText,
     required this.onSearchChanged,
+    required this.onProfileTypeChanged,
     required this.onLoadMore,
+    required this.selectedProfileType,
     required this.searchLoadingStreamValue,
     required this.searchPageLoadingStreamValue,
     required this.searchHasMoreStreamValue,
@@ -281,6 +291,7 @@ class _TenantAdminNestedAccountSelector extends StatefulWidget {
 
   final String keyPrefix;
   final TenantAdminNestedProfileGroup group;
+  final StreamValue<List<TenantAdminAccountProfile>> candidatesStreamValue;
   final List<TenantAdminAccountProfile> candidates;
   final List<TenantAdminProfileTypeDefinition> profileTypes;
   final TenantAdminNestedProfileGroupSelectionChanged onSelectionChanged;
@@ -290,7 +301,9 @@ class _TenantAdminNestedAccountSelector extends StatefulWidget {
   final String searchLabelText;
   final String emptySearchText;
   final ValueChanged<String>? onSearchChanged;
+  final ValueChanged<String?>? onProfileTypeChanged;
   final Future<void> Function()? onLoadMore;
+  final String? selectedProfileType;
   final StreamValue<bool>? searchLoadingStreamValue;
   final StreamValue<bool>? searchPageLoadingStreamValue;
   final StreamValue<bool>? searchHasMoreStreamValue;
@@ -302,123 +315,33 @@ class _TenantAdminNestedAccountSelector extends StatefulWidget {
 
 class _TenantAdminNestedAccountSelectorState
     extends State<_TenantAdminNestedAccountSelector> {
-  static const String _allTypes = '__all__';
-
-  final MenuController _menuController = MenuController();
-  final TextEditingController _searchController = TextEditingController();
-  final ScrollController _resultsScrollController = ScrollController();
-  String _selectedType = _allTypes;
   late Set<String> _selectedIds;
 
   @override
   void initState() {
     super.initState();
     _selectedIds = _idsFromGroup(widget.group);
-    _searchController.addListener(_handleSearchChanged);
-    _resultsScrollController.addListener(_handleResultsScroll);
   }
 
   @override
   void didUpdateWidget(_TenantAdminNestedAccountSelector oldWidget) {
     super.didUpdateWidget(oldWidget);
     _selectedIds = _idsFromGroup(widget.group);
-    if (_selectedType != _allTypes &&
-        !widget.candidates
-            .any((profile) => profile.profileType == _selectedType)) {
-      _selectedType = _allTypes;
-    }
-  }
-
-  @override
-  void dispose() {
-    _resultsScrollController
-      ..removeListener(_handleResultsScroll)
-      ..dispose();
-    _searchController
-      ..removeListener(_handleSearchChanged)
-      ..dispose();
-    super.dispose();
   }
 
   Set<String> _idsFromGroup(TenantAdminNestedProfileGroup group) {
     return group.accountProfileIdValues.map((entry) => entry.value).toSet();
   }
 
-  void _handleSearchChanged() {
-    widget.onSearchChanged?.call(_searchController.text);
-    setState(() {});
-  }
-
-  void _handleResultsScroll() {
-    final onLoadMore = widget.onLoadMore;
-    final hasMoreStreamValue = widget.searchHasMoreStreamValue;
-    final pageLoadingStreamValue = widget.searchPageLoadingStreamValue;
-    if (onLoadMore == null ||
-        hasMoreStreamValue == null ||
-        pageLoadingStreamValue == null ||
-        !_resultsScrollController.hasClients) {
-      return;
-    }
-
-    final position = _resultsScrollController.position;
-    if (position.pixels < position.maxScrollExtent - 96) {
-      return;
-    }
-
-    final isSearchLoading = widget.searchLoadingStreamValue?.value ?? false;
-    final isPageLoading = pageLoadingStreamValue.value;
-    if (isSearchLoading || isPageLoading || !hasMoreStreamValue.value) {
-      return;
-    }
-
-    onLoadMore();
-  }
-
-  void _toggleProfile(TenantAdminAccountProfile profile, bool selected) {
+  void _toggleProfileId(String profileId, bool selected) {
     setState(() {
       if (selected) {
-        _selectedIds.add(profile.id);
+        _selectedIds.add(profileId);
       } else {
-        _selectedIds.remove(profile.id);
+        _selectedIds.remove(profileId);
       }
     });
-    widget.onSelectionChanged(widget.group.id, profile.id, selected);
-  }
-
-  Map<String, String> _profileTypeLabels() {
-    return {
-      for (final type in widget.profileTypes) type.type: type.label,
-    };
-  }
-
-  String _profileTypeLabel(String profileType) {
-    return _profileTypeLabels()[profileType] ?? profileType;
-  }
-
-  List<TenantAdminAccountProfile> _filteredCandidates() {
-    final query = _searchController.text.trim().toLowerCase();
-    return widget.candidates.where((profile) {
-      if (_selectedType != _allTypes && profile.profileType != _selectedType) {
-        return false;
-      }
-      if (query.isEmpty) {
-        return true;
-      }
-      final typeLabel = _profileTypeLabel(profile.profileType).toLowerCase();
-      return profile.displayName.toLowerCase().contains(query) ||
-          profile.profileType.toLowerCase().contains(query) ||
-          typeLabel.contains(query);
-    }).toList(growable: false);
-  }
-
-  List<String> _candidateTypes() {
-    final types = widget.candidates
-        .map((profile) => profile.profileType)
-        .toSet()
-        .toList(growable: false);
-    types.sort((left, right) =>
-        _profileTypeLabel(left).compareTo(_profileTypeLabel(right)));
-    return types;
+    widget.onSelectionChanged(widget.group.id, profileId, selected);
   }
 
   List<TenantAdminAccountProfile> _selectedCandidates() {
@@ -427,54 +350,70 @@ class _TenantAdminNestedAccountSelectorState
         .toList(growable: false);
   }
 
+  Future<void> _openCanonicalPicker() async {
+    await showTenantAdminAccountProfileMultiPicker(
+      context: context,
+      candidatesStreamValue: widget.candidatesStreamValue,
+      isLoadingStreamValue: widget.searchLoadingStreamValue!,
+      isPageLoadingStreamValue: widget.searchPageLoadingStreamValue!,
+      hasMoreStreamValue: widget.searchHasMoreStreamValue!,
+      loadNextPage: widget.onLoadMore ?? () async {},
+      onSearchChanged: widget.onSearchChanged ?? (_) {},
+      onProfileTypeChanged: widget.onProfileTypeChanged,
+      profileTypes: widget.profileTypes,
+      title: widget.selectedCountLabel,
+      emptyMessage: widget.emptySearchText,
+      selectedProfileIds: _selectedIds,
+      selectedProfileType: widget.selectedProfileType,
+      searchLabelText: widget.searchLabelText,
+      searchFieldKey: Key(
+        '${widget.keyPrefix}NestedAccountSearch_${widget.group.id}',
+      ),
+      typeFilterKey: Key(
+        '${widget.keyPrefix}NestedAccountTypeFilter_${widget.group.id}',
+      ),
+      listKey: Key(
+        '${widget.keyPrefix}NestedAccountList_${widget.group.id}',
+      ),
+      candidateKeyBuilder: (profile) => Key(
+        '${widget.keyPrefix}NestedAccountCandidate_${widget.group.id}_${profile.id}',
+      ),
+      onSelectionChanged: _toggleProfileId,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (widget.candidates.isEmpty) {
-      return Text(widget.emptyCandidatesText);
-    }
-
     final selected = _selectedCandidates();
+    final hasCandidates = widget.candidates.isNotEmpty;
+    final isLoading = widget.searchLoadingStreamValue?.value ?? false;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final maxWidth = constraints.maxWidth.isFinite
-            ? constraints.maxWidth
-            : MediaQuery.sizeOf(context).width - 32;
-        final menuWidth = math.min(math.max(maxWidth, 320), 640).toDouble();
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            MenuAnchor(
-              controller: _menuController,
-              menuChildren: [
-                _buildMenu(context, menuWidth),
-              ],
-              builder: (context, controller, child) {
-                return SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    key: Key(
-                      '${widget.keyPrefix}NestedAccountSelector_${widget.group.id}',
-                    ),
-                    onPressed: () {
-                      if (controller.isOpen) {
-                        controller.close();
-                      } else {
-                        controller.open();
-                      }
-                    },
-                    icon: const Icon(Icons.manage_search_outlined),
-                    label: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        _selectedIds.isEmpty
-                            ? widget.emptySelectionText
-                            : '${_selectedIds.length} ${widget.selectedCountLabel}',
-                      ),
-                    ),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                key: Key(
+                  '${widget.keyPrefix}NestedAccountSelector_${widget.group.id}',
+                ),
+                onPressed: _openCanonicalPicker,
+                icon: const Icon(Icons.manage_search_outlined),
+                label: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    _selectedIds.isEmpty
+                        ? widget.emptySelectionText
+                        : '${_selectedIds.length} ${widget.selectedCountLabel}',
                   ),
-                );
-              },
+                ),
+              ),
             ),
+            if (!isLoading && !hasCandidates) ...[
+              const SizedBox(height: 8),
+              Text(widget.emptyCandidatesText),
+            ],
             if (selected.isNotEmpty) ...[
               const SizedBox(height: 8),
               Wrap(
@@ -490,7 +429,8 @@ class _TenantAdminNestedAccountSelectorState
                             '${widget.keyPrefix}NestedAccountSelectedChip_${widget.group.id}_${profile.id}',
                           ),
                           label: Text(profile.displayName),
-                          onDeleted: () => _toggleProfile(profile, false),
+                          onDeleted: () =>
+                              _toggleProfileId(profile.id, false),
                         ),
                       ),
                     )
@@ -500,99 +440,6 @@ class _TenantAdminNestedAccountSelectorState
           ],
         );
       },
-    );
-  }
-
-  Widget _buildMenu(BuildContext context, double menuWidth) {
-    final types = _candidateTypes();
-    final filtered = _filteredCandidates();
-
-    return SizedBox(
-      width: menuWidth,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              key: Key(
-                '${widget.keyPrefix}NestedAccountSearch_${widget.group.id}',
-              ),
-              controller: _searchController,
-              decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchController.text.isEmpty
-                    ? null
-                    : IconButton(
-                        tooltip: 'Limpar busca',
-                        onPressed: _searchController.clear,
-                        icon: const Icon(Icons.close),
-                      ),
-                labelText: widget.searchLabelText,
-              ),
-            ),
-            const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
-              key: Key(
-                '${widget.keyPrefix}NestedAccountTypeFilter_${widget.group.id}',
-              ),
-              initialValue: _selectedType,
-              decoration: const InputDecoration(
-                labelText: 'Tipo de perfil',
-              ),
-              items: [
-                const DropdownMenuItem<String>(
-                  value: _allTypes,
-                  child: Text('Todos os tipos'),
-                ),
-                for (final type in types)
-                  DropdownMenuItem<String>(
-                    value: type,
-                    child: Text(_profileTypeLabel(type)),
-                  ),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  _selectedType = value ?? _allTypes;
-                });
-              },
-            ),
-            const SizedBox(height: 8),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 260),
-              child: filtered.isEmpty
-                  ? Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: Text(widget.emptySearchText),
-                    )
-                  : SingleChildScrollView(
-                      controller: _resultsScrollController,
-                      primary: false,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: filtered.map((profile) {
-                          final selected = _selectedIds.contains(profile.id);
-                          return CheckboxListTile(
-                            key: Key(
-                              '${widget.keyPrefix}NestedAccountCandidate_${widget.group.id}_${profile.id}',
-                            ),
-                            dense: true,
-                            controlAffinity: ListTileControlAffinity.leading,
-                            value: selected,
-                            title: Text(profile.displayName),
-                            subtitle:
-                                Text(_profileTypeLabel(profile.profileType)),
-                            onChanged: (value) =>
-                                _toggleProfile(profile, value ?? false),
-                          );
-                        }).toList(growable: false),
-                      ),
-                    ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

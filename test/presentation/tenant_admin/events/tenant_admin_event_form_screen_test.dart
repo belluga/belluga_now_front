@@ -5335,18 +5335,30 @@ void main() {
         groupId: groupId,
       );
 
-      expect(find.text('Artist A'), findsOneWidget);
-      expect(find.text('Artist B'), findsOneWidget);
+      expect(
+        find.byKey(Key('EventProfileNestedAccountCandidate_${groupId}_artist-1')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(Key('EventProfileNestedAccountCandidate_${groupId}_artist-2')),
+        findsOneWidget,
+      );
 
       await _searchProfileGroupSelector(
         tester,
         keyPrefix: 'EventProfile',
         groupId: groupId,
-        query: 'B',
+        query: 'Artist B',
       );
 
-      expect(find.text('Artist B'), findsOneWidget);
-      expect(find.text('Artist A'), findsNothing);
+      expect(
+        find.byKey(Key('EventProfileNestedAccountCandidate_${groupId}_artist-2')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(Key('EventProfileNestedAccountCandidate_${groupId}_artist-1')),
+        findsNothing,
+      );
     },
   );
 
@@ -5397,6 +5409,8 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await tester.tap(find.text('Concluir'));
+      await tester.pumpAndSettle();
 
       expect(find.widgetWithText(InputChip, 'Artist B'), findsOneWidget);
       expect(find.text('Perfil não disponível na lista atual'), findsNothing);
@@ -5444,6 +5458,16 @@ void main() {
         groupId: groupId,
         query: '021',
       );
+      await tester.scrollUntilVisible(
+        find.byKey(
+          Key(
+            'EventProfileNestedAccountCandidate_${groupId}_artist-page-2-021',
+          ),
+        ),
+        250,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.pumpAndSettle();
       await tester.tap(
         find.byKey(
           Key(
@@ -5451,6 +5475,8 @@ void main() {
           ),
         ),
       );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Concluir'));
       await tester.pumpAndSettle();
 
       expect(
@@ -6070,6 +6096,7 @@ Future<void> _pumpWithAutoRoute(WidgetTester tester, Widget child) async {
 
   await tester.pumpWidget(
     MaterialApp.router(
+      theme: ThemeData(splashFactory: NoSplash.splashFactory),
       routeInformationParser: router.defaultRouteParser(),
       routerDelegate: router.delegate(),
     ),
@@ -6220,6 +6247,8 @@ Future<void> _selectProfileInGroup(
   await tester.ensureVisible(candidate);
   await tester.pumpAndSettle();
   await tester.tap(candidate);
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Concluir'));
   await tester.pumpAndSettle();
 }
 
@@ -7260,21 +7289,32 @@ class _MultipleRelatedCandidatesEventsRepository extends _FakeEventsRepository {
         accountSlug: accountSlug,
       );
     }
+    final normalizedSearch = search?.value.trim().toLowerCase() ?? '';
+    final sourceItems = [
+      tenantAdminAccountProfileFromRaw(
+        id: 'artist-1',
+        accountId: 'acc-artist-1',
+        profileType: 'artist',
+        displayName: 'Artist A',
+      ),
+      tenantAdminAccountProfileFromRaw(
+        id: 'artist-2',
+        accountId: 'acc-artist-2',
+        profileType: 'artist',
+        displayName: 'Artist B',
+      ),
+    ];
+    final items = normalizedSearch.isEmpty
+        ? sourceItems
+        : sourceItems
+              .where(
+                (profile) => profile.displayName.toLowerCase().contains(
+                  normalizedSearch,
+                ),
+              )
+              .toList(growable: false);
     return tenantAdminPagedResultFromRaw(
-      items: [
-        tenantAdminAccountProfileFromRaw(
-          id: 'artist-1',
-          accountId: 'acc-artist-1',
-          profileType: 'artist',
-          displayName: 'Artist A',
-        ),
-        tenantAdminAccountProfileFromRaw(
-          id: 'artist-2',
-          accountId: 'acc-artist-2',
-          profileType: 'artist',
-          displayName: 'Artist B',
-        ),
-      ],
+      items: items,
       hasMore: false,
     );
   }

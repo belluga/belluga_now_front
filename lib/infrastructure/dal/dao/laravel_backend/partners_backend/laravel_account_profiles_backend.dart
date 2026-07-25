@@ -25,6 +25,7 @@ import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dto/schedule/support/public_media_url_normalizer.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/shared/tenant_public_auth_headers.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_resolution_request_factory.dart';
 import 'package:dio/dio.dart';
@@ -369,18 +370,8 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
             _parseLocationLatLng(json['location']) ??
             _parseTopLevelLatLng(json);
         final locationAddress = _parseLocationAddress(json);
-        ThumbUriValue? avatarValue;
-        final avatarUrl = json['avatar_url']?.toString();
-        if (avatarUrl != null && avatarUrl.isNotEmpty) {
-          avatarValue = ThumbUriValue(defaultValue: Uri.parse(avatarUrl))
-            ..parse(avatarUrl);
-        }
-        ThumbUriValue? coverValue;
-        final coverUrl = json['cover_url']?.toString();
-        if (coverUrl != null && coverUrl.isNotEmpty) {
-          coverValue = ThumbUriValue(defaultValue: Uri.parse(coverUrl))
-            ..parse(coverUrl);
-        }
+        final avatarValue = _thumbUriValueOrNull(json['avatar_url']?.toString());
+        final coverValue = _thumbUriValueOrNull(json['cover_url']?.toString());
         DescriptionValue? bioValue;
         final bio = json['bio']?.toString();
         if (bio != null && bio.isNotEmpty) {
@@ -732,18 +723,12 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           slugValue = SlugValue()..parse(slug);
         }
 
-        ThumbUriValue? avatarValue;
-        final avatarUrl = json['avatar_url']?.toString().trim();
-        if (avatarUrl != null && avatarUrl.isNotEmpty) {
-          avatarValue = ThumbUriValue(defaultValue: Uri.parse(avatarUrl))
-            ..parse(avatarUrl);
-        }
-        ThumbUriValue? coverValue;
-        final coverUrl = json['cover_url']?.toString().trim();
-        if (coverUrl != null && coverUrl.isNotEmpty) {
-          coverValue = ThumbUriValue(defaultValue: Uri.parse(coverUrl))
-            ..parse(coverUrl);
-        }
+        final avatarValue = _thumbUriValueOrNull(
+          json['avatar_url']?.toString().trim(),
+        );
+        final coverValue = _thumbUriValueOrNull(
+          json['cover_url']?.toString().trim(),
+        );
 
         members.add(
           AccountProfileNestedGroupMember(
@@ -786,6 +771,21 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     }
 
     throw Exception('Account profiles payload missing data list.');
+  }
+
+  ThumbUriValue? _thumbUriValueOrNull(String? rawUrl) {
+    final normalized = normalizeTenantPublicMediaUrl(rawUrl);
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+
+    final parsed = Uri.tryParse(normalized);
+    if (parsed == null) {
+      return null;
+    }
+
+    return ThumbUriValue(defaultValue: parsed, isRequired: true)
+      ..parse(normalized);
   }
 
   List<String> _extractTags(dynamic raw) {

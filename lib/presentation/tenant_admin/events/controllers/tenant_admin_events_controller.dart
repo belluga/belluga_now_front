@@ -858,9 +858,6 @@ class TenantAdminEventsController implements Disposable {
       groupId: groupId,
       profileId: profileId,
       selected: selected,
-      onLimit: () => submitErrorMessageStreamValue.addValue(
-        'Limite de perfis no grupo atingido.',
-      ),
     );
     _applyEventProfileGroups(nextGroups);
   }
@@ -1251,9 +1248,6 @@ class TenantAdminEventsController implements Disposable {
         groupId: groupId,
         profileId: profile.id,
         selected: true,
-        onLimit: () => submitErrorMessageStreamValue.addValue(
-          'Limite de perfis no grupo atingido.',
-        ),
       );
       return _applyOccurrenceProfileGroups(
         _copyOccurrence(occurrence, relatedAccountProfiles: knownProfiles),
@@ -1377,9 +1371,6 @@ class TenantAdminEventsController implements Disposable {
         groupId: groupId,
         profileId: profileId,
         selected: selected,
-        onLimit: () => submitErrorMessageStreamValue.addValue(
-          'Limite de perfis no grupo atingido.',
-        ),
       );
       return _applyOccurrenceProfileGroups(occurrence, nextGroups);
     }, sort: false);
@@ -2555,14 +2546,7 @@ class TenantAdminEventsController implements Disposable {
       final relatedAccountProfiles = relatedAccountProfilesPage.items;
 
       venueCandidatesStreamValue.addValue(List.unmodifiable(venues));
-      relatedAccountProfileCandidatesStreamValue.addValue(
-        List.unmodifiable(
-          _mergeAccountProfiles(
-            relatedAccountProfileCandidatesStreamValue.value,
-            relatedAccountProfiles,
-          ),
-        ),
-      );
+      _publishVisibleRelatedAccountProfileCandidates(relatedAccountProfiles);
     } catch (error) {
       if (_isDisposed ||
           (requestToken != null && requestToken != _formDependenciesLoadSerial)) {
@@ -2750,7 +2734,7 @@ class TenantAdminEventsController implements Disposable {
       );
       if (candidateType ==
           TenantAdminEventAccountProfileCandidateType.relatedAccountProfile) {
-        _mergeKnownRelatedAccountProfiles(pageResult.items);
+        _publishVisibleRelatedAccountProfileCandidates(nextItems);
       }
       accountProfilePickerHasMoreStreamValue.addValue(pageResult.hasMore);
       accountProfilePickerErrorStreamValue.addValue('');
@@ -2812,6 +2796,35 @@ class TenantAdminEventsController implements Disposable {
         ),
       ),
     );
+  }
+
+  void _publishVisibleRelatedAccountProfileCandidates(
+    Iterable<TenantAdminAccountProfile> visibleCandidates,
+  ) {
+    final selectedIds = _selectedRelatedAccountProfileIdsAcrossEventState();
+    final selectedProfiles = relatedAccountProfileCandidatesStreamValue.value
+        .where((profile) => selectedIds.contains(profile.id));
+    relatedAccountProfileCandidatesStreamValue.addValue(
+      List.unmodifiable(
+        _mergeAccountProfiles(selectedProfiles, visibleCandidates),
+      ),
+    );
+  }
+
+  Set<String> _selectedRelatedAccountProfileIdsAcrossEventState() {
+    final state = eventFormStateStreamValue.value;
+    final selectedIds = <String>{...state.selectedRelatedAccountProfileIds};
+    for (final occurrence in state.occurrences) {
+      selectedIds.addAll(
+        occurrence.relatedAccountProfileIds.map((profileId) => profileId.value),
+      );
+      selectedIds.addAll(
+        TenantAdminNestedProfileGroupOperations.memberIds(
+          occurrence.profileGroups,
+        ),
+      );
+    }
+    return selectedIds;
   }
 
   List<TenantAdminAccountProfile> _mergeAccountProfiles(

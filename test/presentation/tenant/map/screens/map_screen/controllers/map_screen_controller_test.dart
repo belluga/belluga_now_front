@@ -6870,6 +6870,9 @@ Future<void> _pumpMapScreen(
 
   await tester.pumpWidget(
     MaterialApp(
+      // The Linux widget-test renderer cannot load the app's Vulkan-only
+      // InkSparkle shader. Disable only the splash animation in tests.
+      theme: ThemeData(splashFactory: NoSplash.splashFactory),
       home: StackRouterScope(
         controller: router,
         stateHash: 0,
@@ -6912,6 +6915,7 @@ Future<void> _pumpPoiDetailDeckWithAutoRouter(
 
   await tester.pumpWidget(
     MaterialApp.router(
+      theme: ThemeData(splashFactory: NoSplash.splashFactory),
       routeInformationParser: router.defaultRouteParser(),
       routerDelegate: router.delegate(),
     ),

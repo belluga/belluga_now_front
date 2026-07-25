@@ -1925,6 +1925,53 @@ void main() {
   );
 
   testWidgets(
+    'keeps every public nested group tab when multiple groups are present',
+    (tester) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(430, 900);
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final repository = _FakeAccountProfilesRepository();
+      final controller = AccountProfileDetailController(
+        accountProfilesRepository: repository,
+      );
+      GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+      await tester.pumpWidget(
+        _buildRoutedTestApp(
+          router: _RecordingStackRouter(),
+          child: AccountProfileDetailScreen(
+            accountProfile: _buildVenueFullProfile().copyWith(
+              nestedProfileGroupValues: [
+                _buildNestedAccountProfileGroup(),
+                _buildSecondaryNestedAccountProfileGroup(),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final immersiveDetail = tester.widget<ImmersiveDetailScreen>(
+        find.byType(ImmersiveDetailScreen),
+      );
+
+      expect(
+        immersiveDetail.tabs.map((tab) => tab.title),
+        containsAll(<String>['Parceiros', 'Novo grupo 3']),
+      );
+      expect(find.text('Novo grupo 3'), findsOneWidget);
+      expect(
+        find.byKey(const Key('immersiveTabOverflowHintRight')),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
     'renders non navigable nested members without chevron and does not navigate',
     (tester) async {
       final repository = _FakeAccountProfilesRepository();
@@ -2944,7 +2991,9 @@ Widget _buildAutoRouteTestApp({required Widget child, ThemeData? theme}) {
   )..ignorePopCompleters = true;
 
   return MaterialApp.router(
-    theme: theme,
+    // Match the routed test harness and avoid the Linux widget-test
+    // renderer attempting to load the app's Vulkan-only InkSparkle shader.
+    theme: theme ?? ThemeData(splashFactory: NoSplash.splashFactory),
     locale: const Locale('pt', 'BR'),
     supportedLocales: const <Locale>[Locale('pt', 'BR')],
     localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
@@ -3638,6 +3687,29 @@ AccountProfileNestedGroup _buildNestedAccountProfileGroup() {
           '/parceiro/ananda-torres',
         ),
         tagValues: [AccountProfileTagValue('Música')],
+      ),
+    ],
+  );
+}
+
+AccountProfileNestedGroup _buildSecondaryNestedAccountProfileGroup() {
+  return AccountProfileNestedGroup(
+    idValue: AccountProfileNestedGroupIdValue('novo-grupo-3'),
+    labelValue: AccountProfileNestedGroupLabelValue('Novo grupo 3'),
+    orderValue: AccountProfileNestedGroupOrderValue(1),
+    profiles: [
+      AccountProfileNestedGroupMember(
+        idValue: MongoIDValue()..parse('507f1f77bcf86cd799439082'),
+        nameValue: TitleValue()..parse('Public Partner B'),
+        slugValue: SlugValue()..parse('public-partner-b'),
+        profileTypeValue: AccountProfileTypeValue('venue'),
+        canOpenPublicDetailValue: DomainBooleanValue(
+          defaultValue: false,
+          isRequired: false,
+        )..parse('true'),
+        publicDetailPathValue: AccountProfileNestedGroupMemberTextValue(
+          '/parceiro/public-partner-b',
+        ),
       ),
     ],
   );

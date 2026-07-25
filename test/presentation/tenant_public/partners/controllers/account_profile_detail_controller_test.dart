@@ -311,6 +311,42 @@ void main() {
   );
 
   test(
+    'mirrored effective contact projection keeps contact tab and bubble available even without local channels',
+    () async {
+      await _registerContactAppData(contactEnabled: true);
+      final controller = AccountProfileDetailController(
+        accountProfilesRepository: _FakeAccountProfilesRepository(),
+      );
+      final whatsappChannel = BellugaContactChannel(
+        id: 'whatsapp-mirror-source',
+        type: BellugaContactChannelType.whatsapp,
+        value: '+55 (27) 99999-1111',
+        title: 'Atendimento',
+      );
+      final profile = buildAccountProfileModelFromPrimitives(
+        id: '507f1f77bcf86cd799439115',
+        name: 'Perfil espelhado',
+        slug: 'perfil-espelhado',
+        type: 'artist',
+        contactMode: BellugaContactSourceMode.mirroredAccountProfile,
+        contactSourceAccountProfileId: '507f1f77bcf86cd799439199',
+        contactChannels: const <BellugaContactChannel>[],
+        effectiveContactChannels: <BellugaContactChannel>[whatsappChannel],
+        effectiveContactBubbleChannel: whatsappChannel,
+      );
+
+      expect(profile.contactChannels, isEmpty);
+      expect(controller.hasContactChannels(profile), isTrue);
+      expect(controller.availableContactChannelsFor(profile), [whatsappChannel]);
+      expect(controller.shouldRenderContactTab(profile), isTrue);
+      expect(
+        controller.resolvedBubbleChannelFor(profile)?.id,
+        whatsappChannel.id,
+      );
+    },
+  );
+
+  test(
     'contact bubble impression telemetry is emitted only once per channel',
     () async {
       await _registerContactAppData(contactEnabled: true);

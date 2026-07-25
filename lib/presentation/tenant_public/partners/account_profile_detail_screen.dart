@@ -2979,7 +2979,7 @@ class _AccountProfileDetailScreenState
               : () => _safeRouterPushPath(memberPath),
           titleStyle: theme.textTheme.titleMedium?.copyWith(
             color: colorScheme.primary,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w700,
           ),
           titleMaxLines: 2,
           avatarSize: 64,
@@ -2988,7 +2988,7 @@ class _AccountProfileDetailScreenState
           cardLeft: 56,
           contentLeadingInset: 44,
           contentTrailingInset: memberPath == null ? 20 : 48,
-          minimumCardHeight: 124,
+          minimumCardHeight: 80,
         ),
         if (memberPath != null)
           Positioned.fill(

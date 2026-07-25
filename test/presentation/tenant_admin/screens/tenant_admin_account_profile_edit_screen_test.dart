@@ -312,6 +312,8 @@ void main() {
         ),
       ];
       profilesRepository.profilesToReturn = [sourceProfile];
+      profilesRepository.accountProfileFetchOverrides[sourceProfile.id] =
+          sourceProfile;
       profilesRepository.profileToReturn = _profile(
         id: 'route-profile',
         contactMode: BellugaContactSourceMode.mirroredAccountProfile,
@@ -344,7 +346,130 @@ void main() {
         findsOneWidget,
       );
       expect(find.textContaining('Perfil Fonte'), findsWidgets);
-      expect(find.textContaining('Atendimento'), findsWidgets);
+      expect(find.text('WhatsApp'), findsWidgets);
+      expect(find.text('+55 (27) 99999-9999 • Atendimento'), findsWidgets);
+    },
+  );
+
+  testWidgets(
+    'opens the mirrored contact source picker with server candidates and no crash fallback',
+    (tester) async {
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+      final sourceProfile = _profile(
+        id: '507f1f77bcf86cd7994390aa',
+        displayName: 'Perfil Fonte Picker',
+        profileType: 'venue',
+      );
+      profilesRepository.profileTypesToReturn = [
+        _profileType(
+          hasGallery: false,
+          hasNestedProfileGroups: false,
+          hasContactChannels: true,
+        ),
+      ];
+      profilesRepository.profilesToReturn = [sourceProfile];
+      profilesRepository.profileToReturn = _profile(
+        id: 'route-profile',
+        contactMode: BellugaContactSourceMode.mirroredAccountProfile,
+      );
+
+      await _pumpScreen(
+        tester,
+        const TenantAdminAccountProfileEditScreen(
+          accountSlug: 'route-account',
+          accountProfileId: 'route-profile',
+        ),
+      );
+
+      final scrollable = find.byType(Scrollable).first;
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('tenantAdminEditContactSourcePicker')),
+        300,
+        scrollable: scrollable,
+      );
+      await tester.tap(
+        find.byKey(const Key('tenantAdminEditContactSourcePicker')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Perfil de origem'), findsOneWidget);
+      expect(
+        find.byKey(const Key('tenantAdminAccountProfilePickerList')),
+        findsOneWidget,
+      );
+      expect(find.text('Perfil Fonte Picker'), findsOneWidget);
+      expect(find.text('venue'), findsOneWidget);
+      expect(
+        find.text('Nenhum perfil elegível para espelhar contatos.'),
+        findsNothing,
+      );
+      expect(find.textContaining("Instance of 'minified"), findsNothing);
+      expect(find.textContaining("Instance of '"), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'hydrates the persisted mirrored contact source when it is outside the first candidate page',
+    (tester) async {
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+      final whatsappChannel = BellugaContactChannel(
+        id: 'whatsapp-hydrated',
+        type: BellugaContactChannelType.whatsapp,
+        value: '+55 (27) 98888-7777',
+        title: 'Canal hidratado',
+      );
+      final sourceProfile = _profile(
+        id: '507f1f77bcf86cd799439051',
+        displayName: 'Perfil Fonte 51',
+        contactChannels: [whatsappChannel],
+        effectiveContactChannels: [whatsappChannel],
+        contactBubbleChannelId: whatsappChannel.id,
+      );
+      profilesRepository.profileTypesToReturn = [
+        _profileType(
+          hasGallery: false,
+          hasNestedProfileGroups: false,
+          hasContactChannels: true,
+        ),
+      ];
+      profilesRepository.profilesToReturn = List<TenantAdminAccountProfile>.of([
+        for (var index = 0; index < 50; index++)
+          _profile(
+            id: 'profile-candidate-$index',
+            displayName: 'Candidate $index',
+          ),
+        sourceProfile,
+      ]);
+      profilesRepository.accountProfileFetchOverrides[sourceProfile.id] =
+          sourceProfile;
+      profilesRepository.profileToReturn = _profile(
+        id: 'route-profile',
+        contactMode: BellugaContactSourceMode.mirroredAccountProfile,
+        contactSourceAccountProfileId: sourceProfile.id,
+        contactBubbleChannelId: whatsappChannel.id,
+      );
+
+      await _pumpScreen(
+        tester,
+        const TenantAdminAccountProfileEditScreen(
+          accountSlug: 'route-account',
+          accountProfileId: 'route-profile',
+        ),
+      );
+
+      final scrollable = find.byType(Scrollable).first;
+      await tester.scrollUntilVisible(
+        find.text('Origem do Contato'),
+        300,
+        scrollable: scrollable,
+      );
+
+      expect(find.textContaining('Perfil Fonte 51'), findsWidgets);
+      expect(find.textContaining('Canal hidratado'), findsWidgets);
     },
   );
 
@@ -567,7 +692,7 @@ void main() {
 
     expect(find.text('Abas de contas vinculadas'), findsOneWidget);
     expect(find.text('Conta Parceira'), findsOneWidget);
-    expect(find.text('1 Account(s) selecionada(s)'), findsOneWidget);
+    expect(find.text('1 perfil(is) selecionado(s)'), findsOneWidget);
   });
 
   testWidgets(
@@ -740,6 +865,8 @@ class _FakeAccountProfilesRepository
     _profileType(hasGallery: true, hasNestedProfileGroups: false),
   ];
   List<TenantAdminAccountProfile> profilesToReturn = [];
+  final Map<String, TenantAdminAccountProfile> accountProfileFetchOverrides =
+      <String, TenantAdminAccountProfile>{};
   List<TenantAdminAccountProfileGalleryUpdateGroup>? lastGalleryGroups;
   List<TenantAdminNestedProfileGroup>? lastNestedProfileGroups;
 
@@ -761,6 +888,9 @@ class _FakeAccountProfilesRepository
     required TenantAdminAccountProfilesRepoInt pageSize,
     TenantAdminAccountProfilesRepoString? search,
     TenantAdminAccountProfilesRepoString? accountId,
+    TenantAdminAccountProfilesRepoString? profileType,
+    TenantAdminAccountProfilesRepoString? contactMode,
+    TenantAdminAccountProfilesRepoBool? contactChannelsEnabledOnly,
     TenantAdminAccountProfilesRepoBool? queryableOnly,
     TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async {
@@ -789,41 +919,15 @@ class _FakeAccountProfilesRepository
   }
 
   @override
-  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-  fetchContactSourceCandidatesPage({
-    required TenantAdminAccountProfilesRepoInt page,
-    required TenantAdminAccountProfilesRepoInt pageSize,
-    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
-  }) async {
-    final candidates = _filterProfiles(
-      excludeAccountProfileId: excludeAccountProfileId?.value,
-    );
-    final start = (page.value - 1) * pageSize.value;
-    if (page.value <= 0 || pageSize.value <= 0 || start >= candidates.length) {
-      return tenantAdminPagedResultFromRaw(
-        items: const <TenantAdminAccountProfile>[],
-        hasMore: false,
-        currentPage: page.value,
-        pageSize: pageSize.value,
-      );
-    }
-    final end = start + pageSize.value < candidates.length
-        ? start + pageSize.value
-        : candidates.length;
-    return tenantAdminPagedResultFromRaw(
-      items: candidates.sublist(start, end),
-      hasMore: end < candidates.length,
-      currentPage: page.value,
-      pageSize: pageSize.value,
-    );
-  }
-
-  @override
   Future<TenantAdminAccountProfile> fetchAccountProfile(
     TenantAdminAccountProfilesRepoString accountProfileId,
   ) async {
     fetchAccountProfileCalls += 1;
     lastFetchedProfileId = accountProfileId.value;
+    final override = accountProfileFetchOverrides[accountProfileId.value];
+    if (override != null) {
+      return override;
+    }
     return _profile(
       id: accountProfileId.value,
       avatarUrl: profileToReturn.avatarUrl,
@@ -887,6 +991,7 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? profileType,
     TenantAdminAccountProfilesRepoString? displayName,
     TenantAdminAccountProfilesRepoString? slug,
+    TenantAdminAccountProfilesRepoInt? aggregateRevision,
     TenantAdminLocation? location,
     TenantAdminTaxonomyTerms? taxonomyTerms,
     TenantAdminAccountProfilesRepoString? bio,

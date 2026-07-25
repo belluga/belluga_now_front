@@ -486,6 +486,9 @@ class _FakeAccountProfilesRepository
     required TenantAdminAccountProfilesRepoInt pageSize,
     TenantAdminAccountProfilesRepoString? search,
     TenantAdminAccountProfilesRepoString? accountId,
+    TenantAdminAccountProfilesRepoString? profileType,
+    TenantAdminAccountProfilesRepoString? contactMode,
+    TenantAdminAccountProfilesRepoBool? contactChannelsEnabledOnly,
     TenantAdminAccountProfilesRepoBool? queryableOnly,
     TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async {
@@ -524,19 +527,6 @@ class _FakeAccountProfilesRepository
   }
 
   @override
-  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-  fetchContactSourceCandidatesPage({
-    required TenantAdminAccountProfilesRepoInt page,
-    required TenantAdminAccountProfilesRepoInt pageSize,
-    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
-  }) async => tenantAdminPagedResultFromRaw(
-    items: const <TenantAdminAccountProfile>[],
-    hasMore: false,
-    currentPage: page.value,
-    pageSize: pageSize.value,
-  );
-
-  @override
   Future<TenantAdminAccountProfile> fetchAccountProfile(
     TenantAdminAccountProfilesRepoString accountProfileId,
   ) async {
@@ -557,6 +547,7 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? profileType,
     TenantAdminAccountProfilesRepoString? displayName,
     TenantAdminAccountProfilesRepoString? slug,
+    TenantAdminAccountProfilesRepoInt? aggregateRevision,
     TenantAdminLocation? location,
     TenantAdminTaxonomyTerms? taxonomyTerms,
     TenantAdminAccountProfilesRepoString? bio,
@@ -1155,7 +1146,7 @@ void main() {
     });
 
     test(
-      'createAccountOnboarding replays nested member selections through canonical member deltas',
+      'createAccountOnboarding forwards nested profile groups in the primary onboarding payload',
       () async {
         final accountsRepository = _FakeAccountsRepository([]);
         final profilesRepository = _FakeAccountProfilesRepository([
@@ -1203,20 +1194,21 @@ void main() {
           'Integrantes',
         );
         expect(
-          profilesRepository.lastPatchNestedGroupMembersProfileId,
-          'profile-onboarding-1',
+          accountsRepository
+              .lastOnboardingNestedGroups
+              .single
+              .accountProfileIdValues
+              .map((entry) => entry.value)
+              .toList(),
+          <String>['profile-1'],
         );
-        expect(
-          profilesRepository.lastPatchNestedGroupMembersGroupId,
-          'integrantes',
-        );
+        expect(profilesRepository.lastPatchNestedGroupMembersProfileId, isNull);
+        expect(profilesRepository.lastPatchNestedGroupMembersGroupId, isNull);
         expect(
           profilesRepository.lastPatchNestedGroupMembersAggregateRevision,
-          1,
+          isNull,
         );
-        expect(profilesRepository.lastPatchNestedGroupAddIds, <String>[
-          'profile-1',
-        ]);
+        expect(profilesRepository.lastPatchNestedGroupAddIds, isEmpty);
         expect(profilesRepository.lastPatchNestedGroupRemoveIds, isEmpty);
       },
     );

@@ -1,6 +1,4 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
-import 'package:flutter/foundation.dart';
-
 class TenantAdminNestedProfileGroupOperations {
   const TenantAdminNestedProfileGroupOperations._();
 
@@ -77,7 +75,6 @@ class TenantAdminNestedProfileGroupOperations {
     required String groupId,
     required String profileId,
     required bool selected,
-    required VoidCallback onLimit,
   }) {
     return groups.map((group) {
       if (group.id != groupId) {
@@ -88,10 +85,6 @@ class TenantAdminNestedProfileGroupOperations {
           .toList(growable: true);
       if (selected) {
         if (current.contains(profileId)) {
-          return group;
-        }
-        if (current.length >= 50) {
-          onLimit();
           return group;
         }
         current.add(profileId);
