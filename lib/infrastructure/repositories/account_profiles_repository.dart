@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
@@ -114,6 +115,13 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
     AccountProfilesRepositoryContractPrimString slug,
   ) async {
     return _backend.fetchAccountProfileBySlug(slug.value);
+  }
+
+  @override
+  Future<List<AccountProfileNestedGroupMember>> getNestedGroupMembersByPath(
+    AccountProfilesRepositoryContractPrimString membersPath,
+  ) async {
+    return _backend.fetchNestedGroupMembersByPath(membersPath.value);
   }
 
   @override

@@ -13,6 +13,7 @@ import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
@@ -1925,6 +1926,62 @@ void main() {
   );
 
   testWidgets(
+    'loads public nested group members lazily from members_path when the tab opens',
+    (tester) async {
+      final membersPath =
+          '/api/v1/account_profiles/ponta-da-fruta/nested_groups/parceiros/members';
+      final lazyMembers = _buildNestedAccountProfileGroup().profiles;
+      final repository = _FakeAccountProfilesRepository(
+        nestedGroupMembersByPath: <String, List<AccountProfileNestedGroupMember>>{
+          membersPath: lazyMembers,
+        },
+      );
+      final controller = AccountProfileDetailController(
+        accountProfilesRepository: repository,
+      );
+      GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+      final lazyGroup = AccountProfileNestedGroup(
+        idValue: AccountProfileNestedGroupIdValue('parceiros'),
+        labelValue: AccountProfileNestedGroupLabelValue('Parceiros'),
+        orderValue: AccountProfileNestedGroupOrderValue(0),
+        membersPath: membersPath,
+        memberCount: lazyMembers.length,
+        profiles: const <AccountProfileNestedGroupMember>[],
+      );
+
+      await tester.pumpWidget(
+        _buildRoutedTestApp(
+          router: _RecordingStackRouter(),
+          child: AccountProfileDetailScreen(
+            accountProfile: _buildVenueFullProfile().copyWith(
+              nestedProfileGroupValues: [lazyGroup],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(repository.lastNestedGroupMembersPath, isNull);
+      expect(
+        tester.widget<Text>(find.byKey(const Key('immersiveTabLabel_3'))).data,
+        'Parceiros',
+      );
+
+      await tester.ensureVisible(find.byKey(const Key('immersiveTabLabel_3')));
+      await tester.tap(find.byKey(const Key('immersiveTabLabel_3')));
+      await tester.pumpAndSettle();
+
+      expect(repository.lastNestedGroupMembersPath, membersPath);
+      expect(
+        find.byKey(const Key('accountProfileNestedGroup_parceiros')),
+        findsOneWidget,
+      );
+      expect(find.text('Ananda Torres'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'keeps every public nested group tab when multiple groups are present',
     (tester) async {
       tester.view.devicePixelRatio = 1.0;
@@ -3428,8 +3485,17 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   _FakeAccountProfilesRepository({
     Set<String> initialFavoriteIds = const <String>{},
     List<AccountProfileModel> profiles = const <AccountProfileModel>[],
+    Map<String, List<AccountProfileNestedGroupMember>> nestedGroupMembersByPath =
+        const <String, List<AccountProfileNestedGroupMember>>{},
   }) : _favoriteIds = Set<String>.from(initialFavoriteIds),
-       _profiles = List<AccountProfileModel>.from(profiles) {
+       _profiles = List<AccountProfileModel>.from(profiles),
+       _nestedGroupMembersByPath =
+           nestedGroupMembersByPath.map(
+             (key, value) => MapEntry(
+               key,
+               List<AccountProfileNestedGroupMember>.from(value),
+             ),
+           ) {
     favoriteAccountProfileIdsStreamValue.addValue(
       _favoriteIds
           .map((id) => AccountProfilesRepositoryContractPrimString.fromRaw(id))
@@ -3439,6 +3505,8 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
 
   final Set<String> _favoriteIds;
   final List<AccountProfileModel> _profiles;
+  final Map<String, List<AccountProfileNestedGroupMember>> _nestedGroupMembersByPath;
+  String? lastNestedGroupMembersPath;
 
   @override
   Future<void> init() async {}
@@ -3468,6 +3536,15 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
       }
     }
     return null;
+  }
+
+  @override
+  Future<List<AccountProfileNestedGroupMember>> getNestedGroupMembersByPath(
+    AccountProfilesRepositoryContractPrimString membersPath,
+  ) async {
+    lastNestedGroupMembersPath = membersPath.value;
+    return _nestedGroupMembersByPath[membersPath.value] ??
+        const <AccountProfileNestedGroupMember>[];
   }
 
   @override

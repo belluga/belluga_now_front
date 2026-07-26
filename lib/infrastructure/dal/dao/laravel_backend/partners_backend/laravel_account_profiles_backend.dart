@@ -330,6 +330,64 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     }
   }
 
+  @override
+  Future<List<AccountProfileNestedGroupMember>> fetchNestedGroupMembersByPath(
+    String membersPath,
+  ) async {
+    final normalizedPath = membersPath.trim();
+    if (normalizedPath.isEmpty) {
+      return const <AccountProfileNestedGroupMember>[];
+    }
+
+    final members = <AccountProfileNestedGroupMember>[];
+    final seen = <String>{};
+    String? nextCursor;
+
+    while (true) {
+      final uri = _resolveTenantPublicUriFromPath(
+        normalizedPath,
+        queryParameters: nextCursor == null || nextCursor.trim().isEmpty
+            ? null
+            : <String, String>{'cursor': nextCursor.trim()},
+      );
+
+      final payload =
+          await TenantPublicAuthHeaders.retryOnceOnUnauthorized<
+            Map<String, dynamic>
+          >(
+            includeJsonAccept: true,
+            action: (headers) async {
+              final response = await _dio.getUri(
+                uri,
+                options: Options(headers: headers),
+              );
+              final raw = response.data;
+              if (raw is Map<String, dynamic>) {
+                return raw;
+              }
+
+              throw Exception(
+                'Unexpected nested group members response shape.',
+              );
+            },
+          );
+
+      for (final member in _extractNestedGroupMembers(payload['data'])) {
+        if (seen.add(member.id)) {
+          members.add(member);
+        }
+      }
+
+      final cursor = payload['next_cursor']?.toString().trim();
+      if (cursor == null || cursor.isEmpty) {
+        break;
+      }
+      nextCursor = cursor;
+    }
+
+    return List<AccountProfileNestedGroupMember>.unmodifiable(members);
+  }
+
   List<AccountProfileModel> _parseProfiles(
     List<dynamic> raw, {
     required CityCoordinate? distanceOrigin,
@@ -674,6 +732,8 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           orderValue: AccountProfileNestedGroupOrderValue(
             _parsePageValue(json['order']) ?? groups.length,
           ),
+          membersPath: json['members_path']?.toString().trim(),
+          memberCount: _parsePageValue(json['member_count']) ?? 0,
           profiles: _extractNestedGroupMembers(json['profiles']),
         ),
       );
@@ -757,6 +817,29 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     }
 
     return List<AccountProfileNestedGroupMember>.unmodifiable(members);
+  }
+
+  Uri _resolveTenantPublicUriFromPath(
+    String path, {
+    Map<String, String>? queryParameters,
+  }) {
+    final directUri = Uri.tryParse(path);
+    if (directUri != null && directUri.hasScheme && directUri.host.isNotEmpty) {
+      return directUri.replace(
+        queryParameters: queryParameters == null || queryParameters.isEmpty
+            ? null
+            : queryParameters,
+      );
+    }
+
+    final origin = GetIt.I.get<AppData>().mainDomainValue.value.origin;
+    final normalizedPath = path.startsWith('/') ? path : '/$path';
+
+    return Uri.parse('$origin$normalizedPath').replace(
+      queryParameters: queryParameters == null || queryParameters.isEmpty
+          ? null
+          : queryParameters,
+    );
   }
 
   List<dynamic> _extractDataList(Map<String, dynamic> payload) {

@@ -7,6 +7,8 @@ import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
 import 'package:belluga_now/domain/partners/profile_type_capabilities.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
@@ -171,6 +173,23 @@ class AccountProfileDetailController implements Disposable {
       );
       moduleDataStreamValue.addValue(const {});
     }
+  }
+
+  Future<List<AccountProfileNestedGroupMember>> loadNestedGroupMembers(
+    AccountProfileNestedGroup group,
+  ) async {
+    final membersPath = group.membersPath?.trim();
+    if (membersPath == null || membersPath.isEmpty) {
+      return group.profiles;
+    }
+
+    return _accountProfilesRepository.getNestedGroupMembersByPath(
+      AccountProfilesRepositoryContractPrimString.fromRaw(
+        membersPath,
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
   }
 
   AccountProfileFavoriteToggleOutcome toggleFavorite(String accountProfileId) {

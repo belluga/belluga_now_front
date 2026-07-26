@@ -2936,17 +2936,21 @@ class _AccountProfileDetailScreenState
   }
 
   Widget _nestedProfileGroup(AccountProfileNestedGroup group) {
-    return Padding(
+    return _LazyNestedProfileGroupContent(
       key: Key('accountProfileNestedGroup_${group.id}'),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final entry in group.profiles.asMap().entries) ...[
-            if (entry.key > 0) const SizedBox(height: 12),
-            _nestedProfileMemberCard(group, entry.value),
+      controller: _controller,
+      group: group,
+      itemBuilder: (members) => Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final entry in members.asMap().entries) ...[
+              if (entry.key > 0) const SizedBox(height: 12),
+              _nestedProfileMemberCard(group, entry.value),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -3220,6 +3224,113 @@ class _AccountProfileDetailScreenState
       case ProfileModuleId.sponsorBanner:
         return _sponsorBanner(data is String ? data : null);
     }
+  }
+}
+
+class _LazyNestedProfileGroupContent extends StatefulWidget {
+  const _LazyNestedProfileGroupContent({
+    required this.controller,
+    required this.group,
+    required this.itemBuilder,
+    super.key,
+  });
+
+  final AccountProfileDetailController controller;
+  final AccountProfileNestedGroup group;
+  final Widget Function(List<AccountProfileNestedGroupMember> members)
+  itemBuilder;
+
+  @override
+  State<_LazyNestedProfileGroupContent> createState() =>
+      _LazyNestedProfileGroupContentState();
+}
+
+class _LazyNestedProfileGroupContentState
+    extends State<_LazyNestedProfileGroupContent> {
+  Future<List<AccountProfileNestedGroupMember>>? _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _initialFuture();
+  }
+
+  @override
+  void didUpdateWidget(covariant _LazyNestedProfileGroupContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.group.id != widget.group.id ||
+        oldWidget.group.membersPath != widget.group.membersPath ||
+        oldWidget.group.profiles != widget.group.profiles) {
+      _future = _initialFuture();
+    }
+  }
+
+  Future<List<AccountProfileNestedGroupMember>>? _initialFuture() {
+    if (widget.group.profiles.isNotEmpty) {
+      return Future<List<AccountProfileNestedGroupMember>>.value(
+        widget.group.profiles,
+      );
+    }
+
+    return null;
+  }
+
+  Future<List<AccountProfileNestedGroupMember>> _load() async {
+    if (widget.group.profiles.isNotEmpty) {
+      return widget.group.profiles;
+    }
+
+    return widget.controller.loadNestedGroupMembers(widget.group);
+  }
+
+  void _ensureLoadedWhenVisible(VisibilityInfo info) {
+    if (info.visibleFraction <= 0 || _future != null) {
+      return;
+    }
+
+    setState(() {
+      _future = _load();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return VisibilityDetector(
+      key: Key('accountProfileNestedGroupVisibility_${widget.group.id}'),
+      onVisibilityChanged: _ensureLoadedWhenVisible,
+      child: FutureBuilder<List<AccountProfileNestedGroupMember>>(
+        future: _future,
+        builder: (context, snapshot) {
+          if (_future == null) {
+            return const SizedBox(width: double.infinity, height: 1);
+          }
+
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Padding(
+              padding: EdgeInsets.all(24),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+
+          if (snapshot.hasError) {
+            return const Padding(
+              padding: EdgeInsets.all(24),
+              child: Center(
+                child: Text('Não foi possível carregar os perfis desta aba.'),
+              ),
+            );
+          }
+
+          final members =
+              snapshot.data ?? const <AccountProfileNestedGroupMember>[];
+          if (members.isEmpty) {
+            return const SizedBox.shrink();
+          }
+
+          return widget.itemBuilder(members);
+        },
+      ),
+    );
   }
 }
 

@@ -1,5 +1,6 @@
 import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/value_objects/account_profiles_repository_contract_values.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -141,6 +142,10 @@ abstract class AccountProfilesRepositoryContract {
   /// Get account profile by slug
   Future<AccountProfileModel?> getAccountProfileBySlug(
     AccountProfilesRepositoryContractPrimString slug,
+  );
+
+  Future<List<AccountProfileNestedGroupMember>> getNestedGroupMembersByPath(
+    AccountProfilesRepositoryContractPrimString membersPath,
   );
 
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({

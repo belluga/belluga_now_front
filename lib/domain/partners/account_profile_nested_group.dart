@@ -9,16 +9,25 @@ class AccountProfileNestedGroup {
     required this.idValue,
     required this.labelValue,
     required this.orderValue,
+    this.membersPath,
+    int? memberCount,
     List<AccountProfileNestedGroupMember>? profiles,
-  }) : profiles = profiles ?? const <AccountProfileNestedGroupMember>[];
+  })  : profiles = profiles ?? const <AccountProfileNestedGroupMember>[],
+        memberCount = memberCount ?? (profiles?.length ?? 0);
 
   final AccountProfileNestedGroupIdValue idValue;
   final AccountProfileNestedGroupLabelValue labelValue;
   final AccountProfileNestedGroupOrderValue orderValue;
+  final String? membersPath;
+  final int memberCount;
   final List<AccountProfileNestedGroupMember> profiles;
 
   String get id => idValue.value;
   String get label => labelValue.value;
   int get order => orderValue.value;
-  bool get isVisible => label.trim().isNotEmpty && profiles.isNotEmpty;
+  bool get isVisible =>
+      label.trim().isNotEmpty &&
+      (profiles.isNotEmpty ||
+          memberCount > 0 ||
+          (membersPath?.trim().isNotEmpty ?? false));
 }

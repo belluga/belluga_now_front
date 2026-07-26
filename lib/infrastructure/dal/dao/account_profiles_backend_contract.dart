@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/value_objects/account_profiles_repository_taxonomy_filter.dart';
 
@@ -14,6 +15,10 @@ abstract class AccountProfilesBackendContract {
   });
 
   Future<AccountProfileModel?> fetchAccountProfileBySlug(String slug);
+
+  Future<List<AccountProfileNestedGroupMember>> fetchNestedGroupMembersByPath(
+    String membersPath,
+  );
 
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
     int pageSize = 10,
