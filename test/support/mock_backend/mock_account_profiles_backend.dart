@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
 import 'mock_account_profiles_database.dart';
@@ -42,6 +43,14 @@ class MockAccountProfilesBackend implements AccountProfilesBackendContract {
   Future<AccountProfileModel?> fetchAccountProfileBySlug(String slug) async {
     await Future.delayed(const Duration(milliseconds: 50));
     return _database.getAccountProfileBySlug(slug);
+  }
+
+  @override
+  Future<List<AccountProfileNestedGroupMember>> fetchNestedGroupMembersByPath(
+    String membersPath,
+  ) async {
+    await Future.delayed(const Duration(milliseconds: 50));
+    return const <AccountProfileNestedGroupMember>[];
   }
 
   @override

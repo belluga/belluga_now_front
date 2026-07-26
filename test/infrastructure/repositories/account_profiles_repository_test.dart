@@ -6,6 +6,7 @@ import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/domain/favorite/favorite.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
@@ -1022,6 +1023,11 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
     fetchBySlugCalls += 1;
     return accountProfiles.firstWhere((profile) => profile.slug == slug);
   }
+
+  @override
+  Future<List<AccountProfileNestedGroupMember>> fetchNestedGroupMembersByPath(
+    String membersPath,
+  ) async => const <AccountProfileNestedGroupMember>[];
 
   @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({

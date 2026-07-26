@@ -27,6 +27,7 @@ import 'package:belluga_now/domain/tenant/tenant.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/user/user_profile_contract.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/auth_backend_contract.dart';
@@ -1064,6 +1065,11 @@ class _NoopAccountProfilesBackend implements AccountProfilesBackendContract {
   @override
   Future<AccountProfileModel?> fetchAccountProfileBySlug(String slug) =>
       throw UnimplementedError();
+
+  @override
+  Future<List<AccountProfileNestedGroupMember>> fetchNestedGroupMembersByPath(
+    String membersPath,
+  ) => throw UnimplementedError();
 
   @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
