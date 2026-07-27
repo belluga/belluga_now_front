@@ -679,11 +679,9 @@ void main() {
   );
 
   test(
-    'fetchAccountProfileBySlug parses nested account profile groups',
+    'fetchAccountProfileBySlug preserves nested account profile group metadata for lazy members hydration',
     () async {
       final parentId = _generateMongoId();
-      final partnerAId = _generateMongoId();
-      final partnerBId = _generateMongoId();
       final adapter = _RecordingAdapter(
         response: {
           'data': {
@@ -697,29 +695,9 @@ void main() {
                 'id': 'parceiros',
                 'label': 'Parceiros',
                 'order': 1,
+                'member_count': 2,
                 'members_path':
                     '/api/v1/account_profiles/parent-profile/nested_profile_groups/parceiros/members',
-                'profiles': [
-                  {
-                    'id': partnerBId,
-                    'display_name': 'Parceiro B',
-                    'slug': 'parceiro-b',
-                    'profile_type': 'artist',
-                    'can_open_public_detail': true,
-                    'public_detail_path': '/parceiro/parceiro-b',
-                    'avatar_url': 'https://tenant.test/b.png',
-                    'taxonomy_terms': [
-                      {'name': 'Música', 'value': 'musica'},
-                    ],
-                  },
-                  {
-                    'id': partnerAId,
-                    'display_name': 'Parceiro A',
-                    'slug': 'parceiro-a',
-                    'profile_type': 'artist',
-                    'can_open_public_detail': false,
-                  },
-                ],
               },
             ],
           },
@@ -740,47 +718,29 @@ void main() {
       final group = profile.nestedProfileGroups.single;
       expect(group.id, 'parceiros');
       expect(group.label, 'Parceiros');
-      expect(group.profiles.map((entry) => entry.slug).toList(), [
-        'parceiro-b',
-        'parceiro-a',
-      ]);
-      expect(group.profiles.first.canOpenPublicDetail, isTrue);
-      expect(group.profiles.first.publicDetailPath, '/parceiro/parceiro-b');
-      expect(group.profiles.last.canOpenPublicDetail, isFalse);
-      expect(group.profiles.first.avatarUrl, 'https://tenant.test/b.png');
-      expect(group.profiles.first.tags.single.value, 'Música');
+      expect(group.memberCount, 2);
+      expect(
+        group.membersPath,
+        '/api/v1/account_profiles/parent-profile/nested_profile_groups/parceiros/members',
+      );
+      expect(group.profiles, isEmpty);
     },
   );
 
   test(
-    'fetchAccountProfileBySlug keeps nested members without slug when not navigable',
+    'fetchNestedGroupMembersByPath keeps nested members without slug when not navigable',
     () async {
-      final parentId = _generateMongoId();
       final partnerId = _generateMongoId();
       final adapter = _RecordingAdapter(
         response: {
           'data': {
-            'id': parentId,
-            'display_name': 'Parent Profile',
-            'slug': 'parent-profile',
-            'profile_type': 'venue',
-            'taxonomy_terms': const [],
-            'nested_profile_groups': [
+            'data': [
               {
-                'id': 'parceiros',
-                'label': 'Parceiros',
-                'order': 1,
-                'members_path':
-                    '/api/v1/account_profiles/parent-profile/nested_profile_groups/parceiros/members',
-                'profiles': [
-                  {
-                    'id': partnerId,
-                    'display_name': 'Parceiro Sem Link',
-                    'profile_type': 'guest_public',
-                    'can_open_public_detail': false,
-                    'public_detail_path': null,
-                  },
-                ],
+                'id': partnerId,
+                'display_name': 'Parceiro Sem Link',
+                'profile_type': 'guest_public',
+                'can_open_public_detail': false,
+                'public_detail_path': null,
               },
             ],
           },
@@ -794,10 +754,12 @@ void main() {
         ),
       );
 
-      final profile = await backend.fetchAccountProfileBySlug('parent-profile');
+      final page = await backend.fetchNestedGroupMembersPageByPath(
+        '/api/v1/account_profiles/parent-profile/nested_profile_groups/parceiros/members',
+      );
 
-      expect(profile, isNotNull);
-      final member = profile!.nestedProfileGroups.single.profiles.single;
+      expect(page.items, hasLength(1));
+      final member = page.items.single;
       expect(member.slug, isEmpty);
       expect(member.canOpenPublicDetail, isFalse);
       expect(member.publicDetailPath, isNull);
@@ -805,52 +767,23 @@ void main() {
   );
 
   test(
-    'fetchAccountProfileBySlug preserves nested groups when member media urls are relative',
+    'fetchNestedGroupMembersByPath normalizes relative member media urls',
     () async {
-      final parentId = _generateMongoId();
-      final firstPartnerId = _generateMongoId();
       final secondPartnerId = _generateMongoId();
       final relativeAvatarPath =
           '/api/v1/media/account-profiles/$secondPartnerId/avatar?v=1234abcd';
       final adapter = _RecordingAdapter(
         response: {
           'data': {
-            'id': parentId,
-            'display_name': 'Public Partner A',
-            'slug': 'public-partner-a',
-            'profile_type': 'venue',
-            'taxonomy_terms': const [],
-            'nested_profile_groups': [
+            'data': [
               {
-                'id': 'grupo-1',
-                'label': 'Novo grupo',
-                'order': 0,
-                'profiles': [
-                  {
-                    'id': firstPartnerId,
-                    'display_name': 'Nested Public Parent',
-                    'slug': 'nested-public-parent',
-                    'profile_type': 'venue',
-                    'can_open_public_detail': true,
-                    'public_detail_path': '/parceiro/nested-public-parent',
-                  },
-                ],
-              },
-              {
-                'id': 'grupo-2',
-                'label': 'Novo grupo 3',
-                'order': 1,
-                'profiles': [
-                  {
-                    'id': secondPartnerId,
-                    'display_name': 'Public Partner B',
-                    'slug': 'public-partner-b',
-                    'profile_type': 'venue',
-                    'avatar_url': relativeAvatarPath,
-                    'can_open_public_detail': true,
-                    'public_detail_path': '/parceiro/public-partner-b',
-                  },
-                ],
+                'id': secondPartnerId,
+                'display_name': 'Public Partner B',
+                'slug': 'public-partner-b',
+                'profile_type': 'venue',
+                'avatar_url': relativeAvatarPath,
+                'can_open_public_detail': true,
+                'public_detail_path': '/parceiro/public-partner-b',
               },
             ],
           },
@@ -864,60 +797,40 @@ void main() {
         ),
       );
 
-      final profile = await backend.fetchAccountProfileBySlug(
-        'public-partner-a',
+      final page = await backend.fetchNestedGroupMembersPageByPath(
+        '/api/v1/account_profiles/public-partner-a/nested_profile_groups/grupo-2/members',
       );
 
-      expect(profile, isNotNull);
-      expect(profile!.nestedProfileGroups, hasLength(2));
-      expect(
-        profile.nestedProfileGroups.map((group) => group.label).toList(),
-        <String>['Novo grupo', 'Novo grupo 3'],
-      );
-      final secondMember = profile.nestedProfileGroups.last.profiles.single;
+      expect(page.items, hasLength(1));
+      final secondMember = page.items.single;
       expect(secondMember.name, 'Public Partner B');
       expect(secondMember.avatarUrl, 'https://tenant.test$relativeAvatarPath');
     },
   );
 
   test(
-    'fetchAccountProfileBySlug applies short-name and fallback rules to nested members',
+    'fetchNestedGroupMembersByPath applies short-name and fallback rules to nested members',
     () async {
-      final parentId = _generateMongoId();
       final shortNameId = _generateMongoId();
       final fallbackId = _generateMongoId();
       final adapter = _RecordingAdapter(
         response: {
           'data': {
-            'id': parentId,
-            'display_name': 'Parent Profile',
-            'slug': 'parent-profile',
-            'profile_type': 'venue',
-            'taxonomy_terms': const [],
-            'nested_profile_groups': [
+            'data': [
               {
-                'id': 'parceiros',
-                'label': 'Parceiros',
-                'order': 1,
-                'members_path':
-                    '/api/v1/account_profiles/parent-profile/nested_profile_groups/parceiros/members',
-                'profiles': [
-                  {
-                    'id': shortNameId,
-                    'display_name': 'Ane',
-                    'slug': 'ane',
-                    'profile_type': 'artist',
-                    'can_open_public_detail': true,
-                    'public_detail_path': '/parceiro/ane',
-                  },
-                  {
-                    'id': fallbackId,
-                    'display_name': 'An',
-                    'slug': 'casa-marracini',
-                    'profile_type': 'artist',
-                    'can_open_public_detail': false,
-                  },
-                ],
+                'id': shortNameId,
+                'display_name': 'Ane',
+                'slug': 'ane',
+                'profile_type': 'artist',
+                'can_open_public_detail': true,
+                'public_detail_path': '/parceiro/ane',
+              },
+              {
+                'id': fallbackId,
+                'display_name': 'An',
+                'slug': 'casa-marracini',
+                'profile_type': 'artist',
+                'can_open_public_detail': false,
               },
             ],
           },
@@ -931,10 +844,11 @@ void main() {
         ),
       );
 
-      final profile = await backend.fetchAccountProfileBySlug('parent-profile');
+      final page = await backend.fetchNestedGroupMembersPageByPath(
+        '/api/v1/account_profiles/parent-profile/nested_profile_groups/parceiros/members',
+      );
 
-      expect(profile, isNotNull);
-      final members = profile!.nestedProfileGroups.single.profiles;
+      final members = page.items;
       expect(members, hasLength(2));
       expect(members.map((entry) => entry.name).toList(), [
         'Ane',

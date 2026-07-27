@@ -3264,10 +3264,6 @@ class _LazyNestedProfileGroupContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (group.profiles.isNotEmpty) {
-      return itemBuilder(group.profiles, null);
-    }
-
     return StreamValueBuilder<List<AccountProfileNestedGroupMember>>(
       streamValue: controller.nestedGroupMembersStreamValue(group),
       builder: (context, members) {

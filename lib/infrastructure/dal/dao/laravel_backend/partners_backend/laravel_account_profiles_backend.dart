@@ -765,7 +765,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           memberCountValue: AccountProfileNestedGroupMemberCountValue(
             _parsePageValue(json['member_count']) ?? 0,
           ),
-          profiles: _extractNestedGroupMembers(json['profiles']),
+          profiles: const <AccountProfileNestedGroupMember>[],
         ),
       );
     }

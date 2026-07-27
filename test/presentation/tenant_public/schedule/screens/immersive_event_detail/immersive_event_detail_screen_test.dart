@@ -557,10 +557,10 @@ void main() {
 
       await _tapImmersiveTab(tester, 1);
 
-      expect(
-        repository.requestedNestedGroupMembersPaths,
-        [firstMembersPath, secondMembersPath],
-      );
+      expect(repository.requestedNestedGroupMembersPaths, [
+        firstMembersPath,
+        secondMembersPath,
+      ]);
       expect(repository.lastNestedGroupMembersPath, secondMembersPath);
       expect(
         find.byKey(const Key('linkedProfileCard_507f1f77bcf86cd799439222')),
@@ -1899,7 +1899,23 @@ void main() {
     (tester) async {
       final userEventsRepository = _FakeUserEventsRepository();
       final invitesRepository = _FakeInvitesRepository();
-      final accountProfilesRepository = _FakeAccountProfilesRepository();
+      const membersPath =
+          '/api/v1/events/evento-de-teste/related_profile_tabs/artists/members';
+      final nestedArtistId = _nestedGroupMemberId('artist-1');
+      final accountProfilesRepository = _FakeAccountProfilesRepository()
+        ..nestedGroupMembersByPath[membersPath] =
+            <AccountProfileNestedGroupMember>[
+              _buildNestedGroupMember(
+                id: 'artist-1',
+                name: 'Ananda Torres',
+                profileType: 'artist',
+                slug: 'ananda-torres',
+                avatarUrl: 'https://example.com/ananda.png',
+                coverUrl: 'https://example.com/ananda-cover.png',
+                publicDetailPath: '/parceiro/ananda-torres',
+                tags: const ['Samba'],
+              ),
+            ];
       GetIt.I.registerSingleton<ImmersiveEventDetailController>(
         ImmersiveEventDetailController(
           userEventsRepository: userEventsRepository,
@@ -1952,6 +1968,15 @@ void main() {
                       slug: 'carvoeiro',
                     ),
                   ],
+                  profileGroups: [
+                    _buildProfileGroup(
+                      id: 'artists',
+                      label: 'Artists',
+                      membersPath: membersPath,
+                      memberCount: 1,
+                      accountProfileIds: const ['artist-1'],
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -1969,26 +1994,26 @@ void main() {
         'Artists',
       );
       expect(
-        tester.widget<Text>(find.byKey(const Key('immersiveTabLabel_3'))).data,
+        tester.widget<Text>(find.byKey(const Key('immersiveTabLabel_2'))).data,
         'O Local',
       );
 
-      await _tapImmersiveTab(tester, 0);
+      await _tapImmersiveTabByLabel(tester, 'Artists');
       await tester.ensureVisible(
-        find.byKey(const Key('linkedProfileCardTapTarget_artist-1')),
+        find.byKey(Key('linkedProfileCardTapTarget_$nestedArtistId')),
       );
 
       expect(find.text('Ananda Torres'), findsWidgets);
       expect(find.text('Samba'), findsOneWidget);
       expect(find.byType(AccountProfileOverlappingIdentityCard), findsWidgets);
       expect(
-        find.byKey(const Key('linkedProfileFavoriteButton_artist-1')),
+        find.byKey(Key('linkedProfileFavoriteButton_$nestedArtistId')),
         findsOneWidget,
       );
 
       await _tapInkWellByKey(
         tester,
-        const Key('linkedProfileCardTapTarget_artist-1'),
+        Key('linkedProfileCardTapTarget_$nestedArtistId'),
       );
 
       expect(router.lastPushedPath, '/parceiro/ananda-torres');
@@ -1996,7 +2021,7 @@ void main() {
 
       await _tapIconButtonByKey(
         tester,
-        const Key('linkedProfileFavoriteButton_artist-1'),
+        Key('linkedProfileFavoriteButton_$nestedArtistId'),
       );
       expect(accountProfilesRepository.toggleFavoriteCalls, 1);
     },
@@ -2007,7 +2032,20 @@ void main() {
     (tester) async {
       final userEventsRepository = _FakeUserEventsRepository();
       final invitesRepository = _FakeInvitesRepository();
-      final accountProfilesRepository = _FakeAccountProfilesRepository();
+      const membersPath =
+          '/api/v1/events/evento-de-teste/related_profile_tabs/artists/members';
+      final nestedArtistId = _nestedGroupMemberId('artist-path');
+      final accountProfilesRepository = _FakeAccountProfilesRepository()
+        ..nestedGroupMembersByPath[membersPath] =
+            <AccountProfileNestedGroupMember>[
+              _buildNestedGroupMember(
+                id: 'artist-path',
+                name: 'Perfil com caminho canônico',
+                profileType: 'artist',
+                slug: 'perfil-com-caminho',
+                publicDetailPath: '/perfil-customizado/perfil-com-caminho',
+              ),
+            ];
       GetIt.I.registerSingleton<ImmersiveEventDetailController>(
         ImmersiveEventDetailController(
           userEventsRepository: userEventsRepository,
@@ -2048,20 +2086,12 @@ void main() {
                     ),
                   ],
                   profileGroups: [
-                    EventProfileGroup(
-                      idValue: EventLinkedAccountProfileTextValue('artists'),
-                      labelValue: EventLinkedAccountProfileTextValue('Artists'),
-                      orderValue: EventProfileGroupOrderValue(0),
-                      profiles: [
-                        _buildLinkedAccountProfile(
-                          id: 'artist-path',
-                          displayName: 'Perfil com caminho canônico',
-                          profileType: 'artist',
-                          slug: 'perfil-com-caminho',
-                          publicDetailPath:
-                              '/perfil-customizado/perfil-com-caminho',
-                        ),
-                      ],
+                    _buildProfileGroup(
+                      id: 'artists',
+                      label: 'Artists',
+                      membersPath: membersPath,
+                      memberCount: 1,
+                      accountProfileIds: const ['artist-path'],
                     ),
                   ],
                 ),
@@ -2074,13 +2104,13 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      await _tapImmersiveTab(tester, 0);
+      await _tapImmersiveTabByLabel(tester, 'Artists');
       await tester.ensureVisible(
-        find.byKey(const Key('linkedProfileCardTapTarget_artist-path')),
+        find.byKey(Key('linkedProfileCardTapTarget_$nestedArtistId')),
       );
       await _tapInkWellByKey(
         tester,
-        const Key('linkedProfileCardTapTarget_artist-path'),
+        Key('linkedProfileCardTapTarget_$nestedArtistId'),
       );
 
       expect(router.lastPushedPath, '/perfil-customizado/perfil-com-caminho');
@@ -2089,10 +2119,13 @@ void main() {
   );
 
   testWidgets(
-    'linked profile card renders normalized avatar url from relative public payload media',
+    'linked profile card renders lazy member media from canonical group metadata',
     (tester) async {
       GetIt.I.registerSingleton<AppData>(_buildAppData());
       final tenantOrigin = GetIt.I.get<AppData>().mainDomainValue.value;
+      const membersPath =
+          '/api/v1/events/evento-linked-profile-midia-relativa/related_profile_tabs/artists/members';
+      final nestedArtistId = _nestedGroupMemberId('artist-relative');
       final expectedAvatarUrl = tenantOrigin
           .resolve('/api/v1/media/account-profiles/artist-relative/avatar?v=11')
           .toString();
@@ -2130,29 +2163,31 @@ void main() {
             'id': 'artists',
             'label': 'Artists',
             'order': 0,
-            'profiles': [
-              {
-                'id': 'artist-relative',
-                'display_name': 'Perfil relativo',
-                'profile_type': 'artist',
-                'slug': 'perfil-relativo',
-                'public_detail_path': '/parceiro/perfil-relativo',
-                'avatar_url':
-                    '/api/v1/media/account-profiles/artist-relative/avatar?v=11',
-                'cover_url': 'account-profiles/artist-relative/cover?v=12',
-              },
-            ],
+            'account_profile_ids': ['artist-relative'],
+            'member_count': 1,
+            'members_path': membersPath,
           },
         ],
       });
       final event = dto.toDomain();
-      final linkedProfile = event.profileGroups.single.profiles.single;
-
-      expect(linkedProfile.coverUrl, expectedCoverUrl);
+      expect(event.linkedAccountProfiles.single.coverUrl, expectedCoverUrl);
+      expect(event.profileGroups.single.profiles, isEmpty);
 
       final userEventsRepository = _FakeUserEventsRepository();
       final invitesRepository = _FakeInvitesRepository();
-      final accountProfilesRepository = _FakeAccountProfilesRepository();
+      final accountProfilesRepository = _FakeAccountProfilesRepository()
+        ..nestedGroupMembersByPath[membersPath] =
+            <AccountProfileNestedGroupMember>[
+              _buildNestedGroupMember(
+                id: 'artist-relative',
+                name: 'Perfil relativo',
+                profileType: 'artist',
+                slug: 'perfil-relativo',
+                avatarUrl: expectedAvatarUrl,
+                coverUrl: expectedCoverUrl,
+                publicDetailPath: '/parceiro/perfil-relativo',
+              ),
+            ];
       GetIt.I.registerSingleton<ImmersiveEventDetailController>(
         ImmersiveEventDetailController(
           userEventsRepository: userEventsRepository,
@@ -2189,10 +2224,10 @@ void main() {
 
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
-      await _tapImmersiveTab(tester, 0);
+      await _tapImmersiveTabByLabel(tester, 'Artists');
 
       final profileCardFinder = find.ancestor(
-        of: find.byKey(const Key('linkedProfileCard_artist-relative')),
+        of: find.byKey(Key('linkedProfileCard_$nestedArtistId')),
         matching: find.byType(AccountProfileOverlappingIdentityCard),
       );
       expect(profileCardFinder, findsOneWidget);
@@ -2215,10 +2250,13 @@ void main() {
   );
 
   testWidgets(
-    'linked profile card reuses root aggregate avatar when grouped profile payload is shallow',
+    'linked profile card renders lazy member avatar when event groups are metadata-only',
     (tester) async {
       GetIt.I.registerSingleton<AppData>(_buildAppData());
       final tenantOrigin = GetIt.I.get<AppData>().mainDomainValue.value;
+      const membersPath =
+          '/api/v1/events/evento-linked-profile-grupo-shallow/related_profile_tabs/artists/members';
+      final nestedArtistId = _nestedGroupMemberId('artist-relative');
       final expectedAvatarUrl = tenantOrigin
           .resolve('/api/v1/media/account-profiles/artist-relative/avatar?v=21')
           .toString();
@@ -2253,23 +2291,29 @@ void main() {
             'id': 'artists',
             'label': 'Artists',
             'order': 0,
-            'profiles': [
-              {
-                'id': 'artist-relative',
-                'display_name': 'Perfil relativo',
-                'profile_type': 'artist',
-                'slug': 'perfil-relativo',
-                'public_detail_path': '/parceiro/perfil-relativo',
-              },
-            ],
+            'account_profile_ids': ['artist-relative'],
+            'member_count': 1,
+            'members_path': membersPath,
           },
         ],
       });
       final event = dto.toDomain();
+      expect(event.profileGroups.single.profiles, isEmpty);
 
       final userEventsRepository = _FakeUserEventsRepository();
       final invitesRepository = _FakeInvitesRepository();
-      final accountProfilesRepository = _FakeAccountProfilesRepository();
+      final accountProfilesRepository = _FakeAccountProfilesRepository()
+        ..nestedGroupMembersByPath[membersPath] =
+            <AccountProfileNestedGroupMember>[
+              _buildNestedGroupMember(
+                id: 'artist-relative',
+                name: 'Perfil relativo',
+                profileType: 'artist',
+                slug: 'perfil-relativo',
+                avatarUrl: expectedAvatarUrl,
+                publicDetailPath: '/parceiro/perfil-relativo',
+              ),
+            ];
       GetIt.I.registerSingleton<ImmersiveEventDetailController>(
         ImmersiveEventDetailController(
           userEventsRepository: userEventsRepository,
@@ -2306,10 +2350,10 @@ void main() {
 
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
-      await _tapImmersiveTab(tester, 0);
+      await _tapImmersiveTabByLabel(tester, 'Artists');
 
       final profileCardFinder = find.ancestor(
-        of: find.byKey(const Key('linkedProfileCard_artist-relative')),
+        of: find.byKey(Key('linkedProfileCard_$nestedArtistId')),
         matching: find.byType(AccountProfileOverlappingIdentityCard),
       );
       expect(profileCardFinder, findsOneWidget);
@@ -2332,10 +2376,13 @@ void main() {
   );
 
   testWidgets(
-    'linked profile card prefers aggregate avatar when grouped profile snapshot is stale',
+    'linked profile card ignores stale embedded group snapshots and uses lazy members payload',
     (tester) async {
       GetIt.I.registerSingleton<AppData>(_buildAppData());
       final tenantOrigin = GetIt.I.get<AppData>().mainDomainValue.value;
+      const membersPath =
+          '/api/v1/events/evento-linked-profile-grupo-stale/related_profile_tabs/artists/members';
+      final nestedArtistId = _nestedGroupMemberId('artist-relative');
       final expectedAvatarUrl = tenantOrigin
           .resolve('/api/v1/media/account-profiles/artist-relative/avatar?v=31')
           .toString();
@@ -2371,6 +2418,8 @@ void main() {
             'label': 'Artists',
             'order': 0,
             'account_profile_ids': ['artist-relative'],
+            'member_count': 1,
+            'members_path': membersPath,
             'profiles': [
               {
                 'id': 'artist-relative',
@@ -2385,10 +2434,22 @@ void main() {
         ],
       });
       final event = dto.toDomain();
+      expect(event.profileGroups.single.profiles, isEmpty);
 
       final userEventsRepository = _FakeUserEventsRepository();
       final invitesRepository = _FakeInvitesRepository();
-      final accountProfilesRepository = _FakeAccountProfilesRepository();
+      final accountProfilesRepository = _FakeAccountProfilesRepository()
+        ..nestedGroupMembersByPath[membersPath] =
+            <AccountProfileNestedGroupMember>[
+              _buildNestedGroupMember(
+                id: 'artist-relative',
+                name: 'Perfil relativo',
+                profileType: 'artist',
+                slug: 'perfil-relativo',
+                avatarUrl: expectedAvatarUrl,
+                publicDetailPath: '/parceiro/perfil-relativo',
+              ),
+            ];
       GetIt.I.registerSingleton<ImmersiveEventDetailController>(
         ImmersiveEventDetailController(
           userEventsRepository: userEventsRepository,
@@ -2425,10 +2486,10 @@ void main() {
 
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
-      await _tapImmersiveTab(tester, 0);
+      await _tapImmersiveTabByLabel(tester, 'Artists');
 
       final profileCardFinder = find.ancestor(
-        of: find.byKey(const Key('linkedProfileCard_artist-relative')),
+        of: find.byKey(Key('linkedProfileCard_$nestedArtistId')),
         matching: find.byType(AccountProfileOverlappingIdentityCard),
       );
       expect(profileCardFinder, findsOneWidget);
@@ -2455,7 +2516,20 @@ void main() {
     (tester) async {
       final userEventsRepository = _FakeUserEventsRepository();
       final invitesRepository = _FakeInvitesRepository();
-      final accountProfilesRepository = _FakeAccountProfilesRepository();
+      const membersPath =
+          '/api/v1/events/evento-de-teste/related_profile_tabs/artists/members';
+      final nestedArtistId = _nestedGroupMemberId('artist-static');
+      final accountProfilesRepository = _FakeAccountProfilesRepository()
+        ..nestedGroupMembersByPath[membersPath] =
+            <AccountProfileNestedGroupMember>[
+              _buildNestedGroupMember(
+                id: 'artist-static',
+                name: 'Perfil sem rota',
+                profileType: 'artist',
+                slug: 'perfil-sem-rota',
+                canOpenPublicDetail: false,
+              ),
+            ];
       GetIt.I.registerSingleton<ImmersiveEventDetailController>(
         ImmersiveEventDetailController(
           userEventsRepository: userEventsRepository,
@@ -2495,19 +2569,12 @@ void main() {
                     ),
                   ],
                   profileGroups: [
-                    EventProfileGroup(
-                      idValue: EventLinkedAccountProfileTextValue('artists'),
-                      labelValue: EventLinkedAccountProfileTextValue('Artists'),
-                      orderValue: EventProfileGroupOrderValue(0),
-                      profiles: [
-                        _buildLinkedAccountProfile(
-                          id: 'artist-static',
-                          displayName: 'Perfil sem rota',
-                          profileType: 'artist',
-                          slug: 'perfil-sem-rota',
-                          canOpenPublicDetail: false,
-                        ),
-                      ],
+                    _buildProfileGroup(
+                      id: 'artists',
+                      label: 'Artists',
+                      membersPath: membersPath,
+                      memberCount: 1,
+                      accountProfileIds: const ['artist-static'],
                     ),
                   ],
                 ),
@@ -2519,14 +2586,14 @@ void main() {
 
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
-      await _tapImmersiveTab(tester, 1);
+      await _tapImmersiveTabByLabel(tester, 'Artists');
       expect(find.byTooltip('Favoritar'), findsOneWidget);
       expect(
-        find.byKey(const Key('linkedProfileCard_artist-static')),
+        find.byKey(Key('linkedProfileCard_$nestedArtistId')),
         findsOneWidget,
       );
       expect(
-        find.byKey(const Key('linkedProfileCardTapTarget_artist-static')),
+        find.byKey(Key('linkedProfileCardTapTarget_$nestedArtistId')),
         findsNothing,
       );
 
@@ -2539,7 +2606,19 @@ void main() {
     (tester) async {
       final userEventsRepository = _FakeUserEventsRepository();
       final invitesRepository = _FakeInvitesRepository();
-      final accountProfilesRepository = _FakeAccountProfilesRepository();
+      const membersPath =
+          '/api/v1/events/evento-de-teste/related_profile_tabs/artists/members';
+      final nestedArtistId = _nestedGroupMemberId('artist-1');
+      final accountProfilesRepository = _FakeAccountProfilesRepository()
+        ..nestedGroupMembersByPath[membersPath] =
+            <AccountProfileNestedGroupMember>[
+              _buildNestedGroupMember(
+                id: 'artist-1',
+                name: 'Ananda Torres',
+                profileType: 'artist',
+                slug: 'ananda-torres',
+              ),
+            ];
       final authRepository = _FakeAuthRepository(authorized: false);
       final appDataRepository = _FakeAppDataRepository(_buildAppData());
       GetIt.I.registerSingleton<AppData>(_buildAppData());
@@ -2587,6 +2666,15 @@ void main() {
                       slug: 'ananda-torres',
                     ),
                   ],
+                  profileGroups: [
+                    _buildProfileGroup(
+                      id: 'artists',
+                      label: 'Artists',
+                      membersPath: membersPath,
+                      memberCount: 1,
+                      accountProfileIds: const ['artist-1'],
+                    ),
+                  ],
                 ),
                 isWebRuntime: true,
               ),
@@ -2598,10 +2686,10 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      await _tapImmersiveTab(tester, 1);
+      await _tapImmersiveTabByLabel(tester, 'Artists');
 
       final favoriteButton = find.byKey(
-        const Key('linkedProfileFavoriteButton_artist-1'),
+        Key('linkedProfileFavoriteButton_$nestedArtistId'),
       );
       expect(favoriteButton, findsOneWidget);
 
@@ -2628,12 +2716,27 @@ void main() {
     (tester) async {
       final userEventsRepository = _FakeUserEventsRepository();
       final invitesRepository = _FakeInvitesRepository();
+      const membersPath =
+          '/api/v1/events/evento-de-teste/related_profile_tabs/artists/members';
+      final nestedArtistId = _nestedGroupMemberId('artist-1');
+      final accountProfilesRepository = _FakeAccountProfilesRepository()
+        ..nestedGroupMembersByPath[membersPath] =
+            List<AccountProfileNestedGroupMember>.generate(
+              4,
+              (index) => _buildNestedGroupMember(
+                id: 'artist-${index + 1}',
+                name: 'Artista ${index + 1}',
+                profileType: 'artist',
+                slug: 'artista-${index + 1}',
+              ),
+            );
       GetIt.I.registerSingleton<ImmersiveEventDetailController>(
         ImmersiveEventDetailController(
           userEventsRepository: userEventsRepository,
           invitesRepository: invitesRepository,
           authRepository: _FakeAuthRepository(authorized: true),
           appDataRepository: _FakeAppDataRepository(_buildAppData()),
+          accountProfilesRepository: accountProfilesRepository,
         ),
       );
 
@@ -2665,7 +2768,23 @@ void main() {
             home: _routeScopedHome(
               routeData: routeData,
               child: ImmersiveEventDetailScreen(
-                event: _buildEvent(linkedProfiles: linkedProfiles),
+                event: _buildEvent(
+                  linkedProfiles: linkedProfiles,
+                  profileGroups: [
+                    _buildProfileGroup(
+                      id: 'artists',
+                      label: 'Artists',
+                      membersPath: membersPath,
+                      memberCount: 4,
+                      accountProfileIds: const [
+                        'artist-1',
+                        'artist-2',
+                        'artist-3',
+                        'artist-4',
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -2692,7 +2811,11 @@ void main() {
       await tester.tap(find.byKey(const Key('eventHeroMoreProfilesChip')));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('immersiveTabSelected_1')), findsOneWidget);
+      expect(accountProfilesRepository.lastNestedGroupMembersPath, membersPath);
+      expect(
+        find.byKey(Key('linkedProfileCard_$nestedArtistId')),
+        findsOneWidget,
+      );
     },
   );
 
@@ -2764,7 +2887,20 @@ void main() {
     (tester) async {
       final userEventsRepository = _FakeUserEventsRepository();
       final invitesRepository = _FakeInvitesRepository();
-      final accountProfilesRepository = _FakeAccountProfilesRepository();
+      const membersPath =
+          '/api/v1/events/evento-de-teste/related_profile_tabs/artists/members';
+      final nestedArtistId = _nestedGroupMemberId('artist-1');
+      final accountProfilesRepository = _FakeAccountProfilesRepository()
+        ..nestedGroupMembersByPath[membersPath] =
+            <AccountProfileNestedGroupMember>[
+              _buildNestedGroupMember(
+                id: 'artist-1',
+                name: 'Ananda Torres',
+                profileType: 'artist',
+                slug: 'ananda-torres',
+                publicDetailPath: '/perfil-customizado/perfil-com-caminho',
+              ),
+            ];
       GetIt.I.registerSingleton<ImmersiveEventDetailController>(
         ImmersiveEventDetailController(
           userEventsRepository: userEventsRepository,
@@ -2806,6 +2942,15 @@ void main() {
                           '/perfil-customizado/perfil-com-caminho',
                     ),
                   ],
+                  profileGroups: [
+                    _buildProfileGroup(
+                      id: 'artists',
+                      label: 'Artists',
+                      membersPath: membersPath,
+                      memberCount: 1,
+                      accountProfileIds: const ['artist-1'],
+                    ),
+                  ],
                 ),
                 isWebRuntime: false,
               ),
@@ -2817,10 +2962,10 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      await _tapImmersiveTab(tester, 1);
+      await _tapImmersiveTabByLabel(tester, 'Artists');
 
       await tester.tap(
-        find.byKey(const Key('linkedProfileFavoriteButton_artist-1')),
+        find.byKey(Key('linkedProfileFavoriteButton_$nestedArtistId')),
       );
       await tester.pumpAndSettle();
 
@@ -2834,7 +2979,7 @@ void main() {
         '/agenda/evento/evento-de-teste?occurrence=occurrence-1',
       );
       expect(pendingAction?.actionType, AuthWallActionType.favorite);
-      expect(pendingAction?.payload?['partnerId'], 'artist-1');
+      expect(pendingAction?.payload?['partnerId'], nestedArtistId);
     },
   );
 
@@ -2898,12 +3043,27 @@ void main() {
     (tester) async {
       final userEventsRepository = _FakeUserEventsRepository();
       final invitesRepository = _FakeInvitesRepository();
+      const membersPath =
+          '/api/v1/events/evento-de-teste/related_profile_tabs/artists/members';
+      final nestedArtistId = _nestedGroupMemberId('artist-1');
+      final accountProfilesRepository = _FakeAccountProfilesRepository()
+        ..nestedGroupMembersByPath[membersPath] =
+            List<AccountProfileNestedGroupMember>.generate(
+              3,
+              (index) => _buildNestedGroupMember(
+                id: 'artist-${index + 1}',
+                name: 'Artista ${index + 1}',
+                profileType: 'artist',
+                slug: 'artista-${index + 1}',
+              ),
+            );
       GetIt.I.registerSingleton<ImmersiveEventDetailController>(
         ImmersiveEventDetailController(
           userEventsRepository: userEventsRepository,
           invitesRepository: invitesRepository,
           authRepository: _FakeAuthRepository(authorized: true),
           appDataRepository: _FakeAppDataRepository(_buildAppData()),
+          accountProfilesRepository: accountProfilesRepository,
         ),
       );
 
@@ -2941,7 +3101,22 @@ void main() {
             home: _routeScopedHome(
               routeData: routeData,
               child: ImmersiveEventDetailScreen(
-                event: _buildEvent(linkedProfiles: linkedProfiles),
+                event: _buildEvent(
+                  linkedProfiles: linkedProfiles,
+                  profileGroups: [
+                    _buildProfileGroup(
+                      id: 'artists',
+                      label: 'Artists',
+                      membersPath: membersPath,
+                      memberCount: 3,
+                      accountProfileIds: const [
+                        'artist-1',
+                        'artist-2',
+                        'artist-3',
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -2968,7 +3143,11 @@ void main() {
       await tester.tap(find.byKey(const Key('eventHeroMoreProfilesChip')));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('immersiveTabSelected_1')), findsOneWidget);
+      expect(accountProfilesRepository.lastNestedGroupMembersPath, membersPath);
+      expect(
+        find.byKey(Key('linkedProfileCard_$nestedArtistId')),
+        findsOneWidget,
+      );
     },
   );
 
@@ -2977,12 +3156,27 @@ void main() {
     (tester) async {
       final userEventsRepository = _FakeUserEventsRepository();
       final invitesRepository = _FakeInvitesRepository();
+      const membersPath =
+          '/api/v1/events/evento-de-teste/related_profile_tabs/artists/members';
+      final nestedArtistId = _nestedGroupMemberId('artist-1');
+      final accountProfilesRepository = _FakeAccountProfilesRepository()
+        ..nestedGroupMembersByPath[membersPath] =
+            List<AccountProfileNestedGroupMember>.generate(
+              3,
+              (index) => _buildNestedGroupMember(
+                id: 'artist-${index + 1}',
+                name: 'Artista ${index + 1}',
+                profileType: 'artist',
+                slug: 'artista-${index + 1}',
+              ),
+            );
       GetIt.I.registerSingleton<ImmersiveEventDetailController>(
         ImmersiveEventDetailController(
           userEventsRepository: userEventsRepository,
           invitesRepository: invitesRepository,
           authRepository: _FakeAuthRepository(authorized: true),
           appDataRepository: _FakeAppDataRepository(_buildAppData()),
+          accountProfilesRepository: accountProfilesRepository,
         ),
       );
 
@@ -3014,7 +3208,22 @@ void main() {
             home: _routeScopedHome(
               routeData: routeData,
               child: ImmersiveEventDetailScreen(
-                event: _buildEvent(linkedProfiles: linkedProfiles),
+                event: _buildEvent(
+                  linkedProfiles: linkedProfiles,
+                  profileGroups: [
+                    _buildProfileGroup(
+                      id: 'artists',
+                      label: 'Artists',
+                      membersPath: membersPath,
+                      memberCount: 3,
+                      accountProfileIds: const [
+                        'artist-1',
+                        'artist-2',
+                        'artist-3',
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -3045,7 +3254,11 @@ void main() {
       await tester.tap(find.byKey(const Key('eventHeroMoreProfilesChip')));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('immersiveTabSelected_1')), findsOneWidget);
+      expect(accountProfilesRepository.lastNestedGroupMembersPath, membersPath);
+      expect(
+        find.byKey(Key('linkedProfileCard_$nestedArtistId')),
+        findsOneWidget,
+      );
     },
   );
 
@@ -3348,7 +3561,7 @@ void main() {
       expect(find.text('O Local'), findsWidgets);
       expect(find.text('Sobre'), findsWidgets);
       expect(
-        tester.widget<Text>(find.byKey(const Key('immersiveTabLabel_2'))).data,
+        tester.widget<Text>(find.byKey(const Key('immersiveTabLabel_1'))).data,
         'O Local',
       );
       expect(find.text('Show tipo'), findsOneWidget);
@@ -3368,7 +3581,7 @@ void main() {
       expect(htmlWidget.data, isNot(contains('<a')));
       expect(htmlWidget.data, contains('🎉'));
 
-      await _tapImmersiveTab(tester, 1);
+      await _tapImmersiveTabByLabel(tester, 'O Local');
 
       expect(find.text('Ver no mapa'), findsOneWidget);
       expect(find.text('Traçar rota'), findsNothing);
@@ -6833,6 +7046,50 @@ EventLinkedAccountProfileTaxonomyTerm _buildLinkedAccountProfileTaxonomyTerm({
   );
 }
 
+AccountProfileNestedGroupMember _buildNestedGroupMember({
+  required String id,
+  required String name,
+  required String profileType,
+  String? slug,
+  String? avatarUrl,
+  String? coverUrl,
+  bool canOpenPublicDetail = true,
+  String? publicDetailPath,
+  List<String> tags = const <String>[],
+}) {
+  final resolvedId = _nestedGroupMemberId(id);
+  return AccountProfileNestedGroupMember(
+    idValue: MongoIDValue()..parse(resolvedId),
+    nameValue: TitleValue()..parse(name),
+    slugValue: slug == null ? null : (SlugValue()..parse(slug)),
+    profileTypeValue: AccountProfileTypeValue(profileType),
+    avatarValue: _thumbUriValueOrNull(avatarUrl),
+    coverValue: _thumbUriValueOrNull(coverUrl),
+    canOpenPublicDetailValue: DomainBooleanValue(
+      defaultValue: false,
+      isRequired: false,
+    )..parse(canOpenPublicDetail.toString()),
+    publicDetailPathValue: publicDetailPath == null
+        ? null
+        : AccountProfileNestedGroupMemberTextValue(publicDetailPath),
+    tagValues: tags.map(AccountProfileTagValue.new).toList(growable: false),
+  );
+}
+
+String _nestedGroupMemberId(String seed) {
+  final candidate = seed.trim();
+  final mongoPattern = RegExp(r'^[0-9a-fA-F]{24}$');
+  if (mongoPattern.hasMatch(candidate)) {
+    return candidate.toLowerCase();
+  }
+
+  final hex = candidate.codeUnits
+      .map((unit) => unit.toRadixString(16).padLeft(2, '0'))
+      .join();
+  final padded = (hex + '0' * 24).substring(0, 24);
+  return padded.toLowerCase();
+}
+
 ThumbUriValue? _thumbUriValueOrNull(String? rawUrl) {
   final normalized = rawUrl?.trim();
   if (normalized == null || normalized.isEmpty) {
@@ -6984,6 +7241,23 @@ Future<void> _tapImmersiveTab(WidgetTester tester, int index) async {
   expect(inkWell.onTap, isNotNull);
   inkWell.onTap!.call();
   await tester.pumpAndSettle();
+}
+
+Future<void> _tapImmersiveTabByLabel(WidgetTester tester, String label) async {
+  for (var index = 0; index < 10; index += 1) {
+    final labelFinder = find.byKey(Key('immersiveTabLabel_$index'));
+    if (labelFinder.evaluate().isEmpty) {
+      continue;
+    }
+    final text = tester.widget<Text>(labelFinder).data?.trim();
+    if (text != label) {
+      continue;
+    }
+    await _tapImmersiveTab(tester, index);
+    return;
+  }
+
+  fail('No immersive tab found with label "$label".');
 }
 
 Future<void> _tapInkWellByKey(WidgetTester tester, Key key) async {

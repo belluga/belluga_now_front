@@ -177,9 +177,6 @@ class AccountProfileDetailController implements Disposable {
   Future<void> ensureNestedGroupMembersLoaded(
     AccountProfileNestedGroup group,
   ) async {
-    if (group.profiles.isNotEmpty) {
-      return;
-    }
     final membersPath = group.membersPath?.trim();
     if (membersPath == null || membersPath.isEmpty) {
       return;

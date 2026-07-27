@@ -78,6 +78,28 @@ class ImmersiveEventDetailController implements Disposable {
   final AppDataRepositoryContract? _appDataRepository;
   final AccountProfilesRepositoryContract? _accountProfilesRepository;
   final ProximityPreferencesRepositoryContract? _proximityPreferencesRepository;
+  final _emptyRelatedProfileGroupMembersStreamValue =
+      StreamValue<List<AccountProfileNestedGroupMember>>(
+        defaultValue: const <AccountProfileNestedGroupMember>[],
+      );
+  final _emptyHasMoreRelatedProfileGroupMembersStreamValue =
+      StreamValue<AccountProfilesRepositoryContractPrimBool>(
+        defaultValue: AccountProfilesRepositoryContractPrimBool.fromRaw(
+          false,
+          defaultValue: false,
+        ),
+      );
+  final _emptyIsRelatedProfileGroupMembersPageLoadingStreamValue =
+      StreamValue<AccountProfilesRepositoryContractPrimBool>(
+        defaultValue: AccountProfilesRepositoryContractPrimBool.fromRaw(
+          false,
+          defaultValue: false,
+        ),
+      );
+  final _emptyRelatedProfileGroupMembersErrorStreamValue =
+      StreamValue<AccountProfilesRepositoryContractPrimString?>(
+        defaultValue: null,
+      );
   static final Uri _localEventPlaceholderUri = Uri.parse(
     'asset://event-placeholder',
   );
@@ -248,10 +270,6 @@ class ImmersiveEventDetailController implements Disposable {
   Future<void> ensureRelatedProfileGroupMembersLoaded(
     EventProfileGroup group,
   ) async {
-    if (group.profiles.isNotEmpty) {
-      return;
-    }
-
     final membersPath = group.membersPath?.trim();
     final repository = _accountProfilesRepository;
     if (repository == null || membersPath == null || membersPath.isEmpty) {
@@ -287,7 +305,12 @@ class ImmersiveEventDetailController implements Disposable {
 
   StreamValue<List<AccountProfileNestedGroupMember>>
   relatedProfileGroupMembersStreamValue(EventProfileGroup group) {
-    return _accountProfilesRepository!.nestedGroupMembersStreamValue(
+    final repository = _accountProfilesRepository;
+    if (repository == null) {
+      return _emptyRelatedProfileGroupMembersStreamValue;
+    }
+
+    return repository.nestedGroupMembersStreamValue(
       AccountProfilesRepositoryContractPrimString.fromRaw(
         group.membersPath?.trim() ?? '',
         defaultValue: '',
@@ -298,7 +321,12 @@ class ImmersiveEventDetailController implements Disposable {
 
   StreamValue<AccountProfilesRepositoryContractPrimBool>
   hasMoreRelatedProfileGroupMembersStreamValue(EventProfileGroup group) {
-    return _accountProfilesRepository!.hasMoreNestedGroupMembersStreamValue(
+    final repository = _accountProfilesRepository;
+    if (repository == null) {
+      return _emptyHasMoreRelatedProfileGroupMembersStreamValue;
+    }
+
+    return repository.hasMoreNestedGroupMembersStreamValue(
       AccountProfilesRepositoryContractPrimString.fromRaw(
         group.membersPath?.trim() ?? '',
         defaultValue: '',
@@ -309,19 +337,28 @@ class ImmersiveEventDetailController implements Disposable {
 
   StreamValue<AccountProfilesRepositoryContractPrimBool>
   isRelatedProfileGroupMembersPageLoadingStreamValue(EventProfileGroup group) {
-    return _accountProfilesRepository!
-        .isNestedGroupMembersPageLoadingStreamValue(
-          AccountProfilesRepositoryContractPrimString.fromRaw(
-            group.membersPath?.trim() ?? '',
-            defaultValue: '',
-            isRequired: true,
-          ),
-        );
+    final repository = _accountProfilesRepository;
+    if (repository == null) {
+      return _emptyIsRelatedProfileGroupMembersPageLoadingStreamValue;
+    }
+
+    return repository.isNestedGroupMembersPageLoadingStreamValue(
+      AccountProfilesRepositoryContractPrimString.fromRaw(
+        group.membersPath?.trim() ?? '',
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
   }
 
   StreamValue<AccountProfilesRepositoryContractPrimString?>
   relatedProfileGroupMembersErrorStreamValue(EventProfileGroup group) {
-    return _accountProfilesRepository!.nestedGroupMembersErrorStreamValue(
+    final repository = _accountProfilesRepository;
+    if (repository == null) {
+      return _emptyRelatedProfileGroupMembersErrorStreamValue;
+    }
+
+    return repository.nestedGroupMembersErrorStreamValue(
       AccountProfilesRepositoryContractPrimString.fromRaw(
         group.membersPath?.trim() ?? '',
         defaultValue: '',

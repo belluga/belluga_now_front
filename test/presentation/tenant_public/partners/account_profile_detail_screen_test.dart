@@ -2086,7 +2086,24 @@ void main() {
   testWidgets(
     'renders non navigable nested members without chevron and does not navigate',
     (tester) async {
-      final repository = _FakeAccountProfilesRepository();
+      const membersPath =
+          '/api/v1/account_profiles/ponta-da-fruta/nested_groups/parceiros/members';
+      final nonNavigableMember = AccountProfileNestedGroupMember(
+        idValue: MongoIDValue()..parse('507f1f77bcf86cd799439082'),
+        nameValue: TitleValue()..parse('Parceiro Sem Link'),
+        profileTypeValue: AccountProfileTypeValue('guest_public'),
+        canOpenPublicDetailValue: DomainBooleanValue(
+          defaultValue: false,
+          isRequired: false,
+        )..parse('false'),
+        tagValues: [AccountProfileTagValue('Convidado')],
+      );
+      final repository = _FakeAccountProfilesRepository(
+        nestedGroupMembersByPath:
+            <String, List<AccountProfileNestedGroupMember>>{
+              membersPath: [nonNavigableMember],
+            },
+      );
       final controller = AccountProfileDetailController(
         accountProfilesRepository: repository,
       );
@@ -2097,18 +2114,11 @@ void main() {
         idValue: AccountProfileNestedGroupIdValue('parceiros'),
         labelValue: AccountProfileNestedGroupLabelValue('Parceiros'),
         orderValue: AccountProfileNestedGroupOrderValue(0),
-        profiles: [
-          AccountProfileNestedGroupMember(
-            idValue: MongoIDValue()..parse('507f1f77bcf86cd799439082'),
-            nameValue: TitleValue()..parse('Parceiro Sem Link'),
-            profileTypeValue: AccountProfileTypeValue('guest_public'),
-            canOpenPublicDetailValue: DomainBooleanValue(
-              defaultValue: false,
-              isRequired: false,
-            )..parse('false'),
-            tagValues: [AccountProfileTagValue('Convidado')],
-          ),
-        ],
+        membersPathValue: AccountProfileNestedGroupMembersPathValue(
+          membersPath,
+        ),
+        memberCountValue: AccountProfileNestedGroupMemberCountValue(1),
+        profiles: [nonNavigableMember],
       );
 
       await tester.pumpWidget(
@@ -3498,10 +3508,21 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
         const <String, List<AccountProfileNestedGroupMember>>{},
   }) : _favoriteIds = Set<String>.from(initialFavoriteIds),
        _profiles = List<AccountProfileModel>.from(profiles),
-       _nestedGroupMembersByPath = nestedGroupMembersByPath.map(
-         (key, value) =>
-             MapEntry(key, List<AccountProfileNestedGroupMember>.from(value)),
-       ) {
+       _nestedGroupMembersByPath =
+           (nestedGroupMembersByPath.isEmpty
+                   ? <String, List<AccountProfileNestedGroupMember>>{
+                       _nestedPartnersMembersPath: _buildNestedAccountProfileGroup()
+                           .profiles,
+                       _nestedSecondaryMembersPath:
+                           _buildSecondaryNestedAccountProfileGroup().profiles,
+                     }
+                   : nestedGroupMembersByPath)
+               .map(
+                 (key, value) => MapEntry(
+                   key,
+                   List<AccountProfileNestedGroupMember>.from(value),
+                 ),
+               ) {
     favoriteAccountProfileIdsStreamValue.addValue(
       _favoriteIds
           .map((id) => AccountProfilesRepositoryContractPrimString.fromRaw(id))
@@ -3799,11 +3820,20 @@ AccountProfileModel _buildVenueFullProfile() {
   );
 }
 
+const String _nestedPartnersMembersPath =
+    '/api/v1/account_profiles/ponta-da-fruta/nested_groups/parceiros/members';
+const String _nestedSecondaryMembersPath =
+    '/api/v1/account_profiles/ponta-da-fruta/nested_groups/novo-grupo-3/members';
+
 AccountProfileNestedGroup _buildNestedAccountProfileGroup() {
   return AccountProfileNestedGroup(
     idValue: AccountProfileNestedGroupIdValue('parceiros'),
     labelValue: AccountProfileNestedGroupLabelValue('Parceiros'),
     orderValue: AccountProfileNestedGroupOrderValue(0),
+    membersPathValue: AccountProfileNestedGroupMembersPathValue(
+      _nestedPartnersMembersPath,
+    ),
+    memberCountValue: AccountProfileNestedGroupMemberCountValue(1),
     profiles: [
       AccountProfileNestedGroupMember(
         idValue: MongoIDValue()..parse('507f1f77bcf86cd799439081'),
@@ -3828,6 +3858,10 @@ AccountProfileNestedGroup _buildSecondaryNestedAccountProfileGroup() {
     idValue: AccountProfileNestedGroupIdValue('novo-grupo-3'),
     labelValue: AccountProfileNestedGroupLabelValue('Novo grupo 3'),
     orderValue: AccountProfileNestedGroupOrderValue(1),
+    membersPathValue: AccountProfileNestedGroupMembersPathValue(
+      _nestedSecondaryMembersPath,
+    ),
+    memberCountValue: AccountProfileNestedGroupMemberCountValue(1),
     profiles: [
       AccountProfileNestedGroupMember(
         idValue: MongoIDValue()..parse('507f1f77bcf86cd799439082'),

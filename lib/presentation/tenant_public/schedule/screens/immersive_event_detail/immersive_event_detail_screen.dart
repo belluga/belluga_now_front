@@ -507,52 +507,30 @@ class _ImmersiveEventDetailScreenState
     required Set<String> favoriteAccountProfileIds,
   }) {
     final canonicalGroups = _orderedVisibleCanonicalProfileGroups(event);
-    if (canonicalGroups.isNotEmpty) {
-      return canonicalGroups
-          .map(
-            (group) => ImmersiveTabItem(
-              title: group.label,
-              onActivated: () {
-                unawaited(
-                  _controller.ensureRelatedProfileGroupMembersLoaded(group),
-                );
-              },
-              content: _LazyEventRelatedProfileGroupContent(
-                controller: _controller,
-                group: group,
-                itemBuilder: (profiles, footer) => LinkedProfileCategorySection(
-                  title: group.label,
-                  profiles: profiles,
-                  profileTypeRegistry: _controller.profileTypeRegistry,
-                  favoriteAccountProfileIds: favoriteAccountProfileIds,
-                  isFavoritable: (profile) => _controller
-                      .isLinkedProfileFavoritable(profile.profileType),
-                  onProfileTap: _openLinkedProfile,
-                  onFavoriteTap: (profile) =>
-                      _handleLinkedProfileFavoriteTap(profile),
-                  footer: footer,
-                ),
-              ),
-              footer: null,
-            ),
-          )
-          .toList(growable: false);
-    }
-
-    return _aggregatedRelatedProfileGroups(event)
+    return canonicalGroups
         .map(
           (group) => ImmersiveTabItem(
             title: group.label,
-            content: LinkedProfileCategorySection(
-              title: group.label,
-              profiles: group.profiles,
-              profileTypeRegistry: _controller.profileTypeRegistry,
-              favoriteAccountProfileIds: favoriteAccountProfileIds,
-              isFavoritable: (profile) =>
-                  _controller.isLinkedProfileFavoritable(profile.profileType),
-              onProfileTap: _openLinkedProfile,
-              onFavoriteTap: (profile) =>
-                  _handleLinkedProfileFavoriteTap(profile),
+            onActivated: () {
+              unawaited(
+                _controller.ensureRelatedProfileGroupMembersLoaded(group),
+              );
+            },
+            content: _LazyEventRelatedProfileGroupContent(
+              controller: _controller,
+              group: group,
+              itemBuilder: (profiles, footer) => LinkedProfileCategorySection(
+                title: group.label,
+                profiles: profiles,
+                profileTypeRegistry: _controller.profileTypeRegistry,
+                favoriteAccountProfileIds: favoriteAccountProfileIds,
+                isFavoritable: (profile) =>
+                    _controller.isLinkedProfileFavoritable(profile.profileType),
+                onProfileTap: _openLinkedProfile,
+                onFavoriteTap: (profile) =>
+                    _handleLinkedProfileFavoriteTap(profile),
+                footer: footer,
+              ),
             ),
             footer: null,
           ),
@@ -579,7 +557,7 @@ class _ImmersiveEventDetailScreenState
       return null;
     }
 
-    final groups = _aggregatedRelatedProfileGroups(event);
+    final groups = _orderedVisibleCanonicalProfileGroups(event);
     final groupOffset = groups.indexWhere(
       (group) => group.profiles.any((profile) => profile.profileType == type),
     );
@@ -594,9 +572,13 @@ class _ImmersiveEventDetailScreenState
     EventModel event,
     EventLinkedAccountProfile profile,
   ) {
-    final groups = _aggregatedRelatedProfileGroups(event);
+    final groups = _orderedVisibleCanonicalProfileGroups(event);
     final exactGroupOffset = groups.indexWhere(
-      (group) => group.profiles.any((candidate) => candidate.id == profile.id),
+      (group) =>
+          group.profiles.any((candidate) => candidate.id == profile.id) ||
+          group.accountProfileIdValues.any(
+            (candidate) => candidate.value == profile.id,
+          ),
     );
     if (exactGroupOffset >= 0) {
       return _firstDynamicTabIndex(event) + exactGroupOffset;
@@ -607,14 +589,7 @@ class _ImmersiveEventDetailScreenState
       return directIndex;
     }
 
-    if (groups.isEmpty || groups.first.profiles.isEmpty) {
-      return null;
-    }
-
-    return _linkedProfileTabIndex(
-      event,
-      groups.first.profiles.first.profileType,
-    );
+    return groups.isEmpty ? null : _firstDynamicTabIndex(event);
   }
 
   int _firstDynamicTabIndex(EventModel event) {
@@ -1145,10 +1120,6 @@ class _LazyEventRelatedProfileGroupContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (group.profiles.isNotEmpty) {
-      return itemBuilder(group.profiles, null);
-    }
-
     return StreamValueBuilder<List<AccountProfileNestedGroupMember>>(
       streamValue: controller.relatedProfileGroupMembersStreamValue(group),
       builder: (context, members) {
