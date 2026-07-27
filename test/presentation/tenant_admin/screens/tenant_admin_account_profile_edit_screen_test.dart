@@ -16,14 +16,20 @@ import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_onboarding_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate_selection_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_mutation_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_page.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_aggregate_revision_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
@@ -696,6 +702,98 @@ void main() {
   });
 
   testWidgets(
+    'metadata-only nested groups show first-page chips, load more on demand, and preserve full ids on save',
+    (tester) async {
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+      profilesRepository.profileTypesToReturn = [
+        _profileType(hasGallery: false, hasNestedProfileGroups: true),
+      ];
+      profilesRepository.profileToReturn = _profile(
+        id: 'route-profile',
+        nestedProfileGroups: [_nestedGroupMetadataOnly(memberCount: 3)],
+      );
+      profilesRepository.nestedGroupMemberPagesByGroupId['partners'] =
+          <TenantAdminNestedGroupMemberPage>[
+            _nestedGroupMemberPage(
+              items: const <Map<String, Object?>>[
+                {'id': 'profile-a', 'display_name': 'Alpha profile'},
+                {'id': 'profile-b', 'display_name': 'Beta profile'},
+              ],
+              aggregateRevision: 4,
+              nextCursor: 'cursor-2',
+            ),
+            _nestedGroupMemberPage(
+              items: const <Map<String, Object?>>[
+                {'id': 'profile-c', 'display_name': 'Gamma profile'},
+              ],
+              aggregateRevision: 4,
+            ),
+          ];
+      profilesRepository.accountProfileFetchOverrides['profile-a'] = _profile(
+        id: 'profile-a',
+        displayName: 'Alpha profile',
+        profileType: 'poi',
+      );
+      profilesRepository.accountProfileFetchOverrides['profile-b'] = _profile(
+        id: 'profile-b',
+        displayName: 'Beta profile',
+        profileType: 'poi',
+      );
+      profilesRepository.accountProfileFetchOverrides['profile-c'] = _profile(
+        id: 'profile-c',
+        displayName: 'Gamma profile',
+        profileType: 'poi',
+      );
+
+      await _pumpScreen(
+        tester,
+        TenantAdminAccountProfileEditScreen(
+          accountSlug: 'route-account',
+          accountProfileId: 'route-profile',
+        ),
+      );
+
+      final scrollable = find.byType(Scrollable).first;
+      await tester.scrollUntilVisible(
+        find.text('Abas de contas vinculadas'),
+        200,
+        scrollable: scrollable,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Alpha profile'), findsOneWidget);
+      expect(find.text('Beta profile'), findsOneWidget);
+      expect(find.text('Gamma profile'), findsNothing);
+      expect(find.text('mais'), findsOneWidget);
+
+      await tester.tap(find.text('mais'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Gamma profile'), findsOneWidget);
+
+      await tester.scrollUntilVisible(
+        find.text('Salvar alteracoes'),
+        200,
+        scrollable: scrollable,
+      );
+      await tester.tap(find.text('Salvar alteracoes'));
+      await tester.pumpAndSettle();
+
+      expect(
+        profilesRepository
+            .lastNestedProfileGroups
+            ?.single
+            .accountProfileIdValues
+            .map((entry) => entry.value)
+            .toList(growable: false),
+        <String>['profile-a', 'profile-b', 'profile-c'],
+      );
+    },
+  );
+
+  testWidgets(
     'sends explicit remove avatar flag when clearing persisted media',
     (tester) async {
       final profilesRepository =
@@ -869,6 +967,9 @@ class _FakeAccountProfilesRepository
       <String, TenantAdminAccountProfile>{};
   List<TenantAdminAccountProfileGalleryUpdateGroup>? lastGalleryGroups;
   List<TenantAdminNestedProfileGroup>? lastNestedProfileGroups;
+  final Map<String, List<TenantAdminNestedGroupMemberPage>>
+  nestedGroupMemberPagesByGroupId =
+      <String, List<TenantAdminNestedGroupMemberPage>>{};
 
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
@@ -1091,6 +1192,68 @@ class _FakeAccountProfilesRepository
   Future<void> deleteAccountProfile(
     TenantAdminAccountProfilesRepoString accountProfileId,
   ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<TenantAdminNestedGroupMemberPage> fetchNestedGroupMembersPage({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    TenantAdminAccountProfilesRepoInt? perPage,
+    TenantAdminAccountProfilesRepoString? cursor,
+  }) async {
+    final pages =
+        nestedGroupMemberPagesByGroupId[groupId.value] ??
+        <TenantAdminNestedGroupMemberPage>[
+          TenantAdminNestedGroupMemberPage(
+            items: const <TenantAdminAccountProfileSelectionSummary>[],
+            aggregateRevisionValue:
+                TenantAdminAccountProfileAggregateRevisionValue(),
+            nextCursorValue: TenantAdminOptionalTextValue(),
+          ),
+        ];
+    if (cursor == null || cursor.value.isEmpty) {
+      return pages.first;
+    }
+    final index = pages.indexWhere((page) => page.nextCursor == cursor.value);
+    if (index < 0 || index + 1 >= pages.length) {
+      return pages.last;
+    }
+    return pages[index + 1];
+  }
+
+  @override
+  Future<TenantAdminNestedGroupMemberPage> fetchAllNestedGroupMembers({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+  }) async {
+    final pages =
+        nestedGroupMemberPagesByGroupId[groupId.value] ??
+        <TenantAdminNestedGroupMemberPage>[
+          TenantAdminNestedGroupMemberPage(
+            items: const <TenantAdminAccountProfileSelectionSummary>[],
+            aggregateRevisionValue:
+                TenantAdminAccountProfileAggregateRevisionValue(),
+            nextCursorValue: TenantAdminOptionalTextValue(),
+          ),
+        ];
+    final allItems = pages.expand((page) => page.items).toList(growable: false);
+    final lastPage = pages.last;
+    return TenantAdminNestedGroupMemberPage(
+      items: allItems,
+      aggregateRevisionValue: lastPage.aggregateRevisionValue,
+      nextCursorValue: TenantAdminOptionalTextValue(),
+    );
+  }
+
+  @override
+  Future<TenantAdminNestedGroupMemberMutationResult> patchNestedGroupMembers({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminAccountProfilesRepoInt aggregateRevision,
+    List<TenantAdminAccountProfilesRepoString> addIds = const [],
+    List<TenantAdminAccountProfilesRepoString> removeIds = const [],
+  }) async {
     throw UnimplementedError();
   }
 
@@ -1334,6 +1497,38 @@ TenantAdminNestedProfileGroup _nestedGroup() {
     accountProfileIdValues: [
       TenantAdminNestedProfileGroupTextValue('profile-partner'),
     ],
+  );
+}
+
+TenantAdminNestedProfileGroup _nestedGroupMetadataOnly({int memberCount = 1}) {
+  return TenantAdminNestedProfileGroup(
+    idValue: TenantAdminNestedProfileGroupTextValue('partners'),
+    labelValue: TenantAdminNestedProfileGroupTextValue('Parceiros'),
+    orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+    memberCountValue: TenantAdminCountValue(memberCount),
+  );
+}
+
+TenantAdminNestedGroupMemberPage _nestedGroupMemberPage({
+  required List<Map<String, Object?>> items,
+  required int aggregateRevision,
+  String? nextCursor,
+}) {
+  return TenantAdminNestedGroupMemberPage(
+    items: items
+        .map(
+          (item) => TenantAdminAccountProfileSelectionSummary(
+            idValue: TenantAdminAccountProfileIdValue(item['id']! as String),
+            displayNameValue: TenantAdminOptionalTextValue()
+              ..parse(item['display_name'] as String?),
+            isQueryableCandidateValue: TenantAdminFlagValue(true),
+          ),
+        )
+        .toList(growable: false),
+    aggregateRevisionValue: TenantAdminAccountProfileAggregateRevisionValue(
+      aggregateRevision,
+    ),
+    nextCursorValue: TenantAdminOptionalTextValue()..parse(nextCursor),
   );
 }
 

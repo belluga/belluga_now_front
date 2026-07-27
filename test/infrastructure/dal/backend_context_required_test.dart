@@ -6,6 +6,7 @@ import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group_member_page.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/auth_backend_contract.dart';
@@ -43,10 +44,7 @@ void main() {
   });
 
   test('PushOptionSourceResolver throws when BackendContext is missing', () {
-    expect(
-      () => PushOptionSourceResolver(),
-      throwsA(isA<StateError>()),
-    );
+    expect(() => PushOptionSourceResolver(), throwsA(isA<StateError>()));
   });
 
   test('PushTransportConfigurator throws when BackendContext is missing', () {
@@ -59,10 +57,7 @@ void main() {
   });
 
   test('LaravelMapPoiHttpService throws when BackendContext is missing', () {
-    expect(
-      () => LaravelMapPoiHttpService(),
-      throwsA(isA<StateError>()),
-    );
+    expect(() => LaravelMapPoiHttpService(), throwsA(isA<StateError>()));
   });
 }
 
@@ -95,8 +90,10 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
-      AuthRepositoryContractParamString password) async {}
+  Future<void> loginWithEmailPassword(
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
+  ) async {}
 
   @override
   Future<void> signUpWithEmailPassword(
@@ -107,8 +104,9 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> sendTokenRecoveryPassword(
-      AuthRepositoryContractParamString email,
-      AuthRepositoryContractParamString codigoEnviado) async {}
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString codigoEnviado,
+  ) async {}
 
   @override
   Future<void> logout() async {}
@@ -121,7 +119,8 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> sendPasswordResetEmail(
-      AuthRepositoryContractParamString email) async {}
+    AuthRepositoryContractParamString email,
+  ) async {}
 
   @override
   Future<void> updateUser(UserCustomData data) async {}
@@ -176,8 +175,7 @@ class _NoopAccountProfilesBackend implements AccountProfilesBackendContract {
     List<String>? typeFilters,
     List<dynamic>? taxonomyFilters,
     List<String>? allowedTypes,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
   Future<AccountProfileModel?> fetchAccountProfileBySlug(String slug) =>
@@ -189,10 +187,25 @@ class _NoopAccountProfilesBackend implements AccountProfilesBackendContract {
   ) => throw UnimplementedError();
 
   @override
+  Future<AccountProfileNestedGroupMemberPage> fetchNestedGroupMembersPageByPath(
+    String membersPath, {
+    String? cursor,
+  }) async {
+    final normalizedCursor = cursor?.trim();
+    if (normalizedCursor != null && normalizedCursor.isNotEmpty) {
+      return const AccountProfileNestedGroupMemberPage.empty();
+    }
+
+    return AccountProfileNestedGroupMemberPage(
+      items: await fetchNestedGroupMembersByPath(membersPath),
+      nextCursorValue: null,
+    );
+  }
+
+  @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
     int pageSize = 10,
     List<String>? typeFilters,
     List<dynamic>? taxonomyFilters,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 }

@@ -7,6 +7,7 @@ import 'dart:typed_data';
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/application/tenant_admin/tenant_admin_account_profile_candidate_discovery_page_loader.dart';
 import 'package:belluga_now/application/tenant_admin/tenant_admin_account_profile_candidates_page_loader.dart';
+import 'package:belluga_now/application/tenant_admin/tenant_admin_nested_group_members_page_loader.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
@@ -17,6 +18,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_can
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate_selection_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_page.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
@@ -41,6 +43,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     TenantAdminImageIngestionService? imageIngestionService,
     TenantAdminAccountProfileCandidatesPageLoader?
     nestedProfileCandidatesPageLoader,
+    TenantAdminNestedGroupMembersPageLoader? nestedGroupMembersPageLoader,
   }) : _profilesRepository =
            profilesRepository ??
            GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>(),
@@ -63,6 +66,11 @@ class TenantAdminAccountProfilesController implements Disposable {
         TenantAdminAccountProfileCandidatesPageLoader(
           profilesRepository: _profilesRepository,
         );
+    _nestedGroupMembersPageLoader =
+        nestedGroupMembersPageLoader ??
+        TenantAdminNestedGroupMembersPageLoader(
+          profilesRepository: _profilesRepository,
+        );
   }
 
   final TenantAdminAccountProfilesRepositoryContract _profilesRepository;
@@ -72,6 +80,8 @@ class TenantAdminAccountProfilesController implements Disposable {
   final TenantAdminImageIngestionService _imageIngestionService;
   late final TenantAdminAccountProfileCandidatesPageLoader
   _nestedProfileCandidatesPageLoader;
+  late final TenantAdminNestedGroupMembersPageLoader
+  _nestedGroupMembersPageLoader;
 
   final StreamValue<List<TenantAdminAccountProfile>> profilesStreamValue =
       StreamValue<List<TenantAdminAccountProfile>>(defaultValue: const []);
@@ -195,6 +205,8 @@ class TenantAdminAccountProfilesController implements Disposable {
   final Map<String, Future<TenantAdminAccountProfile?>>
   _selectedContactSourceHydrationInFlight =
       <String, Future<TenantAdminAccountProfile?>>{};
+  final Map<String, Future<void>> _editNestedGroupBaselineHydrationsInFlight =
+      <String, Future<void>>{};
   int _nestedProfileCandidatesCurrentPage = 0;
   int _nestedProfileCandidatesRequestToken = 0;
   String _nestedProfileCandidatesQuery = '';
@@ -313,6 +325,71 @@ class TenantAdminAccountProfilesController implements Disposable {
       ),
       aggregateRevision: page.aggregateRevision,
     );
+  }
+
+  Future<TenantAdminNestedGroupMemberPage> fetchEditNestedGroupMembersPage({
+    required String accountProfileId,
+    required String groupId,
+    String? cursor,
+  }) async {
+    return _nestedGroupMembersPageLoader.loadPage(
+      accountProfileId: accountProfileId,
+      groupId: groupId,
+      cursor: cursor,
+    );
+  }
+
+  Future<void> ensureEditNestedGroupBaselineHydrated({
+    required String accountProfileId,
+    required String groupId,
+  }) async {
+    final normalizedAccountProfileId = accountProfileId.trim();
+    final normalizedGroupId = groupId.trim();
+    if (normalizedAccountProfileId.isEmpty || normalizedGroupId.isEmpty) {
+      return;
+    }
+
+    final currentGroup = _editNestedGroupById(normalizedGroupId);
+    if (currentGroup == null) {
+      return;
+    }
+    if (!_shouldHydrateEditNestedGroupBaseline(currentGroup)) {
+      await _hydrateMissingSelectedNestedProfiles();
+      _publishNestedProfileCandidates();
+      return;
+    }
+
+    final hydrationKey = '$normalizedAccountProfileId::$normalizedGroupId';
+    final inFlight = _editNestedGroupBaselineHydrationsInFlight[hydrationKey];
+    if (inFlight != null) {
+      await inFlight;
+      return;
+    }
+
+    final hydrationFuture = _hydrateEditNestedGroupBaseline(
+      accountProfileId: normalizedAccountProfileId,
+      groupId: normalizedGroupId,
+      hydrationKey: hydrationKey,
+    );
+    _editNestedGroupBaselineHydrationsInFlight[hydrationKey] = hydrationFuture;
+    await hydrationFuture;
+  }
+
+  Future<void> ensureAllEditNestedGroupBaselinesHydrated({
+    required String accountProfileId,
+  }) async {
+    final groups = List<TenantAdminNestedProfileGroup>.from(
+      editStateStreamValue.value.nestedProfileGroups,
+    );
+    for (final group in groups) {
+      if (!_shouldHydrateEditNestedGroupBaseline(group)) {
+        continue;
+      }
+      await ensureEditNestedGroupBaselineHydrated(
+        accountProfileId: accountProfileId,
+        groupId: group.id,
+      );
+    }
   }
 
   Future<bool> applyEditNestedGroupSelectionDelta({
@@ -498,7 +575,9 @@ class TenantAdminAccountProfilesController implements Disposable {
     String? excludeProfileId,
   }) {
     if (mode == BellugaContactSourceMode.mirroredAccountProfile) {
-      unawaited(loadContactSourceCandidates(excludeProfileId: excludeProfileId));
+      unawaited(
+        loadContactSourceCandidates(excludeProfileId: excludeProfileId),
+      );
       return;
     }
     _resetContactSourceCandidates(excludeProfileId: excludeProfileId);
@@ -2140,6 +2219,58 @@ class TenantAdminAccountProfilesController implements Disposable {
         }
       }
     }
+  }
+
+  Future<void> _hydrateEditNestedGroupBaseline({
+    required String accountProfileId,
+    required String groupId,
+    required String hydrationKey,
+  }) async {
+    try {
+      final baseline = await loadEditNestedGroupMemberBaseline(
+        accountProfileId: accountProfileId,
+        groupId: groupId,
+      );
+      if (_isDisposed) {
+        return;
+      }
+      final nextGroups = TenantAdminNestedProfileGroupOperations.replaceMembers(
+        editStateStreamValue.value.nestedProfileGroups,
+        groupId: groupId,
+        profileIds: baseline.selections.map((entry) => entry.id),
+        memberCount: baseline.selections.length,
+      );
+      _updateEditState(
+        editStateStreamValue.value.copyWith(nestedProfileGroups: nextGroups),
+      );
+      await _hydrateMissingSelectedNestedProfiles();
+      _publishNestedProfileCandidates();
+    } finally {
+      _editNestedGroupBaselineHydrationsInFlight.remove(hydrationKey);
+    }
+  }
+
+  TenantAdminNestedProfileGroup? _editNestedGroupById(String groupId) {
+    for (final group in editStateStreamValue.value.nestedProfileGroups) {
+      if (group.id == groupId) {
+        return group;
+      }
+    }
+    return null;
+  }
+
+  bool _shouldHydrateEditNestedGroupBaseline(
+    TenantAdminNestedProfileGroup group,
+  ) {
+    final currentIds = <String>{};
+    for (final entry in group.accountProfileIdValues) {
+      final normalized = entry.value.trim();
+      if (normalized.isEmpty) {
+        continue;
+      }
+      currentIds.add(normalized);
+    }
+    return group.memberCount > 0 && currentIds.length < group.memberCount;
   }
 
   Set<String> _selectedNestedProfileIds(

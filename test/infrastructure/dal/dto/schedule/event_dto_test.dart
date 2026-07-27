@@ -721,6 +721,65 @@ void main() {
   );
 
   test(
+    'preserves metadata-only profile groups with members_path for lazy public tab hydration',
+    () {
+      final dto = EventDTO.fromJson({
+        'event_id': '507f1f77bcf86cd799439301',
+        'occurrence_id': '507f1f77bcf86cd799439302',
+        'slug': 'festival-com-abas-lazy',
+        'type': {
+          'id': 'festival',
+          'name': 'Festival',
+          'slug': 'festival',
+          'description': '',
+        },
+        'title': 'Festival com abas lazy',
+        'content': 'Descricao',
+        'location': 'Praca Central',
+        'date_time_start': '2026-03-04T17:00:00+00:00',
+        'linked_account_profiles': [
+          {
+            'id': 'profile-band',
+            'display_name': 'Banda Azul',
+            'slug': 'banda-azul',
+            'profile_type': 'banda',
+          },
+        ],
+        'artists': [
+          {
+            'id': 'profile-band',
+            'display_name': 'Banda Azul',
+            'slug': 'banda-azul',
+            'profile_type': 'banda',
+          },
+        ],
+        'profile_groups': [
+          {
+            'id': 'palco-bandas',
+            'label': 'Palco Bandas',
+            'order': 0,
+            'member_count': 2,
+            'members_path':
+                '/api/v1/events/festival-com-abas-lazy/related_profile_tabs/palco-bandas/members',
+          },
+        ],
+      });
+
+      final domain = dto.toDomain();
+
+      expect(domain.profileGroups, hasLength(1));
+      expect(domain.profileGroups.single.label, 'Palco Bandas');
+      expect(domain.profileGroups.single.memberCount, 2);
+      expect(
+        domain.profileGroups.single.membersPath,
+        '/api/v1/events/festival-com-abas-lazy/related_profile_tabs/palco-bandas/members',
+      );
+      expect(domain.profileGroups.single.profiles, isEmpty);
+      expect(domain.profileGroups.single.accountProfileIdValues, isEmpty);
+    },
+  );
+
+  test(
     'hydrates occurrence profile groups from occurrence-owned linked profiles when root aggregate is incomplete',
     () {
       final dto = EventDTO.fromJson({

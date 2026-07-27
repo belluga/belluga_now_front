@@ -12,6 +12,8 @@ import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_tag_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
@@ -36,6 +38,7 @@ import 'package:belluga_now/domain/thumb/enums/thumb_types.dart';
 import 'package:belluga_now/domain/thumb/thumb_model.dart';
 import 'package:belluga_now/domain/value_objects/color_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
+import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/venue_event/value_objects/venue_event_tag_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_optional_date_time_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
@@ -112,6 +115,60 @@ void main() {
     expect(result, LinkedProfileFavoriteToggleOutcome.requiresAuthentication);
     expect(accountProfilesRepository.toggleFavoriteCalls, 0);
   });
+
+  test(
+    'loads canonical event group members from members_path and maps them to event linked profiles',
+    () async {
+      final membersPath =
+          '/api/v1/events/evento-de-teste/related_profile_tabs/atracoes/members';
+      final accountProfilesRepository = _FakeAccountProfilesRepository()
+        ..nestedGroupMembersByPath[membersPath] =
+            <AccountProfileNestedGroupMember>[
+              AccountProfileNestedGroupMember(
+                idValue: MongoIDValue()..parse('507f1f77bcf86cd799439099'),
+                nameValue: TitleValue()..parse('Banda Azul'),
+                slugValue: SlugValue()..parse('banda-azul'),
+                profileTypeValue: AccountProfileTypeValue('band'),
+                canOpenPublicDetailValue: DomainBooleanValue(
+                  defaultValue: false,
+                  isRequired: false,
+                )..parse('true'),
+                publicDetailPathValue: AccountProfileNestedGroupMemberTextValue(
+                  '/parceiro/banda-azul',
+                ),
+                tagValues: [AccountProfileTagValue('Rock')],
+              ),
+            ];
+      final controller = ImmersiveEventDetailController(
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        accountProfilesRepository: accountProfilesRepository,
+      );
+
+      final group = _buildProfileGroup(
+        id: 'atracoes',
+        label: 'Atrações',
+        order: 0,
+        membersPath: membersPath,
+        memberCount: 1,
+      );
+
+      await controller.ensureRelatedProfileGroupMembersLoaded(group);
+
+      final profiles = controller
+          .relatedProfileGroupMembersStreamValue(group)
+          .value
+          .map(controller.mapNestedGroupMemberToEventLinkedProfile)
+          .toList(growable: false);
+
+      expect(accountProfilesRepository.lastNestedGroupMembersPath, membersPath);
+      expect(profiles, hasLength(1));
+      expect(profiles.single.displayName, 'Banda Azul');
+      expect(profiles.single.profileType, 'band');
+      expect(profiles.single.publicDetailPath, '/parceiro/banda-azul');
+      expect(profiles.single.taxonomyTerms.single.labelValue.value, 'Rock');
+    },
+  );
 
   test('confirm attendance drops duplicate requests while pending', () async {
     final userEventsRepository = _FakeUserEventsRepository()
@@ -1186,6 +1243,9 @@ class _FakeAuthRepository extends AuthRepositoryContract {
 
 class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   int toggleFavoriteCalls = 0;
+  String? lastNestedGroupMembersPath;
+  final Map<String, List<AccountProfileNestedGroupMember>>
+  nestedGroupMembersByPath = <String, List<AccountProfileNestedGroupMember>>{};
 
   @override
   Future<void> init() async {}
@@ -1213,7 +1273,11 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   @override
   Future<List<AccountProfileNestedGroupMember>> getNestedGroupMembersByPath(
     AccountProfilesRepositoryContractPrimString membersPath,
-  ) async => const <AccountProfileNestedGroupMember>[];
+  ) async {
+    lastNestedGroupMembersPath = membersPath.value;
+    return nestedGroupMembersByPath[membersPath.value] ??
+        const <AccountProfileNestedGroupMember>[];
+  }
 
   @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
@@ -1310,11 +1374,15 @@ EventProfileGroup _buildProfileGroup({
   List<EventLinkedAccountProfile> profiles =
       const <EventLinkedAccountProfile>[],
   List<String> accountProfileIds = const <String>[],
+  String? membersPath,
+  int? memberCount,
 }) {
   return EventProfileGroup(
     idValue: EventLinkedAccountProfileTextValue(id),
     labelValue: EventLinkedAccountProfileTextValue(label),
     orderValue: EventProfileGroupOrderValue(order),
+    membersPathValue: EventProfileGroupMembersPathValue(membersPath ?? ''),
+    memberCountValue: EventProfileGroupMemberCountValue(memberCount),
     profiles: profiles,
     accountProfileIdValues: accountProfileIds
         .map(EventLinkedAccountProfileTextValue.new)

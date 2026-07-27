@@ -207,6 +207,58 @@ void main() {
   );
 
   test(
+    'fetchNestedGroupMembersByPath parses wrapped event related-profile members payloads',
+    () async {
+      final validId = _generateMongoId();
+      final adapter = _RecordingAdapter(
+        response: {
+          'tenant_id': 'tenant-123',
+          'data': {
+            'data': [
+              {
+                'id': validId,
+                'display_name': 'Banda Azul',
+                'slug': 'banda-azul',
+                'profile_type': 'band',
+                'can_open_public_detail': true,
+                'public_detail_path': '/parceiro/banda-azul',
+                'taxonomy_terms': [
+                  {'type': 'genre', 'value': 'rock', 'label': 'Rock'},
+                ],
+              },
+            ],
+            'next_cursor': 'cursor-2',
+          },
+        },
+      );
+      final dio = Dio()..httpClientAdapter = adapter;
+      final backend = LaravelAccountProfilesBackend(
+        dio: dio,
+        locationOriginService: LocationOriginService(
+          appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+        ),
+      );
+
+      final page = await backend.fetchNestedGroupMembersPageByPath(
+        '/api/v1/events/festival-de-inverno/related_profile_tabs/bandas/members',
+      );
+
+      expect(
+        adapter.lastRequest?.uri.path,
+        '/api/v1/events/festival-de-inverno/related_profile_tabs/bandas/members',
+      );
+      expect(page.hasMore, isTrue);
+      expect(page.nextCursorValue?.value, 'cursor-2');
+      expect(page.items, hasLength(1));
+      expect(page.items.single.id, validId);
+      expect(page.items.single.name, 'Banda Azul');
+      expect(page.items.single.profileType, 'band');
+      expect(page.items.single.publicDetailPath, '/parceiro/banda-azul');
+      expect(page.items.single.tags.single.value, 'Rock');
+    },
+  );
+
+  test(
     'fetchAccountProfiles prefers taxonomy term name or label over slug-like value',
     () async {
       final validId = _generateMongoId();
@@ -812,7 +864,9 @@ void main() {
         ),
       );
 
-      final profile = await backend.fetchAccountProfileBySlug('public-partner-a');
+      final profile = await backend.fetchAccountProfileBySlug(
+        'public-partner-a',
+      );
 
       expect(profile, isNotNull);
       expect(profile!.nestedProfileGroups, hasLength(2));
@@ -822,10 +876,7 @@ void main() {
       );
       final secondMember = profile.nestedProfileGroups.last.profiles.single;
       expect(secondMember.name, 'Public Partner B');
-      expect(
-        secondMember.avatarUrl,
-        'https://tenant.test$relativeAvatarPath',
-      );
+      expect(secondMember.avatarUrl, 'https://tenant.test$relativeAvatarPath');
     },
   );
 

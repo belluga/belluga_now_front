@@ -318,6 +318,258 @@ void main() {
   );
 
   testWidgets(
+    'canonical event tabs keep metadata-only labels and load members lazily from members_path',
+    (tester) async {
+      final membersPath =
+          '/api/v1/events/evento-de-teste/related_profile_tabs/atracoes/members';
+      final repository = _FakeAccountProfilesRepository()
+        ..nestedGroupMembersByPath[membersPath] =
+            <AccountProfileNestedGroupMember>[
+              AccountProfileNestedGroupMember(
+                idValue: MongoIDValue()..parse('507f1f77bcf86cd799439099'),
+                nameValue: TitleValue()..parse('Banda Azul'),
+                slugValue: SlugValue()..parse('banda-azul'),
+                profileTypeValue: AccountProfileTypeValue('band'),
+              ),
+            ];
+      GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+        ImmersiveEventDetailController(
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          accountProfilesRepository: repository,
+        ),
+      );
+
+      final router = _RecordingStackRouter();
+      final routeData = RouteData(
+        route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+        router: router,
+        stackKey: const ValueKey('stack'),
+        pendingChildren: const [],
+        type: const RouteType.material(),
+      );
+
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: _routeScopedHome(
+              routeData: routeData,
+              child: ImmersiveEventDetailScreen(
+                event: _buildEvent(
+                  linkedProfiles: [
+                    _buildLinkedAccountProfile(
+                      id: 'profile-band',
+                      displayName: 'Banda Azul',
+                      profileType: 'band',
+                      slug: 'banda-azul',
+                    ),
+                  ],
+                  profileGroups: [
+                    _buildProfileGroup(
+                      id: 'atracoes',
+                      label: 'Atrações',
+                      order: 0,
+                      membersPath: membersPath,
+                      memberCount: 1,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Atrações'), findsOneWidget);
+      expect(find.text('Band'), findsNothing);
+      expect(repository.lastNestedGroupMembersPath, isNull);
+
+      await _tapImmersiveTab(tester, 1);
+
+      expect(repository.lastNestedGroupMembersPath, membersPath);
+      expect(
+        find.byKey(const Key('linkedProfileCard_507f1f77bcf86cd799439099')),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'public event detail keeps canonical profile groups from the real payload shape instead of legacy artist fallback',
+    (tester) async {
+      const firstMembersPath =
+          '/api/v1/events/pw-crud-event-1785004799637/related_profile_tabs/event-tab-4feb416936dfd33e/members';
+      const secondMembersPath =
+          '/api/v1/events/pw-crud-event-1785004799637/related_profile_tabs/event-tab-2e387ea9a96a86cd/members';
+      final repository = _FakeAccountProfilesRepository()
+        ..nestedGroupMembersByPath[firstMembersPath] =
+            <AccountProfileNestedGroupMember>[
+              AccountProfileNestedGroupMember(
+                idValue: MongoIDValue()..parse('507f1f77bcf86cd799439221'),
+                nameValue: TitleValue()..parse('Child Item #1'),
+                slugValue: SlugValue()..parse('child-item-1'),
+                profileTypeValue: AccountProfileTypeValue('venue'),
+              ),
+            ]
+        ..nestedGroupMembersByPath[secondMembersPath] =
+            <AccountProfileNestedGroupMember>[
+              AccountProfileNestedGroupMember(
+                idValue: MongoIDValue()..parse('507f1f77bcf86cd799439222'),
+                nameValue: TitleValue()..parse('Readonly Fixture 2cc71741'),
+                slugValue: SlugValue()..parse('readonly-fixture-2cc71741'),
+                profileTypeValue: AccountProfileTypeValue('artist'),
+              ),
+            ];
+      GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+        ImmersiveEventDetailController(
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          accountProfilesRepository: repository,
+        ),
+      );
+
+      final event = EventDTO.fromJson({
+        'event_id': '6a6503323b37c5ab5801d9f7',
+        'occurrence_id': '6a6503323b37c5ab5801d9f8',
+        'slug': 'pw-crud-event-1785004799637',
+        'type': {
+          'id': '6a65030075a6505bd50d08cc',
+          'name': 'PW CRUD Event Type 1785004799637',
+          'slug': 'pw-crud-event-type-1785004799637',
+          'description': '',
+          'icon': 'celebration',
+          'color': '#B51E5B',
+        },
+        'title': 'PW CRUD Event 1785004799637',
+        'content': '',
+        'location': {
+          'mode': 'physical',
+          'address': 'Praca Central, Guarapari',
+          'geo': {
+            'type': 'Point',
+            'coordinates': [-40.495395, -20.671339],
+          },
+        },
+        'date_time_start': '2026-07-30T18:40:00+00:00',
+        'occurrences': [
+          {
+            'occurrence_id': '6a6503323b37c5ab5801d9f8',
+            'occurrence_slug': 'pw-crud-event-1785004799637-occ-1',
+            'date_time_start': '2026-07-30T18:40:00+00:00',
+            'is_selected': true,
+            'has_location_override': false,
+            'own_taxonomy_terms': [],
+            'taxonomy_terms': [],
+            'programming_items': [],
+            'programming_count': 0,
+          },
+        ],
+        'event_parties': [
+          {
+            'party_type': 'artist',
+            'party_ref_id': '6a64f3863c7bca0c870ee235',
+            'permissions': {'can_edit': true},
+            'metadata': {
+              'display_name': 'Readonly Fixture 2cc71741',
+              'slug': 'readonly-fixture-2cc71741',
+              'profile_type': 'artist',
+              'avatar_url': null,
+              'cover_url': null,
+              'taxonomy_terms': [],
+            },
+          },
+        ],
+        'profile_groups': [
+          {
+            'id': 'event-tab-4feb416936dfd33e',
+            'label': 'Novo grupo',
+            'order': 0,
+            'member_count': 3,
+            'members_path': firstMembersPath,
+          },
+          {
+            'id': 'event-tab-2e387ea9a96a86cd',
+            'label': 'Novo grupo 2',
+            'order': 1,
+            'member_count': 2,
+            'members_path': secondMembersPath,
+          },
+        ],
+        'programming_items': [],
+        'capabilities': {
+          'map_poi': {'enabled': true},
+        },
+        'taxonomy_terms': [],
+        'artists': [
+          {
+            'id': '6a64f3863c7bca0c870ee235',
+            'display_name': 'Readonly Fixture 2cc71741',
+            'slug': 'readonly-fixture-2cc71741',
+            'profile_type': 'artist',
+            'avatar_url': null,
+            'cover_url': null,
+            'highlight': false,
+            'genres': [],
+            'taxonomy_terms': [],
+          },
+        ],
+      }).toDomain();
+
+      final router = _RecordingStackRouter();
+      final routeData = RouteData(
+        route: _FakeRouteMatch(
+          fullPath: '/agenda/evento/pw-crud-event-1785004799637',
+        ),
+        router: router,
+        stackKey: const ValueKey('stack'),
+        pendingChildren: const [],
+        type: const RouteType.material(),
+      );
+
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: _routeScopedHome(
+              routeData: routeData,
+              child: ImmersiveEventDetailScreen(event: event),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('immersiveTabLabel_0')), findsOneWidget);
+      expect(find.byKey(const Key('immersiveTabLabel_1')), findsOneWidget);
+      expect(find.text('Novo grupo'), findsWidgets);
+      expect(find.text('Novo grupo 2'), findsWidgets);
+      expect(find.text('Artist'), findsNothing);
+      expect(repository.requestedNestedGroupMembersPaths, [firstMembersPath]);
+      expect(repository.lastNestedGroupMembersPath, firstMembersPath);
+      expect(
+        find.byKey(const Key('linkedProfileCard_507f1f77bcf86cd799439221')),
+        findsOneWidget,
+      );
+
+      await _tapImmersiveTab(tester, 1);
+
+      expect(
+        repository.requestedNestedGroupMembersPaths,
+        [firstMembersPath, secondMembersPath],
+      );
+      expect(repository.lastNestedGroupMembersPath, secondMembersPath);
+      expect(
+        find.byKey(const Key('linkedProfileCard_507f1f77bcf86cd799439222')),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
     'event detail consumes cached confirmation state without entry refresh',
     (tester) async {
       final userEventsRepository = _FakeUserEventsRepository()
@@ -3565,11 +3817,36 @@ void main() {
     (tester) async {
       final userEventsRepository = _FakeUserEventsRepository();
       final invitesRepository = _FakeInvitesRepository();
+      final accountProfilesRepository = _FakeAccountProfilesRepository();
+      const bandasMembersPath =
+          '/api/v1/events/evento-de-teste/related_profile_tabs/bandas/members';
+      const expositoresMembersPath =
+          '/api/v1/events/evento-de-teste/related_profile_tabs/expositores/members';
+      accountProfilesRepository
+        ..nestedGroupMembersByPath[bandasMembersPath] =
+            <AccountProfileNestedGroupMember>[
+              AccountProfileNestedGroupMember(
+                idValue: MongoIDValue()..parse('507f1f77bcf86cd799439091'),
+                nameValue: TitleValue()..parse('Du Jorge'),
+                slugValue: SlugValue()..parse('du-jorge'),
+                profileTypeValue: AccountProfileTypeValue('band'),
+              ),
+            ]
+        ..nestedGroupMembersByPath[expositoresMembersPath] =
+            <AccountProfileNestedGroupMember>[
+              AccountProfileNestedGroupMember(
+                idValue: MongoIDValue()..parse('507f1f77bcf86cd799439092'),
+                nameValue: TitleValue()..parse('Agro Sul'),
+                slugValue: SlugValue()..parse('agro-sul'),
+                profileTypeValue: AccountProfileTypeValue('producer'),
+              ),
+            ];
       GetIt.I.registerSingleton<ImmersiveEventDetailController>(
         ImmersiveEventDetailController(
           userEventsRepository: userEventsRepository,
           invitesRepository: invitesRepository,
           authRepository: _FakeAuthRepository(authorized: true),
+          accountProfilesRepository: accountProfilesRepository,
         ),
       );
 
@@ -3608,6 +3885,21 @@ void main() {
         ];
         return _buildEvent(
           linkedProfiles: [band, exhibitor],
+          profileGroups: [
+            _buildProfileGroup(
+              id: 'bandas',
+              label: 'Bandas',
+              membersPath: bandasMembersPath,
+              memberCount: 1,
+            ),
+            _buildProfileGroup(
+              id: 'expositores',
+              label: 'Expositores',
+              order: 1,
+              membersPath: expositoresMembersPath,
+              memberCount: 1,
+            ),
+          ],
           occurrences: [
             _buildOccurrence(
               id: 'occ-1',
@@ -6745,11 +7037,15 @@ EventProfileGroup _buildProfileGroup({
   int order = 0,
   List<EventLinkedAccountProfile> profiles = const [],
   List<String> accountProfileIds = const [],
+  String? membersPath,
+  int? memberCount,
 }) {
   return EventProfileGroup(
     idValue: EventLinkedAccountProfileTextValue(id),
     labelValue: EventLinkedAccountProfileTextValue(label),
     orderValue: EventProfileGroupOrderValue(order),
+    membersPathValue: EventProfileGroupMembersPathValue(membersPath ?? ''),
+    memberCountValue: EventProfileGroupMemberCountValue(memberCount),
     profiles: profiles,
     accountProfileIdValues: accountProfileIds
         .map(EventLinkedAccountProfileTextValue.new)
@@ -6820,6 +7116,10 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   int initCalls = 0;
   int toggleFavoriteCalls = 0;
   String? lastToggledId;
+  String? lastNestedGroupMembersPath;
+  final List<String> requestedNestedGroupMembersPaths = <String>[];
+  final Map<String, List<AccountProfileNestedGroupMember>>
+  nestedGroupMembersByPath = <String, List<AccountProfileNestedGroupMember>>{};
 
   @override
   Future<void> init() async {
@@ -6851,7 +7151,12 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   @override
   Future<List<AccountProfileNestedGroupMember>> getNestedGroupMembersByPath(
     AccountProfilesRepositoryContractPrimString membersPath,
-  ) async => const <AccountProfileNestedGroupMember>[];
+  ) async {
+    lastNestedGroupMembersPath = membersPath.value;
+    requestedNestedGroupMembersPaths.add(membersPath.value);
+    return nestedGroupMembersByPath[membersPath.value] ??
+        const <AccountProfileNestedGroupMember>[];
+  }
 
   @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({

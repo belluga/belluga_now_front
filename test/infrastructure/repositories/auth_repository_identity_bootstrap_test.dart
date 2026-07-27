@@ -14,6 +14,7 @@ import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group_member_page.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
@@ -53,9 +54,7 @@ void main() {
       tokenToReturn: 'identity-token-1',
       userIdToReturn: 'user-1',
     );
-    GetIt.I.registerSingleton<BackendContract>(
-      _FakeBackend(auth: authBackend),
-    );
+    GetIt.I.registerSingleton<BackendContract>(_FakeBackend(auth: authBackend));
 
     final repository = AuthRepository();
     await repository.init();
@@ -70,40 +69,40 @@ void main() {
     expect(storedUserId, 'user-1');
   });
 
-  test('ensureTenantPublicIdentityReady issues identity token when none exists',
-      () async {
-    final authBackend = _FakeAuthBackend(
-      tokenToReturn: 'identity-token-public-ready',
-      userIdToReturn: 'user-public-ready',
-    );
-    GetIt.I.registerSingleton<BackendContract>(
-      _FakeBackend(auth: authBackend),
-    );
+  test(
+    'ensureTenantPublicIdentityReady issues identity token when none exists',
+    () async {
+      final authBackend = _FakeAuthBackend(
+        tokenToReturn: 'identity-token-public-ready',
+        userIdToReturn: 'user-public-ready',
+      );
+      GetIt.I.registerSingleton<BackendContract>(
+        _FakeBackend(auth: authBackend),
+      );
 
-    final repository = AuthRepository();
-    await repository.ensureTenantPublicIdentityReady();
-    await Future<void>.delayed(const Duration(milliseconds: 10));
+      final repository = AuthRepository();
+      await repository.ensureTenantPublicIdentityReady();
+      await Future<void>.delayed(const Duration(milliseconds: 10));
 
-    expect(authBackend.issueCount, 1);
-    expect(repository.userToken, 'identity-token-public-ready');
-    expect(
-      await AuthRepository.storage.read(key: 'user_token'),
-      'identity-token-public-ready',
-    );
-    expect(
-      await AuthRepository.storage.read(key: 'user_id'),
-      'user-public-ready',
-    );
-  });
+      expect(authBackend.issueCount, 1);
+      expect(repository.userToken, 'identity-token-public-ready');
+      expect(
+        await AuthRepository.storage.read(key: 'user_token'),
+        'identity-token-public-ready',
+      );
+      expect(
+        await AuthRepository.storage.read(key: 'user_id'),
+        'user-public-ready',
+      );
+    },
+  );
 
   test('init skips identity bootstrap in landlord environment', () async {
     final authBackend = _FakeAuthBackend(
       tokenToReturn: 'identity-token-landlord',
       userIdToReturn: 'user-landlord',
     );
-    GetIt.I.registerSingleton<BackendContract>(
-      _FakeBackend(auth: authBackend),
-    );
+    GetIt.I.registerSingleton<BackendContract>(_FakeBackend(auth: authBackend));
     GetIt.I.registerSingleton<AppData>(_buildLandlordAppData());
 
     final repository = AuthRepository();
@@ -116,58 +115,61 @@ void main() {
     expect(stored, isNull);
   });
 
-  test('init skips identity bootstrap in landlord admin mode on tenant host',
-      () async {
-    final authBackend = _FakeAuthBackend(
-      tokenToReturn: 'identity-token-admin-mode',
-      userIdToReturn: 'user-admin-mode',
-    );
-    GetIt.I.registerSingleton<BackendContract>(
-      _FakeBackend(auth: authBackend),
-    );
-    GetIt.I.registerSingleton<AdminModeRepositoryContract>(
-      _FakeAdminModeRepository(AdminMode.landlord),
-    );
-    GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
-      _FakeLandlordAuthRepository(hasValidSession: true, token: 'landlord'),
-    );
+  test(
+    'init skips identity bootstrap in landlord admin mode on tenant host',
+    () async {
+      final authBackend = _FakeAuthBackend(
+        tokenToReturn: 'identity-token-admin-mode',
+        userIdToReturn: 'user-admin-mode',
+      );
+      GetIt.I.registerSingleton<BackendContract>(
+        _FakeBackend(auth: authBackend),
+      );
+      GetIt.I.registerSingleton<AdminModeRepositoryContract>(
+        _FakeAdminModeRepository(AdminMode.landlord),
+      );
+      GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
+        _FakeLandlordAuthRepository(hasValidSession: true, token: 'landlord'),
+      );
 
-    final repository = AuthRepository();
-    await repository.init();
-    await Future<void>.delayed(const Duration(milliseconds: 10));
+      final repository = AuthRepository();
+      await repository.init();
+      await Future<void>.delayed(const Duration(milliseconds: 10));
 
-    expect(authBackend.issueCount, 0);
-    expect(repository.userToken, '');
-    final stored = await AuthRepository.storage.read(key: 'user_token');
-    expect(stored, isNull);
-  });
+      expect(authBackend.issueCount, 0);
+      expect(repository.userToken, '');
+      final stored = await AuthRepository.storage.read(key: 'user_token');
+      expect(stored, isNull);
+    },
+  );
 
   test(
-      'init does not skip tenant-public identity bootstrap when landlord mode is stale but no landlord session exists',
-      () async {
-    final authBackend = _FakeAuthBackend(
-      tokenToReturn: 'identity-token-user-scope',
-      userIdToReturn: 'user-scope-user',
-    );
-    GetIt.I.registerSingleton<BackendContract>(
-      _FakeBackend(auth: authBackend),
-    );
-    GetIt.I.registerSingleton<AdminModeRepositoryContract>(
-      _FakeAdminModeRepository(AdminMode.landlord),
-    );
-    GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
-      _FakeLandlordAuthRepository(hasValidSession: false),
-    );
+    'init does not skip tenant-public identity bootstrap when landlord mode is stale but no landlord session exists',
+    () async {
+      final authBackend = _FakeAuthBackend(
+        tokenToReturn: 'identity-token-user-scope',
+        userIdToReturn: 'user-scope-user',
+      );
+      GetIt.I.registerSingleton<BackendContract>(
+        _FakeBackend(auth: authBackend),
+      );
+      GetIt.I.registerSingleton<AdminModeRepositoryContract>(
+        _FakeAdminModeRepository(AdminMode.landlord),
+      );
+      GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
+        _FakeLandlordAuthRepository(hasValidSession: false),
+      );
 
-    final repository = AuthRepository();
-    await repository.init();
-    await Future<void>.delayed(const Duration(milliseconds: 10));
+      final repository = AuthRepository();
+      await repository.init();
+      await Future<void>.delayed(const Duration(milliseconds: 10));
 
-    expect(authBackend.issueCount, 1);
-    expect(repository.userToken, 'identity-token-user-scope');
-    final stored = await AuthRepository.storage.read(key: 'user_token');
-    expect(stored, 'identity-token-user-scope');
-  });
+      expect(authBackend.issueCount, 1);
+      expect(repository.userToken, 'identity-token-user-scope');
+      final stored = await AuthRepository.storage.read(key: 'user_token');
+      expect(stored, 'identity-token-user-scope');
+    },
+  );
 
   test('init skips identity token when stored token exists', () async {
     FlutterSecureStorage.setMockInitialValues({'user_token': 'stored-token'});
@@ -175,9 +177,7 @@ void main() {
       tokenToReturn: 'identity-token-2',
       userIdToReturn: 'user-2',
     );
-    GetIt.I.registerSingleton<BackendContract>(
-      _FakeBackend(auth: authBackend),
-    );
+    GetIt.I.registerSingleton<BackendContract>(_FakeBackend(auth: authBackend));
 
     final repository = AuthRepository();
     await repository.init();
@@ -187,78 +187,83 @@ void main() {
     expect(authBackend.issueCount, 0);
   });
 
-  test('init tolerates secure storage failures and still bootstraps identity',
-      () async {
-    final authBackend = _FakeAuthBackend(
-      tokenToReturn: 'identity-token-storage-failure',
-      userIdToReturn: 'user-storage-failure',
-    );
-    GetIt.I.registerSingleton<BackendContract>(
-      _FakeBackend(auth: authBackend),
-    );
+  test(
+    'init tolerates secure storage failures and still bootstraps identity',
+    () async {
+      final authBackend = _FakeAuthBackend(
+        tokenToReturn: 'identity-token-storage-failure',
+        userIdToReturn: 'user-storage-failure',
+      );
+      GetIt.I.registerSingleton<BackendContract>(
+        _FakeBackend(auth: authBackend),
+      );
 
-    final repository = AuthRepository(
-      storage: const _ThrowingSecureStorage(),
-    );
-    await repository.init();
-    await Future<void>.delayed(const Duration(milliseconds: 10));
+      final repository = AuthRepository(
+        storage: const _ThrowingSecureStorage(),
+      );
+      await repository.init();
+      await Future<void>.delayed(const Duration(milliseconds: 10));
 
-    expect(authBackend.issueCount, 1);
-    expect(repository.userToken, 'identity-token-storage-failure');
-  });
-
-  test('init syncs proximity preferences in user mode when available',
-      () async {
-    FlutterSecureStorage.setMockInitialValues({'user_token': 'stored-token'});
-    final authBackend = _FakeAuthBackend(
-      tokenToReturn: 'identity-token-user-mode',
-      userIdToReturn: 'user-user-mode',
-    );
-    final proximityRepository = _FakeProximityPreferencesRepository();
-    GetIt.I.registerSingleton<BackendContract>(
-      _FakeBackend(auth: authBackend),
-    );
-    GetIt.I.registerSingleton<AdminModeRepositoryContract>(
-      _FakeAdminModeRepository(AdminMode.user),
-    );
-    GetIt.I.registerSingleton<ProximityPreferencesRepositoryContract>(
-      proximityRepository,
-    );
-
-    final repository = AuthRepository();
-    await repository.init();
-    await Future<void>.delayed(const Duration(milliseconds: 10));
-
-    expect(proximityRepository.syncCount, 1);
-  });
+      expect(authBackend.issueCount, 1);
+      expect(repository.userToken, 'identity-token-storage-failure');
+    },
+  );
 
   test(
-      'ensureTenantPublicIdentityReady validates persisted token without syncing proximity preferences',
-      () async {
-    FlutterSecureStorage.setMockInitialValues({'user_token': 'stored-token'});
-    final authBackend = _FakeAuthBackend(
-      tokenToReturn: 'identity-token-user-mode',
-      userIdToReturn: 'user-user-mode',
-    );
-    final proximityRepository = _FakeProximityPreferencesRepository();
-    GetIt.I.registerSingleton<BackendContract>(
-      _FakeBackend(auth: authBackend),
-    );
-    GetIt.I.registerSingleton<AdminModeRepositoryContract>(
-      _FakeAdminModeRepository(AdminMode.user),
-    );
-    GetIt.I.registerSingleton<ProximityPreferencesRepositoryContract>(
-      proximityRepository,
-    );
+    'init syncs proximity preferences in user mode when available',
+    () async {
+      FlutterSecureStorage.setMockInitialValues({'user_token': 'stored-token'});
+      final authBackend = _FakeAuthBackend(
+        tokenToReturn: 'identity-token-user-mode',
+        userIdToReturn: 'user-user-mode',
+      );
+      final proximityRepository = _FakeProximityPreferencesRepository();
+      GetIt.I.registerSingleton<BackendContract>(
+        _FakeBackend(auth: authBackend),
+      );
+      GetIt.I.registerSingleton<AdminModeRepositoryContract>(
+        _FakeAdminModeRepository(AdminMode.user),
+      );
+      GetIt.I.registerSingleton<ProximityPreferencesRepositoryContract>(
+        proximityRepository,
+      );
 
-    final repository = AuthRepository();
-    await repository.ensureTenantPublicIdentityReady();
-    await Future<void>.delayed(const Duration(milliseconds: 10));
+      final repository = AuthRepository();
+      await repository.init();
+      await Future<void>.delayed(const Duration(milliseconds: 10));
 
-    expect(repository.userToken, 'stored-token');
-    expect(repository.isAuthorized, isTrue);
-    expect(proximityRepository.syncCount, 0);
-  });
+      expect(proximityRepository.syncCount, 1);
+    },
+  );
+
+  test(
+    'ensureTenantPublicIdentityReady validates persisted token without syncing proximity preferences',
+    () async {
+      FlutterSecureStorage.setMockInitialValues({'user_token': 'stored-token'});
+      final authBackend = _FakeAuthBackend(
+        tokenToReturn: 'identity-token-user-mode',
+        userIdToReturn: 'user-user-mode',
+      );
+      final proximityRepository = _FakeProximityPreferencesRepository();
+      GetIt.I.registerSingleton<BackendContract>(
+        _FakeBackend(auth: authBackend),
+      );
+      GetIt.I.registerSingleton<AdminModeRepositoryContract>(
+        _FakeAdminModeRepository(AdminMode.user),
+      );
+      GetIt.I.registerSingleton<ProximityPreferencesRepositoryContract>(
+        proximityRepository,
+      );
+
+      final repository = AuthRepository();
+      await repository.ensureTenantPublicIdentityReady();
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      expect(repository.userToken, 'stored-token');
+      expect(repository.isAuthorized, isTrue);
+      expect(proximityRepository.syncCount, 0);
+    },
+  );
 
   test('init keeps auth ready when proximity sync fails', () async {
     FlutterSecureStorage.setMockInitialValues({'user_token': 'stored-token'});
@@ -269,9 +274,7 @@ void main() {
     final proximityRepository = _FakeProximityPreferencesRepository(
       syncError: Exception('sync failed'),
     );
-    GetIt.I.registerSingleton<BackendContract>(
-      _FakeBackend(auth: authBackend),
-    );
+    GetIt.I.registerSingleton<BackendContract>(_FakeBackend(auth: authBackend));
     GetIt.I.registerSingleton<AdminModeRepositoryContract>(
       _FakeAdminModeRepository(AdminMode.user),
     );
@@ -288,59 +291,62 @@ void main() {
     expect(proximityRepository.syncCount, 1);
   });
 
-  test('init keeps proximity preferences local-first after anonymous bootstrap',
-      () async {
-    final authBackend = _FakeAuthBackend(
-      tokenToReturn: 'identity-token-anonymous',
-      userIdToReturn: 'user-anonymous',
-    );
-    final proximityRepository = _FakeProximityPreferencesRepository();
-    GetIt.I.registerSingleton<BackendContract>(
-      _FakeBackend(auth: authBackend),
-    );
-    GetIt.I.registerSingleton<AdminModeRepositoryContract>(
-      _FakeAdminModeRepository(AdminMode.user),
-    );
-    GetIt.I.registerSingleton<ProximityPreferencesRepositoryContract>(
-      proximityRepository,
-    );
+  test(
+    'init keeps proximity preferences local-first after anonymous bootstrap',
+    () async {
+      final authBackend = _FakeAuthBackend(
+        tokenToReturn: 'identity-token-anonymous',
+        userIdToReturn: 'user-anonymous',
+      );
+      final proximityRepository = _FakeProximityPreferencesRepository();
+      GetIt.I.registerSingleton<BackendContract>(
+        _FakeBackend(auth: authBackend),
+      );
+      GetIt.I.registerSingleton<AdminModeRepositoryContract>(
+        _FakeAdminModeRepository(AdminMode.user),
+      );
+      GetIt.I.registerSingleton<ProximityPreferencesRepositoryContract>(
+        proximityRepository,
+      );
 
-    final repository = AuthRepository();
-    await repository.init();
-    await Future<void>.delayed(const Duration(milliseconds: 10));
+      final repository = AuthRepository();
+      await repository.init();
+      await Future<void>.delayed(const Duration(milliseconds: 10));
 
-    expect(repository.userToken, 'identity-token-anonymous');
-    expect(proximityRepository.syncCount, 0);
-  });
+      expect(repository.userToken, 'identity-token-anonymous');
+      expect(proximityRepository.syncCount, 0);
+    },
+  );
 
   test(
-      'init skips proximity preferences sync in landlord admin mode on tenant host',
-      () async {
-    FlutterSecureStorage.setMockInitialValues({'user_token': 'stored-token'});
-    final authBackend = _FakeAuthBackend(
-      tokenToReturn: 'identity-token-admin-sync',
-      userIdToReturn: 'user-admin-sync',
-    );
-    final proximityRepository = _FakeProximityPreferencesRepository();
-    GetIt.I.registerSingleton<BackendContract>(
-      _FakeBackend(auth: authBackend),
-    );
-    GetIt.I.registerSingleton<AdminModeRepositoryContract>(
-      _FakeAdminModeRepository(AdminMode.landlord),
-    );
-    GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
-      _FakeLandlordAuthRepository(hasValidSession: true, token: 'landlord'),
-    );
-    GetIt.I.registerSingleton<ProximityPreferencesRepositoryContract>(
-      proximityRepository,
-    );
+    'init skips proximity preferences sync in landlord admin mode on tenant host',
+    () async {
+      FlutterSecureStorage.setMockInitialValues({'user_token': 'stored-token'});
+      final authBackend = _FakeAuthBackend(
+        tokenToReturn: 'identity-token-admin-sync',
+        userIdToReturn: 'user-admin-sync',
+      );
+      final proximityRepository = _FakeProximityPreferencesRepository();
+      GetIt.I.registerSingleton<BackendContract>(
+        _FakeBackend(auth: authBackend),
+      );
+      GetIt.I.registerSingleton<AdminModeRepositoryContract>(
+        _FakeAdminModeRepository(AdminMode.landlord),
+      );
+      GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
+        _FakeLandlordAuthRepository(hasValidSession: true, token: 'landlord'),
+      );
+      GetIt.I.registerSingleton<ProximityPreferencesRepositoryContract>(
+        proximityRepository,
+      );
 
-    final repository = AuthRepository();
-    await repository.init();
-    await Future<void>.delayed(const Duration(milliseconds: 10));
+      final repository = AuthRepository();
+      await repository.init();
+      await Future<void>.delayed(const Duration(milliseconds: 10));
 
-    expect(proximityRepository.syncCount, 0);
-  });
+      expect(proximityRepository.syncCount, 0);
+    },
+  );
 
   test('login keeps auth success when proximity sync fails', () async {
     final authBackend = _FakeAuthBackend(
@@ -350,9 +356,7 @@ void main() {
     final proximityRepository = _FakeProximityPreferencesRepository(
       syncError: Exception('sync failed'),
     );
-    GetIt.I.registerSingleton<BackendContract>(
-      _FakeBackend(auth: authBackend),
-    );
+    GetIt.I.registerSingleton<BackendContract>(_FakeBackend(auth: authBackend));
     GetIt.I.registerSingleton<AdminModeRepositoryContract>(
       _FakeAdminModeRepository(AdminMode.user),
     );
@@ -379,9 +383,7 @@ void main() {
       tokenToReturn: 'identity-token-3',
       userIdToReturn: 'user-3',
     );
-    GetIt.I.registerSingleton<BackendContract>(
-      _FakeBackend(auth: authBackend),
-    );
+    GetIt.I.registerSingleton<BackendContract>(_FakeBackend(auth: authBackend));
 
     final repository = AuthRepository();
     await repository.init();
@@ -396,16 +398,11 @@ void main() {
       tokenToReturn: 'identity-token-never',
       userIdToReturn: 'user-never',
     );
-    GetIt.I.registerSingleton<BackendContract>(
-      _FakeBackend(auth: authBackend),
-    );
+    GetIt.I.registerSingleton<BackendContract>(_FakeBackend(auth: authBackend));
 
     final repository = AuthRepository();
     await expectLater(repository.init(), throwsException);
-    expect(
-      authBackend.issueCount,
-      AuthRepository.anonymousIdentityMaxAttempts,
-    );
+    expect(authBackend.issueCount, AuthRepository.anonymousIdentityMaxAttempts);
   });
 
   test('init reissues identity when stored token fails validation', () async {
@@ -417,9 +414,7 @@ void main() {
       tokenToReturn: 'identity-token-refresh',
       userIdToReturn: 'user-refresh',
     );
-    GetIt.I.registerSingleton<BackendContract>(
-      _FakeBackend(auth: authBackend),
-    );
+    GetIt.I.registerSingleton<BackendContract>(_FakeBackend(auth: authBackend));
 
     final repository = AuthRepository();
     await repository.init();
@@ -435,98 +430,99 @@ void main() {
   });
 
   test(
-      'ensureTenantPublicIdentityReady reissues identity when stored token fails validation',
-      () async {
-    FlutterSecureStorage.setMockInitialValues({
-      'user_token': 'stored-token',
-      'user_id': 'legacy-user',
-    });
-    final authBackend = _FailingLoginCheckBackend(
-      tokenToReturn: 'identity-token-refresh-public-ready',
-      userIdToReturn: 'user-refresh-public-ready',
-    );
-    GetIt.I.registerSingleton<BackendContract>(
-      _FakeBackend(auth: authBackend),
-    );
+    'ensureTenantPublicIdentityReady reissues identity when stored token fails validation',
+    () async {
+      FlutterSecureStorage.setMockInitialValues({
+        'user_token': 'stored-token',
+        'user_id': 'legacy-user',
+      });
+      final authBackend = _FailingLoginCheckBackend(
+        tokenToReturn: 'identity-token-refresh-public-ready',
+        userIdToReturn: 'user-refresh-public-ready',
+      );
+      GetIt.I.registerSingleton<BackendContract>(
+        _FakeBackend(auth: authBackend),
+      );
 
-    final repository = AuthRepository();
-    await repository.ensureTenantPublicIdentityReady();
-    await Future<void>.delayed(const Duration(milliseconds: 10));
+      final repository = AuthRepository();
+      await repository.ensureTenantPublicIdentityReady();
+      await Future<void>.delayed(const Duration(milliseconds: 10));
 
-    expect(authBackend.issueCount, 1);
-    expect(repository.userToken, 'identity-token-refresh-public-ready');
-    expect(
-      await AuthRepository.storage.read(key: 'user_token'),
-      'identity-token-refresh-public-ready',
-    );
-    expect(
-      await AuthRepository.storage.read(key: 'user_id'),
-      'user-refresh-public-ready',
-    );
-  });
-
-  test('init is single-flight across concurrent anonymous bootstrap callers',
-      () async {
-    final authBackend = _BlockingAuthBackend(
-      tokenToReturn: 'identity-token-concurrent',
-      userIdToReturn: 'user-concurrent',
-    );
-    GetIt.I.registerSingleton<BackendContract>(
-      _FakeBackend(auth: authBackend),
-    );
-
-    final repository = AuthRepository();
-    final firstInit = repository.init();
-    final secondInit = repository.init();
-
-    await Future<void>.delayed(Duration.zero);
-    expect(authBackend.issueCount, 1);
-
-    authBackend.completeIssue();
-    await Future.wait(<Future<void>>[firstInit, secondInit]);
-    await Future<void>.delayed(const Duration(milliseconds: 10));
-
-    expect(authBackend.issueCount, 1);
-    expect(repository.userToken, 'identity-token-concurrent');
-    final stored = await AuthRepository.storage.read(key: 'user_token');
-    expect(stored, 'identity-token-concurrent');
-  });
+      expect(authBackend.issueCount, 1);
+      expect(repository.userToken, 'identity-token-refresh-public-ready');
+      expect(
+        await AuthRepository.storage.read(key: 'user_token'),
+        'identity-token-refresh-public-ready',
+      );
+      expect(
+        await AuthRepository.storage.read(key: 'user_id'),
+        'user-refresh-public-ready',
+      );
+    },
+  );
 
   test(
-      'init does not reissue anonymous identity when secure storage persistence is still pending',
-      () async {
-    final authBackend = _FakeAuthBackend(
-      tokenToReturn: 'identity-token-pending-storage',
-      userIdToReturn: 'user-pending-storage',
-    );
-    final storage = _DeferredWriteSecureStorage();
-    addTearDown(storage.flushPendingWrites);
-    GetIt.I.registerSingleton<BackendContract>(
-      _FakeBackend(auth: authBackend),
-    );
+    'init is single-flight across concurrent anonymous bootstrap callers',
+    () async {
+      final authBackend = _BlockingAuthBackend(
+        tokenToReturn: 'identity-token-concurrent',
+        userIdToReturn: 'user-concurrent',
+      );
+      GetIt.I.registerSingleton<BackendContract>(
+        _FakeBackend(auth: authBackend),
+      );
 
-    final repository = AuthRepository(storage: storage);
-    await repository.init();
+      final repository = AuthRepository();
+      final firstInit = repository.init();
+      final secondInit = repository.init();
 
-    expect(authBackend.issueCount, 1);
-    expect(repository.userToken, 'identity-token-pending-storage');
-    expect(await storage.read(key: 'user_token'), isNull);
+      await Future<void>.delayed(Duration.zero);
+      expect(authBackend.issueCount, 1);
 
-    await repository.init();
+      authBackend.completeIssue();
+      await Future.wait(<Future<void>>[firstInit, secondInit]);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
 
-    expect(authBackend.issueCount, 1);
-    expect(repository.userToken, 'identity-token-pending-storage');
+      expect(authBackend.issueCount, 1);
+      expect(repository.userToken, 'identity-token-concurrent');
+      final stored = await AuthRepository.storage.read(key: 'user_token');
+      expect(stored, 'identity-token-concurrent');
+    },
+  );
 
-    await storage.flushPendingWrites();
-    expect(
-      await storage.read(key: 'user_token'),
-      'identity-token-pending-storage',
-    );
-    expect(
-      await storage.read(key: 'user_id'),
-      'user-pending-storage',
-    );
-  });
+  test(
+    'init does not reissue anonymous identity when secure storage persistence is still pending',
+    () async {
+      final authBackend = _FakeAuthBackend(
+        tokenToReturn: 'identity-token-pending-storage',
+        userIdToReturn: 'user-pending-storage',
+      );
+      final storage = _DeferredWriteSecureStorage();
+      addTearDown(storage.flushPendingWrites);
+      GetIt.I.registerSingleton<BackendContract>(
+        _FakeBackend(auth: authBackend),
+      );
+
+      final repository = AuthRepository(storage: storage);
+      await repository.init();
+
+      expect(authBackend.issueCount, 1);
+      expect(repository.userToken, 'identity-token-pending-storage');
+      expect(await storage.read(key: 'user_token'), isNull);
+
+      await repository.init();
+
+      expect(authBackend.issueCount, 1);
+      expect(repository.userToken, 'identity-token-pending-storage');
+
+      await storage.flushPendingWrites();
+      expect(
+        await storage.read(key: 'user_token'),
+        'identity-token-pending-storage',
+      );
+      expect(await storage.read(key: 'user_id'), 'user-pending-storage');
+    },
+  );
 }
 
 class _FakeBackend extends BackendContract {
@@ -580,8 +576,7 @@ class _NoopAccountProfilesBackend implements AccountProfilesBackendContract {
     List<String>? typeFilters,
     List<dynamic>? taxonomyFilters,
     List<String>? allowedTypes,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
   Future<AccountProfileModel?> fetchAccountProfileBySlug(String slug) =>
@@ -593,17 +588,32 @@ class _NoopAccountProfilesBackend implements AccountProfilesBackendContract {
   ) => throw UnimplementedError();
 
   @override
+  Future<AccountProfileNestedGroupMemberPage> fetchNestedGroupMembersPageByPath(
+    String membersPath, {
+    String? cursor,
+  }) async {
+    final normalizedCursor = cursor?.trim();
+    if (normalizedCursor != null && normalizedCursor.isNotEmpty) {
+      return const AccountProfileNestedGroupMemberPage.empty();
+    }
+
+    return AccountProfileNestedGroupMemberPage(
+      items: await fetchNestedGroupMembersByPath(membersPath),
+      nextCursorValue: null,
+    );
+  }
+
+  @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
     int pageSize = 10,
     List<String>? typeFilters,
     List<dynamic>? taxonomyFilters,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 }
 
 class _FakeAdminModeRepository implements AdminModeRepositoryContract {
   _FakeAdminModeRepository(this._mode)
-      : _modeStreamValue = StreamValue<AdminMode>(defaultValue: _mode);
+    : _modeStreamValue = StreamValue<AdminMode>(defaultValue: _mode);
 
   final AdminMode _mode;
   final StreamValue<AdminMode> _modeStreamValue;
@@ -628,10 +638,7 @@ class _FakeAdminModeRepository implements AdminModeRepositoryContract {
 }
 
 class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
-  _FakeLandlordAuthRepository({
-    required this.hasValidSession,
-    this.token = '',
-  });
+  _FakeLandlordAuthRepository({required this.hasValidSession, this.token = ''});
 
   @override
   final bool hasValidSession;
@@ -669,10 +676,7 @@ class _FakeProximityPreferencesRepository
 }
 
 class _FakeAuthBackend extends AuthBackendContract {
-  _FakeAuthBackend({
-    required this.tokenToReturn,
-    required this.userIdToReturn,
-  });
+  _FakeAuthBackend({required this.tokenToReturn, required this.userIdToReturn});
 
   final String tokenToReturn;
   final String userIdToReturn;
@@ -739,8 +743,7 @@ class _FakeAuthBackend extends AuthBackendContract {
     required String email,
     required String password,
     List<String>? anonymousUserIds,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 }
 
 class _FlakyAuthBackend extends AuthBackendContract {
@@ -805,8 +808,7 @@ class _FlakyAuthBackend extends AuthBackendContract {
     required String email,
     required String password,
     List<String>? anonymousUserIds,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 }
 
 class _BlockingAuthBackend extends _FakeAuthBackend {
@@ -887,8 +889,7 @@ class _UnsupportedScheduleBackend extends ScheduleBackendContract {
   Future<EventDTO?> fetchEventDetail({
     required String eventIdOrSlug,
     String? occurrenceId,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
   Future<EventPageDTO> fetchEventsPage({
@@ -904,8 +905,7 @@ class _UnsupportedScheduleBackend extends ScheduleBackendContract {
     double? originLat,
     double? originLng,
     double? maxDistanceMeters,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
   Stream<EventDeltaDTO> watchEventsStream({
@@ -919,8 +919,7 @@ class _UnsupportedScheduleBackend extends ScheduleBackendContract {
     double? maxDistanceMeters,
     String? lastEventId,
     bool showPastOnly = false,
-  }) =>
-      const Stream.empty();
+  }) => const Stream.empty();
 }
 
 AppData _buildLandlordAppData() {

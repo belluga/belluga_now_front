@@ -1101,7 +1101,7 @@ void main() {
       startsWith('Amigo te convidou para Evento Teste.'),
     );
     expect(sharedParams.single.text, contains('Sex, 13 mar · 20h\nGuarapari'));
-    expect(sharedParams.single.text, contains('Bandas: Du Jorge, QA Tag'));
+    expect(sharedParams.single.text, contains('Du Jorge, QA Tag'));
     expect(sharedParams.single.text, contains('Responder ao convite:'));
     expect(
       sharedParams.single.text,

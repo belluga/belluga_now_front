@@ -1,4 +1,6 @@
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
+
 class TenantAdminNestedProfileGroupOperations {
   const TenantAdminNestedProfileGroupOperations._();
 
@@ -76,26 +78,62 @@ class TenantAdminNestedProfileGroupOperations {
     required String profileId,
     required bool selected,
   }) {
-    return groups.map((group) {
-      if (group.id != groupId) {
-        return group;
+    return groups
+        .map((group) {
+          if (group.id != groupId) {
+            return group;
+          }
+          final current = group.accountProfileIdValues
+              .map((entry) => entry.value)
+              .toList(growable: true);
+          if (selected) {
+            if (current.contains(profileId)) {
+              return group;
+            }
+            current.add(profileId);
+          } else {
+            current.removeWhere((entry) => entry == profileId);
+          }
+          return group.copyWith(
+            memberCountValue: TenantAdminCountValue(current.length),
+            accountProfileIdValues: current
+                .map(TenantAdminNestedProfileGroupTextValue.new)
+                .toList(),
+          );
+        })
+        .toList(growable: false);
+  }
+
+  static List<TenantAdminNestedProfileGroup> replaceMembers(
+    List<TenantAdminNestedProfileGroup> groups, {
+    required String groupId,
+    required Iterable<String> profileIds,
+    int? memberCount,
+  }) {
+    final normalizedIds = <String>[];
+    for (final profileId in profileIds) {
+      final normalized = profileId.trim();
+      if (normalized.isEmpty || normalizedIds.contains(normalized)) {
+        continue;
       }
-      final current = group.accountProfileIdValues
-          .map((entry) => entry.value)
-          .toList(growable: true);
-      if (selected) {
-        if (current.contains(profileId)) {
-          return group;
-        }
-        current.add(profileId);
-      } else {
-        current.removeWhere((entry) => entry == profileId);
-      }
-      return group.copyWith(
-        accountProfileIdValues:
-            current.map(TenantAdminNestedProfileGroupTextValue.new).toList(),
-      );
-    }).toList(growable: false);
+      normalizedIds.add(normalized);
+    }
+
+    return groups
+        .map((group) {
+          if (group.id != groupId) {
+            return group;
+          }
+          return group.copyWith(
+            memberCountValue: TenantAdminCountValue(
+              memberCount ?? normalizedIds.length,
+            ),
+            accountProfileIdValues: normalizedIds
+                .map(TenantAdminNestedProfileGroupTextValue.new)
+                .toList(growable: false),
+          );
+        })
+        .toList(growable: false);
   }
 
   static List<TenantAdminNestedProfileGroup> normalizeOrders(

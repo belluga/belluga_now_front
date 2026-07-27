@@ -475,6 +475,197 @@ void main() {
   );
 
   testWidgets(
+    'initially active first tab runs activation when its content is already visible',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      var activationCount = 0;
+
+      await _pumpImmersiveScreen(
+        tester,
+        ImmersiveDetailScreen(
+          title: 'Profile',
+          heroViewportHeightFactor: 0.2,
+          backPolicy: _FakeBackPolicy(),
+          heroContent: Container(color: Colors.black),
+          tabs: [
+            ImmersiveTabItem(
+              title: 'Sobre',
+              onActivated: () => activationCount += 1,
+              content: const SizedBox(
+                height: 200,
+                child: Text('First visible section'),
+              ),
+            ),
+            ImmersiveTabItem(
+              title: 'Contato',
+              content: const SizedBox(height: 400, child: Text('Contact')),
+            ),
+          ],
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(activationCount, 1);
+    },
+  );
+
+  testWidgets(
+    'initially active first tab runs activation even when its content is empty',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      var activationCount = 0;
+
+      await _pumpImmersiveScreen(
+        tester,
+        ImmersiveDetailScreen(
+          title: 'Profile',
+          heroViewportHeightFactor: 0.2,
+          backPolicy: _FakeBackPolicy(),
+          heroContent: Container(color: Colors.black),
+          tabs: [
+            ImmersiveTabItem(
+              title: 'Sobre',
+              onActivated: () => activationCount += 1,
+              content: const SizedBox.shrink(),
+            ),
+            ImmersiveTabItem(
+              title: 'Contato',
+              content: const SizedBox(height: 400, child: Text('Contact')),
+            ),
+          ],
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(activationCount, 1);
+    },
+  );
+
+  testWidgets(
+    'initially active first tab activates once even before its content becomes visible by scroll',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      var activationCount = 0;
+
+      await _pumpImmersiveScreen(
+        tester,
+        ImmersiveDetailScreen(
+          title: 'Profile',
+          heroViewportHeightFactor: 1,
+          backPolicy: _FakeBackPolicy(),
+          heroContent: Container(color: Colors.black),
+          tabs: [
+            ImmersiveTabItem(
+              title: 'Sobre',
+              onActivated: () => activationCount += 1,
+              content: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    key: const Key('scrollActivatedSectionStart'),
+                    padding: const EdgeInsets.all(16),
+                    child: const Text('Scroll activated section'),
+                  ),
+                  Container(height: 5000, color: Colors.red),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      expect(activationCount, 1);
+
+      await tester.drag(
+        find.byKey(const Key('immersiveSwipeSurface')),
+        const Offset(0, -700),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('scrollActivatedSectionStart')),
+        findsOneWidget,
+      );
+      expect(activationCount, 1);
+    },
+  );
+
+  testWidgets(
+    'scrolling into a later tab activates it even when the tab content is empty',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      var secondTabActivationCount = 0;
+
+      await _pumpImmersiveScreen(
+        tester,
+        ImmersiveDetailScreen(
+          title: 'Profile',
+          heroViewportHeightFactor: 0.2,
+          backPolicy: _FakeBackPolicy(),
+          heroContent: Container(color: Colors.black),
+          tabs: [
+            ImmersiveTabItem(
+              title: 'Sobre',
+              content: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    key: const Key('longFirstSectionStart'),
+                    padding: const EdgeInsets.all(16),
+                    child: const Text('Long first section'),
+                  ),
+                  Container(height: 1800, color: Colors.red),
+                ],
+              ),
+            ),
+            ImmersiveTabItem(
+              title: 'Contato',
+              onActivated: () => secondTabActivationCount += 1,
+              content: const SizedBox.shrink(),
+            ),
+          ],
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      expect(secondTabActivationCount, 0);
+
+      final nestedScrollView = tester.state<NestedScrollViewState>(
+        find.byType(NestedScrollView),
+      );
+      nestedScrollView.outerController.jumpTo(
+        nestedScrollView.outerController.position.maxScrollExtent,
+      );
+      await tester.pump();
+      nestedScrollView.innerController.jumpTo(
+        nestedScrollView.innerController.position.maxScrollExtent,
+      );
+      await tester.pumpAndSettle();
+
+      expect(secondTabActivationCount, 1);
+    },
+  );
+
+  testWidgets(
     'returning to first tab resets immersive scroll to the real top',
     (tester) async {
       await _pumpImmersiveScreen(

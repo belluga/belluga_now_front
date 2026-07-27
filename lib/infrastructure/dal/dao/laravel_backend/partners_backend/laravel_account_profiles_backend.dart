@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/partners/account_profile_gallery_group.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group_member_page.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
@@ -344,41 +345,18 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     String? nextCursor;
 
     while (true) {
-      final uri = _resolveTenantPublicUriFromPath(
+      final page = await fetchNestedGroupMembersPageByPath(
         normalizedPath,
-        queryParameters: nextCursor == null || nextCursor.trim().isEmpty
-            ? null
-            : <String, String>{'cursor': nextCursor.trim()},
+        cursor: nextCursor,
       );
 
-      final payload =
-          await TenantPublicAuthHeaders.retryOnceOnUnauthorized<
-            Map<String, dynamic>
-          >(
-            includeJsonAccept: true,
-            action: (headers) async {
-              final response = await _dio.getUri(
-                uri,
-                options: Options(headers: headers),
-              );
-              final raw = response.data;
-              if (raw is Map<String, dynamic>) {
-                return raw;
-              }
-
-              throw Exception(
-                'Unexpected nested group members response shape.',
-              );
-            },
-          );
-
-      for (final member in _extractNestedGroupMembers(payload['data'])) {
+      for (final member in page.items) {
         if (seen.add(member.id)) {
           members.add(member);
         }
       }
 
-      final cursor = payload['next_cursor']?.toString().trim();
+      final cursor = page.nextCursorValue?.value.trim();
       if (cursor == null || cursor.isEmpty) {
         break;
       }
@@ -386,6 +364,53 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     }
 
     return List<AccountProfileNestedGroupMember>.unmodifiable(members);
+  }
+
+  @override
+  Future<AccountProfileNestedGroupMemberPage> fetchNestedGroupMembersPageByPath(
+    String membersPath, {
+    String? cursor,
+  }) async {
+    final normalizedPath = membersPath.trim();
+    if (normalizedPath.isEmpty) {
+      return const AccountProfileNestedGroupMemberPage.empty();
+    }
+
+    final normalizedCursor = cursor?.trim();
+    final uri = _resolveTenantPublicUriFromPath(
+      normalizedPath,
+      queryParameters: normalizedCursor == null || normalizedCursor.isEmpty
+          ? null
+          : <String, String>{'cursor': normalizedCursor},
+    );
+
+    final payload =
+        await TenantPublicAuthHeaders.retryOnceOnUnauthorized<
+          Map<String, dynamic>
+        >(
+          includeJsonAccept: true,
+          action: (headers) async {
+            final response = await _dio.getUri(
+              uri,
+              options: Options(headers: headers),
+            );
+            final raw = response.data;
+            if (raw is Map<String, dynamic>) {
+              return raw;
+            }
+
+            throw Exception('Unexpected nested group members response shape.');
+          },
+        );
+
+    final pagePayload = _extractNestedGroupMembersPagePayload(payload);
+    final nextCursor = _normalizedOpaqueCursor(pagePayload['next_cursor']);
+    return AccountProfileNestedGroupMemberPage(
+      items: _extractNestedGroupMembers(pagePayload['data']),
+      nextCursorValue: nextCursor == null
+          ? null
+          : AccountProfileNestedGroupMemberTextValue(nextCursor),
+    );
   }
 
   List<AccountProfileModel> _parseProfiles(
@@ -428,7 +453,9 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
             _parseLocationLatLng(json['location']) ??
             _parseTopLevelLatLng(json);
         final locationAddress = _parseLocationAddress(json);
-        final avatarValue = _thumbUriValueOrNull(json['avatar_url']?.toString());
+        final avatarValue = _thumbUriValueOrNull(
+          json['avatar_url']?.toString(),
+        );
         final coverValue = _thumbUriValueOrNull(json['cover_url']?.toString());
         DescriptionValue? bioValue;
         final bio = json['bio']?.toString();
@@ -732,8 +759,12 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           orderValue: AccountProfileNestedGroupOrderValue(
             _parsePageValue(json['order']) ?? groups.length,
           ),
-          membersPath: json['members_path']?.toString().trim(),
-          memberCount: _parsePageValue(json['member_count']) ?? 0,
+          membersPathValue: AccountProfileNestedGroupMembersPathValue(
+            json['members_path']?.toString().trim() ?? '',
+          ),
+          memberCountValue: AccountProfileNestedGroupMemberCountValue(
+            _parsePageValue(json['member_count']) ?? 0,
+          ),
           profiles: _extractNestedGroupMembers(json['profiles']),
         ),
       );
@@ -817,6 +848,27 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     }
 
     return List<AccountProfileNestedGroupMember>.unmodifiable(members);
+  }
+
+  Map<String, dynamic> _extractNestedGroupMembersPagePayload(
+    Map<String, dynamic> payload,
+  ) {
+    final nestedPayload = payload['data'];
+    if (nestedPayload is Map<String, dynamic>) {
+      return nestedPayload;
+    }
+    if (nestedPayload is Map) {
+      return Map<String, dynamic>.from(nestedPayload);
+    }
+    return payload;
+  }
+
+  String? _normalizedOpaqueCursor(dynamic raw) {
+    final cursor = raw?.toString().trim();
+    if (cursor == null || cursor.isEmpty) {
+      return null;
+    }
+    return cursor;
   }
 
   Uri _resolveTenantPublicUriFromPath(

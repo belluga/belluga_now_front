@@ -1,12 +1,13 @@
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group_member_page.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
 import 'mock_account_profiles_database.dart';
 
 class MockAccountProfilesBackend implements AccountProfilesBackendContract {
   MockAccountProfilesBackend({MockAccountProfilesDatabase? database})
-      : _database = database ?? MockAccountProfilesDatabase();
+    : _database = database ?? MockAccountProfilesDatabase();
 
   final MockAccountProfilesDatabase _database;
 
@@ -21,8 +22,10 @@ class MockAccountProfilesBackend implements AccountProfilesBackendContract {
     List<String>? allowedTypes,
   }) async {
     await Future.delayed(const Duration(milliseconds: 100));
-    final filtered =
-        _database.searchAccountProfiles(query: query, typeFilter: typeFilter);
+    final filtered = _database.searchAccountProfiles(
+      query: query,
+      typeFilter: typeFilter,
+    );
     final startIndex = (page - 1) * pageSize;
     if (startIndex >= filtered.length || startIndex < 0) {
       return pagedAccountProfilesResultFromRaw(
@@ -51,6 +54,22 @@ class MockAccountProfilesBackend implements AccountProfilesBackendContract {
   ) async {
     await Future.delayed(const Duration(milliseconds: 50));
     return const <AccountProfileNestedGroupMember>[];
+  }
+
+  @override
+  Future<AccountProfileNestedGroupMemberPage> fetchNestedGroupMembersPageByPath(
+    String membersPath, {
+    String? cursor,
+  }) async {
+    final normalizedCursor = cursor?.trim();
+    if (normalizedCursor != null && normalizedCursor.isNotEmpty) {
+      return const AccountProfileNestedGroupMemberPage.empty();
+    }
+
+    return AccountProfileNestedGroupMemberPage(
+      items: await fetchNestedGroupMembersByPath(membersPath),
+      nextCursorValue: null,
+    );
   }
 
   @override

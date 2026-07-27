@@ -892,6 +892,24 @@ class _TenantAdminAccountProfileEditScreenState
                                                   .filterNestedProfileCandidatesByProfileType,
                                               onLoadMore: _controller
                                                   .loadNextNestedProfileCandidatesPage,
+                                              loadSelectedReadbackPage:
+                                                  ({
+                                                    required groupId,
+                                                    String? cursor,
+                                                  }) => _controller
+                                                      .fetchEditNestedGroupMembersPage(
+                                                        accountProfileId:
+                                                            _currentAccountProfileIdForRequests(),
+                                                        groupId: groupId,
+                                                        cursor: cursor,
+                                                      ),
+                                              ensureSelectedBaselineHydrated:
+                                                  (groupId) => _controller
+                                                      .ensureEditNestedGroupBaselineHydrated(
+                                                        accountProfileId:
+                                                            _currentAccountProfileIdForRequests(),
+                                                        groupId: groupId,
+                                                      ),
                                               searchLoadingStreamValue: _controller
                                                   .nestedProfileSearchLoadingStreamValue,
                                               searchPageLoadingStreamValue:
@@ -1059,15 +1077,28 @@ class _TenantAdminAccountProfileEditScreenState
                                                             state,
                                                           )
                                                         : null;
+                                                    final accountProfileId =
+                                                        _currentAccountProfileIdForRequests();
+                                                    if (hasNestedProfileGroups) {
+                                                      await _controller
+                                                          .ensureAllEditNestedGroupBaselinesHydrated(
+                                                            accountProfileId:
+                                                                accountProfileId,
+                                                          );
+                                                    }
+                                                    final submitState =
+                                                        _controller
+                                                            .editStateStreamValue
+                                                            .value;
                                                     final contactChannelDrafts =
                                                         _controller
                                                             .buildEditContactChannelDrafts(
                                                               capabilityEnabled:
                                                                   hasContactChannels,
                                                             );
-                                                    _controller.submitUpdateProfile(
+                                                    await _controller.submitUpdateProfile(
                                                       accountProfileId:
-                                                          _currentAccountProfileIdForRequests(),
+                                                          accountProfileId,
                                                       profileType: selectedType,
                                                       slug: _controller
                                                           .slugController
@@ -1114,7 +1145,7 @@ class _TenantAdminAccountProfileEditScreenState
                                                           _hasNestedProfileGroups(
                                                             selectedType,
                                                           )
-                                                          ? state
+                                                          ? submitState
                                                                 .nestedProfileGroups
                                                           : null,
                                                       contactMode:

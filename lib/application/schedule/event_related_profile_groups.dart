@@ -105,7 +105,20 @@ final class EventRelatedProfileGroups {
           ),
         );
       }
-      return List<EventRelatedProfileGroupSummary>.unmodifiable(summaries);
+      if (summaries.isNotEmpty) {
+        return List<EventRelatedProfileGroupSummary>.unmodifiable(summaries);
+      }
+
+      final summaryProfiles = _dedupeProfiles(
+        _nonVenueProfiles(linkedAccountProfiles, venueId: venueId),
+      );
+      if (summaryProfiles.isEmpty) {
+        return const <EventRelatedProfileGroupSummary>[];
+      }
+
+      return List<EventRelatedProfileGroupSummary>.unmodifiable([
+        EventRelatedProfileGroupSummary(label: '', profiles: summaryProfiles),
+      ]);
     }
 
     final groupedProfiles = _legacyGroupedProfilesByType(

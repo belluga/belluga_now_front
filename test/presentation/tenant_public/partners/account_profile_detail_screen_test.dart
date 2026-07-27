@@ -13,7 +13,6 @@ import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
-import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
@@ -1932,9 +1931,10 @@ void main() {
           '/api/v1/account_profiles/ponta-da-fruta/nested_groups/parceiros/members';
       final lazyMembers = _buildNestedAccountProfileGroup().profiles;
       final repository = _FakeAccountProfilesRepository(
-        nestedGroupMembersByPath: <String, List<AccountProfileNestedGroupMember>>{
-          membersPath: lazyMembers,
-        },
+        nestedGroupMembersByPath:
+            <String, List<AccountProfileNestedGroupMember>>{
+              membersPath: lazyMembers,
+            },
       );
       final controller = AccountProfileDetailController(
         accountProfilesRepository: repository,
@@ -1945,8 +1945,12 @@ void main() {
         idValue: AccountProfileNestedGroupIdValue('parceiros'),
         labelValue: AccountProfileNestedGroupLabelValue('Parceiros'),
         orderValue: AccountProfileNestedGroupOrderValue(0),
-        membersPath: membersPath,
-        memberCount: lazyMembers.length,
+        membersPathValue: AccountProfileNestedGroupMembersPathValue(
+          membersPath,
+        ),
+        memberCountValue: AccountProfileNestedGroupMemberCountValue(
+          lazyMembers.length,
+        ),
         profiles: const <AccountProfileNestedGroupMember>[],
       );
 
@@ -2020,7 +2024,11 @@ void main() {
         immersiveDetail.tabs.map((tab) => tab.title),
         containsAll(<String>['Parceiros', 'Novo grupo 3']),
       );
-      expect(find.text('Novo grupo 3'), findsOneWidget);
+      expect(find.byKey(const Key('immersiveTabLabel_4')), findsOneWidget);
+      expect(
+        tester.widget<Text>(find.byKey(const Key('immersiveTabLabel_4'))).data,
+        'Novo grupo 3',
+      );
       expect(
         find.byKey(const Key('immersiveTabOverflowHintRight')),
         findsOneWidget,
@@ -3485,17 +3493,15 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   _FakeAccountProfilesRepository({
     Set<String> initialFavoriteIds = const <String>{},
     List<AccountProfileModel> profiles = const <AccountProfileModel>[],
-    Map<String, List<AccountProfileNestedGroupMember>> nestedGroupMembersByPath =
+    Map<String, List<AccountProfileNestedGroupMember>>
+        nestedGroupMembersByPath =
         const <String, List<AccountProfileNestedGroupMember>>{},
   }) : _favoriteIds = Set<String>.from(initialFavoriteIds),
        _profiles = List<AccountProfileModel>.from(profiles),
-       _nestedGroupMembersByPath =
-           nestedGroupMembersByPath.map(
-             (key, value) => MapEntry(
-               key,
-               List<AccountProfileNestedGroupMember>.from(value),
-             ),
-           ) {
+       _nestedGroupMembersByPath = nestedGroupMembersByPath.map(
+         (key, value) =>
+             MapEntry(key, List<AccountProfileNestedGroupMember>.from(value)),
+       ) {
     favoriteAccountProfileIdsStreamValue.addValue(
       _favoriteIds
           .map((id) => AccountProfilesRepositoryContractPrimString.fromRaw(id))
@@ -3505,7 +3511,8 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
 
   final Set<String> _favoriteIds;
   final List<AccountProfileModel> _profiles;
-  final Map<String, List<AccountProfileNestedGroupMember>> _nestedGroupMembersByPath;
+  final Map<String, List<AccountProfileNestedGroupMember>>
+  _nestedGroupMembersByPath;
   String? lastNestedGroupMembersPath;
 
   @override

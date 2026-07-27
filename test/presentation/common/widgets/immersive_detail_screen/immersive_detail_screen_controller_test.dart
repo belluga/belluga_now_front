@@ -78,7 +78,8 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
 
   @override
   Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
-      EventTrackerTimedEventHandle handle) async {
+    EventTrackerTimedEventHandle handle,
+  ) async {
     final index = activeTimedEvents.indexWhere(
       (entry) => entry.handle.id == handle.id,
     );
@@ -108,10 +109,9 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
   EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
 
   @override
-  Future<TelemetryRepositoryContractPrimBool> mergeIdentity(
-          {required TelemetryRepositoryContractPrimString
-              previousUserId}) async =>
-      telemetryRepoBool(true);
+  Future<TelemetryRepositoryContractPrimBool> mergeIdentity({
+    required TelemetryRepositoryContractPrimString previousUserId,
+  }) async => telemetryRepoBool(true);
 }
 
 void main() {
@@ -120,18 +120,9 @@ void main() {
   test('horizontal swipe end moves to adjacent tab and clamps at edges', () {
     final controller = ImmersiveDetailScreenController(
       tabItems: [
-        ImmersiveTabItem(
-          title: 'Overview',
-          content: const SizedBox.shrink(),
-        ),
-        ImmersiveTabItem(
-          title: 'Details',
-          content: const SizedBox.shrink(),
-        ),
-        ImmersiveTabItem(
-          title: 'Route',
-          content: const SizedBox.shrink(),
-        ),
+        ImmersiveTabItem(title: 'Overview', content: const SizedBox.shrink()),
+        ImmersiveTabItem(title: 'Details', content: const SizedBox.shrink()),
+        ImmersiveTabItem(title: 'Route', content: const SizedBox.shrink()),
       ],
     );
 
@@ -159,14 +150,8 @@ void main() {
     final telemetryRepository = _FakeTelemetryRepository();
     final controller = ImmersiveDetailScreenController(
       tabItems: [
-        ImmersiveTabItem(
-          title: 'Overview',
-          content: const SizedBox.shrink(),
-        ),
-        ImmersiveTabItem(
-          title: 'Details',
-          content: const SizedBox.shrink(),
-        ),
+        ImmersiveTabItem(title: 'Overview', content: const SizedBox.shrink()),
+        ImmersiveTabItem(title: 'Details', content: const SizedBox.shrink()),
       ],
       initialTabIndex: 1,
       telemetryRepository: telemetryRepository,
@@ -186,10 +171,7 @@ void main() {
       telemetryRepository.events.first.properties?['section_title'],
       'Overview',
     );
-    expect(
-      telemetryRepository.events.first.properties?['position_index'],
-      0,
-    );
+    expect(telemetryRepository.events.first.properties?['position_index'], 0);
 
     controller.dispose();
     await _flushMicrotasks();
@@ -199,11 +181,40 @@ void main() {
       telemetryRepository.events.last.properties?['section_title'],
       'Details',
     );
-    expect(
-      telemetryRepository.events.last.properties?['position_index'],
-      1,
-    );
+    expect(telemetryRepository.events.last.properties?['position_index'], 1);
   });
+
+  test(
+    'ensureTabActivated activates a tab once without changing selection',
+    () {
+      var firstActivationCount = 0;
+      var secondActivationCount = 0;
+      final controller = ImmersiveDetailScreenController(
+        tabItems: [
+          ImmersiveTabItem(
+            title: 'Overview',
+            onActivated: () => firstActivationCount += 1,
+            content: const SizedBox.shrink(),
+          ),
+          ImmersiveTabItem(
+            title: 'Details',
+            onActivated: () => secondActivationCount += 1,
+            content: const SizedBox.shrink(),
+          ),
+        ],
+      );
+
+      controller.ensureTabActivated(0);
+      controller.ensureTabActivated(1);
+      controller.ensureTabActivated(1);
+
+      expect(firstActivationCount, 1);
+      expect(secondActivationCount, 1);
+      expect(controller.currentTabIndexStreamValue.value, 0);
+
+      controller.dispose();
+    },
+  );
 }
 
 Future<void> _flushMicrotasks() async {

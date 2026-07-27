@@ -16,6 +16,7 @@ import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
+import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/presentation/shared/favorites/account_profile_favorite_auth_gate.dart';
 import 'package:belluga_now/presentation/shared/sharing/public_share_launcher.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
@@ -31,6 +32,7 @@ import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_hero_action.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_directions_section.dart';
+import 'package:belluga_now/presentation/shared/widgets/nested_accounts_load_more_indicator.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
@@ -881,6 +883,9 @@ class _AccountProfileDetailScreenState
           (group) => ImmersiveTabItem(
             title: group.label,
             content: _nestedProfileGroup(group),
+            onActivated: () {
+              unawaited(_controller.ensureNestedGroupMembersLoaded(group));
+            },
             footer: null,
           ),
         )
@@ -2940,18 +2945,32 @@ class _AccountProfileDetailScreenState
       key: Key('accountProfileNestedGroup_${group.id}'),
       controller: _controller,
       group: group,
-      itemBuilder: (members) => Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (final entry in members.asMap().entries) ...[
-              if (entry.key > 0) const SizedBox(height: 12),
-              _nestedProfileMemberCard(group, entry.value),
+      itemBuilder: (members, footer) {
+        final title = group.label.trim();
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (title.isNotEmpty) ...[
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+              for (final entry in members.asMap().entries) ...[
+                if (entry.key > 0) const SizedBox(height: 12),
+                _nestedProfileMemberCard(group, entry.value),
+              ],
+              // ignore: use_null_aware_elements
+              if (footer case final footer?) footer,
             ],
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -3227,7 +3246,7 @@ class _AccountProfileDetailScreenState
   }
 }
 
-class _LazyNestedProfileGroupContent extends StatefulWidget {
+class _LazyNestedProfileGroupContent extends StatelessWidget {
   const _LazyNestedProfileGroupContent({
     required this.controller,
     required this.group,
@@ -3237,99 +3256,95 @@ class _LazyNestedProfileGroupContent extends StatefulWidget {
 
   final AccountProfileDetailController controller;
   final AccountProfileNestedGroup group;
-  final Widget Function(List<AccountProfileNestedGroupMember> members)
+  final Widget Function(
+    List<AccountProfileNestedGroupMember> members,
+    Widget? footer,
+  )
   itemBuilder;
 
   @override
-  State<_LazyNestedProfileGroupContent> createState() =>
-      _LazyNestedProfileGroupContentState();
-}
-
-class _LazyNestedProfileGroupContentState
-    extends State<_LazyNestedProfileGroupContent> {
-  Future<List<AccountProfileNestedGroupMember>>? _future;
-
-  @override
-  void initState() {
-    super.initState();
-    _future = _initialFuture();
-  }
-
-  @override
-  void didUpdateWidget(covariant _LazyNestedProfileGroupContent oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.group.id != widget.group.id ||
-        oldWidget.group.membersPath != widget.group.membersPath ||
-        oldWidget.group.profiles != widget.group.profiles) {
-      _future = _initialFuture();
-    }
-  }
-
-  Future<List<AccountProfileNestedGroupMember>>? _initialFuture() {
-    if (widget.group.profiles.isNotEmpty) {
-      return Future<List<AccountProfileNestedGroupMember>>.value(
-        widget.group.profiles,
-      );
-    }
-
-    return null;
-  }
-
-  Future<List<AccountProfileNestedGroupMember>> _load() async {
-    if (widget.group.profiles.isNotEmpty) {
-      return widget.group.profiles;
-    }
-
-    return widget.controller.loadNestedGroupMembers(widget.group);
-  }
-
-  void _ensureLoadedWhenVisible(VisibilityInfo info) {
-    if (info.visibleFraction <= 0 || _future != null) {
-      return;
-    }
-
-    setState(() {
-      _future = _load();
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return VisibilityDetector(
-      key: Key('accountProfileNestedGroupVisibility_${widget.group.id}'),
-      onVisibilityChanged: _ensureLoadedWhenVisible,
-      child: FutureBuilder<List<AccountProfileNestedGroupMember>>(
-        future: _future,
-        builder: (context, snapshot) {
-          if (_future == null) {
-            return const SizedBox(width: double.infinity, height: 1);
-          }
+    if (group.profiles.isNotEmpty) {
+      return itemBuilder(group.profiles, null);
+    }
 
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const Padding(
-              padding: EdgeInsets.all(24),
-              child: Center(child: CircularProgressIndicator()),
+    return StreamValueBuilder<List<AccountProfileNestedGroupMember>>(
+      streamValue: controller.nestedGroupMembersStreamValue(group),
+      builder: (context, members) {
+        return StreamValueBuilder<AccountProfilesRepositoryContractPrimBool>(
+          streamValue: controller.hasMoreNestedGroupMembersStreamValue(group),
+          builder: (context, hasMoreValue) {
+            return StreamValueBuilder<
+              AccountProfilesRepositoryContractPrimBool
+            >(
+              streamValue: controller
+                  .isNestedGroupMembersPageLoadingStreamValue(group),
+              builder: (context, isLoadingValue) {
+                return StreamValueBuilder<
+                  AccountProfilesRepositoryContractPrimString?
+                >(
+                  streamValue: controller.nestedGroupMembersErrorStreamValue(
+                    group,
+                  ),
+                  builder: (context, errorValue) {
+                    final isLoading = isLoadingValue.value;
+                    final hasMore = hasMoreValue.value;
+                    final errorMessage = errorValue?.value;
+
+                    if (isLoading && members.isEmpty) {
+                      return const Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+
+                    if (errorMessage != null &&
+                        errorMessage.trim().isNotEmpty &&
+                        members.isEmpty) {
+                      return Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text(
+                                'Não foi possível carregar os perfis desta aba.',
+                              ),
+                              const SizedBox(height: 12),
+                              TextButton(
+                                onPressed: () => controller
+                                    .ensureNestedGroupMembersLoaded(group),
+                                child: const Text('Tentar novamente'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+
+                    if (members.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+
+                    final footer = hasMore || isLoading
+                        ? NestedAccountsLoadMoreIndicator(
+                            visibilityKey:
+                                'accountProfileNestedGroupLoadMore_${group.id}',
+                            hasMore: hasMore,
+                            isLoading: isLoading,
+                            onLoadMore: () =>
+                                controller.loadMoreNestedGroupMembers(group),
+                          )
+                        : null;
+
+                    return itemBuilder(members, footer);
+                  },
+                );
+              },
             );
-          }
-
-          if (snapshot.hasError) {
-            return const Padding(
-              padding: EdgeInsets.all(24),
-              child: Center(
-                child: Text('Não foi possível carregar os perfis desta aba.'),
-              ),
-            );
-          }
-
-          final members =
-              snapshot.data ?? const <AccountProfileNestedGroupMember>[];
-          if (members.isEmpty) {
-            return const SizedBox.shrink();
-          }
-
-          return widget.itemBuilder(members);
-        },
-      ),
+          },
+        );
+      },
     );
   }
 }
