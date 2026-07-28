@@ -619,13 +619,22 @@ class TenantAdminEventsController implements Disposable {
     final firstOccurrence = localOccurrences.firstOrNull;
     final profileGroups =
         existingEvent?.profileGroups ?? const <TenantAdminNestedProfileGroup>[];
-    final selectedRelatedAccountProfileIds = profileGroups.isNotEmpty
-        ? TenantAdminNestedProfileGroupOperations.memberIds(profileGroups)
-        : [
-            ...?existingEvent?.eventParties
-                .where((party) => party.partyType != 'venue')
-                .map((party) => party.partyRefId),
-          ];
+    final selectedRelatedAccountProfileIds = () {
+      if (localOccurrences.length == 1 &&
+          localOccurrences.first.profileGroups.isNotEmpty) {
+        return TenantAdminNestedProfileGroupOperations.memberIds(
+          localOccurrences.first.profileGroups,
+        );
+      }
+      if (profileGroups.isNotEmpty) {
+        return TenantAdminNestedProfileGroupOperations.memberIds(profileGroups);
+      }
+      return [
+        ...?existingEvent?.eventParties
+            .where((party) => party.partyType != 'venue')
+            .map((party) => party.partyRefId),
+      ];
+    }();
     final nextState = _mirrorSingleOccurrenceEventProfileGroups(
       TenantAdminEventFormState(
         startAt: firstOccurrence?.dateTimeStart == null
