@@ -187,11 +187,13 @@ class _TenantAdminEventFormScreenState
                 formState: formState,
                 partyCandidatesLoading: viewModel.partyCandidatesLoading,
               ),
-              const SizedBox(height: 16),
-              _buildRelatedAccountProfilesSection(
-                viewModel.relatedAccountProfiles,
-                formState: formState,
-              ),
+              if (formState.occurrences.length <= 1) ...[
+                const SizedBox(height: 16),
+                _buildRelatedAccountProfilesSection(
+                  viewModel.relatedAccountProfiles,
+                  formState: formState,
+                ),
+              ],
               if (formState.occurrences.length <= 1) ...[
                 const SizedBox(height: 16),
                 _buildPrimaryOccurrenceProgrammingSection(
@@ -890,6 +892,9 @@ class _TenantAdminEventFormScreenState
     List<TenantAdminAccountProfile> relatedAccountProfiles, {
     required TenantAdminEventFormState formState,
   }) {
+    final groups = formState.occurrences.length == 1
+        ? formState.occurrences.first.profileGroups
+        : formState.profileGroups;
     return FormValidationAnchor(
       anchors: _validationAnchors,
       targetId: TenantAdminEventFormValidationTargets.relatedProfiles,
@@ -911,7 +916,7 @@ class _TenantAdminEventFormScreenState
                     selectedCountLabel: 'perfil(is) selecionado(s)',
                     searchLabelText: 'Buscar perfil',
                     emptySearchText: 'Nenhum perfil encontrado.',
-                    groups: formState.profileGroups,
+                    groups: groups,
                     candidatesStreamValue:
                         _controller.relatedAccountProfileCandidatesStreamValue,
                     onSearchChanged: (query) => unawaited(
@@ -920,8 +925,8 @@ class _TenantAdminEventFormScreenState
                             query,
                           ),
                     ),
-                    onOpenPicker: () => _controller
-                        .prepareRelatedAccountProfilePicker(
+                    onOpenPicker: () =>
+                        _controller.prepareRelatedAccountProfilePicker(
                           accountSlug: widget.accountSlugForOwnCreate,
                         ),
                     onLoadMore: _controller
