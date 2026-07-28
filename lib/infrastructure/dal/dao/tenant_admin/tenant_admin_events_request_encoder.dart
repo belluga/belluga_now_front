@@ -83,42 +83,22 @@ class TenantAdminEventsRequestEncoder {
             draft.publication.publishAt!,
           ).toIso8601String(),
       },
+      'profile_groups': _encodeProfileGroups(draft.profileGroups),
     };
 
     if (draft.taxonomyTerms.isNotEmpty) {
       payload['taxonomy_terms'] = draft.taxonomyTerms
-          .map((term) => <String, dynamic>{
-                'type': term.type,
-                'value': term.value,
-              })
+          .map(
+            (term) => <String, dynamic>{'type': term.type, 'value': term.value},
+          )
           .toList(growable: false);
     }
-
-    if (draft.profileGroups.isNotEmpty) {
-      payload['profile_groups'] = _encodeProfileGroups(draft.profileGroups);
-    }
-
-    payload['event_parties'] = _profileIdsForParties(
-      profileGroups: draft.profileGroups,
-      fallbackProfileIds: draft.relatedAccountProfileIds
-          .map((profileId) => profileId.value)
-          .toList(growable: false),
-    ).map((profileId) {
-      return <String, dynamic>{
-        'party_ref_id': profileId,
-        'permissions': <String, dynamic>{
-          'can_edit': true,
-        },
-      };
-    }).toList(growable: false);
 
     final normalizedCoverUrl = draft.coverUrl?.trim();
     if (normalizedCoverUrl != null && normalizedCoverUrl.isNotEmpty) {
       payload['thumb'] = <String, dynamic>{
         'type': 'image',
-        'data': <String, dynamic>{
-          'url': normalizedCoverUrl,
-        },
+        'data': <String, dynamic>{'url': normalizedCoverUrl},
       };
     }
 
@@ -154,34 +134,13 @@ class TenantAdminEventsRequestEncoder {
         'date_time_end': TimezoneConverter.localToUtc(
           occurrence.dateTimeEnd!,
         ).toIso8601String(),
+      'profile_groups': _encodeProfileGroups(occurrence.profileGroups),
     };
 
-    if (occurrence.profileGroups.isNotEmpty) {
-      payload['profile_groups'] = _encodeProfileGroups(
-        occurrence.profileGroups,
-      );
-    }
-
-    final occurrencePartyIds = _profileIdsForParties(
-      profileGroups: occurrence.profileGroups,
-      fallbackProfileIds: occurrence.relatedAccountProfileIds
-          .map((profileId) => profileId.value)
-          .toList(growable: false),
-    );
-    payload['event_parties'] = occurrencePartyIds.map((profileId) {
-      return <String, dynamic>{
-        'party_ref_id': profileId,
-        'permissions': <String, dynamic>{
-          'can_edit': true,
-        },
-      };
-    }).toList(growable: false);
-
     payload['taxonomy_terms'] = occurrence.taxonomyTerms
-        .map((term) => <String, dynamic>{
-              'type': term.type,
-              'value': term.value,
-            })
+        .map(
+          (term) => <String, dynamic>{'type': term.type, 'value': term.value},
+        )
         .toList(growable: false);
 
     payload['programming_items'] = occurrence.programmingItems
@@ -224,31 +183,8 @@ class TenantAdminEventsRequestEncoder {
         .toList(growable: false);
   }
 
-  List<String> _profileIdsForParties({
-    required List<TenantAdminNestedProfileGroup> profileGroups,
-    required List<String> fallbackProfileIds,
-  }) {
-    final ids = <String>[];
-    final sourceIds = profileGroups.isEmpty
-        ? fallbackProfileIds
-        : [
-            for (final group in profileGroups)
-              for (final profileId in group.accountProfileIdValues)
-                profileId.value,
-          ];
-    for (final profileId in sourceIds) {
-      final normalized = profileId.trim();
-      if (normalized.isNotEmpty && !ids.contains(normalized)) {
-        ids.add(normalized);
-      }
-    }
-    return List<String>.unmodifiable(ids);
-  }
-
   Map<String, dynamic> _encodeLocation(TenantAdminEventLocation location) {
-    final locationPayload = <String, dynamic>{
-      'mode': location.mode,
-    };
+    final locationPayload = <String, dynamic>{'mode': location.mode};
     final includesPhysicalGeometry =
         location.mode == 'physical' || location.mode == 'hybrid';
     if (includesPhysicalGeometry &&

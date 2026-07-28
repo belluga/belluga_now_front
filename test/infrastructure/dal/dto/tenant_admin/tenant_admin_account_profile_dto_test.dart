@@ -51,4 +51,52 @@ void main() {
     expect(profile.contactSourceProfile?.slug, 'contact-source');
     expect(profile.aggregateRevision, 7);
   });
+
+  test('accepts legacy nested group id aliases on readback', () {
+    final profile = TenantAdminAccountProfileDTO.fromJson({
+      'id': 'profile-parent',
+      'account_id': 'account-parent',
+      'profile_type': 'venue',
+      'display_name': 'Parent',
+      'nested_profile_groups': [
+        {
+          'group_id': 'legacy-group-id',
+          'label': 'Legacy group',
+          'order': 3,
+          'profile_ids': ['profile-1'],
+        },
+      ],
+    }).toDomain();
+
+    final nestedGroup = profile.nestedProfileGroups.single;
+    expect(nestedGroup.id, 'legacy-group-id');
+    expect(nestedGroup.label, 'Legacy group');
+    expect(nestedGroup.accountProfileIdValues.map((entry) => entry.value), [
+      'profile-1',
+    ]);
+  });
+
+  test('accepts aggregation nested group id alias on readback', () {
+    final profile = TenantAdminAccountProfileDTO.fromJson({
+      'id': 'profile-parent',
+      'account_id': 'account-parent',
+      'profile_type': 'venue',
+      'display_name': 'Parent',
+      'nested_profile_groups': [
+        {
+          'aggregation': 'aggregated-partners',
+          'label': 'Aggregated group',
+          'order': 1,
+          'profile_ids': ['profile-7'],
+        },
+      ],
+    }).toDomain();
+
+    final nestedGroup = profile.nestedProfileGroups.single;
+    expect(nestedGroup.id, 'aggregated-partners');
+    expect(nestedGroup.label, 'Aggregated group');
+    expect(nestedGroup.accountProfileIdValues.map((entry) => entry.value), [
+      'profile-7',
+    ]);
+  });
 }

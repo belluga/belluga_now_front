@@ -14,6 +14,7 @@ class LinkedProfileCategorySection extends StatelessWidget {
     required this.isFavoritable,
     required this.onProfileTap,
     required this.onFavoriteTap,
+    this.footer,
     super.key,
   });
 
@@ -24,6 +25,7 @@ class LinkedProfileCategorySection extends StatelessWidget {
   final bool Function(EventLinkedAccountProfile profile) isFavoritable;
   final ValueChanged<EventLinkedAccountProfile> onProfileTap;
   final ValueChanged<EventLinkedAccountProfile> onFavoriteTap;
+  final Widget? footer;
 
   @override
   Widget build(BuildContext context) {
@@ -60,6 +62,8 @@ class LinkedProfileCategorySection extends StatelessWidget {
               ),
             ),
           ),
+          // ignore: use_null_aware_elements
+          if (footer case final footer?) footer,
         ],
       ),
     );

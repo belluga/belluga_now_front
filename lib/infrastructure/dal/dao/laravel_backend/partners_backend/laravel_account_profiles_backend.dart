@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/partners/account_profile_gallery_group.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group_member_page.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
@@ -25,6 +26,7 @@ import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dto/schedule/support/public_media_url_normalizer.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/shared/tenant_public_auth_headers.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_resolution_request_factory.dart';
 import 'package:dio/dio.dart';
@@ -329,6 +331,88 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     }
   }
 
+  @override
+  Future<List<AccountProfileNestedGroupMember>> fetchNestedGroupMembersByPath(
+    String membersPath,
+  ) async {
+    final normalizedPath = membersPath.trim();
+    if (normalizedPath.isEmpty) {
+      return const <AccountProfileNestedGroupMember>[];
+    }
+
+    final members = <AccountProfileNestedGroupMember>[];
+    final seen = <String>{};
+    String? nextCursor;
+
+    while (true) {
+      final page = await fetchNestedGroupMembersPageByPath(
+        normalizedPath,
+        cursor: nextCursor,
+      );
+
+      for (final member in page.items) {
+        if (seen.add(member.id)) {
+          members.add(member);
+        }
+      }
+
+      final cursor = page.nextCursorValue?.value.trim();
+      if (cursor == null || cursor.isEmpty) {
+        break;
+      }
+      nextCursor = cursor;
+    }
+
+    return List<AccountProfileNestedGroupMember>.unmodifiable(members);
+  }
+
+  @override
+  Future<AccountProfileNestedGroupMemberPage> fetchNestedGroupMembersPageByPath(
+    String membersPath, {
+    String? cursor,
+  }) async {
+    final normalizedPath = membersPath.trim();
+    if (normalizedPath.isEmpty) {
+      return const AccountProfileNestedGroupMemberPage.empty();
+    }
+
+    final normalizedCursor = cursor?.trim();
+    final uri = _resolveTenantPublicUriFromPath(
+      normalizedPath,
+      queryParameters: normalizedCursor == null || normalizedCursor.isEmpty
+          ? null
+          : <String, String>{'cursor': normalizedCursor},
+    );
+
+    final payload =
+        await TenantPublicAuthHeaders.retryOnceOnUnauthorized<
+          Map<String, dynamic>
+        >(
+          includeJsonAccept: true,
+          action: (headers) async {
+            final response = await _dio.getUri(
+              uri,
+              options: Options(headers: headers),
+            );
+            final raw = response.data;
+            if (raw is Map<String, dynamic>) {
+              return raw;
+            }
+
+            throw Exception('Unexpected nested group members response shape.');
+          },
+        );
+
+    final pagePayload = _extractNestedGroupMembersPagePayload(payload);
+    final nextCursor = _normalizedOpaqueCursor(pagePayload['next_cursor']);
+    return AccountProfileNestedGroupMemberPage(
+      items: _extractNestedGroupMembers(pagePayload['data']),
+      nextCursorValue: nextCursor == null
+          ? null
+          : AccountProfileNestedGroupMemberTextValue(nextCursor),
+    );
+  }
+
   List<AccountProfileModel> _parseProfiles(
     List<dynamic> raw, {
     required CityCoordinate? distanceOrigin,
@@ -369,18 +453,10 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
             _parseLocationLatLng(json['location']) ??
             _parseTopLevelLatLng(json);
         final locationAddress = _parseLocationAddress(json);
-        ThumbUriValue? avatarValue;
-        final avatarUrl = json['avatar_url']?.toString();
-        if (avatarUrl != null && avatarUrl.isNotEmpty) {
-          avatarValue = ThumbUriValue(defaultValue: Uri.parse(avatarUrl))
-            ..parse(avatarUrl);
-        }
-        ThumbUriValue? coverValue;
-        final coverUrl = json['cover_url']?.toString();
-        if (coverUrl != null && coverUrl.isNotEmpty) {
-          coverValue = ThumbUriValue(defaultValue: Uri.parse(coverUrl))
-            ..parse(coverUrl);
-        }
+        final avatarValue = _thumbUriValueOrNull(
+          json['avatar_url']?.toString(),
+        );
+        final coverValue = _thumbUriValueOrNull(json['cover_url']?.toString());
         DescriptionValue? bioValue;
         final bio = json['bio']?.toString();
         if (bio != null && bio.isNotEmpty) {
@@ -683,7 +759,13 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           orderValue: AccountProfileNestedGroupOrderValue(
             _parsePageValue(json['order']) ?? groups.length,
           ),
-          profiles: _extractNestedGroupMembers(json['profiles']),
+          membersPathValue: AccountProfileNestedGroupMembersPathValue(
+            json['members_path']?.toString().trim() ?? '',
+          ),
+          memberCountValue: AccountProfileNestedGroupMemberCountValue(
+            _parsePageValue(json['member_count']) ?? 0,
+          ),
+          profiles: const <AccountProfileNestedGroupMember>[],
         ),
       );
     }
@@ -732,18 +814,12 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           slugValue = SlugValue()..parse(slug);
         }
 
-        ThumbUriValue? avatarValue;
-        final avatarUrl = json['avatar_url']?.toString().trim();
-        if (avatarUrl != null && avatarUrl.isNotEmpty) {
-          avatarValue = ThumbUriValue(defaultValue: Uri.parse(avatarUrl))
-            ..parse(avatarUrl);
-        }
-        ThumbUriValue? coverValue;
-        final coverUrl = json['cover_url']?.toString().trim();
-        if (coverUrl != null && coverUrl.isNotEmpty) {
-          coverValue = ThumbUriValue(defaultValue: Uri.parse(coverUrl))
-            ..parse(coverUrl);
-        }
+        final avatarValue = _thumbUriValueOrNull(
+          json['avatar_url']?.toString().trim(),
+        );
+        final coverValue = _thumbUriValueOrNull(
+          json['cover_url']?.toString().trim(),
+        );
 
         members.add(
           AccountProfileNestedGroupMember(
@@ -774,6 +850,50 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     return List<AccountProfileNestedGroupMember>.unmodifiable(members);
   }
 
+  Map<String, dynamic> _extractNestedGroupMembersPagePayload(
+    Map<String, dynamic> payload,
+  ) {
+    final nestedPayload = payload['data'];
+    if (nestedPayload is Map<String, dynamic>) {
+      return nestedPayload;
+    }
+    if (nestedPayload is Map) {
+      return Map<String, dynamic>.from(nestedPayload);
+    }
+    return payload;
+  }
+
+  String? _normalizedOpaqueCursor(dynamic raw) {
+    final cursor = raw?.toString().trim();
+    if (cursor == null || cursor.isEmpty) {
+      return null;
+    }
+    return cursor;
+  }
+
+  Uri _resolveTenantPublicUriFromPath(
+    String path, {
+    Map<String, String>? queryParameters,
+  }) {
+    final directUri = Uri.tryParse(path);
+    if (directUri != null && directUri.hasScheme && directUri.host.isNotEmpty) {
+      return directUri.replace(
+        queryParameters: queryParameters == null || queryParameters.isEmpty
+            ? null
+            : queryParameters,
+      );
+    }
+
+    final origin = GetIt.I.get<AppData>().mainDomainValue.value.origin;
+    final normalizedPath = path.startsWith('/') ? path : '/$path';
+
+    return Uri.parse('$origin$normalizedPath').replace(
+      queryParameters: queryParameters == null || queryParameters.isEmpty
+          ? null
+          : queryParameters,
+    );
+  }
+
   List<dynamic> _extractDataList(Map<String, dynamic> payload) {
     final data = payload['data'];
     if (data is List) {
@@ -786,6 +906,21 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     }
 
     throw Exception('Account profiles payload missing data list.');
+  }
+
+  ThumbUriValue? _thumbUriValueOrNull(String? rawUrl) {
+    final normalized = normalizeTenantPublicMediaUrl(rawUrl);
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+
+    final parsed = Uri.tryParse(normalized);
+    if (parsed == null) {
+      return null;
+    }
+
+    return ThumbUriValue(defaultValue: parsed, isRequired: true)
+      ..parse(normalized);
   }
 
   List<String> _extractTags(dynamic raw) {

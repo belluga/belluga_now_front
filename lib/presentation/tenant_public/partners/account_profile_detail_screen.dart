@@ -16,6 +16,7 @@ import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
+import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/presentation/shared/favorites/account_profile_favorite_auth_gate.dart';
 import 'package:belluga_now/presentation/shared/sharing/public_share_launcher.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
@@ -31,6 +32,7 @@ import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_hero_action.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_directions_section.dart';
+import 'package:belluga_now/presentation/shared/widgets/nested_accounts_load_more_indicator.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
@@ -842,10 +844,10 @@ class _AccountProfileDetailScreenState
       (left, right) =>
           _tabOrderRank(left.title).compareTo(_tabOrderRank(right.title)),
     );
+    tabs.addAll(_buildNestedProfileGroupTabs(accountProfile));
     if (_controller.shouldRenderContactTab(accountProfile)) {
       tabs.add(_buildContactTab(accountProfile));
     }
-    tabs.addAll(_buildNestedProfileGroupTabs(accountProfile));
 
     return tabs;
   }
@@ -881,6 +883,9 @@ class _AccountProfileDetailScreenState
           (group) => ImmersiveTabItem(
             title: group.label,
             content: _nestedProfileGroup(group),
+            onActivated: () {
+              unawaited(_controller.ensureNestedGroupMembersLoaded(group));
+            },
             footer: null,
           ),
         )
@@ -2936,18 +2941,36 @@ class _AccountProfileDetailScreenState
   }
 
   Widget _nestedProfileGroup(AccountProfileNestedGroup group) {
-    return Padding(
+    return _LazyNestedProfileGroupContent(
       key: Key('accountProfileNestedGroup_${group.id}'),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final entry in group.profiles.asMap().entries) ...[
-            if (entry.key > 0) const SizedBox(height: 12),
-            _nestedProfileMemberCard(group, entry.value),
-          ],
-        ],
-      ),
+      controller: _controller,
+      group: group,
+      itemBuilder: (members, footer) {
+        final title = group.label.trim();
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (title.isNotEmpty) ...[
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+              for (final entry in members.asMap().entries) ...[
+                if (entry.key > 0) const SizedBox(height: 12),
+                _nestedProfileMemberCard(group, entry.value),
+              ],
+              // ignore: use_null_aware_elements
+              if (footer case final footer?) footer,
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -2979,7 +3002,7 @@ class _AccountProfileDetailScreenState
               : () => _safeRouterPushPath(memberPath),
           titleStyle: theme.textTheme.titleMedium?.copyWith(
             color: colorScheme.primary,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w700,
           ),
           titleMaxLines: 2,
           avatarSize: 64,
@@ -2988,7 +3011,7 @@ class _AccountProfileDetailScreenState
           cardLeft: 56,
           contentLeadingInset: 44,
           contentTrailingInset: memberPath == null ? 20 : 48,
-          minimumCardHeight: 124,
+          minimumCardHeight: 80,
         ),
         if (memberPath != null)
           Positioned.fill(
@@ -3220,6 +3243,105 @@ class _AccountProfileDetailScreenState
       case ProfileModuleId.sponsorBanner:
         return _sponsorBanner(data is String ? data : null);
     }
+  }
+}
+
+class _LazyNestedProfileGroupContent extends StatelessWidget {
+  const _LazyNestedProfileGroupContent({
+    required this.controller,
+    required this.group,
+    required this.itemBuilder,
+    super.key,
+  });
+
+  final AccountProfileDetailController controller;
+  final AccountProfileNestedGroup group;
+  final Widget Function(
+    List<AccountProfileNestedGroupMember> members,
+    Widget? footer,
+  )
+  itemBuilder;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamValueBuilder<List<AccountProfileNestedGroupMember>>(
+      streamValue: controller.nestedGroupMembersStreamValue(group),
+      builder: (context, members) {
+        return StreamValueBuilder<AccountProfilesRepositoryContractPrimBool>(
+          streamValue: controller.hasMoreNestedGroupMembersStreamValue(group),
+          builder: (context, hasMoreValue) {
+            return StreamValueBuilder<
+              AccountProfilesRepositoryContractPrimBool
+            >(
+              streamValue: controller
+                  .isNestedGroupMembersPageLoadingStreamValue(group),
+              builder: (context, isLoadingValue) {
+                return StreamValueBuilder<
+                  AccountProfilesRepositoryContractPrimString?
+                >(
+                  streamValue: controller.nestedGroupMembersErrorStreamValue(
+                    group,
+                  ),
+                  builder: (context, errorValue) {
+                    final isLoading = isLoadingValue.value;
+                    final hasMore = hasMoreValue.value;
+                    final errorMessage = errorValue?.value;
+
+                    if (isLoading && members.isEmpty) {
+                      return const Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+
+                    if (errorMessage != null &&
+                        errorMessage.trim().isNotEmpty &&
+                        members.isEmpty) {
+                      return Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text(
+                                'Não foi possível carregar os perfis desta aba.',
+                              ),
+                              const SizedBox(height: 12),
+                              TextButton(
+                                onPressed: () => controller
+                                    .ensureNestedGroupMembersLoaded(group),
+                                child: const Text('Tentar novamente'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+
+                    if (members.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+
+                    final footer = hasMore || isLoading
+                        ? NestedAccountsLoadMoreIndicator(
+                            visibilityKey:
+                                'accountProfileNestedGroupLoadMore_${group.id}',
+                            hasMore: hasMore,
+                            isLoading: isLoading,
+                            onLoadMore: () =>
+                                controller.loadMoreNestedGroupMembers(group),
+                          )
+                        : null;
+
+                    return itemBuilder(members, footer);
+                  },
+                );
+              },
+            );
+          },
+        );
+      },
+    );
   }
 }
 

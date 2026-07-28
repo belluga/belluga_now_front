@@ -26,7 +26,8 @@ final class EventPublicProfilePayloadDecoder {
         return;
       }
 
-      final displayName = _asString(profile['display_name'])?.trim() ??
+      final displayName =
+          _asString(profile['display_name'])?.trim() ??
           _asString(profile['name'])?.trim() ??
           '';
       if (displayName.isEmpty) {
@@ -121,10 +122,6 @@ final class EventPublicProfilePayloadDecoder {
       return const [];
     }
 
-    final profilesById = <String, EventLinkedAccountProfile>{
-      for (final profile in linkedAccountProfiles)
-        if (profile.id.trim().isNotEmpty) profile.id.trim(): profile,
-    };
     final groups = <EventProfileGroup>[];
     for (var index = 0; index < raw.length; index++) {
       final group = _asMap(raw[index]);
@@ -134,32 +131,14 @@ final class EventPublicProfilePayloadDecoder {
         continue;
       }
 
-      final profiles = resolveLinkedAccountProfiles(
-        linkedProfilesRaw: group['profiles'],
-      );
       final accountProfileIds = _resolveAccountProfileIds(
         group['account_profile_ids'] ?? group['profile_ids'],
       );
-      final snapshotProfilesById = <String, EventLinkedAccountProfile>{
-        for (final profile in profiles)
-          if (profile.id.trim().isNotEmpty) profile.id.trim(): profile,
-      };
-      final authoritativeIds = accountProfileIds.isNotEmpty
-          ? accountProfileIds
-          : profiles
-              .map((profile) => profile.id.trim())
-              .where((id) => id.isNotEmpty)
-              .toList(growable: false);
-      final resolvedProfiles = authoritativeIds
-          .map(
-            (id) => _materializeGroupedProfile(
-              aggregate: profilesById[id.trim()],
-              snapshot: snapshotProfilesById[id.trim()],
-            ),
-          )
-          .whereType<EventLinkedAccountProfile>()
-          .toList(growable: false);
-      if (resolvedProfiles.isEmpty && accountProfileIds.isEmpty) {
+      final membersPath = _asNullableString(group['members_path'])?.trim();
+      final memberCount = _asInt(group['member_count']);
+      if (accountProfileIds.isEmpty &&
+          memberCount <= 0 &&
+          (membersPath == null || membersPath.isEmpty)) {
         continue;
       }
 
@@ -170,12 +149,12 @@ final class EventPublicProfilePayloadDecoder {
           orderValue: EventProfileGroupOrderValue(
             _asInt(group['order'] ?? index),
           ),
-          profiles: resolvedProfiles,
-          accountProfileIdValues: (accountProfileIds.isEmpty
-                  ? resolvedProfiles
-                      .map((profile) => profile.id)
-                      .toList(growable: false)
-                  : accountProfileIds)
+          membersPathValue: EventProfileGroupMembersPathValue(
+            membersPath ?? '',
+          ),
+          memberCountValue: EventProfileGroupMemberCountValue(memberCount),
+          profiles: const <EventLinkedAccountProfile>[],
+          accountProfileIdValues: accountProfileIds
               .map(EventLinkedAccountProfileTextValue.new)
               .toList(growable: false),
         ),
@@ -207,7 +186,8 @@ final class EventPublicProfilePayloadDecoder {
       return null;
     }
 
-    final displayName = _asString(profile['display_name'])?.trim() ??
+    final displayName =
+        _asString(profile['display_name'])?.trim() ??
         _asString(profile['name'])?.trim() ??
         '';
     if (displayName.isEmpty) {
@@ -244,8 +224,8 @@ final class EventPublicProfilePayloadDecoder {
 
     final profileType =
         _asString(profile['profile_type'])?.trim().isNotEmpty == true
-            ? _asString(profile['profile_type'])!.trim()
-            : (_asString(profile['party_type'])?.trim() ?? '');
+        ? _asString(profile['profile_type'])!.trim()
+        : (_asString(profile['party_type'])?.trim() ?? '');
     final locationCoordinates = _resolveProfileCoordinates(profile);
 
     return EventLinkedAccountProfile(
@@ -259,14 +239,13 @@ final class EventPublicProfilePayloadDecoder {
       coverUrlValue: _thumbUriValueOrNull(
         _asNullableString(profile['cover_url'] ?? profile['hero_image_url']),
       ),
-      partyTypeValue:
-          _textValueOrNull(_asNullableString(profile['party_type'])),
+      partyTypeValue: _textValueOrNull(
+        _asNullableString(profile['party_type']),
+      ),
       locationAddressValue: _textValueOrNull(
         _resolveProfileLocationAddress(profile),
       ),
-      locationLatitudeValue: _latitudeValueOrNull(
-        locationCoordinates.latitude,
-      ),
+      locationLatitudeValue: _latitudeValueOrNull(locationCoordinates.latitude),
       locationLongitudeValue: _longitudeValueOrNull(
         locationCoordinates.longitude,
       ),
@@ -278,85 +257,6 @@ final class EventPublicProfilePayloadDecoder {
       ),
       taxonomyTerms: taxonomyTerms,
     );
-  }
-
-  static EventLinkedAccountProfile _mergeLinkedAccountProfileWithAggregate(
-    EventLinkedAccountProfile primary,
-    EventLinkedAccountProfile? aggregate,
-  ) {
-    if (aggregate == null) {
-      return primary;
-    }
-
-    return EventLinkedAccountProfile(
-      idValue: primary.idValue,
-      displayNameValue: primary.displayNameValue,
-      profileTypeValue: primary.profileTypeValue,
-      slugValue: primary.slugValue ?? aggregate.slugValue,
-      avatarUrlValue: primary.avatarUrlValue ?? aggregate.avatarUrlValue,
-      coverUrlValue: primary.coverUrlValue ?? aggregate.coverUrlValue,
-      partyTypeValue: primary.partyTypeValue ?? aggregate.partyTypeValue,
-      locationAddressValue:
-          primary.locationAddressValue ?? aggregate.locationAddressValue,
-      locationLatitudeValue:
-          primary.locationLatitudeValue ?? aggregate.locationLatitudeValue,
-      locationLongitudeValue:
-          primary.locationLongitudeValue ?? aggregate.locationLongitudeValue,
-      canOpenPublicDetailValue: primary.canOpenPublicDetail
-          ? primary.canOpenPublicDetailValue
-          : aggregate.canOpenPublicDetailValue,
-      publicDetailPathValue:
-          primary.publicDetailPathValue ?? aggregate.publicDetailPathValue,
-      taxonomyTerms: _mergeDomainTaxonomyTerms(
-        primary.taxonomyTerms,
-        aggregate.taxonomyTerms,
-      ),
-    );
-  }
-
-  static EventLinkedAccountProfile? _materializeGroupedProfile({
-    EventLinkedAccountProfile? aggregate,
-    EventLinkedAccountProfile? snapshot,
-  }) {
-    if (aggregate != null && snapshot != null) {
-      return _mergeLinkedAccountProfileWithAggregate(aggregate, snapshot);
-    }
-    return aggregate ?? snapshot;
-  }
-
-  static EventLinkedAccountProfileTaxonomyTerms _mergeDomainTaxonomyTerms(
-    EventLinkedAccountProfileTaxonomyTerms primary,
-    EventLinkedAccountProfileTaxonomyTerms aggregate,
-  ) {
-    if (primary.isEmpty) {
-      return aggregate;
-    }
-    if (aggregate.isEmpty) {
-      return primary;
-    }
-
-    final merged = EventLinkedAccountProfileTaxonomyTerms();
-    final seen = <String>{};
-
-    void ingest(EventLinkedAccountProfileTaxonomyTerms source) {
-      for (final term in source) {
-        final key = '${term.typeValue.value}:${term.valueValue.value}';
-        if (!seen.add(key)) {
-          continue;
-        }
-        merged.addTerm(
-          typeValue: term.typeValue,
-          valueValue: term.valueValue,
-          nameValue: term.nameValue,
-          taxonomyNameValue: term.taxonomyNameValue,
-          labelValue: term.compatibilityLabelValue,
-        );
-      }
-    }
-
-    ingest(primary);
-    ingest(aggregate);
-    return merged;
   }
 
   static dynamic _preferNonEmptyString(dynamic current, dynamic candidate) {
@@ -392,8 +292,9 @@ final class EventPublicProfilePayloadDecoder {
 
     final location = _asMap(profile['location']);
     final locationLatitude = _asDouble(location['latitude'] ?? location['lat']);
-    final locationLongitude =
-        _asDouble(location['longitude'] ?? location['lng']);
+    final locationLongitude = _asDouble(
+      location['longitude'] ?? location['lng'],
+    );
     if (locationLatitude != null && locationLongitude != null) {
       return (latitude: locationLatitude, longitude: locationLongitude);
     }
@@ -514,10 +415,14 @@ final class EventPublicProfilePayloadDecoder {
           merged[key] = Map<String, dynamic>.from(term);
           continue;
         }
-        existing['name'] =
-            _preferNonEmptyString(existing['name'], term['name']);
-        existing['label'] =
-            _preferNonEmptyString(existing['label'], term['label']);
+        existing['name'] = _preferNonEmptyString(
+          existing['name'],
+          term['name'],
+        );
+        existing['label'] = _preferNonEmptyString(
+          existing['label'],
+          term['label'],
+        );
         existing['taxonomy_name'] = _preferNonEmptyString(
           existing['taxonomy_name'],
           term['taxonomy_name'],

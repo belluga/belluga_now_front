@@ -449,7 +449,7 @@ void main() {
   );
 
   test(
-    'createAccountOnboarding forwards nested profile group metadata only',
+    'createAccountOnboarding forwards full nested profile group payload',
     () async {
       final adapter = _AccountsRoutingAdapter();
       final dio = Dio()..httpClientAdapter = adapter;
@@ -480,7 +480,12 @@ void main() {
       expect(request.path, contains('/v1/account_onboardings'));
       final payload = request.data as Map<String, dynamic>;
       expect(payload['nested_profile_groups'], [
-        {'id': 'integrantes', 'label': 'Integrantes', 'order': 0},
+        {
+          'id': 'integrantes',
+          'label': 'Integrantes',
+          'order': 0,
+          'account_profile_ids': <String>['profile-1', 'profile-2'],
+        },
       ]);
     },
   );

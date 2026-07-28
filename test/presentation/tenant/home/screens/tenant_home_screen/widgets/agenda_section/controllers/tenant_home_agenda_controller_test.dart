@@ -25,7 +25,6 @@ import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/discovery_filters_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
@@ -1256,14 +1255,13 @@ void main() {
         final secondaryFilter = catalog.filters.last;
         final taxonomyGroup = catalog.taxonomyOptionsByKey.values.single;
         final taxonomyTerm = taxonomyGroup.terms.single;
-        final scheduleRepository = _FakeScheduleRepository();
+        final scheduleRepository = _FakeScheduleRepository(
+          homeAgendaRuntimeCatalog: catalog,
+        );
         final controller = _buildAgendaController(
           scheduleRepository: scheduleRepository,
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
-          discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-            catalog: catalog,
-          ),
           userLocationRepository: _FakeUserLocationRepository(),
           appDataRepository: _FakeAppDataRepository(
             _buildAppData(minKm: 1, defaultKm: 5, maxKm: 15),
@@ -1350,14 +1348,12 @@ void main() {
               },
             },
           ),
+          homeAgendaRuntimeCatalog: catalog,
         );
         final controller = _buildAgendaController(
           scheduleRepository: scheduleRepository,
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
-          discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-            catalog: catalog,
-          ),
           userLocationRepository: _FakeUserLocationRepository(),
           appDataRepository: _FakeAppDataRepository(
             _buildAppData(minKm: 1, defaultKm: 5, maxKm: 15),
@@ -1392,9 +1388,6 @@ void main() {
         ),
         userEventsRepository: _FakeUserEventsRepository(),
         invitesRepository: _FakeInvitesRepository(),
-        discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-          catalog: catalog,
-        ),
         userLocationRepository: _FakeUserLocationRepository(),
         appDataRepository: _FakeAppDataRepository(
           _buildAppData(minKm: 1, defaultKm: 5, maxKm: 15),
@@ -1474,12 +1467,11 @@ void main() {
       (tester) async {
         final catalog = _homeEventsFilterCatalog();
         final controller = _buildAgendaController(
-          scheduleRepository: _FakeScheduleRepository(),
+          scheduleRepository: _FakeScheduleRepository(
+            homeAgendaRuntimeCatalog: catalog,
+          ),
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
-          discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-            catalog: catalog,
-          ),
           userLocationRepository: _FakeUserLocationRepository(),
           appDataRepository: _FakeAppDataRepository(
             _buildAppData(minKm: 1, defaultKm: 5, maxKm: 15),
@@ -3327,9 +3319,6 @@ void main() {
           ),
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
-          discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-            catalog: catalog,
-          ),
           userLocationRepository: _FakeUserLocationRepository(),
           appDataRepository: _FakeAppDataRepository(
             _buildAppData(minKm: 1, defaultKm: 5, maxKm: 10),
@@ -3412,38 +3401,6 @@ void main() {
     testWidgets(
       'home agenda keeps filter chrome hidden until the canonical runtime catalog is available',
       (tester) async {
-        const baselineCatalog = DiscoveryFilterCatalog(
-          surface: 'home.events',
-          filters: <DiscoveryFilterCatalogItem>[
-            DiscoveryFilterCatalogItem(
-              key: 'artist',
-              label: 'Artistas',
-              entities: <String>{'event'},
-              types: <String>{'show'},
-              typesByEntity: <String, Set<String>>{
-                'event': <String>{'show'},
-              },
-            ),
-            DiscoveryFilterCatalogItem(
-              key: 'empty-type',
-              label: 'Tipo Vazio',
-              entities: <String>{'event'},
-              types: <String>{'empty-type'},
-              typesByEntity: <String, Set<String>>{
-                'event': <String>{'empty-type'},
-              },
-            ),
-          ],
-          typeOptionsByEntity: <String, List<DiscoveryFilterTypeOption>>{
-            'event': <DiscoveryFilterTypeOption>[
-              DiscoveryFilterTypeOption(value: 'show', label: 'Artistas'),
-              DiscoveryFilterTypeOption(
-                value: 'empty-type',
-                label: 'Tipo Vazio',
-              ),
-            ],
-          },
-        );
         const runtimeCatalog = DiscoveryFilterCatalog(
           surface: 'home.events',
           filters: <DiscoveryFilterCatalogItem>[
@@ -3480,9 +3437,6 @@ void main() {
           scheduleRepository: scheduleRepository,
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
-          discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-            catalog: baselineCatalog,
-          ),
           userLocationRepository: _FakeUserLocationRepository(),
           appDataRepository: _FakeAppDataRepository(
             _buildAppData(minKm: 1, defaultKm: 5, maxKm: 10),
@@ -3569,9 +3523,6 @@ void main() {
           scheduleRepository: scheduleRepository,
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
-          discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-            catalog: baselineCatalog,
-          ),
           userLocationRepository: _FakeUserLocationRepository(),
           appDataRepository: _FakeAppDataRepository(
             _buildAppData(minKm: 1, defaultKm: 5, maxKm: 10),
@@ -3620,38 +3571,6 @@ void main() {
     test(
       'home agenda marks the canonical runtime catalog ready only after catalog and selection are repaired',
       () async {
-        const baselineCatalog = DiscoveryFilterCatalog(
-          surface: 'home.events',
-          filters: <DiscoveryFilterCatalogItem>[
-            DiscoveryFilterCatalogItem(
-              key: 'artist',
-              label: 'Artistas',
-              entities: <String>{'event'},
-              types: <String>{'show'},
-              typesByEntity: <String, Set<String>>{
-                'event': <String>{'show'},
-              },
-            ),
-            DiscoveryFilterCatalogItem(
-              key: 'empty-type',
-              label: 'Tipo Vazio',
-              entities: <String>{'event'},
-              types: <String>{'empty-type'},
-              typesByEntity: <String, Set<String>>{
-                'event': <String>{'empty-type'},
-              },
-            ),
-          ],
-          typeOptionsByEntity: <String, List<DiscoveryFilterTypeOption>>{
-            'event': <DiscoveryFilterTypeOption>[
-              DiscoveryFilterTypeOption(value: 'show', label: 'Artistas'),
-              DiscoveryFilterTypeOption(
-                value: 'empty-type',
-                label: 'Tipo Vazio',
-              ),
-            ],
-          },
-        );
         const runtimeCatalog = DiscoveryFilterCatalog(
           surface: 'home.events',
           filters: <DiscoveryFilterCatalogItem>[
@@ -3688,9 +3607,6 @@ void main() {
           scheduleRepository: scheduleRepository,
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
-          discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-            catalog: baselineCatalog,
-          ),
           userLocationRepository: _FakeUserLocationRepository(),
           appDataRepository: _FakeAppDataRepository(
             _buildAppData(minKm: 1, defaultKm: 5, maxKm: 10),
@@ -3862,9 +3778,6 @@ void main() {
           ),
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
-          discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-            catalog: catalog,
-          ),
           userLocationRepository: _FakeUserLocationRepository(),
           appDataRepository: _FakeAppDataRepository(
             _buildAppData(minKm: 1, defaultKm: 5, maxKm: 10),
@@ -3915,12 +3828,13 @@ void main() {
       'home agenda omits filter chrome when the canonical catalog is empty',
       (tester) async {
         final controller = _buildAgendaController(
-          scheduleRepository: _FakeScheduleRepository(),
+          scheduleRepository: _FakeScheduleRepository(
+            homeAgendaRuntimeCatalog: const DiscoveryFilterCatalog(
+              surface: 'home.events',
+            ),
+          ),
           userEventsRepository: _FakeUserEventsRepository(),
           invitesRepository: _FakeInvitesRepository(),
-          discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-            catalog: const DiscoveryFilterCatalog(surface: 'home.events'),
-          ),
           userLocationRepository: _FakeUserLocationRepository(),
           appDataRepository: _FakeAppDataRepository(
             _buildAppData(minKm: 1, defaultKm: 5, maxKm: 10),
@@ -4225,7 +4139,6 @@ TenantHomeAgendaController _buildAgendaController({
   required ScheduleRepositoryContract scheduleRepository,
   required UserEventsRepositoryContract userEventsRepository,
   required InvitesRepositoryContract invitesRepository,
-  DiscoveryFiltersRepositoryContract? discoveryFiltersRepository,
   required UserLocationRepositoryContract? userLocationRepository,
   required AppDataRepositoryContract appDataRepository,
   ProximityPreferencesRepositoryContract? proximityPreferencesRepository,
@@ -4236,15 +4149,9 @@ TenantHomeAgendaController _buildAgendaController({
   Duration? locationPermissionTimeout,
   Duration? radiusRefreshDebounce,
 }) {
-  if (scheduleRepository is _FakeScheduleRepository &&
-      discoveryFiltersRepository is _FakeDiscoveryFiltersRepository) {
-    scheduleRepository.fallbackHomeAgendaRuntimeCatalog =
-        discoveryFiltersRepository.catalog;
-  }
   return TenantHomeAgendaController(
     scheduleRepository: scheduleRepository,
     userEventsRepository: userEventsRepository,
-    discoveryFiltersRepository: discoveryFiltersRepository,
     invitesRepository: invitesRepository,
     appDataRepository: appDataRepository,
     authRepository: authRepository,
@@ -4674,32 +4581,19 @@ AppDataDiscoveryFilterSelectionSnapshot _appDataSelectionSnapshot(
           ),
         )
         .toList(growable: false),
-    typeFiltersByEntity: <String, List<AppDataDiscoveryFilterTokenValue>>{
+    typeFilterSelections: [
       for (final entry
           in (payload?.typesByEntity.entries ??
               const <MapEntry<String, Set<String>>>[]))
         if (entry.value.isNotEmpty)
-          entry.key: entry.value
-              .map(AppDataDiscoveryFilterTokenValue.fromRaw)
-              .toList(growable: false),
-    },
+          AppDataDiscoveryFilterEntityTypeSelection(
+            entityKey: AppDataDiscoveryFilterTokenValue.fromRaw(entry.key),
+            typeKeys: entry.value
+                .map(AppDataDiscoveryFilterTokenValue.fromRaw)
+                .toList(growable: false),
+          ),
+    ],
   );
-}
-
-class _FakeDiscoveryFiltersRepository
-    implements DiscoveryFiltersRepositoryContract {
-  _FakeDiscoveryFiltersRepository({required this.catalog});
-
-  final DiscoveryFilterCatalog catalog;
-  final List<String> requestedSurfaces = <String>[];
-
-  @override
-  Future<DiscoveryFilterCatalog> fetchCatalog(
-    DiscoveryFiltersRepoText surface,
-  ) async {
-    requestedSurfaces.add(surface.value);
-    return catalog;
-  }
 }
 
 class _FakeScheduleRepository implements ScheduleRepositoryContract {

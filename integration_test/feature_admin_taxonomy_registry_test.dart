@@ -562,6 +562,9 @@ class _FakeAccountProfilesRepository
     required TenantAdminAccountProfilesRepoInt pageSize,
     TenantAdminAccountProfilesRepoString? search,
     TenantAdminAccountProfilesRepoString? accountId,
+    TenantAdminAccountProfilesRepoString? profileType,
+    TenantAdminAccountProfilesRepoString? contactMode,
+    TenantAdminAccountProfilesRepoBool? contactChannelsEnabledOnly,
     TenantAdminAccountProfilesRepoBool? queryableOnly,
     TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async {
@@ -584,19 +587,6 @@ class _FakeAccountProfilesRepository
       displayName: 'Perfil',
     );
   }
-
-  @override
-  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-  fetchContactSourceCandidatesPage({
-    required TenantAdminAccountProfilesRepoInt page,
-    required TenantAdminAccountProfilesRepoInt pageSize,
-    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
-  }) async => tenantAdminPagedResultFromRaw(
-    items: const <TenantAdminAccountProfile>[],
-    hasMore: false,
-    currentPage: page.value,
-    pageSize: pageSize.value,
-  );
 
   @override
   Future<TenantAdminAccountProfile> createAccountProfile({
@@ -641,6 +631,7 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? profileType,
     TenantAdminAccountProfilesRepoString? displayName,
     TenantAdminAccountProfilesRepoString? slug,
+    TenantAdminAccountProfilesRepoInt? aggregateRevision,
     TenantAdminLocation? location,
     TenantAdminTaxonomyTerms? taxonomyTerms,
     TenantAdminAccountProfilesRepoString? bio,

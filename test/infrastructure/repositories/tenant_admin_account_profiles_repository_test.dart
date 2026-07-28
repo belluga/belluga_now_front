@@ -322,13 +322,18 @@ void main() {
       final data = adapter.lastRequest?.data;
       expect(data, isA<Map<String, dynamic>>());
       expect((data as Map<String, dynamic>)['nested_profile_groups'], [
-        {'id': 'parceiros', 'label': 'Parceiros', 'order': 0},
+        {
+          'id': 'parceiros',
+          'label': 'Parceiros',
+          'order': 0,
+          'account_profile_ids': <String>['507f1f77bcf86cd799439081'],
+        },
       ]);
     },
   );
 
   test(
-    'updateAccountProfile sends nested profile group metadata only',
+    'updateAccountProfile sends full nested profile groups payload',
     () async {
       final adapter = _CaptureAdapter();
       final dio = Dio()..httpClientAdapter = adapter;
@@ -339,6 +344,10 @@ void main() {
           'profile-1',
           defaultValue: '',
           isRequired: true,
+        ),
+        aggregateRevision: tenantAdminAccountProfilesRepoInt(
+          4,
+          defaultValue: 4,
         ),
         nestedProfileGroups: <TenantAdminNestedProfileGroup>[
           TenantAdminNestedProfileGroup(
@@ -360,8 +369,17 @@ void main() {
       final data = adapter.lastRequest?.data;
       expect(data, isA<Map<String, dynamic>>());
       expect((data as Map<String, dynamic>)['nested_profile_groups'], [
-        {'id': 'parceiros', 'label': 'Parceiros', 'order': 0},
+        {
+          'id': 'parceiros',
+          'label': 'Parceiros',
+          'order': 0,
+          'account_profile_ids': <String>[
+            '507f1f77bcf86cd799439081',
+            '507f1f77bcf86cd799439082',
+          ],
+        },
       ]);
+      expect(data['aggregate_revision'], 4);
     },
   );
 
@@ -714,7 +732,7 @@ void main() {
       );
 
       final request = adapter.requests.single;
-      expect(request.queryParameters['queryable_only'], isTrue);
+      expect(request.queryParameters['queryable_only'], 1);
       expect(
         request.queryParameters['exclude_account_profile_id'],
         'profile-1',
@@ -748,7 +766,7 @@ void main() {
       expect(request.queryParameters['page'], 2);
       expect(request.queryParameters['page_size'], 20);
       expect(request.queryParameters['search'], 'runtime');
-      expect(request.queryParameters['queryable_only'], isTrue);
+      expect(request.queryParameters['queryable_only'], 1);
       expect(
         request.queryParameters['exclude_account_profile_id'],
         'profile-1',
@@ -796,6 +814,102 @@ void main() {
       expect(firstCacheBuster, isNotEmpty);
       expect(secondCacheBuster, isNotEmpty);
       expect(secondCacheBuster, isNot(firstCacheBuster));
+    },
+  );
+
+  test(
+    'fetchAccountProfilesPage encodes canonical contact-eligible filters on the generic endpoint',
+    () async {
+      final adapter = _CaptureAdapter(
+        responseBody: {
+          'data': [
+            {
+              'id': 'profile-own-1',
+              'account_id': 'account-own-1',
+              'profile_type': 'venue',
+              'display_name': 'Perfil Fonte',
+              'slug': 'perfil-fonte',
+              'contact_mode': 'own',
+              'contact_channels': [
+                {
+                  'id': 'email-1',
+                  'type': 'email',
+                  'value': 'fonte@tenant.test',
+                  'title': 'Comercial',
+                },
+              ],
+              'effective_contact_channels': [
+                {
+                  'id': 'email-1',
+                  'type': 'email',
+                  'value': 'fonte@tenant.test',
+                  'title': 'Comercial',
+                },
+              ],
+            },
+          ],
+          'page': 1,
+          'per_page': 20,
+          'has_more': false,
+        },
+      );
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+      final page = await repository.fetchAccountProfilesPage(
+        page: tenantAdminAccountProfilesRepoInt(1, defaultValue: 1),
+        pageSize: tenantAdminAccountProfilesRepoInt(20, defaultValue: 20),
+        search: tenantAdminAccountProfilesRepoString(
+          'perfil',
+          defaultValue: '',
+        ),
+        profileType: tenantAdminAccountProfilesRepoString(
+          'venue',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        contactMode: tenantAdminAccountProfilesRepoString(
+          'own',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        contactChannelsEnabledOnly: tenantAdminAccountProfilesRepoBool(
+          true,
+          defaultValue: true,
+        ),
+        excludeAccountProfileId: tenantAdminAccountProfilesRepoString(
+          'profile-own-2',
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
+
+      final request = adapter.requests.single;
+      expect(
+        request.path,
+        contains('https://tenant.test/admin/api/v1/account_profiles'),
+      );
+      expect(request.queryParameters['page'], 1);
+      expect(request.queryParameters['page_size'], 20);
+      expect(request.queryParameters['search'], 'perfil');
+      expect(request.queryParameters['profile_type'], 'venue');
+      expect(request.queryParameters['contact_mode'], 'own');
+      expect(request.queryParameters['contact_channels_enabled_only'], isTrue);
+      expect(
+        request.queryParameters['exclude_account_profile_id'],
+        'profile-own-2',
+      );
+      expect(page.pagination?.currentPage, 1);
+      expect(page.pagination?.pageSize, 20);
+      expect(page.hasMore, isFalse);
+      expect(page.items, hasLength(1));
+      expect(page.items.single.displayName, 'Perfil Fonte');
+      expect(page.items.single.contactMode, BellugaContactSourceMode.own);
+      expect(page.items.single.effectiveContactChannels, hasLength(1));
+      expect(
+        page.items.single.effectiveContactChannels.single.value,
+        'fonte@tenant.test',
+      );
     },
   );
 

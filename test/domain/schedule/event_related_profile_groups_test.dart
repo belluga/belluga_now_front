@@ -68,60 +68,13 @@ void main() {
     ]);
   });
 
-  test(
-      'aggregated groups combine participants from all occurrences without depending on selected occurrence group',
-      () {
-    final band = _profile(
-      id: 'band-1',
-      displayName: 'Du Jorge',
-      profileType: 'band',
+  test('metadata-only groups fall back to a flat participant summary', () {
+    final venue = _profile(
+      id: 'venue-1',
+      displayName: 'Sesc Guarapari',
+      profileType: 'venue',
+      partyType: 'venue',
     );
-    final secondBand = _profile(
-      id: 'band-2',
-      displayName: 'Banda Norte',
-      profileType: 'band',
-    );
-    final exhibitor = _profile(
-      id: 'expo-1',
-      displayName: 'Agro Sul',
-      profileType: 'producer',
-    );
-
-    final groups = EventRelatedProfileGroups.fromAggregatedParts(
-      eventProfileGroups: [
-        _group(
-          label: 'Bandas',
-          profiles: [band],
-        ),
-      ],
-      occurrenceProfileGroups: [
-        [
-          _group(
-            label: 'Bandas',
-            profiles: [band],
-          ),
-        ],
-        [
-          _group(
-            label: 'Bandas',
-            profiles: [secondBand],
-          ),
-          _group(
-            label: 'Expositores',
-            profiles: [exhibitor],
-          ),
-        ],
-      ],
-      linkedAccountProfiles: [band, secondBand, exhibitor],
-    );
-
-    expect(groups.map((group) => group.label), ['Bandas', 'Expositores']);
-    expect(groups.first.profileNames, ['Du Jorge', 'Banda Norte']);
-    expect(groups.last.profileNames, ['Agro Sul']);
-  });
-
-  test('aggregated groups resolve occurrence member ids from linked profiles',
-      () {
     final band = _profile(
       id: 'band-1',
       displayName: 'Du Jorge',
@@ -133,221 +86,261 @@ void main() {
       profileType: 'producer',
     );
 
-    final groups = EventRelatedProfileGroups.fromAggregatedParts(
-      eventProfileGroups: const [],
-      occurrenceProfileGroups: [
-        [
-          _group(
-            label: 'Bandas',
-            accountProfileIds: ['band-1'],
-          ),
-        ],
-        [
-          _group(
-            label: 'Expositores',
-            accountProfileIds: ['expo-1'],
-          ),
-        ],
+    final groups = EventRelatedProfileGroups.fromParts(
+      profileGroups: [
+        _group(label: 'Bandas'),
+        _group(label: 'Expositores'),
       ],
-      linkedAccountProfiles: [band, exhibitor],
+      linkedAccountProfiles: [venue, band, exhibitor],
+      venueId: 'venue-1',
     );
 
-    expect(groups.map((group) => group.label), ['Bandas', 'Expositores']);
-    expect(groups.first.profileNames, ['Du Jorge']);
-    expect(groups.last.profileNames, ['Agro Sul']);
+    expect(groups, hasLength(1));
+    expect(groups.single.label, isEmpty);
+    expect(groups.single.profileNames, ['Du Jorge', 'Agro Sul']);
   });
 
   test(
-      'aggregated groups resolve legacy event group ids from occurrence-linked profiles when root event has no expanded participants',
-      () {
-    final festivalArtist = _profile(
-      id: 'artist-14bis',
-      displayName: '14 Bis',
-      profileType: 'artist',
-    );
-    final invitedArtist = _profile(
-      id: 'artist-andre',
-      displayName: 'André Prando',
-      profileType: 'artist',
-    );
+    'aggregated groups combine participants from all occurrences without depending on selected occurrence group',
+    () {
+      final band = _profile(
+        id: 'band-1',
+        displayName: 'Du Jorge',
+        profileType: 'band',
+      );
+      final secondBand = _profile(
+        id: 'band-2',
+        displayName: 'Banda Norte',
+        profileType: 'band',
+      );
+      final exhibitor = _profile(
+        id: 'expo-1',
+        displayName: 'Agro Sul',
+        profileType: 'producer',
+      );
 
-    final groups = EventRelatedProfileGroups.fromAggregatedParts(
-      eventProfileGroups: [
-        _group(
-          id: 'artist',
-          label: 'Artistas/Professor',
-          accountProfileIds: ['artist-14bis', 'artist-andre'],
-        ),
-      ],
-      occurrenceProfileGroups: [
-        [
+      final groups = EventRelatedProfileGroups.fromAggregatedParts(
+        eventProfileGroups: [
+          _group(label: 'Bandas', profiles: [band]),
+        ],
+        occurrenceProfileGroups: [
+          [
+            _group(label: 'Bandas', profiles: [band]),
+          ],
+          [
+            _group(label: 'Bandas', profiles: [secondBand]),
+            _group(label: 'Expositores', profiles: [exhibitor]),
+          ],
+        ],
+        linkedAccountProfiles: [band, secondBand, exhibitor],
+      );
+
+      expect(groups.map((group) => group.label), ['Bandas', 'Expositores']);
+      expect(groups.first.profileNames, ['Du Jorge', 'Banda Norte']);
+      expect(groups.last.profileNames, ['Agro Sul']);
+    },
+  );
+
+  test(
+    'aggregated groups resolve occurrence member ids from linked profiles',
+    () {
+      final band = _profile(
+        id: 'band-1',
+        displayName: 'Du Jorge',
+        profileType: 'band',
+      );
+      final exhibitor = _profile(
+        id: 'expo-1',
+        displayName: 'Agro Sul',
+        profileType: 'producer',
+      );
+
+      final groups = EventRelatedProfileGroups.fromAggregatedParts(
+        eventProfileGroups: const [],
+        occurrenceProfileGroups: [
+          [
+            _group(label: 'Bandas', accountProfileIds: ['band-1']),
+          ],
+          [
+            _group(label: 'Expositores', accountProfileIds: ['expo-1']),
+          ],
+        ],
+        linkedAccountProfiles: [band, exhibitor],
+      );
+
+      expect(groups.map((group) => group.label), ['Bandas', 'Expositores']);
+      expect(groups.first.profileNames, ['Du Jorge']);
+      expect(groups.last.profileNames, ['Agro Sul']);
+    },
+  );
+
+  test(
+    'aggregated groups resolve legacy event group ids from occurrence-linked profiles when root event has no expanded participants',
+    () {
+      final festivalArtist = _profile(
+        id: 'artist-14bis',
+        displayName: '14 Bis',
+        profileType: 'artist',
+      );
+      final invitedArtist = _profile(
+        id: 'artist-andre',
+        displayName: 'André Prando',
+        profileType: 'artist',
+      );
+
+      final groups = EventRelatedProfileGroups.fromAggregatedParts(
+        eventProfileGroups: [
           _group(
             id: 'artist',
             label: 'Artistas/Professor',
             accountProfileIds: ['artist-14bis', 'artist-andre'],
           ),
         ],
-      ],
-      occurrenceLinkedAccountProfiles: [
-        [festivalArtist, invitedArtist],
-      ],
-      linkedAccountProfiles: const [],
-    );
+        occurrenceProfileGroups: [
+          [
+            _group(
+              id: 'artist',
+              label: 'Artistas/Professor',
+              accountProfileIds: ['artist-14bis', 'artist-andre'],
+            ),
+          ],
+        ],
+        occurrenceLinkedAccountProfiles: [
+          [festivalArtist, invitedArtist],
+        ],
+        linkedAccountProfiles: const [],
+      );
 
-    expect(groups, hasLength(1));
-    expect(groups.single.label, 'Artistas/Professor');
-    expect(groups.single.profileNames, ['14 Bis', 'André Prando']);
-  });
+      expect(groups, hasLength(1));
+      expect(groups.single.label, 'Artistas/Professor');
+      expect(groups.single.profileNames, ['14 Bis', 'André Prando']);
+    },
+  );
 
   test(
-      'aggregated groups keep event-level members first when labels overlap with occurrences',
-      () {
-    final eventBand = _profile(
-      id: 'band-event',
-      displayName: 'Banda da Capa',
-      profileType: 'band',
-    );
-    final occurrenceBand = _profile(
-      id: 'band-occurrence',
-      displayName: 'Banda Convidada',
-      profileType: 'band',
-    );
+    'aggregated groups keep event-level members first when labels overlap with occurrences',
+    () {
+      final eventBand = _profile(
+        id: 'band-event',
+        displayName: 'Banda da Capa',
+        profileType: 'band',
+      );
+      final occurrenceBand = _profile(
+        id: 'band-occurrence',
+        displayName: 'Banda Convidada',
+        profileType: 'band',
+      );
 
-    final groups = EventRelatedProfileGroups.fromAggregatedParts(
-      eventProfileGroups: [
-        _group(
-          label: 'Bandas',
-          profiles: [eventBand],
-        ),
-      ],
-      occurrenceProfileGroups: [
-        [
-          _group(
-            label: 'Bandas',
-            profiles: [occurrenceBand],
-          ),
+      final groups = EventRelatedProfileGroups.fromAggregatedParts(
+        eventProfileGroups: [
+          _group(label: 'Bandas', profiles: [eventBand]),
         ],
-      ],
-      linkedAccountProfiles: [eventBand, occurrenceBand],
-    );
+        occurrenceProfileGroups: [
+          [
+            _group(label: 'Bandas', profiles: [occurrenceBand]),
+          ],
+        ],
+        linkedAccountProfiles: [eventBand, occurrenceBand],
+      );
 
-    expect(groups.map((group) => group.label), ['Bandas']);
-    expect(groups.single.profileNames, ['Banda da Capa', 'Banda Convidada']);
-  });
+      expect(groups.map((group) => group.label), ['Bandas']);
+      expect(groups.single.profileNames, ['Banda da Capa', 'Banda Convidada']);
+    },
+  );
 
   test(
-      'aggregated groups sort merged labels by the lowest effective order across event and occurrences',
-      () {
-    final band = _profile(
-      id: 'band-1',
-      displayName: 'Du Jorge',
-      profileType: 'band',
-    );
-    final exhibitor = _profile(
-      id: 'expo-1',
-      displayName: 'Agro Sul',
-      profileType: 'producer',
-    );
+    'aggregated groups sort merged labels by the lowest effective order across event and occurrences',
+    () {
+      final band = _profile(
+        id: 'band-1',
+        displayName: 'Du Jorge',
+        profileType: 'band',
+      );
+      final exhibitor = _profile(
+        id: 'expo-1',
+        displayName: 'Agro Sul',
+        profileType: 'producer',
+      );
 
-    final groups = EventRelatedProfileGroups.fromAggregatedParts(
-      eventProfileGroups: [
-        _group(
-          label: 'Bandas',
-          order: 5,
-          profiles: [band],
-        ),
-      ],
-      occurrenceProfileGroups: [
-        [
-          _group(
-            label: 'Expositores',
-            order: 1,
-            profiles: [exhibitor],
-          ),
+      final groups = EventRelatedProfileGroups.fromAggregatedParts(
+        eventProfileGroups: [
+          _group(label: 'Bandas', order: 5, profiles: [band]),
         ],
-      ],
-      linkedAccountProfiles: [band, exhibitor],
-    );
-
-    expect(groups.map((group) => group.label), ['Expositores', 'Bandas']);
-  });
-
-  test('aggregated groups merge members when labels match even if ids differ',
-      () {
-    final firstBand = _profile(
-      id: 'band-1',
-      displayName: 'Du Jorge',
-      profileType: 'band',
-    );
-    final secondBand = _profile(
-      id: 'band-2',
-      displayName: 'Banda Norte',
-      profileType: 'band',
-    );
-
-    final groups = EventRelatedProfileGroups.fromAggregatedParts(
-      eventProfileGroups: [
-        _group(
-          id: 'bandas-evento',
-          label: 'Bandas',
-          profiles: [firstBand],
-        ),
-      ],
-      occurrenceProfileGroups: [
-        [
-          _group(
-            id: 'bandas-data',
-            label: 'Bandas',
-            profiles: [secondBand],
-          ),
+        occurrenceProfileGroups: [
+          [
+            _group(label: 'Expositores', order: 1, profiles: [exhibitor]),
+          ],
         ],
-      ],
-      linkedAccountProfiles: [firstBand, secondBand],
-    );
+        linkedAccountProfiles: [band, exhibitor],
+      );
 
-    expect(groups, hasLength(1));
-    expect(groups.single.label, 'Bandas');
-    expect(groups.single.profileNames, ['Du Jorge', 'Banda Norte']);
-  });
+      expect(groups.map((group) => group.label), ['Expositores', 'Bandas']);
+    },
+  );
 
   test(
-      'aggregated groups merge members by canonical group id even if labels drift',
-      () {
-    final band = _profile(
-      id: 'band-1',
-      displayName: 'Du Jorge',
-      profileType: 'band',
-    );
-    final exhibitor = _profile(
-      id: 'expo-1',
-      displayName: 'Agro Sul',
-      profileType: 'producer',
-    );
+    'aggregated groups merge members when labels match even if ids differ',
+    () {
+      final firstBand = _profile(
+        id: 'band-1',
+        displayName: 'Du Jorge',
+        profileType: 'band',
+      );
+      final secondBand = _profile(
+        id: 'band-2',
+        displayName: 'Banda Norte',
+        profileType: 'band',
+      );
 
-    final groups = EventRelatedProfileGroups.fromAggregatedParts(
-      eventProfileGroups: [
-        _group(
-          id: 'lineup',
-          label: 'Bandas',
-          profiles: [band],
-        ),
-      ],
-      occurrenceProfileGroups: [
-        [
-          _group(
-            id: 'lineup',
-            label: 'Atrações',
-            profiles: [exhibitor],
-          ),
+      final groups = EventRelatedProfileGroups.fromAggregatedParts(
+        eventProfileGroups: [
+          _group(id: 'bandas-evento', label: 'Bandas', profiles: [firstBand]),
         ],
-      ],
-      linkedAccountProfiles: [band, exhibitor],
-    );
+        occurrenceProfileGroups: [
+          [
+            _group(id: 'bandas-data', label: 'Bandas', profiles: [secondBand]),
+          ],
+        ],
+        linkedAccountProfiles: [firstBand, secondBand],
+      );
 
-    expect(groups, hasLength(1));
-    expect(groups.single.label, 'Bandas');
-    expect(groups.single.profileNames, ['Du Jorge', 'Agro Sul']);
-  });
+      expect(groups, hasLength(1));
+      expect(groups.single.label, 'Bandas');
+      expect(groups.single.profileNames, ['Du Jorge', 'Banda Norte']);
+    },
+  );
+
+  test(
+    'aggregated groups merge members by canonical group id even if labels drift',
+    () {
+      final band = _profile(
+        id: 'band-1',
+        displayName: 'Du Jorge',
+        profileType: 'band',
+      );
+      final exhibitor = _profile(
+        id: 'expo-1',
+        displayName: 'Agro Sul',
+        profileType: 'producer',
+      );
+
+      final groups = EventRelatedProfileGroups.fromAggregatedParts(
+        eventProfileGroups: [
+          _group(id: 'lineup', label: 'Bandas', profiles: [band]),
+        ],
+        occurrenceProfileGroups: [
+          [
+            _group(id: 'lineup', label: 'Atrações', profiles: [exhibitor]),
+          ],
+        ],
+        linkedAccountProfiles: [band, exhibitor],
+      );
+
+      expect(groups, hasLength(1));
+      expect(groups.single.label, 'Bandas');
+      expect(groups.single.profileNames, ['Du Jorge', 'Agro Sul']);
+    },
+  );
 }
 
 EventProfileGroup _group({
@@ -361,9 +354,13 @@ EventProfileGroup _group({
     idValue: EventLinkedAccountProfileTextValue(id ?? 'group-$label'),
     labelValue: EventLinkedAccountProfileTextValue(label),
     orderValue: EventProfileGroupOrderValue(order),
+    memberCountValue: EventProfileGroupMemberCountValue(
+      profiles.isNotEmpty ? profiles.length : accountProfileIds.length,
+    ),
     profiles: profiles,
-    accountProfileIdValues:
-        accountProfileIds.map(EventLinkedAccountProfileTextValue.new).toList(),
+    accountProfileIdValues: accountProfileIds
+        .map(EventLinkedAccountProfileTextValue.new)
+        .toList(),
   );
 }
 

@@ -243,6 +243,8 @@ class EventSelectedOccurrenceProjection {
           idValue: group.idValue,
           labelValue: group.labelValue,
           orderValue: group.orderValue,
+          membersPathValue: group.membersPathValue,
+          memberCountValue: group.memberCountValue,
           profiles: resolvedProfiles,
           accountProfileIdValues: resolvedAccountProfileIds,
         );
@@ -346,6 +348,8 @@ class EventSelectedOccurrenceProjection {
             group.id,
             group.label,
             group.order,
+            group.memberCount,
+            group.membersPath?.trim() ?? '',
             memberIds,
             profileSignature,
           ].join(':');

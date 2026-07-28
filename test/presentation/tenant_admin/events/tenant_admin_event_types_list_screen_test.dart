@@ -28,48 +28,50 @@ void main() {
     await GetIt.I.reset();
   });
 
-  testWidgets('reacts when event type catalog stream receives backend entries',
-      (tester) async {
-    final controller = TenantAdminEventsController(
-      eventsRepository: _NoopEventsRepository(),
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-    );
-    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+  testWidgets(
+    'reacts when event type catalog stream receives backend entries',
+    (tester) async {
+      final controller = TenantAdminEventsController(
+        eventsRepository: _NoopEventsRepository(),
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+      );
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
 
-    final router = RootStackRouter.build(
-      routes: [
-        NamedRouteDef(
-          name: 'event-types-test',
-          path: '/',
-          builder: (_, _) => TenantAdminEventTypesListScreen(),
+      final router = RootStackRouter.build(
+        routes: [
+          NamedRouteDef(
+            name: 'event-types-test',
+            path: '/',
+            builder: (_, _) => TenantAdminEventTypesListScreen(),
+          ),
+        ],
+      )..ignorePopCompleters = true;
+
+      await tester.pumpWidget(
+        MaterialApp.router(
+          routeInformationParser: router.defaultRouteParser(),
+          routerDelegate: router.delegate(),
         ),
-      ],
-    )..ignorePopCompleters = true;
+      );
+      await tester.pumpAndSettle();
 
-    await tester.pumpWidget(
-      MaterialApp.router(
-        routeInformationParser: router.defaultRouteParser(),
-        routerDelegate: router.delegate(),
-      ),
-    );
-    await tester.pumpAndSettle();
+      expect(find.text('Nenhum tipo cadastrado'), findsOneWidget);
 
-    expect(find.text('Nenhum tipo cadastrado'), findsOneWidget);
+      controller.eventTypeCatalogStreamValue.addValue([
+        TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439021'),
+          nameValue: tenantAdminRequiredText('Festival'),
+          slugValue: tenantAdminRequiredText('festival'),
+          descriptionValue: tenantAdminOptionalText('Tipo de evento: Festival'),
+        ),
+      ]);
 
-    controller.eventTypeCatalogStreamValue.addValue([
-      TenantAdminEventType(
-        idValue: tenantAdminOptionalText('507f1f77bcf86cd799439021'),
-        nameValue: tenantAdminRequiredText('Festival'),
-        slugValue: tenantAdminRequiredText('festival'),
-        descriptionValue: tenantAdminOptionalText('Tipo de evento: Festival'),
-      ),
-    ]);
+      await tester.pumpAndSettle();
 
-    await tester.pumpAndSettle();
-
-    expect(find.text('Festival'), findsOneWidget);
-    expect(find.textContaining('festival'), findsOneWidget);
-  });
+      expect(find.text('Festival'), findsOneWidget);
+      expect(find.textContaining('festival'), findsOneWidget);
+    },
+  );
 }
 
 class _NoopEventsRepository extends TenantAdminEventsRepositoryContract
@@ -92,7 +94,8 @@ class _NoopEventsRepository extends TenantAdminEventsRepositoryContract
 
   @override
   Future<TenantAdminEvent> fetchEvent(
-      TenantAdminEventsRepoString eventIdOrSlug) {
+    TenantAdminEventsRepoString eventIdOrSlug,
+  ) {
     throw UnimplementedError();
   }
 
@@ -129,11 +132,12 @@ class _NoopEventsRepository extends TenantAdminEventsRepositoryContract
 
   @override
   Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-      fetchEventAccountProfileCandidatesPage({
+  fetchEventAccountProfileCandidatesPage({
     required TenantAdminEventAccountProfileCandidateType candidateType,
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     return tenantAdminPagedResultFromRaw(
@@ -152,7 +156,7 @@ class _NoopEventsRepository extends TenantAdminEventsRepositoryContract
 
   @override
   Future<TenantAdminLegacyEventPartiesSummary>
-      fetchLegacyEventPartiesSummary() async {
+  fetchLegacyEventPartiesSummary() async {
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(0),
       invalidValue: TenantAdminCountValue(0),
@@ -164,7 +168,7 @@ class _NoopEventsRepository extends TenantAdminEventsRepositoryContract
 
   @override
   Future<TenantAdminLegacyEventPartiesSummary>
-      repairLegacyEventParties() async {
+  repairLegacyEventParties() async {
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(0),
       invalidValue: TenantAdminCountValue(0),
@@ -214,7 +218,7 @@ class _NoopTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
-      fetchTaxonomiesPage({
+  fetchTaxonomiesPage({
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
   }) async {
@@ -233,7 +237,7 @@ class _NoopTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
-      fetchTermsPage({
+  fetchTermsPage({
     required TenantAdminTaxRepoString taxonomyId,
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,

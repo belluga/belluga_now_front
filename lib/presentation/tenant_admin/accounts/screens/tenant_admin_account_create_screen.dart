@@ -744,8 +744,11 @@ class _TenantAdminAccountCreateScreenState
       keyPrefix: 'tenantAdminAccountCreate',
       groups: state.nestedProfileGroups,
       candidatesStreamValue: _controller.nestedProfileCandidatesStreamValue,
-      profileTypes: _controller.profileTypesStreamValue.value,
+      profileTypes: _controller.profileTypesStreamValue.value
+          .where((profileType) => profileType.capabilities.isQueryable)
+          .toList(growable: false),
       onSearchChanged: _controller.searchNestedProfileCandidates,
+      onProfileTypeChanged: _controller.filterNestedProfileCandidatesByProfileType,
       onLoadMore: _controller.loadNextNestedProfileCandidatesPage,
       searchLoadingStreamValue:
           _controller.nestedProfileSearchLoadingStreamValue,

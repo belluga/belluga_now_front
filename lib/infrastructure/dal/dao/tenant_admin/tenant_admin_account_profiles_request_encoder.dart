@@ -52,6 +52,9 @@ class TenantAdminAccountProfilesRequestEncoder {
 
   Map<String, dynamic> encodeFetchAccountProfilesQuery({
     String? accountId,
+    String? profileType,
+    String? contactMode,
+    bool contactChannelsEnabledOnly = false,
     bool queryableOnly = false,
     String? excludeAccountProfileId,
     String? search,
@@ -62,8 +65,17 @@ class TenantAdminAccountProfilesRequestEncoder {
     if (accountId != null && accountId.trim().isNotEmpty) {
       payload['account_id'] = accountId.trim();
     }
+    if (profileType != null && profileType.trim().isNotEmpty) {
+      payload['profile_type'] = profileType.trim();
+    }
+    if (contactMode != null && contactMode.trim().isNotEmpty) {
+      payload['contact_mode'] = contactMode.trim();
+    }
+    if (contactChannelsEnabledOnly) {
+      payload['contact_channels_enabled_only'] = true;
+    }
     if (queryableOnly) {
-      payload['queryable_only'] = true;
+      payload['queryable_only'] = 1;
     }
     if (excludeAccountProfileId != null &&
         excludeAccountProfileId.trim().isNotEmpty) {
@@ -95,19 +107,6 @@ class TenantAdminAccountProfilesRequestEncoder {
       'page': page,
       'per_page': perPage,
     };
-    if (excludeAccountProfileId != null &&
-        excludeAccountProfileId.trim().isNotEmpty) {
-      payload['exclude_account_profile_id'] = excludeAccountProfileId.trim();
-    }
-    return payload;
-  }
-
-  Map<String, dynamic> encodeFetchContactSourceCandidatesQuery({
-    required int page,
-    required int pageSize,
-    String? excludeAccountProfileId,
-  }) {
-    final payload = <String, dynamic>{'page': page, 'per_page': pageSize};
     if (excludeAccountProfileId != null &&
         excludeAccountProfileId.trim().isNotEmpty) {
       payload['exclude_account_profile_id'] = excludeAccountProfileId.trim();
@@ -176,7 +175,7 @@ class TenantAdminAccountProfilesRequestEncoder {
       'avatar_url': ?avatarUrl,
       'cover_url': ?coverUrl,
       if (nestedProfileGroups.isNotEmpty)
-        'nested_profile_groups': encodeTenantAdminNestedProfileGroupMetadata(
+        'nested_profile_groups': encodeTenantAdminNestedProfileGroups(
           nestedProfileGroups,
         ),
       'contact_mode': contactMode.rawValue,
@@ -193,6 +192,7 @@ class TenantAdminAccountProfilesRequestEncoder {
     String? profileType,
     String? displayName,
     String? slug,
+    int? aggregateRevision,
     TenantAdminLocation? location,
     TenantAdminTaxonomyTerms? taxonomyTerms,
     String? bio,
@@ -212,6 +212,9 @@ class TenantAdminAccountProfilesRequestEncoder {
     if (profileType != null) payload['profile_type'] = profileType;
     if (displayName != null) payload['display_name'] = displayName;
     if (slug != null && slug.trim().isNotEmpty) payload['slug'] = slug.trim();
+    if (aggregateRevision != null) {
+      payload['aggregate_revision'] = aggregateRevision;
+    }
     if (location != null) {
       payload['location'] = {
         'lat': location.latitude,
@@ -230,8 +233,7 @@ class TenantAdminAccountProfilesRequestEncoder {
     if (removeAvatar == true) payload['remove_avatar'] = true;
     if (removeCover == true) payload['remove_cover'] = true;
     if (nestedProfileGroups != null) {
-      payload['nested_profile_groups'] =
-          encodeTenantAdminNestedProfileGroupMetadata(
+      payload['nested_profile_groups'] = encodeTenantAdminNestedProfileGroups(
         nestedProfileGroups,
       );
     }

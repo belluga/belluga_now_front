@@ -438,7 +438,7 @@ void main() {
                 TenantAdminAccountProfileIdValue('artist-1'),
               ]),
           relatedAccountProfiles: [occurrenceProfile],
-            programmingItems: List<TenantAdminEventProgrammingItem>.of([
+          programmingItems: List<TenantAdminEventProgrammingItem>.of([
             TenantAdminEventProgrammingItem(
               timeValue: tenantAdminOptionalText('20:00'),
               accountProfileIdValues: List<TenantAdminAccountProfileIdValue>.of(
@@ -1591,6 +1591,7 @@ class _FailingDeleteEventsRepository extends TenantAdminEventsRepositoryContract
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     return tenantAdminPagedResultFromRaw(
@@ -1829,6 +1830,7 @@ class _TrackingEventsRepository extends TenantAdminEventsRepositoryContract
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     return tenantAdminPagedResultFromRaw(
@@ -2156,6 +2158,7 @@ class _AccountScopedEventsRepository extends TenantAdminEventsRepositoryContract
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     accountProfileCandidatePageCalls += 1;
@@ -2225,6 +2228,7 @@ class _BootstrapPagedCandidatesRepository
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     accountProfileCandidatePageCalls += 1;
@@ -2352,6 +2356,7 @@ class _SearchableRelatedAccountProfileCandidatesRepository
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     if (candidateType ==
@@ -2439,6 +2444,7 @@ class _NestedGroupLaterPageCandidatesRepository
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     if (candidateType ==
