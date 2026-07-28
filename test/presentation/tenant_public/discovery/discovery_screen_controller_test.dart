@@ -15,11 +15,11 @@ import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.da
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/discovery_filters_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_bool_value.dart';
@@ -57,7 +57,7 @@ void main() {
   });
 
   test(
-    'available discovery types include only publicly discoverable profile types',
+    'available discovery types come from the public registry while partner rows stay server-authoritative',
     () async {
       final repository = _FakeAccountProfilesRepository(
         pages: {
@@ -77,8 +77,13 @@ void main() {
       await controller.init();
 
       expect(controller.availableTypesStreamValue.value, ['artist']);
-      expect(controller.filteredPartnersStreamValue.value, hasLength(1));
-      expect(controller.filteredPartnersStreamValue.value.first.type, 'artist');
+      expect(controller.filteredPartnersStreamValue.value, hasLength(2));
+      expect(
+        controller.filteredPartnersStreamValue.value.map(
+          (profile) => profile.type,
+        ),
+        ['artist', 'curator'],
+      );
       expect(repository.allAccountProfilesStreamValue.value, hasLength(2));
       controller.onDispose();
     },
@@ -1069,13 +1074,11 @@ void main() {
         },
       );
       final catalog = _accountProfileDiscoveryFilterCatalogWithMultipleTypes();
+      repository.fallbackRuntimeCatalog = catalog;
       final primaryFilter = catalog.filters.first;
       final taxonomyGroup = catalog.taxonomyOptionsByKey.values.single;
       final controller = _buildDiscoveryController(
         accountProfilesRepository: repository,
-        discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-          catalog: catalog,
-        ),
       );
       GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
 
@@ -1186,12 +1189,10 @@ void main() {
         },
       );
       final catalog = _accountProfileDiscoveryFilterCatalogWithMultipleTypes();
+      repository.fallbackRuntimeCatalog = catalog;
       final primaryFilter = catalog.filters.first;
       final controller = _buildDiscoveryController(
         accountProfilesRepository: repository,
-        discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-          catalog: catalog,
-        ),
       );
       GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
 
@@ -1239,35 +1240,6 @@ void main() {
   testWidgets(
     'DiscoveryScreen replaces the baseline catalog with the canonical runtime catalog from the paged query',
     (tester) async {
-      const baselineCatalog = DiscoveryFilterCatalog(
-        surface: 'discovery.account_profiles',
-        filters: <DiscoveryFilterCatalogItem>[
-          DiscoveryFilterCatalogItem(
-            key: 'artist',
-            label: 'Artistas',
-            entities: <String>{'account_profile'},
-            types: <String>{'artist'},
-            typesByEntity: <String, Set<String>>{
-              'account_profile': <String>{'artist'},
-            },
-          ),
-          DiscoveryFilterCatalogItem(
-            key: 'empty-type',
-            label: 'Tipo Vazio',
-            entities: <String>{'account_profile'},
-            types: <String>{'empty-type'},
-            typesByEntity: <String, Set<String>>{
-              'account_profile': <String>{'empty-type'},
-            },
-          ),
-        ],
-        typeOptionsByEntity: <String, List<DiscoveryFilterTypeOption>>{
-          'account_profile': <DiscoveryFilterTypeOption>[
-            DiscoveryFilterTypeOption(value: 'artist', label: 'Artistas'),
-            DiscoveryFilterTypeOption(value: 'empty-type', label: 'Tipo Vazio'),
-          ],
-        },
-      );
       const runtimeCatalog = DiscoveryFilterCatalog(
         surface: 'discovery.account_profiles',
         filters: <DiscoveryFilterCatalogItem>[
@@ -1304,9 +1276,6 @@ void main() {
       );
       final controller = _buildDiscoveryController(
         accountProfilesRepository: repository,
-        discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-          catalog: baselineCatalog,
-        ),
       );
       GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
 
@@ -1366,6 +1335,7 @@ void main() {
       );
       final catalog =
           _accountProfileDiscoveryFilterCatalogWithTwoTaxonomyGroups();
+      repository.fallbackRuntimeCatalog = catalog;
       final primaryFilter = catalog.filters.single;
       final taxonomyGroups = catalog.taxonomyOptionsByKey.values.toList();
       final firstTaxonomyGroup = taxonomyGroups.first;
@@ -1374,9 +1344,6 @@ void main() {
       final secondTaxonomyTerm = secondTaxonomyGroup.terms.single;
       final controller = _buildDiscoveryController(
         accountProfilesRepository: repository,
-        discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-          catalog: catalog,
-        ),
       );
       GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
 
@@ -1697,6 +1664,43 @@ void main() {
   );
 
   test(
+    'discovery search suppresses one-grapheme requests and keeps the baseline page query',
+    () async {
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: [
+              _profile(id: _mongoId('min-1'), type: 'artist', name: 'Baseline'),
+            ],
+            hasMore: false,
+          ),
+        },
+      );
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+      );
+
+      await controller.init();
+      final initialRequestCount = repository.pageRequests.length;
+      controller.setSearchQuery('v');
+      final deadline = DateTime.now().add(const Duration(seconds: 2));
+      while (repository.pageRequests.length < initialRequestCount + 1 &&
+          DateTime.now().isBefore(deadline)) {
+        await Future<void>.delayed(const Duration(milliseconds: 25));
+      }
+
+      expect(repository.pageRequests.length, initialRequestCount + 1);
+      expect(repository.pageRequests.last.query, isNull);
+      expect(controller.filteredPartnersStreamValue.value, hasLength(1));
+      expect(
+        controller.filteredPartnersStreamValue.value.first.name,
+        'Baseline',
+      );
+      controller.onDispose();
+    },
+  );
+
+  test(
     'discovery search keeps backend matches even when local name/tags do not match',
     () async {
       final repository = _FakeAccountProfilesRepository(
@@ -1777,6 +1781,8 @@ void main() {
   test(
     'discovery canonical filter selection sends type and taxonomy filters to backend',
     () async {
+      final catalog =
+          _accountProfileDiscoveryFilterCatalogWithTwoTaxonomyGroups();
       final repository = _FakeAccountProfilesRepository(
         pages: {
           1: pagedAccountProfilesResultFromRaw(
@@ -1785,20 +1791,15 @@ void main() {
               _profile(id: _mongoId('cf2'), type: 'venue', name: 'Venue One'),
             ],
             hasMore: false,
+            discoveryFilterCatalog: catalog,
           ),
         },
       );
-      final catalog =
-          _accountProfileDiscoveryFilterCatalogWithTwoTaxonomyGroups();
       final primaryFilter = catalog.filters.single;
       final taxonomyGroup = catalog.taxonomyOptionsByKey.values.first;
       final taxonomyTerm = taxonomyGroup.terms.single;
-      final filtersRepository = _FakeDiscoveryFiltersRepository(
-        catalog: catalog,
-      );
       final controller = _buildDiscoveryController(
         accountProfilesRepository: repository,
-        discoveryFiltersRepository: filtersRepository,
       );
 
       await controller.init();
@@ -1812,9 +1813,6 @@ void main() {
       );
       await Future<void>.delayed(const Duration(milliseconds: 20));
 
-      expect(filtersRepository.requestedSurfaces, [
-        'discovery.account_profiles',
-      ]);
       expect(
         repository.pageRequests.last.typeFilters,
         primaryFilter.typesByEntity['account_profile']!.toList(),
@@ -1841,15 +1839,13 @@ void main() {
         },
       );
       final catalog = _accountProfileDiscoveryFilterCatalogWithMultipleTypes();
+      repository.fallbackRuntimeCatalog = catalog;
       final primaryFilter = catalog.filters.first;
       final secondaryFilter = catalog.filters.last;
       final taxonomyGroup = catalog.taxonomyOptionsByKey.values.single;
       final taxonomyTerm = taxonomyGroup.terms.single;
       final controller = _buildDiscoveryController(
         accountProfilesRepository: repository,
-        discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-          catalog: catalog,
-        ),
       );
 
       await controller.init();
@@ -1936,11 +1932,9 @@ void main() {
           ),
         },
       );
+      repository.fallbackRuntimeCatalog = catalog;
       final controller = _buildDiscoveryController(
         accountProfilesRepository: repository,
-        discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-          catalog: catalog,
-        ),
       );
 
       await controller.init();
@@ -1973,12 +1967,10 @@ void main() {
       },
     );
     final catalog = _accountProfileDiscoveryFilterCatalogWithMultipleTypes();
+    repository.fallbackRuntimeCatalog = catalog;
     final primaryFilter = catalog.filters.first;
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-        catalog: catalog,
-      ),
     );
 
     await controller.init();
@@ -2017,6 +2009,7 @@ void main() {
                     taxonomyGroup.key: <String>{taxonomyTerm.value},
                   },
                 ),
+                catalog: catalog,
               ),
             },
       );
@@ -2030,14 +2023,12 @@ void main() {
               _profile(id: _mongoId('pf2'), type: 'venue', name: 'Venue One'),
             ],
             hasMore: false,
+            discoveryFilterCatalog: catalog,
           ),
         },
       );
       final controller = _buildDiscoveryController(
         accountProfilesRepository: repository,
-        discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-          catalog: catalog,
-        ),
       );
 
       await controller.init();
@@ -2053,6 +2044,93 @@ void main() {
       expect(repository.pageRequests.last.taxonomyFilters, [
         _encodedTaxonomyFilter(taxonomyGroup, taxonomyTerm),
       ]);
+      controller.onDispose();
+    },
+  );
+
+  test(
+    'discovery clears a stale persisted filter without refetch when backend already falls back to baseline',
+    () async {
+      const persistedCatalog = DiscoveryFilterCatalog(
+        surface: 'discovery.account_profiles',
+        filters: <DiscoveryFilterCatalogItem>[
+          DiscoveryFilterCatalogItem(
+            key: 'stale-hidden',
+            label: 'Hidden',
+            entities: <String>{'account_profile'},
+            types: <String>{'hidden'},
+            typesByEntity: <String, Set<String>>{
+              'account_profile': <String>{'hidden'},
+            },
+          ),
+        ],
+      );
+      const runtimeCatalog = DiscoveryFilterCatalog(
+        surface: 'discovery.account_profiles',
+        filters: <DiscoveryFilterCatalogItem>[
+          DiscoveryFilterCatalogItem(
+            key: 'artist',
+            label: 'Artists',
+            entities: <String>{'account_profile'},
+            types: <String>{'artist'},
+            typesByEntity: <String, Set<String>>{
+              'account_profile': <String>{'artist'},
+            },
+          ),
+        ],
+      );
+      final appDataRepository = _FakeAppDataRepository(
+        appData: _buildAppData(),
+        maxRadiusMeters: _buildAppData().mapRadiusDefaultMeters,
+        discoveryFilterSelections:
+            <String, AppDataDiscoveryFilterSelectionSnapshot>{
+              'discovery.account_profiles': _appDataSelectionSnapshot(
+                const DiscoveryFilterSelection(
+                  primaryKeys: <String>{'stale-hidden'},
+                ),
+                catalog: persistedCatalog,
+              ),
+            },
+      );
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
+
+      final repository = _FakeAccountProfilesRepository(
+        pages: {
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: [
+              _profile(
+                id: _mongoId('stale-fallback-1'),
+                type: 'artist',
+                name: 'Artist One',
+              ),
+            ],
+            hasMore: false,
+            discoveryFilterCatalog: runtimeCatalog,
+          ),
+        },
+        filterRequestAgainstFixtures: false,
+      );
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+      );
+
+      await controller.init();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(repository.pageRequests, hasLength(1));
+      expect(repository.pageRequests.single.typeFilters, <String>['hidden']);
+      expect(
+        controller.discoveryFilterSelectionStreamValue.value.isEmpty,
+        isTrue,
+      );
+      final persistedSelection = await appDataRepository
+          .getDiscoveryFilterSelection(
+            AppDataDiscoveryFilterTokenValue.fromRaw(
+              'discovery.account_profiles',
+            ),
+          );
+      expect(persistedSelection?.primaryKeys, isEmpty);
+
       controller.onDispose();
     },
   );
@@ -2255,7 +2333,6 @@ ValueKey<String> _taxonomyChipKey(
 
 DiscoveryScreenController _buildDiscoveryController({
   required AccountProfilesRepositoryContract accountProfilesRepository,
-  DiscoveryFiltersRepositoryContract? discoveryFiltersRepository,
   ScheduleRepositoryContract? scheduleRepository,
   AuthRepositoryContract? authRepository,
 }) {
@@ -2275,40 +2352,24 @@ DiscoveryScreenController _buildDiscoveryController({
       ),
     );
   }
-  if (!GetIt.I.isRegistered<LocationOriginServiceContract>()) {
-    GetIt.I.registerSingleton<LocationOriginServiceContract>(
-      LocationOriginService(
-        appDataRepository: GetIt.I.get<AppDataRepositoryContract>(),
-        userLocationRepository:
-            GetIt.I.isRegistered<UserLocationRepositoryContract>()
-            ? GetIt.I.get<UserLocationRepositoryContract>()
-            : null,
-      ),
-    );
+  if (GetIt.I.isRegistered<LocationOriginServiceContract>()) {
+    GetIt.I.unregister<LocationOriginServiceContract>();
   }
+  GetIt.I.registerSingleton<LocationOriginServiceContract>(
+    LocationOriginService(
+      appDataRepository: GetIt.I.get<AppDataRepositoryContract>(),
+      userLocationRepository:
+          GetIt.I.isRegistered<UserLocationRepositoryContract>()
+          ? GetIt.I.get<UserLocationRepositoryContract>()
+          : null,
+    ),
+  );
   return DiscoveryScreenController(
     accountProfilesRepository: accountProfilesRepository,
-    discoveryFiltersRepository: discoveryFiltersRepository,
     scheduleRepository: scheduleRepository,
     locationOriginService: GetIt.I.get<LocationOriginServiceContract>(),
     authRepository: authRepository,
   );
-}
-
-class _FakeDiscoveryFiltersRepository
-    implements DiscoveryFiltersRepositoryContract {
-  _FakeDiscoveryFiltersRepository({required this.catalog});
-
-  final DiscoveryFilterCatalog catalog;
-  final List<String> requestedSurfaces = <String>[];
-
-  @override
-  Future<DiscoveryFilterCatalog> fetchCatalog(
-    DiscoveryFiltersRepoText surface,
-  ) async {
-    requestedSurfaces.add(surface.value);
-    return catalog;
-  }
 }
 
 class _RecordingStackRouter extends Mock implements StackRouter {
@@ -2430,11 +2491,14 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
     required this.pages,
     this.nearbyProfiles = const <AccountProfileModel>[],
     this.failingPages = const <int>{},
+    this.filterRequestAgainstFixtures = true,
   });
 
   final Map<int, PagedAccountProfilesResult> pages;
   final List<AccountProfileModel> nearbyProfiles;
   final Set<int> failingPages;
+  final bool filterRequestAgainstFixtures;
+  DiscoveryFilterCatalog? fallbackRuntimeCatalog;
   final List<String> toggleCalls = <String>[];
   final List<_PageRequest> pageRequests = <_PageRequest>[];
   final Map<String, AccountProfileModel> _bySlug =
@@ -2494,36 +2558,39 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
         );
 
     var profiles = result.profiles;
-    final normalizedType = normalizedTypeInput?.trim();
-    if (normalizedType != null && normalizedType.isNotEmpty) {
-      profiles = profiles
-          .where((profile) => profile.type == normalizedType)
-          .toList(growable: false);
-    }
-    if (normalizedTypeFilters.isNotEmpty) {
-      profiles = profiles
-          .where((profile) => normalizedTypeFilters.contains(profile.type))
-          .toList(growable: false);
-    }
+    if (filterRequestAgainstFixtures) {
+      final normalizedType = normalizedTypeInput?.trim();
+      if (normalizedType != null && normalizedType.isNotEmpty) {
+        profiles = profiles
+            .where((profile) => profile.type == normalizedType)
+            .toList(growable: false);
+      }
+      if (normalizedTypeFilters.isNotEmpty) {
+        profiles = profiles
+            .where((profile) => normalizedTypeFilters.contains(profile.type))
+            .toList(growable: false);
+      }
 
-    final normalizedQuery = normalizedQueryInput?.trim().toLowerCase();
-    if (normalizedQuery != null && normalizedQuery.isNotEmpty) {
-      profiles = profiles
-          .where((profile) {
-            return profile.name.toLowerCase().contains(normalizedQuery) ||
-                profile.slug.toLowerCase().contains(normalizedQuery) ||
-                profile.tags.any(
-                  (tag) => tag.value.toLowerCase().contains(normalizedQuery),
-                );
-          })
-          .toList(growable: false);
+      final normalizedQuery = normalizedQueryInput?.trim().toLowerCase();
+      if (normalizedQuery != null && normalizedQuery.isNotEmpty) {
+        profiles = profiles
+            .where((profile) {
+              return profile.name.toLowerCase().contains(normalizedQuery) ||
+                  profile.slug.toLowerCase().contains(normalizedQuery) ||
+                  profile.tags.any(
+                    (tag) => tag.value.toLowerCase().contains(normalizedQuery),
+                  );
+            })
+            .toList(growable: false);
+      }
     }
 
     result = pagedAccountProfilesResultFromRaw(
       profiles: profiles,
       hasMore: result.hasMore,
       discoveryFilterFacets: result.discoveryFilterFacets,
-      discoveryFilterCatalog: result.discoveryFilterCatalog,
+      discoveryFilterCatalog:
+          result.discoveryFilterCatalog ?? fallbackRuntimeCatalog,
     );
 
     return result;
@@ -2535,6 +2602,11 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   ) async {
     return _bySlug[slug.value];
   }
+
+  @override
+  Future<List<AccountProfileNestedGroupMember>> getNestedGroupMembersByPath(
+    AccountProfilesRepositoryContractPrimString membersPath,
+  ) async => const <AccountProfileNestedGroupMember>[];
 
   @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
@@ -2643,6 +2715,11 @@ class _FailingAccountProfilesRepository
   }
 
   @override
+  Future<List<AccountProfileNestedGroupMember>> getNestedGroupMembersByPath(
+    AccountProfilesRepositoryContractPrimString membersPath,
+  ) async => const <AccountProfileNestedGroupMember>[];
+
+  @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
     AccountProfilesRepositoryContractPrimInt? pageSize,
     List<AccountProfilesRepositoryContractPrimString>? typeFilters,
@@ -2710,6 +2787,11 @@ class _InitFailingAccountProfilesRepository
   ) async {
     return null;
   }
+
+  @override
+  Future<List<AccountProfileNestedGroupMember>> getNestedGroupMembersByPath(
+    AccountProfilesRepositoryContractPrimString membersPath,
+  ) async => const <AccountProfileNestedGroupMember>[];
 
   @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
@@ -3075,8 +3157,15 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
 }
 
 AppDataDiscoveryFilterSelectionSnapshot _appDataSelectionSnapshot(
-  DiscoveryFilterSelection selection,
-) {
+  DiscoveryFilterSelection selection, {
+  DiscoveryFilterCatalog? catalog,
+}) {
+  final payload = catalog == null
+      ? null
+      : DiscoveryFilterQueryPayload.compile(
+          catalog: catalog,
+          selection: selection,
+        );
   return AppDataDiscoveryFilterSelectionSnapshot(
     primaryKeys: selection.primaryKeys
         .map(AppDataDiscoveryFilterTokenValue.fromRaw)
@@ -3091,6 +3180,18 @@ AppDataDiscoveryFilterSelectionSnapshot _appDataSelectionSnapshot(
           ),
         )
         .toList(growable: false),
+    typeFilterSelections: [
+      for (final entry
+          in (payload?.typesByEntity.entries ??
+              const <MapEntry<String, Set<String>>>[]))
+        if (entry.value.isNotEmpty)
+          AppDataDiscoveryFilterEntityTypeSelection(
+            entityKey: AppDataDiscoveryFilterTokenValue.fromRaw(entry.key),
+            typeKeys: entry.value
+                .map(AppDataDiscoveryFilterTokenValue.fromRaw)
+                .toList(growable: false),
+          ),
+    ],
   );
 }
 

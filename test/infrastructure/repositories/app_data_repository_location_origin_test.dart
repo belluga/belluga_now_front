@@ -217,6 +217,12 @@ void main() {
             termKeys: [AppDataDiscoveryFilterTokenValue.fromRaw('rock')],
           ),
         ],
+        typeFilterSelections: [
+          AppDataDiscoveryFilterEntityTypeSelection(
+            entityKey: AppDataDiscoveryFilterTokenValue.fromRaw('event'),
+            typeKeys: [AppDataDiscoveryFilterTokenValue.fromRaw('show')],
+          ),
+        ],
       ),
     );
 
@@ -245,6 +251,15 @@ void main() {
           .map((value) => value.value)
           .toList(growable: false),
       ['rock'],
+    );
+    expect(
+      restoredSelection
+          ?.typeFiltersForEntity(
+            AppDataDiscoveryFilterTokenValue.fromRaw('event'),
+          )
+          .map((value) => value.value)
+          .toList(growable: false),
+      ['show'],
     );
     expect(
       await reloadedRepository.getDiscoveryFilterSelection(

@@ -81,4 +81,27 @@ void main() {
       ]);
     },
   );
+
+  test('update keeps persisted channel id and omits request-local draft key', () {
+    final persistedDraft = BellugaContactChannelDraft(
+      draftKey: 'persisted:channel-1',
+      id: 'channel-1',
+      type: BellugaContactChannelType.whatsapp,
+      value: '+55 (27) 99999-1111',
+      title: 'Canal principal',
+    );
+
+    final payload = encoder.encodeUpdateAccountProfile(
+      contactChannelDrafts: <BellugaContactChannelDraft>[persistedDraft],
+    );
+
+    expect(payload['contact_channels'], <Map<String, dynamic>>[
+      <String, dynamic>{
+        'id': 'channel-1',
+        'type': 'whatsapp',
+        'value': '+55 (27) 99999-1111',
+        'title': 'Canal principal',
+      },
+    ]);
+  });
 }

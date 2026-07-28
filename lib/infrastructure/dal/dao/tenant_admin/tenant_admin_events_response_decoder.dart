@@ -360,7 +360,6 @@ class TenantAdminEventsResponseDecoder {
         : ownParties.isNotEmpty
         ? _mapPartyProfileIds(ownParties)
         : ownProfiles
-              .where((profile) => profile.profileType.trim() != 'venue')
               .map((profile) => TenantAdminAccountProfileIdValue(profile.id))
               .toList(growable: false);
     final ownTaxonomyTerms = _taxonomyTermsFromRaw(item['own_taxonomy_terms']);
@@ -689,7 +688,6 @@ class TenantAdminEventsResponseDecoder {
     return _asList(raw)
         .whereType<Map>()
         .map((row) => _mapRelatedAccountProfile(Map<String, dynamic>.from(row)))
-        .where((profile) => profile.profileType.trim() != 'venue')
         .toList(growable: false);
   }
 

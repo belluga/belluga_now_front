@@ -180,7 +180,7 @@ void main() {
     expect(venue.normalizedProfileType, 'venue');
   });
 
-  test('parses public profile groups for custom dynamic event tabs', () {
+  test('parses public profile group metadata for custom dynamic event tabs', () {
     final dto = EventDTO.fromJson({
       'event_id': '507f1f77bcf86cd799439022',
       'slug': 'evt-groups',
@@ -213,27 +213,19 @@ void main() {
           'id': 'expositores',
           'label': 'Expositores',
           'order': 1,
-          'profiles': [
-            {
-              'id': 'producer-1',
-              'display_name': 'Produtor B',
-              'slug': 'produtor-b',
-              'profile_type': 'producer',
-            },
-          ],
+          'member_count': 1,
+          'members_path':
+              '/api/v1/events/evt-groups/related_profile_tabs/expositores/members',
+          'account_profile_ids': ['producer-1'],
         },
         {
           'id': 'atracoes',
           'label': 'Atrações',
           'order': 0,
-          'profiles': [
-            {
-              'id': 'artist-1',
-              'display_name': 'Artista A',
-              'slug': 'artista-a',
-              'profile_type': 'artist',
-            },
-          ],
+          'member_count': 1,
+          'members_path':
+              '/api/v1/events/evt-groups/related_profile_tabs/atracoes/members',
+          'account_profile_ids': ['artist-1'],
         },
       ],
     });
@@ -243,9 +235,22 @@ void main() {
     expect(domain.profileGroups, hasLength(2));
     expect(domain.profileGroups[0].id, 'atracoes');
     expect(domain.profileGroups[0].label, 'Atrações');
-    expect(domain.profileGroups[0].profiles.single.displayName, 'Artista A');
+    expect(domain.profileGroups[0].memberCount, 1);
+    expect(
+      domain.profileGroups[0].membersPath,
+      '/api/v1/events/evt-groups/related_profile_tabs/atracoes/members',
+    );
+    expect(
+      domain.profileGroups[0].accountProfileIdValues.map((id) => id.value),
+      ['artist-1'],
+    );
+    expect(domain.profileGroups[0].profiles, isEmpty);
     expect(domain.profileGroups[1].id, 'expositores');
-    expect(domain.profileGroups[1].profiles.single.profileType, 'producer');
+    expect(
+      domain.profileGroups[1].accountProfileIdValues.map((id) => id.value),
+      ['producer-1'],
+    );
+    expect(domain.profileGroups[1].profiles, isEmpty);
   });
 
   test('parses linked profile navigation contract without requiring slug', () {
@@ -322,22 +327,15 @@ void main() {
             'id': 'artists',
             'label': 'Artists',
             'order': 0,
-            'profiles': [
-              {
-                'id': 'profile-relative',
-                'display_name': 'Perfil relativo',
-                'profile_type': 'artist',
-                'avatar_url':
-                    '/api/v1/media/account-profiles/profile-relative/avatar?v=7',
-                'cover_url': 'account-profiles/profile-relative/cover?v=8',
-              },
-            ],
+            'member_count': 1,
+            'members_path':
+                '/api/v1/events/evt-relative-linked-media/related_profile_tabs/artists/members',
           },
         ],
       });
 
       final linkedProfile = dto.linkedAccountProfiles.single;
-      final groupedProfile = dto.profileGroups.single.profiles.single;
+      final group = dto.profileGroups.single;
 
       expect(
         linkedProfile.avatarUrl,
@@ -347,13 +345,17 @@ void main() {
         linkedProfile.coverUrl,
         'https://tenant.test/account-profiles/profile-relative/cover?v=8',
       );
-      expect(groupedProfile.avatarUrl, linkedProfile.avatarUrl);
-      expect(groupedProfile.coverUrl, linkedProfile.coverUrl);
+      expect(group.memberCount, 1);
+      expect(
+        group.membersPath,
+        '/api/v1/events/evt-relative-linked-media/related_profile_tabs/artists/members',
+      );
+      expect(group.profiles, isEmpty);
     },
   );
 
   test(
-    'hydrates grouped profiles from root aggregate media when group payload is shallow',
+    'ignores public profile groups that only embed members without canonical metadata',
     () {
       final dto = EventDTO.fromJson({
         'event_id': '507f1f77bcf86cd799439156',
@@ -395,16 +397,14 @@ void main() {
       });
 
       final linkedProfile = dto.linkedAccountProfiles.single;
-      final groupedProfile = dto.profileGroups.single.profiles.single;
 
-      expect(groupedProfile.id, linkedProfile.id);
-      expect(groupedProfile.avatarUrl, linkedProfile.avatarUrl);
-      expect(groupedProfile.coverUrl, linkedProfile.coverUrl);
+      expect(linkedProfile.id, 'profile-relative');
+      expect(dto.profileGroups, isEmpty);
     },
   );
 
   test(
-    'hydrates grouped profiles from aggregate when snapshot media is stale and membership is partial',
+    'keeps public profile group member ids for lazy hydration instead of stale embedded members',
     () {
       final dto = EventDTO.fromJson({
         'event_id': '507f1f77bcf86cd799439157',
@@ -447,6 +447,9 @@ void main() {
             'label': 'Artists',
             'order': 0,
             'account_profile_ids': ['profile-relative', 'profile-secondary'],
+            'member_count': 2,
+            'members_path':
+                '/api/v1/events/evt-stale-group-linked-media/related_profile_tabs/artists/members',
             'profiles': [
               {
                 'id': 'profile-relative',
@@ -463,22 +466,20 @@ void main() {
       });
 
       final linkedProfiles = dto.linkedAccountProfiles;
-      final groupedProfiles = dto.profileGroups.single.profiles;
+      final group = dto.profileGroups.single;
 
-      expect(groupedProfiles, hasLength(2));
-      expect(groupedProfiles.map((profile) => profile.id), [
+      expect(group.accountProfileIdValues.map((id) => id.value), [
         linkedProfiles[0].id,
         linkedProfiles[1].id,
       ]);
-      expect(groupedProfiles[0].avatarUrl, linkedProfiles[0].avatarUrl);
-      expect(groupedProfiles[0].coverUrl, linkedProfiles[0].coverUrl);
-      expect(groupedProfiles[0].slug, linkedProfiles[0].slug);
+      expect(group.memberCount, 2);
       expect(
-        groupedProfiles[0].publicDetailPath,
-        linkedProfiles[0].publicDetailPath,
+        group.membersPath,
+        '/api/v1/events/evt-stale-group-linked-media/related_profile_tabs/artists/members',
       );
-      expect(groupedProfiles[1].avatarUrl, linkedProfiles[1].avatarUrl);
-      expect(groupedProfiles[1].coverUrl, linkedProfiles[1].coverUrl);
+      expect(group.profiles, isEmpty);
+      expect(linkedProfiles[0].avatarUrl, contains('profile-relative/avatar'));
+      expect(linkedProfiles[1].avatarUrl, contains('profile-secondary/avatar'));
     },
   );
 
@@ -581,14 +582,10 @@ void main() {
             'id': 'palco-bandas',
             'label': 'Palco Bandas',
             'order': 0,
-            'profiles': [
-              {
-                'id': 'profile-band',
-                'display_name': 'Banda Azul',
-                'slug': 'banda-azul',
-                'profile_type': 'banda',
-              },
-            ],
+            'member_count': 1,
+            'members_path':
+                '/api/v1/events/festival-com-ocorrencias/related_profile_tabs/palco-bandas/members',
+            'account_profile_ids': ['profile-band'],
           },
         ],
         'occurrences': [
@@ -638,32 +635,98 @@ void main() {
         'Vila Expositores',
       );
       expect(
-        domain.occurrences.last.profileGroups.single.profiles.single.id,
-        'profile-exhibitor',
-      );
-      expect(
         domain.occurrences.last.profileGroups.single.accountProfileIdValues.map(
           (id) => id.value,
         ),
         ['profile-exhibitor'],
       );
+      expect(domain.occurrences.last.profileGroups.single.profiles, isEmpty);
     },
   );
 
+  test('preserves top-level profile group member ids for lazy hydration', () {
+    final dto = EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439101',
+      'occurrence_id': '507f1f77bcf86cd799439102',
+      'slug': 'festival-com-grupos-por-id',
+      'type': {
+        'id': 'festival',
+        'name': 'Festival',
+        'slug': 'festival',
+        'description': '',
+      },
+      'title': 'Festival com Grupos por Id',
+      'content': 'Descricao',
+      'location': 'Praca Central',
+      'date_time_start': '2026-03-04T17:00:00+00:00',
+      'linked_account_profiles': [
+        {
+          'id': 'profile-band',
+          'display_name': 'Banda Azul',
+          'slug': 'banda-azul',
+          'profile_type': 'banda',
+        },
+        {
+          'id': 'profile-exhibitor',
+          'display_name': 'Expositor Sol',
+          'slug': 'expositor-sol',
+          'profile_type': 'expositor',
+        },
+      ],
+      'profile_groups': [
+        {
+          'id': 'palco-bandas',
+          'label': 'Palco Bandas',
+          'order': 0,
+          'account_profile_ids': ['profile-band'],
+        },
+        {
+          'id': 'vila-expositores',
+          'label': 'Vila Expositores',
+          'order': 1,
+          'account_profile_ids': ['profile-exhibitor'],
+        },
+      ],
+      'occurrences': [
+        {
+          'occurrence_id': '507f1f77bcf86cd799439102',
+          'date_time_start': '2026-03-04T17:00:00+00:00',
+          'is_selected': true,
+        },
+      ],
+    });
+
+    final domain = dto.toDomain();
+
+    expect(domain.profileGroups, hasLength(2));
+    expect(domain.profileGroups.first.label, 'Palco Bandas');
+    expect(
+      domain.profileGroups.first.accountProfileIdValues.map((id) => id.value),
+      ['profile-band'],
+    );
+    expect(domain.profileGroups.first.profiles, isEmpty);
+    expect(domain.profileGroups.last.label, 'Vila Expositores');
+    expect(
+      domain.profileGroups.last.accountProfileIdValues.map((id) => id.value),
+      ['profile-exhibitor'],
+    );
+    expect(domain.profileGroups.last.profiles, isEmpty);
+  });
+
   test(
-    'hydrates top-level profile groups from member ids and linked profiles',
+    'preserves metadata-only profile groups with members_path for lazy public tab hydration',
     () {
       final dto = EventDTO.fromJson({
-        'event_id': '507f1f77bcf86cd799439101',
-        'occurrence_id': '507f1f77bcf86cd799439102',
-        'slug': 'festival-com-grupos-por-id',
+        'event_id': '507f1f77bcf86cd799439301',
+        'occurrence_id': '507f1f77bcf86cd799439302',
+        'slug': 'festival-com-abas-lazy',
         'type': {
           'id': 'festival',
           'name': 'Festival',
           'slug': 'festival',
           'description': '',
         },
-        'title': 'Festival com Grupos por Id',
+        'title': 'Festival com abas lazy',
         'content': 'Descricao',
         'location': 'Praca Central',
         'date_time_start': '2026-03-04T17:00:00+00:00',
@@ -674,11 +737,13 @@ void main() {
             'slug': 'banda-azul',
             'profile_type': 'banda',
           },
+        ],
+        'artists': [
           {
-            'id': 'profile-exhibitor',
-            'display_name': 'Expositor Sol',
-            'slug': 'expositor-sol',
-            'profile_type': 'expositor',
+            'id': 'profile-band',
+            'display_name': 'Banda Azul',
+            'slug': 'banda-azul',
+            'profile_type': 'banda',
           },
         ],
         'profile_groups': [
@@ -686,42 +751,29 @@ void main() {
             'id': 'palco-bandas',
             'label': 'Palco Bandas',
             'order': 0,
-            'account_profile_ids': ['profile-band'],
-          },
-          {
-            'id': 'vila-expositores',
-            'label': 'Vila Expositores',
-            'order': 1,
-            'account_profile_ids': ['profile-exhibitor'],
-          },
-        ],
-        'occurrences': [
-          {
-            'occurrence_id': '507f1f77bcf86cd799439102',
-            'date_time_start': '2026-03-04T17:00:00+00:00',
-            'is_selected': true,
+            'member_count': 2,
+            'members_path':
+                '/api/v1/events/festival-com-abas-lazy/related_profile_tabs/palco-bandas/members',
           },
         ],
       });
 
       final domain = dto.toDomain();
 
-      expect(domain.profileGroups, hasLength(2));
-      expect(domain.profileGroups.first.label, 'Palco Bandas');
+      expect(domain.profileGroups, hasLength(1));
+      expect(domain.profileGroups.single.label, 'Palco Bandas');
+      expect(domain.profileGroups.single.memberCount, 2);
       expect(
-        domain.profileGroups.first.profiles.single.displayName,
-        'Banda Azul',
+        domain.profileGroups.single.membersPath,
+        '/api/v1/events/festival-com-abas-lazy/related_profile_tabs/palco-bandas/members',
       );
-      expect(domain.profileGroups.last.label, 'Vila Expositores');
-      expect(
-        domain.profileGroups.last.profiles.single.displayName,
-        'Expositor Sol',
-      );
+      expect(domain.profileGroups.single.profiles, isEmpty);
+      expect(domain.profileGroups.single.accountProfileIdValues, isEmpty);
     },
   );
 
   test(
-    'hydrates occurrence profile groups from occurrence-owned linked profiles when root aggregate is incomplete',
+    'preserves occurrence-owned linked profiles separately from metadata-only occurrence groups when root aggregate is incomplete',
     () {
       final dto = EventDTO.fromJson({
         'event_id': '507f1f77bcf86cd799439191',
@@ -779,16 +831,17 @@ void main() {
         'Vila Expositores',
       );
       expect(
-        domain
-            .occurrences
-            .single
-            .profileGroups
-            .single
-            .profiles
-            .single
-            .displayName,
-        'Expositor Sol',
+        domain.occurrences.single.linkedAccountProfiles.map(
+          (profile) => profile.displayName,
+        ),
+        contains('Expositor Sol'),
       );
+      expect(
+        domain.occurrences.single.profileGroups.single.accountProfileIdValues
+            .map((id) => id.value),
+        ['profile-exhibitor'],
+      );
+      expect(domain.occurrences.single.profileGroups.single.profiles, isEmpty);
     },
   );
 
@@ -853,16 +906,11 @@ void main() {
         'https://tenant.test/api/v1/media/account-profiles/profile-band/avatar?v=1',
       );
       expect(
-        domain
-            .occurrences
-            .single
-            .profileGroups
-            .single
-            .profiles
-            .single
-            .avatarUrl,
-        'https://tenant.test/api/v1/media/account-profiles/profile-band/avatar?v=1',
+        domain.occurrences.single.profileGroups.single.accountProfileIdValues
+            .map((id) => id.value),
+        ['profile-band'],
       );
+      expect(domain.occurrences.single.profileGroups.single.profiles, isEmpty);
     },
   );
 

@@ -270,6 +270,8 @@ class _FakeAccountProfilesRepository
 
   List<TenantAdminProfileTypeDefinition> _profileTypes;
   List<TenantAdminAccountProfile> profilesToReturn = const [];
+  String? lastFetchPageProfileType;
+  String? lastFetchPageSearch;
   String? lastCreateBio;
   List<TenantAdminTaxonomyTerm> lastCreateTaxonomyTerms = const [];
   Object? createProfileError;
@@ -392,11 +394,17 @@ class _FakeAccountProfilesRepository
     required TenantAdminAccountProfilesRepoInt pageSize,
     TenantAdminAccountProfilesRepoString? search,
     TenantAdminAccountProfilesRepoString? accountId,
+    TenantAdminAccountProfilesRepoString? profileType,
+    TenantAdminAccountProfilesRepoString? contactMode,
+    TenantAdminAccountProfilesRepoBool? contactChannelsEnabledOnly,
     TenantAdminAccountProfilesRepoBool? queryableOnly,
     TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async {
+    lastFetchPageProfileType = profileType?.value;
+    lastFetchPageSearch = search?.value;
     final filtered = _filterProfiles(
       search: search?.value,
+      profileType: profileType?.value,
       excludeAccountProfileId: excludeAccountProfileId?.value,
     );
     final start = (page.value - 1) * pageSize.value;
@@ -418,19 +426,6 @@ class _FakeAccountProfilesRepository
       pageSize: pageSize.value,
     );
   }
-
-  @override
-  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-  fetchContactSourceCandidatesPage({
-    required TenantAdminAccountProfilesRepoInt page,
-    required TenantAdminAccountProfilesRepoInt pageSize,
-    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
-  }) async => tenantAdminPagedResultFromRaw(
-    items: const <TenantAdminAccountProfile>[],
-    hasMore: false,
-    currentPage: page.value,
-    pageSize: pageSize.value,
-  );
 
   @override
   Future<TenantAdminProfileTypeDefinition> createProfileType({
@@ -505,6 +500,7 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? profileType,
     TenantAdminAccountProfilesRepoString? displayName,
     TenantAdminAccountProfilesRepoString? slug,
+    TenantAdminAccountProfilesRepoInt? aggregateRevision,
     TenantAdminLocation? location,
     TenantAdminTaxonomyTerms? taxonomyTerms,
     TenantAdminAccountProfilesRepoString? bio,
@@ -543,9 +539,11 @@ class _FakeAccountProfilesRepository
 
   List<TenantAdminAccountProfile> _filterProfiles({
     String? search,
+    String? profileType,
     String? excludeAccountProfileId,
   }) {
     final normalizedSearch = search?.trim().toLowerCase() ?? '';
+    final normalizedProfileType = profileType?.trim().toLowerCase() ?? '';
     return profilesToReturn
         .where((profile) {
           if (excludeAccountProfileId != null &&
@@ -553,13 +551,14 @@ class _FakeAccountProfilesRepository
               profile.id == excludeAccountProfileId) {
             return false;
           }
+          if (normalizedProfileType.isNotEmpty &&
+              profile.profileType.toLowerCase() != normalizedProfileType) {
+            return false;
+          }
           if (normalizedSearch.isEmpty) {
             return true;
           }
-          final normalizedSlug = profile.slug?.toLowerCase() ?? '';
-          return profile.displayName.toLowerCase().contains(normalizedSearch) ||
-              profile.profileType.toLowerCase().contains(normalizedSearch) ||
-              normalizedSlug.contains(normalizedSearch);
+          return profile.displayName.toLowerCase().startsWith(normalizedSearch);
         })
         .toList(growable: false);
   }
@@ -1299,6 +1298,7 @@ void main() {
           label: 'Venue',
           allowedTaxonomies: [],
           capabilities: TenantAdminProfileTypeCapabilities(
+            isQueryable: TenantAdminFlagValue(true),
             isFavoritable: TenantAdminFlagValue(true),
             isPoiEnabled: TenantAdminFlagValue(false),
             hasBio: TenantAdminFlagValue(false),
@@ -1308,6 +1308,23 @@ void main() {
             hasCover: TenantAdminFlagValue(false),
             hasEvents: TenantAdminFlagValue(false),
             hasNestedProfileGroups: TenantAdminFlagValue(true),
+          ),
+        ),
+        tenantAdminProfileTypeDefinitionFromRaw(
+          type: 'artist',
+          label: 'Artist',
+          allowedTaxonomies: [],
+          capabilities: TenantAdminProfileTypeCapabilities(
+            isQueryable: TenantAdminFlagValue(true),
+            isFavoritable: TenantAdminFlagValue(true),
+            isPoiEnabled: TenantAdminFlagValue(false),
+            hasBio: TenantAdminFlagValue(false),
+            hasContent: TenantAdminFlagValue(false),
+            hasTaxonomies: TenantAdminFlagValue(false),
+            hasAvatar: TenantAdminFlagValue(false),
+            hasCover: TenantAdminFlagValue(false),
+            hasEvents: TenantAdminFlagValue(false),
+            hasNestedProfileGroups: TenantAdminFlagValue(false),
           ),
         ),
       ];
@@ -1321,6 +1338,15 @@ void main() {
                 profileType: 'venue',
                 displayName: 'Conta Parceira',
                 slug: 'conta-parceira',
+              );
+            }
+            if (itemNumber == 2) {
+              return tenantAdminAccountProfileFromRaw(
+                id: 'profile-2',
+                accountId: 'acc-existing-2',
+                profileType: 'artist',
+                displayName: 'Artist Beta',
+                slug: 'artist-beta',
               );
             }
             if (itemNumber == 21) {
@@ -1361,16 +1387,40 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Selecionar Accounts'), findsOneWidget);
-      await tester.tap(find.text('Selecionar Accounts'));
+      expect(find.text('Selecionar perfis'), findsOneWidget);
+      await tester.tap(find.text('Selecionar perfis'));
       await tester.pumpAndSettle();
 
       expect(find.text('Conta Parceira'), findsOneWidget);
       expect(find.text('Runtime Sender'), findsNothing);
+      expect(find.text('Artist Beta'), findsOneWidget);
+
+      final pickerTypeDropdown = find.byWidgetPredicate((widget) {
+        return widget is DropdownButtonFormField<String> &&
+            widget.decoration.labelText == 'Tipo de perfil';
+      });
+      await tester.tap(pickerTypeDropdown.last, warnIfMissed: false);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Artist').last);
+      await tester.pumpAndSettle();
+
+      expect(profilesRepository.lastFetchPageProfileType, 'artist');
+      expect(find.text('Artist Beta'), findsOneWidget);
+      expect(find.text('Conta Parceira'), findsNothing);
+      expect(find.text('Runtime Sender'), findsNothing);
+
+      await tester.tap(pickerTypeDropdown.last, warnIfMissed: false);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Todos os tipos').last);
+      await tester.pumpAndSettle();
+
+      expect(profilesRepository.lastFetchPageProfileType, isNull);
+      expect(find.text('Conta Parceira'), findsOneWidget);
+      expect(find.text('Artist Beta'), findsOneWidget);
 
       final searchField = find.byWidgetPredicate((widget) {
         return widget is TextField &&
-            widget.decoration?.labelText == 'Buscar Account';
+            widget.decoration?.labelText == 'Buscar perfil';
       });
       await tester.enterText(searchField, 'runtime');
       await tester.pump(const Duration(milliseconds: 300));
@@ -1386,9 +1436,10 @@ void main() {
       expect(find.text('Conta Parceira'), findsOneWidget);
       expect(find.text('Runtime Sender'), findsNothing);
 
-      await tester.drag(
-        find.byType(SingleChildScrollView).last,
-        const Offset(0, -1200),
+      await tester.scrollUntilVisible(
+        find.text('Runtime Sender'),
+        300,
+        scrollable: find.byType(Scrollable).last,
       );
       await tester.pumpAndSettle();
 
@@ -1458,9 +1509,11 @@ void main() {
       'Integrantes',
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Selecionar Accounts'));
+    await tester.tap(find.text('Selecionar perfis'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Conta Parceira'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Concluir'));
     await tester.pumpAndSettle();
 
     await tester.scrollUntilVisible(
@@ -1520,6 +1573,7 @@ Future<void> _pumpWithAutoRoute(WidgetTester tester, Widget child) async {
 
   await tester.pumpWidget(
     MaterialApp.router(
+      theme: ThemeData(splashFactory: NoSplash.splashFactory),
       routeInformationParser: router.defaultRouteParser(),
       routerDelegate: router.delegate(),
     ),

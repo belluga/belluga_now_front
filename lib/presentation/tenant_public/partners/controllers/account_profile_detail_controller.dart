@@ -7,6 +7,7 @@ import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
 import 'package:belluga_now/domain/partners/profile_type_capabilities.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
@@ -171,6 +172,85 @@ class AccountProfileDetailController implements Disposable {
       );
       moduleDataStreamValue.addValue(const {});
     }
+  }
+
+  Future<void> ensureNestedGroupMembersLoaded(
+    AccountProfileNestedGroup group,
+  ) async {
+    final membersPath = group.membersPath?.trim();
+    if (membersPath == null || membersPath.isEmpty) {
+      return;
+    }
+
+    await _accountProfilesRepository.loadNestedGroupMembersByPath(
+      AccountProfilesRepositoryContractPrimString.fromRaw(
+        membersPath,
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
+  }
+
+  Future<void> loadMoreNestedGroupMembers(
+    AccountProfileNestedGroup group,
+  ) async {
+    final membersPath = group.membersPath?.trim();
+    if (membersPath == null || membersPath.isEmpty) {
+      return;
+    }
+
+    await _accountProfilesRepository.loadMoreNestedGroupMembersByPath(
+      AccountProfilesRepositoryContractPrimString.fromRaw(
+        membersPath,
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
+  }
+
+  StreamValue<List<AccountProfileNestedGroupMember>>
+  nestedGroupMembersStreamValue(AccountProfileNestedGroup group) {
+    return _accountProfilesRepository.nestedGroupMembersStreamValue(
+      AccountProfilesRepositoryContractPrimString.fromRaw(
+        group.membersPath?.trim() ?? '',
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
+  }
+
+  StreamValue<AccountProfilesRepositoryContractPrimBool>
+  hasMoreNestedGroupMembersStreamValue(AccountProfileNestedGroup group) {
+    return _accountProfilesRepository.hasMoreNestedGroupMembersStreamValue(
+      AccountProfilesRepositoryContractPrimString.fromRaw(
+        group.membersPath?.trim() ?? '',
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
+  }
+
+  StreamValue<AccountProfilesRepositoryContractPrimBool>
+  isNestedGroupMembersPageLoadingStreamValue(AccountProfileNestedGroup group) {
+    return _accountProfilesRepository
+        .isNestedGroupMembersPageLoadingStreamValue(
+          AccountProfilesRepositoryContractPrimString.fromRaw(
+            group.membersPath?.trim() ?? '',
+            defaultValue: '',
+            isRequired: true,
+          ),
+        );
+  }
+
+  StreamValue<AccountProfilesRepositoryContractPrimString?>
+  nestedGroupMembersErrorStreamValue(AccountProfileNestedGroup group) {
+    return _accountProfilesRepository.nestedGroupMembersErrorStreamValue(
+      AccountProfilesRepositoryContractPrimString.fromRaw(
+        group.membersPath?.trim() ?? '',
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
   }
 
   AccountProfileFavoriteToggleOutcome toggleFavorite(String accountProfileId) {

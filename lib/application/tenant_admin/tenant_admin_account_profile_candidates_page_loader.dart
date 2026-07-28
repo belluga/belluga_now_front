@@ -15,6 +15,9 @@ final class TenantAdminAccountProfileCandidatesPageLoader {
     required int pageNumber,
     String? search,
     String? accountId,
+    String? profileType,
+    String? contactMode,
+    bool contactChannelsEnabledOnly = false,
     bool queryableOnly = false,
     String? excludeAccountProfileId,
   }) {
@@ -37,6 +40,24 @@ final class TenantAdminAccountProfileCandidatesPageLoader {
               defaultValue: '',
               isRequired: true,
             ),
+      profileType: profileType == null || profileType.isEmpty
+          ? null
+          : tenantAdminAccountProfilesRepoString(
+              profileType,
+              defaultValue: '',
+              isRequired: true,
+            ),
+      contactMode: contactMode == null || contactMode.isEmpty
+          ? null
+          : tenantAdminAccountProfilesRepoString(
+              contactMode,
+              defaultValue: '',
+              isRequired: true,
+            ),
+      contactChannelsEnabledOnly: tenantAdminAccountProfilesRepoBool(
+        contactChannelsEnabledOnly,
+        defaultValue: contactChannelsEnabledOnly,
+      ),
       queryableOnly: tenantAdminAccountProfilesRepoBool(
         queryableOnly,
         defaultValue: queryableOnly,

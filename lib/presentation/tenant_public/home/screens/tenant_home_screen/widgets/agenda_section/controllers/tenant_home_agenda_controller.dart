@@ -2,13 +2,14 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
+import 'package:belluga_now/domain/app_data/discovery_filter_selection_snapshot.dart';
 import 'package:belluga_now/domain/app_data/location_origin_settings.dart';
 import 'package:belluga_now/domain/app_data/location_origin_resolution.dart';
+import 'package:belluga_now/domain/app_data/value_object/app_data_discovery_filter_token_value.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/discovery_filters_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
@@ -41,7 +42,6 @@ class TenantHomeAgendaController extends Object
   TenantHomeAgendaController({
     ScheduleRepositoryContract? scheduleRepository,
     UserEventsRepositoryContract? userEventsRepository,
-    DiscoveryFiltersRepositoryContract? discoveryFiltersRepository,
     InvitesRepositoryContract? invitesRepository,
     AppDataRepositoryContract? appDataRepository,
     AuthRepositoryContract? authRepository,
@@ -56,11 +56,6 @@ class TenantHomeAgendaController extends Object
            scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>(),
        _userEventsRepository =
            userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>(),
-       _discoveryFiltersRepository =
-           discoveryFiltersRepository ??
-           (GetIt.I.isRegistered<DiscoveryFiltersRepositoryContract>()
-               ? GetIt.I.get<DiscoveryFiltersRepositoryContract>()
-               : null),
        _invitesRepository =
            invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
        _appDataRepository =
@@ -86,7 +81,6 @@ class TenantHomeAgendaController extends Object
 
   final ScheduleRepositoryContract _scheduleRepository;
   final UserEventsRepositoryContract _userEventsRepository;
-  final DiscoveryFiltersRepositoryContract? _discoveryFiltersRepository;
   final InvitesRepositoryContract _invitesRepository;
   final AppDataRepositoryContract _appDataRepository;
   final AuthRepositoryContract? _authRepository;
@@ -221,6 +215,8 @@ class TenantHomeAgendaController extends Object
   LocationOriginSettings? _effectiveOriginSettings;
   double? _pendingPersistedRadiusEchoMeters;
   bool _locationPermissionRequested = false;
+  AppDataDiscoveryFilterSelectionSnapshot?
+  _persistedDiscoveryFilterSelectionSnapshot;
   Uri get defaultEventImageUri {
     final configured = _appDataRepository.appData.mainLogoDarkUrl.value;
     if (configured != null && configured.toString().trim().isNotEmpty) {
@@ -238,10 +234,6 @@ class TenantHomeAgendaController extends Object
 
   List<EventModel>? get displayedEvents =>
       displayStateStreamValue.value?.events;
-
-  @override
-  DiscoveryFiltersRepositoryContract? get publicDiscoveryFiltersRepository =>
-      _discoveryFiltersRepository;
 
   @override
   AppDataRepositoryContract? get publicDiscoveryFilterAppDataRepository =>
@@ -263,6 +255,8 @@ class TenantHomeAgendaController extends Object
   void onPublicDiscoveryFilterSelectionChanged(
     DiscoveryFilterSelection selection,
   ) {
+    _persistedDiscoveryFilterSelectionSnapshot =
+        discoveryFilterSelectionSnapshot(selection);
     unawaited(_refresh(preserveCurrentResults: true));
   }
 
@@ -374,8 +368,12 @@ class TenantHomeAgendaController extends Object
     );
     _listenForStatusChanges();
     _listenForRadiusChanges();
-    final restoredSelection =
-        await loadPersistedPublicDiscoveryFilterSelection();
+    final restoredSelectionSnapshot =
+        await loadPersistedPublicDiscoveryFilterSelectionSnapshot();
+    _persistedDiscoveryFilterSelectionSnapshot = restoredSelectionSnapshot;
+    final restoredSelection = restoredSelectionSnapshot == null
+        ? null
+        : discoveryFilterSelectionFromSnapshot(restoredSelectionSnapshot);
     if (restoredSelection != null &&
         !samePublicDiscoveryFilterSelection(
           discoveryFilterSelectionStreamValue.value,
@@ -384,20 +382,6 @@ class TenantHomeAgendaController extends Object
       _ifAlive(
         () => discoveryFilterSelectionStreamValue.addValue(restoredSelection),
       );
-    }
-    final mustAwaitCatalogBeforeResults =
-        restoredSelection?.isEmpty == false ||
-        discoveryFilterSelectionStreamValue.value.isNotEmpty;
-    final catalogFuture =
-        loadPublicDiscoveryFilterCatalog(
-          restoredSelection: restoredSelection,
-        ).then((_) {
-          _reconcileRuntimeDiscoveryFilterCatalog();
-        });
-    if (mustAwaitCatalogBeforeResults) {
-      await catalogFuture;
-    } else {
-      unawaited(catalogFuture);
     }
 
     final restored = _restoreFromRepositoryCache();
@@ -983,11 +967,32 @@ class TenantHomeAgendaController extends Object
   }
 
   List<ScheduleRepoString>? _selectedEventCategories() {
-    final payload = DiscoveryFilterQueryPayload.compile(
-      catalog: discoveryFilterCatalogStreamValue.value,
-      selection: discoveryFilterSelectionStreamValue.value,
+    return _selectedEventCategoriesForSelection(
+      discoveryFilterSelectionStreamValue.value,
     );
-    final categories = payload.typesForEntity('event');
+  }
+
+  List<ScheduleRepoString>? _selectedEventCategoriesForSelection(
+    DiscoveryFilterSelection selection, {
+    DiscoveryFilterCatalog? catalogOverride,
+    bool allowPersistedFallback = true,
+  }) {
+    final payload = DiscoveryFilterQueryPayload.compile(
+      catalog: catalogOverride ?? discoveryFilterCatalogStreamValue.value,
+      selection: selection,
+    );
+    final categories = <String>{...payload.typesForEntity('event')};
+    if (categories.isEmpty &&
+        allowPersistedFallback &&
+        _canUsePersistedDiscoveryFilterSelectionSnapshot(selection)) {
+      categories.addAll(
+        _persistedDiscoveryFilterSelectionSnapshot!
+            .typeFiltersForEntity(
+              AppDataDiscoveryFilterTokenValue.fromRaw('event'),
+            )
+            .map((value) => value.value),
+      );
+    }
     if (categories.isEmpty) {
       return null;
     }
@@ -998,11 +1003,34 @@ class TenantHomeAgendaController extends Object
   }
 
   ScheduleRepoTaxonomyEntries? _selectedEventTaxonomyEntries() {
-    final payload = DiscoveryFilterQueryPayload.compile(
-      catalog: discoveryFilterCatalogStreamValue.value,
-      selection: discoveryFilterSelectionStreamValue.value,
+    return _selectedEventTaxonomyEntriesForSelection(
+      discoveryFilterSelectionStreamValue.value,
     );
-    final entries = payload.taxonomyEntries;
+  }
+
+  ScheduleRepoTaxonomyEntries? _selectedEventTaxonomyEntriesForSelection(
+    DiscoveryFilterSelection selection, {
+    DiscoveryFilterCatalog? catalogOverride,
+    bool allowPersistedFallback = true,
+  }) {
+    final payload = DiscoveryFilterQueryPayload.compile(
+      catalog: catalogOverride ?? discoveryFilterCatalogStreamValue.value,
+      selection: selection,
+    );
+    final payloadEntries = payload.taxonomyEntries
+        .map((entry) => (type: entry.type, value: entry.value))
+        .toList(growable: false);
+    final entries =
+        payloadEntries.isNotEmpty ||
+            !allowPersistedFallback ||
+            !_canUsePersistedDiscoveryFilterSelectionSnapshot(selection)
+        ? payloadEntries
+        : selection.taxonomyTermKeys.entries
+              .expand(
+                (entry) =>
+                    entry.value.map((value) => (type: entry.key, value: value)),
+              )
+              .toList(growable: false);
     if (entries.isEmpty) {
       return null;
     }
@@ -1035,11 +1063,11 @@ class TenantHomeAgendaController extends Object
     }
 
     final selection = discoveryFilterSelectionStreamValue.value;
-    // Compare the request compiled from the existing catalog with the repaired
-    // runtime query. Replacing the catalog first would hide real transitions.
-    final currentQueryPayload = DiscoveryFilterQueryPayload.compile(
-      catalog: discoveryFilterCatalogStreamValue.value,
-      selection: selection,
+    final canUsePersistedFallback =
+        _canUsePersistedDiscoveryFilterSelectionSnapshot(selection);
+    final currentCategories = _selectedEventCategoriesForSelection(selection);
+    final currentTaxonomy = _selectedEventTaxonomyEntriesForSelection(
+      selection,
     );
 
     if (!_sameDiscoveryFilterCatalog(
@@ -1055,55 +1083,51 @@ class TenantHomeAgendaController extends Object
       selection,
       catalogOverride: runtimeCatalog,
     );
-    if (samePublicDiscoveryFilterSelection(selection, repairedSelection)) {
-      if (!hasCanonicalDiscoveryFilterCatalogStreamValue.value) {
-        _ifAlive(
-          () => hasCanonicalDiscoveryFilterCatalogStreamValue.addValue(true),
-        );
-      }
-      return false;
-    }
-
-    _ifAlive(
-      () => discoveryFilterSelectionStreamValue.addValue(repairedSelection),
+    final selectionChanged = !samePublicDiscoveryFilterSelection(
+      selection,
+      repairedSelection,
     );
+    if (selectionChanged) {
+      _ifAlive(
+        () => discoveryFilterSelectionStreamValue.addValue(repairedSelection),
+      );
+    }
     if (!hasCanonicalDiscoveryFilterCatalogStreamValue.value) {
       _ifAlive(
         () => hasCanonicalDiscoveryFilterCatalogStreamValue.addValue(true),
       );
     }
-    unawaited(persistPublicDiscoveryFilterSelection(repairedSelection));
-    final repairedQueryPayload = DiscoveryFilterQueryPayload.compile(
-      catalog: runtimeCatalog,
-      selection: repairedSelection,
+    final repairedCategories = _selectedEventCategoriesForSelection(
+      repairedSelection,
+      catalogOverride: runtimeCatalog,
+      allowPersistedFallback: false,
     );
-    // Runtime metadata can remove stale taxonomy-only state that never changed
-    // the agenda request. Do not replay the same first page in that case.
-    if (!_sameAgendaFilterQuery(currentQueryPayload, repairedQueryPayload)) {
-      _queueRefreshRequest(preserveCurrentResults: true);
+    final repairedTaxonomy = _selectedEventTaxonomyEntriesForSelection(
+      repairedSelection,
+      catalogOverride: runtimeCatalog,
+      allowPersistedFallback: false,
+    );
+    final repairedQueryEmpty =
+        (repairedCategories == null || repairedCategories.isEmpty) &&
+        (repairedTaxonomy == null || repairedTaxonomy.isEmpty);
+    final queryChanged =
+        !_sameEventCategories(currentCategories, repairedCategories) ||
+        !_sameEventTaxonomy(currentTaxonomy, repairedTaxonomy);
+    if (selectionChanged || queryChanged) {
+      _persistedDiscoveryFilterSelectionSnapshot =
+          discoveryFilterSelectionSnapshot(repairedSelection);
+      unawaited(persistPublicDiscoveryFilterSelection(repairedSelection));
     }
-    return true;
-  }
-
-  bool _sameAgendaFilterQuery(
-    DiscoveryFilterQueryPayload left,
-    DiscoveryFilterQueryPayload right,
-  ) {
-    final leftEventTypes = left.typesForEntity('event');
-    final rightEventTypes = right.typesForEntity('event');
-    if (leftEventTypes.length != rightEventTypes.length ||
-        !leftEventTypes.containsAll(rightEventTypes)) {
+    if (!queryChanged) {
       return false;
     }
 
-    final leftTaxonomy = left.taxonomyEntries
-        .map((entry) => '${entry.type}\u0000${entry.value}')
-        .toSet();
-    final rightTaxonomy = right.taxonomyEntries
-        .map((entry) => '${entry.type}\u0000${entry.value}')
-        .toSet();
-    return leftTaxonomy.length == rightTaxonomy.length &&
-        leftTaxonomy.containsAll(rightTaxonomy);
+    if (canUsePersistedFallback && repairedQueryEmpty) {
+      return false;
+    }
+
+    _queueRefreshRequest(preserveCurrentResults: true);
+    return true;
   }
 
   bool _sameDiscoveryFilterCatalog(
@@ -1111,6 +1135,47 @@ class TenantHomeAgendaController extends Object
     DiscoveryFilterCatalog right,
   ) {
     return jsonEncode(left.toJson()) == jsonEncode(right.toJson());
+  }
+
+  bool _sameEventCategories(
+    List<ScheduleRepoString>? left,
+    List<ScheduleRepoString>? right,
+  ) {
+    final leftValues = (left ?? const <ScheduleRepoString>[])
+        .map((value) => value.value)
+        .toSet();
+    final rightValues = (right ?? const <ScheduleRepoString>[])
+        .map((value) => value.value)
+        .toSet();
+    return leftValues.length == rightValues.length &&
+        leftValues.containsAll(rightValues);
+  }
+
+  bool _sameEventTaxonomy(
+    ScheduleRepoTaxonomyEntries? left,
+    ScheduleRepoTaxonomyEntries? right,
+  ) {
+    final leftValues = (left ?? const ScheduleRepoTaxonomyEntries.empty())
+        .map((value) => '${value.type.value}:${value.term.value}')
+        .toSet();
+    final rightValues = (right ?? const ScheduleRepoTaxonomyEntries.empty())
+        .map((value) => '${value.type.value}:${value.term.value}')
+        .toSet();
+    return leftValues.length == rightValues.length &&
+        leftValues.containsAll(rightValues);
+  }
+
+  bool _canUsePersistedDiscoveryFilterSelectionSnapshot(
+    DiscoveryFilterSelection selection,
+  ) {
+    final snapshot = _persistedDiscoveryFilterSelectionSnapshot;
+    if (snapshot == null || !snapshot.hasTypeFilterSelections) {
+      return false;
+    }
+    return samePublicDiscoveryFilterSelection(
+      selection,
+      discoveryFilterSelectionFromSnapshot(snapshot),
+    );
   }
 
   void _listenForStatusChanges() {

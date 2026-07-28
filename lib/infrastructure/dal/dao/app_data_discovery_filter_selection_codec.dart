@@ -25,6 +25,9 @@ class AppDataDiscoveryFilterSelectionCodec {
     return AppDataDiscoveryFilterSelectionSnapshot(
       primaryKeys: _readTokenList(map['primary_keys']),
       taxonomySelections: _readTaxonomySelections(map['taxonomy_terms']),
+      typeFilterSelections: _readTypeFilterSelections(
+        map['type_filters_by_entity'],
+      ),
     );
   }
 
@@ -38,6 +41,14 @@ class AppDataDiscoveryFilterSelectionCodec {
         for (final taxonomy in selection.taxonomySelections)
           if (!taxonomy.isEmpty)
             taxonomy.taxonomyKey.value: taxonomy.termKeys
+                .map((value) => value.value)
+                .where((value) => value.isNotEmpty)
+                .toList(growable: false),
+      },
+      'type_filters_by_entity': <String, Object?>{
+        for (final entitySelection in selection.typeFilterSelections)
+          if (!entitySelection.isEmpty)
+            entitySelection.entityKey.value: entitySelection.typeKeys
                 .map((value) => value.value)
                 .where((value) => value.isNotEmpty)
                 .toList(growable: false),
@@ -75,6 +86,29 @@ class AppDataDiscoveryFilterSelectionCodec {
         AppDataDiscoveryFilterTaxonomySelection(
           taxonomyKey: taxonomyKey,
           termKeys: termKeys,
+        ),
+      );
+    }
+    return selections;
+  }
+
+  List<AppDataDiscoveryFilterEntityTypeSelection> _readTypeFilterSelections(
+    Object? raw,
+  ) {
+    if (raw is! Map) {
+      return const <AppDataDiscoveryFilterEntityTypeSelection>[];
+    }
+    final selections = <AppDataDiscoveryFilterEntityTypeSelection>[];
+    for (final entry in raw.entries) {
+      final entityKey = AppDataDiscoveryFilterTokenValue.fromRaw(entry.key);
+      final filters = _readTokenList(entry.value);
+      if (entityKey.value.isEmpty || filters.isEmpty) {
+        continue;
+      }
+      selections.add(
+        AppDataDiscoveryFilterEntityTypeSelection(
+          entityKey: entityKey,
+          typeKeys: filters,
         ),
       );
     }

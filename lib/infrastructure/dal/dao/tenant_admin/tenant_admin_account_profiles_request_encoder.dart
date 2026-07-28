@@ -52,6 +52,9 @@ class TenantAdminAccountProfilesRequestEncoder {
 
   Map<String, dynamic> encodeFetchAccountProfilesQuery({
     String? accountId,
+    String? profileType,
+    String? contactMode,
+    bool contactChannelsEnabledOnly = false,
     bool queryableOnly = false,
     String? excludeAccountProfileId,
     String? search,
@@ -62,8 +65,17 @@ class TenantAdminAccountProfilesRequestEncoder {
     if (accountId != null && accountId.trim().isNotEmpty) {
       payload['account_id'] = accountId.trim();
     }
+    if (profileType != null && profileType.trim().isNotEmpty) {
+      payload['profile_type'] = profileType.trim();
+    }
+    if (contactMode != null && contactMode.trim().isNotEmpty) {
+      payload['contact_mode'] = contactMode.trim();
+    }
+    if (contactChannelsEnabledOnly) {
+      payload['contact_channels_enabled_only'] = true;
+    }
     if (queryableOnly) {
-      payload['queryable_only'] = true;
+      payload['queryable_only'] = 1;
     }
     if (excludeAccountProfileId != null &&
         excludeAccountProfileId.trim().isNotEmpty) {
@@ -82,17 +94,50 @@ class TenantAdminAccountProfilesRequestEncoder {
     return payload;
   }
 
-  Map<String, dynamic> encodeFetchContactSourceCandidatesQuery({
+  Map<String, dynamic> encodeFetchAccountProfileCandidatesQuery({
+    required String scope,
+    required String search,
     required int page,
-    required int pageSize,
+    required int perPage,
     String? excludeAccountProfileId,
   }) {
-    final payload = <String, dynamic>{'page': page, 'per_page': pageSize};
+    final payload = <String, dynamic>{
+      'scope': scope,
+      'search': search.trim(),
+      'page': page,
+      'per_page': perPage,
+    };
     if (excludeAccountProfileId != null &&
         excludeAccountProfileId.trim().isNotEmpty) {
       payload['exclude_account_profile_id'] = excludeAccountProfileId.trim();
     }
     return payload;
+  }
+
+  Map<String, dynamic> encodeFetchNestedGroupMembersQuery({
+    int? perPage,
+    String? cursor,
+  }) {
+    final payload = <String, dynamic>{};
+    if (perPage != null && perPage > 0) {
+      payload['per_page'] = perPage;
+    }
+    if (cursor != null && cursor.trim().isNotEmpty) {
+      payload['cursor'] = cursor.trim();
+    }
+    return payload;
+  }
+
+  Map<String, dynamic> encodePatchNestedGroupMembers({
+    required int aggregateRevision,
+    List<String> addIds = const <String>[],
+    List<String> removeIds = const <String>[],
+  }) {
+    return <String, dynamic>{
+      'aggregate_revision': aggregateRevision,
+      'add_ids': addIds,
+      'remove_ids': removeIds,
+    };
   }
 
   Map<String, dynamic> encodeCreateAccountProfile({
@@ -147,6 +192,7 @@ class TenantAdminAccountProfilesRequestEncoder {
     String? profileType,
     String? displayName,
     String? slug,
+    int? aggregateRevision,
     TenantAdminLocation? location,
     TenantAdminTaxonomyTerms? taxonomyTerms,
     String? bio,
@@ -166,6 +212,9 @@ class TenantAdminAccountProfilesRequestEncoder {
     if (profileType != null) payload['profile_type'] = profileType;
     if (displayName != null) payload['display_name'] = displayName;
     if (slug != null && slug.trim().isNotEmpty) payload['slug'] = slug.trim();
+    if (aggregateRevision != null) {
+      payload['aggregate_revision'] = aggregateRevision;
+    }
     if (location != null) {
       payload['location'] = {
         'lat': location.latitude,
@@ -283,7 +332,7 @@ Map<String, dynamic> _encodeContactChannelDraft(
 ) {
   return <String, dynamic>{
     if (draft.id != null) 'id': draft.id,
-    'draft_key': draft.draftKey,
+    if (!draft.isPersisted) 'draft_key': draft.draftKey,
     'type': draft.type.rawValue,
     'value': draft.value,
     if (draft.title != null) 'title': draft.title,

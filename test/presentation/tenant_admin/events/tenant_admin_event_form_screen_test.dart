@@ -2,6 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_form_validation/belluga_form_validation.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
@@ -10,12 +11,11 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profi
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms_by_taxonomy_id.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
@@ -29,6 +29,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
+import 'package:stream_value/core/stream_value.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -2671,7 +2672,7 @@ void main() {
   );
 
   testWidgets(
-    'root related profile groups remain visible after the event has multiple occurrences',
+    'root related profile groups section hides after the event has multiple occurrences',
     (tester) async {
       final eventsRepository = _FakeEventsRepository();
       final taxonomiesRepository = _FakeTaxonomiesRepository();
@@ -2706,7 +2707,7 @@ void main() {
       await tester.pumpAndSettle();
       await _closeOccurrenceSheet(tester);
 
-      expect(find.text('Abas de perfis relacionados'), findsOneWidget);
+      expect(find.text('Abas de perfis relacionados'), findsNothing);
       expect(
         find.byKey(const Key('tenantAdminEventOccurrenceCard_0')),
         findsOneWidget,
@@ -5230,6 +5231,12 @@ void main() {
         ['artist-1'],
       );
 
+      await _openProfileGroupSelector(
+        tester,
+        keyPrefix: 'EventProfile',
+        groupId: groupId,
+      );
+
       final candidateKey = Key(
         'EventProfileNestedAccountCandidate_${groupId}_artist-1',
       );
@@ -5240,6 +5247,8 @@ void main() {
 
       await tester.tap(find.byKey(candidateKey));
       await tester.pumpAndSettle();
+      await tester.tap(find.text('Concluir'));
+      await tester.pumpAndSettle();
 
       expect(
         controller
@@ -5247,6 +5256,156 @@ void main() {
             .value
             .selectedRelatedAccountProfileIds,
         isEmpty,
+      );
+    },
+  );
+
+  testWidgets(
+    'adding the first occurrence preserves event-level related profile groups',
+    (tester) async {
+      final eventsRepository = _FakeEventsRepository();
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(body: TenantAdminEventFormScreen()),
+      );
+
+      final groupId = await _addEventProfileGroup(
+        tester,
+        controller,
+        label: 'Participantes',
+      );
+      await _selectProfileInGroup(
+        tester,
+        keyPrefix: 'EventProfile',
+        groupId: groupId,
+        profileId: 'artist-1',
+      );
+
+      expect(find.widgetWithText(InputChip, 'Artist A'), findsOneWidget);
+
+      await tester.tap(
+        find.byKey(const Key('tenantAdminEventAddOccurrenceButton')),
+      );
+      await tester.pumpAndSettle();
+      await _closeOccurrenceSheet(tester);
+
+      final state = controller.eventFormStateStreamValue.value;
+      expect(state.occurrences, hasLength(1));
+      expect(state.profileGroups.single.id, groupId);
+      expect(state.selectedRelatedAccountProfileIds, ['artist-1']);
+      expect(state.occurrences.single.profileGroups.single.id, groupId);
+      expect(
+        state.occurrences.single.profileGroups.single.accountProfileIdValues
+            .map((value) => value.value)
+            .toList(growable: false),
+        ['artist-1'],
+      );
+      expect(
+        state.occurrences.single.relatedAccountProfileIds
+            .map((value) => value.value)
+            .toList(growable: false),
+        ['artist-1'],
+      );
+      expect(find.text('1 perfil(is) selecionado(s)'), findsOneWidget);
+      expect(find.widgetWithText(InputChip, 'Artist A'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'related account profile picker renders backend type options and sends the selected filter to the server',
+    (tester) async {
+      final profileTypes = <TenantAdminProfileTypeDefinition>[
+        _fixtureProfileType(
+          type: 'fixture_type_alpha',
+          label: 'Fixture Type Alpha',
+        ),
+        _fixtureProfileType(
+          type: 'fixture_type_beta',
+          label: 'Fixture Type Beta',
+        ),
+        _fixtureProfileType(
+          type: 'fixture_type_gamma',
+          label: 'Fixture Type Gamma',
+        ),
+      ];
+      final eventsRepository = _FakeEventsRepository()
+        ..relatedAccountProfileCandidates = profileTypes
+            .map(
+              (profileType) => tenantAdminAccountProfileFromRaw(
+                id: 'profile-${profileType.type}',
+                accountId: 'account-${profileType.type}',
+                profileType: profileType.type,
+                displayName: 'Profile ${profileType.label}',
+              ),
+            )
+            .toList(growable: false);
+      eventsRepository.eventTypes = [
+        TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439141'),
+          nameValue: tenantAdminRequiredText('Show'),
+          slugValue: tenantAdminRequiredText('show'),
+        ),
+      ];
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final profileTypesRepository = _FakeProfileTypesRepository(
+        profileTypes: profileTypes,
+      );
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        accountProfilesRepository: profileTypesRepository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(body: TenantAdminEventFormScreen()),
+      );
+
+      final groupId = await _addEventProfileGroup(
+        tester,
+        controller,
+        label: 'Participantes',
+      );
+      await _openProfileGroupSelector(
+        tester,
+        keyPrefix: 'EventProfile',
+        groupId: groupId,
+      );
+
+      final typeFilterKey = Key('EventProfileNestedAccountTypeFilter_$groupId');
+      await tester.tap(find.byKey(typeFilterKey));
+      await tester.pumpAndSettle();
+
+      for (final profileType in profileTypes) {
+        expect(find.text(profileType.label), findsWidgets);
+      }
+
+      final selectedType = profileTypes.last;
+      final typeFilter = tester.widget<DropdownButtonFormField<String>>(
+        find.byKey(typeFilterKey),
+      );
+      typeFilter.onChanged?.call(selectedType.type);
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(eventsRepository.lastRelatedProfileType, selectedType.type);
+      expect(
+        find.byKey(
+          Key(
+            'EventProfileNestedAccountCandidate_${groupId}_profile-${selectedType.type}',
+          ),
+        ),
+        findsOneWidget,
       );
     },
   );
@@ -5335,18 +5494,38 @@ void main() {
         groupId: groupId,
       );
 
-      expect(find.text('Artist A'), findsOneWidget);
-      expect(find.text('Artist B'), findsOneWidget);
+      expect(
+        find.byKey(
+          Key('EventProfileNestedAccountCandidate_${groupId}_artist-1'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(
+          Key('EventProfileNestedAccountCandidate_${groupId}_artist-2'),
+        ),
+        findsOneWidget,
+      );
 
       await _searchProfileGroupSelector(
         tester,
         keyPrefix: 'EventProfile',
         groupId: groupId,
-        query: 'B',
+        query: 'Artist B',
       );
 
-      expect(find.text('Artist B'), findsOneWidget);
-      expect(find.text('Artist A'), findsNothing);
+      expect(
+        find.byKey(
+          Key('EventProfileNestedAccountCandidate_${groupId}_artist-2'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(
+          Key('EventProfileNestedAccountCandidate_${groupId}_artist-1'),
+        ),
+        findsNothing,
+      );
     },
   );
 
@@ -5397,6 +5576,8 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await tester.tap(find.text('Concluir'));
+      await tester.pumpAndSettle();
 
       expect(find.widgetWithText(InputChip, 'Artist B'), findsOneWidget);
       expect(find.text('Perfil não disponível na lista atual'), findsNothing);
@@ -5444,6 +5625,16 @@ void main() {
         groupId: groupId,
         query: '021',
       );
+      await tester.scrollUntilVisible(
+        find.byKey(
+          Key(
+            'EventProfileNestedAccountCandidate_${groupId}_artist-page-2-021',
+          ),
+        ),
+        250,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.pumpAndSettle();
       await tester.tap(
         find.byKey(
           Key(
@@ -5451,6 +5642,8 @@ void main() {
           ),
         ),
       );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Concluir'));
       await tester.pumpAndSettle();
 
       expect(
@@ -5799,6 +5992,102 @@ void main() {
   );
 
   testWidgets(
+    'single-occurrence edit reads related profile groups from the canonical occurrence snapshot',
+    (tester) async {
+      final eventsRepository = _EmptyCandidatesEventsRepository();
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+
+      eventsRepository.eventTypes = [
+        TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439104'),
+          nameValue: tenantAdminRequiredText('Show'),
+          slugValue: tenantAdminRequiredText('show'),
+        ),
+      ];
+
+      final preservedProfile = tenantAdminAccountProfileFromRaw(
+        id: 'artist-occ-single',
+        accountId: 'acc-artist-occ-single',
+        profileType: 'artist',
+        displayName: 'Occurrence Single Artist',
+        slug: 'occurrence-single-artist',
+      );
+
+      final existingEvent = TenantAdminEvent(
+        eventIdValue: tenantAdminRequiredText(
+          'evt-single-occurrence-canonical',
+        ),
+        slugValue: tenantAdminRequiredText('evt-single-occurrence-canonical'),
+        titleValue: tenantAdminRequiredText('Evento em edição'),
+        contentValue: tenantAdminOptionalText('Conteúdo'),
+        type: TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439104'),
+          nameValue: tenantAdminRequiredText('Show'),
+          slugValue: tenantAdminRequiredText('show'),
+        ),
+        occurrences: <TenantAdminEventOccurrence>[
+          TenantAdminEventOccurrence(
+            occurrenceIdValue: tenantAdminOptionalText('occurrence-1'),
+            dateTimeStartValue: tenantAdminDateTime(
+              DateTime.utc(2026, 6, 7, 3),
+            ),
+            relatedAccountProfileIdValues: [
+              TenantAdminAccountProfileIdValue(preservedProfile.id),
+            ],
+            relatedAccountProfiles: [preservedProfile],
+            profileGroups: [
+              TenantAdminNestedProfileGroup(
+                idValue: TenantAdminNestedProfileGroupTextValue('artists'),
+                labelValue: TenantAdminNestedProfileGroupTextValue('Artistas'),
+                orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+                accountProfileIdValues: [
+                  TenantAdminNestedProfileGroupTextValue(preservedProfile.id),
+                ],
+              ),
+            ],
+          ),
+        ],
+        publication: TenantAdminEventPublication(
+          statusValue: tenantAdminRequiredText('draft'),
+        ),
+      );
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        Scaffold(
+          body: TenantAdminEventFormScreen(existingEvent: existingEvent),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('Abas de perfis relacionados'), findsOneWidget);
+      expect(find.text('1 perfil(is) selecionado(s)'), findsOneWidget);
+      expect(
+        find.widgetWithText(InputChip, 'Occurrence Single Artist'),
+        findsOneWidget,
+      );
+      expect(
+        controller.eventFormStateStreamValue.value.profileGroups.single.id,
+        'artists',
+      );
+      expect(
+        controller
+            .eventFormStateStreamValue
+            .value
+            .selectedRelatedAccountProfileIds,
+        ['artist-occ-single'],
+      );
+    },
+  );
+
+  testWidgets(
     'editing occurrence groups keeps occurrence-owned selected summaries visible',
     (tester) async {
       final eventsRepository = _EmptyCandidatesEventsRepository();
@@ -6070,6 +6359,7 @@ Future<void> _pumpWithAutoRoute(WidgetTester tester, Widget child) async {
 
   await tester.pumpWidget(
     MaterialApp.router(
+      theme: ThemeData(splashFactory: NoSplash.splashFactory),
       routeInformationParser: router.defaultRouteParser(),
       routerDelegate: router.delegate(),
     ),
@@ -6220,6 +6510,8 @@ Future<void> _selectProfileInGroup(
   await tester.ensureVisible(candidate);
   await tester.pumpAndSettle();
   await tester.tap(candidate);
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Concluir'));
   await tester.pumpAndSettle();
 }
 
@@ -6618,6 +6910,7 @@ class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
   int createEventCalls = 0;
   int createOwnEventCalls = 0;
   int updateEventCalls = 0;
+  String? lastRelatedProfileType;
 
   @override
   Future<TenantAdminEvent> createEvent({
@@ -6698,6 +6991,7 @@ class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     final sourceItems = switch (candidateType) {
@@ -6707,15 +7001,25 @@ class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
         relatedAccountProfileCandidates,
     };
     final normalizedSearch = search?.value.trim().toLowerCase() ?? '';
-    final items = normalizedSearch.isEmpty
+    final normalizedProfileType = profileType?.value.trim();
+    if (candidateType ==
+        TenantAdminEventAccountProfileCandidateType.relatedAccountProfile) {
+      lastRelatedProfileType = normalizedProfileType;
+    }
+    final searchFilteredItems = normalizedSearch.isEmpty
         ? sourceItems
         : sourceItems
               .where((profile) {
                 final displayName = profile.displayName.toLowerCase();
-                final profileType = profile.profileType.toLowerCase();
+                final candidateProfileType = profile.profileType.toLowerCase();
                 return displayName.contains(normalizedSearch) ||
-                    profileType.contains(normalizedSearch);
+                    candidateProfileType.contains(normalizedSearch);
               })
+              .toList(growable: false);
+    final items = normalizedProfileType == null || normalizedProfileType.isEmpty
+        ? searchFilteredItems
+        : searchFilteredItems
+              .where((profile) => profile.profileType == normalizedProfileType)
               .toList(growable: false);
     return tenantAdminPagedResultFromRaw(items: items, hasMore: false);
   }
@@ -6782,6 +7086,46 @@ String _fixtureTermSlug(int index) => 'fixture_term_$index';
 String _fixtureTaxonomyLabel(int index) => 'Fixture Taxonomy $index';
 
 String _fixtureTermLabel(int index) => 'Fixture Term $index';
+
+TenantAdminProfileTypeDefinition _fixtureProfileType({
+  required String type,
+  required String label,
+}) {
+  return tenantAdminProfileTypeDefinitionFromRaw(
+    type: type,
+    label: label,
+    allowedTaxonomies: const <String>[],
+    capabilities: TenantAdminProfileTypeCapabilities(
+      isQueryable: TenantAdminFlagValue(false),
+      isFavoritable: TenantAdminFlagValue(false),
+      isPoiEnabled: TenantAdminFlagValue(false),
+      hasBio: TenantAdminFlagValue(false),
+      hasContent: TenantAdminFlagValue(false),
+      hasTaxonomies: TenantAdminFlagValue(false),
+      hasAvatar: TenantAdminFlagValue(false),
+      hasCover: TenantAdminFlagValue(false),
+      hasEvents: TenantAdminFlagValue(false),
+    ),
+  );
+}
+
+class _FakeProfileTypesRepository extends Fake
+    implements TenantAdminAccountProfilesRepositoryContract {
+  _FakeProfileTypesRepository({required this.profileTypes});
+
+  final List<TenantAdminProfileTypeDefinition> profileTypes;
+  @override
+  final StreamValue<List<TenantAdminProfileTypeDefinition>?>
+  profileTypesStreamValue =
+      StreamValue<List<TenantAdminProfileTypeDefinition>?>();
+
+  @override
+  Future<void> loadAllProfileTypes({
+    TenantAdminAccountProfilesRepoInt? pageSize,
+  }) async {
+    profileTypesStreamValue.addValue(List.unmodifiable(profileTypes));
+  }
+}
 
 TenantAdminEvent _buildMountedReuseEditEvent({
   required TenantAdminEventType type,
@@ -7068,6 +7412,7 @@ class _SearchDrivenPhysicalHostCandidatesEventsRepository
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     if (candidateType !=
@@ -7132,6 +7477,7 @@ class _EmptyBootstrapSearchDrivenPhysicalHostCandidatesEventsRepository
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     if (candidateType !=
@@ -7195,6 +7541,7 @@ class _PagedPhysicalHostCandidatesEventsRepository
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     if (candidateType !=
@@ -7248,6 +7595,7 @@ class _MultipleRelatedCandidatesEventsRepository extends _FakeEventsRepository {
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     if (candidateType ==
@@ -7260,23 +7608,31 @@ class _MultipleRelatedCandidatesEventsRepository extends _FakeEventsRepository {
         accountSlug: accountSlug,
       );
     }
-    return tenantAdminPagedResultFromRaw(
-      items: [
-        tenantAdminAccountProfileFromRaw(
-          id: 'artist-1',
-          accountId: 'acc-artist-1',
-          profileType: 'artist',
-          displayName: 'Artist A',
-        ),
-        tenantAdminAccountProfileFromRaw(
-          id: 'artist-2',
-          accountId: 'acc-artist-2',
-          profileType: 'artist',
-          displayName: 'Artist B',
-        ),
-      ],
-      hasMore: false,
-    );
+    final normalizedSearch = search?.value.trim().toLowerCase() ?? '';
+    final sourceItems = [
+      tenantAdminAccountProfileFromRaw(
+        id: 'artist-1',
+        accountId: 'acc-artist-1',
+        profileType: 'artist',
+        displayName: 'Artist A',
+      ),
+      tenantAdminAccountProfileFromRaw(
+        id: 'artist-2',
+        accountId: 'acc-artist-2',
+        profileType: 'artist',
+        displayName: 'Artist B',
+      ),
+    ];
+    final items = normalizedSearch.isEmpty
+        ? sourceItems
+        : sourceItems
+              .where(
+                (profile) => profile.displayName.toLowerCase().contains(
+                  normalizedSearch,
+                ),
+              )
+              .toList(growable: false);
+    return tenantAdminPagedResultFromRaw(items: items, hasMore: false);
   }
 }
 
@@ -7288,6 +7644,7 @@ class _EmptyCandidatesEventsRepository extends _FakeEventsRepository {
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     return tenantAdminPagedResultFromRaw(
@@ -7305,6 +7662,7 @@ class _PagedRelatedCandidatesEventsRepository extends _FakeEventsRepository {
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     if (candidateType ==
@@ -7355,6 +7713,7 @@ class _DelayedRelatedCandidatesEventsRepository extends _FakeEventsRepository {
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     if (candidateType ==
@@ -7390,6 +7749,7 @@ class _AccountScopedDelayedCandidatesEventsRepository
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     if (candidateType ==
@@ -7424,6 +7784,7 @@ class _FailingRelatedCandidatesEventsRepository extends _FakeEventsRepository {
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     if (candidateType ==

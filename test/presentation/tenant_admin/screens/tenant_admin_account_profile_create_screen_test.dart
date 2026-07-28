@@ -165,9 +165,9 @@ void main() {
 
     expect(find.text('Novo grupo'), findsOneWidget);
     expect(find.text('Nome da aba'), findsOneWidget);
-    expect(find.text('Selecionar Accounts'), findsOneWidget);
+    expect(find.text('Selecionar perfis'), findsOneWidget);
 
-    await tester.tap(find.text('Selecionar Accounts'));
+    await tester.tap(find.text('Selecionar perfis'));
     await tester.pumpAndSettle();
 
     expect(find.text('Conta Parceira'), findsOneWidget);
@@ -175,7 +175,7 @@ void main() {
 
     final searchField = find.byWidgetPredicate((widget) {
       return widget is TextField &&
-          widget.decoration?.labelText == 'Buscar Account';
+          widget.decoration?.labelText == 'Buscar perfil';
     });
     await tester.enterText(searchField, 'parceira');
     await tester.pumpAndSettle();
@@ -202,6 +202,73 @@ void main() {
       ['profile-partner'],
     );
   });
+
+  testWidgets(
+    'uses canonical profile types for the nested selector even when the first page does not expose every category',
+    (tester) async {
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+      profilesRepository.profileTypesToReturn = [
+        _profileType(
+          type: 'venue',
+          label: 'Venue',
+          hasNestedProfileGroups: true,
+        ),
+        _profileType(
+          type: 'publisher',
+          label: 'Publisher',
+          hasNestedProfileGroups: false,
+        ),
+      ];
+      profilesRepository.profilesToReturn = List<TenantAdminAccountProfile>.of([
+        for (var index = 0; index < 20; index++)
+          _profile(
+            id: 'profile-venue-$index',
+            displayName: 'Venue $index',
+            profileType: 'venue',
+          ),
+        _profile(
+          id: 'profile-publisher-21',
+          displayName: 'Publisher 21',
+          profileType: 'publisher',
+        ),
+      ]);
+
+      await _pumpScreen(
+        tester,
+        TenantAdminAccountProfileCreateScreen(accountSlug: 'route-account'),
+      );
+
+      await _selectProfileType(tester, 'Venue');
+
+      final scrollable = find.byType(Scrollable).first;
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('tenantAdminCreateAddNestedGroupButton')),
+        300,
+        scrollable: scrollable,
+      );
+      await tester.tap(
+        find.byKey(const Key('tenantAdminCreateAddNestedGroupButton')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Selecionar perfis'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find
+            .byWidgetPredicate(
+              (widget) =>
+                  widget is DropdownButtonFormField<String> &&
+                  widget.decoration.labelText == 'Tipo de perfil',
+            )
+            .last,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Publisher'), findsOneWidget);
+    },
+  );
 }
 
 Future<void> _pumpScreen(WidgetTester tester, Widget child) async {
@@ -221,6 +288,7 @@ Future<void> _pumpScreen(WidgetTester tester, Widget child) async {
 
   await tester.pumpWidget(
     MaterialApp.router(
+      theme: ThemeData(splashFactory: NoSplash.splashFactory),
       routeInformationParser: router.defaultRouteParser(),
       routerDelegate: router.delegate(),
     ),
@@ -349,6 +417,9 @@ class _FakeAccountProfilesRepository
     required TenantAdminAccountProfilesRepoInt pageSize,
     TenantAdminAccountProfilesRepoString? search,
     TenantAdminAccountProfilesRepoString? accountId,
+    TenantAdminAccountProfilesRepoString? profileType,
+    TenantAdminAccountProfilesRepoString? contactMode,
+    TenantAdminAccountProfilesRepoBool? contactChannelsEnabledOnly,
     TenantAdminAccountProfilesRepoBool? queryableOnly,
     TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async {
@@ -427,6 +498,7 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? profileType,
     TenantAdminAccountProfilesRepoString? displayName,
     TenantAdminAccountProfilesRepoString? slug,
+    TenantAdminAccountProfilesRepoInt? aggregateRevision,
     TenantAdminLocation? location,
     TenantAdminTaxonomyTerms? taxonomyTerms,
     TenantAdminAccountProfilesRepoString? bio,

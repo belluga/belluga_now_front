@@ -6,6 +6,8 @@ import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/domain/favorite/favorite.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group_member_page.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
@@ -711,7 +713,7 @@ void main() {
   );
 
   test(
-    'fetchNearbyAccountProfiles keeps only favoritable registry types',
+    'fetchNearbyAccountProfiles delegates nearby filtering authority to the backend',
     () async {
       final artistId = _generateMongoId();
       final curatorId = _generateMongoId();
@@ -741,8 +743,9 @@ void main() {
         pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(10),
       );
 
-      expect(nearby, hasLength(1));
+      expect(nearby, hasLength(2));
       expect(nearby.first.type, 'artist');
+      expect(nearby.last.type, 'curator');
     },
   );
 
@@ -920,6 +923,48 @@ void main() {
       );
     },
   );
+
+  test(
+    'discovery nearby stream keeps backend-authoritative nearby types',
+    () async {
+      final backend = _StubAccountProfilesBackend(
+        accountProfiles: const <AccountProfileModel>[],
+        nearbyProfiles: [
+          buildAccountProfileModelFromPrimitives(
+            id: _generateMongoId(),
+            name: 'Nearby Artist',
+            slug: 'nearby-artist',
+            type: 'artist',
+            distanceMeters: 120,
+          ),
+          buildAccountProfileModelFromPrimitives(
+            id: _generateMongoId(),
+            name: 'Nearby Curator',
+            slug: 'nearby-curator',
+            type: 'curator',
+            distanceMeters: 340,
+          ),
+        ],
+      );
+      final repository = AccountProfilesRepository(
+        backend: backend,
+        favoriteBackend: _StubFavoriteBackend(favorites: const []),
+        favoriteAccountProfileIds: const {},
+      );
+
+      await repository.syncDiscoveryNearbyAccountProfiles(
+        pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(10),
+      );
+
+      expect(backend.fetchNearbyCalls, 1);
+      expect(
+        repository.discoveryNearbyAccountProfilesStreamValue.value
+            .map((profile) => profile.type)
+            .toList(),
+        ['artist', 'curator'],
+      );
+    },
+  );
 }
 
 class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
@@ -978,6 +1023,27 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
   Future<AccountProfileModel?> fetchAccountProfileBySlug(String slug) async {
     fetchBySlugCalls += 1;
     return accountProfiles.firstWhere((profile) => profile.slug == slug);
+  }
+
+  @override
+  Future<List<AccountProfileNestedGroupMember>> fetchNestedGroupMembersByPath(
+    String membersPath,
+  ) async => const <AccountProfileNestedGroupMember>[];
+
+  @override
+  Future<AccountProfileNestedGroupMemberPage> fetchNestedGroupMembersPageByPath(
+    String membersPath, {
+    String? cursor,
+  }) async {
+    final normalizedCursor = cursor?.trim();
+    if (normalizedCursor != null && normalizedCursor.isNotEmpty) {
+      return const AccountProfileNestedGroupMemberPage.empty();
+    }
+
+    return AccountProfileNestedGroupMemberPage(
+      items: await fetchNestedGroupMembersByPath(membersPath),
+      nextCursorValue: null,
+    );
   }
 
   @override

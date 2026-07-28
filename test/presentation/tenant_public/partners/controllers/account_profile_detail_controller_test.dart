@@ -6,6 +6,7 @@ import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_gallery_group.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
@@ -307,6 +308,42 @@ void main() {
 
       expect(controller.shouldRenderContactTab(profile), isTrue);
       expect(controller.resolvedBubbleChannelFor(profile), isNull);
+    },
+  );
+
+  test(
+    'mirrored effective contact projection keeps contact tab and bubble available even without local channels',
+    () async {
+      await _registerContactAppData(contactEnabled: true);
+      final controller = AccountProfileDetailController(
+        accountProfilesRepository: _FakeAccountProfilesRepository(),
+      );
+      final whatsappChannel = BellugaContactChannel(
+        id: 'whatsapp-mirror-source',
+        type: BellugaContactChannelType.whatsapp,
+        value: '+55 (27) 99999-1111',
+        title: 'Atendimento',
+      );
+      final profile = buildAccountProfileModelFromPrimitives(
+        id: '507f1f77bcf86cd799439115',
+        name: 'Perfil espelhado',
+        slug: 'perfil-espelhado',
+        type: 'artist',
+        contactMode: BellugaContactSourceMode.mirroredAccountProfile,
+        contactSourceAccountProfileId: '507f1f77bcf86cd799439199',
+        contactChannels: const <BellugaContactChannel>[],
+        effectiveContactChannels: <BellugaContactChannel>[whatsappChannel],
+        effectiveContactBubbleChannel: whatsappChannel,
+      );
+
+      expect(profile.contactChannels, isEmpty);
+      expect(controller.hasContactChannels(profile), isTrue);
+      expect(controller.availableContactChannelsFor(profile), [whatsappChannel]);
+      expect(controller.shouldRenderContactTab(profile), isTrue);
+      expect(
+        controller.resolvedBubbleChannelFor(profile)?.id,
+        whatsappChannel.id,
+      );
     },
   );
 
@@ -916,6 +953,11 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
     }
     return null;
   }
+
+  @override
+  Future<List<AccountProfileNestedGroupMember>> getNestedGroupMembersByPath(
+    AccountProfilesRepositoryContractPrimString membersPath,
+  ) async => const <AccountProfileNestedGroupMember>[];
 
   @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({

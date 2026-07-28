@@ -11,12 +11,18 @@ import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_onboarding_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate_selection_summary.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_aggregate_revision_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_page.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_accounts_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_account_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/screens/tenant_admin_account_detail_screen.dart';
 import 'package:flutter/material.dart';
@@ -200,6 +206,83 @@ void main() {
     expect(find.textContaining('<strong>'), findsNothing);
   });
 
+  testWidgets(
+    'loads nested account chips lazily on group open and appends more pages',
+    (tester) async {
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.binding.setSurfaceSize(const Size(800, 1400));
+
+      final accountsRepository = _FakeAccountsRepository();
+      final controller = _registerController(
+        accountsRepository: accountsRepository,
+        nestedProfileGroups: <TenantAdminNestedProfileGroup>[
+          _nestedGroup(id: 'linked', label: 'Linked profiles', memberCount: 3),
+        ],
+        nestedGroupMemberPagesByGroupId:
+            <String, List<TenantAdminNestedGroupMemberPage>>{
+              'linked': <TenantAdminNestedGroupMemberPage>[
+                _nestedGroupMemberPage(
+                  items: const <Map<String, Object?>>[
+                    {'id': 'profile-a', 'display_name': 'Alpha profile'},
+                    {'id': 'profile-b', 'display_name': 'Beta profile'},
+                  ],
+                  aggregateRevision: 4,
+                  nextCursor: 'cursor-2',
+                ),
+                _nestedGroupMemberPage(
+                  items: const <Map<String, Object?>>[
+                    {'id': 'profile-c', 'display_name': 'Gamma profile'},
+                  ],
+                  aggregateRevision: 4,
+                ),
+              ],
+            },
+      );
+
+      await _pumpScreen(
+        tester,
+        TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
+      );
+
+      expect(find.text('Linked profiles'), findsOneWidget);
+      expect(find.text('Alpha profile'), findsNothing);
+      expect(
+        controller.accountProfileStreamValue.value?.nestedProfileGroups,
+        hasLength(1),
+      );
+      expect(
+        (_FakeAccountProfilesRepository.ofController(
+          controller,
+        )).fetchNestedGroupMembersPageCalls,
+        0,
+      );
+
+      final linkedProfilesTile = find.byKey(
+        const ValueKey<String>(
+          'tenantAdminAccountDetailNestedGroupTile:linked',
+        ),
+      );
+      await tester.tap(linkedProfilesTile);
+      await tester.pumpAndSettle();
+
+      final repository = _FakeAccountProfilesRepository.ofController(
+        controller,
+      );
+      expect(repository.fetchNestedGroupMembersPageCalls, 1);
+      expect(find.text('Alpha profile'), findsOneWidget);
+      expect(find.text('Beta profile'), findsOneWidget);
+      expect(find.text('Gamma profile'), findsNothing);
+      expect(find.text('mais'), findsOneWidget);
+
+      await tester.tap(find.text('mais'));
+      await tester.pumpAndSettle();
+
+      expect(repository.fetchNestedGroupMembersPageCalls, 2);
+      expect(find.text('Gamma profile'), findsOneWidget);
+      expect(find.text('mais'), findsNothing);
+    },
+  );
+
   test(
     'loadAccountDetail invalidates stale async work after dispose',
     () async {
@@ -233,16 +316,25 @@ TenantAdminAccountDetailController _registerController({
   bool withProfile = true,
   String? profileBio,
   String? profileContent,
+  List<TenantAdminNestedProfileGroup> nestedProfileGroups =
+      const <TenantAdminNestedProfileGroup>[],
+  Map<String, List<TenantAdminNestedGroupMemberPage>>
+      nestedGroupMemberPagesByGroupId =
+      const <String, List<TenantAdminNestedGroupMemberPage>>{},
 }) {
   final profilesRepository = _FakeAccountProfilesRepository(
     withProfile: withProfile,
     profileBio: profileBio,
     profileContent: profileContent,
+    nestedProfileGroups: nestedProfileGroups,
+    nestedGroupMemberPagesByGroupId: nestedGroupMemberPagesByGroupId,
   );
   final detailController = TenantAdminAccountDetailController(
     profilesRepository: profilesRepository,
     accountsRepository: accountsRepository,
   );
+  _FakeAccountProfilesRepository._instancesByController[detailController] =
+      profilesRepository;
 
   GetIt.I.registerSingleton<TenantAdminAccountDetailController>(
     detailController,
@@ -570,11 +662,34 @@ class _FakeAccountProfilesRepository
     required this.withProfile,
     this.profileBio,
     this.profileContent,
+    this.nestedProfileGroups = const <TenantAdminNestedProfileGroup>[],
+    this.nestedGroupMemberPagesByGroupId =
+        const <String, List<TenantAdminNestedGroupMemberPage>>{},
   });
 
   final bool withProfile;
   final String? profileBio;
   final String? profileContent;
+  final List<TenantAdminNestedProfileGroup> nestedProfileGroups;
+  final Map<String, List<TenantAdminNestedGroupMemberPage>>
+  nestedGroupMemberPagesByGroupId;
+  int fetchNestedGroupMembersPageCalls = 0;
+  String? lastNestedGroupMembersGroupId;
+  String? lastNestedGroupMembersCursor;
+
+  static final Expando<_FakeAccountProfilesRepository> _instancesByController =
+      Expando<_FakeAccountProfilesRepository>();
+
+  static _FakeAccountProfilesRepository ofController(
+    TenantAdminAccountDetailController controller,
+  ) {
+    final repository = _instancesByController[controller];
+    assert(
+      repository != null,
+      'Expected fake profiles repository for controller.',
+    );
+    return repository!;
+  }
 
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
@@ -593,6 +708,7 @@ class _FakeAccountProfilesRepository
         displayName: 'Perfil',
         bio: profileBio,
         content: profileContent,
+        nestedProfileGroups: nestedProfileGroups,
       ),
     ];
   }
@@ -604,6 +720,9 @@ class _FakeAccountProfilesRepository
     required TenantAdminAccountProfilesRepoInt pageSize,
     TenantAdminAccountProfilesRepoString? search,
     TenantAdminAccountProfilesRepoString? accountId,
+    TenantAdminAccountProfilesRepoString? profileType,
+    TenantAdminAccountProfilesRepoString? contactMode,
+    TenantAdminAccountProfilesRepoBool? contactChannelsEnabledOnly,
     TenantAdminAccountProfilesRepoBool? queryableOnly,
     TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async {
@@ -614,19 +733,6 @@ class _FakeAccountProfilesRepository
     );
     return tenantAdminPagedResultFromRaw(items: profiles, hasMore: false);
   }
-
-  @override
-  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-  fetchContactSourceCandidatesPage({
-    required TenantAdminAccountProfilesRepoInt page,
-    required TenantAdminAccountProfilesRepoInt pageSize,
-    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
-  }) async => tenantAdminPagedResultFromRaw(
-    items: const <TenantAdminAccountProfile>[],
-    hasMore: false,
-    currentPage: page.value,
-    pageSize: pageSize.value,
-  );
 
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async {
@@ -679,7 +785,36 @@ class _FakeAccountProfilesRepository
       displayName: 'Perfil',
       bio: profileBio,
       content: profileContent,
+      nestedProfileGroups: nestedProfileGroups,
     );
+  }
+
+  @override
+  Future<TenantAdminNestedGroupMemberPage> fetchNestedGroupMembersPage({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    TenantAdminAccountProfilesRepoInt? perPage,
+    TenantAdminAccountProfilesRepoString? cursor,
+  }) async {
+    fetchNestedGroupMembersPageCalls += 1;
+    lastNestedGroupMembersGroupId = groupId.value;
+    lastNestedGroupMembersCursor = cursor?.value;
+    final pages =
+        nestedGroupMemberPagesByGroupId[groupId.value] ??
+        const <TenantAdminNestedGroupMemberPage>[];
+    if (pages.isEmpty) {
+      return _nestedGroupMemberPage(items: const <Map<String, Object?>>[]);
+    }
+    if (cursor == null || cursor.value.trim().isEmpty) {
+      return pages.first;
+    }
+    final currentIndex = pages.indexWhere(
+      (page) => page.nextCursor == cursor.value,
+    );
+    if (currentIndex < 0 || currentIndex + 1 >= pages.length) {
+      return _nestedGroupMemberPage(items: const <Map<String, Object?>>[]);
+    }
+    return pages[currentIndex + 1];
   }
 
   @override
@@ -725,6 +860,7 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? profileType,
     TenantAdminAccountProfilesRepoString? displayName,
     TenantAdminAccountProfilesRepoString? slug,
+    TenantAdminAccountProfilesRepoInt? aggregateRevision,
     TenantAdminLocation? location,
     TenantAdminTaxonomyTerms? taxonomyTerms,
     TenantAdminAccountProfilesRepoString? bio,
@@ -831,4 +967,43 @@ class _FakeAccountProfilesRepository
   Future<void> deleteProfileType(
     TenantAdminAccountProfilesRepoString type,
   ) async {}
+}
+
+TenantAdminNestedProfileGroup _nestedGroup({
+  required String id,
+  required String label,
+  int order = 0,
+  int memberCount = 0,
+}) {
+  return TenantAdminNestedProfileGroup(
+    idValue: TenantAdminNestedProfileGroupTextValue(id),
+    labelValue: TenantAdminNestedProfileGroupTextValue(label),
+    orderValue: TenantAdminNestedProfileGroupOrderValue(order),
+    memberCountValue: TenantAdminCountValue(memberCount),
+  );
+}
+
+TenantAdminNestedGroupMemberPage _nestedGroupMemberPage({
+  required List<Map<String, Object?>> items,
+  int aggregateRevision = 0,
+  String? nextCursor,
+}) {
+  return TenantAdminNestedGroupMemberPage(
+    items: items
+        .map(
+          (item) => TenantAdminAccountProfileSelectionSummary(
+            idValue: TenantAdminAccountProfileIdValue(
+              item['id']?.toString() ?? '',
+            ),
+            displayNameValue: TenantAdminOptionalTextValue()
+              ..parse(item['display_name']?.toString()),
+            isQueryableCandidateValue: TenantAdminFlagValue(true),
+          ),
+        )
+        .toList(growable: false),
+    aggregateRevisionValue: TenantAdminAccountProfileAggregateRevisionValue(
+      aggregateRevision,
+    ),
+    nextCursorValue: TenantAdminOptionalTextValue()..parse(nextCursor),
+  );
 }

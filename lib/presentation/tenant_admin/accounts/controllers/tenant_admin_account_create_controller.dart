@@ -140,6 +140,7 @@ class TenantAdminAccountCreateController implements Disposable {
   int _nestedProfileCandidatesCurrentPage = 0;
   int _nestedProfileCandidatesRequestToken = 0;
   String _nestedProfileCandidatesQuery = '';
+  String? _nestedProfileCandidatesProfileType;
 
   void bindCreateFlow() {
     _bindLocationSelection();
@@ -207,6 +208,7 @@ class TenantAdminAccountCreateController implements Disposable {
   Future<void> loadNestedProfileCandidates() async {
     _nestedProfileSearchDebounce?.cancel();
     _nestedProfileCandidatesQuery = '';
+    _nestedProfileCandidatesProfileType = null;
     final requestToken = _nestedProfileCandidatesRequestToken + 1;
     _nestedProfileCandidatesRequestToken = requestToken;
     await _loadNestedProfileCandidatesPage(
@@ -231,6 +233,21 @@ class TenantAdminAccountCreateController implements Disposable {
           ),
         );
       },
+    );
+  }
+
+  void filterNestedProfileCandidatesByProfileType(String? profileType) {
+    _nestedProfileCandidatesProfileType = profileType?.trim().isEmpty ?? true
+        ? null
+        : profileType?.trim();
+    final requestToken = _nestedProfileCandidatesRequestToken + 1;
+    _nestedProfileCandidatesRequestToken = requestToken;
+    _nestedProfileSearchDebounce?.cancel();
+    unawaited(
+      _loadNestedProfileCandidatesPage(
+        isInitial: true,
+        requestToken: requestToken,
+      ),
     );
   }
 
@@ -439,9 +456,6 @@ class TenantAdminAccountCreateController implements Disposable {
       groupId: groupId,
       profileId: profileId,
       selected: selected,
-      onLimit: () => createErrorMessageStreamValue.addValue(
-        'Limite de perfis no grupo atingido.',
-      ),
     );
     _updateCreateState(
       createStateStreamValue.value.copyWith(nestedProfileGroups: next),
@@ -880,6 +894,7 @@ extension on TenantAdminAccountCreateController {
       final result = await _nestedProfileCandidatesPageLoader.loadPage(
         pageNumber: requestedPage,
         search: _nestedProfileCandidatesQuery,
+        profileType: _nestedProfileCandidatesProfileType,
         queryableOnly: true,
       );
       if (_isDisposed || requestToken != _nestedProfileCandidatesRequestToken) {

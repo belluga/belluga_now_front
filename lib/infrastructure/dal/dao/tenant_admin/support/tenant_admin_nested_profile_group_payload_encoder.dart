@@ -16,3 +16,13 @@ List<Map<String, dynamic>> encodeTenantAdminNestedProfileGroups(
       )
       .toList(growable: false);
 }
+
+List<Map<String, dynamic>> encodeTenantAdminNestedProfileGroupMetadata(
+  List<TenantAdminNestedProfileGroup> groups,
+) {
+  return groups
+      .map(
+        (group) => {'id': group.id, 'label': group.label, 'order': group.order},
+      )
+      .toList(growable: false);
+}

@@ -11,11 +11,12 @@ class TenantAdminMediaFormDataBuilder {
     required Object payload,
     Iterable<String> preserveExplicitEmptyArrayKeys = const <String>[],
   }) {
+    final explicitEmptyArrayKeys = preserveExplicitEmptyArrayKeys.toSet();
     if (payload case final Map<String, dynamic> mapPayload) {
       return FormData.fromMap(
         _normalizeMultipartMap(
           mapPayload,
-          preserveExplicitEmptyArrayKeys: preserveExplicitEmptyArrayKeys,
+          preserveExplicitEmptyArrayKeys: explicitEmptyArrayKeys,
         ),
         ListFormat.multiCompatible,
       );
@@ -31,8 +32,8 @@ class TenantAdminMediaFormDataBuilder {
         }
         normalizedPayload[key] = _normalizeMultipartValue(
           entry.value,
-          preserveExplicitEmptyArray:
-              preserveExplicitEmptyArrayKeys.contains(key),
+          preserveExplicitEmptyArray: explicitEmptyArrayKeys.contains(key),
+          preserveExplicitEmptyArrayKeys: explicitEmptyArrayKeys,
         );
       }
       return FormData.fromMap(normalizedPayload, ListFormat.multiCompatible);
@@ -52,10 +53,11 @@ class TenantAdminMediaFormDataBuilder {
       return null;
     }
 
+    final explicitEmptyArrayKeys = preserveExplicitEmptyArrayKeys.toSet();
     final formData = FormData.fromMap(
       _normalizeMultipartMap(
         payload,
-        preserveExplicitEmptyArrayKeys: preserveExplicitEmptyArrayKeys,
+        preserveExplicitEmptyArrayKeys: explicitEmptyArrayKeys,
       ),
       ListFormat.multiCompatible,
     );
@@ -95,10 +97,11 @@ class TenantAdminMediaFormDataBuilder {
       return null;
     }
 
+    final explicitEmptyArrayKeys = preserveExplicitEmptyArrayKeys.toSet();
     final formData = FormData.fromMap(
       _normalizeMultipartMap(
         payload,
-        preserveExplicitEmptyArrayKeys: preserveExplicitEmptyArrayKeys,
+        preserveExplicitEmptyArrayKeys: explicitEmptyArrayKeys,
       ),
       ListFormat.multiCompatible,
     );
@@ -119,13 +122,10 @@ class TenantAdminMediaFormDataBuilder {
     required List<Map<String, dynamic>> galleryGroups,
     required Map<String, TenantAdminMediaUpload> uploads,
   }) {
-    final formData = FormData.fromMap(
-      <String, dynamic>{
-        '_method': 'PATCH',
-        'gallery_groups': jsonEncode(galleryGroups),
-      },
-      ListFormat.multiCompatible,
-    );
+    final formData = FormData.fromMap(<String, dynamic>{
+      '_method': 'PATCH',
+      'gallery_groups': jsonEncode(galleryGroups),
+    }, ListFormat.multiCompatible);
     for (final entry in uploads.entries) {
       formData.files.add(
         MapEntry(
@@ -168,13 +168,14 @@ class TenantAdminMediaFormDataBuilder {
     Map<String, dynamic> payload, {
     Iterable<String> preserveExplicitEmptyArrayKeys = const <String>[],
   }) {
+    final explicitEmptyArrayKeys = preserveExplicitEmptyArrayKeys.toSet();
     return payload.map(
       (key, value) => MapEntry(
         key,
         _normalizeMultipartValue(
           value,
-          preserveExplicitEmptyArray:
-              preserveExplicitEmptyArrayKeys.contains(key),
+          preserveExplicitEmptyArray: explicitEmptyArrayKeys.contains(key),
+          preserveExplicitEmptyArrayKeys: explicitEmptyArrayKeys,
         ),
       ),
     );
@@ -183,15 +184,20 @@ class TenantAdminMediaFormDataBuilder {
   dynamic _normalizeMultipartValue(
     Object? value, {
     bool preserveExplicitEmptyArray = false,
+    Iterable<String> preserveExplicitEmptyArrayKeys = const <String>[],
   }) {
     if (value is bool) {
       return value ? 1 : 0;
     }
     if (value is Map<String, dynamic>) {
-      return _normalizeMultipartMap(value);
+      return _normalizeMultipartMap(
+        value,
+        preserveExplicitEmptyArrayKeys: preserveExplicitEmptyArrayKeys,
+      );
     }
     if (value is Map) {
       final normalized = <String, dynamic>{};
+      final explicitEmptyArrayKeys = preserveExplicitEmptyArrayKeys.toSet();
       for (final entry in value.entries) {
         final key = entry.key;
         if (key is! String) {
@@ -199,7 +205,11 @@ class TenantAdminMediaFormDataBuilder {
             'Failed to build multipart payload: payload keys must be strings.',
           );
         }
-        normalized[key] = _normalizeMultipartValue(entry.value);
+        normalized[key] = _normalizeMultipartValue(
+          entry.value,
+          preserveExplicitEmptyArray: explicitEmptyArrayKeys.contains(key),
+          preserveExplicitEmptyArrayKeys: explicitEmptyArrayKeys,
+        );
       }
       return normalized;
     }
@@ -207,7 +217,14 @@ class TenantAdminMediaFormDataBuilder {
       if (preserveExplicitEmptyArray && value.isEmpty) {
         return jsonEncode(const <Object>[]);
       }
-      return value.map(_normalizeMultipartValue).toList(growable: false);
+      return value
+          .map(
+            (item) => _normalizeMultipartValue(
+              item,
+              preserveExplicitEmptyArrayKeys: preserveExplicitEmptyArrayKeys,
+            ),
+          )
+          .toList(growable: false);
     }
     return value;
   }

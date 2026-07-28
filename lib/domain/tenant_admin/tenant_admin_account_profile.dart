@@ -6,6 +6,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_grou
 import 'package:belluga_now/domain/shared/account_profile_contact_source_summary.dart';
 import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_channel_id_value.dart';
 import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_source_account_profile_id_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_aggregate_revision_value.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
@@ -18,6 +19,7 @@ class TenantAdminAccountProfile {
     required this.accountIdValue,
     required this.profileTypeValue,
     required this.displayNameValue,
+    this.aggregateRevisionValue,
     TenantAdminOptionalTextValue? slugValue,
     TenantAdminOptionalUrlValue? avatarUrlValue,
     TenantAdminOptionalUrlValue? coverUrlValue,
@@ -62,6 +64,7 @@ class TenantAdminAccountProfile {
   final TenantAdminRequiredTextValue accountIdValue;
   final TenantAdminRequiredTextValue profileTypeValue;
   final TenantAdminRequiredTextValue displayNameValue;
+  final TenantAdminAccountProfileAggregateRevisionValue? aggregateRevisionValue;
   final TenantAdminOptionalTextValue slugValue;
   final TenantAdminOptionalUrlValue avatarUrlValue;
   final TenantAdminOptionalUrlValue coverUrlValue;
@@ -93,6 +96,7 @@ class TenantAdminAccountProfile {
   String get accountId => accountIdValue.value;
   String get profileType => profileTypeValue.value;
   String get displayName => displayNameValue.value;
+  int? get aggregateRevision => aggregateRevisionValue?.value;
   String? get slug => slugValue.nullableValue;
   String? get avatarUrl => avatarUrlValue.nullableValue;
   String? get coverUrl => coverUrlValue.nullableValue;

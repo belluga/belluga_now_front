@@ -7,6 +7,18 @@ Usaremos os seguintes placeholders:
 * `<NomeDoApp>`: O nome de exibição do aplicativo (ex: `Aracruz App`).
 * `<com.empresa.novoapp>`: O ID único do aplicativo para a loja (ex: `com.aracruz.app`).
 
+## Diagnósticos Flutter (Obrigatório)
+
+Antes de usar este projeto Flutter, trate a análise local assim:
+
+* Não use `dart analyze`, `flutter analyze` ou `custom_lint` para descobrir os `Problems` atuais do workspace.
+* Em workspace editor-managed, a fonte local de verdade para `Problems` é a extensão/bridge read-only em `../delphi-ai/tools/vscode_diagnostics_bridge/README.md`.
+* Consulte primeiro `GET http://127.0.0.1:40361/health` e depois `GET /diagnostics?scope=<caminho-absoluto-do-flutter-app>`.
+* `Error` ou `Warning` no snapshot do bridge bloqueia o checkpoint local; `Information` exige classificação explícita.
+* Se o bridge estiver indisponível, instável, ou apontando para o workspace errado, a análise local está bloqueada. Não faça fallback para analyzer CLI.
+* Jobs de CI/promoção podem continuar rodando o analyzer do pipeline como evidência separada. Isso não substitui o snapshot local do bridge.
+* Se o estado local do analyzer/editor driftar, rode `bash ./scripts/reset_analyzer_state.sh`, use `Dart: Restart Analysis Server`, e só então recapture o snapshot do bridge.
+
 ### Pré-requisitos
 * Acesso ao `keytool` (parte do Java Development Kit).
 * Acesso a um ambiente macOS com Xcode para a configuração do iOS.

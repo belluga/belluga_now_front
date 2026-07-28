@@ -13,13 +13,15 @@ class ImmersiveDetailScreenController {
     required this.tabItems,
     int initialTabIndex = 0,
     TelemetryRepositoryContract? telemetryRepository,
-  })  : _telemetryRepository = telemetryRepository ??
-            (GetIt.I.isRegistered<TelemetryRepositoryContract>()
-                ? GetIt.I.get<TelemetryRepositoryContract>()
-                : null),
-        scrollController = ScrollController(),
-        currentTabIndexStreamValue =
-            StreamValue<int>(defaultValue: initialTabIndex);
+  }) : _telemetryRepository =
+           telemetryRepository ??
+           (GetIt.I.isRegistered<TelemetryRepositoryContract>()
+               ? GetIt.I.get<TelemetryRepositoryContract>()
+               : null),
+       scrollController = ScrollController(),
+       currentTabIndexStreamValue = StreamValue<int>(
+         defaultValue: initialTabIndex,
+       );
 
   final TelemetryRepositoryContract? _telemetryRepository;
   late final ScrollController scrollController;
@@ -36,15 +38,19 @@ class ImmersiveDetailScreenController {
   int? _activeSectionIndex;
   double _pinnedHeaderHeight = 0;
   bool _disposed = false;
+  final Set<int> _activatedTabIndexes = <int>{};
 
   // Track visibility of each tab
   final Map<int, double> _tabVisibility = {};
+
+  double get currentPinnedHeaderHeight => _pinnedHeaderHeight;
 
   void updateTabs(List<ImmersiveTabItem> updatedTabs) {
     if (_disposed) {
       return;
     }
     tabItems = updatedTabs;
+    _activatedTabIndexes.clear();
     _tabVisibility.removeWhere((index, _) => index >= tabItems.length);
     _lastSectionViewedIndex = null;
 
@@ -55,6 +61,13 @@ class ImmersiveDetailScreenController {
 
     if (currentTabIndexStreamValue.value >= tabItems.length) {
       _setCurrentTabIndex(tabItems.length - 1, track: false);
+      return;
+    }
+
+    final currentIndex = currentTabIndexStreamValue.value;
+    final currentVisibility = _tabVisibility[currentIndex];
+    if (currentVisibility != null && currentVisibility > 0.25) {
+      _activateTabIfNeeded(currentIndex, track: false);
     }
   }
 
@@ -91,6 +104,11 @@ class ImmersiveDetailScreenController {
     if (mostVisibleTab != null &&
         mostVisibleTab != currentTabIndexStreamValue.value) {
       _setCurrentTabIndex(mostVisibleTab!, track: true);
+      return;
+    }
+
+    if (mostVisibleTab != null) {
+      _activateTabIfNeeded(mostVisibleTab!, track: true);
     }
   }
 
@@ -178,6 +196,13 @@ class ImmersiveDetailScreenController {
     });
   }
 
+  void ensureTabActivated(int index) {
+    if (_disposed) {
+      return;
+    }
+    _activateTabIfNeeded(index, track: false);
+  }
+
   void onHorizontalSwipeEnd(double? primaryVelocity) {
     if (_disposed) {
       return;
@@ -190,8 +215,10 @@ class ImmersiveDetailScreenController {
     }
 
     final delta = primaryVelocity < 0 ? 1 : -1;
-    final targetIndex = (currentTabIndexStreamValue.value + delta)
-        .clamp(0, tabItems.length - 1);
+    final targetIndex = (currentTabIndexStreamValue.value + delta).clamp(
+      0,
+      tabItems.length - 1,
+    );
     if (targetIndex == currentTabIndexStreamValue.value) {
       return;
     }
@@ -209,7 +236,21 @@ class ImmersiveDetailScreenController {
     if (_disposed) {
       return;
     }
-    currentTabIndexStreamValue.addValue(index);
+    if (currentTabIndexStreamValue.value != index) {
+      currentTabIndexStreamValue.addValue(index);
+    }
+    _activateTabIfNeeded(index, track: track);
+  }
+
+  void _activateTabIfNeeded(int index, {required bool track}) {
+    if (index < 0 || index >= tabItems.length) {
+      return;
+    }
+
+    if (_activatedTabIndexes.add(index)) {
+      tabItems[index].onActivated?.call();
+    }
+
     if (track) {
       _trackSectionViewed(index);
     }
@@ -254,10 +295,12 @@ class ImmersiveDetailScreenController {
     }
     _activeSectionTimedEventFuture = null;
     _activeSectionIndex = null;
-    unawaited(handleFuture.then<void>((handle) async {
-      if (handle != null) {
-        await telemetry.finishTimedEvent(handle);
-      }
-    }));
+    unawaited(
+      handleFuture.then<void>((handle) async {
+        if (handle != null) {
+          await telemetry.finishTimedEvent(handle);
+        }
+      }),
+    );
   }
 }

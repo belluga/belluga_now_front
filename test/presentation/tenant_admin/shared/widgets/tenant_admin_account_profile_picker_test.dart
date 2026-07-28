@@ -29,6 +29,7 @@ void main() {
       await pumpAutoRouteTestApp(
         tester,
         routeName: 'tenant-admin-account-profile-picker-test',
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
         child: Scaffold(
           body: Builder(
             builder: (context) => ElevatedButton(
@@ -40,6 +41,8 @@ void main() {
                   isPageLoadingStreamValue: pageLoading,
                   hasMoreStreamValue: hasMore,
                   errorStreamValue: error,
+                  onSearchChanged: (_) {},
+                  profileTypes: const [],
                   loadNextPage: () async {},
                   title: 'Perfil de origem',
                   emptyMessage: 'Nenhum perfil elegível.',
@@ -55,7 +58,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Perfil Elegível'), findsOneWidget);
-      expect(find.text('perfil-elegivel'), findsOneWidget);
+      expect(find.text('venue'), findsOneWidget);
 
       await tester.tap(find.text('Perfil Elegível'));
       await tester.pumpAndSettle();
@@ -84,6 +87,7 @@ void main() {
     await pumpAutoRouteTestApp(
       tester,
       routeName: 'tenant-admin-account-profile-picker-error-test',
+      theme: ThemeData(splashFactory: NoSplash.splashFactory),
       child: Scaffold(
         body: Builder(
           builder: (context) => ElevatedButton(
@@ -95,6 +99,8 @@ void main() {
                 isPageLoadingStreamValue: pageLoading,
                 hasMoreStreamValue: hasMore,
                 errorStreamValue: error,
+                onSearchChanged: (_) {},
+                profileTypes: const [],
                 loadNextPage: () async {},
                 title: 'Perfil de origem',
                 emptyMessage: 'Nenhum perfil elegível.',

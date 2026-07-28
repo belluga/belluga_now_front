@@ -22,7 +22,6 @@ import 'package:belluga_now/domain/repositories/app_data_repository_contract.dar
 import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/deferred_link_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/discovery_filters_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/friends_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/inviteables_repository_contract.dart';
@@ -59,7 +58,6 @@ import 'package:belluga_now/infrastructure/repositories/auth_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/city_map_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/contacts_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/deferred_link_repository.dart';
-import 'package:belluga_now/infrastructure/repositories/discovery_filters_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/favorite_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/friends_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/inviteables_repository.dart';
@@ -90,7 +88,6 @@ import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/a
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/dao/production_backend/production_backend.dart';
-import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/discovery_filters/laravel_discovery_filters_http_service.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/map/laravel_map_poi_http_service.dart';
 import 'package:belluga_now/application/application_contract.dart';
 import 'package:belluga_now/infrastructure/services/push/push_answer_handler.dart';
@@ -369,14 +366,6 @@ class ModuleSettings extends ModuleSettingsContract {
     );
     _registerIfAbsent<LaravelMapPoiHttpService>(
       () => LaravelMapPoiHttpService(),
-    );
-    _registerIfAbsent<LaravelDiscoveryFiltersHttpService>(
-      () => LaravelDiscoveryFiltersHttpService(),
-    );
-    _registerIfAbsent<DiscoveryFiltersRepositoryContract>(
-      () => DiscoveryFiltersRepository(
-        backend: GetIt.I.get<LaravelDiscoveryFiltersHttpService>(),
-      ),
     );
     _registerIfAbsent<CityMapRepositoryContract>(
       () => CityMapRepository(

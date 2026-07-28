@@ -1925,9 +1925,185 @@ void main() {
   );
 
   testWidgets(
+    'loads public nested group members lazily from members_path when the tab opens',
+    (tester) async {
+      final membersPath =
+          '/api/v1/account_profiles/ponta-da-fruta/nested_groups/parceiros/members';
+      final lazyMembers = _buildNestedAccountProfileGroup().profiles;
+      final repository = _FakeAccountProfilesRepository(
+        nestedGroupMembersByPath:
+            <String, List<AccountProfileNestedGroupMember>>{
+              membersPath: lazyMembers,
+            },
+      );
+      final controller = AccountProfileDetailController(
+        accountProfilesRepository: repository,
+      );
+      GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+      final lazyGroup = AccountProfileNestedGroup(
+        idValue: AccountProfileNestedGroupIdValue('parceiros'),
+        labelValue: AccountProfileNestedGroupLabelValue('Parceiros'),
+        orderValue: AccountProfileNestedGroupOrderValue(0),
+        membersPathValue: AccountProfileNestedGroupMembersPathValue(
+          membersPath,
+        ),
+        memberCountValue: AccountProfileNestedGroupMemberCountValue(
+          lazyMembers.length,
+        ),
+        profiles: const <AccountProfileNestedGroupMember>[],
+      );
+
+      await tester.pumpWidget(
+        _buildRoutedTestApp(
+          router: _RecordingStackRouter(),
+          child: AccountProfileDetailScreen(
+            accountProfile: _buildVenueFullProfile().copyWith(
+              nestedProfileGroupValues: [lazyGroup],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(repository.lastNestedGroupMembersPath, isNull);
+      expect(
+        tester.widget<Text>(find.byKey(const Key('immersiveTabLabel_3'))).data,
+        'Parceiros',
+      );
+
+      await tester.ensureVisible(find.byKey(const Key('immersiveTabLabel_3')));
+      await tester.tap(find.byKey(const Key('immersiveTabLabel_3')));
+      await tester.pumpAndSettle();
+
+      expect(repository.lastNestedGroupMembersPath, membersPath);
+      expect(
+        find.byKey(const Key('accountProfileNestedGroup_parceiros')),
+        findsOneWidget,
+      );
+      expect(find.text('Ananda Torres'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'keeps every public nested group tab when multiple groups are present',
+    (tester) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(430, 900);
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final repository = _FakeAccountProfilesRepository();
+      final controller = AccountProfileDetailController(
+        accountProfilesRepository: repository,
+      );
+      GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+      await tester.pumpWidget(
+        _buildRoutedTestApp(
+          router: _RecordingStackRouter(),
+          child: AccountProfileDetailScreen(
+            accountProfile: _buildVenueFullProfile().copyWith(
+              nestedProfileGroupValues: [
+                _buildNestedAccountProfileGroup(),
+                _buildSecondaryNestedAccountProfileGroup(),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final immersiveDetail = tester.widget<ImmersiveDetailScreen>(
+        find.byType(ImmersiveDetailScreen),
+      );
+
+      expect(
+        immersiveDetail.tabs.map((tab) => tab.title),
+        containsAll(<String>['Parceiros', 'Novo grupo 3']),
+      );
+      expect(find.byKey(const Key('immersiveTabLabel_4')), findsOneWidget);
+      expect(
+        tester.widget<Text>(find.byKey(const Key('immersiveTabLabel_4'))).data,
+        'Novo grupo 3',
+      );
+      expect(
+        find.byKey(const Key('immersiveTabOverflowHintRight')),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'keeps Contato as the last account detail tab when nested profile groups are present',
+    (tester) async {
+      await GetIt.I.reset(dispose: false);
+      GetIt.I.registerSingleton<AppData>(
+        _buildAppData(artistContactChannelsEnabled: true),
+      );
+      final repository = _FakeAccountProfilesRepository();
+      final controller = AccountProfileDetailController(
+        accountProfilesRepository: repository,
+      );
+      GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+      await tester.pumpWidget(
+        _buildRoutedTestApp(
+          router: _RecordingStackRouter(),
+          child: AccountProfileDetailScreen(
+            accountProfile:
+                _buildArtistProfileWithContact(
+                  withAgenda: true,
+                  withBio: true,
+                ).copyWith(
+                  nestedProfileGroupValues: [
+                    _buildNestedAccountProfileGroup(),
+                    _buildSecondaryNestedAccountProfileGroup(),
+                  ],
+                ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final immersiveDetail = tester.widget<ImmersiveDetailScreen>(
+        find.byType(ImmersiveDetailScreen),
+      );
+      final tabTitles = immersiveDetail.tabs
+          .map((tab) => tab.title)
+          .toList(growable: false);
+
+      expect(
+        tabTitles,
+        containsAll(<String>['Agenda', 'Parceiros', 'Novo grupo 3', 'Contato']),
+      );
+      expect(immersiveDetail.tabs.last.title, 'Contato');
+    },
+  );
+
+  testWidgets(
     'renders non navigable nested members without chevron and does not navigate',
     (tester) async {
-      final repository = _FakeAccountProfilesRepository();
+      const membersPath =
+          '/api/v1/account_profiles/ponta-da-fruta/nested_groups/parceiros/members';
+      final nonNavigableMember = AccountProfileNestedGroupMember(
+        idValue: MongoIDValue()..parse('507f1f77bcf86cd799439082'),
+        nameValue: TitleValue()..parse('Parceiro Sem Link'),
+        profileTypeValue: AccountProfileTypeValue('guest_public'),
+        canOpenPublicDetailValue: DomainBooleanValue(
+          defaultValue: false,
+          isRequired: false,
+        )..parse('false'),
+        tagValues: [AccountProfileTagValue('Convidado')],
+      );
+      final repository = _FakeAccountProfilesRepository(
+        nestedGroupMembersByPath:
+            <String, List<AccountProfileNestedGroupMember>>{
+              membersPath: [nonNavigableMember],
+            },
+      );
       final controller = AccountProfileDetailController(
         accountProfilesRepository: repository,
       );
@@ -1938,18 +2114,11 @@ void main() {
         idValue: AccountProfileNestedGroupIdValue('parceiros'),
         labelValue: AccountProfileNestedGroupLabelValue('Parceiros'),
         orderValue: AccountProfileNestedGroupOrderValue(0),
-        profiles: [
-          AccountProfileNestedGroupMember(
-            idValue: MongoIDValue()..parse('507f1f77bcf86cd799439082'),
-            nameValue: TitleValue()..parse('Parceiro Sem Link'),
-            profileTypeValue: AccountProfileTypeValue('guest_public'),
-            canOpenPublicDetailValue: DomainBooleanValue(
-              defaultValue: false,
-              isRequired: false,
-            )..parse('false'),
-            tagValues: [AccountProfileTagValue('Convidado')],
-          ),
-        ],
+        membersPathValue: AccountProfileNestedGroupMembersPathValue(
+          membersPath,
+        ),
+        memberCountValue: AccountProfileNestedGroupMemberCountValue(1),
+        profiles: [nonNavigableMember],
       );
 
       await tester.pumpWidget(
@@ -2944,7 +3113,9 @@ Widget _buildAutoRouteTestApp({required Widget child, ThemeData? theme}) {
   )..ignorePopCompleters = true;
 
   return MaterialApp.router(
-    theme: theme,
+    // Match the routed test harness and avoid the Linux widget-test
+    // renderer attempting to load the app's Vulkan-only InkSparkle shader.
+    theme: theme ?? ThemeData(splashFactory: NoSplash.splashFactory),
     locale: const Locale('pt', 'BR'),
     supportedLocales: const <Locale>[Locale('pt', 'BR')],
     localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
@@ -3332,8 +3503,26 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   _FakeAccountProfilesRepository({
     Set<String> initialFavoriteIds = const <String>{},
     List<AccountProfileModel> profiles = const <AccountProfileModel>[],
+    Map<String, List<AccountProfileNestedGroupMember>>
+        nestedGroupMembersByPath =
+        const <String, List<AccountProfileNestedGroupMember>>{},
   }) : _favoriteIds = Set<String>.from(initialFavoriteIds),
-       _profiles = List<AccountProfileModel>.from(profiles) {
+       _profiles = List<AccountProfileModel>.from(profiles),
+       _nestedGroupMembersByPath =
+           (nestedGroupMembersByPath.isEmpty
+                   ? <String, List<AccountProfileNestedGroupMember>>{
+                       _nestedPartnersMembersPath: _buildNestedAccountProfileGroup()
+                           .profiles,
+                       _nestedSecondaryMembersPath:
+                           _buildSecondaryNestedAccountProfileGroup().profiles,
+                     }
+                   : nestedGroupMembersByPath)
+               .map(
+                 (key, value) => MapEntry(
+                   key,
+                   List<AccountProfileNestedGroupMember>.from(value),
+                 ),
+               ) {
     favoriteAccountProfileIdsStreamValue.addValue(
       _favoriteIds
           .map((id) => AccountProfilesRepositoryContractPrimString.fromRaw(id))
@@ -3343,6 +3532,9 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
 
   final Set<String> _favoriteIds;
   final List<AccountProfileModel> _profiles;
+  final Map<String, List<AccountProfileNestedGroupMember>>
+  _nestedGroupMembersByPath;
+  String? lastNestedGroupMembersPath;
 
   @override
   Future<void> init() async {}
@@ -3372,6 +3564,15 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
       }
     }
     return null;
+  }
+
+  @override
+  Future<List<AccountProfileNestedGroupMember>> getNestedGroupMembersByPath(
+    AccountProfilesRepositoryContractPrimString membersPath,
+  ) async {
+    lastNestedGroupMembersPath = membersPath.value;
+    return _nestedGroupMembersByPath[membersPath.value] ??
+        const <AccountProfileNestedGroupMember>[];
   }
 
   @override
@@ -3619,11 +3820,20 @@ AccountProfileModel _buildVenueFullProfile() {
   );
 }
 
+const String _nestedPartnersMembersPath =
+    '/api/v1/account_profiles/ponta-da-fruta/nested_groups/parceiros/members';
+const String _nestedSecondaryMembersPath =
+    '/api/v1/account_profiles/ponta-da-fruta/nested_groups/novo-grupo-3/members';
+
 AccountProfileNestedGroup _buildNestedAccountProfileGroup() {
   return AccountProfileNestedGroup(
     idValue: AccountProfileNestedGroupIdValue('parceiros'),
     labelValue: AccountProfileNestedGroupLabelValue('Parceiros'),
     orderValue: AccountProfileNestedGroupOrderValue(0),
+    membersPathValue: AccountProfileNestedGroupMembersPathValue(
+      _nestedPartnersMembersPath,
+    ),
+    memberCountValue: AccountProfileNestedGroupMemberCountValue(1),
     profiles: [
       AccountProfileNestedGroupMember(
         idValue: MongoIDValue()..parse('507f1f77bcf86cd799439081'),
@@ -3638,6 +3848,33 @@ AccountProfileNestedGroup _buildNestedAccountProfileGroup() {
           '/parceiro/ananda-torres',
         ),
         tagValues: [AccountProfileTagValue('Música')],
+      ),
+    ],
+  );
+}
+
+AccountProfileNestedGroup _buildSecondaryNestedAccountProfileGroup() {
+  return AccountProfileNestedGroup(
+    idValue: AccountProfileNestedGroupIdValue('novo-grupo-3'),
+    labelValue: AccountProfileNestedGroupLabelValue('Novo grupo 3'),
+    orderValue: AccountProfileNestedGroupOrderValue(1),
+    membersPathValue: AccountProfileNestedGroupMembersPathValue(
+      _nestedSecondaryMembersPath,
+    ),
+    memberCountValue: AccountProfileNestedGroupMemberCountValue(1),
+    profiles: [
+      AccountProfileNestedGroupMember(
+        idValue: MongoIDValue()..parse('507f1f77bcf86cd799439082'),
+        nameValue: TitleValue()..parse('Public Partner B'),
+        slugValue: SlugValue()..parse('public-partner-b'),
+        profileTypeValue: AccountProfileTypeValue('venue'),
+        canOpenPublicDetailValue: DomainBooleanValue(
+          defaultValue: false,
+          isRequired: false,
+        )..parse('true'),
+        publicDetailPathValue: AccountProfileNestedGroupMemberTextValue(
+          '/parceiro/public-partner-b',
+        ),
       ),
     ],
   );
