@@ -973,6 +973,10 @@ class ImmersiveEventDetailController implements Disposable {
     _confirmedOccurrenceIdsSubscription?.cancel();
     _favoriteProfileIdsSubscription?.cancel();
     _invitesRepository.clearImmersiveDetailState();
+    _emptyRelatedProfileGroupMembersStreamValue.dispose();
+    _emptyHasMoreRelatedProfileGroupMembersStreamValue.dispose();
+    _emptyIsRelatedProfileGroupMembersPageLoadingStreamValue.dispose();
+    _emptyRelatedProfileGroupMembersErrorStreamValue.dispose();
     isConfirmedStreamValue.dispose();
     isConfirmationStateLoadingStreamValue.dispose();
     isLoadingStreamValue.dispose();
