@@ -120,6 +120,8 @@ class EventDTO {
     final linkedProfiles = _resolveLinkedAccountProfiles(
       linkedProfilesRaw: json['linked_account_profiles'],
     );
+    // TODO(v0.3.3-client-cutoff): remove the legacy `artists` fallback after
+    // no active clients below v0.4.0 remain and backend emission stops.
     final legacyLinkedProfiles = linkedProfiles.isNotEmpty
         ? linkedProfiles
         : _resolveLegacyArtists(json['artists']);

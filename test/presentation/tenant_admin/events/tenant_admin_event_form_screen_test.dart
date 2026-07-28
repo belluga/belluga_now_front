@@ -2672,7 +2672,7 @@ void main() {
   );
 
   testWidgets(
-    'root related profile groups remain visible after the event has multiple occurrences',
+    'root related profile groups section hides after the event has multiple occurrences',
     (tester) async {
       final eventsRepository = _FakeEventsRepository();
       final taxonomiesRepository = _FakeTaxonomiesRepository();
@@ -2707,7 +2707,7 @@ void main() {
       await tester.pumpAndSettle();
       await _closeOccurrenceSheet(tester);
 
-      expect(find.text('Abas de perfis relacionados'), findsOneWidget);
+      expect(find.text('Abas de perfis relacionados'), findsNothing);
       expect(
         find.byKey(const Key('tenantAdminEventOccurrenceCard_0')),
         findsOneWidget,
@@ -5929,6 +5929,102 @@ void main() {
 
       expect(find.text('Zulu Artist'), findsOneWidget);
       expect(find.text('Perfil não disponível na lista atual'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'single-occurrence edit reads related profile groups from the canonical occurrence snapshot',
+    (tester) async {
+      final eventsRepository = _EmptyCandidatesEventsRepository();
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+
+      eventsRepository.eventTypes = [
+        TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439104'),
+          nameValue: tenantAdminRequiredText('Show'),
+          slugValue: tenantAdminRequiredText('show'),
+        ),
+      ];
+
+      final preservedProfile = tenantAdminAccountProfileFromRaw(
+        id: 'artist-occ-single',
+        accountId: 'acc-artist-occ-single',
+        profileType: 'artist',
+        displayName: 'Occurrence Single Artist',
+        slug: 'occurrence-single-artist',
+      );
+
+      final existingEvent = TenantAdminEvent(
+        eventIdValue: tenantAdminRequiredText(
+          'evt-single-occurrence-canonical',
+        ),
+        slugValue: tenantAdminRequiredText('evt-single-occurrence-canonical'),
+        titleValue: tenantAdminRequiredText('Evento em edição'),
+        contentValue: tenantAdminOptionalText('Conteúdo'),
+        type: TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439104'),
+          nameValue: tenantAdminRequiredText('Show'),
+          slugValue: tenantAdminRequiredText('show'),
+        ),
+        occurrences: <TenantAdminEventOccurrence>[
+          TenantAdminEventOccurrence(
+            occurrenceIdValue: tenantAdminOptionalText('occurrence-1'),
+            dateTimeStartValue: tenantAdminDateTime(
+              DateTime.utc(2026, 6, 7, 3),
+            ),
+            relatedAccountProfileIdValues: [
+              TenantAdminAccountProfileIdValue(preservedProfile.id),
+            ],
+            relatedAccountProfiles: [preservedProfile],
+            profileGroups: [
+              TenantAdminNestedProfileGroup(
+                idValue: TenantAdminNestedProfileGroupTextValue('artists'),
+                labelValue: TenantAdminNestedProfileGroupTextValue('Artistas'),
+                orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+                accountProfileIdValues: [
+                  TenantAdminNestedProfileGroupTextValue(preservedProfile.id),
+                ],
+              ),
+            ],
+          ),
+        ],
+        publication: TenantAdminEventPublication(
+          statusValue: tenantAdminRequiredText('draft'),
+        ),
+      );
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        Scaffold(
+          body: TenantAdminEventFormScreen(existingEvent: existingEvent),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('Abas de perfis relacionados'), findsOneWidget);
+      expect(find.text('1 perfil(is) selecionado(s)'), findsOneWidget);
+      expect(
+        find.widgetWithText(InputChip, 'Occurrence Single Artist'),
+        findsOneWidget,
+      );
+      expect(
+        controller.eventFormStateStreamValue.value.profileGroups.single.id,
+        'artists',
+      );
+      expect(
+        controller
+            .eventFormStateStreamValue
+            .value
+            .selectedRelatedAccountProfileIds,
+        ['artist-occ-single'],
+      );
     },
   );
 
