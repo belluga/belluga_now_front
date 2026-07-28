@@ -1139,7 +1139,7 @@ class TenantAdminEventsController implements Disposable {
   String createOccurrenceDraft() {
     final current = eventFormStateStreamValue.value;
     if (current.occurrences.isEmpty) {
-      return ensurePrimaryOccurrenceDraft();
+      return _materializePrimaryOccurrenceDraft(current);
     }
     final fallbackStart = current.occurrences.isNotEmpty
         ? current.occurrences.last.dateTimeStart.add(const Duration(days: 1))
@@ -1202,32 +1202,7 @@ class TenantAdminEventsController implements Disposable {
     if (existingKey != null) {
       return existingKey;
     }
-    final current = eventFormStateStreamValue.value;
-    final startAt = current.startAt ?? DateTime.now();
-    var occurrence = TenantAdminEventOccurrence(
-      dateTimeStartValue: tenantAdminDateTime(startAt),
-      dateTimeEndValue: tenantAdminOptionalDateTime(current.endAt),
-    );
-    if (current.profileGroups.isNotEmpty) {
-      occurrence = _applyOccurrenceProfileGroups(
-        occurrence,
-        current.profileGroups,
-      );
-    }
-    final key = _newEventFormLocalId('occurrence');
-    _replaceEventFormState(
-      _mirrorSingleOccurrenceEventProfileGroups(
-        current.copyWith(
-          startAt: startAt,
-          occurrences: [occurrence],
-          occurrenceLocalIds: [key],
-          programmingItemLocalIdsByOccurrenceKey: {key: const <String>[]},
-        ),
-      ),
-    );
-    clearEventGroupValidation(TenantAdminEventFormValidationTargets.schedule);
-    _syncEventDateTimeControllers(eventFormStateStreamValue.value);
-    return key;
+    return _materializePrimaryOccurrenceDraft(eventFormStateStreamValue.value);
   }
 
   TenantAdminEventOccurrence? occurrenceForKey(String occurrenceKey) {
@@ -3321,6 +3296,27 @@ class TenantAdminEventsController implements Disposable {
 
   void _replaceEventFormState(TenantAdminEventFormState nextState) {
     eventFormStateStreamValue.addValue(nextState);
+  }
+
+  String _materializePrimaryOccurrenceDraft(TenantAdminEventFormState current) {
+    final nextState = _buildPrimaryOccurrenceDraftState(current);
+    final occurrenceKey = nextState.occurrenceLocalIds.first;
+    _replaceEventFormState(nextState);
+    clearEventGroupValidation(TenantAdminEventFormValidationTargets.schedule);
+    _syncEventDateTimeControllers(nextState);
+    return occurrenceKey;
+  }
+
+  TenantAdminEventFormState _buildPrimaryOccurrenceDraftState(
+    TenantAdminEventFormState current,
+  ) {
+    final startAt = current.startAt ?? DateTime.now();
+    final endAt = current.endAt;
+    return _replacePrimaryOccurrenceInState(
+      current,
+      startAt: startAt,
+      endAt: endAt,
+    ).copyWith(startAt: startAt, endAt: endAt);
   }
 
   void _applyEventProfileGroups(
