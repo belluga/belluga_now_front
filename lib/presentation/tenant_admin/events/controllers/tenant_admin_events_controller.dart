@@ -3380,11 +3380,7 @@ class TenantAdminEventsController implements Disposable {
       return state;
     }
     final profileGroups = state.occurrences.first.profileGroups;
-    return state.copyWith(
-      profileGroups: profileGroups,
-      selectedRelatedAccountProfileIds:
-          TenantAdminNestedProfileGroupOperations.memberIds(profileGroups),
-    );
+    return state.copyWith(profileGroups: profileGroups);
   }
 
   void _syncEventDateTimeControllers(TenantAdminEventFormState state) {

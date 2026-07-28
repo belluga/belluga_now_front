@@ -83,7 +83,7 @@ class TenantAdminEventsRequestEncoder {
             draft.publication.publishAt!,
           ).toIso8601String(),
       },
-      'profile_groups': _encodeProfileGroups(draft.profileGroups),
+      'profile_groups': _encodeRootProfileGroups(draft),
     };
 
     if (draft.taxonomyTerms.isNotEmpty) {
@@ -164,6 +164,15 @@ class TenantAdminEventsRequestEncoder {
         .toList(growable: false);
 
     return payload;
+  }
+
+  List<Map<String, dynamic>> _encodeRootProfileGroups(
+    TenantAdminEventDraft draft,
+  ) {
+    if (draft.occurrences.length != 1) {
+      return const <Map<String, dynamic>>[];
+    }
+    return _encodeProfileGroups(draft.occurrences.first.profileGroups);
   }
 
   List<Map<String, dynamic>> _encodeProfileGroups(

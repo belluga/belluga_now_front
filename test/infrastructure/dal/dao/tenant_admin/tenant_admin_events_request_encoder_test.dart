@@ -43,77 +43,160 @@ void main() {
     },
   );
 
-  test('encodes canonical profile_groups without event_parties', () {
-    const encoder = TenantAdminEventsRequestEncoder();
-    final payload = encoder.encodeDraft(
-      TenantAdminEventDraft(
-        titleValue: tenantAdminRequiredText('Evento'),
-        contentValue: tenantAdminOptionalText('Conteudo'),
-        type: TenantAdminEventType(
-          nameValue: tenantAdminRequiredText('Show'),
-          slugValue: tenantAdminRequiredText('show'),
-        ),
-        occurrences: [
-          TenantAdminEventOccurrence(
-            dateTimeStartValue: tenantAdminDateTime(DateTime(2026, 4, 5, 20)),
-            relatedAccountProfileIdValues: [
-              TenantAdminAccountProfileIdValue('ignored-occurrence-flat-id'),
-            ],
-            profileGroups: [
-              TenantAdminNestedProfileGroup(
-                idValue: TenantAdminNestedProfileGroupTextValue('convidados'),
-                labelValue: TenantAdminNestedProfileGroupTextValue(
-                  'Convidados',
+  test(
+    'encodes root profile_groups from the single canonical occurrence without event_parties',
+    () {
+      const encoder = TenantAdminEventsRequestEncoder();
+      final payload = encoder.encodeDraft(
+        TenantAdminEventDraft(
+          titleValue: tenantAdminRequiredText('Evento'),
+          contentValue: tenantAdminOptionalText('Conteudo'),
+          type: TenantAdminEventType(
+            nameValue: tenantAdminRequiredText('Show'),
+            slugValue: tenantAdminRequiredText('show'),
+          ),
+          occurrences: [
+            TenantAdminEventOccurrence(
+              dateTimeStartValue: tenantAdminDateTime(DateTime(2026, 4, 5, 20)),
+              relatedAccountProfileIdValues: [
+                TenantAdminAccountProfileIdValue('ignored-occurrence-flat-id'),
+              ],
+              profileGroups: [
+                TenantAdminNestedProfileGroup(
+                  idValue: TenantAdminNestedProfileGroupTextValue('convidados'),
+                  labelValue: TenantAdminNestedProfileGroupTextValue(
+                    'Convidados',
+                  ),
+                  orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+                  accountProfileIdValues: [
+                    TenantAdminNestedProfileGroupTextValue('artist-2'),
+                  ],
                 ),
-                orderValue: TenantAdminNestedProfileGroupOrderValue(0),
-                accountProfileIdValues: [
-                  TenantAdminNestedProfileGroupTextValue('artist-2'),
-                ],
-              ),
-            ],
+              ],
+            ),
+          ],
+          publication: TenantAdminEventPublication(
+            statusValue: tenantAdminRequiredText('draft'),
           ),
-        ],
-        publication: TenantAdminEventPublication(
-          statusValue: tenantAdminRequiredText('draft'),
+          relatedAccountProfileIdValues: [
+            TenantAdminAccountProfileIdValue('ignored-flat-id'),
+          ],
+          profileGroups: [
+            TenantAdminNestedProfileGroup(
+              idValue: TenantAdminNestedProfileGroupTextValue('atracoes'),
+              labelValue: TenantAdminNestedProfileGroupTextValue('Atrações'),
+              orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+              accountProfileIdValues: [
+                TenantAdminNestedProfileGroupTextValue('artist-1'),
+              ],
+            ),
+          ],
         ),
-        relatedAccountProfileIdValues: [
-          TenantAdminAccountProfileIdValue('ignored-flat-id'),
-        ],
-        profileGroups: [
-          TenantAdminNestedProfileGroup(
-            idValue: TenantAdminNestedProfileGroupTextValue('atracoes'),
-            labelValue: TenantAdminNestedProfileGroupTextValue('Atrações'),
-            orderValue: TenantAdminNestedProfileGroupOrderValue(0),
-            accountProfileIdValues: [
-              TenantAdminNestedProfileGroupTextValue('artist-1'),
-            ],
+      );
+
+      expect(payload['profile_groups'], [
+        {
+          'id': 'convidados',
+          'label': 'Convidados',
+          'order': 0,
+          'account_profile_ids': ['artist-2'],
+        },
+      ]);
+      expect(payload.containsKey('event_parties'), isFalse);
+
+      final occurrence =
+          (payload['occurrences'] as List<Object?>).first
+              as Map<String, dynamic>;
+      expect(occurrence['profile_groups'], [
+        {
+          'id': 'convidados',
+          'label': 'Convidados',
+          'order': 0,
+          'account_profile_ids': ['artist-2'],
+        },
+      ]);
+      expect(occurrence.containsKey('event_parties'), isFalse);
+    },
+  );
+
+  test(
+    'omits root profile_groups when many occurrences exist even if a stale root mirror is present',
+    () {
+      const encoder = TenantAdminEventsRequestEncoder();
+      final payload = encoder.encodeDraft(
+        TenantAdminEventDraft(
+          titleValue: tenantAdminRequiredText('Evento'),
+          contentValue: tenantAdminOptionalText('Conteudo'),
+          type: TenantAdminEventType(
+            nameValue: tenantAdminRequiredText('Show'),
+            slugValue: tenantAdminRequiredText('show'),
           ),
-        ],
-      ),
-    );
+          occurrences: [
+            TenantAdminEventOccurrence(
+              dateTimeStartValue: tenantAdminDateTime(DateTime(2026, 4, 5, 20)),
+              profileGroups: [
+                TenantAdminNestedProfileGroup(
+                  idValue: TenantAdminNestedProfileGroupTextValue('artists'),
+                  labelValue: TenantAdminNestedProfileGroupTextValue('Artists'),
+                  orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+                  accountProfileIdValues: [
+                    TenantAdminNestedProfileGroupTextValue('artist-1'),
+                  ],
+                ),
+              ],
+            ),
+            TenantAdminEventOccurrence(
+              dateTimeStartValue: tenantAdminDateTime(DateTime(2026, 4, 6, 20)),
+              profileGroups: [
+                TenantAdminNestedProfileGroup(
+                  idValue: TenantAdminNestedProfileGroupTextValue('sponsors'),
+                  labelValue: TenantAdminNestedProfileGroupTextValue(
+                    'Sponsors',
+                  ),
+                  orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+                  accountProfileIdValues: [
+                    TenantAdminNestedProfileGroupTextValue('sponsor-1'),
+                  ],
+                ),
+              ],
+            ),
+          ],
+          publication: TenantAdminEventPublication(
+            statusValue: tenantAdminRequiredText('draft'),
+          ),
+          profileGroups: [
+            TenantAdminNestedProfileGroup(
+              idValue: TenantAdminNestedProfileGroupTextValue('stale-root'),
+              labelValue: TenantAdminNestedProfileGroupTextValue('Stale Root'),
+              orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+              accountProfileIdValues: [
+                TenantAdminNestedProfileGroupTextValue('stale-1'),
+              ],
+            ),
+          ],
+        ),
+      );
 
-    expect(payload['profile_groups'], [
-      {
-        'id': 'atracoes',
-        'label': 'Atrações',
-        'order': 0,
-        'account_profile_ids': ['artist-1'],
-      },
-    ]);
-    expect(payload.containsKey('event_parties'), isFalse);
-
-    final occurrence =
-        (payload['occurrences'] as List<Object?>).first as Map<String, dynamic>;
-    expect(occurrence['profile_groups'], [
-      {
-        'id': 'convidados',
-        'label': 'Convidados',
-        'order': 0,
-        'account_profile_ids': ['artist-2'],
-      },
-    ]);
-    expect(occurrence.containsKey('event_parties'), isFalse);
-  });
+      expect(payload['profile_groups'], isEmpty);
+      final occurrences = payload['occurrences'] as List<Object?>;
+      expect((occurrences.first as Map<String, dynamic>)['profile_groups'], [
+        {
+          'id': 'artists',
+          'label': 'Artists',
+          'order': 0,
+          'account_profile_ids': ['artist-1'],
+        },
+      ]);
+      expect((occurrences[1] as Map<String, dynamic>)['profile_groups'], [
+        {
+          'id': 'sponsors',
+          'label': 'Sponsors',
+          'order': 0,
+          'account_profile_ids': ['sponsor-1'],
+        },
+      ]);
+    },
+  );
 
   test(
     'encodes empty canonical profile_groups payload when no related account profiles are selected',

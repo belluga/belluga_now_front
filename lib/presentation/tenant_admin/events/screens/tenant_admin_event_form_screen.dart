@@ -9,6 +9,7 @@ import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
@@ -1315,6 +1316,11 @@ class _TenantAdminEventFormScreenState
             TenantAdminEventOccurrence(
               dateTimeStartValue: tenantAdminDateTime(startAt),
               dateTimeEndValue: tenantAdminOptionalDateTime(endAt),
+              relatedAccountProfileIdValues: formState
+                  .selectedRelatedAccountProfileIds
+                  .map(TenantAdminAccountProfileIdValue.new)
+                  .toList(growable: false),
+              profileGroups: formState.profileGroups,
             ),
           ]
         : formState.occurrences;
@@ -1342,6 +1348,15 @@ class _TenantAdminEventFormScreenState
           ),
         )
         .toList(growable: false);
+  }
+
+  List<TenantAdminNestedProfileGroup> _rootProfileGroupsForSubmit(
+    List<TenantAdminEventOccurrence> occurrences,
+  ) {
+    if (occurrences.length != 1) {
+      return const <TenantAdminNestedProfileGroup>[];
+    }
+    return occurrences.first.profileGroups;
   }
 
   String _formatOccurrenceDateTime(DateTime value) {
@@ -1923,6 +1938,11 @@ class _TenantAdminEventFormScreenState
               idValue: tenantAdminRequiredText(selectedVenue.id),
             )
           : null;
+      final occurrencesForSubmit = _buildOccurrencesForSubmit(
+        formState: formState,
+        startAt: startAt,
+        endAt: endAt,
+      );
 
       final draft = TenantAdminEventDraft(
         titleValue: tenantAdminRequiredText(
@@ -1939,11 +1959,7 @@ class _TenantAdminEventFormScreenState
           iconValue: tenantAdminOptionalText(selectedType.icon),
           colorValue: tenantAdminOptionalText(selectedType.color),
         ),
-        occurrences: _buildOccurrencesForSubmit(
-          formState: formState,
-          startAt: startAt,
-          endAt: endAt,
-        ),
+        occurrences: occurrencesForSubmit,
         publication: TenantAdminEventPublication(
           statusValue: tenantAdminRequiredText(formState.publicationStatus),
           publishAtValue: tenantAdminOptionalDateTime(
@@ -1963,7 +1979,7 @@ class _TenantAdminEventFormScreenState
             .map(TenantAdminAccountProfileIdValue.new)
             .toList(growable: false),
         relatedAccountProfiles: selectedRelatedAccountProfiles,
-        profileGroups: formState.profileGroups,
+        profileGroups: _rootProfileGroupsForSubmit(occurrencesForSubmit),
         taxonomyTerms: (() {
           final terms = TenantAdminTaxonomyTerms();
           for (final taxonomyTerm in taxonomyTerms) {
