@@ -1138,6 +1138,9 @@ class TenantAdminEventsController implements Disposable {
 
   String createOccurrenceDraft() {
     final current = eventFormStateStreamValue.value;
+    if (current.occurrences.isEmpty) {
+      return ensurePrimaryOccurrenceDraft();
+    }
     final fallbackStart = current.occurrences.isNotEmpty
         ? current.occurrences.last.dateTimeStart.add(const Duration(days: 1))
         : current.startAt ?? DateTime.now();
