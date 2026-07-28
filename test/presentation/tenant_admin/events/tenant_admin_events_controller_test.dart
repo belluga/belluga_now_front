@@ -373,6 +373,50 @@ void main() {
   );
 
   test(
+    'createOccurrenceDraft preserves event-level profile groups when creating the first occurrence',
+    () {
+      final controller = TenantAdminEventsController(
+        eventsRepository: _TrackingEventsRepository(),
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken(
+          'landlord-token',
+        ),
+      );
+
+      controller.initEventForm();
+      controller.addEventProfileGroup();
+      final groupId =
+          controller.eventFormStateStreamValue.value.profileGroups.single.id;
+
+      controller.toggleEventProfileGroupMember(
+        groupId: groupId,
+        profileId: 'artist-1',
+        selected: true,
+      );
+
+      controller.createOccurrenceDraft();
+
+      final state = controller.eventFormStateStreamValue.value;
+      expect(state.profileGroups.single.id, groupId);
+      expect(state.selectedRelatedAccountProfileIds, ['artist-1']);
+      expect(state.occurrences, hasLength(1));
+      expect(state.occurrences.single.profileGroups.single.id, groupId);
+      expect(
+        state.occurrences.single.profileGroups.single.accountProfileIdValues
+            .map((value) => value.value)
+            .toList(growable: false),
+        ['artist-1'],
+      );
+      expect(
+        state.occurrences.single.relatedAccountProfileIds
+            .map((value) => value.value)
+            .toList(growable: false),
+        ['artist-1'],
+      );
+    },
+  );
+
+  test(
     'event-level profile-group edits mirror to the single occurrence canonical state',
     () {
       final controller = TenantAdminEventsController(

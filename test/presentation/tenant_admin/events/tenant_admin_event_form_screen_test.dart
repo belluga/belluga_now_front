@@ -5261,6 +5261,65 @@ void main() {
   );
 
   testWidgets(
+    'adding the first occurrence preserves event-level related profile groups',
+    (tester) async {
+      final eventsRepository = _FakeEventsRepository();
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(body: TenantAdminEventFormScreen()),
+      );
+
+      final groupId = await _addEventProfileGroup(
+        tester,
+        controller,
+        label: 'Participantes',
+      );
+      await _selectProfileInGroup(
+        tester,
+        keyPrefix: 'EventProfile',
+        groupId: groupId,
+        profileId: 'artist-1',
+      );
+
+      expect(find.widgetWithText(InputChip, 'Artist A'), findsOneWidget);
+
+      await tester.tap(
+        find.byKey(const Key('tenantAdminEventAddOccurrenceButton')),
+      );
+      await tester.pumpAndSettle();
+      await _closeOccurrenceSheet(tester);
+
+      final state = controller.eventFormStateStreamValue.value;
+      expect(state.occurrences, hasLength(1));
+      expect(state.profileGroups.single.id, groupId);
+      expect(state.selectedRelatedAccountProfileIds, ['artist-1']);
+      expect(state.occurrences.single.profileGroups.single.id, groupId);
+      expect(
+        state.occurrences.single.profileGroups.single.accountProfileIdValues
+            .map((value) => value.value)
+            .toList(growable: false),
+        ['artist-1'],
+      );
+      expect(
+        state.occurrences.single.relatedAccountProfileIds
+            .map((value) => value.value)
+            .toList(growable: false),
+        ['artist-1'],
+      );
+      expect(find.text('1 perfil(is) selecionado(s)'), findsOneWidget);
+      expect(find.widgetWithText(InputChip, 'Artist A'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'related account profile picker renders backend type options and sends the selected filter to the server',
     (tester) async {
       final profileTypes = <TenantAdminProfileTypeDefinition>[
