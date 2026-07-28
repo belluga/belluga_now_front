@@ -471,10 +471,18 @@ class _TenantAdminAccountProfileCreateScreenState
                               groups: state.nestedProfileGroups,
                               candidatesStreamValue: _controller
                                   .nestedProfileCandidatesStreamValue,
-                              profileTypes:
-                                  _controller.profileTypesStreamValue.value,
+                              profileTypes: _controller
+                                  .profileTypesStreamValue
+                                  .value
+                                  .where(
+                                    (profileType) =>
+                                        profileType.capabilities.isQueryable,
+                                  )
+                                  .toList(growable: false),
                               onSearchChanged:
                                   _controller.searchNestedProfileCandidates,
+                              onProfileTypeChanged: _controller
+                                  .filterNestedProfileCandidatesByProfileType,
                               onLoadMore: _controller
                                   .loadNextNestedProfileCandidatesPage,
                               searchLoadingStreamValue: _controller
@@ -907,6 +915,18 @@ class _TenantAdminAccountProfileCreateScreenState
                               .contactSourceCandidatesHasMoreStreamValue,
                           errorStreamValue: _controller
                               .contactSourceCandidatesErrorStreamValue,
+                          onSearchChanged:
+                              _controller.searchContactSourceCandidates,
+                          onProfileTypeChanged: _controller
+                              .filterContactSourceCandidatesByProfileType,
+                          profileTypes: _controller
+                              .profileTypesStreamValue
+                              .value
+                              .where(
+                                (profileType) =>
+                                    profileType.capabilities.hasContactChannels,
+                              )
+                              .toList(growable: false),
                           loadNextPage:
                               _controller.loadNextContactSourceCandidatesPage,
                           title: 'Perfil de origem',
@@ -925,7 +945,7 @@ class _TenantAdminAccountProfileCreateScreenState
                       const Padding(
                         padding: EdgeInsets.only(top: 8),
                         child: Text(
-                          'Nenhum perfil próprio com contato habilitado está disponível.',
+                          'Nenhum perfil elegível para espelhar contatos está disponível.',
                         ),
                       ),
                     const SizedBox(height: 12),

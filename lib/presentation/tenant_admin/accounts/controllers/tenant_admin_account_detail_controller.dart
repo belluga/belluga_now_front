@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:belluga_now/application/tenant_admin/tenant_admin_nested_group_members_page_loader.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_page.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:stream_value/core/stream_value.dart';
@@ -13,33 +15,47 @@ class TenantAdminAccountDetailController implements Disposable {
   TenantAdminAccountDetailController({
     TenantAdminAccountProfilesRepositoryContract? profilesRepository,
     TenantAdminAccountsRepositoryContract? accountsRepository,
-  })  : _profilesRepository = profilesRepository ??
-            GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>(),
-        _accountsRepository = accountsRepository ??
-            GetIt.I.get<TenantAdminAccountsRepositoryContract>();
+    TenantAdminNestedGroupMembersPageLoader? nestedGroupMembersPageLoader,
+  }) : _profilesRepository =
+           profilesRepository ??
+           GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>(),
+       _accountsRepository =
+           accountsRepository ??
+           GetIt.I.get<TenantAdminAccountsRepositoryContract>(),
+       _nestedGroupMembersPageLoader =
+           nestedGroupMembersPageLoader ??
+           TenantAdminNestedGroupMembersPageLoader(
+             profilesRepository:
+                 profilesRepository ??
+                 GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>(),
+           );
 
   final TenantAdminAccountProfilesRepositoryContract _profilesRepository;
   final TenantAdminAccountsRepositoryContract _accountsRepository;
+  final TenantAdminNestedGroupMembersPageLoader _nestedGroupMembersPageLoader;
 
   final StreamValue<TenantAdminAccount?> _accountDetailStreamValue =
       StreamValue<TenantAdminAccount?>();
   final StreamValue<TenantAdminAccountProfile?> accountProfileStreamValue =
       StreamValue<TenantAdminAccountProfile?>();
   final StreamValue<List<TenantAdminProfileTypeDefinition>>
-      profileTypesStreamValue =
-      StreamValue<List<TenantAdminProfileTypeDefinition>>(
+  profileTypesStreamValue = StreamValue<List<TenantAdminProfileTypeDefinition>>(
     defaultValue: const [],
   );
-  final StreamValue<bool> accountDetailLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> accountDetailLoadingStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
   final StreamValue<String?> accountDetailErrorStreamValue =
       StreamValue<String?>();
-  final StreamValue<bool> accountUpdatingStreamValue =
-      StreamValue<bool>(defaultValue: false);
-  final StreamValue<bool> accountDeletingStreamValue =
-      StreamValue<bool>(defaultValue: false);
-  final StreamValue<bool> accountDeletedStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> accountUpdatingStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
+  final StreamValue<bool> accountDeletingStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
+  final StreamValue<bool> accountDeletedStreamValue = StreamValue<bool>(
+    defaultValue: false,
+  );
 
   bool _isDisposed = false;
   int _accountDetailLoadVersion = 0;
@@ -77,9 +93,22 @@ class TenantAdminAccountDetailController implements Disposable {
     return profiles.first;
   }
 
+  Future<TenantAdminNestedGroupMemberPage> fetchNestedGroupMembersPage({
+    required String accountProfileId,
+    required String groupId,
+    String? cursor,
+  }) async {
+    return _nestedGroupMembersPageLoader.loadPage(
+      accountProfileId: accountProfileId,
+      groupId: groupId,
+      cursor: cursor,
+    );
+  }
+
   Future<void> loadProfileTypes() async {
     await _profilesRepository.loadAllProfileTypes();
-    final types = _profilesRepository.profileTypesStreamValue.value ??
+    final types =
+        _profilesRepository.profileTypesStreamValue.value ??
         const <TenantAdminProfileTypeDefinition>[];
     if (_isDisposed) {
       return;
@@ -100,10 +129,7 @@ class TenantAdminAccountDetailController implements Disposable {
       if (!_isActiveAccountDetailLoad(requestVersion)) {
         return;
       }
-      _bindAccountWatch(
-        accountId: account.id,
-        accountSlug: account.slug,
-      );
+      _bindAccountWatch(accountId: account.id, accountSlug: account.slug);
       final profile = await fetchProfileForAccount(account.id);
       if (!_isActiveAccountDetailLoad(requestVersion)) {
         return;
@@ -153,10 +179,7 @@ class TenantAdminAccountDetailController implements Disposable {
       if (_isDisposed) {
         return null;
       }
-      _bindAccountWatch(
-        accountId: updated.id,
-        accountSlug: updated.slug,
-      );
+      _bindAccountWatch(accountId: updated.id, accountSlug: updated.slug);
       accountDetailErrorStreamValue.addValue(null);
       return updated;
     } catch (error) {
@@ -172,9 +195,7 @@ class TenantAdminAccountDetailController implements Disposable {
     }
   }
 
-  Future<bool> deleteAccount({
-    required String accountSlug,
-  }) async {
+  Future<bool> deleteAccount({required String accountSlug}) async {
     accountDeletingStreamValue.addValue(true);
     try {
       await _accountsRepository.deleteAccount(
@@ -238,7 +259,8 @@ class TenantAdminAccountDetailController implements Disposable {
   }) {
     final normalizedId = accountId?.trim();
     final normalizedSlug = accountSlug?.trim();
-    final isSameBinding = _accountWatch != null &&
+    final isSameBinding =
+        _accountWatch != null &&
         _watchedAccountId == normalizedId &&
         _watchedAccountSlug == normalizedSlug;
     if (isSameBinding) {

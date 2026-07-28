@@ -431,6 +431,7 @@ class _NoopEventsRepository extends TenantAdminEventsRepositoryContract
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     return tenantAdminPagedResultFromRaw(

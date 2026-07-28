@@ -151,70 +151,61 @@ void main() {
     },
   );
 
-  test('filters venue from admin related account profile payloads', () {
-    final event = decoder.decodeEventItem({
-      'data': {
-        'event_id': 'evt-venue-filter',
-        'slug': 'evento-venue-filter',
-        'title': 'Evento',
-        'content': 'Conteudo',
-        'type': {
-          'id': 'type-1',
-          'name': 'Show',
-          'slug': 'show',
-          'description': '',
+  test(
+    'preserves all linked account profile payloads in admin event readback',
+    () {
+      final linkedProfiles = <Map<String, dynamic>>[
+        {
+          'id': 'venue-1',
+          'account_id': 'venue-1',
+          'display_name': 'Venue One',
+          'profile_type': 'venue',
         },
-        'date_time_start': '2026-04-05T20:00:00+00:00',
-        'publication': {'status': 'draft'},
-        'linked_account_profiles': [
-          {
-            'id': 'venue-1',
-            'account_id': 'venue-1',
-            'display_name': 'Venue One',
-            'profile_type': 'venue',
+        {
+          'id': 'artist-1',
+          'account_id': 'artist-1',
+          'display_name': 'Artist One',
+          'profile_type': 'artist',
+        },
+      ];
+      final event = decoder.decodeEventItem({
+        'data': {
+          'event_id': 'evt-linked-profile-readback',
+          'slug': 'evento-linked-profile-readback',
+          'title': 'Evento',
+          'content': 'Conteudo',
+          'type': {
+            'id': 'type-1',
+            'name': 'Show',
+            'slug': 'show',
+            'description': '',
           },
-          {
-            'id': 'artist-1',
-            'account_id': 'artist-1',
-            'display_name': 'Artist One',
-            'profile_type': 'artist',
-          },
-        ],
-        'occurrences': [
-          {
-            'date_time_start': '2026-04-05T20:00:00+00:00',
-            'linked_account_profiles': [
-              {
-                'id': 'venue-1',
-                'account_id': 'venue-1',
-                'display_name': 'Venue One',
-                'profile_type': 'venue',
-              },
-              {
-                'id': 'artist-1',
-                'account_id': 'artist-1',
-                'display_name': 'Artist One',
-                'profile_type': 'artist',
-              },
-            ],
-          },
-        ],
-      },
-    });
+          'date_time_start': '2026-04-05T20:00:00+00:00',
+          'publication': {'status': 'draft'},
+          'linked_account_profiles': linkedProfiles,
+          'occurrences': [
+            {
+              'date_time_start': '2026-04-05T20:00:00+00:00',
+              'linked_account_profiles': linkedProfiles,
+            },
+          ],
+        },
+      });
 
-    expect(
-      event.relatedAccountProfiles
-          .map((entry) => entry.profileType)
-          .toList(growable: false),
-      ['artist'],
-    );
-    expect(
-      event.occurrences.single.relatedAccountProfiles
-          .map((entry) => entry.profileType)
-          .toList(growable: false),
-      ['artist'],
-    );
-  });
+      expect(
+        event.relatedAccountProfiles
+            .map((entry) => entry.id)
+            .toList(growable: false),
+        linkedProfiles.map((profile) => profile['id']).toList(growable: false),
+      );
+      expect(
+        event.occurrences.single.relatedAccountProfiles
+            .map((entry) => entry.id)
+            .toList(growable: false),
+        linkedProfiles.map((profile) => profile['id']).toList(growable: false),
+      );
+    },
+  );
 
   test(
     'decodes programming location_profile without mixing it into participants',
@@ -556,8 +547,22 @@ void main() {
   });
 
   test(
-    'excludes venue profile ids when occurrence own parties are missing',
+    'preserves linked profile ids when occurrence own parties are missing',
     () {
+      final linkedProfiles = <Map<String, dynamic>>[
+        {
+          'id': 'venue-1',
+          'account_id': 'venue-1',
+          'display_name': 'Casa Solar',
+          'profile_type': 'venue',
+        },
+        {
+          'id': 'artist-1',
+          'account_id': 'artist-1',
+          'display_name': 'Coral XYZ',
+          'profile_type': 'artist',
+        },
+      ];
       final event = decoder.decodeEventItem({
         'data': {
           'event_id': 'evt-occurrence-legacy-linked',
@@ -571,20 +576,7 @@ void main() {
             {
               'occurrence_id': 'occ-1',
               'date_time_start': '2026-04-05T20:00:00+00:00',
-              'own_linked_account_profiles': [
-                {
-                  'id': 'venue-1',
-                  'account_id': 'venue-1',
-                  'display_name': 'Casa Solar',
-                  'profile_type': 'venue',
-                },
-                {
-                  'id': 'artist-1',
-                  'account_id': 'artist-1',
-                  'display_name': 'Coral XYZ',
-                  'profile_type': 'artist',
-                },
-              ],
+              'own_linked_account_profiles': linkedProfiles,
             },
           ],
         },
@@ -594,13 +586,13 @@ void main() {
         event.occurrences.single.relatedAccountProfileIds.map(
           (value) => value.value,
         ),
-        ['artist-1'],
+        linkedProfiles.map((profile) => profile['id']).toList(growable: false),
       );
       expect(
         event.occurrences.single.relatedAccountProfiles.map(
           (profile) => profile.id,
         ),
-        ['artist-1'],
+        linkedProfiles.map((profile) => profile['id']).toList(growable: false),
       );
     },
   );

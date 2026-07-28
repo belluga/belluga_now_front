@@ -6,7 +6,10 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate_selection_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_page.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_account_detail_controller.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
@@ -20,10 +23,7 @@ import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class TenantAdminAccountDetailScreen extends StatefulWidget {
-  const TenantAdminAccountDetailScreen({
-    super.key,
-    required this.accountSlug,
-  });
+  const TenantAdminAccountDetailScreen({super.key, required this.accountSlug});
 
   final String accountSlug;
 
@@ -34,8 +34,8 @@ class TenantAdminAccountDetailScreen extends StatefulWidget {
 
 class _TenantAdminAccountDetailScreenState
     extends State<TenantAdminAccountDetailScreen> {
-  final TenantAdminAccountDetailController _profilesController =
-      GetIt.I.get<TenantAdminAccountDetailController>();
+  final TenantAdminAccountDetailController _profilesController = GetIt.I
+      .get<TenantAdminAccountDetailController>();
   bool _routeParamNormalized = false;
 
   @override
@@ -108,19 +108,21 @@ class _TenantAdminAccountDetailScreenState
     }
     context.router
         .push(
-      TenantAdminAccountProfileEditRoute(
-        accountSlug: _currentAccountSlugForRequests(),
-        accountProfileId: profile.id,
-      ),
-    )
+          TenantAdminAccountProfileEditRoute(
+            accountSlug: _currentAccountSlugForRequests(),
+            accountProfileId: profile.id,
+          ),
+        )
         .then((_) {
-      if (!mounted) {
-        return;
-      }
-      unawaited(
-        _profilesController.loadAccountDetail(_currentAccountSlugForRequests()),
-      );
-    });
+          if (!mounted) {
+            return;
+          }
+          unawaited(
+            _profilesController.loadAccountDetail(
+              _currentAccountSlugForRequests(),
+            ),
+          );
+        });
   }
 
   Future<void> _editAccountName(TenantAdminAccount account) async {
@@ -303,357 +305,345 @@ class _TenantAdminAccountDetailScreenState
                                     child: CircularProgressIndicator(),
                                   )
                                 : (errorMessage?.isNotEmpty ?? false)
-                                    ? TenantAdminErrorBanner(
-                                        rawError: errorMessage ?? '',
-                                        fallbackMessage:
-                                            'Não foi possível carregar os dados da conta.',
-                                        onRetry: () => _profilesController
-                                            .loadAccountDetail(
+                                ? TenantAdminErrorBanner(
+                                    rawError: errorMessage ?? '',
+                                    fallbackMessage:
+                                        'Não foi possível carregar os dados da conta.',
+                                    onRetry: () =>
+                                        _profilesController.loadAccountDetail(
                                           _currentAccountSlugForRequests(),
                                         ),
-                                      )
-                                    : StreamValueBuilder<
-                                        List<TenantAdminProfileTypeDefinition>>(
-                                        streamValue: _profilesController
-                                            .profileTypesStreamValue,
-                                        builder: (context, types) {
-                                          return ListView(
-                                            children: [
-                                              Card(
-                                                margin: EdgeInsets.zero,
-                                                child: Padding(
-                                                  padding:
-                                                      const EdgeInsets.all(16),
-                                                  child: Column(
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .start,
-                                                    children: [
-                                                      Text(
-                                                        'Detalhes da conta',
-                                                        style: Theme.of(context)
-                                                            .textTheme
-                                                            .titleMedium,
+                                  )
+                                : StreamValueBuilder<
+                                    List<TenantAdminProfileTypeDefinition>
+                                  >(
+                                    streamValue: _profilesController
+                                        .profileTypesStreamValue,
+                                    builder: (context, types) {
+                                      return ListView(
+                                        children: [
+                                          Card(
+                                            margin: EdgeInsets.zero,
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(16),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    'Detalhes da conta',
+                                                    style: Theme.of(
+                                                      context,
+                                                    ).textTheme.titleMedium,
+                                                  ),
+                                                  const SizedBox(height: 12),
+                                                  _buildEditableRow(
+                                                    label: 'Slug',
+                                                    value: account?.slug ?? '-',
+                                                    onEdit: switch (account) {
+                                                      final value? =>
+                                                        () => _editAccountSlug(
+                                                          value,
+                                                        ),
+                                                      null => null,
+                                                    },
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  _buildEditableRow(
+                                                    label: 'Nome',
+                                                    value: account?.name ?? '-',
+                                                    onEdit: switch (account) {
+                                                      final value? =>
+                                                        () => _editAccountName(
+                                                          value,
+                                                        ),
+                                                      null => null,
+                                                    },
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  _buildRow(
+                                                    'Documento',
+                                                    account?.document.number ??
+                                                        '-',
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  _buildRow(
+                                                    'Segmentacao',
+                                                    account
+                                                            ?.ownershipState
+                                                            .label ??
+                                                        '-',
+                                                  ),
+                                                  if (_canDeleteAccount(
+                                                    account,
+                                                  )) ...[
+                                                    const SizedBox(height: 12),
+                                                    Align(
+                                                      alignment:
+                                                          Alignment.centerRight,
+                                                      child: TextButton.icon(
+                                                        onPressed:
+                                                            isDeleting ||
+                                                                account
+                                                                    is! TenantAdminAccount
+                                                            ? null
+                                                            : () =>
+                                                                  _confirmDeleteAccount(
+                                                                    account,
+                                                                  ),
+                                                        icon: const Icon(
+                                                          Icons.delete_outline,
+                                                        ),
+                                                        label: const Text(
+                                                          'Excluir conta',
+                                                        ),
                                                       ),
-                                                      const SizedBox(
-                                                          height: 12),
-                                                      _buildEditableRow(
-                                                        label: 'Slug',
-                                                        value: account?.slug ??
-                                                            '-',
-                                                        onEdit: switch (
-                                                            account) {
-                                                          final value? => () =>
-                                                              _editAccountSlug(
-                                                                value,
-                                                              ),
-                                                          null => null,
-                                                        },
-                                                      ),
-                                                      const SizedBox(height: 8),
-                                                      _buildEditableRow(
-                                                        label: 'Nome',
-                                                        value: account?.name ??
-                                                            '-',
-                                                        onEdit: switch (
-                                                            account) {
-                                                          final value? => () =>
-                                                              _editAccountName(
-                                                                value,
-                                                              ),
-                                                          null => null,
-                                                        },
-                                                      ),
-                                                      const SizedBox(height: 8),
-                                                      _buildRow(
-                                                        'Documento',
-                                                        account?.document
-                                                                .number ??
-                                                            '-',
-                                                      ),
-                                                      const SizedBox(height: 8),
-                                                      _buildRow(
-                                                        'Segmentacao',
-                                                        account?.ownershipState
-                                                                .label ??
-                                                            '-',
-                                                      ),
-                                                      if (_canDeleteAccount(
-                                                        account,
-                                                      )) ...[
-                                                        const SizedBox(
-                                                            height: 12),
-                                                        Align(
-                                                          alignment: Alignment
-                                                              .centerRight,
-                                                          child:
-                                                              TextButton.icon(
-                                                            onPressed: isDeleting ||
-                                                                    account
-                                                                        is! TenantAdminAccount
-                                                                ? null
-                                                                : () =>
-                                                                    _confirmDeleteAccount(
-                                                                      account,
-                                                                    ),
-                                                            icon: const Icon(
-                                                              Icons
-                                                                  .delete_outline,
+                                                    ),
+                                                  ],
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 16),
+                                          if (profile
+                                              is! TenantAdminAccountProfile) ...[
+                                            Card(
+                                              margin: EdgeInsets.zero,
+                                              child: Padding(
+                                                padding: const EdgeInsets.all(
+                                                  16,
+                                                ),
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      'Inconsistência de dados',
+                                                      style: Theme.of(
+                                                        context,
+                                                      ).textTheme.titleMedium,
+                                                    ),
+                                                    const SizedBox(height: 8),
+                                                    const Text(
+                                                      'Conta sem perfil detectada. Este estado é inválido para tenant-admin e deve ser corrigido por rotina de reparo backend.',
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ] else ...[
+                                            Card(
+                                              margin: EdgeInsets.zero,
+                                              child: Padding(
+                                                padding: const EdgeInsets.all(
+                                                  16,
+                                                ),
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      'Perfil da conta',
+                                                      style: Theme.of(
+                                                        context,
+                                                      ).textTheme.titleMedium,
+                                                    ),
+                                                    const SizedBox(height: 12),
+                                                    if (coverUrl != null &&
+                                                        coverUrl.isNotEmpty)
+                                                      BellugaNetworkImage(
+                                                        coverUrl,
+                                                        height: 160,
+                                                        fit: BoxFit.cover,
+                                                        clipBorderRadius:
+                                                            BorderRadius.circular(
+                                                              12,
                                                             ),
-                                                            label: const Text(
-                                                              'Excluir conta',
+                                                        errorWidget: Container(
+                                                          height: 160,
+                                                          decoration: BoxDecoration(
+                                                            color: Theme.of(context)
+                                                                .colorScheme
+                                                                .surfaceContainerHighest,
+                                                          ),
+                                                          child: const Center(
+                                                            child: Icon(
+                                                              Icons
+                                                                  .image_not_supported,
                                                             ),
                                                           ),
                                                         ),
-                                                      ],
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(height: 16),
-                                              if (profile
-                                                  is! TenantAdminAccountProfile) ...[
-                                                Card(
-                                                  margin: EdgeInsets.zero,
-                                                  child: Padding(
-                                                    padding:
-                                                        const EdgeInsets.all(
-                                                            16),
-                                                    child: Column(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .start,
+                                                      )
+                                                    else
+                                                      Container(
+                                                        height: 160,
+                                                        decoration: BoxDecoration(
+                                                          color: Theme.of(context)
+                                                              .colorScheme
+                                                              .surfaceContainerHighest,
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                12,
+                                                              ),
+                                                        ),
+                                                        child: const Center(
+                                                          child: Icon(
+                                                            Icons
+                                                                .image_outlined,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    const SizedBox(height: 16),
+                                                    Row(
                                                       children: [
-                                                        Text(
-                                                          'Inconsistência de dados',
-                                                          style:
-                                                              Theme.of(context)
-                                                                  .textTheme
-                                                                  .titleMedium,
-                                                        ),
-                                                        const SizedBox(
-                                                            height: 8),
-                                                        const Text(
-                                                          'Conta sem perfil detectada. Este estado é inválido para tenant-admin e deve ser corrigido por rotina de reparo backend.',
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                ),
-                                              ] else ...[
-                                                Card(
-                                                  margin: EdgeInsets.zero,
-                                                  child: Padding(
-                                                    padding:
-                                                        const EdgeInsets.all(
-                                                            16),
-                                                    child: Column(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .start,
-                                                      children: [
-                                                        Text(
-                                                          'Perfil da conta',
-                                                          style:
-                                                              Theme.of(context)
-                                                                  .textTheme
-                                                                  .titleMedium,
-                                                        ),
-                                                        const SizedBox(
-                                                            height: 12),
-                                                        if (coverUrl != null &&
-                                                            coverUrl.isNotEmpty)
+                                                        if (avatarUrl != null &&
+                                                            avatarUrl
+                                                                .isNotEmpty)
                                                           BellugaNetworkImage(
-                                                            coverUrl,
-                                                            height: 160,
+                                                            avatarUrl,
+                                                            width: 72,
+                                                            height: 72,
                                                             fit: BoxFit.cover,
                                                             clipBorderRadius:
-                                                                BorderRadius
-                                                                    .circular(
-                                                                        12),
-                                                            errorWidget:
-                                                                Container(
-                                                              height: 160,
-                                                              decoration:
-                                                                  BoxDecoration(
-                                                                color: Theme.of(
-                                                                        context)
+                                                                BorderRadius.circular(
+                                                                  36,
+                                                                ),
+                                                            errorWidget: Container(
+                                                              width: 72,
+                                                              height: 72,
+                                                              decoration: BoxDecoration(
+                                                                color: Theme.of(context)
                                                                     .colorScheme
                                                                     .surfaceContainerHighest,
                                                               ),
-                                                              child:
-                                                                  const Center(
-                                                                child: Icon(
-                                                                  Icons
-                                                                      .image_not_supported,
-                                                                ),
+                                                              child: const Icon(
+                                                                Icons
+                                                                    .person_off_outlined,
                                                               ),
                                                             ),
                                                           )
                                                         else
                                                           Container(
-                                                            height: 160,
-                                                            decoration:
-                                                                BoxDecoration(
-                                                              color: Theme.of(
-                                                                      context)
+                                                            width: 72,
+                                                            height: 72,
+                                                            decoration: BoxDecoration(
+                                                              color: Theme.of(context)
                                                                   .colorScheme
                                                                   .surfaceContainerHighest,
                                                               borderRadius:
-                                                                  BorderRadius
-                                                                      .circular(
-                                                                          12),
-                                                            ),
-                                                            child: const Center(
-                                                              child: Icon(
-                                                                Icons
-                                                                    .image_outlined,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        const SizedBox(
-                                                            height: 16),
-                                                        Row(
-                                                          children: [
-                                                            if (avatarUrl !=
-                                                                    null &&
-                                                                avatarUrl
-                                                                    .isNotEmpty)
-                                                              BellugaNetworkImage(
-                                                                avatarUrl,
-                                                                width: 72,
-                                                                height: 72,
-                                                                fit: BoxFit
-                                                                    .cover,
-                                                                clipBorderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                  36,
-                                                                ),
-                                                                errorWidget:
-                                                                    Container(
-                                                                  width: 72,
-                                                                  height: 72,
-                                                                  decoration:
-                                                                      BoxDecoration(
-                                                                    color: Theme.of(
-                                                                            context)
-                                                                        .colorScheme
-                                                                        .surfaceContainerHighest,
-                                                                  ),
-                                                                  child:
-                                                                      const Icon(
-                                                                    Icons
-                                                                        .person_off_outlined,
-                                                                  ),
-                                                                ),
-                                                              )
-                                                            else
-                                                              Container(
-                                                                width: 72,
-                                                                height: 72,
-                                                                decoration:
-                                                                    BoxDecoration(
-                                                                  color: Theme.of(
-                                                                          context)
-                                                                      .colorScheme
-                                                                      .surfaceContainerHighest,
-                                                                  borderRadius:
-                                                                      BorderRadius
-                                                                          .circular(
+                                                                  BorderRadius.circular(
                                                                     36,
                                                                   ),
-                                                                ),
-                                                                child:
-                                                                    const Icon(
-                                                                  Icons
-                                                                      .person_outline,
-                                                                ),
-                                                              ),
-                                                            const SizedBox(
-                                                              width: 12,
                                                             ),
-                                                            Expanded(
-                                                              child: Text(
-                                                                profile
-                                                                    .displayName,
-                                                                style: Theme.of(
-                                                                        context)
+                                                            child: const Icon(
+                                                              Icons
+                                                                  .person_outline,
+                                                            ),
+                                                          ),
+                                                        const SizedBox(
+                                                          width: 12,
+                                                        ),
+                                                        Expanded(
+                                                          child: Text(
+                                                            profile.displayName,
+                                                            style:
+                                                                Theme.of(
+                                                                      context,
+                                                                    )
                                                                     .textTheme
                                                                     .titleMedium,
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                        const SizedBox(
-                                                            height: 16),
-                                                        _buildRow(
-                                                          'Tipo',
-                                                          _profileTypeLabel(
-                                                              types),
-                                                        ),
-                                                        const SizedBox(
-                                                            height: 8),
-                                                        if (location != null)
-                                                          _buildRow(
-                                                            'Localização',
-                                                            '${location.latitude.toStringAsFixed(6)}, '
-                                                                '${location.longitude.toStringAsFixed(6)}',
-                                                          ),
-                                                        if (profile.bio !=
-                                                                null &&
-                                                            profile.bio!
-                                                                .trim()
-                                                                .isNotEmpty) ...[
-                                                          const SizedBox(
-                                                              height: 8),
-                                                          _buildRichTextRow(
-                                                            'Bio',
-                                                            profile.bio!.trim(),
-                                                          ),
-                                                        ],
-                                                        if (profile.content !=
-                                                                null &&
-                                                            profile.content!
-                                                                .trim()
-                                                                .isNotEmpty) ...[
-                                                          const SizedBox(
-                                                              height: 8),
-                                                          _buildRichTextRow(
-                                                            'Conteúdo',
-                                                            profile.content!
-                                                                .trim(),
-                                                          ),
-                                                        ],
-                                                        const SizedBox(
-                                                            height: 12),
-                                                        Align(
-                                                          alignment: Alignment
-                                                              .centerRight,
-                                                          child: OutlinedButton
-                                                              .icon(
-                                                            onPressed:
-                                                                isDeleting
-                                                                    ? null
-                                                                    : _openEdit,
-                                                            icon: const Icon(
-                                                              Icons
-                                                                  .edit_outlined,
-                                                            ),
-                                                            label: const Text(
-                                                              'Editar Perfil',
-                                                            ),
                                                           ),
                                                         ),
                                                       ],
                                                     ),
-                                                  ),
+                                                    const SizedBox(height: 16),
+                                                    _buildRow(
+                                                      'Tipo',
+                                                      _profileTypeLabel(types),
+                                                    ),
+                                                    const SizedBox(height: 8),
+                                                    if (location != null)
+                                                      _buildRow(
+                                                        'Localização',
+                                                        '${location.latitude.toStringAsFixed(6)}, '
+                                                            '${location.longitude.toStringAsFixed(6)}',
+                                                      ),
+                                                    if (profile.bio != null &&
+                                                        profile.bio!
+                                                            .trim()
+                                                            .isNotEmpty) ...[
+                                                      const SizedBox(height: 8),
+                                                      _buildRichTextRow(
+                                                        'Bio',
+                                                        profile.bio!.trim(),
+                                                      ),
+                                                    ],
+                                                    if (profile.content !=
+                                                            null &&
+                                                        profile.content!
+                                                            .trim()
+                                                            .isNotEmpty) ...[
+                                                      const SizedBox(height: 8),
+                                                      _buildRichTextRow(
+                                                        'Conteúdo',
+                                                        profile.content!.trim(),
+                                                      ),
+                                                    ],
+                                                    if (profile
+                                                        .nestedProfileGroups
+                                                        .isNotEmpty) ...[
+                                                      const SizedBox(
+                                                        height: 16,
+                                                      ),
+                                                      _NestedProfileGroupReadbackSection(
+                                                        accountProfileId:
+                                                            profile.id,
+                                                        groups: profile
+                                                            .nestedProfileGroups,
+                                                        loadPage:
+                                                            ({
+                                                              required String
+                                                              groupId,
+                                                              String? cursor,
+                                                            }) {
+                                                              return _profilesController
+                                                                  .fetchNestedGroupMembersPage(
+                                                                    accountProfileId:
+                                                                        profile
+                                                                            .id,
+                                                                    groupId:
+                                                                        groupId,
+                                                                    cursor:
+                                                                        cursor,
+                                                                  );
+                                                            },
+                                                      ),
+                                                    ],
+                                                    const SizedBox(height: 12),
+                                                    Align(
+                                                      alignment:
+                                                          Alignment.centerRight,
+                                                      child: OutlinedButton.icon(
+                                                        onPressed: isDeleting
+                                                            ? null
+                                                            : _openEdit,
+                                                        icon: const Icon(
+                                                          Icons.edit_outlined,
+                                                        ),
+                                                        label: const Text(
+                                                          'Editar Perfil',
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
-                                              ],
-                                            ],
-                                          );
-                                        },
-                                      ),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      );
+                                    },
+                                  ),
                           ),
                         );
                       },
@@ -722,22 +712,18 @@ class _TenantAdminAccountDetailScreenState
           ),
           lineHeight: const LineHeight(1.35),
         ),
-        'p': Style(
-          margin: Margins.only(bottom: 8),
-        ),
-        'strong': Style(
-          fontWeight: FontWeight.w800,
-        ),
-        'br': Style(
-          display: Display.block,
-        ),
+        'p': Style(margin: Margins.only(bottom: 8)),
+        'strong': Style(fontWeight: FontWeight.w800),
+        'br': Style(display: Display.block),
       },
     );
   }
 
   Widget _plainRichTextPreview(String value) {
-    final normalized =
-        value.replaceAll('\r\n', '\n').replaceAll('\r', '\n').trim();
+    final normalized = value
+        .replaceAll('\r\n', '\n')
+        .replaceAll('\r', '\n')
+        .trim();
     final paragraphs = normalized
         .split(RegExp(r'\n\s*\n+'))
         .where((paragraph) => paragraph.trim().isNotEmpty)
@@ -745,17 +731,19 @@ class _TenantAdminAccountDetailScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (var paragraphIndex = 0;
-            paragraphIndex < paragraphs.length;
-            paragraphIndex++) ...[
+        for (
+          var paragraphIndex = 0;
+          paragraphIndex < paragraphs.length;
+          paragraphIndex++
+        ) ...[
           if (paragraphIndex > 0) const SizedBox(height: 8),
           for (final line in paragraphs[paragraphIndex].split('\n'))
             if (line.trim().isNotEmpty)
               Text(
                 line.trimRight(),
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      height: 1.35,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(height: 1.35),
               ),
         ],
       ],
@@ -784,6 +772,212 @@ class _TenantAdminAccountDetailScreenState
           icon: const Icon(Icons.edit_outlined),
         ),
       ],
+    );
+  }
+}
+
+typedef _LoadNestedGroupPage =
+    Future<TenantAdminNestedGroupMemberPage> Function({
+      required String groupId,
+      String? cursor,
+    });
+
+class _NestedProfileGroupReadbackSection extends StatelessWidget {
+  const _NestedProfileGroupReadbackSection({
+    required this.accountProfileId,
+    required this.groups,
+    required this.loadPage,
+  });
+
+  final String accountProfileId;
+  final List<TenantAdminNestedProfileGroup> groups;
+  final _LoadNestedGroupPage loadPage;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Perfis vinculados',
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
+        const SizedBox(height: 8),
+        for (final group in groups) ...[
+          _NestedProfileGroupReadbackTile(
+            key: ValueKey<String>(
+              'tenantAdminAccountDetailNestedGroup:$accountProfileId:${group.id}',
+            ),
+            group: group,
+            loadPage: loadPage,
+          ),
+          const SizedBox(height: 8),
+        ],
+      ],
+    );
+  }
+}
+
+class _NestedProfileGroupReadbackTile extends StatefulWidget {
+  const _NestedProfileGroupReadbackTile({
+    super.key,
+    required this.group,
+    required this.loadPage,
+  });
+
+  final TenantAdminNestedProfileGroup group;
+  final _LoadNestedGroupPage loadPage;
+
+  @override
+  State<_NestedProfileGroupReadbackTile> createState() =>
+      _NestedProfileGroupReadbackTileState();
+}
+
+class _NestedProfileGroupReadbackTileState
+    extends State<_NestedProfileGroupReadbackTile> {
+  List<TenantAdminAccountProfileSelectionSummary> _items =
+      const <TenantAdminAccountProfileSelectionSummary>[];
+  String? _nextCursor;
+  String? _errorMessage;
+  bool _isLoading = false;
+  bool _hasLoaded = false;
+
+  @override
+  void didUpdateWidget(covariant _NestedProfileGroupReadbackTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.group.id != widget.group.id) {
+      _items = const <TenantAdminAccountProfileSelectionSummary>[];
+      _nextCursor = null;
+      _errorMessage = null;
+      _isLoading = false;
+      _hasLoaded = false;
+    }
+  }
+
+  Future<void> _loadFirstPageIfNeeded() async {
+    if (_hasLoaded || _isLoading) {
+      return;
+    }
+    await _loadPage();
+  }
+
+  Future<void> _loadMore() async {
+    if (_isLoading || _nextCursor == null || _nextCursor!.trim().isEmpty) {
+      return;
+    }
+    await _loadPage(cursor: _nextCursor, append: true);
+  }
+
+  Future<void> _loadPage({String? cursor, bool append = false}) async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final page = await widget.loadPage(
+        groupId: widget.group.id,
+        cursor: cursor,
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _items = append
+            ? <TenantAdminAccountProfileSelectionSummary>[
+                ..._items,
+                ...page.items,
+              ]
+            : page.items;
+        _nextCursor = page.nextCursor;
+        _hasLoaded = true;
+        _isLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _errorMessage = error.toString();
+        _hasLoaded = false;
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final itemCountLabel = widget.group.memberCount == 1
+        ? '1 perfil'
+        : '${widget.group.memberCount} perfis';
+    return Card(
+      margin: EdgeInsets.zero,
+      child: ExpansionTile(
+        key: ValueKey<String>(
+          'tenantAdminAccountDetailNestedGroupTile:${widget.group.id}',
+        ),
+        onExpansionChanged: (expanded) {
+          if (expanded) {
+            unawaited(_loadFirstPageIfNeeded());
+          }
+        },
+        title: Text(widget.group.label),
+        subtitle: Text(itemCountLabel),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        children: [
+          if (_errorMessage != null && _errorMessage!.trim().isNotEmpty) ...[
+            TenantAdminErrorBanner(
+              rawError: _errorMessage!,
+              fallbackMessage:
+                  'Não foi possível carregar os perfis desse grupo.',
+              onRetry: _loadFirstPageIfNeeded,
+            ),
+          ] else if (_isLoading && _items.isEmpty) ...[
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          ] else if (_items.isEmpty) ...[
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Nenhum perfil carregado para este grupo.'),
+            ),
+          ] else ...[
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _items
+                    .map(
+                      (item) => Chip(
+                        label: Text(
+                          (item.displayName?.trim().isNotEmpty ?? false)
+                              ? item.displayName!.trim()
+                              : item.id,
+                        ),
+                      ),
+                    )
+                    .toList(growable: false),
+              ),
+            ),
+          ],
+          if (_isLoading && _items.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const LinearProgressIndicator(),
+          ],
+          if (_nextCursor != null && _nextCursor!.trim().isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: _isLoading ? null : _loadMore,
+                icon: const Icon(Icons.expand_more),
+                label: const Text('mais'),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

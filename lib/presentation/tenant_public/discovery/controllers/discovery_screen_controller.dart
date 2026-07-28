@@ -5,13 +5,13 @@ import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/discovery_filter_selection_snapshot.dart';
 import 'package:belluga_now/domain/app_data/location_origin_resolution.dart';
+import 'package:belluga_now/domain/app_data/value_object/app_data_discovery_filter_token_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/discovery_filters_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/account_profiles_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
@@ -34,7 +34,6 @@ class DiscoveryScreenController extends Object
     implements Disposable {
   DiscoveryScreenController({
     AccountProfilesRepositoryContract? accountProfilesRepository,
-    DiscoveryFiltersRepositoryContract? discoveryFiltersRepository,
     AppDataRepositoryContract? appDataRepository,
     ScheduleRepositoryContract? scheduleRepository,
     LocationOriginServiceContract? locationOriginService,
@@ -42,10 +41,6 @@ class DiscoveryScreenController extends Object
   }) : this._internal(
          accountProfilesRepository ??
              GetIt.I.get<AccountProfilesRepositoryContract>(),
-         discoveryFiltersRepository ??
-             (GetIt.I.isRegistered<DiscoveryFiltersRepositoryContract>()
-                 ? GetIt.I.get<DiscoveryFiltersRepositoryContract>()
-                 : null),
          appDataRepository ??
              (GetIt.I.isRegistered<AppDataRepositoryContract>()
                  ? GetIt.I.get<AppDataRepositoryContract>()
@@ -60,7 +55,6 @@ class DiscoveryScreenController extends Object
 
   DiscoveryScreenController._internal(
     this._accountProfilesRepository,
-    this._discoveryFiltersRepository,
     this._appDataRepository,
     this._scheduleRepository,
     this._locationOriginService,
@@ -68,7 +62,6 @@ class DiscoveryScreenController extends Object
   );
 
   final AccountProfilesRepositoryContract _accountProfilesRepository;
-  final DiscoveryFiltersRepositoryContract? _discoveryFiltersRepository;
   final AppDataRepositoryContract? _appDataRepository;
   ScheduleRepositoryContract? _scheduleRepository;
   final LocationOriginServiceContract _locationOriginService;
@@ -147,10 +140,6 @@ class DiscoveryScreenController extends Object
       _accountProfilesRepository.discoveryFilteredAccountProfilesStreamValue;
   StreamValue<List<AccountProfileModel>> get nearbyStreamValue =>
       _accountProfilesRepository.discoveryNearbyAccountProfilesStreamValue;
-
-  @override
-  DiscoveryFiltersRepositoryContract? get publicDiscoveryFiltersRepository =>
-      _discoveryFiltersRepository;
 
   @override
   AppDataRepositoryContract? get publicDiscoveryFilterAppDataRepository =>
@@ -709,9 +698,10 @@ class DiscoveryScreenController extends Object
         _canUsePersistedDiscoveryFilterSelectionSnapshot(selection)) {
       values.addAll(
         _persistedDiscoveryFilterSelectionSnapshot!
-                .typeFiltersByEntity['account_profile']
-                ?.map((value) => value.value) ??
-            const <String>[],
+            .typeFiltersForEntity(
+              AppDataDiscoveryFilterTokenValue.fromRaw('account_profile'),
+            )
+            .map((value) => value.value),
       );
     }
 
@@ -866,7 +856,7 @@ class DiscoveryScreenController extends Object
     DiscoveryFilterSelection selection,
   ) {
     final snapshot = _persistedDiscoveryFilterSelectionSnapshot;
-    if (snapshot == null || snapshot.typeFiltersByEntity.isEmpty) {
+    if (snapshot == null || !snapshot.hasTypeFilterSelections) {
       return false;
     }
     return samePublicDiscoveryFilterSelection(

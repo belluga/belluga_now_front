@@ -104,7 +104,16 @@ class TenantAdminAccountProfileDTO {
             groupJson['account_profile_ids'] ?? groupJson['profile_ids'];
         nestedGroups.add(
           _nestedProfileGroupFromRaw(
-            id: groupJson['id'] ?? groupJson['key'],
+            id: _firstNormalizedText(<Object?>[
+              groupJson['id'],
+              groupJson['key'],
+              groupJson['group_id'],
+              groupJson['groupId'],
+              groupJson['aggregation'],
+              groupJson['aggregation_id'],
+              groupJson['aggregationId'],
+              groupJson['_id'],
+            ]),
             label: groupJson['label'],
             order: groupJson['order'],
             memberCount: groupJson['member_count'],
@@ -293,6 +302,16 @@ int? _toInt(Object? value) {
     return value.toInt();
   }
   return int.tryParse(value.toString());
+}
+
+String? _firstNormalizedText(Iterable<Object?> values) {
+  for (final value in values) {
+    final normalized = value?.toString().trim() ?? '';
+    if (normalized.isNotEmpty) {
+      return normalized;
+    }
+  }
+  return null;
 }
 
 TenantAdminNestedProfileGroup _nestedProfileGroupFromRaw({

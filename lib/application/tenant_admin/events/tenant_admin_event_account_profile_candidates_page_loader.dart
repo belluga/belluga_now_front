@@ -14,6 +14,7 @@ final class TenantAdminEventAccountProfileCandidatesPageLoader {
     required TenantAdminEventAccountProfileCandidateType candidateType,
     required int pageNumber,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) {
     final pageSize = switch (candidateType) {
@@ -32,6 +33,7 @@ final class TenantAdminEventAccountProfileCandidatesPageLoader {
         defaultValue: pageSize,
       ),
       search: search,
+      profileType: profileType,
       accountSlug: accountSlug,
     );
   }

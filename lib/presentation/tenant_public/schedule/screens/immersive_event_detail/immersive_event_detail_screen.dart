@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:belluga_now/application/invites/invite_from_event_factory.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
+import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
@@ -36,6 +38,7 @@ import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/d
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_launch_target.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/route_start_point_resolution.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/controllers/immersive_event_detail_controller.dart';
+import 'package:belluga_now/presentation/shared/widgets/nested_accounts_load_more_indicator.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/dynamic_footer.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/event_local_section.dart';
@@ -503,25 +506,49 @@ class _ImmersiveEventDetailScreenState
     required EventModel event,
     required Set<String> favoriteAccountProfileIds,
   }) {
-    return _aggregatedRelatedProfileGroups(event)
+    final canonicalGroups = _orderedVisibleCanonicalProfileGroups(event);
+    return canonicalGroups
         .map(
           (group) => ImmersiveTabItem(
             title: group.label,
-            content: LinkedProfileCategorySection(
-              title: group.label,
-              profiles: group.profiles,
-              profileTypeRegistry: _controller.profileTypeRegistry,
-              favoriteAccountProfileIds: favoriteAccountProfileIds,
-              isFavoritable: (profile) =>
-                  _controller.isLinkedProfileFavoritable(profile.profileType),
-              onProfileTap: _openLinkedProfile,
-              onFavoriteTap: (profile) =>
-                  _handleLinkedProfileFavoriteTap(profile),
+            onActivated: () {
+              unawaited(
+                _controller.ensureRelatedProfileGroupMembersLoaded(group),
+              );
+            },
+            content: _LazyEventRelatedProfileGroupContent(
+              controller: _controller,
+              group: group,
+              itemBuilder: (profiles, footer) => LinkedProfileCategorySection(
+                title: group.label,
+                profiles: profiles,
+                profileTypeRegistry: _controller.profileTypeRegistry,
+                favoriteAccountProfileIds: favoriteAccountProfileIds,
+                isFavoritable: (profile) =>
+                    _controller.isLinkedProfileFavoritable(profile.profileType),
+                onProfileTap: _openLinkedProfile,
+                onFavoriteTap: (profile) =>
+                    _handleLinkedProfileFavoriteTap(profile),
+                footer: footer,
+              ),
             ),
             footer: null,
           ),
         )
         .toList(growable: false);
+  }
+
+  List<EventProfileGroup> _orderedVisibleCanonicalProfileGroups(
+    EventModel event,
+  ) {
+    final groups = event.profileGroups
+        .where((group) => group.isVisible)
+        .toList(growable: false);
+    if (groups.isEmpty) {
+      return const <EventProfileGroup>[];
+    }
+    groups.sort((left, right) => left.order.compareTo(right.order));
+    return List<EventProfileGroup>.unmodifiable(groups);
   }
 
   int? _linkedProfileTabIndex(EventModel event, String profileType) {
@@ -530,7 +557,7 @@ class _ImmersiveEventDetailScreenState
       return null;
     }
 
-    final groups = _aggregatedRelatedProfileGroups(event);
+    final groups = _orderedVisibleCanonicalProfileGroups(event);
     final groupOffset = groups.indexWhere(
       (group) => group.profiles.any((profile) => profile.profileType == type),
     );
@@ -545,9 +572,13 @@ class _ImmersiveEventDetailScreenState
     EventModel event,
     EventLinkedAccountProfile profile,
   ) {
-    final groups = _aggregatedRelatedProfileGroups(event);
+    final groups = _orderedVisibleCanonicalProfileGroups(event);
     final exactGroupOffset = groups.indexWhere(
-      (group) => group.profiles.any((candidate) => candidate.id == profile.id),
+      (group) =>
+          group.profiles.any((candidate) => candidate.id == profile.id) ||
+          group.accountProfileIdValues.any(
+            (candidate) => candidate.value == profile.id,
+          ),
     );
     if (exactGroupOffset >= 0) {
       return _firstDynamicTabIndex(event) + exactGroupOffset;
@@ -558,14 +589,7 @@ class _ImmersiveEventDetailScreenState
       return directIndex;
     }
 
-    if (groups.isEmpty || groups.first.profiles.isEmpty) {
-      return null;
-    }
-
-    return _linkedProfileTabIndex(
-      event,
-      groups.first.profiles.first.profileType,
-    );
+    return groups.isEmpty ? null : _firstDynamicTabIndex(event);
   }
 
   int _firstDynamicTabIndex(EventModel event) {
@@ -958,6 +982,9 @@ class _ImmersiveEventDetailScreenState
           ),
           labelValue: EventLinkedAccountProfileTextValue(groups[index].label),
           orderValue: EventProfileGroupOrderValue(index),
+          memberCountValue: EventProfileGroupMemberCountValue(
+            groups[index].profiles.length,
+          ),
           profiles: groups[index].profiles,
         ),
     ];
@@ -1074,6 +1101,111 @@ Widget _buildInviteFooter(
     buttonColor: primary,
     onActionPressed: onInviteFriends,
   );
+}
+
+class _LazyEventRelatedProfileGroupContent extends StatelessWidget {
+  const _LazyEventRelatedProfileGroupContent({
+    required this.controller,
+    required this.group,
+    required this.itemBuilder,
+  });
+
+  final ImmersiveEventDetailController controller;
+  final EventProfileGroup group;
+  final Widget Function(
+    List<EventLinkedAccountProfile> profiles,
+    Widget? footer,
+  )
+  itemBuilder;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamValueBuilder<List<AccountProfileNestedGroupMember>>(
+      streamValue: controller.relatedProfileGroupMembersStreamValue(group),
+      builder: (context, members) {
+        return StreamValueBuilder<AccountProfilesRepositoryContractPrimBool>(
+          streamValue: controller
+              .isRelatedProfileGroupMembersPageLoadingStreamValue(group),
+          builder: (context, isLoadingValue) {
+            return StreamValueBuilder<
+              AccountProfilesRepositoryContractPrimBool
+            >(
+              streamValue: controller
+                  .hasMoreRelatedProfileGroupMembersStreamValue(group),
+              builder: (context, hasMoreValue) {
+                return StreamValueBuilder<
+                  AccountProfilesRepositoryContractPrimString?
+                >(
+                  streamValue: controller
+                      .relatedProfileGroupMembersErrorStreamValue(group),
+                  builder: (context, errorValue) {
+                    final isLoading = isLoadingValue.value;
+                    final hasMore = hasMoreValue.value;
+                    final errorMessage = errorValue?.value;
+
+                    if (isLoading && members.isEmpty) {
+                      return const Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+
+                    if (errorMessage != null &&
+                        errorMessage.trim().isNotEmpty &&
+                        members.isEmpty) {
+                      return Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text(
+                                'Não foi possível carregar os perfis desta aba.',
+                              ),
+                              const SizedBox(height: 12),
+                              TextButton(
+                                onPressed: () => controller
+                                    .ensureRelatedProfileGroupMembersLoaded(
+                                      group,
+                                    ),
+                                child: const Text('Tentar novamente'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+
+                    if (members.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+
+                    final profiles = members
+                        .map(
+                          controller.mapNestedGroupMemberToEventLinkedProfile,
+                        )
+                        .toList(growable: false);
+                    final footer = hasMore || isLoading
+                        ? NestedAccountsLoadMoreIndicator(
+                            visibilityKey:
+                                'eventRelatedProfileGroupLoadMore_${group.id}',
+                            hasMore: hasMore,
+                            isLoading: isLoading,
+                            onLoadMore: () => controller
+                                .loadMoreRelatedProfileGroupMembers(group),
+                          )
+                        : null;
+
+                    return itemBuilder(profiles, footer);
+                  },
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
 }
 
 String _inviteSummary(SentInviteSummary? summary) {

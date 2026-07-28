@@ -11,11 +11,11 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:stream_value/core/stream_value.dart';
 
-typedef TenantAdminEventsRepoString
-    = TenantAdminEventsRepositoryContractTextValue;
+typedef TenantAdminEventsRepoString =
+    TenantAdminEventsRepositoryContractTextValue;
 typedef TenantAdminEventsRepoInt = TenantAdminEventsRepositoryContractIntValue;
-typedef TenantAdminEventsRepoBool
-    = TenantAdminEventsRepositoryContractBoolValue;
+typedef TenantAdminEventsRepoBool =
+    TenantAdminEventsRepositoryContractBoolValue;
 
 abstract class TenantAdminEventsRepositoryContract {
   static final TenantAdminEventsRepoInt _defaultPageSize =
@@ -24,17 +24,17 @@ abstract class TenantAdminEventsRepositoryContract {
       TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false);
 
   static final Expando<_TenantAdminEventsPaginationState>
-      _eventsStateByRepository = Expando<_TenantAdminEventsPaginationState>();
+  _eventsStateByRepository = Expando<_TenantAdminEventsPaginationState>();
   static final Expando<_TenantAdminEventAccountProfileCandidatesPaginationState>
-      _accountProfileCandidatesStateByRepository =
+  _accountProfileCandidatesStateByRepository =
       Expando<_TenantAdminEventAccountProfileCandidatesPaginationState>();
 
   _TenantAdminEventsPaginationState get _eventsPaginationState =>
       _eventsStateByRepository[this] ??= _TenantAdminEventsPaginationState();
   _TenantAdminEventAccountProfileCandidatesPaginationState
-      get _accountProfileCandidatesPaginationState =>
-          _accountProfileCandidatesStateByRepository[this] ??=
-              _TenantAdminEventAccountProfileCandidatesPaginationState();
+  get _accountProfileCandidatesPaginationState =>
+      _accountProfileCandidatesStateByRepository[this] ??=
+          _TenantAdminEventAccountProfileCandidatesPaginationState();
 
   StreamValue<List<TenantAdminEvent>?> get eventsStreamValue =>
       _eventsPaginationState.eventsStreamValue;
@@ -171,9 +171,7 @@ abstract class TenantAdminEventsRepositoryContract {
     TenantAdminEventsRepoString eventIdOrSlug,
   );
 
-  Future<TenantAdminEvent> createEvent({
-    required TenantAdminEventDraft draft,
-  });
+  Future<TenantAdminEvent> createEvent({required TenantAdminEventDraft draft});
 
   Future<TenantAdminEvent> createOwnEvent({
     required TenantAdminEventsRepoString accountSlug,
@@ -188,7 +186,7 @@ abstract class TenantAdminEventsRepositoryContract {
   Future<void> deleteEvent(TenantAdminEventsRepoString eventId);
 
   Future<TenantAdminLegacyEventPartiesSummary>
-      fetchLegacyEventPartiesSummary() {
+  fetchLegacyEventPartiesSummary() {
     throw UnimplementedError();
   }
 
@@ -246,16 +244,17 @@ abstract class TenantAdminEventsRepositoryContract {
   Future<void> deleteEventType(TenantAdminEventsRepoString eventTypeId) async {}
 
   Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-      fetchEventAccountProfileCandidatesPage({
+  fetchEventAccountProfileCandidatesPage({
     required TenantAdminEventAccountProfileCandidateType candidateType,
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   });
 
   Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-      loadEventAccountProfileCandidates({
+  loadEventAccountProfileCandidates({
     required TenantAdminEventAccountProfileCandidateType candidateType,
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? accountSlug,
@@ -272,7 +271,7 @@ abstract class TenantAdminEventsRepositoryContract {
   }
 
   Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-      loadNextEventAccountProfileCandidates({
+  loadNextEventAccountProfileCandidates({
     required TenantAdminEventAccountProfileCandidateType candidateType,
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? accountSlug,
@@ -299,7 +298,7 @@ abstract class TenantAdminEventsRepositoryContract {
   }
 
   Future<List<TenantAdminAccountProfile>>
-      fetchAllEventAccountProfileCandidates({
+  fetchAllEventAccountProfileCandidates({
     required TenantAdminEventAccountProfileCandidateType candidateType,
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? accountSlug,
@@ -363,7 +362,8 @@ abstract class TenantAdminEventsRepositoryContract {
         TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true);
     if (page.value > 1) {
       isEventsPageLoadingStreamValue.addValue(
-          TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true));
+        TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true),
+      );
     }
 
     try {
@@ -389,8 +389,9 @@ abstract class TenantAdminEventsRepositoryContract {
 
       _eventsPaginationState.currentEventsPage = page;
       _eventsPaginationState.hasMoreEvents = TenantAdminEventsRepoBool.fromRaw(
-          result.hasMore,
-          defaultValue: result.hasMore);
+        result.hasMore,
+        defaultValue: result.hasMore,
+      );
       hasMoreEventsStreamValue.addValue(_eventsPaginationState.hasMoreEvents);
       eventsStreamValue.addValue(
         List<TenantAdminEvent>.unmodifiable(
@@ -409,26 +410,33 @@ abstract class TenantAdminEventsRepositoryContract {
       _eventsPaginationState.isFetchingEventsPage =
           TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false);
       isEventsPageLoadingStreamValue.addValue(
-          TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false));
+        TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false),
+      );
     }
   }
 
   void _resetEventsPagination() {
     _eventsPaginationState.cachedEvents.clear();
-    _eventsPaginationState.currentEventsPage =
-        TenantAdminEventsRepoInt.fromRaw(0, defaultValue: 0);
-    _eventsPaginationState.hasMoreEvents =
-        TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true);
+    _eventsPaginationState.currentEventsPage = TenantAdminEventsRepoInt.fromRaw(
+      0,
+      defaultValue: 0,
+    );
+    _eventsPaginationState.hasMoreEvents = TenantAdminEventsRepoBool.fromRaw(
+      true,
+      defaultValue: true,
+    );
     _eventsPaginationState.isFetchingEventsPage =
         TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false);
-    hasMoreEventsStreamValue
-        .addValue(TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true));
+    hasMoreEventsStreamValue.addValue(
+      TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true),
+    );
     isEventsPageLoadingStreamValue.addValue(
-        TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false));
+      TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false),
+    );
   }
 
   Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-      _fetchEventAccountProfileCandidatesPageInternal({
+  _fetchEventAccountProfileCandidatesPageInternal({
     required TenantAdminEventAccountProfileCandidateType candidateType,
     required TenantAdminEventsRepoInt page,
     TenantAdminEventsRepoString? search,
@@ -469,16 +477,17 @@ abstract class TenantAdminEventsRepositoryContract {
           ..clear()
           ..addAll(result.items);
       } else {
-        _accountProfileCandidatesPaginationState.cachedItems
-            .addAll(result.items);
+        _accountProfileCandidatesPaginationState.cachedItems.addAll(
+          result.items,
+        );
       }
 
       _accountProfileCandidatesPaginationState.currentPage = page;
       _accountProfileCandidatesPaginationState.hasMore =
           TenantAdminEventsRepoBool.fromRaw(
-        result.hasMore,
-        defaultValue: result.hasMore,
-      );
+            result.hasMore,
+            defaultValue: result.hasMore,
+          );
 
       return tenantAdminPagedResultFromRaw(
         items: List<TenantAdminAccountProfile>.unmodifiable(
@@ -510,10 +519,7 @@ abstract class TenantAdminEventsRepositoryContract {
       TenantAdminEventAccountProfileCandidateType.physicalHost => 50,
     };
 
-    return TenantAdminEventsRepoInt.fromRaw(
-      rawValue,
-      defaultValue: rawValue,
-    );
+    return TenantAdminEventsRepoInt.fromRaw(rawValue, defaultValue: rawValue);
   }
 }
 
@@ -525,17 +531,17 @@ mixin TenantAdminEventsPaginationMixin
       TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false);
 
   static final Expando<_TenantAdminEventsPaginationState>
-      _eventsStateByRepository = Expando<_TenantAdminEventsPaginationState>();
+  _eventsStateByRepository = Expando<_TenantAdminEventsPaginationState>();
   static final Expando<_TenantAdminEventAccountProfileCandidatesPaginationState>
-      _accountProfileCandidatesStateByRepository =
+  _accountProfileCandidatesStateByRepository =
       Expando<_TenantAdminEventAccountProfileCandidatesPaginationState>();
 
   _TenantAdminEventsPaginationState get _mixinEventsPaginationState =>
       _eventsStateByRepository[this] ??= _TenantAdminEventsPaginationState();
   _TenantAdminEventAccountProfileCandidatesPaginationState
-      get _mixinAccountProfileCandidatesPaginationState =>
-          _accountProfileCandidatesStateByRepository[this] ??=
-              _TenantAdminEventAccountProfileCandidatesPaginationState();
+  get _mixinAccountProfileCandidatesPaginationState =>
+      _accountProfileCandidatesStateByRepository[this] ??=
+          _TenantAdminEventAccountProfileCandidatesPaginationState();
 
   @override
   StreamValue<List<TenantAdminEvent>?> get eventsStreamValue =>
@@ -654,7 +660,7 @@ mixin TenantAdminEventsPaginationMixin
 
   @override
   Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-      loadEventAccountProfileCandidates({
+  loadEventAccountProfileCandidates({
     required TenantAdminEventAccountProfileCandidateType candidateType,
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? accountSlug,
@@ -672,7 +678,7 @@ mixin TenantAdminEventsPaginationMixin
 
   @override
   Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-      loadNextEventAccountProfileCandidates({
+  loadNextEventAccountProfileCandidates({
     required TenantAdminEventAccountProfileCandidateType candidateType,
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? accountSlug,
@@ -700,7 +706,7 @@ mixin TenantAdminEventsPaginationMixin
 
   @override
   Future<List<TenantAdminAccountProfile>>
-      fetchAllEventAccountProfileCandidates({
+  fetchAllEventAccountProfileCandidates({
     required TenantAdminEventAccountProfileCandidateType candidateType,
     TenantAdminEventsRepoString? search,
     TenantAdminEventsRepoString? accountSlug,
@@ -764,7 +770,8 @@ mixin TenantAdminEventsPaginationMixin
         TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true);
     if (page.value > 1) {
       isEventsPageLoadingStreamValue.addValue(
-          TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true));
+        TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true),
+      );
     }
 
     try {
@@ -788,10 +795,13 @@ mixin TenantAdminEventsPaginationMixin
       }
       _mixinEventsPaginationState.currentEventsPage = page;
       _mixinEventsPaginationState.hasMoreEvents =
-          TenantAdminEventsRepoBool.fromRaw(result.hasMore,
-              defaultValue: result.hasMore);
-      hasMoreEventsStreamValue
-          .addValue(_mixinEventsPaginationState.hasMoreEvents);
+          TenantAdminEventsRepoBool.fromRaw(
+            result.hasMore,
+            defaultValue: result.hasMore,
+          );
+      hasMoreEventsStreamValue.addValue(
+        _mixinEventsPaginationState.hasMoreEvents,
+      );
       eventsStreamValue.addValue(
         List<TenantAdminEvent>.unmodifiable(
           _mixinEventsPaginationState.cachedEvents,
@@ -809,7 +819,8 @@ mixin TenantAdminEventsPaginationMixin
       _mixinEventsPaginationState.isFetchingEventsPage =
           TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false);
       isEventsPageLoadingStreamValue.addValue(
-          TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false));
+        TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false),
+      );
     }
   }
 
@@ -821,14 +832,16 @@ mixin TenantAdminEventsPaginationMixin
         TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true);
     _mixinEventsPaginationState.isFetchingEventsPage =
         TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false);
-    hasMoreEventsStreamValue
-        .addValue(TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true));
+    hasMoreEventsStreamValue.addValue(
+      TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true),
+    );
     isEventsPageLoadingStreamValue.addValue(
-        TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false));
+      TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false),
+    );
   }
 
   Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-      _fetchEventAccountProfileCandidatesPageMixin({
+  _fetchEventAccountProfileCandidatesPageMixin({
     required TenantAdminEventAccountProfileCandidateType candidateType,
     required TenantAdminEventsRepoInt page,
     TenantAdminEventsRepoString? search,
@@ -869,16 +882,17 @@ mixin TenantAdminEventsPaginationMixin
           ..clear()
           ..addAll(result.items);
       } else {
-        _mixinAccountProfileCandidatesPaginationState.cachedItems
-            .addAll(result.items);
+        _mixinAccountProfileCandidatesPaginationState.cachedItems.addAll(
+          result.items,
+        );
       }
 
       _mixinAccountProfileCandidatesPaginationState.currentPage = page;
       _mixinAccountProfileCandidatesPaginationState.hasMore =
           TenantAdminEventsRepoBool.fromRaw(
-        result.hasMore,
-        defaultValue: result.hasMore,
-      );
+            result.hasMore,
+            defaultValue: result.hasMore,
+          );
 
       return tenantAdminPagedResultFromRaw(
         items: List<TenantAdminAccountProfile>.unmodifiable(
@@ -910,10 +924,7 @@ mixin TenantAdminEventsPaginationMixin
       TenantAdminEventAccountProfileCandidateType.physicalHost => 50,
     };
 
-    return TenantAdminEventsRepoInt.fromRaw(
-      rawValue,
-      defaultValue: rawValue,
-    );
+    return TenantAdminEventsRepoInt.fromRaw(rawValue, defaultValue: rawValue);
   }
 }
 
@@ -923,29 +934,45 @@ class _TenantAdminEventsPaginationState {
       StreamValue<List<TenantAdminEvent>?>();
   final StreamValue<TenantAdminEventsRepoBool> hasMoreEventsStreamValue =
       StreamValue<TenantAdminEventsRepoBool>(
-    defaultValue: TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true),
-  );
+        defaultValue: TenantAdminEventsRepoBool.fromRaw(
+          true,
+          defaultValue: true,
+        ),
+      );
   final StreamValue<TenantAdminEventsRepoBool> isEventsPageLoadingStreamValue =
       StreamValue<TenantAdminEventsRepoBool>(
-    defaultValue: TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false),
-  );
+        defaultValue: TenantAdminEventsRepoBool.fromRaw(
+          false,
+          defaultValue: false,
+        ),
+      );
   final StreamValue<TenantAdminEventsRepoString?> eventsErrorStreamValue =
       StreamValue<TenantAdminEventsRepoString?>();
   TenantAdminEventsRepoBool isFetchingEventsPage =
       TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false);
-  TenantAdminEventsRepoBool hasMoreEvents =
-      TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true);
-  TenantAdminEventsRepoInt currentEventsPage =
-      TenantAdminEventsRepoInt.fromRaw(0, defaultValue: 0);
+  TenantAdminEventsRepoBool hasMoreEvents = TenantAdminEventsRepoBool.fromRaw(
+    true,
+    defaultValue: true,
+  );
+  TenantAdminEventsRepoInt currentEventsPage = TenantAdminEventsRepoInt.fromRaw(
+    0,
+    defaultValue: 0,
+  );
 }
 
 class _TenantAdminEventAccountProfileCandidatesPaginationState {
   final List<TenantAdminAccountProfile> cachedItems =
       <TenantAdminAccountProfile>[];
-  TenantAdminEventsRepoBool isFetching =
-      TenantAdminEventsRepoBool.fromRaw(false, defaultValue: false);
-  TenantAdminEventsRepoBool hasMore =
-      TenantAdminEventsRepoBool.fromRaw(true, defaultValue: true);
-  TenantAdminEventsRepoInt currentPage =
-      TenantAdminEventsRepoInt.fromRaw(0, defaultValue: 0);
+  TenantAdminEventsRepoBool isFetching = TenantAdminEventsRepoBool.fromRaw(
+    false,
+    defaultValue: false,
+  );
+  TenantAdminEventsRepoBool hasMore = TenantAdminEventsRepoBool.fromRaw(
+    true,
+    defaultValue: true,
+  );
+  TenantAdminEventsRepoInt currentPage = TenantAdminEventsRepoInt.fromRaw(
+    0,
+    defaultValue: 0,
+  );
 }

@@ -9,6 +9,7 @@ import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
@@ -895,43 +896,59 @@ class _TenantAdminEventFormScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TenantAdminNestedProfileGroupsEditor(
-            keyPrefix: 'EventProfile',
-            title: 'Abas de perfis relacionados',
-            selectorTitle: 'Perfis',
-            emptyCandidatesText: 'Nenhum perfil disponivel.',
-            emptySelectionText: 'Selecionar perfis',
-            selectedCountLabel: 'perfil(is) selecionado(s)',
-            searchLabelText: 'Buscar perfil',
-            emptySearchText: 'Nenhum perfil encontrado.',
-            groups: formState.profileGroups,
-            candidatesStreamValue:
-                _controller.relatedAccountProfileCandidatesStreamValue,
-            onSearchChanged: (query) => unawaited(
-              _controller.searchRelatedAccountProfileCandidatesForNestedGroups(
-                query,
-              ),
+          StreamValueBuilder<List<TenantAdminProfileTypeDefinition>>(
+            streamValue: _controller.relatedAccountProfileTypesStreamValue,
+            builder: (context, profileTypes) => StreamValueBuilder<String?>(
+              streamValue:
+                  _controller.relatedAccountProfileSelectedTypeStreamValue,
+              builder: (context, selectedProfileType) =>
+                  TenantAdminNestedProfileGroupsEditor(
+                    keyPrefix: 'EventProfile',
+                    title: 'Abas de perfis relacionados',
+                    selectorTitle: 'Perfis',
+                    emptyCandidatesText: 'Nenhum perfil disponivel.',
+                    emptySelectionText: 'Selecionar perfis',
+                    selectedCountLabel: 'perfil(is) selecionado(s)',
+                    searchLabelText: 'Buscar perfil',
+                    emptySearchText: 'Nenhum perfil encontrado.',
+                    groups: formState.profileGroups,
+                    candidatesStreamValue:
+                        _controller.relatedAccountProfileCandidatesStreamValue,
+                    onSearchChanged: (query) => unawaited(
+                      _controller
+                          .searchRelatedAccountProfileCandidatesForNestedGroups(
+                            query,
+                          ),
+                    ),
+                    onOpenPicker: () => _controller
+                        .prepareRelatedAccountProfilePicker(
+                          accountSlug: widget.accountSlugForOwnCreate,
+                        ),
+                    onLoadMore: _controller
+                        .loadNextRelatedAccountProfileCandidatesForNestedGroups,
+                    searchLoadingStreamValue: _controller
+                        .relatedAccountProfileSearchLoadingStreamValue,
+                    searchPageLoadingStreamValue: _controller
+                        .relatedAccountProfileSearchPageLoadingStreamValue,
+                    searchHasMoreStreamValue: _controller
+                        .relatedAccountProfileSearchHasMoreStreamValue,
+                    profileTypes: profileTypes,
+                    selectedProfileType: selectedProfileType,
+                    onProfileTypeChanged: _controller
+                        .filterRelatedAccountProfileCandidatesByProfileType,
+                    addButtonKey: const Key('TenantAdminEventProfileGroupAdd'),
+                    onAddGroup: _controller.addEventProfileGroup,
+                    onRenameGroup: _controller.renameEventProfileGroup,
+                    onMoveGroup: _controller.moveEventProfileGroup,
+                    onRemoveGroup: _controller.removeEventProfileGroup,
+                    onSelectionChanged: (groupId, profileId, selected) =>
+                        _controller.toggleEventProfileGroupMember(
+                          groupId: groupId,
+                          profileId: profileId,
+                          selected: selected,
+                        ),
+                  ),
             ),
-            onLoadMore: _controller
-                .loadNextRelatedAccountProfileCandidatesForNestedGroups,
-            searchLoadingStreamValue:
-                _controller.relatedAccountProfileSearchLoadingStreamValue,
-            searchPageLoadingStreamValue:
-                _controller.relatedAccountProfileSearchPageLoadingStreamValue,
-            searchHasMoreStreamValue:
-                _controller.relatedAccountProfileSearchHasMoreStreamValue,
-            profileTypes: const [],
-            addButtonKey: const Key('TenantAdminEventProfileGroupAdd'),
-            onAddGroup: _controller.addEventProfileGroup,
-            onRenameGroup: _controller.renameEventProfileGroup,
-            onMoveGroup: _controller.moveEventProfileGroup,
-            onRemoveGroup: _controller.removeEventProfileGroup,
-            onSelectionChanged: (groupId, profileId, selected) =>
-                _controller.toggleEventProfileGroupMember(
-                  groupId: groupId,
-                  profileId: profileId,
-                  selected: selected,
-                ),
           ),
           const SizedBox(height: 12),
           FormValidationGroupError(

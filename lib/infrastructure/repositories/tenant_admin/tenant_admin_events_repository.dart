@@ -236,7 +236,7 @@ class TenantAdminEventsRepository
       final uploadPayload = _mediaFormDataBuilder.buildAvatarCoverPayload(
         payload: payload,
         coverUpload: draft.coverUpload,
-        preserveExplicitEmptyArrayKeys: const ['event_parties'],
+        preserveExplicitEmptyArrayKeys: const ['profile_groups'],
       );
       final hasMultipart = uploadPayload != null || draft.removeCover;
       final requestPayload = hasMultipart
@@ -244,7 +244,7 @@ class TenantAdminEventsRepository
               payload: payload,
               uploadPayload: uploadPayload,
               removeCover: draft.removeCover,
-              preserveExplicitEmptyArrayKeys: const ['event_parties'],
+              preserveExplicitEmptyArrayKeys: const ['profile_groups'],
             )
           : payload;
       final response = await _dio.post(
@@ -273,7 +273,7 @@ class TenantAdminEventsRepository
       final uploadPayload = _mediaFormDataBuilder.buildAvatarCoverPayload(
         payload: payload,
         coverUpload: draft.coverUpload,
-        preserveExplicitEmptyArrayKeys: const ['event_parties'],
+        preserveExplicitEmptyArrayKeys: const ['profile_groups'],
       );
       final hasMultipart = uploadPayload != null || draft.removeCover;
       final requestPayload = hasMultipart
@@ -281,7 +281,7 @@ class TenantAdminEventsRepository
               payload: payload,
               uploadPayload: uploadPayload,
               removeCover: draft.removeCover,
-              preserveExplicitEmptyArrayKeys: const ['event_parties'],
+              preserveExplicitEmptyArrayKeys: const ['profile_groups'],
             )
           : payload;
       final response = await _dio.post(
@@ -310,7 +310,7 @@ class TenantAdminEventsRepository
       final uploadPayload = _mediaFormDataBuilder.buildAvatarCoverPayload(
         payload: payload,
         coverUpload: draft.coverUpload,
-        preserveExplicitEmptyArrayKeys: const ['event_parties'],
+        preserveExplicitEmptyArrayKeys: const ['profile_groups'],
       );
       final hasMultipart = uploadPayload != null || draft.removeCover;
       final response = hasMultipart
@@ -321,7 +321,7 @@ class TenantAdminEventsRepository
                 uploadPayload: uploadPayload,
                 removeCover: draft.removeCover,
                 includePatchMethodOverride: true,
-                preserveExplicitEmptyArrayKeys: const ['event_parties'],
+                preserveExplicitEmptyArrayKeys: const ['profile_groups'],
               ),
               options: Options(
                 headers: _buildLandlordHeaders(),
@@ -575,6 +575,7 @@ class TenantAdminEventsRepository
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     try {
@@ -592,6 +593,8 @@ class TenantAdminEventsRepository
           'page_size': pageSize.value,
           if (search != null && search.value.trim().isNotEmpty)
             'search': search.value,
+          if (profileType != null && profileType.value.trim().isNotEmpty)
+            'profile_type': profileType.value,
         },
         options: Options(
           headers: isAccountScoped

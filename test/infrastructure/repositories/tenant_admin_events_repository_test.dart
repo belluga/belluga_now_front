@@ -364,7 +364,7 @@ void main() {
           'occurrences[1][event_parties][0][party_ref_id]',
           '507f1f77bcf86cd799439021',
         ),
-        isTrue,
+        isFalse,
       );
       expect(
         hasField('occurrences[1][programming_items][0][time]', '17:00'),
@@ -425,7 +425,7 @@ void main() {
   });
 
   test(
-    'updateEvent remove_cover multipart path preserves explicit empty event_parties clear intent',
+    'updateEvent remove_cover multipart path preserves explicit empty profile_groups clear intent',
     () async {
       final adapter = _EventsRoutingAdapter();
       final dio = Dio()..httpClientAdapter = adapter;
@@ -447,7 +447,7 @@ void main() {
       final formData = request.data as FormData;
       expect(
         formData.fields.any(
-          (entry) => entry.key == 'event_parties' && entry.value == '[]',
+          (entry) => entry.key == 'profile_groups' && entry.value == '[]',
         ),
         isTrue,
       );
@@ -467,7 +467,59 @@ void main() {
   );
 
   test(
-    'updateEvent sends empty event_parties when clearing related accounts',
+    'updateEvent remove_cover multipart path preserves explicit empty nested occurrence profile_groups clear intent',
+    () async {
+      final adapter = _EventsRoutingAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      await repository.updateEvent(
+        eventId: _repoText('evt-1'),
+        draft: _buildDraft(
+          removeCover: true,
+          occurrences: [
+            TenantAdminEventOccurrence(
+              dateTimeStartValue: tenantAdminDateTime(DateTime(2026, 3, 5, 20)),
+              profileGroups: const [],
+            ),
+          ],
+        ),
+      );
+
+      final request = adapter.requests.last;
+      expect(request.method, 'POST');
+      expect(request.path, endsWith('/admin/api/v1/events/evt-1'));
+      expect(request.data, isA<FormData>());
+      final formData = request.data as FormData;
+      expect(
+        formData.fields.any(
+          (entry) =>
+              entry.key == 'occurrences[0][profile_groups]' &&
+              entry.value == '[]',
+        ),
+        isTrue,
+      );
+      expect(
+        formData.fields.any(
+          (entry) => entry.key == 'remove_cover' && entry.value == '1',
+        ),
+        isTrue,
+      );
+      expect(
+        formData.fields.any(
+          (entry) => entry.key == '_method' && entry.value == 'PATCH',
+        ),
+        isTrue,
+      );
+    },
+  );
+
+  test(
+    'updateEvent sends empty profile_groups when clearing related accounts',
     () async {
       final adapter = _EventsRoutingAdapter();
       final dio = Dio()..httpClientAdapter = adapter;
@@ -487,8 +539,8 @@ void main() {
       expect(request.path, endsWith('/admin/api/v1/events/evt-1'));
       expect(request.data, isA<Map<String, dynamic>>());
       final payload = request.data as Map<String, dynamic>;
-      expect(payload.containsKey('event_parties'), isTrue);
-      expect(payload['event_parties'], isEmpty);
+      expect(payload.containsKey('profile_groups'), isTrue);
+      expect(payload['profile_groups'], isEmpty);
     },
   );
 
@@ -916,6 +968,34 @@ void main() {
         candidateRequests.first.headers['Authorization'],
         'Bearer test-token',
       );
+    },
+  );
+
+  test(
+    'fetchEventAccountProfileCandidatesPage sends an optional related profile type filter',
+    () async {
+      final adapter = _AccountProfileCandidatesAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      await repository.fetchEventAccountProfileCandidatesPage(
+        candidateType:
+            TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
+        page: _repoInt(1),
+        pageSize: _repoInt(20),
+        profileType: _repoText('fixture_profile_type'),
+      );
+
+      final request = adapter.requests.singleWhere(
+        (candidate) => candidate.path.endsWith(
+          '/admin/api/v1/events/account_profile_candidates',
+        ),
+      );
+      expect(request.queryParameters['profile_type'], 'fixture_profile_type');
     },
   );
 

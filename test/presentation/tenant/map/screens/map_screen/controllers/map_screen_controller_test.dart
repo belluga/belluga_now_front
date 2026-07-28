@@ -53,6 +53,7 @@ import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_time_end_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_time_start_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
@@ -458,6 +459,11 @@ class _FakeAccountProfilesRepository
     }
     return profilesBySlug[slug.value];
   }
+
+  @override
+  Future<List<AccountProfileNestedGroupMember>> getNestedGroupMembersByPath(
+    AccountProfilesRepositoryContractPrimString membersPath,
+  ) async => const <AccountProfileNestedGroupMember>[];
 
   @override
   Future<void> loadAccountProfileBySlug(
@@ -6870,6 +6876,9 @@ Future<void> _pumpMapScreen(
 
   await tester.pumpWidget(
     MaterialApp(
+      // The Linux widget-test renderer cannot load the app's Vulkan-only
+      // InkSparkle shader. Disable only the splash animation in tests.
+      theme: ThemeData(splashFactory: NoSplash.splashFactory),
       home: StackRouterScope(
         controller: router,
         stateHash: 0,
@@ -6912,6 +6921,7 @@ Future<void> _pumpPoiDetailDeckWithAutoRouter(
 
   await tester.pumpWidget(
     MaterialApp.router(
+      theme: ThemeData(splashFactory: NoSplash.splashFactory),
       routeInformationParser: router.defaultRouteParser(),
       routerDelegate: router.delegate(),
     ),

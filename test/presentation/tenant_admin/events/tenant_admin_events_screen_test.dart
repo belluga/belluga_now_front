@@ -42,10 +42,7 @@ void main() {
 
     GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
 
-    await _pumpEventsRouter(
-      tester,
-      viewportSize: const Size(390, 844),
-    );
+    await _pumpEventsRouter(tester, viewportSize: const Size(390, 844));
 
     expect(find.byType(TenantAdminEventsScreen), findsOneWidget);
     await tester.tap(
@@ -108,322 +105,324 @@ void main() {
 
       await _pumpEventsRouter(tester);
 
-      expect(
-        find.byTooltip('Ações do evento Seed Event'),
-        findsOneWidget,
-      );
+      expect(find.byTooltip('Ações do evento Seed Event'), findsOneWidget);
     } finally {
       semantics.dispose();
     }
   });
 
   testWidgets(
-      'event list materializes one card per occurrence and edits selected date',
-      (tester) async {
-    final controller = TenantAdminEventsController(
-      eventsRepository: _MultiOccurrenceEventsRepository(),
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-    );
+    'event list materializes one card per occurrence and edits selected date',
+    (tester) async {
+      final controller = TenantAdminEventsController(
+        eventsRepository: _MultiOccurrenceEventsRepository(),
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+      );
 
-    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
 
-    await _pumpEventsRouter(tester);
+      await _pumpEventsRouter(tester);
 
-    expect(find.text('Multi Occurrence Event'), findsNWidgets(2));
-    expect(
-      find.byKey(
-        const ValueKey<String>('tenant-admin-event-card-evt-multi-occ-past'),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(
-        const ValueKey<String>('tenant-admin-event-card-evt-multi-occ-future'),
-      ),
-      findsOneWidget,
-    );
+      expect(find.text('Multi Occurrence Event'), findsNWidgets(2));
+      expect(
+        find.byKey(
+          const ValueKey<String>('tenant-admin-event-card-evt-multi-occ-past'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(
+          const ValueKey<String>(
+            'tenant-admin-event-card-evt-multi-occ-future',
+          ),
+        ),
+        findsOneWidget,
+      );
 
-    await tester.tap(
-      find.byKey(
-        const ValueKey<String>('tenant-admin-event-card-evt-multi-occ-future'),
-      ),
-    );
-    await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(
+          const ValueKey<String>(
+            'tenant-admin-event-card-evt-multi-occ-future',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    expect(
-      find.text('EDIT-EVENT-ROUTE:evt-multi:occ-future'),
-      findsOneWidget,
-    );
-  });
-
-  testWidgets(
-      'compact layout hides filters behind the bottom sheet and shows active-filter badge',
-      (tester) async {
-    final controller = TenantAdminEventsController(
-      eventsRepository: _EventsRepositoryWithSeedData(),
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-    );
-
-    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
-
-    await _pumpEventsRouter(
-      tester,
-      viewportSize: const Size(390, 844),
-    );
-
-    expect(
-      find.byKey(
-        const ValueKey<String>('tenant-admin-events-open-filters-button'),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(
-        const ValueKey<String>('tenant-admin-events-date-filter-button'),
-      ),
-      findsNothing,
-    );
-    expect(
-      find.byKey(
-        const ValueKey<String>('tenant-admin-events-venue-filter-button'),
-      ),
-      findsNothing,
-    );
-    expect(
-      find.byKey(
-        const ValueKey<String>('tenant-admin-events-related-filter-button'),
-      ),
-      findsNothing,
-    );
-
-    controller.selectVenueFilter(
-      tenantAdminAccountProfileFromRaw(
-        id: 'venue-main',
-        accountId: 'account-venue-main',
-        profileType: 'venue',
-        displayName: 'Main Venue Candidate',
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(
-      find.byKey(
-        const ValueKey<String>('tenant-admin-events-open-filters-badge'),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(
-        const ValueKey<String>('tenant-admin-events-open-filters-badge-label'),
-      ),
-      findsOneWidget,
-    );
-
-    await tester.tap(
-      find.byKey(
-        const ValueKey<String>('tenant-admin-events-open-filters-button'),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('Filtros'), findsOneWidget);
-    expect(
-      find.byKey(
-        const ValueKey<String>('tenant-admin-events-date-filter-button'),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(
-        const ValueKey<String>('tenant-admin-events-venue-filter-button'),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(
-        const ValueKey<String>('tenant-admin-events-related-filter-button'),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(
-        const ValueKey<String>('tenant-admin-events-clear-filters-button'),
-      ),
-      findsOneWidget,
-    );
-  });
+      expect(
+        find.text('EDIT-EVENT-ROUTE:evt-multi:occ-future'),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets(
-      'screen groups events by date and applies specific date, venue, and related profile filters',
-      (tester) async {
-    final repository = _FilterableEventsRepository();
-    final controller = TenantAdminEventsController(
-      eventsRepository: repository,
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-      landlordAuthRepository: _ScreenLandlordAuthRepository(),
-    );
+    'compact layout hides filters behind the bottom sheet and shows active-filter badge',
+    (tester) async {
+      final controller = TenantAdminEventsController(
+        eventsRepository: _EventsRepositoryWithSeedData(),
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+      );
 
-    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
 
-    await _pumpEventsRouter(tester);
+      await _pumpEventsRouter(tester, viewportSize: const Size(390, 844));
 
-    expect(find.byType(TextField), findsNothing);
-    expect(find.text('Buscar perfil'), findsNothing);
-    expect(find.text('Filtered Event Match'), findsOneWidget);
-    expect(find.text('Other Event Miss'), findsOneWidget);
-    expect(
-      find.byKey(
-        const ValueKey<String>('tenant-admin-events-date-section-2026-04-10'),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(
-        const ValueKey<String>('tenant-admin-events-date-section-2026-04-12'),
-      ),
-      findsOneWidget,
-    );
+      expect(
+        find.byKey(
+          const ValueKey<String>('tenant-admin-events-open-filters-button'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(
+          const ValueKey<String>('tenant-admin-events-date-filter-button'),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.byKey(
+          const ValueKey<String>('tenant-admin-events-venue-filter-button'),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.byKey(
+          const ValueKey<String>('tenant-admin-events-related-filter-button'),
+        ),
+        findsNothing,
+      );
 
-    controller.selectSpecificDateFilter(DateTime(2026, 4, 10));
-    await controller.applyFilters();
-    await tester.pumpAndSettle();
+      controller.selectVenueFilter(
+        tenantAdminAccountProfileFromRaw(
+          id: 'venue-main',
+          accountId: 'account-venue-main',
+          profileType: 'venue',
+          displayName: 'Main Venue Candidate',
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    await tester.tap(
-      find.byKey(
-        const ValueKey<String>('tenant-admin-events-venue-filter-button'),
-      ),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Main Venue Candidate'));
-    await tester.pumpAndSettle();
+      expect(
+        find.byKey(
+          const ValueKey<String>('tenant-admin-events-open-filters-badge'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(
+          const ValueKey<String>(
+            'tenant-admin-events-open-filters-badge-label',
+          ),
+        ),
+        findsOneWidget,
+      );
 
-    await tester.tap(
-      find.byKey(
-        const ValueKey<String>('tenant-admin-events-related-filter-button'),
-      ),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('DJ Filter Candidate').last);
-    await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(
+          const ValueKey<String>('tenant-admin-events-open-filters-button'),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.text('Filtered Event Match'), findsOneWidget);
-    expect(find.text('Other Event Miss'), findsNothing);
-    expect(
-      find.byKey(
-        const ValueKey<String>('tenant-admin-events-date-section-2026-04-10'),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(
-        const ValueKey<String>('tenant-admin-events-date-section-2026-04-12'),
-      ),
-      findsNothing,
-    );
-    expect(repository.lastSpecificDate, '2026-04-10');
-    expect(repository.lastVenueProfileId, 'venue-main');
-    expect(repository.lastRelatedAccountProfileId, 'artist-main');
-  });
-
-  testWidgets(
-      'screen keeps date groups continuous across appended pages and resets them when filters change',
-      (tester) async {
-    final repository = _PagedGroupingEventsRepository();
-    final controller = TenantAdminEventsController(
-      eventsRepository: repository,
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-      landlordAuthRepository: _ScreenLandlordAuthRepository(),
-    );
-
-    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
-
-    await _pumpEventsRouter(tester);
-
-    expect(find.text('Boundary Event Page 2'), findsNothing);
-    expect(
-      find.byKey(
-        const ValueKey<String>('tenant-admin-events-date-section-2026-04-13'),
-      ),
-      findsOneWidget,
-    );
-    expect(repository.pageRequests, equals(<(int, String?)>[(1, null)]));
-
-    await controller.loadNextEventsPage();
-    await tester.pumpAndSettle();
-
-    expect(find.text('Boundary Event Page 2'), findsOneWidget);
-    expect(
-      find.byKey(
-        const ValueKey<String>('tenant-admin-events-date-section-2026-04-13'),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      repository.pageRequests,
-      equals(<(int, String?)>[(1, null), (2, null)]),
-    );
-
-    controller.selectSpecificDateFilter(DateTime(2026, 4, 13));
-    await controller.applyFilters();
-    await tester.pumpAndSettle();
-
-    expect(
-      find.byKey(
-        const ValueKey<String>('tenant-admin-events-date-section-2026-04-14'),
-      ),
-      findsNothing,
-    );
-    expect(
-      find.byKey(
-        const ValueKey<String>('tenant-admin-events-date-section-2026-04-13'),
-      ),
-      findsOneWidget,
-    );
-    expect(find.text('Boundary Event Page 2'), findsOneWidget);
-    expect(
-      repository.pageRequests,
-      equals(<(int, String?)>[
-        (1, null),
-        (2, null),
-        (1, '2026-04-13'),
-      ]),
-    );
-  });
+      expect(find.text('Filtros'), findsOneWidget);
+      expect(
+        find.byKey(
+          const ValueKey<String>('tenant-admin-events-date-filter-button'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(
+          const ValueKey<String>('tenant-admin-events-venue-filter-button'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(
+          const ValueKey<String>('tenant-admin-events-related-filter-button'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(
+          const ValueKey<String>('tenant-admin-events-clear-filters-button'),
+        ),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets(
-      'screen renders events from backend payload when related account profiles are summarized',
-      (tester) async {
-    final dio = Dio()
-      ..httpClientAdapter = _EventsScreenSummarizedRelatedProfilesAdapter();
-    final scope = _ScreenTenantScope('https://tenant-a.test/admin/api');
-    final repository = TenantAdminEventsRepository(
-      dio: dio,
-      tenantScope: scope,
-    );
+    'screen groups events by date and applies specific date, venue, and related profile filters',
+    (tester) async {
+      final repository = _FilterableEventsRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: repository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _ScreenLandlordAuthRepository(),
+      );
 
-    GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
-      _ScreenLandlordAuthRepository(),
-    );
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
 
-    final controller = TenantAdminEventsController(
-      eventsRepository: repository,
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-      landlordAuthRepository: GetIt.I.get<LandlordAuthRepositoryContract>(),
-    );
+      await _pumpEventsRouter(tester);
 
-    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+      expect(find.byType(TextField), findsNothing);
+      expect(find.text('Buscar perfil'), findsNothing);
+      expect(find.text('Filtered Event Match'), findsOneWidget);
+      expect(find.text('Other Event Miss'), findsOneWidget);
+      expect(
+        find.byKey(
+          const ValueKey<String>('tenant-admin-events-date-section-2026-04-10'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(
+          const ValueKey<String>('tenant-admin-events-date-section-2026-04-12'),
+        ),
+        findsOneWidget,
+      );
 
-    await _pumpEventsRouter(tester);
+      controller.selectSpecificDateFilter(DateTime(2026, 4, 10));
+      await controller.applyFilters();
+      await tester.pumpAndSettle();
 
-    expect(find.text('Summarized Artist Event'), findsOneWidget);
-    expect(find.textContaining('Casa Solar'), findsOneWidget);
-    expect(find.textContaining('DJ Summary'), findsOneWidget);
-    expect(find.text('Unable to load events.'), findsNothing);
-    expect(controller.eventsErrorStreamValue.value, isNull);
-  });
+      await tester.tap(
+        find.byKey(
+          const ValueKey<String>('tenant-admin-events-venue-filter-button'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Main Venue Candidate'));
+      await tester.pumpAndSettle();
 
-  testWidgets('non-published admin cards render faded at sixty percent',
-      (tester) async {
+      await tester.tap(
+        find.byKey(
+          const ValueKey<String>('tenant-admin-events-related-filter-button'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('DJ Filter Candidate').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Filtered Event Match'), findsOneWidget);
+      expect(find.text('Other Event Miss'), findsNothing);
+      expect(
+        find.byKey(
+          const ValueKey<String>('tenant-admin-events-date-section-2026-04-10'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(
+          const ValueKey<String>('tenant-admin-events-date-section-2026-04-12'),
+        ),
+        findsNothing,
+      );
+      expect(repository.lastSpecificDate, '2026-04-10');
+      expect(repository.lastVenueProfileId, 'venue-main');
+      expect(repository.lastRelatedAccountProfileId, 'artist-main');
+    },
+  );
+
+  testWidgets(
+    'screen keeps date groups continuous across appended pages and resets them when filters change',
+    (tester) async {
+      final repository = _PagedGroupingEventsRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: repository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _ScreenLandlordAuthRepository(),
+      );
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpEventsRouter(tester);
+
+      expect(find.text('Boundary Event Page 2'), findsNothing);
+      expect(
+        find.byKey(
+          const ValueKey<String>('tenant-admin-events-date-section-2026-04-13'),
+        ),
+        findsOneWidget,
+      );
+      expect(repository.pageRequests, equals(<(int, String?)>[(1, null)]));
+
+      await controller.loadNextEventsPage();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Boundary Event Page 2'), findsOneWidget);
+      expect(
+        find.byKey(
+          const ValueKey<String>('tenant-admin-events-date-section-2026-04-13'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        repository.pageRequests,
+        equals(<(int, String?)>[(1, null), (2, null)]),
+      );
+
+      controller.selectSpecificDateFilter(DateTime(2026, 4, 13));
+      await controller.applyFilters();
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(
+          const ValueKey<String>('tenant-admin-events-date-section-2026-04-14'),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.byKey(
+          const ValueKey<String>('tenant-admin-events-date-section-2026-04-13'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Boundary Event Page 2'), findsOneWidget);
+      expect(
+        repository.pageRequests,
+        equals(<(int, String?)>[(1, null), (2, null), (1, '2026-04-13')]),
+      );
+    },
+  );
+
+  testWidgets(
+    'screen renders events from backend payload when related account profiles are summarized',
+    (tester) async {
+      final dio = Dio()
+        ..httpClientAdapter = _EventsScreenSummarizedRelatedProfilesAdapter();
+      final scope = _ScreenTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
+        _ScreenLandlordAuthRepository(),
+      );
+
+      final controller = TenantAdminEventsController(
+        eventsRepository: repository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: GetIt.I.get<LandlordAuthRepositoryContract>(),
+      );
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpEventsRouter(tester);
+
+      expect(find.text('Summarized Artist Event'), findsOneWidget);
+      expect(find.textContaining('Casa Solar'), findsOneWidget);
+      expect(find.textContaining('DJ Summary'), findsOneWidget);
+      expect(find.text('Unable to load events.'), findsNothing);
+      expect(controller.eventsErrorStreamValue.value, isNull);
+    },
+  );
+
+  testWidgets('non-published admin cards render faded at sixty percent', (
+    tester,
+  ) async {
     final repository = _FilterableEventsRepository();
     final controller = TenantAdminEventsController(
       eventsRepository: repository,
@@ -464,7 +463,8 @@ void main() {
 
     await tester.tap(
       find.byKey(
-          const ValueKey<String>('tenant-admin-events-legacy-check-button')),
+        const ValueKey<String>('tenant-admin-events-legacy-check-button'),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -474,7 +474,8 @@ void main() {
 
     await tester.tap(
       find.byKey(
-          const ValueKey<String>('tenant-admin-events-repair-legacy-button')),
+        const ValueKey<String>('tenant-admin-events-repair-legacy-button'),
+      ),
     );
     await tester.pump();
     await tester.pumpAndSettle();
@@ -483,61 +484,55 @@ void main() {
     expect(find.text('Inválidos: 0'), findsOneWidget);
   });
 
-  testWidgets('temporal chips default to now and future and allow adding past',
-      (tester) async {
-    final controller = TenantAdminEventsController(
-      eventsRepository: _EventsRepositoryWithSeedData(),
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-    );
+  testWidgets(
+    'temporal chips default to now and future and allow adding past',
+    (tester) async {
+      final controller = TenantAdminEventsController(
+        eventsRepository: _EventsRepositoryWithSeedData(),
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+      );
 
-    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
 
-    await _pumpEventsRouter(tester);
+      await _pumpEventsRouter(tester);
 
-    final pastChip = tester.widget<FilterChip>(
-      find
-          .byKey(
-            const ValueKey<String>('tenant-admin-events-temporal-past'),
-          )
-          .first,
-    );
-    final nowChip = tester.widget<FilterChip>(
-      find
-          .byKey(
-            const ValueKey<String>('tenant-admin-events-temporal-now'),
-          )
-          .first,
-    );
-    final futureChip = tester.widget<FilterChip>(
-      find
-          .byKey(
-            const ValueKey<String>('tenant-admin-events-temporal-future'),
-          )
-          .first,
-    );
+      final pastChip = tester.widget<FilterChip>(
+        find
+            .byKey(const ValueKey<String>('tenant-admin-events-temporal-past'))
+            .first,
+      );
+      final nowChip = tester.widget<FilterChip>(
+        find
+            .byKey(const ValueKey<String>('tenant-admin-events-temporal-now'))
+            .first,
+      );
+      final futureChip = tester.widget<FilterChip>(
+        find
+            .byKey(
+              const ValueKey<String>('tenant-admin-events-temporal-future'),
+            )
+            .first,
+      );
 
-    expect(pastChip.selected, isFalse);
-    expect(nowChip.selected, isTrue);
-    expect(futureChip.selected, isTrue);
+      expect(pastChip.selected, isFalse);
+      expect(nowChip.selected, isTrue);
+      expect(futureChip.selected, isTrue);
 
-    await tester.tap(
-      find
-          .byKey(
-            const ValueKey<String>('tenant-admin-events-temporal-past'),
-          )
-          .first,
-    );
-    await tester.pumpAndSettle();
+      await tester.tap(
+        find
+            .byKey(const ValueKey<String>('tenant-admin-events-temporal-past'))
+            .first,
+      );
+      await tester.pumpAndSettle();
 
-    final updatedPastChip = tester.widget<FilterChip>(
-      find
-          .byKey(
-            const ValueKey<String>('tenant-admin-events-temporal-past'),
-          )
-          .first,
-    );
-    expect(updatedPastChip.selected, isTrue);
-  });
+      final updatedPastChip = tester.widget<FilterChip>(
+        find
+            .byKey(const ValueKey<String>('tenant-admin-events-temporal-past'))
+            .first,
+      );
+      expect(updatedPastChip.selected, isTrue);
+    },
+  );
 }
 
 Future<void> _pumpEventsRouter(
@@ -552,16 +547,13 @@ Future<void> _pumpEventsRouter(
       NamedRouteDef(
         name: 'events-test-root',
         path: '/',
-        builder: (_, _) => const Scaffold(
-          body: TenantAdminEventsScreen(),
-        ),
+        builder: (_, _) => const Scaffold(body: TenantAdminEventsScreen()),
       ),
       NamedRouteDef(
         name: TenantAdminEventCreateRoute.name,
         path: '/events/create',
-        builder: (_, _) => const Scaffold(
-          body: Center(child: Text('CREATE-EVENT-ROUTE')),
-        ),
+        builder: (_, _) =>
+            const Scaffold(body: Center(child: Text('CREATE-EVENT-ROUTE'))),
       ),
       NamedRouteDef(
         name: TenantAdminEventEditRoute.name,
@@ -579,9 +571,8 @@ Future<void> _pumpEventsRouter(
       NamedRouteDef(
         name: TenantAdminEventTypesRoute.name,
         path: '/events/types',
-        builder: (_, _) => const Scaffold(
-          body: Center(child: Text('EVENT-TYPES-ROUTE')),
-        ),
+        builder: (_, _) =>
+            const Scaffold(body: Center(child: Text('EVENT-TYPES-ROUTE'))),
       ),
     ],
   )..ignorePopCompleters = true;
@@ -622,7 +613,8 @@ class _EventsRepositoryWithSeedData extends TenantAdminEventsRepositoryContract
 
   @override
   Future<TenantAdminEvent> fetchEvent(
-      TenantAdminEventsRepoString eventIdOrSlug) async {
+    TenantAdminEventsRepoString eventIdOrSlug,
+  ) async {
     return _seedEvent;
   }
 
@@ -666,11 +658,12 @@ class _EventsRepositoryWithSeedData extends TenantAdminEventsRepositoryContract
 
   @override
   Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-      fetchEventAccountProfileCandidatesPage({
+  fetchEventAccountProfileCandidatesPage({
     required TenantAdminEventAccountProfileCandidateType candidateType,
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     return tenantAdminPagedResultFromRaw(
@@ -689,7 +682,7 @@ class _EventsRepositoryWithSeedData extends TenantAdminEventsRepositoryContract
 
   @override
   Future<TenantAdminLegacyEventPartiesSummary>
-      fetchLegacyEventPartiesSummary() async {
+  fetchLegacyEventPartiesSummary() async {
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(0),
       invalidValue: TenantAdminCountValue(0),
@@ -701,7 +694,7 @@ class _EventsRepositoryWithSeedData extends TenantAdminEventsRepositoryContract
 
   @override
   Future<TenantAdminLegacyEventPartiesSummary>
-      repairLegacyEventParties() async {
+  repairLegacyEventParties() async {
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(0),
       invalidValue: TenantAdminCountValue(0),
@@ -834,24 +827,29 @@ class _FilterableEventsRepository extends TenantAdminEventsRepositoryContract
     lastRelatedAccountProfileId = relatedAccountProfileId?.value;
     final normalizedSpecificDate = specificDate?.value.trim();
 
-    return _events.where((event) {
-      final eventDate = event.occurrences.first.dateTimeStart;
-      final year = eventDate.year.toString().padLeft(4, '0');
-      final month = eventDate.month.toString().padLeft(2, '0');
-      final day = eventDate.day.toString().padLeft(2, '0');
-      final eventDateKey = '$year-$month-$day';
-      final matchesSpecificDate = normalizedSpecificDate == null ||
-          normalizedSpecificDate.isEmpty ||
-          eventDateKey == normalizedSpecificDate;
-      final matchesVenue =
-          venueProfileId == null || event.placeRef?.id == venueProfileId.value;
-      final matchesRelated = relatedAccountProfileId == null ||
-          event.relatedAccountProfiles.any(
-            (profile) => profile.id == relatedAccountProfileId.value,
-          );
+    return _events
+        .where((event) {
+          final eventDate = event.occurrences.first.dateTimeStart;
+          final year = eventDate.year.toString().padLeft(4, '0');
+          final month = eventDate.month.toString().padLeft(2, '0');
+          final day = eventDate.day.toString().padLeft(2, '0');
+          final eventDateKey = '$year-$month-$day';
+          final matchesSpecificDate =
+              normalizedSpecificDate == null ||
+              normalizedSpecificDate.isEmpty ||
+              eventDateKey == normalizedSpecificDate;
+          final matchesVenue =
+              venueProfileId == null ||
+              event.placeRef?.id == venueProfileId.value;
+          final matchesRelated =
+              relatedAccountProfileId == null ||
+              event.relatedAccountProfiles.any(
+                (profile) => profile.id == relatedAccountProfileId.value,
+              );
 
-      return matchesSpecificDate && matchesVenue && matchesRelated;
-    }).toList(growable: false);
+          return matchesSpecificDate && matchesVenue && matchesRelated;
+        })
+        .toList(growable: false);
   }
 
   @override
@@ -876,56 +874,51 @@ class _FilterableEventsRepository extends TenantAdminEventsRepositoryContract
       temporalBuckets: temporalBuckets,
     );
 
-    return tenantAdminPagedResultFromRaw(
-      items: items,
-      hasMore: false,
-    );
+    return tenantAdminPagedResultFromRaw(items: items, hasMore: false);
   }
 
   @override
   Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-      fetchEventAccountProfileCandidatesPage({
+  fetchEventAccountProfileCandidatesPage({
     required TenantAdminEventAccountProfileCandidateType candidateType,
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     final items = switch (candidateType) {
       TenantAdminEventAccountProfileCandidateType.physicalHost => [
-          tenantAdminAccountProfileFromRaw(
-            id: 'venue-main',
-            accountId: 'account-venue-main',
-            profileType: 'venue',
-            displayName: 'Main Venue Candidate',
-          ),
-          tenantAdminAccountProfileFromRaw(
-            id: 'venue-other',
-            accountId: 'account-venue-other',
-            profileType: 'venue',
-            displayName: 'Other Venue Candidate',
-          ),
-        ],
+        tenantAdminAccountProfileFromRaw(
+          id: 'venue-main',
+          accountId: 'account-venue-main',
+          profileType: 'venue',
+          displayName: 'Main Venue Candidate',
+        ),
+        tenantAdminAccountProfileFromRaw(
+          id: 'venue-other',
+          accountId: 'account-venue-other',
+          profileType: 'venue',
+          displayName: 'Other Venue Candidate',
+        ),
+      ],
       TenantAdminEventAccountProfileCandidateType.relatedAccountProfile => [
-          tenantAdminAccountProfileFromRaw(
-            id: 'artist-main',
-            accountId: 'account-artist-main',
-            profileType: 'artist',
-            displayName: 'DJ Filter Candidate',
-          ),
-          tenantAdminAccountProfileFromRaw(
-            id: 'artist-other',
-            accountId: 'account-artist-other',
-            profileType: 'artist',
-            displayName: 'Other Related Candidate',
-          ),
-        ],
+        tenantAdminAccountProfileFromRaw(
+          id: 'artist-main',
+          accountId: 'account-artist-main',
+          profileType: 'artist',
+          displayName: 'DJ Filter Candidate',
+        ),
+        tenantAdminAccountProfileFromRaw(
+          id: 'artist-other',
+          accountId: 'account-artist-other',
+          profileType: 'artist',
+          displayName: 'Other Related Candidate',
+        ),
+      ],
     };
 
-    return tenantAdminPagedResultFromRaw(
-      items: items,
-      hasMore: false,
-    );
+    return tenantAdminPagedResultFromRaw(items: items, hasMore: false);
   }
 
   @override
@@ -938,7 +931,7 @@ class _FilterableEventsRepository extends TenantAdminEventsRepositoryContract
 
   @override
   Future<TenantAdminLegacyEventPartiesSummary>
-      fetchLegacyEventPartiesSummary() async {
+  fetchLegacyEventPartiesSummary() async {
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(0),
       invalidValue: TenantAdminCountValue(0),
@@ -950,7 +943,7 @@ class _FilterableEventsRepository extends TenantAdminEventsRepositoryContract
 
   @override
   Future<TenantAdminLegacyEventPartiesSummary>
-      repairLegacyEventParties() async {
+  repairLegacyEventParties() async {
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(0),
       invalidValue: TenantAdminCountValue(0),
@@ -976,8 +969,9 @@ class _FilterableEventsRepository extends TenantAdminEventsRepositoryContract
       ),
       occurrences: <TenantAdminEventOccurrence>[
         TenantAdminEventOccurrence(
-          dateTimeStartValue:
-              tenantAdminDateTime(DateTime.utc(2026, 4, 10, 20)),
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 4, 10, 20),
+          ),
         ),
       ],
       publication: TenantAdminEventPublication(
@@ -1007,8 +1001,9 @@ class _FilterableEventsRepository extends TenantAdminEventsRepositoryContract
       ),
       occurrences: <TenantAdminEventOccurrence>[
         TenantAdminEventOccurrence(
-          dateTimeStartValue:
-              tenantAdminDateTime(DateTime.utc(2026, 4, 12, 20)),
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 4, 12, 20),
+          ),
         ),
       ],
       publication: TenantAdminEventPublication(
@@ -1064,17 +1059,20 @@ class _PagedGroupingEventsRepository extends TenantAdminEventsRepositoryContract
     Set<TenantAdminEventTemporalBucket>? temporalBuckets,
   }) async {
     final normalizedSpecificDate = specificDate?.value.trim();
-    return _orderedEvents.where((event) {
-      if (normalizedSpecificDate == null || normalizedSpecificDate.isEmpty) {
-        return true;
-      }
+    return _orderedEvents
+        .where((event) {
+          if (normalizedSpecificDate == null ||
+              normalizedSpecificDate.isEmpty) {
+            return true;
+          }
 
-      final eventDate = event.occurrences.first.dateTimeStart;
-      final year = eventDate.year.toString().padLeft(4, '0');
-      final month = eventDate.month.toString().padLeft(2, '0');
-      final day = eventDate.day.toString().padLeft(2, '0');
-      return '$year-$month-$day' == normalizedSpecificDate;
-    }).toList(growable: false);
+          final eventDate = event.occurrences.first.dateTimeStart;
+          final year = eventDate.year.toString().padLeft(4, '0');
+          final month = eventDate.month.toString().padLeft(2, '0');
+          final day = eventDate.day.toString().padLeft(2, '0');
+          return '$year-$month-$day' == normalizedSpecificDate;
+        })
+        .toList(growable: false);
   }
 
   @override
@@ -1116,11 +1114,12 @@ class _PagedGroupingEventsRepository extends TenantAdminEventsRepositoryContract
 
   @override
   Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
-      fetchEventAccountProfileCandidatesPage({
+  fetchEventAccountProfileCandidatesPage({
     required TenantAdminEventAccountProfileCandidateType candidateType,
     required TenantAdminEventsRepoInt page,
     required TenantAdminEventsRepoInt pageSize,
     TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
     return tenantAdminPagedResultFromRaw(
@@ -1139,7 +1138,7 @@ class _PagedGroupingEventsRepository extends TenantAdminEventsRepositoryContract
 
   @override
   Future<TenantAdminLegacyEventPartiesSummary>
-      fetchLegacyEventPartiesSummary() async {
+  fetchLegacyEventPartiesSummary() async {
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(0),
       invalidValue: TenantAdminCountValue(0),
@@ -1151,7 +1150,7 @@ class _PagedGroupingEventsRepository extends TenantAdminEventsRepositoryContract
 
   @override
   Future<TenantAdminLegacyEventPartiesSummary>
-      repairLegacyEventParties() async {
+  repairLegacyEventParties() async {
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(0),
       invalidValue: TenantAdminCountValue(0),
@@ -1215,7 +1214,7 @@ class _PagedGroupingEventsRepository extends TenantAdminEventsRepositoryContract
 class _LegacySummaryEventsRepository extends _EventsRepositoryWithSeedData {
   @override
   Future<TenantAdminLegacyEventPartiesSummary>
-      fetchLegacyEventPartiesSummary() async {
+  fetchLegacyEventPartiesSummary() async {
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(12),
       invalidValue: TenantAdminCountValue(4),
@@ -1227,7 +1226,7 @@ class _LegacySummaryEventsRepository extends _EventsRepositoryWithSeedData {
 
   @override
   Future<TenantAdminLegacyEventPartiesSummary>
-      repairLegacyEventParties() async {
+  repairLegacyEventParties() async {
     return TenantAdminLegacyEventPartiesSummary(
       scannedValue: TenantAdminCountValue(12),
       invalidValue: TenantAdminCountValue(0),
@@ -1405,7 +1404,7 @@ class _NoopTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
-      fetchTaxonomiesPage({
+  fetchTaxonomiesPage({
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,
   }) async {
@@ -1424,7 +1423,7 @@ class _NoopTaxonomiesRepository
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
-      fetchTermsPage({
+  fetchTermsPage({
     required TenantAdminTaxRepoString taxonomyId,
     required TenantAdminTaxRepoInt page,
     required TenantAdminTaxRepoInt pageSize,

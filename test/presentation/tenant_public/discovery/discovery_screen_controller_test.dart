@@ -15,11 +15,11 @@ import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.da
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/discovery_filters_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_bool_value.dart';
@@ -1074,13 +1074,11 @@ void main() {
         },
       );
       final catalog = _accountProfileDiscoveryFilterCatalogWithMultipleTypes();
+      repository.fallbackRuntimeCatalog = catalog;
       final primaryFilter = catalog.filters.first;
       final taxonomyGroup = catalog.taxonomyOptionsByKey.values.single;
       final controller = _buildDiscoveryController(
         accountProfilesRepository: repository,
-        discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-          catalog: catalog,
-        ),
       );
       GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
 
@@ -1191,12 +1189,10 @@ void main() {
         },
       );
       final catalog = _accountProfileDiscoveryFilterCatalogWithMultipleTypes();
+      repository.fallbackRuntimeCatalog = catalog;
       final primaryFilter = catalog.filters.first;
       final controller = _buildDiscoveryController(
         accountProfilesRepository: repository,
-        discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-          catalog: catalog,
-        ),
       );
       GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
 
@@ -1339,6 +1335,7 @@ void main() {
       );
       final catalog =
           _accountProfileDiscoveryFilterCatalogWithTwoTaxonomyGroups();
+      repository.fallbackRuntimeCatalog = catalog;
       final primaryFilter = catalog.filters.single;
       final taxonomyGroups = catalog.taxonomyOptionsByKey.values.toList();
       final firstTaxonomyGroup = taxonomyGroups.first;
@@ -1347,9 +1344,6 @@ void main() {
       final secondTaxonomyTerm = secondTaxonomyGroup.terms.single;
       final controller = _buildDiscoveryController(
         accountProfilesRepository: repository,
-        discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-          catalog: catalog,
-        ),
       );
       GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
 
@@ -1689,7 +1683,11 @@ void main() {
       await controller.init();
       final initialRequestCount = repository.pageRequests.length;
       controller.setSearchQuery('v');
-      await Future<void>.delayed(const Duration(milliseconds: 450));
+      final deadline = DateTime.now().add(const Duration(seconds: 2));
+      while (repository.pageRequests.length < initialRequestCount + 1 &&
+          DateTime.now().isBefore(deadline)) {
+        await Future<void>.delayed(const Duration(milliseconds: 25));
+      }
 
       expect(repository.pageRequests.length, initialRequestCount + 1);
       expect(repository.pageRequests.last.query, isNull);
@@ -1841,15 +1839,13 @@ void main() {
         },
       );
       final catalog = _accountProfileDiscoveryFilterCatalogWithMultipleTypes();
+      repository.fallbackRuntimeCatalog = catalog;
       final primaryFilter = catalog.filters.first;
       final secondaryFilter = catalog.filters.last;
       final taxonomyGroup = catalog.taxonomyOptionsByKey.values.single;
       final taxonomyTerm = taxonomyGroup.terms.single;
       final controller = _buildDiscoveryController(
         accountProfilesRepository: repository,
-        discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-          catalog: catalog,
-        ),
       );
 
       await controller.init();
@@ -1936,11 +1932,9 @@ void main() {
           ),
         },
       );
+      repository.fallbackRuntimeCatalog = catalog;
       final controller = _buildDiscoveryController(
         accountProfilesRepository: repository,
-        discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-          catalog: catalog,
-        ),
       );
 
       await controller.init();
@@ -1973,12 +1967,10 @@ void main() {
       },
     );
     final catalog = _accountProfileDiscoveryFilterCatalogWithMultipleTypes();
+    repository.fallbackRuntimeCatalog = catalog;
     final primaryFilter = catalog.filters.first;
     final controller = _buildDiscoveryController(
       accountProfilesRepository: repository,
-      discoveryFiltersRepository: _FakeDiscoveryFiltersRepository(
-        catalog: catalog,
-      ),
     );
 
     await controller.init();
@@ -2341,7 +2333,6 @@ ValueKey<String> _taxonomyChipKey(
 
 DiscoveryScreenController _buildDiscoveryController({
   required AccountProfilesRepositoryContract accountProfilesRepository,
-  DiscoveryFiltersRepositoryContract? discoveryFiltersRepository,
   ScheduleRepositoryContract? scheduleRepository,
   AuthRepositoryContract? authRepository,
 }) {
@@ -2373,34 +2364,12 @@ DiscoveryScreenController _buildDiscoveryController({
           : null,
     ),
   );
-  if (accountProfilesRepository is _FakeAccountProfilesRepository &&
-      discoveryFiltersRepository is _FakeDiscoveryFiltersRepository) {
-    accountProfilesRepository.fallbackRuntimeCatalog =
-        discoveryFiltersRepository.catalog;
-  }
   return DiscoveryScreenController(
     accountProfilesRepository: accountProfilesRepository,
-    discoveryFiltersRepository: discoveryFiltersRepository,
     scheduleRepository: scheduleRepository,
     locationOriginService: GetIt.I.get<LocationOriginServiceContract>(),
     authRepository: authRepository,
   );
-}
-
-class _FakeDiscoveryFiltersRepository
-    implements DiscoveryFiltersRepositoryContract {
-  _FakeDiscoveryFiltersRepository({required this.catalog});
-
-  final DiscoveryFilterCatalog catalog;
-  final List<String> requestedSurfaces = <String>[];
-
-  @override
-  Future<DiscoveryFilterCatalog> fetchCatalog(
-    DiscoveryFiltersRepoText surface,
-  ) async {
-    requestedSurfaces.add(surface.value);
-    return catalog;
-  }
 }
 
 class _RecordingStackRouter extends Mock implements StackRouter {
@@ -2635,6 +2604,11 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   }
 
   @override
+  Future<List<AccountProfileNestedGroupMember>> getNestedGroupMembersByPath(
+    AccountProfilesRepositoryContractPrimString membersPath,
+  ) async => const <AccountProfileNestedGroupMember>[];
+
+  @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
     AccountProfilesRepositoryContractPrimInt? pageSize,
     List<AccountProfilesRepositoryContractPrimString>? typeFilters,
@@ -2741,6 +2715,11 @@ class _FailingAccountProfilesRepository
   }
 
   @override
+  Future<List<AccountProfileNestedGroupMember>> getNestedGroupMembersByPath(
+    AccountProfilesRepositoryContractPrimString membersPath,
+  ) async => const <AccountProfileNestedGroupMember>[];
+
+  @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
     AccountProfilesRepositoryContractPrimInt? pageSize,
     List<AccountProfilesRepositoryContractPrimString>? typeFilters,
@@ -2808,6 +2787,11 @@ class _InitFailingAccountProfilesRepository
   ) async {
     return null;
   }
+
+  @override
+  Future<List<AccountProfileNestedGroupMember>> getNestedGroupMembersByPath(
+    AccountProfilesRepositoryContractPrimString membersPath,
+  ) async => const <AccountProfileNestedGroupMember>[];
 
   @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
@@ -3196,15 +3180,18 @@ AppDataDiscoveryFilterSelectionSnapshot _appDataSelectionSnapshot(
           ),
         )
         .toList(growable: false),
-    typeFiltersByEntity: <String, List<AppDataDiscoveryFilterTokenValue>>{
+    typeFilterSelections: [
       for (final entry
           in (payload?.typesByEntity.entries ??
               const <MapEntry<String, Set<String>>>[]))
         if (entry.value.isNotEmpty)
-          entry.key: entry.value
-              .map(AppDataDiscoveryFilterTokenValue.fromRaw)
-              .toList(growable: false),
-    },
+          AppDataDiscoveryFilterEntityTypeSelection(
+            entityKey: AppDataDiscoveryFilterTokenValue.fromRaw(entry.key),
+            typeKeys: entry.value
+                .map(AppDataDiscoveryFilterTokenValue.fromRaw)
+                .toList(growable: false),
+          ),
+    ],
   );
 }
 

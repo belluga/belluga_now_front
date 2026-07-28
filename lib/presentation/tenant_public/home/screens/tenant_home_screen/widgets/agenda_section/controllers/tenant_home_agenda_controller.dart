@@ -5,11 +5,11 @@ import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/domain/app_data/discovery_filter_selection_snapshot.dart';
 import 'package:belluga_now/domain/app_data/location_origin_settings.dart';
 import 'package:belluga_now/domain/app_data/location_origin_resolution.dart';
+import 'package:belluga_now/domain/app_data/value_object/app_data_discovery_filter_token_value.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/discovery_filters_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
@@ -42,7 +42,6 @@ class TenantHomeAgendaController extends Object
   TenantHomeAgendaController({
     ScheduleRepositoryContract? scheduleRepository,
     UserEventsRepositoryContract? userEventsRepository,
-    DiscoveryFiltersRepositoryContract? discoveryFiltersRepository,
     InvitesRepositoryContract? invitesRepository,
     AppDataRepositoryContract? appDataRepository,
     AuthRepositoryContract? authRepository,
@@ -57,11 +56,6 @@ class TenantHomeAgendaController extends Object
            scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>(),
        _userEventsRepository =
            userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>(),
-       _discoveryFiltersRepository =
-           discoveryFiltersRepository ??
-           (GetIt.I.isRegistered<DiscoveryFiltersRepositoryContract>()
-               ? GetIt.I.get<DiscoveryFiltersRepositoryContract>()
-               : null),
        _invitesRepository =
            invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
        _appDataRepository =
@@ -87,7 +81,6 @@ class TenantHomeAgendaController extends Object
 
   final ScheduleRepositoryContract _scheduleRepository;
   final UserEventsRepositoryContract _userEventsRepository;
-  final DiscoveryFiltersRepositoryContract? _discoveryFiltersRepository;
   final InvitesRepositoryContract _invitesRepository;
   final AppDataRepositoryContract _appDataRepository;
   final AuthRepositoryContract? _authRepository;
@@ -241,10 +234,6 @@ class TenantHomeAgendaController extends Object
 
   List<EventModel>? get displayedEvents =>
       displayStateStreamValue.value?.events;
-
-  @override
-  DiscoveryFiltersRepositoryContract? get publicDiscoveryFiltersRepository =>
-      _discoveryFiltersRepository;
 
   @override
   AppDataRepositoryContract? get publicDiscoveryFilterAppDataRepository =>
@@ -997,9 +986,11 @@ class TenantHomeAgendaController extends Object
         allowPersistedFallback &&
         _canUsePersistedDiscoveryFilterSelectionSnapshot(selection)) {
       categories.addAll(
-        _persistedDiscoveryFilterSelectionSnapshot!.typeFiltersByEntity['event']
-                ?.map((value) => value.value) ??
-            const <String>[],
+        _persistedDiscoveryFilterSelectionSnapshot!
+            .typeFiltersForEntity(
+              AppDataDiscoveryFilterTokenValue.fromRaw('event'),
+            )
+            .map((value) => value.value),
       );
     }
     if (categories.isEmpty) {
@@ -1178,7 +1169,7 @@ class TenantHomeAgendaController extends Object
     DiscoveryFilterSelection selection,
   ) {
     final snapshot = _persistedDiscoveryFilterSelectionSnapshot;
-    if (snapshot == null || snapshot.typeFiltersByEntity.isEmpty) {
+    if (snapshot == null || !snapshot.hasTypeFilterSelections) {
       return false;
     }
     return samePublicDiscoveryFilterSelection(

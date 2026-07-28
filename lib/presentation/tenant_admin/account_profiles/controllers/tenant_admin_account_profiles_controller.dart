@@ -7,6 +7,7 @@ import 'dart:typed_data';
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/application/tenant_admin/tenant_admin_account_profile_candidate_discovery_page_loader.dart';
 import 'package:belluga_now/application/tenant_admin/tenant_admin_account_profile_candidates_page_loader.dart';
+import 'package:belluga_now/application/tenant_admin/tenant_admin_nested_group_members_page_loader.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
@@ -17,10 +18,10 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_can
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate_selection_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_page.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profile_create_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profile_candidate_picker_controller.dart';
@@ -42,6 +43,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     TenantAdminImageIngestionService? imageIngestionService,
     TenantAdminAccountProfileCandidatesPageLoader?
     nestedProfileCandidatesPageLoader,
+    TenantAdminNestedGroupMembersPageLoader? nestedGroupMembersPageLoader,
   }) : _profilesRepository =
            profilesRepository ??
            GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>(),
@@ -64,6 +66,11 @@ class TenantAdminAccountProfilesController implements Disposable {
         TenantAdminAccountProfileCandidatesPageLoader(
           profilesRepository: _profilesRepository,
         );
+    _nestedGroupMembersPageLoader =
+        nestedGroupMembersPageLoader ??
+        TenantAdminNestedGroupMembersPageLoader(
+          profilesRepository: _profilesRepository,
+        );
   }
 
   final TenantAdminAccountProfilesRepositoryContract _profilesRepository;
@@ -73,6 +80,8 @@ class TenantAdminAccountProfilesController implements Disposable {
   final TenantAdminImageIngestionService _imageIngestionService;
   late final TenantAdminAccountProfileCandidatesPageLoader
   _nestedProfileCandidatesPageLoader;
+  late final TenantAdminNestedGroupMembersPageLoader
+  _nestedGroupMembersPageLoader;
 
   final StreamValue<List<TenantAdminAccountProfile>> profilesStreamValue =
       StreamValue<List<TenantAdminAccountProfile>>(defaultValue: const []);
@@ -173,6 +182,7 @@ class TenantAdminAccountProfilesController implements Disposable {
 
   bool _isDisposed = false;
   Timer? _nestedProfileSearchDebounce;
+  Timer? _contactSourceSearchDebounce;
   StreamSubscription<TenantAdminLocation?>? _locationSelectionSubscription;
   StreamSubscription<TenantAdminAccount?>? _accountWatchSubscription;
   TenantAdminLoadedAccountWatch? _accountWatch;
@@ -186,13 +196,26 @@ class TenantAdminAccountProfilesController implements Disposable {
   );
   final List<TenantAdminAccountProfile> _nestedProfileCandidateWindow =
       <TenantAdminAccountProfile>[];
+  final List<TenantAdminAccountProfile> _contactSourceCandidateWindow =
+      <TenantAdminAccountProfile>[];
   final Map<String, TenantAdminAccountProfile> _selectedNestedProfileCache =
       <String, TenantAdminAccountProfile>{};
+  final Map<String, TenantAdminAccountProfile> _selectedContactSourceCache =
+      <String, TenantAdminAccountProfile>{};
+  final Map<String, Future<TenantAdminAccountProfile?>>
+  _selectedContactSourceHydrationInFlight =
+      <String, Future<TenantAdminAccountProfile?>>{};
+  final Map<String, Future<void>> _editNestedGroupBaselineHydrationsInFlight =
+      <String, Future<void>>{};
   int _nestedProfileCandidatesCurrentPage = 0;
   int _nestedProfileCandidatesRequestToken = 0;
   String _nestedProfileCandidatesQuery = '';
+  String? _nestedProfileCandidatesProfileType;
   String? _nestedProfileCandidatesExcludeProfileId;
+  int _contactSourceCandidatesCurrentPage = 0;
   int _contactSourceCandidatesRequestToken = 0;
+  String _contactSourceCandidatesQuery = '';
+  String? _contactSourceCandidatesProfileType;
   String? _contactSourceCandidatesExcludeProfileId;
   bool _isFetchingContactSourceCandidates = false;
   bool _contactSourceCandidatesReloadQueued = false;
@@ -302,6 +325,71 @@ class TenantAdminAccountProfilesController implements Disposable {
       ),
       aggregateRevision: page.aggregateRevision,
     );
+  }
+
+  Future<TenantAdminNestedGroupMemberPage> fetchEditNestedGroupMembersPage({
+    required String accountProfileId,
+    required String groupId,
+    String? cursor,
+  }) async {
+    return _nestedGroupMembersPageLoader.loadPage(
+      accountProfileId: accountProfileId,
+      groupId: groupId,
+      cursor: cursor,
+    );
+  }
+
+  Future<void> ensureEditNestedGroupBaselineHydrated({
+    required String accountProfileId,
+    required String groupId,
+  }) async {
+    final normalizedAccountProfileId = accountProfileId.trim();
+    final normalizedGroupId = groupId.trim();
+    if (normalizedAccountProfileId.isEmpty || normalizedGroupId.isEmpty) {
+      return;
+    }
+
+    final currentGroup = _editNestedGroupById(normalizedGroupId);
+    if (currentGroup == null) {
+      return;
+    }
+    if (!_shouldHydrateEditNestedGroupBaseline(currentGroup)) {
+      await _hydrateMissingSelectedNestedProfiles();
+      _publishNestedProfileCandidates();
+      return;
+    }
+
+    final hydrationKey = '$normalizedAccountProfileId::$normalizedGroupId';
+    final inFlight = _editNestedGroupBaselineHydrationsInFlight[hydrationKey];
+    if (inFlight != null) {
+      await inFlight;
+      return;
+    }
+
+    final hydrationFuture = _hydrateEditNestedGroupBaseline(
+      accountProfileId: normalizedAccountProfileId,
+      groupId: normalizedGroupId,
+      hydrationKey: hydrationKey,
+    );
+    _editNestedGroupBaselineHydrationsInFlight[hydrationKey] = hydrationFuture;
+    await hydrationFuture;
+  }
+
+  Future<void> ensureAllEditNestedGroupBaselinesHydrated({
+    required String accountProfileId,
+  }) async {
+    final groups = List<TenantAdminNestedProfileGroup>.from(
+      editStateStreamValue.value.nestedProfileGroups,
+    );
+    for (final group in groups) {
+      if (!_shouldHydrateEditNestedGroupBaseline(group)) {
+        continue;
+      }
+      await ensureEditNestedGroupBaselineHydrated(
+        accountProfileId: accountProfileId,
+        groupId: group.id,
+      );
+    }
   }
 
   Future<bool> applyEditNestedGroupSelectionDelta({
@@ -448,6 +536,8 @@ class TenantAdminAccountProfilesController implements Disposable {
     _nestedProfileSearchDebounce?.cancel();
     _nestedProfileCandidatesExcludeProfileId = excludeProfileId?.trim();
     _nestedProfileCandidatesQuery = '';
+    _nestedProfileCandidatesProfileType = null;
+    _nestedProfileCandidatesCurrentPage = 0;
     final requestToken = _nestedProfileCandidatesRequestToken + 1;
     _nestedProfileCandidatesRequestToken = requestToken;
     await _loadNestedProfileCandidatesPage(
@@ -457,16 +547,40 @@ class TenantAdminAccountProfilesController implements Disposable {
   }
 
   Future<void> loadContactSourceCandidates({String? excludeProfileId}) async {
+    _resetContactSourceCandidates(excludeProfileId: excludeProfileId);
+    await _loadContactSourceCandidatesPage(
+      isInitial: true,
+      requestToken: _contactSourceCandidatesRequestToken,
+    );
+  }
+
+  void _resetContactSourceCandidates({String? excludeProfileId}) {
+    _contactSourceSearchDebounce?.cancel();
     _contactSourceCandidatesExcludeProfileId = excludeProfileId?.trim();
+    _contactSourceCandidatesQuery = '';
+    _contactSourceCandidatesProfileType = null;
+    _contactSourceCandidatesCurrentPage = 0;
     final requestToken = _contactSourceCandidatesRequestToken + 1;
     _contactSourceCandidatesRequestToken = requestToken;
     contactSourceCandidatesStreamValue.addValue(const []);
     contactSourceCandidatesHasMoreStreamValue.addValue(false);
     contactSourceCandidatesErrorStreamValue.addValue(null);
-    await _loadContactSourceCandidatesPage(
-      isInitial: true,
-      requestToken: requestToken,
-    );
+    contactSourceCandidatesLoadingStreamValue.addValue(false);
+    contactSourceCandidatesPageLoadingStreamValue.addValue(false);
+    _contactSourceCandidatesReloadQueued = false;
+  }
+
+  void _syncContactSourceCandidatesForMode(
+    BellugaContactSourceMode mode, {
+    String? excludeProfileId,
+  }) {
+    if (mode == BellugaContactSourceMode.mirroredAccountProfile) {
+      unawaited(
+        loadContactSourceCandidates(excludeProfileId: excludeProfileId),
+      );
+      return;
+    }
+    _resetContactSourceCandidates(excludeProfileId: excludeProfileId);
   }
 
   Future<void> loadNextContactSourceCandidatesPage() async {
@@ -497,32 +611,37 @@ class TenantAdminAccountProfilesController implements Disposable {
       contactSourceCandidatesPageLoadingStreamValue.addValue(true);
     }
     try {
-      final excludeAccountProfileId =
-          _contactSourceCandidatesExcludeProfileId == null ||
-              _contactSourceCandidatesExcludeProfileId!.isEmpty
-          ? null
-          : tenantAdminAccountProfilesRepoString(
-              _contactSourceCandidatesExcludeProfileId!,
-            );
-      final page = isInitial
-          ? await _profilesRepository.loadContactSourceCandidates(
-              excludeAccountProfileId: excludeAccountProfileId,
-            )
-          : await _profilesRepository.loadNextContactSourceCandidatesPage();
-      if (page == null) {
-        return;
-      }
+      final requestedPage = isInitial
+          ? 1
+          : _contactSourceCandidatesCurrentPage + 1;
+      final page = await _nestedProfileCandidatesPageLoader.loadPage(
+        pageNumber: requestedPage,
+        search: _contactSourceCandidatesQuery,
+        profileType: _contactSourceCandidatesProfileType,
+        contactMode: BellugaContactSourceMode.own.rawValue,
+        contactChannelsEnabledOnly: true,
+        excludeAccountProfileId: _contactSourceCandidatesExcludeProfileId,
+      );
       if (_isDisposed || requestToken != _contactSourceCandidatesRequestToken) {
         return;
       }
-      final merged = isInitial
-          ? page.items
-          : _mergeAccountProfiles(
-              contactSourceCandidatesStreamValue.value,
-              page.items,
-            );
-      contactSourceCandidatesStreamValue.addValue(merged);
+      if (isInitial) {
+        _contactSourceCandidateWindow
+          ..clear()
+          ..addAll(page.items);
+      } else {
+        final existingWindow = List<TenantAdminAccountProfile>.from(
+          _contactSourceCandidateWindow,
+        );
+        _contactSourceCandidateWindow
+          ..clear()
+          ..addAll(_mergeAccountProfiles(existingWindow, page.items));
+      }
+      _contactSourceCandidatesCurrentPage =
+          page.pagination?.currentPage ?? requestedPage;
       contactSourceCandidatesHasMoreStreamValue.addValue(page.hasMore);
+      await _hydrateMissingSelectedContactSources();
+      _publishContactSourceCandidates();
       contactSourceCandidatesErrorStreamValue.addValue(null);
     } catch (error) {
       if (_isDisposed || requestToken != _contactSourceCandidatesRequestToken) {
@@ -532,9 +651,11 @@ class TenantAdminAccountProfilesController implements Disposable {
       // candidate set. The picker can still render and select the first page;
       // a subsequent initial load retries from the canonical endpoint.
       if (isInitial) {
-        contactSourceCandidatesStreamValue.addValue(const []);
+        _contactSourceCandidateWindow.clear();
       }
       contactSourceCandidatesHasMoreStreamValue.addValue(false);
+      await _hydrateMissingSelectedContactSources();
+      _publishContactSourceCandidates();
       contactSourceCandidatesErrorStreamValue.addValue(error.toString());
     } finally {
       _isFetchingContactSourceCandidates = false;
@@ -573,6 +694,54 @@ class TenantAdminAccountProfilesController implements Disposable {
           ),
         );
       },
+    );
+  }
+
+  void filterNestedProfileCandidatesByProfileType(String? profileType) {
+    _nestedProfileCandidatesProfileType = profileType?.trim().isEmpty ?? true
+        ? null
+        : profileType!.trim();
+    final requestToken = _nestedProfileCandidatesRequestToken + 1;
+    _nestedProfileCandidatesRequestToken = requestToken;
+    _nestedProfileSearchDebounce?.cancel();
+    unawaited(
+      _loadNestedProfileCandidatesPage(
+        isInitial: true,
+        requestToken: requestToken,
+      ),
+    );
+  }
+
+  void searchContactSourceCandidates(String query) {
+    _contactSourceCandidatesQuery = query.trim();
+    final requestToken = _contactSourceCandidatesRequestToken + 1;
+    _contactSourceCandidatesRequestToken = requestToken;
+    _contactSourceSearchDebounce?.cancel();
+    _contactSourceSearchDebounce = Timer(
+      _nestedProfileSearchDebounceDuration,
+      () {
+        unawaited(
+          _loadContactSourceCandidatesPage(
+            isInitial: true,
+            requestToken: requestToken,
+          ),
+        );
+      },
+    );
+  }
+
+  void filterContactSourceCandidatesByProfileType(String? profileType) {
+    _contactSourceCandidatesProfileType = profileType?.trim().isEmpty ?? true
+        ? null
+        : profileType!.trim();
+    final requestToken = _contactSourceCandidatesRequestToken + 1;
+    _contactSourceCandidatesRequestToken = requestToken;
+    _contactSourceSearchDebounce?.cancel();
+    unawaited(
+      _loadContactSourceCandidatesPage(
+        isInitial: true,
+        requestToken: requestToken,
+      ),
     );
   }
 
@@ -827,7 +996,10 @@ class TenantAdminAccountProfilesController implements Disposable {
             .syncRemoteState(profile),
       );
       unawaited(loadNestedProfileCandidates(excludeProfileId: profile.id));
-      unawaited(loadContactSourceCandidates(excludeProfileId: profile.id));
+      _syncContactSourceCandidatesForMode(
+        profile.contactMode,
+        excludeProfileId: profile.id,
+      );
       _removeAvatarOnSubmit = false;
       _removeCoverOnSubmit = false;
     } catch (error) {
@@ -857,6 +1029,10 @@ class TenantAdminAccountProfilesController implements Disposable {
         ),
       ),
     );
+    _syncContactSourceCandidatesForMode(
+      mode,
+      excludeProfileId: accountProfileStreamValue.value?.id,
+    );
   }
 
   void updateEditContactSourceAccountProfileId(String? profileId) {
@@ -868,6 +1044,9 @@ class TenantAdminAccountProfilesController implements Disposable {
             : normalized,
       ),
     );
+    _syncSelectedContactSourceCache(_selectedContactSourceIdsAcrossDrafts());
+    _publishContactSourceCandidates();
+    unawaited(_hydrateAndPublishSelectedContactSources());
   }
 
   void updateEditContactBubbleChannelId(String? channelId) {
@@ -1015,7 +1194,10 @@ class TenantAdminAccountProfilesController implements Disposable {
     _updateEditState(
       editStateStreamValue.value.copyWith().syncRemoteState(profile),
     );
-    unawaited(loadContactSourceCandidates(excludeProfileId: profile.id));
+    _syncContactSourceCandidatesForMode(
+      profile.contactMode,
+      excludeProfileId: profile.id,
+    );
     _removeAvatarOnSubmit = false;
     _removeCoverOnSubmit = false;
   }
@@ -1250,12 +1432,6 @@ class TenantAdminAccountProfilesController implements Disposable {
     if (editSubmittingStreamValue.value) return;
     editSubmittingStreamValue.addValue(true);
     try {
-      final nestedGroupBaselines = nestedProfileGroups == null
-          ? const <String, ({List<TenantAdminAccountProfileSelectionSummary> selections, int aggregateRevision})>{}
-          : await _loadEditNestedGroupMemberBaselines(
-              accountProfileId: accountProfileId,
-              nestedProfileGroups: nestedProfileGroups,
-            );
       final updated = await updateProfile(
         accountProfileId: accountProfileId,
         profileType: profileType,
@@ -1277,21 +1453,14 @@ class TenantAdminAccountProfilesController implements Disposable {
         contactChannelDrafts: contactChannelDrafts,
         bubbleSelection: bubbleSelection,
       );
-      final nestedGroupsApplied = nestedProfileGroups == null
-          ? updated
-          : await _applyEditNestedGroupMembersAfterUpdate(
-              profile: updated,
-              nestedProfileGroups: nestedProfileGroups,
-              baselines: nestedGroupBaselines,
-            );
       final finalProfile =
           _shouldSkipGalleryUpdate(
             accountProfileId: accountProfileId,
             galleryGroups: galleryGroups,
           )
-          ? nestedGroupsApplied
+          ? updated
           : galleryGroups == null
-          ? nestedGroupsApplied
+          ? updated
           : await _profilesRepository.updateAccountProfileGallery(
               accountProfileId: tenantAdminAccountProfilesRepoString(
                 accountProfileId,
@@ -1459,6 +1628,7 @@ class TenantAdminAccountProfilesController implements Disposable {
         ),
       ),
     );
+    _syncContactSourceCandidatesForMode(mode);
   }
 
   void updateCreateContactSourceAccountProfileId(String? profileId) {
@@ -1470,6 +1640,9 @@ class TenantAdminAccountProfilesController implements Disposable {
             : normalized,
       ),
     );
+    _syncSelectedContactSourceCache(_selectedContactSourceIdsAcrossDrafts());
+    _publishContactSourceCandidates();
+    unawaited(_hydrateAndPublishSelectedContactSources());
   }
 
   void updateCreateContactBubbleChannelId(String? channelId) {
@@ -1915,8 +2088,6 @@ class TenantAdminAccountProfilesController implements Disposable {
       groupId: groupId,
       profileId: profileId,
       selected: selected,
-      onLimit: () =>
-          reportCreateErrorMessage('Limite de perfis no grupo atingido.'),
     );
     _updateCreateState(
       createStateStreamValue.value.copyWith(nestedProfileGroups: next),
@@ -1941,8 +2112,6 @@ class TenantAdminAccountProfilesController implements Disposable {
       groupId: groupId,
       profileId: profileId,
       selected: selected,
-      onLimit: () =>
-          reportEditErrorMessage('Limite de perfis no grupo atingido.'),
     );
     _updateEditState(
       editStateStreamValue.value.copyWith(nestedProfileGroups: next),
@@ -1979,6 +2148,7 @@ class TenantAdminAccountProfilesController implements Disposable {
       final result = await _nestedProfileCandidatesPageLoader.loadPage(
         pageNumber: requestedPage,
         search: _nestedProfileCandidatesQuery,
+        profileType: _nestedProfileCandidatesProfileType,
         queryableOnly: true,
         excludeAccountProfileId: normalizedExclude,
       );
@@ -2051,6 +2221,58 @@ class TenantAdminAccountProfilesController implements Disposable {
     }
   }
 
+  Future<void> _hydrateEditNestedGroupBaseline({
+    required String accountProfileId,
+    required String groupId,
+    required String hydrationKey,
+  }) async {
+    try {
+      final baseline = await loadEditNestedGroupMemberBaseline(
+        accountProfileId: accountProfileId,
+        groupId: groupId,
+      );
+      if (_isDisposed) {
+        return;
+      }
+      final nextGroups = TenantAdminNestedProfileGroupOperations.replaceMembers(
+        editStateStreamValue.value.nestedProfileGroups,
+        groupId: groupId,
+        profileIds: baseline.selections.map((entry) => entry.id),
+        memberCount: baseline.selections.length,
+      );
+      _updateEditState(
+        editStateStreamValue.value.copyWith(nestedProfileGroups: nextGroups),
+      );
+      await _hydrateMissingSelectedNestedProfiles();
+      _publishNestedProfileCandidates();
+    } finally {
+      _editNestedGroupBaselineHydrationsInFlight.remove(hydrationKey);
+    }
+  }
+
+  TenantAdminNestedProfileGroup? _editNestedGroupById(String groupId) {
+    for (final group in editStateStreamValue.value.nestedProfileGroups) {
+      if (group.id == groupId) {
+        return group;
+      }
+    }
+    return null;
+  }
+
+  bool _shouldHydrateEditNestedGroupBaseline(
+    TenantAdminNestedProfileGroup group,
+  ) {
+    final currentIds = <String>{};
+    for (final entry in group.accountProfileIdValues) {
+      final normalized = entry.value.trim();
+      if (normalized.isEmpty) {
+        continue;
+      }
+      currentIds.add(normalized);
+    }
+    return group.memberCount > 0 && currentIds.length < group.memberCount;
+  }
+
   Set<String> _selectedNestedProfileIds(
     List<TenantAdminNestedProfileGroup> groups,
   ) {
@@ -2093,6 +2315,106 @@ class TenantAdminAccountProfilesController implements Disposable {
       _selectedNestedProfileCache.values.toList(growable: false),
     );
     nestedProfileCandidatesStreamValue.addValue(merged);
+  }
+
+  Set<String> _selectedContactSourceIdsAcrossDrafts() {
+    final selectedIds = <String>{};
+    final createSelectedId = createStateStreamValue
+        .value
+        .contactSourceAccountProfileId
+        ?.trim();
+    if (createSelectedId != null && createSelectedId.isNotEmpty) {
+      selectedIds.add(createSelectedId);
+    }
+    final editSelectedId = editStateStreamValue
+        .value
+        .contactSourceAccountProfileId
+        ?.trim();
+    if (editSelectedId != null && editSelectedId.isNotEmpty) {
+      selectedIds.add(editSelectedId);
+    }
+    return selectedIds;
+  }
+
+  void _syncSelectedContactSourceCache(Set<String> selectedIds) {
+    _selectedContactSourceCache.removeWhere(
+      (profileId, _) => !selectedIds.contains(profileId),
+    );
+  }
+
+  Future<void> _hydrateMissingSelectedContactSources() async {
+    final selectedIds = _selectedContactSourceIdsAcrossDrafts();
+    _syncSelectedContactSourceCache(selectedIds);
+    for (final profileId in selectedIds) {
+      if (_selectedContactSourceCache.containsKey(profileId)) {
+        continue;
+      }
+      final profile = await _hydrateSelectedContactSourceProfile(profileId);
+      if (_isDisposed) {
+        return;
+      }
+      if (profile == null) {
+        continue;
+      }
+      final refreshedSelectedIds = _selectedContactSourceIdsAcrossDrafts();
+      if (!refreshedSelectedIds.contains(profileId)) {
+        continue;
+      }
+      _selectedContactSourceCache[profileId] = profile;
+    }
+  }
+
+  Future<TenantAdminAccountProfile?> _hydrateSelectedContactSourceProfile(
+    String profileId,
+  ) async {
+    final inFlight = _selectedContactSourceHydrationInFlight[profileId];
+    if (inFlight != null) {
+      return inFlight;
+    }
+    final future = _fetchSelectedContactSourceProfile(profileId);
+    _selectedContactSourceHydrationInFlight[profileId] = future;
+    try {
+      return await future;
+    } finally {
+      if (identical(
+        _selectedContactSourceHydrationInFlight[profileId],
+        future,
+      )) {
+        _selectedContactSourceHydrationInFlight.remove(profileId);
+      }
+    }
+  }
+
+  Future<TenantAdminAccountProfile?> _fetchSelectedContactSourceProfile(
+    String profileId,
+  ) async {
+    try {
+      return await _profilesRepository.fetchAccountProfile(
+        tenantAdminAccountProfilesRepoString(
+          profileId,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _hydrateAndPublishSelectedContactSources() async {
+    await _hydrateMissingSelectedContactSources();
+    if (_isDisposed) {
+      return;
+    }
+    _publishContactSourceCandidates();
+  }
+
+  void _publishContactSourceCandidates() {
+    final merged = _mergeAccountProfiles(
+      _selectedContactSourceCache.values.toList(growable: false),
+      _contactSourceCandidateWindow,
+    );
+    contactSourceCandidatesStreamValue.addValue(merged);
   }
 
   TenantAdminAccountProfile? _findNestedProfileCandidateById(String profileId) {
@@ -2360,78 +2682,11 @@ class TenantAdminAccountProfilesController implements Disposable {
           contactChannelDrafts ?? const <BellugaContactChannelDraft>[],
       bubbleSelection: bubbleSelection,
     );
-    var aggregateRevision = profile.aggregateRevision ?? 0;
-    try {
-      for (final group in nestedProfileGroups) {
-        final addIds = group.accountProfileIdValues
-            .map((entry) => entry.value.trim())
-            .where((entry) => entry.isNotEmpty)
-            .toSet()
-            .map(
-              (entry) => tenantAdminAccountProfilesRepoString(
-                entry,
-                defaultValue: '',
-                isRequired: true,
-              ),
-            )
-            .toList(growable: false);
-        if (addIds.isEmpty) {
-          continue;
-        }
-        final mutation = await _profilesRepository.patchNestedGroupMembers(
-          accountProfileId: tenantAdminAccountProfilesRepoString(
-            profile.id,
-            defaultValue: '',
-            isRequired: true,
-          ),
-          groupId: tenantAdminAccountProfilesRepoString(
-            group.id,
-            defaultValue: '',
-            isRequired: true,
-          ),
-          aggregateRevision: tenantAdminAccountProfilesRepoInt(
-            aggregateRevision,
-            defaultValue: aggregateRevision,
-          ),
-          addIds: addIds,
-        );
-        aggregateRevision = mutation.aggregateRevision;
-      }
-    } catch (error) {
-      await _rollbackCreatedProfile(profile.id);
-      rethrow;
-    }
-    if (aggregateRevision != (profile.aggregateRevision ?? 0)) {
-      profile = await fetchProfile(profile.id);
-    }
     if (!_isDisposed) {
       accountProfileStreamValue.addValue(profile);
     }
     await loadProfiles(accountId);
     return profile;
-  }
-
-  Future<void> _rollbackCreatedProfile(String accountProfileId) async {
-    final profileId = accountProfileId.trim();
-    if (profileId.isEmpty) {
-      return;
-    }
-
-    final profileIdValue = tenantAdminAccountProfilesRepoString(
-      profileId,
-      defaultValue: '',
-      isRequired: true,
-    );
-
-    try {
-      await _profilesRepository.forceDeleteAccountProfile(profileIdValue);
-    } catch (_) {
-      try {
-        await _profilesRepository.deleteAccountProfile(profileIdValue);
-      } catch (_) {
-        // Preserve the original create-flow failure; cleanup is best effort.
-      }
-    }
   }
 
   Future<TenantAdminAccountProfile> updateProfile({
@@ -2529,122 +2784,6 @@ class TenantAdminAccountProfilesController implements Disposable {
     );
     await loadProfiles(profile.accountId);
     return profile;
-  }
-
-  Future<
-    Map<String, ({List<TenantAdminAccountProfileSelectionSummary> selections, int aggregateRevision})>
-  > _loadEditNestedGroupMemberBaselines({
-    required String accountProfileId,
-    required List<TenantAdminNestedProfileGroup> nestedProfileGroups,
-  }) async {
-    final baselines =
-        <String, ({List<TenantAdminAccountProfileSelectionSummary> selections, int aggregateRevision})>{};
-    for (final group in nestedProfileGroups) {
-      final groupId = group.id.trim();
-      if (groupId.isEmpty || baselines.containsKey(groupId)) {
-        continue;
-      }
-      baselines[groupId] = await loadEditNestedGroupMemberBaseline(
-        accountProfileId: accountProfileId,
-        groupId: groupId,
-      );
-    }
-
-    return baselines;
-  }
-
-  Future<TenantAdminAccountProfile> _applyEditNestedGroupMembersAfterUpdate({
-    required TenantAdminAccountProfile profile,
-    required List<TenantAdminNestedProfileGroup> nestedProfileGroups,
-    required Map<
-      String,
-      ({List<TenantAdminAccountProfileSelectionSummary> selections, int aggregateRevision})
-    >
-    baselines,
-  }) async {
-    final accountProfileId = profile.id.trim();
-    if (accountProfileId.isEmpty || nestedProfileGroups.isEmpty) {
-      return profile;
-    }
-
-    var aggregateRevision = profile.aggregateRevision ?? 0;
-    var changed = false;
-
-    for (final group in nestedProfileGroups) {
-      final groupId = group.id.trim();
-      if (groupId.isEmpty) {
-        continue;
-      }
-
-      final baseline = baselines[groupId] ??
-          (
-            selections: const <TenantAdminAccountProfileSelectionSummary>[],
-            aggregateRevision: aggregateRevision,
-          );
-      final nextSelections = group.accountProfileIdValues
-          .map(
-            (entry) => TenantAdminAccountProfileSelectionSummary(
-              idValue: TenantAdminAccountProfileIdValue(entry.value),
-            ),
-          )
-          .toList(growable: false);
-      final previousIds = baseline.selections.map((entry) => entry.id).toSet();
-      final nextIds = nextSelections.map((entry) => entry.id).toSet();
-      final addIds = nextIds.difference(previousIds);
-      final removeIds = previousIds.difference(nextIds);
-      if (addIds.isEmpty && removeIds.isEmpty) {
-        continue;
-      }
-
-      final mutation = await _profilesRepository.patchNestedGroupMembers(
-        accountProfileId: tenantAdminAccountProfilesRepoString(
-          accountProfileId,
-          defaultValue: '',
-          isRequired: true,
-        ),
-        groupId: tenantAdminAccountProfilesRepoString(
-          groupId,
-          defaultValue: '',
-          isRequired: true,
-        ),
-        aggregateRevision: tenantAdminAccountProfilesRepoInt(
-          aggregateRevision,
-          defaultValue: aggregateRevision,
-        ),
-        addIds: addIds
-            .map(
-              (entry) => tenantAdminAccountProfilesRepoString(
-                entry,
-                defaultValue: '',
-                isRequired: true,
-              ),
-            )
-            .toList(growable: false),
-        removeIds: removeIds
-            .map(
-              (entry) => tenantAdminAccountProfilesRepoString(
-                entry,
-                defaultValue: '',
-                isRequired: true,
-              ),
-            )
-            .toList(growable: false),
-      );
-      aggregateRevision = mutation.aggregateRevision;
-      changed = true;
-    }
-
-    if (!changed || aggregateRevision == (profile.aggregateRevision ?? 0)) {
-      return profile;
-    }
-
-    return _profilesRepository.fetchAccountProfile(
-      tenantAdminAccountProfilesRepoString(
-        accountProfileId,
-        defaultValue: '',
-        isRequired: true,
-      ),
-    );
   }
 
   TenantAdminProfileTypeDefinition? _resolveProfileType(String profileType) {
@@ -2915,6 +3054,7 @@ class TenantAdminAccountProfilesController implements Disposable {
   void dispose() {
     _isDisposed = true;
     _nestedProfileSearchDebounce?.cancel();
+    _contactSourceSearchDebounce?.cancel();
     _locationSelectionSubscription?.cancel();
     _clearAccountWatch();
     slugController.dispose();

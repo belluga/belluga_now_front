@@ -25,7 +25,7 @@ class AppDataDiscoveryFilterSelectionCodec {
     return AppDataDiscoveryFilterSelectionSnapshot(
       primaryKeys: _readTokenList(map['primary_keys']),
       taxonomySelections: _readTaxonomySelections(map['taxonomy_terms']),
-      typeFiltersByEntity: _readTypeFiltersByEntity(
+      typeFilterSelections: _readTypeFilterSelections(
         map['type_filters_by_entity'],
       ),
     );
@@ -46,9 +46,9 @@ class AppDataDiscoveryFilterSelectionCodec {
                 .toList(growable: false),
       },
       'type_filters_by_entity': <String, Object?>{
-        for (final entry in selection.typeFiltersByEntity.entries)
-          if (entry.key.trim().isNotEmpty)
-            entry.key: entry.value
+        for (final entitySelection in selection.typeFilterSelections)
+          if (!entitySelection.isEmpty)
+            entitySelection.entityKey.value: entitySelection.typeKeys
                 .map((value) => value.value)
                 .where((value) => value.isNotEmpty)
                 .toList(growable: false),
@@ -92,20 +92,25 @@ class AppDataDiscoveryFilterSelectionCodec {
     return selections;
   }
 
-  Map<String, List<AppDataDiscoveryFilterTokenValue>> _readTypeFiltersByEntity(
+  List<AppDataDiscoveryFilterEntityTypeSelection> _readTypeFilterSelections(
     Object? raw,
   ) {
     if (raw is! Map) {
-      return const <String, List<AppDataDiscoveryFilterTokenValue>>{};
+      return const <AppDataDiscoveryFilterEntityTypeSelection>[];
     }
-    final selections = <String, List<AppDataDiscoveryFilterTokenValue>>{};
+    final selections = <AppDataDiscoveryFilterEntityTypeSelection>[];
     for (final entry in raw.entries) {
-      final entity = entry.key.toString().trim();
+      final entityKey = AppDataDiscoveryFilterTokenValue.fromRaw(entry.key);
       final filters = _readTokenList(entry.value);
-      if (entity.isEmpty || filters.isEmpty) {
+      if (entityKey.value.isEmpty || filters.isEmpty) {
         continue;
       }
-      selections[entity] = filters;
+      selections.add(
+        AppDataDiscoveryFilterEntityTypeSelection(
+          entityKey: entityKey,
+          typeKeys: filters,
+        ),
+      );
     }
     return selections;
   }
