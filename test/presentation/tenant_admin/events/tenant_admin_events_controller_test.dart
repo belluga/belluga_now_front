@@ -330,6 +330,158 @@ void main() {
   );
 
   test(
+    'creating the primary occurrence seeds event-level profile groups into the canonical occurrence draft',
+    () {
+      final controller = TenantAdminEventsController(
+        eventsRepository: _TrackingEventsRepository(),
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken(
+          'landlord-token',
+        ),
+      );
+
+      controller.initEventForm();
+      controller.addEventProfileGroup();
+      final groupId =
+          controller.eventFormStateStreamValue.value.profileGroups.single.id;
+
+      controller.toggleEventProfileGroupMember(
+        groupId: groupId,
+        profileId: 'artist-1',
+        selected: true,
+      );
+      controller.applyEventStartAt(DateTime(2026, 4, 22, 20));
+
+      final state = controller.eventFormStateStreamValue.value;
+      expect(state.profileGroups.single.id, groupId);
+      expect(state.selectedRelatedAccountProfileIds, ['artist-1']);
+      expect(state.occurrences, hasLength(1));
+      expect(state.occurrences.single.profileGroups.single.id, groupId);
+      expect(
+        state.occurrences.single.profileGroups.single.accountProfileIdValues
+            .map((value) => value.value)
+            .toList(growable: false),
+        ['artist-1'],
+      );
+      expect(
+        state.occurrences.single.relatedAccountProfileIds
+            .map((value) => value.value)
+            .toList(growable: false),
+        ['artist-1'],
+      );
+    },
+  );
+
+  test(
+    'createOccurrenceDraft preserves event-level profile groups when creating the first occurrence',
+    () {
+      final controller = TenantAdminEventsController(
+        eventsRepository: _TrackingEventsRepository(),
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken(
+          'landlord-token',
+        ),
+      );
+
+      controller.initEventForm();
+      controller.addEventProfileGroup();
+      final groupId =
+          controller.eventFormStateStreamValue.value.profileGroups.single.id;
+
+      controller.toggleEventProfileGroupMember(
+        groupId: groupId,
+        profileId: 'artist-1',
+        selected: true,
+      );
+
+      controller.createOccurrenceDraft();
+
+      final state = controller.eventFormStateStreamValue.value;
+      expect(state.profileGroups.single.id, groupId);
+      expect(state.selectedRelatedAccountProfileIds, ['artist-1']);
+      expect(state.occurrences, hasLength(1));
+      expect(state.occurrences.single.profileGroups.single.id, groupId);
+      expect(
+        state.occurrences.single.profileGroups.single.accountProfileIdValues
+            .map((value) => value.value)
+            .toList(growable: false),
+        ['artist-1'],
+      );
+      expect(
+        state.occurrences.single.relatedAccountProfileIds
+            .map((value) => value.value)
+            .toList(growable: false),
+        ['artist-1'],
+      );
+    },
+  );
+
+  test(
+    'event-level profile-group edits mirror to the single occurrence canonical state',
+    () {
+      final controller = TenantAdminEventsController(
+        eventsRepository: _TrackingEventsRepository(),
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken(
+          'landlord-token',
+        ),
+      );
+
+      controller.initEventForm(
+        existingEvent: TenantAdminEvent(
+          eventIdValue: tenantAdminRequiredText('evt-single-occurrence'),
+          slugValue: tenantAdminRequiredText('evt-single-occurrence'),
+          titleValue: tenantAdminRequiredText('Evento em edicao'),
+          contentValue: tenantAdminOptionalText('Conteudo'),
+          type: TenantAdminEventType(
+            nameValue: tenantAdminRequiredText('Show'),
+            slugValue: tenantAdminRequiredText('show'),
+          ),
+          occurrences: <TenantAdminEventOccurrence>[
+            TenantAdminEventOccurrence(
+              occurrenceIdValue: tenantAdminOptionalText('occ-1'),
+              occurrenceSlugValue: tenantAdminOptionalText('occ-1'),
+              dateTimeStartValue: tenantAdminDateTime(
+                DateTime.utc(2026, 4, 22, 23),
+              ),
+            ),
+          ],
+          publication: TenantAdminEventPublication(
+            statusValue: tenantAdminRequiredText('draft'),
+          ),
+        ),
+      );
+
+      controller.addEventProfileGroup();
+      final groupId =
+          controller.eventFormStateStreamValue.value.profileGroups.single.id;
+      controller.toggleEventProfileGroupMember(
+        groupId: groupId,
+        profileId: 'artist-1',
+        selected: true,
+      );
+
+      final state = controller.eventFormStateStreamValue.value;
+      expect(state.profileGroups.single.id, groupId);
+      expect(state.selectedRelatedAccountProfileIds, ['artist-1']);
+      expect(state.occurrences, hasLength(1));
+      expect(state.occurrences.single.profileGroups.single.id, groupId);
+      expect(
+        state.occurrences.single.profileGroups.single.accountProfileIdValues
+            .map((value) => value.value)
+            .toList(growable: false),
+        ['artist-1'],
+      );
+      expect(
+        state.occurrences.single.relatedAccountProfileIds
+            .map((value) => value.value)
+            .toList(growable: false),
+        ['artist-1'],
+      );
+    },
+  );
+
+  test(
     'initEventForm seeds related profile cache with occurrence-owned profiles',
     () {
       final controller = TenantAdminEventsController(

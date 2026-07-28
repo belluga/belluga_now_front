@@ -619,38 +619,51 @@ class TenantAdminEventsController implements Disposable {
     final firstOccurrence = localOccurrences.firstOrNull;
     final profileGroups =
         existingEvent?.profileGroups ?? const <TenantAdminNestedProfileGroup>[];
-    final selectedRelatedAccountProfileIds = profileGroups.isNotEmpty
-        ? TenantAdminNestedProfileGroupOperations.memberIds(profileGroups)
-        : [
-            ...?existingEvent?.eventParties
-                .where((party) => party.partyType != 'venue')
-                .map((party) => party.partyRefId),
-          ];
-    final nextState = TenantAdminEventFormState(
-      startAt: firstOccurrence?.dateTimeStart == null
-          ? null
-          : TimezoneConverter.utcToLocal(firstOccurrence!.dateTimeStart),
-      endAt: firstOccurrence?.dateTimeEnd == null
-          ? null
-          : TimezoneConverter.utcToLocal(firstOccurrence!.dateTimeEnd!),
-      publishAt: existingEvent?.publication.publishAt == null
-          ? null
-          : TimezoneConverter.utcToLocal(existingEvent!.publication.publishAt!),
-      locationMode: existingEvent?.location?.mode ?? 'physical',
-      publicationStatus: existingEvent?.publication.status ?? 'draft',
-      selectedVenue: _selectedVenueCandidateFromEvent(existingEvent),
-      selectedTypeSlug: existingEvent?.type.slug.trim(),
-      selectedRelatedAccountProfileIds: selectedRelatedAccountProfileIds,
-      profileGroups: profileGroups,
-      occurrences: List<TenantAdminEventOccurrence>.unmodifiable(
-        localOccurrences,
+    final selectedRelatedAccountProfileIds = () {
+      if (localOccurrences.length == 1 &&
+          localOccurrences.first.profileGroups.isNotEmpty) {
+        return TenantAdminNestedProfileGroupOperations.memberIds(
+          localOccurrences.first.profileGroups,
+        );
+      }
+      if (profileGroups.isNotEmpty) {
+        return TenantAdminNestedProfileGroupOperations.memberIds(profileGroups);
+      }
+      return [
+        ...?existingEvent?.eventParties
+            .where((party) => party.partyType != 'venue')
+            .map((party) => party.partyRefId),
+      ];
+    }();
+    final nextState = _mirrorSingleOccurrenceEventProfileGroups(
+      TenantAdminEventFormState(
+        startAt: firstOccurrence?.dateTimeStart == null
+            ? null
+            : TimezoneConverter.utcToLocal(firstOccurrence!.dateTimeStart),
+        endAt: firstOccurrence?.dateTimeEnd == null
+            ? null
+            : TimezoneConverter.utcToLocal(firstOccurrence!.dateTimeEnd!),
+        publishAt: existingEvent?.publication.publishAt == null
+            ? null
+            : TimezoneConverter.utcToLocal(
+                existingEvent!.publication.publishAt!,
+              ),
+        locationMode: existingEvent?.location?.mode ?? 'physical',
+        publicationStatus: existingEvent?.publication.status ?? 'draft',
+        selectedVenue: _selectedVenueCandidateFromEvent(existingEvent),
+        selectedTypeSlug: existingEvent?.type.slug.trim(),
+        selectedRelatedAccountProfileIds: selectedRelatedAccountProfileIds,
+        profileGroups: profileGroups,
+        occurrences: List<TenantAdminEventOccurrence>.unmodifiable(
+          localOccurrences,
+        ),
+        occurrenceLocalIds: List<String>.unmodifiable(occurrenceLocalIds),
+        programmingItemLocalIdsByOccurrenceKey: Map.unmodifiable(
+          programmingItemLocalIdsByOccurrenceKey,
+        ),
+        selectedTaxonomyTerms: selectedTaxonomyTerms,
+        hasHydratedDefaultVenue: false,
       ),
-      occurrenceLocalIds: List<String>.unmodifiable(occurrenceLocalIds),
-      programmingItemLocalIdsByOccurrenceKey: Map.unmodifiable(
-        programmingItemLocalIdsByOccurrenceKey,
-      ),
-      selectedTaxonomyTerms: selectedTaxonomyTerms,
-      hasHydratedDefaultVenue: false,
     );
 
     eventTitleController.text = existingEvent?.title ?? '';
@@ -817,15 +830,15 @@ class TenantAdminEventsController implements Disposable {
 
   void addEventProfileGroup() {
     final current = eventFormStateStreamValue.value;
-    if (current.profileGroups.length >= 12) {
+    final currentGroups = _eventLevelProfileGroups(current);
+    if (currentGroups.length >= 12) {
       submitErrorMessageStreamValue.addValue('Limite de grupos atingido.');
       return;
     }
     _replaceEventFormState(
-      current.copyWith(
-        profileGroups: TenantAdminNestedProfileGroupOperations.append(
-          current.profileGroups,
-        ),
+      _withEventLevelProfileGroups(
+        current,
+        TenantAdminNestedProfileGroupOperations.append(currentGroups),
       ),
     );
   }
@@ -833,9 +846,10 @@ class TenantAdminEventsController implements Disposable {
   void renameEventProfileGroup(String groupId, String label) {
     final current = eventFormStateStreamValue.value;
     _replaceEventFormState(
-      current.copyWith(
-        profileGroups: TenantAdminNestedProfileGroupOperations.rename(
-          current.profileGroups,
+      _withEventLevelProfileGroups(
+        current,
+        TenantAdminNestedProfileGroupOperations.rename(
+          _eventLevelProfileGroups(current),
           groupId: groupId,
           label: label,
         ),
@@ -847,7 +861,7 @@ class TenantAdminEventsController implements Disposable {
     final current = eventFormStateStreamValue.value;
     _applyEventProfileGroups(
       TenantAdminNestedProfileGroupOperations.remove(
-        current.profileGroups,
+        _eventLevelProfileGroups(current),
         groupId: groupId,
       ),
     );
@@ -856,9 +870,10 @@ class TenantAdminEventsController implements Disposable {
   void moveEventProfileGroup(String groupId, int delta) {
     final current = eventFormStateStreamValue.value;
     _replaceEventFormState(
-      current.copyWith(
-        profileGroups: TenantAdminNestedProfileGroupOperations.move(
-          current.profileGroups,
+      _withEventLevelProfileGroups(
+        current,
+        TenantAdminNestedProfileGroupOperations.move(
+          _eventLevelProfileGroups(current),
           groupId: groupId,
           delta: delta,
         ),
@@ -873,7 +888,7 @@ class TenantAdminEventsController implements Disposable {
   }) {
     final current = eventFormStateStreamValue.value;
     final nextGroups = TenantAdminNestedProfileGroupOperations.toggleMember(
-      current.profileGroups,
+      _eventLevelProfileGroups(current),
       groupId: groupId,
       profileId: profileId,
       selected: selected,
@@ -1071,17 +1086,19 @@ class TenantAdminEventsController implements Disposable {
       occurrenceKeys: nextKeys,
     );
     final primary = sorted.firstOrNull?.occurrence;
-    final nextState = current.copyWith(
-      startAt: primary?.dateTimeStart,
-      endAt: primary?.dateTimeEnd,
-      occurrences: List<TenantAdminEventOccurrence>.unmodifiable(
-        sorted.map((entry) => entry.occurrence),
-      ),
-      occurrenceLocalIds: List<String>.unmodifiable(
-        sorted.map((entry) => entry.key),
-      ),
-      programmingItemLocalIdsByOccurrenceKey: Map.unmodifiable(
-        nextItemKeysByOccurrenceKey,
+    final nextState = _mirrorSingleOccurrenceEventProfileGroups(
+      current.copyWith(
+        startAt: primary?.dateTimeStart,
+        endAt: primary?.dateTimeEnd,
+        occurrences: List<TenantAdminEventOccurrence>.unmodifiable(
+          sorted.map((entry) => entry.occurrence),
+        ),
+        occurrenceLocalIds: List<String>.unmodifiable(
+          sorted.map((entry) => entry.key),
+        ),
+        programmingItemLocalIdsByOccurrenceKey: Map.unmodifiable(
+          nextItemKeysByOccurrenceKey,
+        ),
       ),
     );
     clearEventGroupValidation(TenantAdminEventFormValidationTargets.schedule);
@@ -1103,13 +1120,15 @@ class TenantAdminEventsController implements Disposable {
         _normalizedProgrammingItemKeysByOccurrenceKey(current)
           ..remove(removedKey);
     final primary = next.firstOrNull;
-    final nextState = current.copyWith(
-      startAt: primary?.dateTimeStart,
-      endAt: primary?.dateTimeEnd,
-      occurrences: List<TenantAdminEventOccurrence>.unmodifiable(next),
-      occurrenceLocalIds: List<String>.unmodifiable(nextKeys),
-      programmingItemLocalIdsByOccurrenceKey: Map.unmodifiable(
-        nextItemKeysByOccurrenceKey,
+    final nextState = _mirrorSingleOccurrenceEventProfileGroups(
+      current.copyWith(
+        startAt: primary?.dateTimeStart,
+        endAt: primary?.dateTimeEnd,
+        occurrences: List<TenantAdminEventOccurrence>.unmodifiable(next),
+        occurrenceLocalIds: List<String>.unmodifiable(nextKeys),
+        programmingItemLocalIdsByOccurrenceKey: Map.unmodifiable(
+          nextItemKeysByOccurrenceKey,
+        ),
       ),
     );
     clearEventGroupValidation(TenantAdminEventFormValidationTargets.schedule);
@@ -1119,6 +1138,9 @@ class TenantAdminEventsController implements Disposable {
 
   String createOccurrenceDraft() {
     final current = eventFormStateStreamValue.value;
+    if (current.occurrences.isEmpty) {
+      return _materializePrimaryOccurrenceDraft(current);
+    }
     final fallbackStart = current.occurrences.isNotEmpty
         ? current.occurrences.last.dateTimeStart.add(const Duration(days: 1))
         : current.startAt ?? DateTime.now();
@@ -1180,24 +1202,7 @@ class TenantAdminEventsController implements Disposable {
     if (existingKey != null) {
       return existingKey;
     }
-    final current = eventFormStateStreamValue.value;
-    final startAt = current.startAt ?? DateTime.now();
-    final occurrence = TenantAdminEventOccurrence(
-      dateTimeStartValue: tenantAdminDateTime(startAt),
-      dateTimeEndValue: tenantAdminOptionalDateTime(current.endAt),
-    );
-    final key = _newEventFormLocalId('occurrence');
-    _replaceEventFormState(
-      current.copyWith(
-        startAt: startAt,
-        occurrences: [occurrence],
-        occurrenceLocalIds: [key],
-        programmingItemLocalIdsByOccurrenceKey: {key: const <String>[]},
-      ),
-    );
-    clearEventGroupValidation(TenantAdminEventFormValidationTargets.schedule);
-    _syncEventDateTimeControllers(eventFormStateStreamValue.value);
-    return key;
+    return _materializePrimaryOccurrenceDraft(eventFormStateStreamValue.value);
   }
 
   TenantAdminEventOccurrence? occurrenceForKey(String occurrenceKey) {
@@ -3293,17 +3298,97 @@ class TenantAdminEventsController implements Disposable {
     eventFormStateStreamValue.addValue(nextState);
   }
 
+  String _materializePrimaryOccurrenceDraft(TenantAdminEventFormState current) {
+    final nextState = _buildPrimaryOccurrenceDraftState(current);
+    final occurrenceKey = nextState.occurrenceLocalIds.first;
+    _replaceEventFormState(nextState);
+    clearEventGroupValidation(TenantAdminEventFormValidationTargets.schedule);
+    _syncEventDateTimeControllers(nextState);
+    return occurrenceKey;
+  }
+
+  TenantAdminEventFormState _buildPrimaryOccurrenceDraftState(
+    TenantAdminEventFormState current,
+  ) {
+    final startAt = current.startAt ?? DateTime.now();
+    final endAt = current.endAt;
+    return _replacePrimaryOccurrenceInState(
+      current,
+      startAt: startAt,
+      endAt: endAt,
+    ).copyWith(startAt: startAt, endAt: endAt);
+  }
+
   void _applyEventProfileGroups(
     List<TenantAdminNestedProfileGroup> profileGroups,
   ) {
-    final current = eventFormStateStreamValue.value;
     _replaceEventFormState(
-      current.copyWith(
-        profileGroups: profileGroups,
-        selectedRelatedAccountProfileIds:
-            TenantAdminNestedProfileGroupOperations.memberIds(profileGroups),
+      _withEventLevelProfileGroups(
+        eventFormStateStreamValue.value,
+        profileGroups,
       ),
     );
+  }
+
+  List<TenantAdminNestedProfileGroup> _eventLevelProfileGroups(
+    TenantAdminEventFormState state,
+  ) {
+    if (state.occurrences.length == 1) {
+      return state.occurrences.first.profileGroups;
+    }
+    return state.profileGroups;
+  }
+
+  TenantAdminEventFormState _withEventLevelProfileGroups(
+    TenantAdminEventFormState current,
+    List<TenantAdminNestedProfileGroup> profileGroups,
+  ) {
+    final selectedRelatedAccountProfileIds =
+        TenantAdminNestedProfileGroupOperations.memberIds(profileGroups);
+    var nextState = current.copyWith(
+      profileGroups: profileGroups,
+      selectedRelatedAccountProfileIds: selectedRelatedAccountProfileIds,
+    );
+    if (current.occurrences.length != 1) {
+      return nextState;
+    }
+
+    final occurrences = current.occurrences.toList(growable: true);
+    final nextPrimary = _applyOccurrenceProfileGroups(
+      occurrences.first,
+      profileGroups,
+    );
+    occurrences[0] = nextPrimary;
+    final occurrenceKeys = _normalizedOccurrenceKeys(current);
+    final itemKeysByOccurrenceKey =
+        _normalizedProgrammingItemKeysByOccurrenceKey(current);
+    final primaryOccurrenceKey = occurrenceKeys.firstOrNull;
+    if (primaryOccurrenceKey != null) {
+      itemKeysByOccurrenceKey[primaryOccurrenceKey] =
+          _reconcileProgrammingItemKeys(
+            currentKeys: itemKeysByOccurrenceKey[primaryOccurrenceKey],
+            items: nextPrimary.programmingItems,
+          );
+    }
+
+    nextState = nextState.copyWith(
+      occurrences: List<TenantAdminEventOccurrence>.unmodifiable(occurrences),
+      occurrenceLocalIds: List<String>.unmodifiable(occurrenceKeys),
+      programmingItemLocalIdsByOccurrenceKey: Map.unmodifiable(
+        itemKeysByOccurrenceKey,
+      ),
+    );
+    return nextState;
+  }
+
+  TenantAdminEventFormState _mirrorSingleOccurrenceEventProfileGroups(
+    TenantAdminEventFormState state,
+  ) {
+    if (state.occurrences.length != 1) {
+      return state;
+    }
+    final profileGroups = state.occurrences.first.profileGroups;
+    return state.copyWith(profileGroups: profileGroups);
   }
 
   void _syncEventDateTimeControllers(TenantAdminEventFormState state) {
@@ -3390,7 +3475,7 @@ class TenantAdminEventsController implements Disposable {
     final existing = current.occurrences.isEmpty
         ? null
         : current.occurrences.first;
-    final nextPrimary = _copyOccurrence(
+    var nextPrimary = _copyOccurrence(
       existing ??
           TenantAdminEventOccurrence(
             dateTimeStartValue: tenantAdminDateTime(startAt),
@@ -3402,6 +3487,19 @@ class TenantAdminEventsController implements Disposable {
       profileGroups: profileGroups,
       programmingItems: programmingItems,
     );
+    final shouldSeedEventLevelProfileGroups =
+        existing == null &&
+        profileGroups == null &&
+        relatedAccountProfileIdValues == null &&
+        relatedAccountProfiles == null &&
+        programmingItems == null &&
+        current.profileGroups.isNotEmpty;
+    if (shouldSeedEventLevelProfileGroups) {
+      nextPrimary = _applyOccurrenceProfileGroups(
+        nextPrimary,
+        current.profileGroups,
+      );
+    }
     final next = current.occurrences.toList(growable: true);
     final nextKeys = _normalizedOccurrenceKeys(current).toList(growable: true);
     final itemKeysByOccurrenceKey =
@@ -3420,11 +3518,13 @@ class TenantAdminEventsController implements Disposable {
         items: nextPrimary.programmingItems,
       );
     }
-    return current.copyWith(
-      occurrences: List<TenantAdminEventOccurrence>.unmodifiable(next),
-      occurrenceLocalIds: List<String>.unmodifiable(nextKeys),
-      programmingItemLocalIdsByOccurrenceKey: Map.unmodifiable(
-        itemKeysByOccurrenceKey,
+    return _mirrorSingleOccurrenceEventProfileGroups(
+      current.copyWith(
+        occurrences: List<TenantAdminEventOccurrence>.unmodifiable(next),
+        occurrenceLocalIds: List<String>.unmodifiable(nextKeys),
+        programmingItemLocalIdsByOccurrenceKey: Map.unmodifiable(
+          itemKeysByOccurrenceKey,
+        ),
       ),
     );
   }
@@ -3462,17 +3562,19 @@ class TenantAdminEventsController implements Disposable {
               (occurrence: occurrences[index], key: occurrenceKeys[index]),
           ];
     final primary = entries.firstOrNull?.occurrence;
-    final nextState = current.copyWith(
-      startAt: primary?.dateTimeStart,
-      endAt: primary?.dateTimeEnd,
-      occurrences: List<TenantAdminEventOccurrence>.unmodifiable(
-        entries.map((entry) => entry.occurrence),
-      ),
-      occurrenceLocalIds: List<String>.unmodifiable(
-        entries.map((entry) => entry.key),
-      ),
-      programmingItemLocalIdsByOccurrenceKey: Map.unmodifiable(
-        itemKeysByOccurrenceKey,
+    final nextState = _mirrorSingleOccurrenceEventProfileGroups(
+      current.copyWith(
+        startAt: primary?.dateTimeStart,
+        endAt: primary?.dateTimeEnd,
+        occurrences: List<TenantAdminEventOccurrence>.unmodifiable(
+          entries.map((entry) => entry.occurrence),
+        ),
+        occurrenceLocalIds: List<String>.unmodifiable(
+          entries.map((entry) => entry.key),
+        ),
+        programmingItemLocalIdsByOccurrenceKey: Map.unmodifiable(
+          itemKeysByOccurrenceKey,
+        ),
       ),
     );
     _replaceEventFormState(nextState);
