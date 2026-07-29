@@ -910,6 +910,12 @@ class _TenantAdminAccountProfileEditScreenState
                                                             _currentAccountProfileIdForRequests(),
                                                         groupId: groupId,
                                                       ),
+                                              onOpenPicker: () =>
+                                                  _controller
+                                                      .loadNestedProfileCandidates(
+                                                        excludeProfileId:
+                                                            _currentAccountProfileIdForRequests(),
+                                                      ),
                                               searchLoadingStreamValue: _controller
                                                   .nestedProfileSearchLoadingStreamValue,
                                               searchPageLoadingStreamValue:

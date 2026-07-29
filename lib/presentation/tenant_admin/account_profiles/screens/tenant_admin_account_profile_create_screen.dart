@@ -491,6 +491,8 @@ class _TenantAdminAccountProfileCreateScreenState
                                   .nestedProfileSearchPageLoadingStreamValue,
                               searchHasMoreStreamValue: _controller
                                   .nestedProfileSearchHasMoreStreamValue,
+                              onOpenPicker: () =>
+                                  _controller.loadNestedProfileCandidates(),
                               addButtonKey: const Key(
                                 'tenantAdminCreateAddNestedGroupButton',
                               ),
