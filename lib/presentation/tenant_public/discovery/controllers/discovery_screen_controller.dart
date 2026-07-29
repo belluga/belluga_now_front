@@ -511,7 +511,7 @@ class DiscoveryScreenController extends Object
   void _scheduleReload({required bool immediate}) {
     _searchDebounce?.cancel();
     if (immediate) {
-      unawaited(_reloadPartners());
+      Timer(Duration.zero, () { unawaited(_reloadPartners()); });
       return;
     }
     _searchDebounce = Timer(_searchDebounceDuration, () {
@@ -825,7 +825,11 @@ class DiscoveryScreenController extends Object
       return false;
     }
 
-    if (canUsePersistedFallback && repairedQueryEmpty) {
+    if (canUsePersistedFallback &&
+        repairedQueryEmpty &&
+        runtimeCatalog.filters.isNotEmpty) {
+      // Backend returned a non-empty repaired catalog (stale filter removed) →
+      // trust the catalog; no corrective reload needed.
       final effectiveQuery =
           _effectiveSearchQuery(searchQueryStreamValue.value.trim()) ?? '';
       if (_shouldSyncNearby(

@@ -2136,6 +2136,111 @@ void main() {
   );
 
   test(
+    'discovery corrective reload fires when stale persisted type filter returns empty catalog at init',
+    () async {
+      // Production scenario confirmed by runtime evidence:
+      // A previous session persisted a 'musician' type filter. On the next init the
+      // controller uses the persisted fallback to build typeFilters=['musician']. The
+      // backend returns data:[] and an EMPTY discovery_filter_catalog (filters:[]).
+      //
+      // Before the fix: _consumeCanonicalRuntimeDiscoveryFilterCatalog enters the
+      // canUsePersistedFallback && repairedQueryEmpty branch and returns false without
+      // calling _scheduleReload — corrective reload never fires.
+      //
+      // After the fix: the branch additionally checks runtimeCatalog.filters.isNotEmpty.
+      // An empty catalog falls through to _scheduleReload(immediate:true). The
+      // Timer(Duration.zero,...) deferral (Fix 2) ensures the corrective reload fires
+      // AFTER _isFetchingPage=false so it is not dropped by the guard.
+      const catalogWithMusician = DiscoveryFilterCatalog(
+        surface: 'discovery.account_profiles',
+        filters: <DiscoveryFilterCatalogItem>[
+          DiscoveryFilterCatalogItem(
+            key: 'musician',
+            label: 'Musicians',
+            entities: <String>{'account_profile'},
+            types: <String>{'musician'},
+            typesByEntity: <String, Set<String>>{
+              'account_profile': <String>{'musician'},
+            },
+          ),
+        ],
+      );
+      const emptyFilterCatalog = DiscoveryFilterCatalog(
+        surface: 'discovery.account_profiles',
+      );
+
+      final artist1 = _profile(
+        id: _mongoId('cri1'),
+        type: 'artist',
+        name: 'Artist One',
+      );
+      final artist2 = _profile(
+        id: _mongoId('cri2'),
+        type: 'artist',
+        name: 'Artist Two',
+      );
+
+      // Persisted snapshot stored by a previous session that had catalogWithMusician.
+      // typeFilterSelections is non-empty → hasTypeFilterSelections=true →
+      // canUsePersistedFallback=true → persisted musician filter is used at init.
+      final appDataRepository = _FakeAppDataRepository(
+        appData: _buildAppData(),
+        maxRadiusMeters: _buildAppData().mapRadiusDefaultMeters,
+        discoveryFilterSelections: <String, AppDataDiscoveryFilterSelectionSnapshot>{
+          'discovery.account_profiles': _appDataSelectionSnapshot(
+            const DiscoveryFilterSelection(primaryKeys: <String>{'musician'}),
+            catalog: catalogWithMusician,
+          ),
+        },
+      );
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
+
+      final repository = _EmptyBackendCatalogFakeRepository(
+        profiles: <AccountProfileModel>[artist1, artist2],
+        emptyFilterCatalog: emptyFilterCatalog,
+      );
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+      );
+
+      await controller.init();
+
+      // Allow init fetch + reconciliation + corrective reload (Timer.zero) to settle.
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      // Init sent musician filter (from persisted fallback). Corrective reload must
+      // have fired as the 2nd request (no type filter).
+      expect(
+        repository.pageRequests,
+        hasLength(2),
+        reason:
+            'Expected init(musician-filter) + corrective-reload(no-filter) = 2 '
+            'requests; the bug suppresses the corrective reload so only 1 is recorded',
+      );
+      expect(
+        repository.pageRequests.first.typeFilters,
+        <String>['musician'],
+        reason: 'Init request must carry the persisted stale musician filter',
+      );
+      expect(
+        repository.pageRequests.last.typeFilters,
+        isEmpty,
+        reason: 'Corrective reload must carry no type filters',
+      );
+      // After corrective reload both artists are visible.
+      expect(
+        controller.filteredPartnersStreamValue.value,
+        hasLength(2),
+        reason:
+            'Both artists must be visible after corrective reload; the bug leaves '
+            'filteredPartnersStreamValue empty',
+      );
+
+      controller.onDispose();
+    },
+  );
+
+  test(
     'discovery stops loading and keeps favoritable chips when first page fails',
     () async {
       final repository = _FailingAccountProfilesRepository();
@@ -3270,6 +3375,111 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
 
   @override
   Future<void> stopTracking() async {}
+}
+
+/// Fake repository for the stale-persisted-filter corrective-reload RED test.
+///
+/// Simulates the production scenario where the backend returns an empty
+/// discovery_filter_catalog (filters:[]) when queried with a stale type filter.
+///
+/// Call 1 (init with musician from persisted fallback): 0 profiles + empty catalog.
+/// Call 2+ (corrective reload, no filter): all profiles + empty catalog.
+class _EmptyBackendCatalogFakeRepository
+    extends AccountProfilesRepositoryContract {
+  _EmptyBackendCatalogFakeRepository({
+    required this.profiles,
+    required this.emptyFilterCatalog,
+  });
+
+  final List<AccountProfileModel> profiles;
+  final DiscoveryFilterCatalog emptyFilterCatalog;
+  final List<_PageRequest> pageRequests = <_PageRequest>[];
+  int fetchCount = 0;
+
+  @override
+  Future<void> init() async {
+    favoriteAccountProfileIdsStreamValue.addValue(
+      <AccountProfilesRepositoryContractPrimString>{},
+    );
+    allAccountProfilesStreamValue.addValue(profiles);
+  }
+
+  @override
+  Future<PagedAccountProfilesResult> fetchAccountProfilesPage({
+    required AccountProfilesRepositoryContractPrimInt page,
+    required AccountProfilesRepositoryContractPrimInt pageSize,
+    AccountProfilesRepositoryContractPrimString? query,
+    AccountProfilesRepositoryContractPrimString? typeFilter,
+    List<AccountProfilesRepositoryContractPrimString>? typeFilters,
+    List<dynamic>? taxonomyFilters,
+  }) async {
+    fetchCount++;
+    final normalizedTypeFilters =
+        (typeFilters ?? const <AccountProfilesRepositoryContractPrimString>[])
+            .map((f) => f.value.trim())
+            .where((f) => f.isNotEmpty)
+            .toList(growable: false);
+    pageRequests.add(
+      _PageRequest(
+        page: page.value,
+        pageSize: pageSize.value,
+        query: query?.value.trim(),
+        typeFilter: typeFilter?.value.trim(),
+        typeFilters: normalizedTypeFilters,
+        taxonomyFilters: const <String>[],
+      ),
+    );
+    if (fetchCount == 1) {
+      // Init fetch with stale musician filter → backend returns empty (no matches
+      // for this type) and an empty catalog (type_options:[]).
+      return pagedAccountProfilesResultFromRaw(
+        profiles: const <AccountProfileModel>[],
+        hasMore: false,
+        discoveryFilterCatalog: emptyFilterCatalog,
+      );
+    }
+    // Corrective reload with no filter → backend returns all profiles.
+    return pagedAccountProfilesResultFromRaw(
+      profiles: profiles,
+      hasMore: false,
+      discoveryFilterCatalog: emptyFilterCatalog,
+    );
+  }
+
+  @override
+  Future<AccountProfileModel?> getAccountProfileBySlug(
+    AccountProfilesRepositoryContractPrimString slug,
+  ) async => null;
+
+  @override
+  Future<List<AccountProfileNestedGroupMember>> getNestedGroupMembersByPath(
+    AccountProfilesRepositoryContractPrimString membersPath,
+  ) async => const <AccountProfileNestedGroupMember>[];
+
+  @override
+  Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
+    AccountProfilesRepositoryContractPrimInt? pageSize,
+    List<AccountProfilesRepositoryContractPrimString>? typeFilters,
+    List<dynamic>? taxonomyFilters,
+  }) async => const <AccountProfileModel>[];
+
+  @override
+  Future<void> toggleFavorite(
+    AccountProfilesRepositoryContractPrimString accountProfileId,
+  ) async {}
+
+  @override
+  AccountProfilesRepositoryContractPrimBool isFavorite(
+    AccountProfilesRepositoryContractPrimString accountProfileId,
+  ) => AccountProfilesRepositoryContractPrimBool.fromRaw(
+        false,
+        defaultValue: false,
+        isRequired: true,
+      );
+
+  @override
+  List<AccountProfileModel> getFavoriteAccountProfiles() =>
+      const <AccountProfileModel>[];
 }
 
 AppData _buildAppData() {
