@@ -358,6 +358,195 @@ void main() {
   );
 
   testWidgets(
+    'renders the source bubble selection as an inert mirrored indicator',
+    (tester) async {
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+      final sourceChannel = BellugaContactChannel(
+        id: 'source-whatsapp',
+        type: BellugaContactChannelType.whatsapp,
+        value: '+55 (27) 99999-9999',
+      );
+      final sourceProfile = _profile(
+        id: '507f1f77bcf86cd799439001',
+        contactChannels: [sourceChannel],
+        effectiveContactChannels: [sourceChannel],
+        contactBubbleChannelId: sourceChannel.id,
+      );
+      profilesRepository.profileTypesToReturn = [
+        _profileType(
+          hasGallery: false,
+          hasNestedProfileGroups: false,
+          hasContactChannels: true,
+        ),
+      ];
+      profilesRepository.profilesToReturn = [sourceProfile];
+      profilesRepository.accountProfileFetchOverrides[sourceProfile.id] =
+          sourceProfile;
+      profilesRepository.profileToReturn = _profile(
+        id: 'route-profile',
+        contactMode: BellugaContactSourceMode.mirroredAccountProfile,
+        contactSourceAccountProfileId: sourceProfile.id,
+      );
+
+      await _pumpScreen(
+        tester,
+        const TenantAdminAccountProfileEditScreen(
+          accountSlug: 'route-account',
+          accountProfileId: 'route-profile',
+        ),
+      );
+
+      final toggle = find
+          .byKey(
+            const Key('tenantAdminEditMirroredBubbleToggle_source-whatsapp'),
+          )
+          .last;
+      await tester.ensureVisible(toggle);
+
+      final switchListTile = tester.widget<SwitchListTile>(toggle);
+      expect(switchListTile.value, isTrue);
+      expect(switchListTile.onChanged, isNull);
+
+      final bubbleSelectionBefore = GetIt.I
+          .get<TenantAdminAccountProfilesController>()
+          .editStateStreamValue
+          .value
+          .contactBubbleSelection;
+
+      await tester.tap(toggle);
+      await tester.pump();
+      await tester.tap(
+        find.descendant(of: toggle, matching: find.byType(Switch)),
+      );
+      await tester.pump();
+
+      expect(
+        GetIt.I
+            .get<TenantAdminAccountProfilesController>()
+            .editStateStreamValue
+            .value
+            .contactBubbleSelection,
+        same(bubbleSelectionBefore),
+      );
+    },
+  );
+
+  testWidgets('renders a mirrored source without a bubble selection as off', (
+    tester,
+  ) async {
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+    final sourceChannel = BellugaContactChannel(
+      id: 'source-whatsapp-off',
+      type: BellugaContactChannelType.whatsapp,
+      value: '+55 (27) 98888-7777',
+    );
+    final sourceProfile = _profile(
+      id: '507f1f77bcf86cd799439002',
+      contactChannels: [sourceChannel],
+      effectiveContactChannels: [sourceChannel],
+    );
+    profilesRepository.profileTypesToReturn = [
+      _profileType(
+        hasGallery: false,
+        hasNestedProfileGroups: false,
+        hasContactChannels: true,
+      ),
+    ];
+    profilesRepository.profilesToReturn = [sourceProfile];
+    profilesRepository.accountProfileFetchOverrides[sourceProfile.id] =
+        sourceProfile;
+    profilesRepository.profileToReturn = _profile(
+      id: 'route-profile',
+      contactMode: BellugaContactSourceMode.mirroredAccountProfile,
+      contactSourceAccountProfileId: sourceProfile.id,
+      contactBubbleChannelId: sourceChannel.id,
+    );
+
+    await _pumpScreen(
+      tester,
+      const TenantAdminAccountProfileEditScreen(
+        accountSlug: 'route-account',
+        accountProfileId: 'route-profile',
+      ),
+    );
+
+    final toggle = find
+        .byKey(
+          const Key('tenantAdminEditMirroredBubbleToggle_source-whatsapp-off'),
+        )
+        .last;
+    await tester.ensureVisible(toggle);
+
+    final switchListTile = tester.widget<SwitchListTile>(toggle);
+    expect(switchListTile.value, isFalse);
+    expect(switchListTile.onChanged, isNull);
+  });
+
+  testWidgets('keeps own contact bubble selection interactive', (tester) async {
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+    final ownChannel = BellugaContactChannel(
+      id: 'own-whatsapp',
+      type: BellugaContactChannelType.whatsapp,
+      value: '+55 (27) 97777-6666',
+    );
+    profilesRepository.profileTypesToReturn = [
+      _profileType(
+        hasGallery: false,
+        hasNestedProfileGroups: false,
+        hasContactChannels: true,
+      ),
+    ];
+    profilesRepository.profileToReturn = _profile(
+      id: 'route-profile',
+      contactChannels: [ownChannel],
+      effectiveContactChannels: [ownChannel],
+    );
+
+    await _pumpScreen(
+      tester,
+      const TenantAdminAccountProfileEditScreen(
+        accountSlug: 'route-account',
+        accountProfileId: 'route-profile',
+      ),
+    );
+
+    final draftKey = GetIt.I
+        .get<TenantAdminAccountProfilesController>()
+        .editStateStreamValue
+        .value
+        .contactChannelDrafts
+        .single
+        .draftKey;
+    final toggle = find.byKey(Key('tenantAdminContactBubbleToggle_$draftKey'));
+    await tester.scrollUntilVisible(
+      toggle,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(toggle);
+    await tester.pump();
+
+    expect(
+      GetIt.I
+          .get<TenantAdminAccountProfilesController>()
+          .editStateStreamValue
+          .value
+          .contactBubbleSelection,
+      isA<BellugaContactBubbleSelectionPersisted>().having(
+        (selection) => selection.channelId,
+        'channelId',
+        ownChannel.id,
+      ),
+    );
+  });
+
+  testWidgets(
     'opens the mirrored contact source picker with server candidates and no crash fallback',
     (tester) async {
       final profilesRepository =
