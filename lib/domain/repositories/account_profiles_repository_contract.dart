@@ -98,10 +98,11 @@ abstract class AccountProfilesRepositoryContract {
     final effectivePageSize =
         pageSize ??
         AccountProfilesRepositoryContractPrimInt.fromRaw(30, defaultValue: 30);
-    await _waitForPagedAccountProfilesFetch();
+    final generation = _nextPagedAccountProfilesGeneration();
     _resetPagedAccountProfilesState();
     pagedAccountProfilesStreamValue.addValue(null);
     await _fetchPagedAccountProfiles(
+      generation: generation,
       page: AccountProfilesRepositoryContractPrimInt.fromRaw(
         1,
         defaultValue: 1,
@@ -124,10 +125,13 @@ abstract class AccountProfilesRepositoryContract {
     final effectivePageSize =
         pageSize ??
         AccountProfilesRepositoryContractPrimInt.fromRaw(30, defaultValue: 30);
-    if (_paginationState.isFetching.value || !_paginationState.hasMore.value) {
+    final generation = _paginationState.activeGeneration;
+    if (_paginationState.inFlightGenerations.contains(generation) ||
+        !_paginationState.hasMore.value) {
       return;
     }
     await _fetchPagedAccountProfiles(
+      generation: generation,
       page: AccountProfilesRepositoryContractPrimInt.fromRaw(
         _paginationState.currentPage.value + 1,
         defaultValue: 1,
@@ -141,6 +145,7 @@ abstract class AccountProfilesRepositoryContract {
   }
 
   void resetPagedAccountProfilesState() {
+    _nextPagedAccountProfilesGeneration();
     _resetPagedAccountProfilesState();
     pagedAccountProfilesStreamValue.addValue(null);
     pagedAccountProfilesErrorStreamValue.addValue(null);
@@ -283,12 +288,6 @@ abstract class AccountProfilesRepositoryContract {
   /// Get all favorite account profiles
   List<AccountProfileModel> getFavoriteAccountProfiles();
 
-  Future<void> _waitForPagedAccountProfilesFetch() async {
-    while (_paginationState.isFetching.value) {
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-    }
-  }
-
   Future<void> _waitForNestedGroupMembersFetch(
     _NestedGroupMembersPaginationState state,
   ) async {
@@ -298,6 +297,7 @@ abstract class AccountProfilesRepositoryContract {
   }
 
   Future<void> _fetchPagedAccountProfiles({
+    required AccountProfilesRepositoryContractPrimInt generation,
     required AccountProfilesRepositoryContractPrimInt page,
     required AccountProfilesRepositoryContractPrimInt pageSize,
     AccountProfilesRepositoryContractPrimString? query,
@@ -305,15 +305,11 @@ abstract class AccountProfilesRepositoryContract {
     List<AccountProfilesRepositoryContractPrimString>? typeFilters,
     List<AccountProfilesRepositoryTaxonomyFilter>? taxonomyFilters,
   }) async {
-    if (_paginationState.isFetching.value) return;
     if (page.value > 1 && !_paginationState.hasMore.value) return;
 
-    _paginationState.isFetching =
-        AccountProfilesRepositoryContractPrimBool.fromRaw(
-          true,
-          defaultValue: true,
-        );
-    if (page.value > 1) {
+    _markPagedAccountProfilesFetchStarted(generation);
+    if (page.value > 1 &&
+        _isCurrentPagedAccountProfilesGeneration(generation).value) {
       isPagedAccountProfilesLoadingStreamValue.addValue(
         AccountProfilesRepositoryContractPrimBool.fromRaw(
           true,
@@ -330,89 +326,153 @@ abstract class AccountProfilesRepositoryContract {
         typeFilters: typeFilters,
         taxonomyFilters: taxonomyFilters,
       );
-      final accumulatedProfiles = page.value <= 1
-          ? List<AccountProfileModel>.from(result.profiles)
-          : <AccountProfileModel>[
-              ...?_paginationState
-                  .pagedAccountProfilesStreamValue
-                  .value
-                  ?.profiles,
-              ...result.profiles,
-            ];
-      _paginationState.currentPage = page;
-      _paginationState.hasMore =
-          AccountProfilesRepositoryContractPrimBool.fromRaw(
-            result.hasMore,
-            defaultValue: true,
-          );
-      hasMorePagedAccountProfilesStreamValue.addValue(_paginationState.hasMore);
-      publicDiscoveryFilterFacetsStreamValue.addValue(
-        result.discoveryFilterFacets,
+      if (!_isCurrentPagedAccountProfilesGeneration(generation).value) {
+        return;
+      }
+      _commitPagedAccountProfilesSuccess(
+        page: page,
+        result: result,
       );
-      publicDiscoveryFilterCatalogStreamValue.addValue(
-        result.discoveryFilterCatalog,
-      );
-      pagedAccountProfilesStreamValue.addValue(
-        pagedAccountProfilesResultFromRaw(
-          profiles: accumulatedProfiles,
-          hasMore: result.hasMore,
-          discoveryFilterFacets: result.discoveryFilterFacets,
-          discoveryFilterCatalog: result.discoveryFilterCatalog,
+    } catch (error) {
+      if (!_isCurrentPagedAccountProfilesGeneration(generation).value) {
+        return;
+      }
+      _commitPagedAccountProfilesError(
+        page: page,
+        errorMessage: AccountProfilesRepositoryContractPrimString.fromRaw(
+          error.toString(),
+          defaultValue: error.toString(),
         ),
       );
-      discoveryFilteredAccountProfilesStreamValue.addValue(accumulatedProfiles);
-      pagedAccountProfilesErrorStreamValue.addValue(null);
-    } catch (error) {
-      pagedAccountProfilesErrorStreamValue.addValue(
-        AccountProfilesRepositoryContractPrimString.fromRaw(error.toString()),
-      );
-      _paginationState.hasMore =
+    } finally {
+      _markPagedAccountProfilesFetchFinished(generation);
+      if (page.value > 1 &&
+          _isCurrentPagedAccountProfilesGeneration(generation).value) {
+        isPagedAccountProfilesLoadingStreamValue.addValue(
           AccountProfilesRepositoryContractPrimBool.fromRaw(
             false,
             defaultValue: false,
-          );
-      hasMorePagedAccountProfilesStreamValue.addValue(_paginationState.hasMore);
-      if (page.value == 1) {
-        publicDiscoveryFilterFacetsStreamValue.addValue(null);
-        publicDiscoveryFilterCatalogStreamValue.addValue(null);
-        discoveryFilteredAccountProfilesStreamValue.addValue(
-          const <AccountProfileModel>[],
-        );
-        pagedAccountProfilesStreamValue.addValue(
-          pagedAccountProfilesResultFromRaw(
-            profiles: <AccountProfileModel>[],
-            hasMore: false,
-            discoveryFilterFacets: null,
-            discoveryFilterCatalog: null,
-          ),
-        );
-      } else {
-        final currentProfiles =
-            _paginationState.pagedAccountProfilesStreamValue.value?.profiles ??
-            const <AccountProfileModel>[];
-        pagedAccountProfilesStreamValue.addValue(
-          pagedAccountProfilesResultFromRaw(
-            profiles: currentProfiles,
-            hasMore: false,
-            discoveryFilterFacets: publicDiscoveryFilterFacetsStreamValue.value,
-            discoveryFilterCatalog:
-                publicDiscoveryFilterCatalogStreamValue.value,
           ),
         );
       }
-    } finally {
+    }
+  }
+
+  AccountProfilesRepositoryContractPrimInt _nextPagedAccountProfilesGeneration() {
+    _paginationState.activeGeneration =
+        AccountProfilesRepositoryContractPrimInt.fromRaw(
+          _paginationState.activeGeneration.value + 1,
+          defaultValue: 0,
+        );
+    return _paginationState.activeGeneration;
+  }
+
+  AccountProfilesRepositoryContractPrimBool
+  _isCurrentPagedAccountProfilesGeneration(
+    AccountProfilesRepositoryContractPrimInt generation,
+  ) {
+    return AccountProfilesRepositoryContractPrimBool.fromRaw(
+      _paginationState.activeGeneration == generation,
+      defaultValue: false,
+    );
+  }
+
+  void _markPagedAccountProfilesFetchStarted(
+    AccountProfilesRepositoryContractPrimInt generation,
+  ) {
+    _paginationState.inFlightGenerations.add(generation);
+    if (_isCurrentPagedAccountProfilesGeneration(generation).value) {
       _paginationState.isFetching =
           AccountProfilesRepositoryContractPrimBool.fromRaw(
-            false,
+            true,
+            defaultValue: true,
+          );
+    }
+  }
+
+  void _markPagedAccountProfilesFetchFinished(
+    AccountProfilesRepositoryContractPrimInt generation,
+  ) {
+    _paginationState.inFlightGenerations.remove(generation);
+    if (_isCurrentPagedAccountProfilesGeneration(generation).value) {
+      _paginationState.isFetching =
+          AccountProfilesRepositoryContractPrimBool.fromRaw(
+            _paginationState.inFlightGenerations.contains(generation),
             defaultValue: false,
           );
-      isPagedAccountProfilesLoadingStreamValue.addValue(
-        AccountProfilesRepositoryContractPrimBool.fromRaw(
-          false,
-          defaultValue: false,
+    }
+  }
+
+  void _commitPagedAccountProfilesSuccess({
+    required AccountProfilesRepositoryContractPrimInt page,
+    required PagedAccountProfilesResult result,
+  }) {
+    final accumulatedProfiles = page.value <= 1
+        ? List<AccountProfileModel>.from(result.profiles)
+        : <AccountProfileModel>[
+            ...?_paginationState.pagedAccountProfilesStreamValue.value?.profiles,
+            ...result.profiles,
+          ];
+    _paginationState.currentPage = page;
+    _paginationState.hasMore = AccountProfilesRepositoryContractPrimBool.fromRaw(
+      result.hasMore,
+      defaultValue: true,
+    );
+    hasMorePagedAccountProfilesStreamValue.addValue(_paginationState.hasMore);
+    publicDiscoveryFilterFacetsStreamValue.addValue(result.discoveryFilterFacets);
+    publicDiscoveryFilterCatalogStreamValue.addValue(
+      result.discoveryFilterCatalog,
+    );
+    pagedAccountProfilesStreamValue.addValue(
+      pagedAccountProfilesResultFromRaw(
+        profiles: accumulatedProfiles,
+        hasMore: result.hasMore,
+        discoveryFilterFacets: result.discoveryFilterFacets,
+        discoveryFilterCatalog: result.discoveryFilterCatalog,
+      ),
+    );
+    discoveryFilteredAccountProfilesStreamValue.addValue(accumulatedProfiles);
+    pagedAccountProfilesErrorStreamValue.addValue(null);
+  }
+
+  void _commitPagedAccountProfilesError({
+    required AccountProfilesRepositoryContractPrimInt page,
+    required AccountProfilesRepositoryContractPrimString errorMessage,
+  }) {
+    pagedAccountProfilesErrorStreamValue.addValue(errorMessage);
+    _paginationState.hasMore = AccountProfilesRepositoryContractPrimBool.fromRaw(
+      false,
+      defaultValue: false,
+    );
+    hasMorePagedAccountProfilesStreamValue.addValue(_paginationState.hasMore);
+    if (page.value == 1) {
+      publicDiscoveryFilterFacetsStreamValue.addValue(null);
+      publicDiscoveryFilterCatalogStreamValue.addValue(null);
+      discoveryFilteredAccountProfilesStreamValue.addValue(
+        const <AccountProfileModel>[],
+      );
+      pagedAccountProfilesStreamValue.addValue(
+        pagedAccountProfilesResultFromRaw(
+          profiles: <AccountProfileModel>[],
+          hasMore: false,
+          discoveryFilterFacets: null,
+          discoveryFilterCatalog: null,
         ),
       );
+      return;
     }
+
+    final currentProfiles =
+        _paginationState.pagedAccountProfilesStreamValue.value?.profiles ??
+        const <AccountProfileModel>[];
+    pagedAccountProfilesStreamValue.addValue(
+      pagedAccountProfilesResultFromRaw(
+        profiles: currentProfiles,
+        hasMore: false,
+        discoveryFilterFacets: publicDiscoveryFilterFacetsStreamValue.value,
+        discoveryFilterCatalog: publicDiscoveryFilterCatalogStreamValue.value,
+      ),
+    );
   }
 
   void _resetPagedAccountProfilesState() {
@@ -591,6 +651,10 @@ class _AccountProfilesPaginationState {
       StreamValue<AccountProfilesRepositoryContractPrimString?>();
   AccountProfilesRepositoryContractPrimInt currentPage =
       AccountProfilesRepositoryContractPrimInt.fromRaw(0, defaultValue: 0);
+  AccountProfilesRepositoryContractPrimInt activeGeneration =
+      AccountProfilesRepositoryContractPrimInt.fromRaw(0, defaultValue: 0);
+  final Set<AccountProfilesRepositoryContractPrimInt> inFlightGenerations =
+      <AccountProfilesRepositoryContractPrimInt>{};
   AccountProfilesRepositoryContractPrimBool hasMore =
       AccountProfilesRepositoryContractPrimBool.fromRaw(
         true,

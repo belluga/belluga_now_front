@@ -204,6 +204,59 @@ void main() {
   });
 
   testWidgets(
+    'reloads nested picker candidates when the create-screen modal opens',
+    (tester) async {
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+      profilesRepository.profileTypesToReturn = [
+        _profileType(
+          type: 'venue',
+          label: 'Venue',
+          hasNestedProfileGroups: true,
+        ),
+      ];
+      profilesRepository.profilesToReturn = [
+        _profile(
+          id: 'profile-partner',
+          displayName: 'Conta Parceira',
+          profileType: 'venue',
+        ),
+      ];
+      profilesRepository.pagedProfilesToReturnByRequest = [
+        const <TenantAdminAccountProfile>[],
+      ];
+
+      await _pumpScreen(
+        tester,
+        TenantAdminAccountProfileCreateScreen(accountSlug: 'route-account'),
+      );
+
+      await _selectProfileType(tester, 'Venue');
+
+      final scrollable = find.byType(Scrollable).first;
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('tenantAdminCreateAddNestedGroupButton')),
+        300,
+        scrollable: scrollable,
+      );
+      await tester.tap(
+        find.byKey(const Key('tenantAdminCreateAddNestedGroupButton')),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Selecionar perfis'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Conta Parceira'), findsOneWidget);
+      expect(
+        profilesRepository.fetchAccountProfilesPageCalls,
+        greaterThanOrEqualTo(2),
+      );
+    },
+  );
+
+  testWidgets(
     'uses canonical profile types for the nested selector even when the first page does not expose every category',
     (tester) async {
       final profilesRepository =
@@ -395,9 +448,12 @@ class _FakeAccountsRepository extends TenantAdminAccountsRepositoryContract {
 class _FakeAccountProfilesRepository
     extends TenantAdminAccountProfilesRepositoryContract {
   List<TenantAdminAccountProfile> profilesToReturn = [];
+  List<List<TenantAdminAccountProfile>> pagedProfilesToReturnByRequest =
+      const [];
   List<TenantAdminProfileTypeDefinition> profileTypesToReturn = [
     _profileType(hasNestedProfileGroups: true),
   ];
+  int fetchAccountProfilesPageCalls = 0;
 
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
@@ -423,7 +479,15 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoBool? queryableOnly,
     TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async {
+    fetchAccountProfilesPageCalls += 1;
+    final sourceProfiles =
+        pagedProfilesToReturnByRequest.isNotEmpty &&
+            fetchAccountProfilesPageCalls <=
+                pagedProfilesToReturnByRequest.length
+        ? pagedProfilesToReturnByRequest[fetchAccountProfilesPageCalls - 1]
+        : profilesToReturn;
     final filtered = _filterProfiles(
+      sourceProfiles: sourceProfiles,
       search: search?.value,
       excludeAccountProfileId: excludeAccountProfileId?.value,
     );
@@ -569,11 +633,12 @@ class _FakeAccountProfilesRepository
   }
 
   List<TenantAdminAccountProfile> _filterProfiles({
+    List<TenantAdminAccountProfile>? sourceProfiles,
     String? search,
     String? excludeAccountProfileId,
   }) {
     final normalizedSearch = search?.trim().toLowerCase() ?? '';
-    return profilesToReturn
+    return (sourceProfiles ?? profilesToReturn)
         .where((profile) {
           if (excludeAccountProfileId != null &&
               excludeAccountProfileId.isNotEmpty &&

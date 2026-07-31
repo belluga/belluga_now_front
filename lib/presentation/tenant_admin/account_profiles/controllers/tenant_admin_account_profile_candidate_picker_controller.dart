@@ -80,8 +80,9 @@ class TenantAdminAccountProfileCandidatePickerController {
     hasMoreStreamValue.addValue(false);
     browseLimitReachedStreamValue.addValue(false);
     errorStreamValue.addValue(null);
+    _queuedInitialRequest = false;
 
-    if (_search.characters.length < 2) {
+    if (!_hasDispatchableSearch) {
       isLoadingStreamValue.addValue(false);
       isPageLoadingStreamValue.addValue(false);
       return;
@@ -138,6 +139,10 @@ class TenantAdminAccountProfileCandidatePickerController {
       _selectedValues();
 
   Future<void> _requestInitialPage() async {
+    if (!_hasDispatchableSearch) {
+      _queuedInitialRequest = false;
+      return;
+    }
     if (_isFetching) {
       _queuedInitialRequest = true;
       return;
@@ -194,10 +199,14 @@ class TenantAdminAccountProfileCandidatePickerController {
       }
       if (!_isDisposed && _queuedInitialRequest) {
         _queuedInitialRequest = false;
-        unawaited(_requestInitialPage());
+        if (_hasDispatchableSearch) {
+          unawaited(_requestInitialPage());
+        }
       }
     }
   }
+
+  bool get _hasDispatchableSearch => _search.characters.length >= 2;
 
   List<TenantAdminAccountProfileSelectionSummary> _selectedValues() {
     return List<TenantAdminAccountProfileSelectionSummary>.unmodifiable(

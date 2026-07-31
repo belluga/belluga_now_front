@@ -702,6 +702,68 @@ void main() {
   });
 
   testWidgets(
+    'reloads nested picker candidates when the edit-screen modal opens and excludes the current profile',
+    (tester) async {
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+      profilesRepository.profileTypesToReturn = [
+        _profileType(hasGallery: false, hasNestedProfileGroups: true),
+      ];
+      profilesRepository.profileToReturn = _profile(
+        id: 'route-profile',
+        nestedProfileGroups: [
+          TenantAdminNestedProfileGroup(
+            idValue: TenantAdminNestedProfileGroupTextValue('partners'),
+            labelValue: TenantAdminNestedProfileGroupTextValue('Parceiros'),
+            orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+            accountProfileIdValues: const [],
+          ),
+        ],
+      );
+      profilesRepository.pagedProfilesToReturnByRequest = [
+        const <TenantAdminAccountProfile>[],
+        [
+          _profile(
+            id: 'route-profile',
+            displayName: 'Perfil atual',
+            profileType: 'poi',
+          ),
+          _profile(
+            id: 'profile-partner',
+            displayName: 'Conta Parceira',
+            profileType: 'poi',
+          ),
+        ],
+      ];
+
+      await _pumpScreen(
+        tester,
+        TenantAdminAccountProfileEditScreen(
+          accountSlug: 'route-account',
+          accountProfileId: 'route-profile',
+        ),
+      );
+
+      final scrollable = find.byType(Scrollable).first;
+      await tester.scrollUntilVisible(
+        find.text('Abas de contas vinculadas'),
+        200,
+        scrollable: scrollable,
+      );
+      await tester.tap(find.text('Selecionar perfis'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Conta Parceira'), findsOneWidget);
+      expect(find.text('Perfil atual'), findsNothing);
+      expect(
+        profilesRepository.fetchAccountProfilesPageCalls,
+        greaterThanOrEqualTo(2),
+      );
+    },
+  );
+
+  testWidgets(
     'metadata-only nested groups show first-page chips, load more on demand, and preserve full ids on save',
     (tester) async {
       final profilesRepository =
@@ -963,6 +1025,8 @@ class _FakeAccountProfilesRepository
     _profileType(hasGallery: true, hasNestedProfileGroups: false),
   ];
   List<TenantAdminAccountProfile> profilesToReturn = [];
+  List<List<TenantAdminAccountProfile>> pagedProfilesToReturnByRequest =
+      const [];
   final Map<String, TenantAdminAccountProfile> accountProfileFetchOverrides =
       <String, TenantAdminAccountProfile>{};
   List<TenantAdminAccountProfileGalleryUpdateGroup>? lastGalleryGroups;
@@ -970,6 +1034,7 @@ class _FakeAccountProfilesRepository
   final Map<String, List<TenantAdminNestedGroupMemberPage>>
   nestedGroupMemberPagesByGroupId =
       <String, List<TenantAdminNestedGroupMemberPage>>{};
+  int fetchAccountProfilesPageCalls = 0;
 
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
@@ -995,7 +1060,15 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoBool? queryableOnly,
     TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async {
+    fetchAccountProfilesPageCalls += 1;
+    final sourceProfiles =
+        pagedProfilesToReturnByRequest.isNotEmpty &&
+            fetchAccountProfilesPageCalls <=
+                pagedProfilesToReturnByRequest.length
+        ? pagedProfilesToReturnByRequest[fetchAccountProfilesPageCalls - 1]
+        : profilesToReturn;
     final filtered = _filterProfiles(
+      sourceProfiles: sourceProfiles,
       search: search?.value,
       excludeAccountProfileId: excludeAccountProfileId?.value,
     );
@@ -1300,11 +1373,12 @@ class _FakeAccountProfilesRepository
   }
 
   List<TenantAdminAccountProfile> _filterProfiles({
+    List<TenantAdminAccountProfile>? sourceProfiles,
     String? search,
     String? excludeAccountProfileId,
   }) {
     final normalizedSearch = search?.trim().toLowerCase() ?? '';
-    return profilesToReturn
+    return (sourceProfiles ?? profilesToReturn)
         .where((profile) {
           if (excludeAccountProfileId != null &&
               excludeAccountProfileId.isNotEmpty &&

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
@@ -863,6 +865,163 @@ void main() {
   );
 
   test(
+    'newer first-page discovery query keeps ownership when an older delayed response finishes later',
+    () async {
+      final plStarted = Completer<void>();
+      final playStarted = Completer<void>();
+      final plResponse = Completer<PagedAccountProfilesResult>();
+      final playResponse = Completer<PagedAccountProfilesResult>();
+      final backend = _ControllableDiscoveryQueryBackend(
+        responsesByQuery: <String, Completer<PagedAccountProfilesResult>>{
+          'pl': plResponse,
+          'play': playResponse,
+        },
+        startedByQuery: <String, Completer<void>>{
+          'pl': plStarted,
+          'play': playStarted,
+        },
+      );
+      final repository = AccountProfilesRepository(
+        backend: backend,
+        favoriteBackend: _StubFavoriteBackend(favorites: const []),
+        favoriteAccountProfileIds: const {},
+      );
+
+      final firstFuture = repository.loadAccountProfilesPage(
+        pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
+        query: AccountProfilesRepositoryContractPrimString.fromRaw('pl'),
+      );
+      await plStarted.future;
+
+      final secondFuture = repository.loadAccountProfilesPage(
+        pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
+        query: AccountProfilesRepositoryContractPrimString.fromRaw('play'),
+      );
+      await playStarted.future;
+
+      playResponse.complete(
+        pagedAccountProfilesResultFromRaw(
+          profiles: <AccountProfileModel>[
+            buildAccountProfileModelFromPrimitives(
+              id: _generateMongoId(),
+              name: 'Play Final',
+              slug: 'play-final',
+              type: 'artist',
+            ),
+          ],
+          hasMore: false,
+        ),
+      );
+      await secondFuture;
+
+      expect(
+        repository.discoveryFilteredAccountProfilesStreamValue.value
+            .map((profile) => profile.name)
+            .toList(),
+        ['Play Final'],
+      );
+
+      plResponse.complete(
+        pagedAccountProfilesResultFromRaw(
+          profiles: <AccountProfileModel>[
+            buildAccountProfileModelFromPrimitives(
+              id: _generateMongoId(),
+              name: 'Pl Stale',
+              slug: 'pl-stale',
+              type: 'artist',
+            ),
+          ],
+          hasMore: false,
+        ),
+      );
+      await firstFuture;
+
+      expect(
+        repository.discoveryFilteredAccountProfilesStreamValue.value
+            .map((profile) => profile.name)
+            .toList(),
+        ['Play Final'],
+      );
+      expect(
+        repository.pagedAccountProfilesStreamValue.value?.profiles
+            .map((profile) => profile.name)
+            .toList(),
+        ['Play Final'],
+      );
+      expect(repository.pagedAccountProfilesErrorStreamValue.value, isNull);
+    },
+  );
+
+  test(
+    'older delayed first-page failure cannot clear a newer discovery query generation',
+    () async {
+      final plStarted = Completer<void>();
+      final playStarted = Completer<void>();
+      final plResponse = Completer<PagedAccountProfilesResult>();
+      final playResponse = Completer<PagedAccountProfilesResult>();
+      final backend = _ControllableDiscoveryQueryBackend(
+        responsesByQuery: <String, Completer<PagedAccountProfilesResult>>{
+          'pl': plResponse,
+          'play': playResponse,
+        },
+        startedByQuery: <String, Completer<void>>{
+          'pl': plStarted,
+          'play': playStarted,
+        },
+      );
+      final repository = AccountProfilesRepository(
+        backend: backend,
+        favoriteBackend: _StubFavoriteBackend(favorites: const []),
+        favoriteAccountProfileIds: const {},
+      );
+
+      final firstFuture = repository.loadAccountProfilesPage(
+        pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
+        query: AccountProfilesRepositoryContractPrimString.fromRaw('pl'),
+      );
+      await plStarted.future;
+
+      final secondFuture = repository.loadAccountProfilesPage(
+        pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
+        query: AccountProfilesRepositoryContractPrimString.fromRaw('play'),
+      );
+      await playStarted.future;
+
+      playResponse.complete(
+        pagedAccountProfilesResultFromRaw(
+          profiles: <AccountProfileModel>[
+            buildAccountProfileModelFromPrimitives(
+              id: _generateMongoId(),
+              name: 'Play Final',
+              slug: 'play-final',
+              type: 'artist',
+            ),
+          ],
+          hasMore: false,
+        ),
+      );
+      await secondFuture;
+
+      plResponse.completeError(StateError('stale pl failure'));
+      await expectLater(firstFuture, completes);
+
+      expect(
+        repository.discoveryFilteredAccountProfilesStreamValue.value
+            .map((profile) => profile.name)
+            .toList(),
+        ['Play Final'],
+      );
+      expect(
+        repository.pagedAccountProfilesStreamValue.value?.profiles
+            .map((profile) => profile.name)
+            .toList(),
+        ['Play Final'],
+      );
+      expect(repository.pagedAccountProfilesErrorStreamValue.value, isNull);
+    },
+  );
+
+  test(
     'discovery nearby stream uses dedicated near endpoint even with paged cache',
     () async {
       final backend = _StubAccountProfilesBackend(
@@ -1055,6 +1214,52 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
     fetchNearbyCalls += 1;
     final source = nearbyProfiles.isEmpty ? accountProfiles : nearbyProfiles;
     return source.take(pageSize).toList(growable: false);
+  }
+}
+
+class _ControllableDiscoveryQueryBackend extends _StubAccountProfilesBackend {
+  _ControllableDiscoveryQueryBackend({
+    required this.responsesByQuery,
+    required this.startedByQuery,
+  }) : super(accountProfiles: const <AccountProfileModel>[]);
+
+  final Map<String, Completer<PagedAccountProfilesResult>> responsesByQuery;
+  final Map<String, Completer<void>> startedByQuery;
+
+  @override
+  Future<PagedAccountProfilesResult> fetchAccountProfilesPage({
+    required int page,
+    required int pageSize,
+    String? query,
+    String? typeFilter,
+    List<String>? typeFilters,
+    List<AccountProfilesRepositoryTaxonomyFilter>? taxonomyFilters,
+    List<String>? allowedTypes,
+  }) async {
+    fetchAccountProfilesPageCalls += 1;
+    lastAllowedTypes = allowedTypes;
+    lastTypeFilters = typeFilters;
+    lastTaxonomyFilters = List<AccountProfilesRepositoryTaxonomyFilter>.of(
+      taxonomyFilters ?? const <AccountProfilesRepositoryTaxonomyFilter>[],
+    );
+    final key = query?.trim() ?? '';
+    final started = startedByQuery[key];
+    if (started != null && !started.isCompleted) {
+      started.complete();
+    }
+    final response = responsesByQuery[key];
+    if (response == null) {
+      return super.fetchAccountProfilesPage(
+        page: page,
+        pageSize: pageSize,
+        query: query,
+        typeFilter: typeFilter,
+        typeFilters: typeFilters,
+        taxonomyFilters: taxonomyFilters,
+        allowedTypes: allowedTypes,
+      );
+    }
+    return response.future;
   }
 }
 
