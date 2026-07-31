@@ -322,6 +322,164 @@ void main() {
       expect(find.text('Publisher'), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'renders the source bubble selection as an inert mirrored indicator',
+    (tester) async {
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+      final sourceChannel = BellugaContactChannel(
+        id: 'create-source-whatsapp',
+        type: BellugaContactChannelType.whatsapp,
+        value: '+55 (27) 99999-9999',
+      );
+      final sourceProfile = _profile(
+        id: '507f1f77bcf86cd799439101',
+        displayName: 'Perfil Fonte',
+        contactChannels: [sourceChannel],
+        effectiveContactChannels: [sourceChannel],
+        contactBubbleChannelId: sourceChannel.id,
+      );
+      profilesRepository.profileTypesToReturn = [
+        _profileType(hasNestedProfileGroups: false, hasContactChannels: true),
+      ];
+      profilesRepository.profilesToReturn = [sourceProfile];
+
+      await _pumpScreen(
+        tester,
+        const TenantAdminAccountProfileCreateScreen(
+          accountSlug: 'route-account',
+        ),
+      );
+      await _selectProfileType(tester, 'Venue');
+
+      final controller = GetIt.I.get<TenantAdminAccountProfilesController>();
+      controller.updateCreateContactMode(
+        BellugaContactSourceMode.mirroredAccountProfile,
+      );
+      controller.updateCreateContactSourceAccountProfileId(sourceProfile.id);
+      await tester.pumpAndSettle();
+
+      final toggle = find
+          .byKey(
+            const Key(
+              'tenantAdminCreateMirroredBubbleToggle_create-source-whatsapp',
+            ),
+          )
+          .last;
+      await tester.ensureVisible(toggle);
+
+      final switchListTile = tester.widget<SwitchListTile>(toggle);
+      expect(switchListTile.value, isTrue);
+      expect(switchListTile.onChanged, isNull);
+
+      final bubbleSelectionBefore =
+          controller.createStateStreamValue.value.contactBubbleSelection;
+      await tester.tap(toggle);
+      await tester.pump();
+      await tester.tap(
+        find.descendant(of: toggle, matching: find.byType(Switch)),
+      );
+      await tester.pump();
+
+      expect(
+        controller.createStateStreamValue.value.contactBubbleSelection,
+        same(bubbleSelectionBefore),
+      );
+    },
+  );
+
+  testWidgets('renders a mirrored source without a bubble selection as off', (
+    tester,
+  ) async {
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+    final sourceChannel = BellugaContactChannel(
+      id: 'create-source-whatsapp-off',
+      type: BellugaContactChannelType.whatsapp,
+      value: '+55 (27) 98888-7777',
+    );
+    final sourceProfile = _profile(
+      id: '507f1f77bcf86cd799439102',
+      displayName: 'Perfil Fonte Sem Balao',
+      contactChannels: [sourceChannel],
+      effectiveContactChannels: [sourceChannel],
+    );
+    profilesRepository.profileTypesToReturn = [
+      _profileType(hasNestedProfileGroups: false, hasContactChannels: true),
+    ];
+    profilesRepository.profilesToReturn = [sourceProfile];
+
+    await _pumpScreen(
+      tester,
+      const TenantAdminAccountProfileCreateScreen(accountSlug: 'route-account'),
+    );
+    await _selectProfileType(tester, 'Venue');
+
+    final controller = GetIt.I.get<TenantAdminAccountProfilesController>();
+    controller.updateCreateContactBubbleChannelId(sourceChannel.id);
+    controller.updateCreateContactMode(
+      BellugaContactSourceMode.mirroredAccountProfile,
+    );
+    controller.updateCreateContactSourceAccountProfileId(sourceProfile.id);
+    await tester.pumpAndSettle();
+
+    final toggle = find
+        .byKey(
+          const Key(
+            'tenantAdminCreateMirroredBubbleToggle_create-source-whatsapp-off',
+          ),
+        )
+        .last;
+    await tester.ensureVisible(toggle);
+
+    final switchListTile = tester.widget<SwitchListTile>(toggle);
+    expect(switchListTile.value, isFalse);
+    expect(switchListTile.onChanged, isNull);
+  });
+
+  testWidgets('keeps own contact bubble selection interactive', (tester) async {
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+    profilesRepository.profileTypesToReturn = [
+      _profileType(hasNestedProfileGroups: false, hasContactChannels: true),
+    ];
+
+    await _pumpScreen(
+      tester,
+      const TenantAdminAccountProfileCreateScreen(accountSlug: 'route-account'),
+    );
+    await _selectProfileType(tester, 'Venue');
+
+    final addChannel = find.byKey(
+      const Key('tenantAdminAddContactChannel_whatsapp'),
+    );
+    await tester.ensureVisible(addChannel);
+    await tester.tap(addChannel);
+    await tester.pump();
+
+    final controller = GetIt.I.get<TenantAdminAccountProfilesController>();
+    final draft =
+        controller.createStateStreamValue.value.contactChannelDrafts.single;
+    final toggle = find.byKey(
+      Key('tenantAdminContactBubbleToggle_${draft.draftKey}'),
+    );
+    await tester.ensureVisible(toggle);
+    await tester.tap(toggle);
+    await tester.pump();
+
+    expect(
+      controller.createStateStreamValue.value.contactBubbleSelection,
+      isA<BellugaContactBubbleSelectionDraft>().having(
+        (selection) => selection.draftKey,
+        'draftKey',
+        draft.draftKey,
+      ),
+    );
+  });
 }
 
 Future<void> _pumpScreen(WidgetTester tester, Widget child) async {
@@ -748,6 +906,10 @@ TenantAdminAccountProfile _profile({
   required String id,
   required String displayName,
   String profileType = 'venue',
+  List<BellugaContactChannel> contactChannels = const <BellugaContactChannel>[],
+  String? contactBubbleChannelId,
+  List<BellugaContactChannel> effectiveContactChannels =
+      const <BellugaContactChannel>[],
 }) {
   return tenantAdminAccountProfileFromRaw(
     id: id,
@@ -755,11 +917,15 @@ TenantAdminAccountProfile _profile({
     profileType: profileType,
     displayName: displayName,
     slug: id,
+    contactChannels: contactChannels,
+    contactBubbleChannelId: contactBubbleChannelId,
+    effectiveContactChannels: effectiveContactChannels,
   );
 }
 
 TenantAdminProfileTypeDefinition _profileType({
   required bool hasNestedProfileGroups,
+  bool hasContactChannels = false,
   String type = 'venue',
   String label = 'Venue',
 }) {
@@ -777,6 +943,7 @@ TenantAdminProfileTypeDefinition _profileType({
       hasCover: TenantAdminFlagValue(false),
       hasEvents: TenantAdminFlagValue(false),
       hasNestedProfileGroups: TenantAdminFlagValue(hasNestedProfileGroups),
+      hasContactChannels: TenantAdminFlagValue(hasContactChannels),
     ),
   );
 }
