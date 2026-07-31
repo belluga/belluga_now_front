@@ -27,6 +27,7 @@ import 'package:belluga_now/domain/partner/partner_resume.dart';
 import 'package:belluga_now/domain/partners/account_profile_gallery_group.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group_member_page.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_fields.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_tag_value.dart';
@@ -394,6 +395,157 @@ void main() {
         find.byKey(const Key('linkedProfileCard_507f1f77bcf86cd799439099')),
         findsOneWidget,
       );
+    },
+  );
+
+  testWidgets(
+    'event related profile tabs preserve loaded members and footer retry after a later page failure',
+    (tester) async {
+      const artistsMembersPath =
+          '/api/v1/events/evento-paginado/related_profile_tabs/artists/members';
+      const retryCursor = 'cursor-page-2';
+      final firstArtistId = _nestedGroupMemberId('artist-1');
+      final secondArtistId = _nestedGroupMemberId('artist-2');
+      final artistsGroup = _buildProfileGroup(
+        id: 'artists',
+        label: 'Artists',
+        order: 0,
+        membersPath: artistsMembersPath,
+        memberCount: 2,
+      );
+      var allowRetryRecovery = false;
+      final repository = _FakeAccountProfilesRepository()
+        ..fetchNestedGroupMembersPageHandler =
+            (String membersPath, String cursor) async {
+              if (membersPath != artistsMembersPath) {
+                return const AccountProfileNestedGroupMemberPage.empty();
+              }
+
+              if (cursor.isEmpty) {
+                return AccountProfileNestedGroupMemberPage(
+                  items: <AccountProfileNestedGroupMember>[
+                    _buildNestedGroupMember(
+                      id: 'artist-1',
+                      name: 'Artista 1',
+                      profileType: 'artist',
+                      slug: 'artista-1',
+                    ),
+                  ],
+                  nextCursorValue: AccountProfileNestedGroupMemberTextValue(
+                    retryCursor,
+                  ),
+                );
+              }
+
+              if (cursor == retryCursor && !allowRetryRecovery) {
+                throw StateError('later page failed');
+              }
+
+              return AccountProfileNestedGroupMemberPage(
+                items: <AccountProfileNestedGroupMember>[
+                  _buildNestedGroupMember(
+                    id: 'artist-2',
+                    name: 'Artista 2',
+                    profileType: 'artist',
+                    slug: 'artista-2',
+                  ),
+                ],
+                nextCursorValue: null,
+              );
+            };
+      final controller = ImmersiveEventDetailController(
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        accountProfilesRepository: repository,
+      );
+      GetIt.I.registerSingleton<ImmersiveEventDetailController>(controller);
+      await controller.ensureRelatedProfileGroupMembersLoaded(artistsGroup);
+
+      expect(repository.lastNestedGroupMembersPath, artistsMembersPath);
+      expect(repository.requestedNestedGroupMemberPageKeys, <String>[
+        '$artistsMembersPath|',
+      ]);
+
+      final router = _RecordingStackRouter();
+      final routeData = RouteData(
+        route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-paginado'),
+        router: router,
+        stackKey: const ValueKey('stack'),
+        pendingChildren: const [],
+        type: const RouteType.material(),
+      );
+
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: _routeScopedHome(
+              routeData: routeData,
+              child: ImmersiveEventDetailScreen(
+                event: _buildEvent(profileGroups: [artistsGroup]),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pumpAndSettle();
+      await _tapImmersiveTabByLabel(tester, 'Artists');
+
+      expect(
+        find.byKey(Key('linkedProfileCard_$firstArtistId')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(Key('linkedProfileCard_$secondArtistId')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const Key('eventRelatedProfileGroupLoadMore_artists')),
+        findsOneWidget,
+      );
+
+      final failedRetryAttempts = repository.requestedNestedGroupMemberPageKeys
+          .where((key) => key == '$artistsMembersPath|$retryCursor')
+          .length;
+      expect(failedRetryAttempts, greaterThanOrEqualTo(1));
+      expect(
+        find.byKey(Key('linkedProfileCard_$firstArtistId')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(Key('linkedProfileCard_$secondArtistId')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const Key('eventRelatedProfileGroupLoadMore_artists')),
+        findsOneWidget,
+      );
+
+      allowRetryRecovery = true;
+      await controller.loadMoreRelatedProfileGroupMembers(artistsGroup);
+      await tester.pumpAndSettle();
+
+      expect(
+        repository.requestedNestedGroupMemberPageKeys
+            .where((key) => key == '$artistsMembersPath|$retryCursor')
+            .length,
+        greaterThan(failedRetryAttempts),
+      );
+      expect(
+        find.byKey(Key('linkedProfileCard_$firstArtistId')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(Key('linkedProfileCard_$secondArtistId')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('eventRelatedProfileGroupLoadMore_artists')),
+        findsNothing,
+      );
+      expect(_takeAllExceptions(tester), isEmpty);
     },
   );
 
@@ -7392,6 +7544,12 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   String? lastToggledId;
   String? lastNestedGroupMembersPath;
   final List<String> requestedNestedGroupMembersPaths = <String>[];
+  final List<String> requestedNestedGroupMemberPageKeys = <String>[];
+  Future<AccountProfileNestedGroupMemberPage> Function(
+    String membersPath,
+    String cursor,
+  )?
+  fetchNestedGroupMembersPageHandler;
   final Map<String, List<AccountProfileNestedGroupMember>>
   nestedGroupMembersByPath = <String, List<AccountProfileNestedGroupMember>>{};
 
@@ -7430,6 +7588,24 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
     requestedNestedGroupMembersPaths.add(membersPath.value);
     return nestedGroupMembersByPath[membersPath.value] ??
         const <AccountProfileNestedGroupMember>[];
+  }
+
+  @override
+  Future<AccountProfileNestedGroupMemberPage> fetchNestedGroupMembersPageByPath(
+    AccountProfilesRepositoryContractPrimString membersPath, {
+    AccountProfilesRepositoryContractPrimString? cursor,
+  }) async {
+    final normalizedCursor = cursor?.value.trim() ?? '';
+    final requestKey = '${membersPath.value}|$normalizedCursor';
+    requestedNestedGroupMemberPageKeys.add(requestKey);
+    final handler = fetchNestedGroupMembersPageHandler;
+    if (handler != null) {
+      lastNestedGroupMembersPath = membersPath.value;
+      requestedNestedGroupMembersPaths.add(membersPath.value);
+      return handler(membersPath.value, normalizedCursor);
+    }
+
+    return super.fetchNestedGroupMembersPageByPath(membersPath, cursor: cursor);
   }
 
   @override

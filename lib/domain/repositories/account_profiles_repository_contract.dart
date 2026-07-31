@@ -563,20 +563,24 @@ abstract class AccountProfilesRepositoryContract {
       state.hasMoreStreamValue.addValue(state.hasMore);
       state.errorStreamValue.addValue(null);
     } catch (error) {
-      state.hasMore = AccountProfilesRepositoryContractPrimBool.fromRaw(
-        false,
-        defaultValue: false,
-      );
-      state.nextCursor = null;
-      state.hasMoreStreamValue.addValue(state.hasMore);
-      state.errorStreamValue.addValue(
-        AccountProfilesRepositoryContractPrimString.fromRaw(error.toString()),
-      );
       if (normalizedCursor == null || normalizedCursor.isEmpty) {
+        state.hasMore = AccountProfilesRepositoryContractPrimBool.fromRaw(
+          false,
+          defaultValue: false,
+        );
+        state.nextCursor = null;
+        state.hasMoreStreamValue.addValue(state.hasMore);
         state.itemsStreamValue.addValue(
           const <AccountProfileNestedGroupMember>[],
         );
+      } else {
+        // Later-page failures must preserve the existing continuation state so
+        // the same cursor can be retried without recreating repository state.
+        state.hasMoreStreamValue.addValue(state.hasMore);
       }
+      state.errorStreamValue.addValue(
+        AccountProfilesRepositoryContractPrimString.fromRaw(error.toString()),
+      );
     } finally {
       state.isFetching = AccountProfilesRepositoryContractPrimBool.fromRaw(
         false,
