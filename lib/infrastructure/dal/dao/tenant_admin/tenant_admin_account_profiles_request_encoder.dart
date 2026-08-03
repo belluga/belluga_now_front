@@ -72,7 +72,7 @@ class TenantAdminAccountProfilesRequestEncoder {
       payload['contact_mode'] = contactMode.trim();
     }
     if (contactChannelsEnabledOnly) {
-      payload['contact_channels_enabled_only'] = 1;
+      payload['contact_channels_enabled_only'] = true;
     }
     if (queryableOnly) {
       payload['queryable_only'] = 1;
