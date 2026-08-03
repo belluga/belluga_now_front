@@ -491,6 +491,8 @@ class _TenantAdminAccountProfileCreateScreenState
                                   .nestedProfileSearchPageLoadingStreamValue,
                               searchHasMoreStreamValue: _controller
                                   .nestedProfileSearchHasMoreStreamValue,
+                              onOpenPicker: () =>
+                                  _controller.loadNestedProfileCandidates(),
                               addButtonKey: const Key(
                                 'tenantAdminCreateAddNestedGroupButton',
                               ),
@@ -959,13 +961,8 @@ class _TenantAdminAccountProfileCreateScreenState
                         channels: selectedSource.effectiveContactChannels,
                         emptyMessage:
                             'O perfil selecionado ainda não possui canais de contato válidos.',
-                        selectedBubbleChannelId: _persistedBubbleChannelId(
-                          state.contactBubbleSelection,
-                        ),
-                        onBubbleChanged: (channel, selected) =>
-                            _controller.updateCreateContactBubbleChannelId(
-                              selected ? channel.id : null,
-                            ),
+                        selectedBubbleChannelId:
+                            selectedSource.effectiveContactBubbleChannel?.id,
                       ),
                   ],
                 );
@@ -1006,13 +1003,8 @@ class _TenantAdminAccountProfileCreateScreenState
                   channels: selectedSource.effectiveContactChannels,
                   emptyMessage:
                       'O perfil de origem ainda não possui canais de contato válidos.',
-                  selectedBubbleChannelId: _persistedBubbleChannelId(
-                    state.contactBubbleSelection,
-                  ),
-                  onBubbleChanged: (channel, selected) =>
-                      _controller.updateCreateContactBubbleChannelId(
-                        selected ? channel.id : null,
-                      ),
+                  selectedBubbleChannelId:
+                      selectedSource.effectiveContactBubbleChannel?.id,
                 ),
               ],
             );
@@ -1045,8 +1037,6 @@ class _TenantAdminAccountProfileCreateScreenState
     required List<BellugaContactChannel> channels,
     required String emptyMessage,
     String? selectedBubbleChannelId,
-    void Function(BellugaContactChannel channel, bool selected)?
-    onBubbleChanged,
   }) {
     if (channels.isEmpty) {
       return Text(emptyMessage);
@@ -1065,7 +1055,7 @@ class _TenantAdminAccountProfileCreateScreenState
                     title: Text(_formatContactChannelType(channel.type)),
                     subtitle: Text(_formatContactChannelOption(channel)),
                   ),
-                  if (channel.isBubbleEligible && onBubbleChanged != null)
+                  if (channel.isBubbleEligible)
                     SwitchListTile(
                       key: Key(
                         'tenantAdminCreateMirroredBubbleToggle_${channel.id}',
@@ -1073,8 +1063,7 @@ class _TenantAdminAccountProfileCreateScreenState
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Ativar balão flutuante'),
                       value: selectedBubbleChannelId == channel.id,
-                      onChanged: (selected) =>
-                          onBubbleChanged(channel, selected),
+                      onChanged: null,
                     ),
                 ],
               ),

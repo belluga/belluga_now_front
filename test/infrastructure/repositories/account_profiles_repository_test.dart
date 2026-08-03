@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
@@ -9,6 +11,8 @@ import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group_member_page.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/account_profiles_repository_contract_values.dart';
@@ -24,6 +28,9 @@ import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:belluga_now/testing/account_profile_model_factory.dart';
+import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
+import 'package:belluga_now/domain/value_objects/slug_value.dart';
+import 'package:belluga_now/domain/value_objects/title_value.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -863,6 +870,163 @@ void main() {
   );
 
   test(
+    'newer first-page discovery query keeps ownership when an older delayed response finishes later',
+    () async {
+      final plStarted = Completer<void>();
+      final playStarted = Completer<void>();
+      final plResponse = Completer<PagedAccountProfilesResult>();
+      final playResponse = Completer<PagedAccountProfilesResult>();
+      final backend = _ControllableDiscoveryQueryBackend(
+        responsesByQuery: <String, Completer<PagedAccountProfilesResult>>{
+          'pl': plResponse,
+          'play': playResponse,
+        },
+        startedByQuery: <String, Completer<void>>{
+          'pl': plStarted,
+          'play': playStarted,
+        },
+      );
+      final repository = AccountProfilesRepository(
+        backend: backend,
+        favoriteBackend: _StubFavoriteBackend(favorites: const []),
+        favoriteAccountProfileIds: const {},
+      );
+
+      final firstFuture = repository.loadAccountProfilesPage(
+        pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
+        query: AccountProfilesRepositoryContractPrimString.fromRaw('pl'),
+      );
+      await plStarted.future;
+
+      final secondFuture = repository.loadAccountProfilesPage(
+        pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
+        query: AccountProfilesRepositoryContractPrimString.fromRaw('play'),
+      );
+      await playStarted.future;
+
+      playResponse.complete(
+        pagedAccountProfilesResultFromRaw(
+          profiles: <AccountProfileModel>[
+            buildAccountProfileModelFromPrimitives(
+              id: _generateMongoId(),
+              name: 'Play Final',
+              slug: 'play-final',
+              type: 'artist',
+            ),
+          ],
+          hasMore: false,
+        ),
+      );
+      await secondFuture;
+
+      expect(
+        repository.discoveryFilteredAccountProfilesStreamValue.value
+            .map((profile) => profile.name)
+            .toList(),
+        ['Play Final'],
+      );
+
+      plResponse.complete(
+        pagedAccountProfilesResultFromRaw(
+          profiles: <AccountProfileModel>[
+            buildAccountProfileModelFromPrimitives(
+              id: _generateMongoId(),
+              name: 'Pl Stale',
+              slug: 'pl-stale',
+              type: 'artist',
+            ),
+          ],
+          hasMore: false,
+        ),
+      );
+      await firstFuture;
+
+      expect(
+        repository.discoveryFilteredAccountProfilesStreamValue.value
+            .map((profile) => profile.name)
+            .toList(),
+        ['Play Final'],
+      );
+      expect(
+        repository.pagedAccountProfilesStreamValue.value?.profiles
+            .map((profile) => profile.name)
+            .toList(),
+        ['Play Final'],
+      );
+      expect(repository.pagedAccountProfilesErrorStreamValue.value, isNull);
+    },
+  );
+
+  test(
+    'older delayed first-page failure cannot clear a newer discovery query generation',
+    () async {
+      final plStarted = Completer<void>();
+      final playStarted = Completer<void>();
+      final plResponse = Completer<PagedAccountProfilesResult>();
+      final playResponse = Completer<PagedAccountProfilesResult>();
+      final backend = _ControllableDiscoveryQueryBackend(
+        responsesByQuery: <String, Completer<PagedAccountProfilesResult>>{
+          'pl': plResponse,
+          'play': playResponse,
+        },
+        startedByQuery: <String, Completer<void>>{
+          'pl': plStarted,
+          'play': playStarted,
+        },
+      );
+      final repository = AccountProfilesRepository(
+        backend: backend,
+        favoriteBackend: _StubFavoriteBackend(favorites: const []),
+        favoriteAccountProfileIds: const {},
+      );
+
+      final firstFuture = repository.loadAccountProfilesPage(
+        pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
+        query: AccountProfilesRepositoryContractPrimString.fromRaw('pl'),
+      );
+      await plStarted.future;
+
+      final secondFuture = repository.loadAccountProfilesPage(
+        pageSize: AccountProfilesRepositoryContractPrimInt.fromRaw(30),
+        query: AccountProfilesRepositoryContractPrimString.fromRaw('play'),
+      );
+      await playStarted.future;
+
+      playResponse.complete(
+        pagedAccountProfilesResultFromRaw(
+          profiles: <AccountProfileModel>[
+            buildAccountProfileModelFromPrimitives(
+              id: _generateMongoId(),
+              name: 'Play Final',
+              slug: 'play-final',
+              type: 'artist',
+            ),
+          ],
+          hasMore: false,
+        ),
+      );
+      await secondFuture;
+
+      plResponse.completeError(StateError('stale pl failure'));
+      await expectLater(firstFuture, completes);
+
+      expect(
+        repository.discoveryFilteredAccountProfilesStreamValue.value
+            .map((profile) => profile.name)
+            .toList(),
+        ['Play Final'],
+      );
+      expect(
+        repository.pagedAccountProfilesStreamValue.value?.profiles
+            .map((profile) => profile.name)
+            .toList(),
+        ['Play Final'],
+      );
+      expect(repository.pagedAccountProfilesErrorStreamValue.value, isNull);
+    },
+  );
+
+  test(
     'discovery nearby stream uses dedicated near endpoint even with paged cache',
     () async {
       final backend = _StubAccountProfilesBackend(
@@ -965,6 +1129,123 @@ void main() {
       );
     },
   );
+
+  test(
+    'later nested-group page failures preserve retryable continuation state',
+    () async {
+      const membersPath =
+          '/api/v1/account_profiles/ponta-da-fruta/nested_groups/parceiros/members';
+      const retryCursor = 'cursor-page-2';
+      final backend = _NestedGroupPaginationBackend(
+        outcomesByRequest: <String, List<Object>>{
+          '$membersPath|': <Object>[
+            _nestedGroupMemberPage(
+              items: <AccountProfileNestedGroupMember>[
+                _nestedGroupMember(
+                  id: '507f1f77bcf86cd799439081',
+                  name: 'Ananda Torres',
+                  slug: 'ananda-torres',
+                ),
+              ],
+              nextCursor: retryCursor,
+            ),
+          ],
+          '$membersPath|$retryCursor': <Object>[
+            StateError('later page failed'),
+            _nestedGroupMemberPage(
+              items: <AccountProfileNestedGroupMember>[
+                _nestedGroupMember(
+                  id: '507f1f77bcf86cd799439082',
+                  name: 'Banda Azul',
+                  slug: 'banda-azul',
+                ),
+              ],
+              nextCursor: null,
+            ),
+          ],
+        },
+      );
+      final repository = AccountProfilesRepository(
+        backend: backend,
+        favoriteBackend: _StubFavoriteBackend(favorites: const []),
+        favoriteAccountProfileIds: const {},
+      );
+      final membersPathValue =
+          AccountProfilesRepositoryContractPrimString.fromRaw(
+            membersPath,
+            defaultValue: '',
+            isRequired: true,
+          );
+
+      await repository.loadNestedGroupMembersByPath(membersPathValue);
+
+      expect(
+        repository
+            .nestedGroupMembersStreamValue(membersPathValue)
+            .value
+            .map((member) => member.name)
+            .toList(),
+        ['Ananda Torres'],
+      );
+      expect(
+        repository
+            .hasMoreNestedGroupMembersStreamValue(membersPathValue)
+            .value
+            .value,
+        isTrue,
+      );
+
+      await repository.loadMoreNestedGroupMembersByPath(membersPathValue);
+
+      expect(
+        repository
+            .nestedGroupMembersStreamValue(membersPathValue)
+            .value
+            .map((member) => member.name)
+            .toList(),
+        ['Ananda Torres'],
+      );
+      expect(
+        repository
+            .hasMoreNestedGroupMembersStreamValue(membersPathValue)
+            .value
+            .value,
+        isTrue,
+        reason:
+            'A later-page failure must not burn the saved cursor or disable retry.',
+      );
+      expect(
+        repository
+            .nestedGroupMembersErrorStreamValue(membersPathValue)
+            .value
+            ?.value,
+        contains('later page failed'),
+      );
+
+      await repository.loadMoreNestedGroupMembersByPath(membersPathValue);
+
+      expect(
+        repository
+            .nestedGroupMembersStreamValue(membersPathValue)
+            .value
+            .map((member) => member.name)
+            .toList(),
+        ['Ananda Torres', 'Banda Azul'],
+      );
+      expect(
+        repository
+            .hasMoreNestedGroupMembersStreamValue(membersPathValue)
+            .value
+            .value,
+        isFalse,
+      );
+      expect(backend.requestKeys, <String>[
+        '$membersPath|',
+        '$membersPath|$retryCursor',
+        '$membersPath|$retryCursor',
+      ]);
+    },
+  );
 }
 
 class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
@@ -1056,6 +1337,103 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
     final source = nearbyProfiles.isEmpty ? accountProfiles : nearbyProfiles;
     return source.take(pageSize).toList(growable: false);
   }
+}
+
+class _ControllableDiscoveryQueryBackend extends _StubAccountProfilesBackend {
+  _ControllableDiscoveryQueryBackend({
+    required this.responsesByQuery,
+    required this.startedByQuery,
+  }) : super(accountProfiles: const <AccountProfileModel>[]);
+
+  final Map<String, Completer<PagedAccountProfilesResult>> responsesByQuery;
+  final Map<String, Completer<void>> startedByQuery;
+
+  @override
+  Future<PagedAccountProfilesResult> fetchAccountProfilesPage({
+    required int page,
+    required int pageSize,
+    String? query,
+    String? typeFilter,
+    List<String>? typeFilters,
+    List<AccountProfilesRepositoryTaxonomyFilter>? taxonomyFilters,
+    List<String>? allowedTypes,
+  }) async {
+    fetchAccountProfilesPageCalls += 1;
+    lastAllowedTypes = allowedTypes;
+    lastTypeFilters = typeFilters;
+    lastTaxonomyFilters = List<AccountProfilesRepositoryTaxonomyFilter>.of(
+      taxonomyFilters ?? const <AccountProfilesRepositoryTaxonomyFilter>[],
+    );
+    final key = query?.trim() ?? '';
+    final started = startedByQuery[key];
+    if (started != null && !started.isCompleted) {
+      started.complete();
+    }
+    final response = responsesByQuery[key];
+    if (response == null) {
+      return super.fetchAccountProfilesPage(
+        page: page,
+        pageSize: pageSize,
+        query: query,
+        typeFilter: typeFilter,
+        typeFilters: typeFilters,
+        taxonomyFilters: taxonomyFilters,
+        allowedTypes: allowedTypes,
+      );
+    }
+    return response.future;
+  }
+}
+
+class _NestedGroupPaginationBackend extends _StubAccountProfilesBackend {
+  _NestedGroupPaginationBackend({required this.outcomesByRequest})
+    : super(accountProfiles: const <AccountProfileModel>[]);
+
+  final Map<String, List<Object>> outcomesByRequest;
+  final List<String> requestKeys = <String>[];
+
+  @override
+  Future<AccountProfileNestedGroupMemberPage> fetchNestedGroupMembersPageByPath(
+    String membersPath, {
+    String? cursor,
+  }) async {
+    final key = '$membersPath|${cursor?.trim() ?? ''}';
+    requestKeys.add(key);
+    final outcomes = outcomesByRequest[key];
+    if (outcomes == null || outcomes.isEmpty) {
+      return const AccountProfileNestedGroupMemberPage.empty();
+    }
+    final outcome = outcomes.removeAt(0);
+    if (outcome is AccountProfileNestedGroupMemberPage) {
+      return outcome;
+    }
+    throw outcome;
+  }
+}
+
+AccountProfileNestedGroupMember _nestedGroupMember({
+  required String id,
+  required String name,
+  required String slug,
+}) {
+  return AccountProfileNestedGroupMember(
+    idValue: MongoIDValue()..parse(id),
+    nameValue: TitleValue()..parse(name),
+    slugValue: SlugValue()..parse(slug),
+    profileTypeValue: AccountProfileTypeValue('artist'),
+  );
+}
+
+AccountProfileNestedGroupMemberPage _nestedGroupMemberPage({
+  required List<AccountProfileNestedGroupMember> items,
+  required String? nextCursor,
+}) {
+  return AccountProfileNestedGroupMemberPage(
+    items: items,
+    nextCursorValue: nextCursor == null
+        ? null
+        : AccountProfileNestedGroupMemberTextValue(nextCursor),
+  );
 }
 
 class _NoopTelemetry implements TelemetryRepositoryContract {

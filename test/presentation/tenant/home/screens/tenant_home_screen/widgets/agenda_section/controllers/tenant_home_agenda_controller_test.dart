@@ -729,6 +729,15 @@ void main() {
           ],
         );
         final scheduleRepository = _FakeScheduleRepository(
+          pages: <int, List<EventModel>>{
+            1: <EventModel>[
+              _buildHomeAgendaEvent(
+                occurrenceId: '100000000000000000000101',
+                slug: 'agenda-runtime-repair-empty-query-event',
+                title: 'Evento Reparado',
+              ),
+            ],
+          },
           homeAgendaRuntimeCatalog: runtimeCatalog,
         );
         final controller = _buildAgendaController(
@@ -759,13 +768,14 @@ void main() {
           controller.discoveryFilterSelectionStreamValue.value.isEmpty,
           isTrue,
         );
+        expect(_displayedEvents(controller), isNotEmpty);
 
         controller.onDispose();
       },
     );
 
     test(
-      'refetches when runtime catalog repair changes the selected event type',
+      'does not refetch when backend repairs the selected event type in the same response',
       () async {
         const preloadedCatalog = DiscoveryFilterCatalog(
           surface: 'home.events',
@@ -796,6 +806,15 @@ void main() {
           ],
         );
         final scheduleRepository = _FakeScheduleRepository(
+          pages: <int, List<EventModel>>{
+            1: <EventModel>[
+              _buildHomeAgendaEvent(
+                occurrenceId: '100000000000000000000102',
+                slug: 'agenda-runtime-repair-selected-type-event',
+                title: 'Evento Tipo Reparado',
+              ),
+            ],
+          },
           homeAgendaRuntimeCatalog: runtimeCatalog,
         );
         final controller = _buildAgendaController(
@@ -818,10 +837,11 @@ void main() {
         );
 
         await controller.init();
-        await _waitForScheduleCallCount(scheduleRepository, 2);
+        await Future<void>.delayed(const Duration(milliseconds: 50));
 
-        expect(scheduleRepository.getEventsPageCallCount, 2);
-        expect(scheduleRepository.lastCategories, <String>['show']);
+        expect(scheduleRepository.getEventsPageCallCount, 1);
+        expect(scheduleRepository.lastCategories, <String>['empty-type']);
+        expect(_displayedEvents(controller), isNotEmpty);
 
         controller.onDispose();
       },
