@@ -11,6 +11,7 @@ import 'package:belluga_now/domain/schedule/event_profile_group.dart';
 import 'package:belluga_now/domain/schedule/event_programming_item.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_counterpart_count_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
@@ -39,6 +40,9 @@ EventModel eventModelFromRaw({
   required DateTimeValue? dateTimeEnd,
   List<ArtistResume> artists = const <ArtistResume>[],
   List<EventLinkedAccountProfile> linkedAccountProfiles = const [],
+  List<EventLinkedAccountProfile> counterpartPreviewProfiles =
+      const <EventLinkedAccountProfile>[],
+  EventCounterpartCountValue? counterpartCountValue,
   List<EventProfileGroup> profileGroups = const [],
   List<EventOccurrenceOption> occurrences = const [],
   List<EventProgrammingItem> programmingItems = const [],
@@ -66,6 +70,8 @@ EventModel eventModelFromRaw({
     dateTimeStart: dateTimeStart,
     dateTimeEnd: dateTimeEnd,
     linkedAccountProfiles: resolvedLinkedAccountProfiles,
+    counterpartPreviewProfiles: counterpartPreviewProfiles,
+    counterpartCountValue: counterpartCountValue,
     profileGroups: profileGroups,
     occurrences: occurrences,
     programmingItems: programmingItems,
@@ -112,7 +118,7 @@ List<EventLinkedAccountProfile> _legacyArtistProfiles(
         avatarUrlValue: avatar == null || avatar.isEmpty
             ? null
             : (ThumbUriValue(defaultValue: Uri.parse(avatar), isRequired: true)
-              ..parse(avatar)),
+                ..parse(avatar)),
         taxonomyTerms: taxonomyTerms,
       ),
     );
@@ -137,9 +143,9 @@ List<VenueEventTagValue> _parseTags(Object raw) {
     );
   }
 
-  return List<VenueEventTagValue>.unmodifiable(
-    <VenueEventTagValue>[VenueEventTagValue(raw.toString())],
-  );
+  return List<VenueEventTagValue>.unmodifiable(<VenueEventTagValue>[
+    VenueEventTagValue(raw.toString()),
+  ]);
 }
 
 DomainOptionalDateTimeValue _parseConfirmedAt(Object? raw) {

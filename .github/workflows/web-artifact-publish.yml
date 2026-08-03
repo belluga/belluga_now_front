@@ -107,7 +107,28 @@ jobs:
               fi
               ;;
             dev)
-              echo "OK: '$HEAD_REF' -> '$BASE_REF' allowed for development integration."
+              if [[ "$HEAD_REF" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)-rc$ ]]; then
+                LANE_VERSION="${BASH_REMATCH[1]}"
+                PUBSPEC_VERSION="$(grep -m1 '^version:' pubspec.yaml | sed 's/version:[[:space:]]*//' | sed 's/+.*//' | tr -d '[:space:]')"
+                if [[ -z "$PUBSPEC_VERSION" ]]; then
+                  echo "TEACH: Flutter RC Lane Version Parity Gate" >&2
+                  echo "  Trigger  : PR '${HEAD_REF}' -> 'dev' with RC lane pattern detected." >&2
+                  echo "  Enforced : pubspec.yaml 'version:' must declare X.Y.Z matching the RC lane (vX.Y.Z-rc)." >&2
+                  echo "  Action   : pubspec.yaml 'version:' field could not be parsed." >&2
+                  echo "  Correction: Ensure pubspec.yaml contains 'version: ${LANE_VERSION}+<build_number>'." >&2
+                  exit 1
+                fi
+                if [[ "$PUBSPEC_VERSION" != "$LANE_VERSION" ]]; then
+                  echo "TEACH: Flutter RC Lane Version Parity Gate" >&2
+                  echo "  Trigger  : PR '${HEAD_REF}' -> 'dev' with RC lane pattern detected." >&2
+                  echo "  Enforced : pubspec.yaml semantic version must match the RC lane version." >&2
+                  echo "  Action   : pubspec.yaml declares version '${PUBSPEC_VERSION}' but lane requires '${LANE_VERSION}'." >&2
+                  echo "  Correction: Update pubspec.yaml to 'version: ${LANE_VERSION}+<build_number>' before merging." >&2
+                  exit 1
+                fi
+                echo "OK: pubspec.yaml version ${PUBSPEC_VERSION} matches RC lane version ${LANE_VERSION}."
+              fi
+              echo "OK: '${HEAD_REF}' -> '${BASE_REF}' allowed for development integration."
               ;;
             *)
               echo "ERROR: unsupported base branch '$BASE_REF'. Allowed bases: dev, stage, main." >&2

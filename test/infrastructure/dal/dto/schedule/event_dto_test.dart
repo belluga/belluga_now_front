@@ -95,6 +95,44 @@ void main() {
     expect(dto.id, 'occ-42');
   });
 
+  test(
+    'maps counterpart preview and counterpart count independently from linked profiles',
+    () {
+      final dto = EventDTO.fromJson({
+        'event_id': '507f1f77bcf86cd799439188',
+        'slug': 'counterpart-preview',
+        'type': {
+          'id': 'type-1',
+          'name': 'Show',
+          'slug': 'show',
+          'description': '',
+        },
+        'title': 'Counterpart Preview Event',
+        'content': '',
+        'location': 'Guarapari',
+        'date_time_start': '2026-03-03T10:00:00+00:00',
+        'linked_account_profiles': const [],
+        'counterpart_preview': [
+          {
+            'id': 'artist-1',
+            'display_name': 'Artista A',
+            'slug': 'artista-a',
+            'profile_type': 'artist',
+          },
+        ],
+        'counterpart_count': 3,
+      });
+
+      final domain = dto.toDomain();
+
+      expect(dto.counterpartPreview, hasLength(1));
+      expect(dto.counterpartCount, 3);
+      expect(domain.heroCounterpartProfiles, hasLength(1));
+      expect(domain.heroCounterpartProfiles.first.id, 'artist-1');
+      expect(domain.counterpartCount, 3);
+    },
+  );
+
   test('ignores legacy raw tags when canonical taxonomy_terms are absent', () {
     final dto = EventDTO.fromJson({
       'event_id': '507f1f77bcf86cd799439099',

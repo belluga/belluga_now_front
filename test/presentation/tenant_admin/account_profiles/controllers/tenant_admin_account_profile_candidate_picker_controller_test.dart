@@ -54,6 +54,64 @@ void main() {
   );
 
   test(
+    'clearing a queued search to a sub-minimum query leaves candidates empty and allows later valid recovery',
+    () async {
+      final repository = _CandidateRepository();
+      final firstGate = Completer<TenantAdminAccountProfileCandidatePage>();
+      repository.responsesBySearch['xa'] = firstGate.future;
+      repository.responsesBySearch['xap'] = Future.value(
+        _candidatePage(items: [_candidate('profile-xapuri', 'Xapuri')]),
+      );
+      final controller = TenantAdminAccountProfileCandidatePickerController(
+        pageLoader: TenantAdminAccountProfileCandidateDiscoveryPageLoader(
+          repository: repository,
+        ),
+        scope: TenantAdminAccountProfileCandidateScope.queryable,
+        maxSelections: 50,
+        searchDebounce: Duration.zero,
+      );
+
+      controller.updateSearch('xa');
+      await Future<void>.delayed(Duration.zero);
+      expect(repository.searches, ['xa']);
+
+      controller.updateSearch('xap');
+      await Future<void>.delayed(Duration.zero);
+
+      controller.updateSearch('x');
+      await Future<void>.delayed(Duration.zero);
+      expect(controller.candidatesStreamValue.value, isEmpty);
+
+      firstGate.complete(
+        _candidatePage(items: [_candidate('profile-old', 'Old')]),
+      );
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        repository.searches,
+        ['xa'],
+        reason:
+            'A queued initial request must be dropped once the latest query '
+            'falls below two graphemes.',
+      );
+      expect(controller.candidatesStreamValue.value, isEmpty);
+
+      controller.updateSearch('xap');
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(repository.searches, ['xa', 'xap']);
+      expect(
+        controller.candidatesStreamValue.value.single.displayName,
+        'Xapuri',
+      );
+
+      controller.dispose();
+    },
+  );
+
+  test(
     'keeps next-page loading single-flight and enforces the selection max',
     () async {
       final repository = _CandidateRepository();

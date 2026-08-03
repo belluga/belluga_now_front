@@ -23,6 +23,7 @@ import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_counterpart_count_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_values.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
@@ -65,6 +66,8 @@ class EventDTO {
     this.dateTimeEnd,
     this.artists = const [],
     this.linkedAccountProfiles = const [],
+    this.counterpartPreview = const [],
+    this.counterpartCount,
     this.profileGroups = const [],
     this.occurrences = const [],
     this.programmingItems = const [],
@@ -91,6 +94,8 @@ class EventDTO {
   final String? dateTimeEnd;
   final List<EventArtistDTO> artists;
   final List<EventLinkedAccountProfile> linkedAccountProfiles;
+  final List<EventLinkedAccountProfile> counterpartPreview;
+  final int? counterpartCount;
   final List<EventProfileGroup> profileGroups;
   final List<EventOccurrenceOption> occurrences;
   final List<EventProgrammingItem> programmingItems;
@@ -120,11 +125,9 @@ class EventDTO {
     final linkedProfiles = _resolveLinkedAccountProfiles(
       linkedProfilesRaw: json['linked_account_profiles'],
     );
-    // TODO(v0.3.3-client-cutoff): remove the legacy `artists` fallback after
-    // no active clients below v0.4.0 remain and backend emission stops.
-    final legacyLinkedProfiles = linkedProfiles.isNotEmpty
-        ? linkedProfiles
-        : _resolveLegacyArtists(json['artists']);
+    final counterpartPreview = _resolveLinkedAccountProfiles(
+      linkedProfilesRaw: json['counterpart_preview'],
+    );
     final selectedOccurrenceId = _asNullableString(json['occurrence_id']);
 
     final taxonomyTerms = _resolveCanonicalTaxonomyTerms(
@@ -164,14 +167,18 @@ class EventDTO {
           _asNullableString(json['date_time_end']) ??
           _asNullableString(json['ends_at']) ??
           _asNullableString(json['end_time']),
-      linkedAccountProfiles: legacyLinkedProfiles,
+      linkedAccountProfiles: linkedProfiles,
+      counterpartPreview: counterpartPreview,
+      counterpartCount: json.containsKey('counterpart_count')
+          ? _asInt(json['counterpart_count'])
+          : null,
       profileGroups: _resolveProfileGroups(
         json['profile_groups'],
-        linkedAccountProfiles: legacyLinkedProfiles,
+        linkedAccountProfiles: linkedProfiles,
       ),
       occurrences: _resolveOccurrences(
         occurrencesRaw: json['occurrences'],
-        linkedAccountProfiles: legacyLinkedProfiles,
+        linkedAccountProfiles: linkedProfiles,
         fallbackOccurrenceId: selectedOccurrenceId,
         fallbackDateTimeStart:
             _asNullableString(json['date_time_start']) ??
@@ -244,6 +251,10 @@ class EventDTO {
           : null,
       venue: venueDomain,
       linkedAccountProfiles: linkedAccountProfiles,
+      counterpartPreviewProfiles: counterpartPreview,
+      counterpartCountValue: counterpartCount == null
+          ? null
+          : EventCounterpartCountValue(counterpartCount),
       profileGroups: profileGroups,
       occurrences: occurrences,
       programmingItems: programmingItems,
@@ -279,68 +290,6 @@ class EventDTO {
     value.validate(rawContent);
     value.set(rawContent);
     return value;
-  }
-
-  static List<EventLinkedAccountProfile> _resolveLegacyArtists(Object? raw) {
-    if (raw is! List) {
-      return const [];
-    }
-
-    final resolved = <EventLinkedAccountProfile>[];
-    for (final entry in raw) {
-      final artist = _asMap(entry);
-      final id = _asString(artist['id'])?.trim() ?? '';
-      final displayName =
-          _asString(artist['display_name'])?.trim() ??
-          _asString(artist['name'])?.trim() ??
-          '';
-      if (id.isEmpty || displayName.isEmpty) {
-        continue;
-      }
-
-      final taxonomyTerms = EventLinkedAccountProfileTaxonomyTerms();
-      final genres = artist['genres'];
-      if (genres is List) {
-        for (final genre in genres) {
-          final value = _asString(genre)?.trim() ?? '';
-          if (value.isEmpty) continue;
-          taxonomyTerms.addTerm(
-            typeValue: AccountProfileTagValue('genre'),
-            valueValue: AccountProfileTagValue(value),
-            nameValue: AccountProfileTagValue(value),
-          );
-        }
-      }
-
-      resolved.add(
-        EventLinkedAccountProfile(
-          idValue: EventLinkedAccountProfileTextValue(id),
-          displayNameValue: EventLinkedAccountProfileTextValue(displayName),
-          profileTypeValue: AccountProfileTypeValue(
-            _asString(artist['profile_type']) ?? 'artist',
-          ),
-          slugValue: _optionalLinkedAccountProfileSlugValue(profile: artist),
-          avatarUrlValue: _thumbUriValueOrNull(
-            _asNullableString(artist['avatar_url']),
-          ),
-          coverUrlValue: _thumbUriValueOrNull(
-            _asNullableString(artist['cover_url'] ?? artist['hero_image_url']),
-          ),
-          partyTypeValue: _textValueOrNull(
-            _asNullableString(artist['party_type']),
-          ),
-          canOpenPublicDetailValue: _booleanValue(
-            _resolveCanOpenPublicDetail(artist),
-          ),
-          publicDetailPathValue: _textValueOrNull(
-            _resolvePublicDetailPath(artist),
-          ),
-          taxonomyTerms: taxonomyTerms,
-        ),
-      );
-    }
-
-    return List<EventLinkedAccountProfile>.unmodifiable(resolved);
   }
 
   DateTime? dateOnly() {

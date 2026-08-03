@@ -88,6 +88,7 @@ class DiscoveryScreenController extends Object
   bool _isDisposed = false;
   int _lifecycleToken = 0;
   int _reloadRequestToken = 0;
+  int? _activeReloadRequestToken;
   bool _isFetchingPage = false;
   bool _isFetchingLiveNow = false;
   bool _hasPendingLiveNowReload = false;
@@ -281,11 +282,22 @@ class DiscoveryScreenController extends Object
   }
 
   Future<void> _reloadPartners({bool showFullScreenLoader = false}) async {
+    final requestToken = ++_reloadRequestToken;
+    await _runPartnersReload(
+      requestToken: requestToken,
+      showFullScreenLoader: showFullScreenLoader,
+    );
+  }
+
+  Future<void> _runPartnersReload({
+    required int requestToken,
+    required bool showFullScreenLoader,
+  }) async {
     if (_isDisposed) {
       return;
     }
     final lifecycleToken = _lifecycleToken;
-    final requestToken = ++_reloadRequestToken;
+    _activeReloadRequestToken = requestToken;
     final useFullScreenLoader =
         showFullScreenLoader ||
         (!hasLoadedStreamValue.value &&
@@ -309,11 +321,14 @@ class DiscoveryScreenController extends Object
       }
     } finally {
       if (_isLifecycleTokenActive(lifecycleToken) &&
-          requestToken == _reloadRequestToken) {
+          _activeReloadRequestToken == requestToken) {
         hasLoadedStreamValue.addValue(true);
         isLoadingStreamValue.addValue(false);
         isRefreshingStreamValue.addValue(false);
         unawaited(_reloadLiveNowSection());
+      }
+      if (_activeReloadRequestToken == requestToken) {
+        _activeReloadRequestToken = null;
       }
     }
   }
@@ -330,12 +345,12 @@ class DiscoveryScreenController extends Object
     required bool isInitial,
     required int requestToken,
   }) async {
-    if (_isFetchingPage) return;
+    if (!isInitial && _isFetchingPage) return;
     if (!isInitial && !hasMoreStreamValue.value) return;
 
     final lifecycleToken = _lifecycleToken;
-    _isFetchingPage = true;
     if (!isInitial) {
+      _isFetchingPage = true;
       isPageLoadingStreamValue.addValue(true);
     }
 
@@ -412,10 +427,8 @@ class DiscoveryScreenController extends Object
         await _accountProfilesRepository.syncDiscoveryNearbyAccountProfiles();
       }
     } finally {
-      _isFetchingPage = false;
-      if (_isLifecycleTokenActive(lifecycleToken) &&
-          !isInitial &&
-          requestToken == _reloadRequestToken) {
+      if (_isLifecycleTokenActive(lifecycleToken) && !isInitial) {
+        _isFetchingPage = false;
         isPageLoadingStreamValue.addValue(false);
       }
     }
@@ -766,8 +779,6 @@ class DiscoveryScreenController extends Object
     }
 
     final selection = discoveryFilterSelectionStreamValue.value;
-    final canUsePersistedFallback =
-        _canUsePersistedDiscoveryFilterSelectionSnapshot(selection);
     final currentTypeFilters = _selectedAccountProfileTypeFilters(
       selectionOverride: selection,
     );
@@ -791,9 +802,6 @@ class DiscoveryScreenController extends Object
     );
     if (selectionChanged) {
       discoveryFilterSelectionStreamValue.addValue(repairedSelection);
-      unawaited(persistPublicDiscoveryFilterSelection(repairedSelection));
-      _persistedDiscoveryFilterSelectionSnapshot =
-          discoveryFilterSelectionSnapshot(repairedSelection);
     }
     final repairedTypeFilters = _selectedAccountProfileTypeFilters(
       catalogOverride: runtimeCatalog,
@@ -805,8 +813,6 @@ class DiscoveryScreenController extends Object
       selectionOverride: repairedSelection,
       allowPersistedFallback: false,
     );
-    final repairedQueryEmpty =
-        repairedTypeFilters.isEmpty && repairedTaxonomyFilters.isEmpty;
     final queryChanged =
         !_sameAccountProfileTypeFilters(
           currentTypeFilters,
@@ -825,24 +831,17 @@ class DiscoveryScreenController extends Object
       return false;
     }
 
-    if (canUsePersistedFallback && repairedQueryEmpty) {
-      final effectiveQuery =
-          _effectiveSearchQuery(searchQueryStreamValue.value.trim()) ?? '';
-      if (_shouldSyncNearby(
-        query: effectiveQuery,
-        selectedType: selectedTypeFilterStreamValue.value,
-        typeFilters: repairedTypeFilters,
-        taxonomyFilters: repairedTaxonomyFilters,
-      )) {
-        unawaited(
-          _accountProfilesRepository.syncDiscoveryNearbyAccountProfiles(),
-        );
-      }
-      return false;
+    final effectiveQuery =
+        _effectiveSearchQuery(searchQueryStreamValue.value.trim()) ?? '';
+    if (_shouldSyncNearby(
+      query: effectiveQuery,
+      selectedType: selectedTypeFilterStreamValue.value,
+      typeFilters: repairedTypeFilters,
+      taxonomyFilters: repairedTaxonomyFilters,
+    )) {
+      unawaited(_accountProfilesRepository.syncDiscoveryNearbyAccountProfiles());
     }
-
-    _scheduleReload(immediate: true);
-    return true;
+    return false;
   }
 
   bool _sameDiscoveryFilterCatalog(
