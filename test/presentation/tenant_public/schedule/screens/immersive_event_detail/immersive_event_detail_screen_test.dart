@@ -51,6 +51,7 @@ import 'package:belluga_now/domain/schedule/event_profile_group.dart';
 import 'package:belluga_now/domain/schedule/event_programming_item.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_counterpart_count_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_profile_group_order_value.dart';
@@ -3653,6 +3654,70 @@ void main() {
 
       expect(secondChipTop, closeTo(firstChipTop, 0.5));
       expect(overflowChipTop, closeTo(firstChipTop, 0.5));
+    },
+  );
+
+  testWidgets(
+    'event hero uses counterpart count from preview contract when only one preview profile is present',
+    (tester) async {
+      final userEventsRepository = _FakeUserEventsRepository();
+      final invitesRepository = _FakeInvitesRepository();
+      GetIt.I.registerSingleton<ImmersiveEventDetailController>(
+        ImmersiveEventDetailController(
+          userEventsRepository: userEventsRepository,
+          invitesRepository: invitesRepository,
+          authRepository: _FakeAuthRepository(authorized: true),
+          appDataRepository: _FakeAppDataRepository(_buildAppData()),
+        ),
+      );
+
+      final router = _RecordingStackRouter();
+      final routeData = RouteData(
+        route: _FakeRouteMatch(fullPath: '/agenda/evento/evento-de-teste'),
+        router: router,
+        stackKey: const ValueKey('stack'),
+        pendingChildren: const [],
+        type: const RouteType.material(),
+      );
+
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: _routeScopedHome(
+              routeData: routeData,
+              child: ImmersiveEventDetailScreen(
+                event: _buildEvent(
+                  linkedProfiles: const [],
+                  counterpartPreviewProfiles: [
+                    _buildLinkedAccountProfile(
+                      id: 'artist-1',
+                      displayName: 'Ananda Torres',
+                      profileType: 'artist',
+                      slug: 'ananda-torres',
+                    ),
+                  ],
+                  counterpartCount: 3,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(
+        find.byKey(const Key('eventHeroCounterpartChip_artist-1')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('eventHeroMoreProfilesChip')),
+        findsOneWidget,
+      );
+      expect(find.text('e mais 2'), findsOneWidget);
     },
   );
 
@@ -7333,6 +7398,8 @@ EventModel _buildOccurrenceMediaRegressionEvent({
 EventModel _buildEvent({
   PartnerResume? venue,
   List<EventLinkedAccountProfile> linkedProfiles = const [],
+  List<EventLinkedAccountProfile> counterpartPreviewProfiles = const [],
+  int? counterpartCount,
   List<EventProfileGroup> profileGroups = const [],
   List<EventOccurrenceOption> occurrences = const [],
   List<EventProgrammingItem> programmingItems = const [],
@@ -7372,6 +7439,10 @@ EventModel _buildEvent({
             ..parse(endDateTime.toIso8601String())),
     artists: const [],
     linkedAccountProfiles: linkedProfiles,
+    counterpartPreviewProfiles: counterpartPreviewProfiles,
+    counterpartCountValue: counterpartCount == null
+        ? null
+        : EventCounterpartCountValue(counterpartCount),
     profileGroups: profileGroups,
     occurrences: occurrences,
     programmingItems: programmingItems,

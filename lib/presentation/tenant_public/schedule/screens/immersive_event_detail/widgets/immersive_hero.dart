@@ -21,12 +21,16 @@ class ImmersiveHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final fallbackImageValue =
-        ThumbUriValue(defaultValue: fallbackImageUri, isRequired: true)
-          ..parse(fallbackImageUri.toString());
-    final resume =
-        VenueEventResume.fromScheduleEvent(event, fallbackImageValue);
+    final fallbackImageValue = ThumbUriValue(
+      defaultValue: fallbackImageUri,
+      isRequired: true,
+    )..parse(fallbackImageUri.toString());
+    final resume = VenueEventResume.fromScheduleEvent(
+      event,
+      fallbackImageValue,
+    );
     final counterparts = _counterpartProfiles(event);
+    final counterpartCount = event.counterpartCount;
     final taxonomyTags = event.taxonomyTags;
 
     return Stack(
@@ -108,6 +112,7 @@ class ImmersiveHero extends StatelessWidget {
                 const SizedBox(height: 10),
                 _CounterpartStrip(
                   profiles: counterparts,
+                  totalCount: counterpartCount,
                   onCounterpartTap: onCounterpartTap,
                 ),
               ],
@@ -124,9 +129,9 @@ class ImmersiveHero extends StatelessWidget {
                     child: Text(
                       event.detailScheduleLabel,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            color: colorScheme.onSurface,
-                            fontWeight: FontWeight.w800,
-                          ),
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 ],
@@ -145,9 +150,9 @@ class ImmersiveHero extends StatelessWidget {
                       child: Text(
                         venueLine,
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              color: colorScheme.onSurface,
-                              fontWeight: FontWeight.w800,
-                            ),
+                          color: colorScheme.onSurface,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                   ],
@@ -164,7 +169,7 @@ class ImmersiveHero extends StatelessWidget {
     final venueId = event.venue?.id;
     final seen = <String>{};
     final linked = <EventLinkedAccountProfile>[];
-    for (final profile in event.linkedAccountProfiles) {
+    for (final profile in event.heroCounterpartProfiles) {
       if (profile.id == venueId) {
         continue;
       }
@@ -237,9 +242,9 @@ class _EventCategoryChip extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: colorScheme.onSurface,
-                      fontWeight: FontWeight.w800,
-                    ),
+                  color: colorScheme.onSurface,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
           ],
@@ -250,17 +255,13 @@ class _EventCategoryChip extends StatelessWidget {
 }
 
 class _TaxonomyTagStrip extends StatelessWidget {
-  _TaxonomyTagStrip({
-    required Iterable<String> tags,
-    String? excludedLabel,
-  }) : tags = tags
-            .map(_clean)
-            .where((tag) => tag.isNotEmpty)
-            .where(
-              (tag) => _normalize(tag) != _normalize(excludedLabel ?? ''),
-            )
-            .toSet()
-            .toList(growable: false);
+  _TaxonomyTagStrip({required Iterable<String> tags, String? excludedLabel})
+    : tags = tags
+          .map(_clean)
+          .where((tag) => tag.isNotEmpty)
+          .where((tag) => _normalize(tag) != _normalize(excludedLabel ?? ''))
+          .toSet()
+          .toList(growable: false);
 
   final List<String> tags;
 
@@ -315,10 +316,7 @@ class _TaxonomyTagStrip extends StatelessWidget {
 }
 
 class _TaxonomyTagChip extends StatelessWidget {
-  const _TaxonomyTagChip({
-    required this.label,
-    super.key,
-  });
+  const _TaxonomyTagChip({required this.label, super.key});
 
   final String label;
 
@@ -340,9 +338,9 @@ class _TaxonomyTagChip extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: colorScheme.onSurface,
-              fontWeight: FontWeight.w800,
-            ),
+          color: colorScheme.onSurface,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }
@@ -371,9 +369,9 @@ class _TaxonomyOverflowChip extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: colorScheme.onSurface,
-              fontWeight: FontWeight.w800,
-            ),
+          color: colorScheme.onSurface,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }
@@ -382,21 +380,26 @@ class _TaxonomyOverflowChip extends StatelessWidget {
 class _CounterpartStrip extends StatelessWidget {
   const _CounterpartStrip({
     required this.profiles,
+    required this.totalCount,
     required this.onCounterpartTap,
   });
 
   static const int _compactThreshold = 1;
 
   final List<EventLinkedAccountProfile> profiles;
+  final int totalCount;
   final ValueChanged<EventLinkedAccountProfile>? onCounterpartTap;
 
   @override
   Widget build(BuildContext context) {
-    final compact = profiles.length > _compactThreshold;
+    final compact = totalCount > _compactThreshold;
     final visibleProfiles = compact
         ? profiles.take(1).toList(growable: false)
         : profiles.toList(growable: false);
-    final hiddenCount = profiles.length - visibleProfiles.length;
+    final hiddenCount = (totalCount - visibleProfiles.length).clamp(
+      0,
+      totalCount,
+    );
 
     return Wrap(
       key: const Key('eventHeroCounterpartStrip'),
@@ -424,10 +427,7 @@ class _CounterpartStrip extends StatelessWidget {
 }
 
 class _CounterpartChip extends StatelessWidget {
-  const _CounterpartChip({
-    required this.profile,
-    required this.onTap,
-  });
+  const _CounterpartChip({required this.profile, required this.onTap});
 
   final EventLinkedAccountProfile profile;
   final VoidCallback? onTap;
@@ -462,9 +462,9 @@ class _CounterpartChip extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: colorScheme.onSurface,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  color: colorScheme.onSurface,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ],
@@ -489,10 +489,7 @@ class _CounterpartChip extends StatelessWidget {
 }
 
 class _MoreCounterpartChip extends StatelessWidget {
-  const _MoreCounterpartChip({
-    required this.hiddenCount,
-    required this.onTap,
-  });
+  const _MoreCounterpartChip({required this.hiddenCount, required this.onTap});
 
   final int hiddenCount;
   final VoidCallback? onTap;
@@ -515,9 +512,9 @@ class _MoreCounterpartChip extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: colorScheme.onSurface,
-              fontWeight: FontWeight.w700,
-            ),
+          color: colorScheme.onSurface,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
 
@@ -552,11 +549,7 @@ class _CounterpartAvatar extends StatelessWidget {
         color: Colors.white.withValues(alpha: 0.18),
         shape: BoxShape.circle,
       ),
-      child: const Icon(
-        Icons.person_outline,
-        color: Colors.white,
-        size: 14,
-      ),
+      child: const Icon(Icons.person_outline, color: Colors.white, size: 14),
     );
 
     if (resolvedAvatarUrl == null || resolvedAvatarUrl.isEmpty) {
