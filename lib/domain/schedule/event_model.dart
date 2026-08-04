@@ -21,6 +21,7 @@ import 'package:value_object_pattern/domain/value_objects/html_content_value.dar
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 
+import 'package:belluga_now/domain/schedule/value_objects/event_counterpart_count_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
 
@@ -42,6 +43,8 @@ class EventModel {
   final DateTimeValue dateTimeStart;
   final DateTimeValue? dateTimeEnd;
   final List<EventLinkedAccountProfile> linkedAccountProfiles;
+  final List<EventLinkedAccountProfile> counterpartPreviewProfiles;
+  final EventCounterpartCountValue? counterpartCountValue;
   final List<EventProfileGroup> profileGroups;
   final List<EventOccurrenceOption> occurrences;
   final List<EventProgrammingItem> programmingItems;
@@ -126,6 +129,19 @@ class EventModel {
     );
   }
 
+  List<EventLinkedAccountProfile> get heroCounterpartProfiles {
+    if (counterpartPreviewProfiles.isNotEmpty) {
+      return List<EventLinkedAccountProfile>.unmodifiable(
+        counterpartPreviewProfiles,
+      );
+    }
+
+    return counterpartProfiles;
+  }
+
+  int get counterpartCount =>
+      counterpartCountValue?.value ?? counterpartProfiles.length;
+
   bool get hasCounterparts => counterpartProfiles.isNotEmpty;
 
   EventLinkedAccountProfile? get primaryCounterpart =>
@@ -137,8 +153,10 @@ class EventModel {
       .join(', ');
 
   List<VenueEventTagValue> get taxonomyTags {
-    final cleaned =
-        tags.map((tag) => tag.value.trim()).where((t) => t.isNotEmpty).toSet();
+    final cleaned = tags
+        .map((tag) => tag.value.trim())
+        .where((t) => t.isNotEmpty)
+        .toSet();
     return List<VenueEventTagValue>.unmodifiable(
       cleaned.map(VenueEventTagValue.new),
     );
@@ -156,6 +174,9 @@ class EventModel {
     required this.dateTimeStart,
     required this.dateTimeEnd,
     List<EventLinkedAccountProfile> linkedAccountProfiles = const [],
+    List<EventLinkedAccountProfile> counterpartPreviewProfiles =
+        const <EventLinkedAccountProfile>[],
+    this.counterpartCountValue,
     List<EventProfileGroup> profileGroups = const [],
     List<EventOccurrenceOption> occurrences = const [],
     List<EventProgrammingItem> programmingItems = const [],
@@ -167,12 +188,18 @@ class EventModel {
     this.sentInvites,
     this.friendsGoing,
     required this.totalConfirmedValue,
-  })  : linkedAccountProfiles =
-            List<EventLinkedAccountProfile>.unmodifiable(linkedAccountProfiles),
-        profileGroups = List<EventProfileGroup>.unmodifiable(profileGroups),
-        occurrences = List<EventOccurrenceOption>.unmodifiable(occurrences),
-        programmingItems =
-            List<EventProgrammingItem>.unmodifiable(programmingItems),
-        tagValues = List<VenueEventTagValue>.unmodifiable(tags),
-        confirmedAtValue = confirmedAtValue ?? DomainOptionalDateTimeValue();
+  }) : linkedAccountProfiles = List<EventLinkedAccountProfile>.unmodifiable(
+         linkedAccountProfiles,
+       ),
+       counterpartPreviewProfiles =
+           List<EventLinkedAccountProfile>.unmodifiable(
+             counterpartPreviewProfiles,
+           ),
+       profileGroups = List<EventProfileGroup>.unmodifiable(profileGroups),
+       occurrences = List<EventOccurrenceOption>.unmodifiable(occurrences),
+       programmingItems = List<EventProgrammingItem>.unmodifiable(
+         programmingItems,
+       ),
+       tagValues = List<VenueEventTagValue>.unmodifiable(tags),
+       confirmedAtValue = confirmedAtValue ?? DomainOptionalDateTimeValue();
 }

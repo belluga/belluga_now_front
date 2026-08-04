@@ -459,6 +459,9 @@ class ImmersiveEventDetailController implements Disposable {
             _dateTimeSignature(right.dateTimeEnd) &&
         _linkedAccountProfileSignature(left.linkedAccountProfiles) ==
             _linkedAccountProfileSignature(right.linkedAccountProfiles) &&
+        _linkedAccountProfileSignature(left.heroCounterpartProfiles) ==
+            _linkedAccountProfileSignature(right.heroCounterpartProfiles) &&
+        left.counterpartCount == right.counterpartCount &&
         _profileGroupSignature(left.profileGroups) ==
             _profileGroupSignature(right.profileGroups) &&
         _occurrenceSignature(left.occurrences) ==

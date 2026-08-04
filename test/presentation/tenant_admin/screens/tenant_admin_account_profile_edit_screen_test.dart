@@ -358,6 +358,195 @@ void main() {
   );
 
   testWidgets(
+    'renders the source bubble selection as an inert mirrored indicator',
+    (tester) async {
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+      final sourceChannel = BellugaContactChannel(
+        id: 'source-whatsapp',
+        type: BellugaContactChannelType.whatsapp,
+        value: '+55 (27) 99999-9999',
+      );
+      final sourceProfile = _profile(
+        id: '507f1f77bcf86cd799439001',
+        contactChannels: [sourceChannel],
+        effectiveContactChannels: [sourceChannel],
+        contactBubbleChannelId: sourceChannel.id,
+      );
+      profilesRepository.profileTypesToReturn = [
+        _profileType(
+          hasGallery: false,
+          hasNestedProfileGroups: false,
+          hasContactChannels: true,
+        ),
+      ];
+      profilesRepository.profilesToReturn = [sourceProfile];
+      profilesRepository.accountProfileFetchOverrides[sourceProfile.id] =
+          sourceProfile;
+      profilesRepository.profileToReturn = _profile(
+        id: 'route-profile',
+        contactMode: BellugaContactSourceMode.mirroredAccountProfile,
+        contactSourceAccountProfileId: sourceProfile.id,
+      );
+
+      await _pumpScreen(
+        tester,
+        const TenantAdminAccountProfileEditScreen(
+          accountSlug: 'route-account',
+          accountProfileId: 'route-profile',
+        ),
+      );
+
+      final toggle = find
+          .byKey(
+            const Key('tenantAdminEditMirroredBubbleToggle_source-whatsapp'),
+          )
+          .last;
+      await tester.ensureVisible(toggle);
+
+      final switchListTile = tester.widget<SwitchListTile>(toggle);
+      expect(switchListTile.value, isTrue);
+      expect(switchListTile.onChanged, isNull);
+
+      final bubbleSelectionBefore = GetIt.I
+          .get<TenantAdminAccountProfilesController>()
+          .editStateStreamValue
+          .value
+          .contactBubbleSelection;
+
+      await tester.tap(toggle);
+      await tester.pump();
+      await tester.tap(
+        find.descendant(of: toggle, matching: find.byType(Switch)),
+      );
+      await tester.pump();
+
+      expect(
+        GetIt.I
+            .get<TenantAdminAccountProfilesController>()
+            .editStateStreamValue
+            .value
+            .contactBubbleSelection,
+        same(bubbleSelectionBefore),
+      );
+    },
+  );
+
+  testWidgets('renders a mirrored source without a bubble selection as off', (
+    tester,
+  ) async {
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+    final sourceChannel = BellugaContactChannel(
+      id: 'source-whatsapp-off',
+      type: BellugaContactChannelType.whatsapp,
+      value: '+55 (27) 98888-7777',
+    );
+    final sourceProfile = _profile(
+      id: '507f1f77bcf86cd799439002',
+      contactChannels: [sourceChannel],
+      effectiveContactChannels: [sourceChannel],
+    );
+    profilesRepository.profileTypesToReturn = [
+      _profileType(
+        hasGallery: false,
+        hasNestedProfileGroups: false,
+        hasContactChannels: true,
+      ),
+    ];
+    profilesRepository.profilesToReturn = [sourceProfile];
+    profilesRepository.accountProfileFetchOverrides[sourceProfile.id] =
+        sourceProfile;
+    profilesRepository.profileToReturn = _profile(
+      id: 'route-profile',
+      contactMode: BellugaContactSourceMode.mirroredAccountProfile,
+      contactSourceAccountProfileId: sourceProfile.id,
+      contactBubbleChannelId: sourceChannel.id,
+    );
+
+    await _pumpScreen(
+      tester,
+      const TenantAdminAccountProfileEditScreen(
+        accountSlug: 'route-account',
+        accountProfileId: 'route-profile',
+      ),
+    );
+
+    final toggle = find
+        .byKey(
+          const Key('tenantAdminEditMirroredBubbleToggle_source-whatsapp-off'),
+        )
+        .last;
+    await tester.ensureVisible(toggle);
+
+    final switchListTile = tester.widget<SwitchListTile>(toggle);
+    expect(switchListTile.value, isFalse);
+    expect(switchListTile.onChanged, isNull);
+  });
+
+  testWidgets('keeps own contact bubble selection interactive', (tester) async {
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+    final ownChannel = BellugaContactChannel(
+      id: 'own-whatsapp',
+      type: BellugaContactChannelType.whatsapp,
+      value: '+55 (27) 97777-6666',
+    );
+    profilesRepository.profileTypesToReturn = [
+      _profileType(
+        hasGallery: false,
+        hasNestedProfileGroups: false,
+        hasContactChannels: true,
+      ),
+    ];
+    profilesRepository.profileToReturn = _profile(
+      id: 'route-profile',
+      contactChannels: [ownChannel],
+      effectiveContactChannels: [ownChannel],
+    );
+
+    await _pumpScreen(
+      tester,
+      const TenantAdminAccountProfileEditScreen(
+        accountSlug: 'route-account',
+        accountProfileId: 'route-profile',
+      ),
+    );
+
+    final draftKey = GetIt.I
+        .get<TenantAdminAccountProfilesController>()
+        .editStateStreamValue
+        .value
+        .contactChannelDrafts
+        .single
+        .draftKey;
+    final toggle = find.byKey(Key('tenantAdminContactBubbleToggle_$draftKey'));
+    await tester.scrollUntilVisible(
+      toggle,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(toggle);
+    await tester.pump();
+
+    expect(
+      GetIt.I
+          .get<TenantAdminAccountProfilesController>()
+          .editStateStreamValue
+          .value
+          .contactBubbleSelection,
+      isA<BellugaContactBubbleSelectionPersisted>().having(
+        (selection) => selection.channelId,
+        'channelId',
+        ownChannel.id,
+      ),
+    );
+  });
+
+  testWidgets(
     'opens the mirrored contact source picker with server candidates and no crash fallback',
     (tester) async {
       final profilesRepository =
@@ -702,6 +891,68 @@ void main() {
   });
 
   testWidgets(
+    'reloads nested picker candidates when the edit-screen modal opens and excludes the current profile',
+    (tester) async {
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+      profilesRepository.profileTypesToReturn = [
+        _profileType(hasGallery: false, hasNestedProfileGroups: true),
+      ];
+      profilesRepository.profileToReturn = _profile(
+        id: 'route-profile',
+        nestedProfileGroups: [
+          TenantAdminNestedProfileGroup(
+            idValue: TenantAdminNestedProfileGroupTextValue('partners'),
+            labelValue: TenantAdminNestedProfileGroupTextValue('Parceiros'),
+            orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+            accountProfileIdValues: const [],
+          ),
+        ],
+      );
+      profilesRepository.pagedProfilesToReturnByRequest = [
+        const <TenantAdminAccountProfile>[],
+        [
+          _profile(
+            id: 'route-profile',
+            displayName: 'Perfil atual',
+            profileType: 'poi',
+          ),
+          _profile(
+            id: 'profile-partner',
+            displayName: 'Conta Parceira',
+            profileType: 'poi',
+          ),
+        ],
+      ];
+
+      await _pumpScreen(
+        tester,
+        TenantAdminAccountProfileEditScreen(
+          accountSlug: 'route-account',
+          accountProfileId: 'route-profile',
+        ),
+      );
+
+      final scrollable = find.byType(Scrollable).first;
+      await tester.scrollUntilVisible(
+        find.text('Abas de contas vinculadas'),
+        200,
+        scrollable: scrollable,
+      );
+      await tester.tap(find.text('Selecionar perfis'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Conta Parceira'), findsOneWidget);
+      expect(find.text('Perfil atual'), findsNothing);
+      expect(
+        profilesRepository.fetchAccountProfilesPageCalls,
+        greaterThanOrEqualTo(2),
+      );
+    },
+  );
+
+  testWidgets(
     'metadata-only nested groups show first-page chips, load more on demand, and preserve full ids on save',
     (tester) async {
       final profilesRepository =
@@ -963,6 +1214,8 @@ class _FakeAccountProfilesRepository
     _profileType(hasGallery: true, hasNestedProfileGroups: false),
   ];
   List<TenantAdminAccountProfile> profilesToReturn = [];
+  List<List<TenantAdminAccountProfile>> pagedProfilesToReturnByRequest =
+      const [];
   final Map<String, TenantAdminAccountProfile> accountProfileFetchOverrides =
       <String, TenantAdminAccountProfile>{};
   List<TenantAdminAccountProfileGalleryUpdateGroup>? lastGalleryGroups;
@@ -970,6 +1223,7 @@ class _FakeAccountProfilesRepository
   final Map<String, List<TenantAdminNestedGroupMemberPage>>
   nestedGroupMemberPagesByGroupId =
       <String, List<TenantAdminNestedGroupMemberPage>>{};
+  int fetchAccountProfilesPageCalls = 0;
 
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
@@ -995,7 +1249,15 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoBool? queryableOnly,
     TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async {
+    fetchAccountProfilesPageCalls += 1;
+    final sourceProfiles =
+        pagedProfilesToReturnByRequest.isNotEmpty &&
+            fetchAccountProfilesPageCalls <=
+                pagedProfilesToReturnByRequest.length
+        ? pagedProfilesToReturnByRequest[fetchAccountProfilesPageCalls - 1]
+        : profilesToReturn;
     final filtered = _filterProfiles(
+      sourceProfiles: sourceProfiles,
       search: search?.value,
       excludeAccountProfileId: excludeAccountProfileId?.value,
     );
@@ -1300,11 +1562,12 @@ class _FakeAccountProfilesRepository
   }
 
   List<TenantAdminAccountProfile> _filterProfiles({
+    List<TenantAdminAccountProfile>? sourceProfiles,
     String? search,
     String? excludeAccountProfileId,
   }) {
     final normalizedSearch = search?.trim().toLowerCase() ?? '';
-    return profilesToReturn
+    return (sourceProfiles ?? profilesToReturn)
         .where((profile) {
           if (excludeAccountProfileId != null &&
               excludeAccountProfileId.isNotEmpty &&

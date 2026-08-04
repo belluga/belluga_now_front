@@ -2566,6 +2566,135 @@ void main() {
   );
 
   test(
+    'searchContactSourceCandidates returns filtered results after initial load completes [RED]',
+    () async {
+      final profilesRepository = _FakeAccountProfilesRepository(
+        [
+          tenantAdminAccountProfileFromRaw(
+            id: 'profile-alvo',
+            accountId: 'acc-1',
+            profileType: 'venue',
+            displayName: 'Alvo de Contato',
+            slug: 'alvo-contato',
+          ),
+          tenantAdminAccountProfileFromRaw(
+            id: 'profile-outro',
+            accountId: 'acc-2',
+            profileType: 'venue',
+            displayName: 'Outro Perfil',
+            slug: 'outro-perfil',
+          ),
+        ],
+        const [],
+      );
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+
+      await controller.loadContactSourceCandidates();
+      controller.searchContactSourceCandidates('alvo');
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(profilesRepository.lastFetchSearch, 'alvo');
+      expect(
+        controller.contactSourceCandidatesStreamValue.value
+            .map((profile) => profile.id)
+            .toList(growable: false),
+        contains('profile-alvo'),
+      );
+      expect(
+        controller.contactSourceCandidatesStreamValue.value.map(
+          (profile) => profile.id,
+        ),
+        isNot(contains('profile-outro')),
+      );
+      expect(controller.contactSourceCandidatesLoadingStreamValue.value, isFalse);
+    },
+  );
+
+  test(
+    'searchNestedProfileCandidates loading clears and results show when filterNestedProfileCandidatesByProfileType fires while initial load is in flight [RED]',
+    () async {
+      final profilesRepository = _FakeAccountProfilesRepository(
+        [
+          tenantAdminAccountProfileFromRaw(
+            id: 'profile-artist-alvo',
+            accountId: 'acc-1',
+            profileType: 'artist',
+            displayName: 'Alvo Artista',
+            slug: 'alvo-artista',
+          ),
+          tenantAdminAccountProfileFromRaw(
+            id: 'profile-venue-alvo',
+            accountId: 'acc-2',
+            profileType: 'venue',
+            displayName: 'Alvo Venue',
+            slug: 'alvo-venue',
+          ),
+          tenantAdminAccountProfileFromRaw(
+            id: 'profile-outro',
+            accountId: 'acc-3',
+            profileType: 'artist',
+            displayName: 'Outro Perfil',
+            slug: 'outro-perfil',
+          ),
+        ],
+        const [],
+      );
+      final gate = Completer<void>();
+      profilesRepository.fetchAccountProfilesPageGate = gate;
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+
+      // Initial load starts but is blocked by gate
+      final initial = controller.loadNestedProfileCandidates();
+      await Future<void>.delayed(Duration.zero);
+
+      // Type filter fires before initial load completes (token supersession)
+      controller.filterNestedProfileCandidatesByProfileType('artist');
+      await Future<void>.delayed(Duration.zero);
+
+      // Release gate — both initial (stale) and filter loads now complete
+      gate.complete();
+      await initial;
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      // Remove gate so subsequent loads are immediate
+      profilesRepository.fetchAccountProfilesPageGate = null;
+
+      // User now types slowly (filter load has already completed)
+      controller.searchNestedProfileCandidates('alvo');
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(profilesRepository.lastFetchSearch, 'alvo');
+      expect(
+        controller.nestedProfileCandidatesStreamValue.value
+            .map((profile) => profile.id)
+            .toList(growable: false),
+        containsAll(<String>['profile-artist-alvo']),
+      );
+      expect(
+        controller.nestedProfileCandidatesStreamValue.value.map(
+          (profile) => profile.id,
+        ),
+        isNot(contains('profile-outro')),
+      );
+      // Loading must be cleared — stuck loading is the "empty results even with slow typing" failure mode
+      expect(controller.nestedProfileSearchLoadingStreamValue.value, isFalse);
+    },
+  );
+
+  test(
     'submitTaxonomySelectionUpdate resolves profileType and sends string bio/content',
     () async {
       final profilesRepository = _FakeAccountProfilesRepository(

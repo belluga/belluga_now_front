@@ -1063,8 +1063,6 @@ class TenantHomeAgendaController extends Object
     }
 
     final selection = discoveryFilterSelectionStreamValue.value;
-    final canUsePersistedFallback =
-        _canUsePersistedDiscoveryFilterSelectionSnapshot(selection);
     final currentCategories = _selectedEventCategoriesForSelection(selection);
     final currentTaxonomy = _selectedEventTaxonomyEntriesForSelection(
       selection,
@@ -1107,9 +1105,6 @@ class TenantHomeAgendaController extends Object
       catalogOverride: runtimeCatalog,
       allowPersistedFallback: false,
     );
-    final repairedQueryEmpty =
-        (repairedCategories == null || repairedCategories.isEmpty) &&
-        (repairedTaxonomy == null || repairedTaxonomy.isEmpty);
     final queryChanged =
         !_sameEventCategories(currentCategories, repairedCategories) ||
         !_sameEventTaxonomy(currentTaxonomy, repairedTaxonomy);
@@ -1122,12 +1117,7 @@ class TenantHomeAgendaController extends Object
       return false;
     }
 
-    if (canUsePersistedFallback && repairedQueryEmpty) {
-      return false;
-    }
-
-    _queueRefreshRequest(preserveCurrentResults: true);
-    return true;
+    return false;
   }
 
   bool _sameDiscoveryFilterCatalog(
