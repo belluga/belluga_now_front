@@ -39,6 +39,7 @@ import 'package:belluga_now/domain/tenant/value_objects/tenant_id_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_counterpart_count_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
@@ -254,6 +255,7 @@ VenueEventResume buildVenueEventResume({
   String? venueTitle,
   String? selectedOccurrenceId,
   List<ArtistResume> artists = const <ArtistResume>[],
+  int? counterpartCount,
   List<String> tags = const <String>[],
   CityCoordinate? coordinate,
 }) {
@@ -292,6 +294,9 @@ VenueEventResume buildVenueEventResume({
     eventTypeLabelValue: eventTypeValue,
     venueTitleValue: venueTitleValue,
     selectedOccurrenceIdValue: selectedOccurrenceIdValue,
+    counterpartCountValue: counterpartCount == null
+        ? null
+        : EventCounterpartCountValue(counterpartCount),
     linkedAccountProfiles: linkedAccountProfiles,
     tagValues:
         tags.map((tag) => VenueEventTagValue(tag)).toList(growable: false),

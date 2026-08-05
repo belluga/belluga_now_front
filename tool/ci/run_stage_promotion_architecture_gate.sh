@@ -32,4 +32,15 @@ ANALYZE_PATHS=(
 echo "INFO: Running architecture gate for promotion lane ${PROMOTION_LANE}"
 fvm dart pub get --directory tool/belluga_analysis_plugin/test_fixtures/lint_matrix
 bash tool/belluga_analysis_plugin/bin/validate_rule_matrix.sh
-fvm dart analyze "${ANALYZE_PATHS[@]}" --format machine
+
+if [[ -n "${CI:-}" || -n "${GITHUB_ACTIONS:-}" ]]; then
+  echo "INFO: CI environment detected -> using pipeline-owned analyzer gate."
+  fvm dart analyze "${ANALYZE_PATHS[@]}" --format machine
+else
+  echo "INFO: local environment detected -> using VS Code Problems bridge gate."
+  python3 tool/ci/run_vscode_problems_gate.py \
+    --scope "$ROOT_DIR" \
+    --workspace-root "$(cd "$ROOT_DIR/.." && pwd)" \
+    --quiet-seconds "${DELPHI_PROBLEMS_QUIET_SECONDS:-30}" \
+    --max-attempts "${DELPHI_PROBLEMS_MAX_ATTEMPTS:-4}"
+fi

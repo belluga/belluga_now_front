@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/partners/value_objects/account_profile_type_v
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_counterpart_count_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_values.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
@@ -131,6 +132,28 @@ void main() {
     expect(projection.venueTitle, 'Host Venue');
   });
 
+  test('fromScheduleEvent preserves the canonical counterpart count', () {
+    final event = _buildEvent(
+      linkedAccountProfiles: [
+        _buildLinkedProfile(
+          id: 'profile-1',
+          displayName: 'Profile One',
+          profileType: 'artist',
+        ),
+      ],
+      counterpartCount: 3,
+    );
+    final fallbackThumb = ThumbUriValue(
+      defaultValue: Uri.parse('https://cdn.test/settings.png'),
+      isRequired: true,
+    )..parse('https://cdn.test/settings.png');
+
+    final projection = VenueEventResume.fromScheduleEvent(event, fallbackThumb);
+
+    expect(projection.counterpartProfiles, hasLength(1));
+    expect(projection.counterpartCount, 3);
+  });
+
   group('human ready schedule labels', () {
     test('same day range uses one date context and whole-hour h labels', () {
       final resume = _buildResume(
@@ -218,6 +241,7 @@ VenueEventResume _buildResume({required DateTime start, DateTime? end}) {
 EventModel _buildEvent({
   ThumbModel? thumb,
   List<EventLinkedAccountProfile> linkedAccountProfiles = const [],
+  int? counterpartCount,
   PartnerResume? venue,
   DateTime? occurrenceStart,
   DateTime? occurrenceEnd,
@@ -263,6 +287,10 @@ EventModel _buildEvent({
     dateTimeStart: DateTimeValue()..parse('2026-03-21T10:00:00Z'),
     dateTimeEnd: null,
     linkedAccountProfiles: linkedAccountProfiles,
+    counterpartPreviewProfiles: linkedAccountProfiles,
+    counterpartCountValue: counterpartCount == null
+        ? null
+        : EventCounterpartCountValue(counterpartCount),
     occurrences: occurrences,
     coordinate: null,
     tags: const [],

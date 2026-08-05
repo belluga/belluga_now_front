@@ -149,6 +149,37 @@ void main() {
     expect(find.text('Coletivo Sol'), findsNothing);
   });
 
+  testWidgets(
+    'agenda card preserves canonical counterpart overflow when preview is truncated',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: UpcomingEventCard(
+              data: UpcomingEventCardData(
+                imageUri: Uri.parse('https://tenant.test/media/event.png'),
+                headline: 'Evento com Preview Truncado',
+                metaLabel: 'Qua, 1 abr · 7h',
+                counterparts: const [
+                  (
+                    label: 'Ananda Torres',
+                    thumbUrl: null,
+                    fallbackIcon: Icons.person_outline,
+                  ),
+                ],
+                counterpartCount: 3,
+                venueName: null,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Ananda Torres'), findsOneWidget);
+      expect(find.text('e mais 2'), findsOneWidget);
+    },
+  );
+
   testWidgets('agenda card reserves status slot without constrained overflow',
       (tester) async {
     await tester.pumpWidget(

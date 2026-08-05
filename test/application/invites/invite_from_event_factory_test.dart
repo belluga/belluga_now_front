@@ -50,4 +50,41 @@ void main() {
       expect(invite.tags.map((tag) => tag.value).toList(), ['Showcase']);
     },
   );
+
+  test(
+    'build uses canonical counterpart preview for host name and invite preview rows',
+    () {
+      final event = EventDTO.fromJson({
+        'id': '507f1f77bcf86cd799439011',
+        'slug': 'evento-teste',
+        'type': {
+          'id': '507f1f77bcf86cd799439111',
+          'name': 'Show',
+          'slug': 'show',
+        },
+        'title': 'Evento Teste',
+        'content': '<p>Bora?</p>',
+        'location': 'Guarapari',
+        'date_time_start': '2026-03-13T20:00:00Z',
+        'counterpart_preview': [
+          {
+            'id': 'artist-1',
+            'display_name': 'Du Jorge',
+            'profile_type': 'artist',
+            'slug': 'du-jorge',
+            'party_type': 'artist',
+          },
+        ],
+      }).toDomain();
+
+      final invite = InviteFromEventFactory.build(
+        event: event,
+        fallbackImageUri: Uri.parse('https://example.com/event.jpg'),
+      );
+
+      expect(invite.hostName, 'Du Jorge');
+      expect(invite.linkedAccountProfiles, hasLength(1));
+      expect(invite.linkedAccountProfiles.first.displayName, 'Du Jorge');
+    },
+  );
 }

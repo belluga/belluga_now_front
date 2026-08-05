@@ -105,7 +105,13 @@ class MockEventSeed {
         type: 'image',
         data: {'url': thumbUrl},
       ),
-      artists: artists.map((artist) => artist.toDto()).toList(),
+      linkedAccountProfiles: artists
+          .map((artist) => artist.toLinkedAccountProfile())
+          .toList(growable: false),
+      counterpartPreview: artists
+          .map((artist) => artist.toLinkedAccountProfile())
+          .toList(growable: false),
+      counterpartCount: artists.length,
       isConfirmed: isConfirmed,
       totalConfirmed: totalConfirmed,
       friendsGoing: friendsGoing,

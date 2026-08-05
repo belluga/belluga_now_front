@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_schedule_display.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_counterpart_count_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
@@ -32,6 +33,7 @@ class VenueEventResume {
     VenueEventOptionalTextValue? eventTypeLabelValue,
     VenueEventOptionalTextValue? venueTitleValue,
     VenueEventOptionalTextValue? selectedOccurrenceIdValue,
+    this.counterpartCountValue,
     required this.linkedAccountProfiles,
     required this.tagValues,
     this.coordinate,
@@ -52,6 +54,7 @@ class VenueEventResume {
   final VenueEventOptionalTextValue eventTypeLabelValue;
   final VenueEventOptionalTextValue venueTitleValue;
   final VenueEventOptionalTextValue selectedOccurrenceIdValue;
+  final EventCounterpartCountValue? counterpartCountValue;
   final List<EventLinkedAccountProfile> linkedAccountProfiles;
   final List<VenueEventTagValue> tagValues;
   final CityCoordinate? coordinate;
@@ -122,6 +125,12 @@ class VenueEventResume {
           return partyType != 'venue' && profileType != 'venue';
         }),
       );
+  VenueEventResumePrimInt get counterpartCount {
+    final previewCount = counterpartProfiles.length;
+    final canonicalCount = counterpartCountValue?.value ?? previewCount;
+    return canonicalCount < previewCount ? previewCount : canonicalCount;
+  }
+
   VenueEventResumePrimBool get hasCounterparts =>
       counterpartProfiles.isNotEmpty;
   EventLinkedAccountProfile? get primaryCounterpart =>
@@ -205,6 +214,7 @@ class VenueEventResume {
         ..parse(event.venue?.displayName ?? ''),
       selectedOccurrenceIdValue: VenueEventOptionalTextValue()
         ..parse(event.selectedOccurrenceId ?? ''),
+      counterpartCountValue: event.counterpartCountValue,
       linkedAccountProfiles: event.counterpartProfiles,
       tagValues: event.taxonomyTags,
       coordinate: event.coordinate,
