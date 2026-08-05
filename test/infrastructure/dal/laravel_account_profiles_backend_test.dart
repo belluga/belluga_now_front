@@ -898,6 +898,7 @@ void main() {
                 'slug': 'jazz-na-orla',
                 'title': 'Jazz na Orla',
                 'type': {'name': 'Show'},
+                'hero_image_url': 'https://example.com/jazz-hero.jpg',
                 'date_time_start': '2026-04-04T21:00:00Z',
                 'date_time_end': '2026-04-04T23:00:00Z',
                 'location': {'label': 'Deck Principal'},
@@ -906,7 +907,7 @@ void main() {
                   'display_name': 'Casa Marracini',
                   'hero_image_url': 'https://example.com/casa.jpg',
                 },
-                'linked_account_profiles': [
+                'counterpart_preview': [
                   {
                     'id': '507f1f77bcf86cd799439099',
                     'display_name': 'Marco Aurélio',
@@ -920,13 +921,14 @@ void main() {
                 'slug': 'jazz-na-orla',
                 'title': 'Jazz na Orla',
                 'type': {'name': 'Show'},
+                'hero_image_url': null,
                 'date_time_start': '2026-04-05T21:00:00Z',
                 'location': {'label': 'Deck Principal'},
                 'venue': {
                   'id': '507f1f77bcf86cd799439011',
                   'display_name': 'Casa Marracini',
                 },
-                'linked_account_profiles': [
+                'counterpart_preview': [
                   {
                     'id': '507f1f77bcf86cd799439099',
                     'display_name': 'Marco Aurélio',

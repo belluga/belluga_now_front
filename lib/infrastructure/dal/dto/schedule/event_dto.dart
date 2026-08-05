@@ -39,7 +39,6 @@ import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/venue_event/value_objects/venue_event_tag_value.dart';
-import 'package:belluga_now/infrastructure/dal/dto/schedule/event_artist_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_public_profile_payload_decoder.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_type_dto.dart';
@@ -64,7 +63,6 @@ class EventDTO {
     this.thumb,
     required this.dateTimeStart,
     this.dateTimeEnd,
-    this.artists = const [],
     this.linkedAccountProfiles = const [],
     this.counterpartPreview = const [],
     this.counterpartCount,
@@ -92,7 +90,6 @@ class EventDTO {
   final ThumbDTO? thumb;
   final String dateTimeStart;
   final String? dateTimeEnd;
-  final List<EventArtistDTO> artists;
   final List<EventLinkedAccountProfile> linkedAccountProfiles;
   final List<EventLinkedAccountProfile> counterpartPreview;
   final int? counterpartCount;
@@ -112,6 +109,7 @@ class EventDTO {
     final venuePayload = _asMap(json['venue']);
     final locationPayload = _asMap(json['location']);
     final geoLocationPayload = _asMap(json['geo_location']);
+    final thumbPayload = _resolveCanonicalThumbPayload(json);
     final location = _resolveLocation(
       rawLocation: json['location'],
       venuePayload: venuePayload,
@@ -122,9 +120,7 @@ class EventDTO {
       locationPayload: locationPayload,
       geoLocationPayload: geoLocationPayload,
     );
-    final linkedProfiles = _resolveLinkedAccountProfiles(
-      linkedProfilesRaw: json['linked_account_profiles'],
-    );
+    const linkedProfiles = <EventLinkedAccountProfile>[];
     final counterpartPreview = _resolveLinkedAccountProfiles(
       linkedProfilesRaw: json['counterpart_preview'],
     );
@@ -155,9 +151,7 @@ class EventDTO {
       location: location,
       latitude: coordinates.latitude,
       longitude: coordinates.longitude,
-      thumb: _asMap(json['thumb']).isNotEmpty
-          ? ThumbDTO.fromJson(_asMap(json['thumb']))
-          : null,
+      thumb: thumbPayload.isNotEmpty ? ThumbDTO.fromJson(thumbPayload) : null,
       dateTimeStart:
           _asString(json['date_time_start']) ??
           _asString(json['starts_at']) ??
@@ -394,14 +388,7 @@ class EventDTO {
               occurrenceId == fallbackOccurrenceId.trim());
       final dateTimeEndValue = DomainOptionalDateTimeValue();
       dateTimeEndValue.parse(_asNullableString(row['date_time_end']));
-      final occurrenceLinkedAccountProfiles = _mergeLinkedAccountProfiles(
-        linkedAccountProfiles,
-        _resolveLinkedAccountProfiles(
-          linkedProfilesRaw:
-              row['linked_account_profiles'] ??
-              row['own_linked_account_profiles'],
-        ),
-      );
+      final occurrenceLinkedAccountProfiles = linkedAccountProfiles;
       final occurrenceTaxonomyTerms = _resolveCanonicalTaxonomyTerms(
         row['taxonomy_terms'],
       );
@@ -925,6 +912,20 @@ class EventDTO {
     }
 
     return (latitude: latitude, longitude: longitude);
+  }
+
+  static Map<String, dynamic> _resolveCanonicalThumbPayload(
+    Map<String, dynamic> json,
+  ) {
+    final heroImageUrl = _asNullableString(json['hero_image_url']);
+    if (heroImageUrl == null || heroImageUrl.isEmpty) {
+      return const <String, dynamic>{};
+    }
+
+    return <String, dynamic>{
+      'type': 'image',
+      'data': <String, dynamic>{'url': heroImageUrl},
+    };
   }
 
   EventFriendResume _mapEventFriendResume(Map<String, dynamic> dto) {

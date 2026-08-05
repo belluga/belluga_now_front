@@ -123,7 +123,7 @@ class InviteDto {
             .trim();
     final linkedAccountProfiles =
         EventPublicProfilePayloadDecoder.resolveLinkedAccountProfiles(
-          linkedProfilesRaw: json['linked_account_profiles'],
+          linkedProfilesRaw: json['counterpart_preview'],
         );
     final profileGroups = EventPublicProfilePayloadDecoder.resolveProfileGroups(
       json['profile_groups'],
@@ -144,7 +144,7 @@ class InviteDto {
       occurrenceId: occurrenceId,
       eventName: (json['event_name'] ?? '').toString(),
       eventDate: (json['event_date'] ?? '').toString(),
-      eventImageUrl: (json['event_image_url'] ?? '').toString(),
+      eventImageUrl: (json['hero_image_url'] ?? '').toString(),
       location: (json['location'] ?? '').toString(),
       hostName: (json['host_name'] ?? '').toString(),
       message: (json['message'] ?? '').toString(),
@@ -181,7 +181,7 @@ class InviteDto {
       'occurrence_id': occurrenceId,
       'event_name': eventName,
       'event_date': eventDate,
-      'event_image_url': eventImageUrl,
+      'hero_image_url': eventImageUrl,
       'location': location,
       'host_name': hostName,
       'message': message,
@@ -189,7 +189,7 @@ class InviteDto {
           .map((term) => Map<String, dynamic>.from(term))
           .toList(growable: false),
       'attendance_policy': attendancePolicy,
-      'linked_account_profiles': linkedAccountProfiles
+      'counterpart_preview': linkedAccountProfiles
           .map(
             (profile) => <String, dynamic>{
               'id': profile.id,

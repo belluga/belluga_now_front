@@ -1,4 +1,3 @@
-import 'package:belluga_now/domain/artist/artist_resume.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/partner/partner_resume.dart';
@@ -38,7 +37,6 @@ EventModel eventModelFromRaw({
   required ThumbModel? thumb,
   required DateTimeValue dateTimeStart,
   required DateTimeValue? dateTimeEnd,
-  List<ArtistResume> artists = const <ArtistResume>[],
   List<EventLinkedAccountProfile> linkedAccountProfiles = const [],
   List<EventLinkedAccountProfile> counterpartPreviewProfiles =
       const <EventLinkedAccountProfile>[],
@@ -55,9 +53,6 @@ EventModel eventModelFromRaw({
   List<EventFriendResume>? friendsGoing,
   required EventTotalConfirmedValue totalConfirmedValue,
 }) {
-  final resolvedLinkedAccountProfiles = linkedAccountProfiles.isNotEmpty
-      ? linkedAccountProfiles
-      : _legacyArtistProfiles(artists);
   return EventModel(
     id: id,
     slugValue: slugValue,
@@ -69,7 +64,7 @@ EventModel eventModelFromRaw({
     thumb: thumb,
     dateTimeStart: dateTimeStart,
     dateTimeEnd: dateTimeEnd,
-    linkedAccountProfiles: resolvedLinkedAccountProfiles,
+    linkedAccountProfiles: linkedAccountProfiles,
     counterpartPreviewProfiles: counterpartPreviewProfiles,
     counterpartCountValue: counterpartCountValue,
     profileGroups: profileGroups,
@@ -84,47 +79,6 @@ EventModel eventModelFromRaw({
     friendsGoing: friendsGoing,
     totalConfirmedValue: totalConfirmedValue,
   );
-}
-
-List<EventLinkedAccountProfile> _legacyArtistProfiles(
-  List<ArtistResume> artists,
-) {
-  final profiles = <EventLinkedAccountProfile>[];
-  for (final artist in artists) {
-    final id = artist.id.trim();
-    final displayName = artist.displayName.trim();
-    if (id.isEmpty || displayName.isEmpty) {
-      continue;
-    }
-
-    final taxonomyTerms = EventLinkedAccountProfileTaxonomyTerms();
-    for (final genre in artist.genres) {
-      final value = genre.value.trim();
-      if (value.isEmpty) continue;
-      taxonomyTerms.addTerm(
-        typeValue: AccountProfileTagValue('genre'),
-        valueValue: AccountProfileTagValue(value),
-        nameValue: AccountProfileTagValue(value),
-      );
-    }
-
-    final avatar = artist.avatarUri?.toString().trim();
-    profiles.add(
-      EventLinkedAccountProfile(
-        idValue: EventLinkedAccountProfileTextValue(id),
-        displayNameValue: EventLinkedAccountProfileTextValue(displayName),
-        profileTypeValue: AccountProfileTypeValue('artist'),
-        slugValue: SlugValue()..parse(id),
-        avatarUrlValue: avatar == null || avatar.isEmpty
-            ? null
-            : (ThumbUriValue(defaultValue: Uri.parse(avatar), isRequired: true)
-                ..parse(avatar)),
-        taxonomyTerms: taxonomyTerms,
-      ),
-    );
-  }
-
-  return List<EventLinkedAccountProfile>.unmodifiable(profiles);
 }
 
 List<VenueEventTagValue> _parseTags(Object raw) {
