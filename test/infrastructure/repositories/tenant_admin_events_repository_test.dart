@@ -833,13 +833,21 @@ void main() {
         event.profileGroups.single.accountProfileIdValues
             .map((value) => value.value)
             .toList(growable: false),
-        ['artist-1', 'delegate-1'],
+        ['artist-1', 'delegate-1', 'hidden-1'],
       );
+      expect(event.profileGroups.single.memberCount, 3);
       expect(
         event.occurrences.single.profileGroups.single.accountProfileIdValues
             .map((value) => value.value)
             .toList(growable: false),
-        ['artist-1', 'delegate-1'],
+        ['artist-1', 'delegate-1', 'hidden-1'],
+      );
+      expect(event.occurrences.single.profileGroups.single.memberCount, 3);
+      expect(
+        event.occurrences.single.relatedAccountProfileIds
+            .map((value) => value.value)
+            .toList(growable: false),
+        ['artist-1', 'delegate-1', 'hidden-1'],
       );
 
       expect(adapter.requests, hasLength(1));

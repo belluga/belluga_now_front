@@ -123,12 +123,7 @@ class TenantAdminEventsResponseDecoder {
     final relatedAccountProfiles = _decodeRelatedAccountProfiles(
       row['linked_account_profiles'],
     );
-    final profileGroups = _decodeProfileGroups(
-      row['profile_groups'],
-      allowedProfileIds: {
-        for (final profile in relatedAccountProfiles) profile.id,
-      },
-    );
+    final profileGroups = _decodeProfileGroups(row['profile_groups']);
     final relatedAccountProfileIds = profileGroups.isNotEmpty
         ? _profileIdsFromGroups(profileGroups)
         : eventPartiesRaw
@@ -351,10 +346,7 @@ class TenantAdminEventsResponseDecoder {
     final ownParties = _asList(
       item['own_event_parties'] ?? item['event_parties'],
     ).map(_asMap).where((party) => party.isNotEmpty).toList(growable: false);
-    final profileGroups = _decodeProfileGroups(
-      item['profile_groups'],
-      allowedProfileIds: {for (final profile in ownProfiles) profile.id},
-    );
+    final profileGroups = _decodeProfileGroups(item['profile_groups']);
     final ownProfileIds = profileGroups.isNotEmpty
         ? _profileIdsFromGroups(profileGroups)
         : ownParties.isNotEmpty
@@ -423,10 +415,7 @@ class TenantAdminEventsResponseDecoder {
     return ids;
   }
 
-  List<TenantAdminNestedProfileGroup> _decodeProfileGroups(
-    Object? raw, {
-    Set<String>? allowedProfileIds,
-  }) {
+  List<TenantAdminNestedProfileGroup> _decodeProfileGroups(Object? raw) {
     return _asList(raw)
         .map(_asMap)
         .where((group) => group.isNotEmpty)
@@ -441,15 +430,15 @@ class TenantAdminEventsResponseDecoder {
             idValue: TenantAdminNestedProfileGroupTextValue(id),
             labelValue: TenantAdminNestedProfileGroupTextValue(label),
             orderValue: TenantAdminNestedProfileGroupOrderValue(group['order']),
+            memberCountValue: tenantAdminCount(
+              group['member_count'] ??
+                  _asList(group['account_profile_ids'] ?? group['profile_ids'])
+                      .length,
+            ),
             accountProfileIdValues:
                 _asList(group['account_profile_ids'] ?? group['profile_ids'])
                     .map(_asString)
                     .where((value) => value != null && value.isNotEmpty)
-                    .where(
-                      (value) =>
-                          allowedProfileIds == null ||
-                          allowedProfileIds.contains(value),
-                    )
                     .cast<String>()
                     .map(TenantAdminNestedProfileGroupTextValue.new)
                     .toList(growable: false),
