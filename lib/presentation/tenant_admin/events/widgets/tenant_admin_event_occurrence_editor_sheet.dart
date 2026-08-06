@@ -5,7 +5,6 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_occurrence_editor_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_programming_item_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
@@ -174,7 +173,6 @@ class _TenantAdminEventOccurrenceEditorSheet extends StatefulWidget {
 class _TenantAdminEventOccurrenceEditorSheetState
     extends State<_TenantAdminEventOccurrenceEditorSheet> {
   String? _errorMessage;
-  bool _membersActionInFlight = false;
 
   List<TenantAdminAccountProfile> get _currentVenues {
     final liveVenues = widget.controller.venueCandidatesStreamValue.value;
@@ -902,6 +900,9 @@ class _TenantAdminEventProgrammingItemEditorSheetState
         .where((profile) => !excludedProfileIds.contains(profile.id))
         .toList(growable: false);
 
+    if (!mounted) {
+      return null;
+    }
     if (filteredCandidates.isEmpty) {
       if (mounted) {
         setState(() {

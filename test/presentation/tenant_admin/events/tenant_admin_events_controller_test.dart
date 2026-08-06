@@ -330,7 +330,7 @@ void main() {
   );
 
   test(
-    'creating the primary occurrence seeds event-level profile groups into the canonical occurrence draft',
+    'creating the primary occurrence seeds event-level profile-group shells into the canonical occurrence draft',
     () {
       final controller = TenantAdminEventsController(
         eventsRepository: _TrackingEventsRepository(),
@@ -344,36 +344,24 @@ void main() {
       controller.addEventProfileGroup();
       final groupId =
           controller.eventFormStateStreamValue.value.profileGroups.single.id;
-
-      controller.toggleEventProfileGroupMember(
-        groupId: groupId,
-        profileId: 'artist-1',
-        selected: true,
-      );
+      controller.renameEventProfileGroup(groupId, 'Artistas');
       controller.applyEventStartAt(DateTime(2026, 4, 22, 20));
 
       final state = controller.eventFormStateStreamValue.value;
       expect(state.profileGroups.single.id, groupId);
-      expect(state.selectedRelatedAccountProfileIds, ['artist-1']);
+      expect(state.profileGroups.single.label, 'Artistas');
+      expect(state.profileGroups.single.memberCount, 0);
+      expect(state.selectedRelatedAccountProfileIds, isEmpty);
       expect(state.occurrences, hasLength(1));
       expect(state.occurrences.single.profileGroups.single.id, groupId);
-      expect(
-        state.occurrences.single.profileGroups.single.accountProfileIdValues
-            .map((value) => value.value)
-            .toList(growable: false),
-        ['artist-1'],
-      );
-      expect(
-        state.occurrences.single.relatedAccountProfileIds
-            .map((value) => value.value)
-            .toList(growable: false),
-        ['artist-1'],
-      );
+      expect(state.occurrences.single.profileGroups.single.label, 'Artistas');
+      expect(state.occurrences.single.profileGroups.single.memberCount, 0);
+      expect(state.occurrences.single.relatedAccountProfileIds, isEmpty);
     },
   );
 
   test(
-    'createOccurrenceDraft preserves event-level profile groups when creating the first occurrence',
+    'createOccurrenceDraft preserves event-level profile-group shells when creating the first occurrence',
     () {
       final controller = TenantAdminEventsController(
         eventsRepository: _TrackingEventsRepository(),
@@ -387,37 +375,25 @@ void main() {
       controller.addEventProfileGroup();
       final groupId =
           controller.eventFormStateStreamValue.value.profileGroups.single.id;
-
-      controller.toggleEventProfileGroupMember(
-        groupId: groupId,
-        profileId: 'artist-1',
-        selected: true,
-      );
+      controller.renameEventProfileGroup(groupId, 'Bandas');
 
       controller.createOccurrenceDraft();
 
       final state = controller.eventFormStateStreamValue.value;
       expect(state.profileGroups.single.id, groupId);
-      expect(state.selectedRelatedAccountProfileIds, ['artist-1']);
+      expect(state.profileGroups.single.label, 'Bandas');
+      expect(state.profileGroups.single.memberCount, 0);
+      expect(state.selectedRelatedAccountProfileIds, isEmpty);
       expect(state.occurrences, hasLength(1));
       expect(state.occurrences.single.profileGroups.single.id, groupId);
-      expect(
-        state.occurrences.single.profileGroups.single.accountProfileIdValues
-            .map((value) => value.value)
-            .toList(growable: false),
-        ['artist-1'],
-      );
-      expect(
-        state.occurrences.single.relatedAccountProfileIds
-            .map((value) => value.value)
-            .toList(growable: false),
-        ['artist-1'],
-      );
+      expect(state.occurrences.single.profileGroups.single.label, 'Bandas');
+      expect(state.occurrences.single.profileGroups.single.memberCount, 0);
+      expect(state.occurrences.single.relatedAccountProfileIds, isEmpty);
     },
   );
 
   test(
-    'event-level profile-group edits mirror to the single occurrence canonical state',
+    'event-level profile-group edits mirror group shells to the single occurrence canonical state',
     () {
       final controller = TenantAdminEventsController(
         eventsRepository: _TrackingEventsRepository(),
@@ -455,34 +431,21 @@ void main() {
       controller.addEventProfileGroup();
       final groupId =
           controller.eventFormStateStreamValue.value.profileGroups.single.id;
-      controller.toggleEventProfileGroupMember(
-        groupId: groupId,
-        profileId: 'artist-1',
-        selected: true,
-      );
+      controller.renameEventProfileGroup(groupId, 'Convidados');
 
       final state = controller.eventFormStateStreamValue.value;
       expect(state.profileGroups.single.id, groupId);
-      expect(state.selectedRelatedAccountProfileIds, ['artist-1']);
+      expect(state.profileGroups.single.label, 'Convidados');
+      expect(state.selectedRelatedAccountProfileIds, isEmpty);
       expect(state.occurrences, hasLength(1));
       expect(state.occurrences.single.profileGroups.single.id, groupId);
-      expect(
-        state.occurrences.single.profileGroups.single.accountProfileIdValues
-            .map((value) => value.value)
-            .toList(growable: false),
-        ['artist-1'],
-      );
-      expect(
-        state.occurrences.single.relatedAccountProfileIds
-            .map((value) => value.value)
-            .toList(growable: false),
-        ['artist-1'],
-      );
+      expect(state.occurrences.single.profileGroups.single.label, 'Convidados');
+      expect(state.occurrences.single.relatedAccountProfileIds, isEmpty);
     },
   );
 
   test(
-    'initEventForm seeds related profile cache with occurrence-owned profiles',
+    'initEventForm does not preseed related profile cache from occurrence-owned profiles',
     () {
       final controller = TenantAdminEventsController(
         eventsRepository: _TrackingEventsRepository(),
@@ -554,10 +517,8 @@ void main() {
       controller.initEventForm(existingEvent: existingEvent);
 
       expect(
-        controller.relatedAccountProfileCandidatesStreamValue.value.map(
-          (profile) => profile.id,
-        ),
-        containsAll([occurrenceArtist.id, occurrenceExhibitor.id]),
+        controller.relatedAccountProfileCandidatesStreamValue.value,
+        isEmpty,
       );
     },
   );
@@ -637,7 +598,7 @@ void main() {
   );
 
   test(
-    'occurrence profile-group changes clear stale programming profile links for removed members',
+    'occurrence profile-group changes only mutate group shells and preserve programming links',
     () {
       final controller = TenantAdminEventsController(
         eventsRepository: _TrackingEventsRepository(),
@@ -686,19 +647,38 @@ void main() {
         ),
       );
 
-      controller.toggleOccurrenceProfileGroupMember(
+      controller.removeOccurrenceProfileGroup(
         occurrenceKey: (controller.primaryOccurrenceKey())!,
         groupId: 'bandas',
-        profileId: 'artist-1',
-        selected: false,
       );
 
       final occurrence =
           controller.eventFormStateStreamValue.value.occurrences.single;
-      expect(occurrence.relatedAccountProfileIds, isEmpty);
-      expect(occurrence.relatedAccountProfiles, isEmpty);
-      expect(occurrence.programmingItems.single.accountProfileIds, isEmpty);
-      expect(occurrence.programmingItems.single.linkedAccountProfiles, isEmpty);
+      expect(occurrence.profileGroups, isEmpty);
+      expect(
+        occurrence.relatedAccountProfileIds
+            .map((value) => value.value)
+            .toList(growable: false),
+        ['artist-1'],
+      );
+      expect(
+        occurrence.relatedAccountProfiles
+            .map((profile) => profile.id)
+            .toList(growable: false),
+        ['artist-1'],
+      );
+      expect(
+        occurrence.programmingItems.single.accountProfileIds
+            .map((value) => value.value)
+            .toList(growable: false),
+        ['artist-1'],
+      );
+      expect(
+        occurrence.programmingItems.single.linkedAccountProfiles
+            .map((profile) => profile.id)
+            .toList(growable: false),
+        ['artist-1'],
+      );
       expect(occurrence.programmingItems.single.title, 'Show principal');
     },
   );

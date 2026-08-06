@@ -6,7 +6,6 @@ import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_account_profile_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:stream_value/core/stream_value_builder.dart';
 
 Future<void> openTenantAdminEventOccurrenceGroupMembersScreen({
   required BuildContext context,
@@ -50,7 +49,6 @@ class _TenantAdminEventOccurrenceGroupMembersScreenState
     extends State<TenantAdminEventOccurrenceGroupMembersScreen> {
   final TenantAdminEventsController _controller = GetIt.I
       .get<TenantAdminEventsController>();
-  final ScrollController _scrollController = ScrollController();
 
   List<TenantAdminAccountProfileSelectionSummary> _items =
       const <TenantAdminAccountProfileSelectionSummary>[];
@@ -63,14 +61,7 @@ class _TenantAdminEventOccurrenceGroupMembersScreenState
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_loadMoreIfNeeded);
     unawaited(_loadFirstPage());
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
   }
 
   Future<void> _loadFirstPage() async {
@@ -104,9 +95,8 @@ class _TenantAdminEventOccurrenceGroupMembersScreenState
     }
   }
 
-  void _loadMoreIfNeeded() {
-    if (!_scrollController.hasClients ||
-        _scrollController.position.extentAfter > 200 ||
+  void _loadMoreIfNeeded({required double extentAfter}) {
+    if (extentAfter > 200 ||
         _pageLoading ||
         _initialLoading ||
         _mutationLoading) {
@@ -117,6 +107,14 @@ class _TenantAdminEventOccurrenceGroupMembersScreenState
       return;
     }
     unawaited(_loadNextPage(cursor));
+  }
+
+  bool _handleScrollNotification(ScrollNotification notification) {
+    if (notification.metrics.axis != Axis.vertical) {
+      return false;
+    }
+    _loadMoreIfNeeded(extentAfter: notification.metrics.extentAfter);
+    return false;
   }
 
   Future<void> _loadNextPage(String cursor) async {
@@ -354,45 +352,47 @@ class _TenantAdminEventOccurrenceGroupMembersScreenState
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   )
-                : ListView.separated(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                    itemCount: _items.length + (_pageLoading ? 1 : 0),
-                    separatorBuilder: (_, _) => const SizedBox(height: 8),
-                    itemBuilder: (context, index) {
-                      if (index >= _items.length) {
-                        return const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          child: Center(child: CircularProgressIndicator()),
+                : NotificationListener<ScrollNotification>(
+                    onNotification: _handleScrollNotification,
+                    child: ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                      itemCount: _items.length + (_pageLoading ? 1 : 0),
+                      separatorBuilder: (_, _) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        if (index >= _items.length) {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        }
+                        final item = _items[index];
+                        return ListTile(
+                          key: Key(
+                            'tenantAdminEventGroupMember_${widget.group.id}_${item.id}',
+                          ),
+                          shape: RoundedRectangleBorder(
+                            side: BorderSide(color: colorScheme.outlineVariant),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          leading: const CircleAvatar(
+                            child: Icon(Icons.person_outline),
+                          ),
+                          title: Text(
+                            (item.displayName?.trim().isNotEmpty ?? false)
+                                ? item.displayName!.trim()
+                                : item.id,
+                          ),
+                          subtitle: Text(item.id),
+                          trailing: IconButton(
+                            tooltip: 'Remover perfil',
+                            onPressed: _mutationLoading
+                                ? null
+                                : () => _removeMember(item),
+                            icon: const Icon(Icons.delete_outline),
+                          ),
                         );
-                      }
-                      final item = _items[index];
-                      return ListTile(
-                        key: Key(
-                          'tenantAdminEventGroupMember_${widget.group.id}_${item.id}',
-                        ),
-                        shape: RoundedRectangleBorder(
-                          side: BorderSide(color: colorScheme.outlineVariant),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        leading: const CircleAvatar(
-                          child: Icon(Icons.person_outline),
-                        ),
-                        title: Text(
-                          (item.displayName?.trim().isNotEmpty ?? false)
-                              ? item.displayName!.trim()
-                              : item.id,
-                        ),
-                        subtitle: Text(item.id),
-                        trailing: IconButton(
-                          tooltip: 'Remover perfil',
-                          onPressed: _mutationLoading
-                              ? null
-                              : () => _removeMember(item),
-                          icon: const Icon(Icons.delete_outline),
-                        ),
-                      );
-                    },
+                      },
+                    ),
                   ),
           ),
         ],

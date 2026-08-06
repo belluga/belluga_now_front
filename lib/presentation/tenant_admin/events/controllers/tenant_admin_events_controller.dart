@@ -8,6 +8,7 @@ import 'dart:typed_data';
 import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/application/tenant_admin/discovery_filters/tenant_admin_taxonomies_sequential_batch_terms_repository.dart';
 import 'package:belluga_now/application/tenant_admin/events/tenant_admin_event_account_profile_candidates_page_loader.dart';
+import 'package:belluga_now/application/tenant_admin/events/tenant_admin_event_occurrence_group_members_page_loader.dart';
 import 'package:belluga_form_validation/belluga_form_validation.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
@@ -56,6 +57,8 @@ class TenantAdminEventsController implements Disposable {
     TenantAdminTenantScopeContract? tenantScope,
     LandlordAuthRepositoryContract? landlordAuthRepository,
     TenantAdminImageIngestionService? imageIngestionService,
+    TenantAdminEventOccurrenceGroupMembersPageLoader?
+    occurrenceGroupMembersPageLoader,
   }) : _eventsRepository =
            eventsRepository ??
            GetIt.I.get<TenantAdminEventsRepositoryContract>(),
@@ -94,7 +97,14 @@ class TenantAdminEventsController implements Disposable {
            imageIngestionService ??
            (GetIt.I.isRegistered<TenantAdminImageIngestionService>()
                ? GetIt.I.get<TenantAdminImageIngestionService>()
-               : TenantAdminImageIngestionService()) {
+               : TenantAdminImageIngestionService()),
+       _occurrenceGroupMembersPageLoader =
+           occurrenceGroupMembersPageLoader ??
+           TenantAdminEventOccurrenceGroupMembersPageLoader(
+             eventsRepository:
+                 eventsRepository ??
+                 GetIt.I.get<TenantAdminEventsRepositoryContract>(),
+           ) {
     _bindTenantScope();
     _bindRepositoryStreams();
     _bindAccountProfilePickerScroll();
@@ -113,6 +123,8 @@ class TenantAdminEventsController implements Disposable {
   final TenantAdminTenantScopeContract? _tenantScope;
   final LandlordAuthRepositoryContract? _landlordAuthRepository;
   final TenantAdminImageIngestionService _imageIngestionService;
+  final TenantAdminEventOccurrenceGroupMembersPageLoader
+  _occurrenceGroupMembersPageLoader;
 
   static TenantAdminTaxonomiesScopedLookupRepositoryContract?
   _resolveTaxonomiesScopedLookupRepository({
@@ -1253,11 +1265,11 @@ class TenantAdminEventsController implements Disposable {
     required String groupId,
     String? cursor,
   }) {
-    return _eventsRepository.fetchOccurrenceProfileGroupMembersPage(
-      eventId: _toEventsText(eventId),
-      occurrenceId: _toEventsText(occurrenceId),
-      groupId: _toEventsText(groupId),
-      cursor: cursor == null ? null : _toEventsText(cursor),
+    return _occurrenceGroupMembersPageLoader.loadPage(
+      eventId: eventId,
+      occurrenceId: occurrenceId,
+      groupId: groupId,
+      cursor: cursor,
     );
   }
 
