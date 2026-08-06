@@ -4,15 +4,40 @@ import hashlib
 import json
 import sys
 import time
+import socket
 import urllib.error
 import urllib.parse
 import urllib.request
 
 
-def fetch_json(url: str) -> dict:
+def fetch_json(url: str, timeout_seconds: int) -> dict:
     request = urllib.request.Request(url, method="GET")
-    with urllib.request.urlopen(request, timeout=15) as response:
+    with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
         return json.loads(response.read().decode("utf-8"))
+
+
+def fetch_json_with_retries(
+    *,
+    url: str,
+    timeout_seconds: int,
+    retry_count: int,
+    retry_delay_seconds: float,
+) -> dict:
+    last_error: BaseException | None = None
+    for attempt in range(1, retry_count + 1):
+        try:
+            return fetch_json(url, timeout_seconds)
+        except (urllib.error.URLError, TimeoutError, socket.timeout) as error:
+            last_error = error
+            if attempt >= retry_count:
+                break
+            print(
+                f"INFO: bridge request retry {attempt}/{retry_count - 1} after error: {error}"
+            )
+            time.sleep(retry_delay_seconds)
+
+    assert last_error is not None
+    raise last_error
 
 
 def diagnostics_hash(payload: dict) -> str:
@@ -85,6 +110,9 @@ def main() -> int:
     parser.add_argument("--bridge-url", default="http://127.0.0.1:40361")
     parser.add_argument("--quiet-seconds", type=int, default=30)
     parser.add_argument("--max-attempts", type=int, default=4)
+    parser.add_argument("--http-timeout-seconds", type=int, default=30)
+    parser.add_argument("--request-retry-count", type=int, default=3)
+    parser.add_argument("--request-retry-delay-seconds", type=float, default=2.0)
     args = parser.parse_args()
 
     scope = args.scope.rstrip("/")
@@ -107,9 +135,19 @@ def main() -> int:
     last_failure = None
     for attempt in range(1, args.max_attempts + 1):
         try:
-            health_before = fetch_json(health_url)
-            payload_before = fetch_json(diagnostics_url)
-        except (urllib.error.URLError, TimeoutError) as error:
+            health_before = fetch_json_with_retries(
+                url=health_url,
+                timeout_seconds=args.http_timeout_seconds,
+                retry_count=args.request_retry_count,
+                retry_delay_seconds=args.request_retry_delay_seconds,
+            )
+            payload_before = fetch_json_with_retries(
+                url=diagnostics_url,
+                timeout_seconds=args.http_timeout_seconds,
+                retry_count=args.request_retry_count,
+                retry_delay_seconds=args.request_retry_delay_seconds,
+            )
+        except (urllib.error.URLError, TimeoutError, socket.timeout) as error:
             print(f"ERROR: unable to query the VS Code Problems bridge: {error}", file=sys.stderr)
             return 1
 
@@ -129,9 +167,19 @@ def main() -> int:
         time.sleep(args.quiet_seconds)
 
         try:
-            health_after = fetch_json(health_url)
-            payload_after = fetch_json(diagnostics_url)
-        except (urllib.error.URLError, TimeoutError) as error:
+            health_after = fetch_json_with_retries(
+                url=health_url,
+                timeout_seconds=args.http_timeout_seconds,
+                retry_count=args.request_retry_count,
+                retry_delay_seconds=args.request_retry_delay_seconds,
+            )
+            payload_after = fetch_json_with_retries(
+                url=diagnostics_url,
+                timeout_seconds=args.http_timeout_seconds,
+                retry_count=args.request_retry_count,
+                retry_delay_seconds=args.request_retry_delay_seconds,
+            )
+        except (urllib.error.URLError, TimeoutError, socket.timeout) as error:
             print(
                 f"ERROR: unable to re-query the VS Code Problems bridge after quiet interval: {error}",
                 file=sys.stderr,

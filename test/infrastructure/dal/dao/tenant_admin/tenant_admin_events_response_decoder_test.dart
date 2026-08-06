@@ -645,7 +645,7 @@ void main() {
               'id': 'outro-grupo',
               'label': 'Outro Grupo',
               'order': 0,
-              'account_profile_ids': ['artist-1', 'delegate-1', 'hidden-1'],
+              'account_profile_ids': ['artist-1', 'delegate-1'],
             },
           ],
           'occurrences': [
@@ -688,7 +688,7 @@ void main() {
                   'id': 'outro-grupo',
                   'label': 'Outro Grupo',
                   'order': 0,
-                  'account_profile_ids': ['artist-1', 'delegate-1', 'hidden-1'],
+                  'account_profile_ids': ['artist-1', 'delegate-1'],
                 },
               ],
             },
