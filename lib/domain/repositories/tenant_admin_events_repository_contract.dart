@@ -2,11 +2,14 @@ import 'dart:math' as math;
 
 import 'package:belluga_now/domain/repositories/value_objects/tenant_admin_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate_selection_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_mutation_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_page.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -170,6 +173,63 @@ abstract class TenantAdminEventsRepositoryContract {
   Future<TenantAdminEvent> fetchEvent(
     TenantAdminEventsRepoString eventIdOrSlug,
   );
+
+  Future<TenantAdminNestedGroupMemberPage>
+  fetchOccurrenceProfileGroupMembersPage({
+    required TenantAdminEventsRepoString eventId,
+    required TenantAdminEventsRepoString occurrenceId,
+    required TenantAdminEventsRepoString groupId,
+    TenantAdminEventsRepoString? cursor,
+  }) {
+    throw UnimplementedError(
+      'fetchOccurrenceProfileGroupMembersPage must be implemented by '
+      'tenant-admin events repositories.',
+    );
+  }
+
+  Future<List<TenantAdminAccountProfileSelectionSummary>>
+  fetchAllOccurrenceProfileGroupMembers({
+    required TenantAdminEventsRepoString eventId,
+    required TenantAdminEventsRepoString occurrenceId,
+    required TenantAdminEventsRepoString groupId,
+  }) async {
+    final items = <TenantAdminAccountProfileSelectionSummary>[];
+    TenantAdminEventsRepoString? cursor;
+
+    while (true) {
+      final page = await fetchOccurrenceProfileGroupMembersPage(
+        eventId: eventId,
+        occurrenceId: occurrenceId,
+        groupId: groupId,
+        cursor: cursor,
+      );
+      items.addAll(page.items);
+      final nextCursor = page.nextCursor?.trim();
+      if (nextCursor == null || nextCursor.isEmpty) {
+        break;
+      }
+      cursor = TenantAdminEventsRepoString.fromRaw(
+        nextCursor,
+        defaultValue: nextCursor,
+      );
+    }
+
+    return List<TenantAdminAccountProfileSelectionSummary>.unmodifiable(items);
+  }
+
+  Future<TenantAdminNestedGroupMemberMutationResult>
+  patchOccurrenceProfileGroupMembers({
+    required TenantAdminEventsRepoString eventId,
+    required TenantAdminEventsRepoString occurrenceId,
+    required TenantAdminEventsRepoString groupId,
+    List<TenantAdminEventsRepoString> addIds = const [],
+    List<TenantAdminEventsRepoString> removeIds = const [],
+  }) {
+    throw UnimplementedError(
+      'patchOccurrenceProfileGroupMembers must be implemented by '
+      'tenant-admin events repositories.',
+    );
+  }
 
   Future<TenantAdminEvent> createEvent({required TenantAdminEventDraft draft});
 

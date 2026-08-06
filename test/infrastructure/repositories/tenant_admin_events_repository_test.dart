@@ -357,7 +357,7 @@ void main() {
           'occurrences[1][profile_groups][0][account_profile_ids][]',
           '507f1f77bcf86cd799439021',
         ),
-        isTrue,
+        isFalse,
       );
       expect(
         hasField(
@@ -721,28 +721,12 @@ void main() {
 
       expect(result.items, hasLength(1));
       expect(result.items.first.title, 'Summarized Artist Event');
-      expect(result.items.first.relatedAccountProfiles, hasLength(1));
-      expect(
-        result.items.first.relatedAccountProfiles.first.id,
-        'artist-summary-1',
-      );
-      expect(
-        result.items.first.relatedAccountProfiles.first.displayName,
-        'DJ Summary',
-      );
-      expect(
-        result.items.first.relatedAccountProfiles.first.profileType,
-        'artist',
-      );
-      expect(
-        result.items.first.relatedAccountProfiles.first.accountId,
-        'artist-summary-1',
-      );
+      expect(result.items.first.relatedAccountProfiles, isEmpty);
     },
   );
 
   test(
-    'fetchEventsPage normalizes relative related profile media urls to tenant origin before admin decode',
+    'fetchEventsPage ignores legacy related profile media payloads during admin decode',
     () async {
       final adapter = _EventsListWithRelativeRelatedProfileMediaAdapter();
       final dio = Dio()..httpClientAdapter = adapter;
@@ -758,15 +742,7 @@ void main() {
       );
 
       expect(result.items, hasLength(1));
-      expect(result.items.first.relatedAccountProfiles, hasLength(1));
-      expect(
-        result.items.first.relatedAccountProfiles.first.avatarUrl,
-        'https://tenant-a.test/api/v1/media/account-profiles/artist-relative/avatar?v=7',
-      );
-      expect(
-        result.items.first.relatedAccountProfiles.first.coverUrl,
-        'https://tenant-a.test/account-profiles/artist-relative/cover?v=8',
-      );
+      expect(result.items.first.relatedAccountProfiles, isEmpty);
     },
   );
 
@@ -810,7 +786,7 @@ void main() {
   );
 
   test(
-    'fetchEvent uses dedicated item readback and normalizes relative related profile media',
+    'fetchEvent uses dedicated item readback and ignores legacy related profile member payloads',
     () async {
       final adapter = _EventItemWithRelativeRelatedProfileMediaAdapter();
       final dio = Dio()..httpClientAdapter = adapter;
@@ -824,30 +800,25 @@ void main() {
 
       expect(event.eventId, 'evt-readback');
       expect(event.title, 'Evento readback');
-      expect(event.relatedAccountProfiles, hasLength(2));
+      expect(event.relatedAccountProfiles, isEmpty);
       expect(
-        event.relatedAccountProfiles.first.avatarUrl,
-        'https://tenant-a.test/api/v1/media/account-profiles/artist-1/avatar?v=7',
-      );
-      expect(
-        event.profileGroups.single.accountProfileIdValues
+        event.relatedAccountProfileIds
             .map((value) => value.value)
             .toList(growable: false),
-        ['artist-1', 'delegate-1', 'hidden-1'],
+        isEmpty,
       );
+      expect(event.profileGroups.single.accountProfileIdValues, isEmpty);
       expect(event.profileGroups.single.memberCount, 3);
       expect(
-        event.occurrences.single.profileGroups.single.accountProfileIdValues
-            .map((value) => value.value)
-            .toList(growable: false),
-        ['artist-1', 'delegate-1', 'hidden-1'],
+        event.occurrences.single.profileGroups.single.accountProfileIdValues,
+        isEmpty,
       );
       expect(event.occurrences.single.profileGroups.single.memberCount, 3);
       expect(
         event.occurrences.single.relatedAccountProfileIds
             .map((value) => value.value)
             .toList(growable: false),
-        ['artist-1', 'delegate-1', 'hidden-1'],
+        isEmpty,
       );
 
       expect(adapter.requests, hasLength(1));

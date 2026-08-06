@@ -79,7 +79,7 @@ void main() {
   );
 
   test(
-    'prefers related account profile ids from event_parties when available',
+    'does not synthesize related account state from legacy root related-account payloads',
     () {
       final event = decoder.decodeEventItem({
         'data': {
@@ -133,26 +133,16 @@ void main() {
         event.relatedAccountProfileIds
             .map((entry) => entry.value)
             .toList(growable: false),
-        ['artist-1', 'producer-1'],
+        isEmpty,
       );
-      expect(
-        event.eventParties
-            .map((entry) => entry.partyRefId)
-            .toList(growable: false),
-        ['artist-1', 'producer-1'],
-      );
-      expect(
-        event.relatedAccountProfiles
-            .map((entry) => entry.displayName)
-            .toList(growable: false),
-        ['DJ One', 'Producer One'],
-      );
+      expect(event.eventParties, isEmpty);
+      expect(event.relatedAccountProfiles, isEmpty);
       expect(event.venueDisplayName, 'Casa Solar');
     },
   );
 
   test(
-    'preserves all linked account profile payloads in admin event readback',
+    'ignores legacy linked account profile payloads in admin event readback',
     () {
       final linkedProfiles = <Map<String, dynamic>>[
         {
@@ -193,16 +183,16 @@ void main() {
       });
 
       expect(
-        event.relatedAccountProfiles
-            .map((entry) => entry.id)
-            .toList(growable: false),
-        linkedProfiles.map((profile) => profile['id']).toList(growable: false),
+        event.relatedAccountProfiles,
+        isEmpty,
       );
       expect(
-        event.occurrences.single.relatedAccountProfiles
-            .map((entry) => entry.id)
-            .toList(growable: false),
-        linkedProfiles.map((profile) => profile['id']).toList(growable: false),
+        event.occurrences.single.relatedAccountProfileIds,
+        isEmpty,
+      );
+      expect(
+        event.occurrences.single.relatedAccountProfiles,
+        isEmpty,
       );
     },
   );
@@ -273,7 +263,7 @@ void main() {
   );
 
   test(
-    'preserves taxonomy display snapshots on event and related profiles',
+    'preserves taxonomy display snapshots on the event while ignoring legacy related profiles',
     () {
       final event = decoder.decodeEventItem({
         'data': {
@@ -319,8 +309,6 @@ void main() {
       });
 
       final eventTerm = event.taxonomyTerms.first;
-      final profileTerm =
-          event.relatedAccountProfiles.first.taxonomyTerms.first;
 
       expect(eventTerm.type, 'genre');
       expect(eventTerm.value, 'samba');
@@ -328,8 +316,7 @@ void main() {
       expect(eventTerm.taxonomyName, 'Genero musical');
       expect(eventTerm.label, 'Legacy Samba');
       expect(eventTerm.displayLabel, 'Samba');
-      expect(profileTerm.value, 'rock');
-      expect(profileTerm.displayLabel, 'Rock');
+      expect(event.relatedAccountProfiles, isEmpty);
     },
   );
 
@@ -472,7 +459,7 @@ void main() {
     expect(event.thumbUrl, 'https://cdn.example.com/thumb.png');
   });
 
-  test('decodes occurrence-owned profiles and programação place refs', () {
+  test('decodes canonical occurrence profile_groups and programação place refs', () {
     final event = decoder.decodeEventItem({
       'data': {
         'event_id': 'evt-occurrence-owned',
@@ -486,12 +473,12 @@ void main() {
           {
             'occurrence_id': 'occ-1',
             'date_time_start': '2026-04-05T20:00:00+00:00',
-            'own_linked_account_profiles': [
+            'profile_groups': [
               {
-                'id': 'artist-1',
-                'account_id': 'artist-1',
-                'display_name': 'Coral XYZ',
-                'profile_type': 'artist',
+                'id': 'artists',
+                'label': 'Artists',
+                'order': 0,
+                'account_profile_ids': ['artist-1'],
               },
             ],
             'own_taxonomy_terms': [
@@ -529,8 +516,10 @@ void main() {
     });
 
     final occurrence = event.occurrences.first;
-    expect(occurrence.relatedAccountProfileIds.first.value, 'artist-1');
-    expect(occurrence.relatedAccountProfiles.first.displayName, 'Coral XYZ');
+    expect(occurrence.relatedAccountProfileIds, isEmpty);
+    expect(occurrence.profileGroups.single.accountProfileIdValues, isEmpty);
+    expect(occurrence.profileGroups.single.memberCount, 1);
+    expect(occurrence.relatedAccountProfiles, isEmpty);
     expect(occurrence.taxonomyTerms.single.type, 'sport');
     expect(occurrence.taxonomyTerms.single.value, 'football');
     expect(occurrence.taxonomyTerms.single.displayLabel, 'Futebol');
@@ -547,7 +536,7 @@ void main() {
   });
 
   test(
-    'preserves linked profile ids when occurrence own parties are missing',
+    'does not synthesize occurrence related-account state from legacy own_linked_account_profiles',
     () {
       final linkedProfiles = <Map<String, dynamic>>[
         {
@@ -586,19 +575,14 @@ void main() {
         event.occurrences.single.relatedAccountProfileIds.map(
           (value) => value.value,
         ),
-        linkedProfiles.map((profile) => profile['id']).toList(growable: false),
+        isEmpty,
       );
-      expect(
-        event.occurrences.single.relatedAccountProfiles.map(
-          (profile) => profile.id,
-        ),
-        linkedProfiles.map((profile) => profile['id']).toList(growable: false),
-      );
+      expect(event.occurrences.single.relatedAccountProfiles, isEmpty);
     },
   );
 
   test(
-    'prefers visible profile_groups members over stale event_parties counts in admin event readback',
+    'keeps profile_groups metadata-only while ignoring stale event_parties in admin event readback',
     () {
       final event = decoder.decodeEventItem({
         'data': {
@@ -696,30 +680,28 @@ void main() {
         },
       });
 
-      expect(
-        event.profileGroups.single.accountProfileIdValues
-            .map((value) => value.value)
-            .toList(growable: false),
-        ['artist-1', 'delegate-1'],
-      );
+      expect(event.profileGroups.single.accountProfileIdValues, isEmpty);
+      expect(event.profileGroups.single.memberCount, 2);
       expect(
         event.relatedAccountProfileIds
             .map((value) => value.value)
             .toList(growable: false),
-        ['artist-1', 'delegate-1'],
+        isEmpty,
       );
+      expect(event.eventParties, isEmpty);
+      expect(event.relatedAccountProfiles, isEmpty);
       expect(
-        event.occurrences.single.profileGroups.single.accountProfileIdValues
-            .map((value) => value.value)
-            .toList(growable: false),
-        ['artist-1', 'delegate-1'],
+        event.occurrences.single.profileGroups.single.accountProfileIdValues,
+        isEmpty,
       );
+      expect(event.occurrences.single.profileGroups.single.memberCount, 2);
       expect(
         event.occurrences.single.relatedAccountProfileIds
             .map((value) => value.value)
             .toList(growable: false),
-        ['artist-1', 'delegate-1'],
+        isEmpty,
       );
+      expect(event.occurrences.single.relatedAccountProfiles, isEmpty);
     },
   );
 }
