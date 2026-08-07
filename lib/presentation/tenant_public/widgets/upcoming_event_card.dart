@@ -51,6 +51,7 @@ class UpcomingEventCard extends StatelessWidget {
               ),
             )
             .toList(growable: false),
+        counterpartCount: event.counterpartCount,
         venueName: venueName.isEmpty ? null : venueName,
         venueDistanceLabel: distanceLabel,
         venueAddress: venueAddress,
@@ -174,7 +175,7 @@ class UpcomingEventCard extends StatelessWidget {
     final visibleCounterparts = data.counterparts.length > 1
         ? data.counterparts.take(1).toList(growable: false)
         : data.counterparts;
-    final hiddenCount = data.counterparts.length - visibleCounterparts.length;
+    final hiddenCount = data.totalCounterpartCount - visibleCounterparts.length;
     return Wrap(
       key: _scopedKey('Counterparts'),
       crossAxisAlignment: WrapCrossAlignment.center,

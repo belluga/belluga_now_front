@@ -184,9 +184,6 @@ class TenantAdminEventsRequestEncoder {
             'id': group.id,
             'label': group.label,
             'order': group.order,
-            'account_profile_ids': group.accountProfileIdValues
-                .map((profileId) => profileId.value)
-                .toList(growable: false),
           },
         )
         .toList(growable: false);

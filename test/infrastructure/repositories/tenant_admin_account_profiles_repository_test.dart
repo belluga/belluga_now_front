@@ -322,18 +322,13 @@ void main() {
       final data = adapter.lastRequest?.data;
       expect(data, isA<Map<String, dynamic>>());
       expect((data as Map<String, dynamic>)['nested_profile_groups'], [
-        {
-          'id': 'parceiros',
-          'label': 'Parceiros',
-          'order': 0,
-          'account_profile_ids': <String>['507f1f77bcf86cd799439081'],
-        },
+        {'id': 'parceiros', 'label': 'Parceiros', 'order': 0},
       ]);
     },
   );
 
   test(
-    'updateAccountProfile sends full nested profile groups payload',
+    'updateAccountProfile sends nested profile group metadata only',
     () async {
       final adapter = _CaptureAdapter();
       final dio = Dio()..httpClientAdapter = adapter;
@@ -369,15 +364,7 @@ void main() {
       final data = adapter.lastRequest?.data;
       expect(data, isA<Map<String, dynamic>>());
       expect((data as Map<String, dynamic>)['nested_profile_groups'], [
-        {
-          'id': 'parceiros',
-          'label': 'Parceiros',
-          'order': 0,
-          'account_profile_ids': <String>[
-            '507f1f77bcf86cd799439081',
-            '507f1f77bcf86cd799439082',
-          ],
-        },
+        {'id': 'parceiros', 'label': 'Parceiros', 'order': 0},
       ]);
       expect(data['aggregate_revision'], 4);
     },

@@ -3,13 +3,17 @@ import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate_selection_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_mutation_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_page.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
+import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_account_profiles_response_decoder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_events_media_payload_normalizer.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_media_form_data_builder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_events_request_encoder.dart';
@@ -31,6 +35,8 @@ class TenantAdminEventsRepository
       const TenantAdminEventsRequestEncoder();
   final TenantAdminEventsResponseDecoder _responseDecoder =
       const TenantAdminEventsResponseDecoder();
+  final TenantAdminAccountProfilesResponseDecoder _nestedMembersDecoder =
+      const TenantAdminAccountProfilesResponseDecoder();
   final TenantAdminEventsMediaPayloadNormalizer _mediaPayloadNormalizer =
       const TenantAdminEventsMediaPayloadNormalizer();
   final TenantAdminMediaFormDataBuilder _mediaFormDataBuilder =
@@ -223,6 +229,125 @@ class TenantAdminEventsRepository
         error,
         context: 'load event',
         uri: '$_apiBaseUrl/v1/events/${eventIdOrSlug.value}',
+      );
+    }
+  }
+
+  @override
+  Future<TenantAdminNestedGroupMemberPage>
+  fetchOccurrenceProfileGroupMembersPage({
+    required TenantAdminEventsRepoString eventId,
+    required TenantAdminEventsRepoString occurrenceId,
+    required TenantAdminEventsRepoString groupId,
+    TenantAdminEventsRepoString? cursor,
+  }) async {
+    final normalizedCursor = cursor?.value.trim();
+    final uri =
+        '$_apiBaseUrl/v1/events/${eventId.value}/occurrences/${occurrenceId.value}/profile_groups/${groupId.value}/members';
+    try {
+      final response = await _dio.get(
+        uri,
+        queryParameters: {
+          if (normalizedCursor != null && normalizedCursor.isNotEmpty)
+            'cursor': normalizedCursor,
+        },
+        options: Options(headers: _buildLandlordHeaders()),
+      );
+      return _nestedMembersDecoder
+          .decodeNestedGroupMemberPage(response.data)
+          .toDomain();
+    } on DioException catch (error) {
+      throw _wrapError(error, 'load occurrence group members page');
+    } on FormatException catch (error) {
+      throw _wrapDecodeError(
+        error,
+        context: 'load occurrence group members page',
+        uri: uri,
+      );
+    } catch (error) {
+      throw _wrapUnknownDecodeError(
+        error,
+        context: 'load occurrence group members page',
+        uri: uri,
+      );
+    }
+  }
+
+  @override
+  Future<List<TenantAdminAccountProfileSelectionSummary>>
+  fetchAllOccurrenceProfileGroupMembers({
+    required TenantAdminEventsRepoString eventId,
+    required TenantAdminEventsRepoString occurrenceId,
+    required TenantAdminEventsRepoString groupId,
+  }) async {
+    final items = <TenantAdminAccountProfileSelectionSummary>[];
+    TenantAdminEventsRepoString? cursor;
+
+    while (true) {
+      final page = await fetchOccurrenceProfileGroupMembersPage(
+        eventId: eventId,
+        occurrenceId: occurrenceId,
+        groupId: groupId,
+        cursor: cursor,
+      );
+      items.addAll(page.items);
+      final nextCursor = page.nextCursor?.trim();
+      if (nextCursor == null || nextCursor.isEmpty) {
+        break;
+      }
+      cursor = TenantAdminEventsRepoString.fromRaw(
+        nextCursor,
+        defaultValue: nextCursor,
+      );
+    }
+
+    return List<TenantAdminAccountProfileSelectionSummary>.unmodifiable(items);
+  }
+
+  @override
+  Future<TenantAdminNestedGroupMemberMutationResult>
+  patchOccurrenceProfileGroupMembers({
+    required TenantAdminEventsRepoString eventId,
+    required TenantAdminEventsRepoString occurrenceId,
+    required TenantAdminEventsRepoString groupId,
+    List<TenantAdminEventsRepoString> addIds = const [],
+    List<TenantAdminEventsRepoString> removeIds = const [],
+  }) async {
+    final uri =
+        '$_apiBaseUrl/v1/events/${eventId.value}/occurrences/${occurrenceId.value}/profile_groups/${groupId.value}/members';
+    try {
+      final response = await _dio.patch(
+        uri,
+        data: {
+          if (addIds.isNotEmpty)
+            'add_ids': addIds
+                .map((entry) => entry.value.trim())
+                .where((value) => value.isNotEmpty)
+                .toList(growable: false),
+          if (removeIds.isNotEmpty)
+            'remove_ids': removeIds
+                .map((entry) => entry.value.trim())
+                .where((value) => value.isNotEmpty)
+                .toList(growable: false),
+        },
+        options: Options(headers: _buildLandlordHeaders()),
+      );
+      return _nestedMembersDecoder
+          .decodeNestedGroupMemberMutationResult(response.data)
+          .toDomain();
+    } on DioException catch (error) {
+      throw _wrapError(error, 'patch occurrence group members');
+    } on FormatException catch (error) {
+      throw _wrapDecodeError(
+        error,
+        context: 'patch occurrence group members',
+        uri: uri,
+      );
+    } catch (error) {
+      throw _wrapUnknownDecodeError(
+        error,
+        context: 'patch occurrence group members',
+        uri: uri,
       );
     }
   }

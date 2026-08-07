@@ -1,22 +1,27 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_form_validation/belluga_form_validation.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate_selection_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_mutation_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_page.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms_by_taxonomy_id.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_aggregate_revision_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
@@ -24,6 +29,7 @@ import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/models/tenant_admin_event_form_validation_config.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/screens/tenant_admin_event_form_screen.dart';
+import 'package:belluga_now/presentation/tenant_admin/events/screens/tenant_admin_event_occurrence_group_members_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
@@ -203,7 +209,7 @@ void main() {
   );
 
   testWidgets(
-    'single occurrence edit hydrates legacy event-level profile groups into occurrence programming',
+    'single occurrence edit does not hydrate legacy event-level profile groups into occurrence programming',
     (tester) async {
       final eventsRepository = _FakeEventsRepository();
       final taxonomiesRepository = _FakeTaxonomiesRepository();
@@ -290,14 +296,13 @@ void main() {
           const Key('tenantAdminProgrammingLinkOccurrenceProfileButton'),
         ),
       );
-      expect(linkOccurrenceProfileButton.onPressed, isNotNull);
-
+      expect(linkOccurrenceProfileButton.onPressed, isNull);
       final addOccurrenceProfileButton = tester.widget<OutlinedButton>(
         find.byKey(
           const Key('tenantAdminProgrammingAddOccurrenceProfileButton_artists'),
         ),
       );
-      expect(addOccurrenceProfileButton.onPressed, isNotNull);
+      expect(addOccurrenceProfileButton.onPressed, isNull);
     },
   );
 
@@ -1310,7 +1315,7 @@ void main() {
         submittedOccurrence?.relatedAccountProfileIds
             .map((value) => value.value)
             .toList(growable: false),
-        ['artist-1'],
+        isEmpty,
       );
       expect(
         submittedOccurrence?.programmingItems
@@ -1453,18 +1458,58 @@ void main() {
           slugValue: tenantAdminRequiredText('feira'),
         ),
       ];
+      final existingEvent = TenantAdminEvent(
+        eventIdValue: tenantAdminRequiredText('evt-occurrence-programming-1'),
+        slugValue: tenantAdminRequiredText('evt-occurrence-programming-1'),
+        titleValue: tenantAdminRequiredText('Evento existente'),
+        contentValue: tenantAdminOptionalText('Conteúdo'),
+        type: TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439023'),
+          nameValue: tenantAdminRequiredText('Feira'),
+          slugValue: tenantAdminRequiredText('feira'),
+        ),
+        occurrences: <TenantAdminEventOccurrence>[
+          TenantAdminEventOccurrence(
+            occurrenceIdValue: tenantAdminOptionalText('occ-1'),
+            occurrenceSlugValue: tenantAdminOptionalText('occ-1'),
+            dateTimeStartValue: tenantAdminDateTime(
+              DateTime.utc(2026, 4, 20, 20),
+            ),
+          ),
+          TenantAdminEventOccurrence(
+            occurrenceIdValue: tenantAdminOptionalText('occ-2'),
+            occurrenceSlugValue: tenantAdminOptionalText('occ-2'),
+            dateTimeStartValue: tenantAdminDateTime(
+              DateTime.utc(2026, 4, 21, 17),
+            ),
+          ),
+        ],
+        publication: TenantAdminEventPublication(
+          statusValue: tenantAdminRequiredText('draft'),
+        ),
+        location: TenantAdminEventLocation(
+          modeValue: tenantAdminRequiredText('physical'),
+        ),
+        placeRef: TenantAdminEventPlaceRef(
+          typeValue: tenantAdminRequiredText('account_profile'),
+          idValue: tenantAdminRequiredText('venue-1'),
+        ),
+      );
 
       GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
 
       await _pumpWithAutoRoute(
         tester,
-        const Scaffold(body: TenantAdminEventFormScreen()),
+        Scaffold(
+          body: TenantAdminEventFormScreen(existingEvent: existingEvent),
+        ),
       );
-
-      await _fillRequiredFields(tester, controller: controller);
+      await tester.ensureVisible(
+        find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),
+      );
       await tester.pumpAndSettle();
       await tester.tap(
-        find.byKey(const Key('tenantAdminEventAddOccurrenceButton')),
+        find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),
       );
       await tester.pumpAndSettle();
 
@@ -1504,7 +1549,7 @@ void main() {
           const Key('tenantAdminProgrammingLinkOccurrenceProfileButton'),
         ),
       );
-      expect(linkOccurrenceProfileButton.onPressed, isNull);
+      expect(linkOccurrenceProfileButton.onPressed, isNotNull);
       expect(
         find.byKey(
           const Key('tenantAdminProgrammingAddOccurrenceProfileButton'),
@@ -1519,20 +1564,8 @@ void main() {
         ),
       );
       expect(addOccurrenceProfileButton.onPressed, isNotNull);
-      final addOccurrenceProfileButtonFinder = find.byKey(
-        Key(
-          'tenantAdminProgrammingAddOccurrenceProfileButton_$occurrenceGroupId',
-        ),
-      );
-      await tester.ensureVisible(addOccurrenceProfileButtonFinder);
-      await tester.pumpAndSettle();
-      await tester.tap(addOccurrenceProfileButtonFinder);
-      await tester.pumpAndSettle();
-      final artistAChoice = find.text('Artist A').last;
-      await tester.ensureVisible(artistAChoice);
-      await tester.pumpAndSettle();
-      await tester.tap(artistAChoice);
-      await tester.pumpAndSettle();
+      await _tapFirstProgrammingAddOccurrenceProfileButton(tester);
+      await _tapVisibleText(tester, 'Artist A');
       expect(
         find.byKey(const Key('tenantAdminProgrammingProfile_artist-1')),
         findsOneWidget,
@@ -1557,23 +1590,12 @@ void main() {
         find.byKey(const Key('tenantAdminOccurrenceProgrammingItem_0')),
         findsOneWidget,
       );
-      expect(find.text('Local: Venue A'), findsOneWidget);
 
       await _closeOccurrenceSheet(tester);
 
       final occurrence =
           controller.eventFormStateStreamValue.value.occurrences[1];
-      expect(
-        occurrence.relatedAccountProfileIds.map((value) => value.value),
-        contains('artist-1'),
-      );
       expect(occurrence.profileGroups.single.id, occurrenceGroupId);
-      expect(
-        occurrence.profileGroups.single.accountProfileIdValues.map(
-          (entry) => entry.value,
-        ),
-        contains('artist-1'),
-      );
       expect(occurrence.programmingItems.single.time, '13:00');
       expect(
         occurrence.programmingItems.single.title,
@@ -1603,19 +1625,20 @@ void main() {
       );
 
       await tester.scrollUntilVisible(
-        find.widgetWithText(FilledButton, 'Criar evento'),
+        find.widgetWithText(FilledButton, 'Salvar alterações'),
         250,
         scrollable: find.byType(Scrollable).first,
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, 'Criar evento'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Salvar alterações'));
       await tester.pumpAndSettle();
 
       final submittedOccurrence =
-          eventsRepository.lastCreateDraft?.occurrences[1];
+          eventsRepository.lastUpdateDraft?.occurrences[1];
       expect(submittedOccurrence?.programmingItems.single.time, '13:00');
+      expect(submittedOccurrence?.profileGroups.single.id, occurrenceGroupId);
       expect(
-        eventsRepository.lastCreateDraft?.relatedAccountProfileIds.map(
+        eventsRepository.lastUpdateDraft?.relatedAccountProfileIds.map(
           (value) => value.value,
         ),
         isEmpty,
@@ -1640,18 +1663,60 @@ void main() {
           slugValue: tenantAdminRequiredText('feira'),
         ),
       ];
+      final existingEvent = TenantAdminEvent(
+        eventIdValue: tenantAdminRequiredText(
+          'evt-occurrence-programming-remove',
+        ),
+        slugValue: tenantAdminRequiredText('evt-occurrence-programming-remove'),
+        titleValue: tenantAdminRequiredText('Evento existente'),
+        contentValue: tenantAdminOptionalText('Conteúdo'),
+        type: TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439024'),
+          nameValue: tenantAdminRequiredText('Feira'),
+          slugValue: tenantAdminRequiredText('feira'),
+        ),
+        occurrences: <TenantAdminEventOccurrence>[
+          TenantAdminEventOccurrence(
+            occurrenceIdValue: tenantAdminOptionalText('occ-1'),
+            occurrenceSlugValue: tenantAdminOptionalText('occ-1'),
+            dateTimeStartValue: tenantAdminDateTime(
+              DateTime.utc(2026, 4, 20, 20),
+            ),
+          ),
+          TenantAdminEventOccurrence(
+            occurrenceIdValue: tenantAdminOptionalText('occ-2'),
+            occurrenceSlugValue: tenantAdminOptionalText('occ-2'),
+            dateTimeStartValue: tenantAdminDateTime(
+              DateTime.utc(2026, 4, 21, 17),
+            ),
+          ),
+        ],
+        publication: TenantAdminEventPublication(
+          statusValue: tenantAdminRequiredText('draft'),
+        ),
+        location: TenantAdminEventLocation(
+          modeValue: tenantAdminRequiredText('physical'),
+        ),
+        placeRef: TenantAdminEventPlaceRef(
+          typeValue: tenantAdminRequiredText('account_profile'),
+          idValue: tenantAdminRequiredText('venue-1'),
+        ),
+      );
 
       GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
 
       await _pumpWithAutoRoute(
         tester,
-        const Scaffold(body: TenantAdminEventFormScreen()),
+        Scaffold(
+          body: TenantAdminEventFormScreen(existingEvent: existingEvent),
+        ),
       );
-
-      await _fillRequiredFields(tester, controller: controller);
+      await tester.ensureVisible(
+        find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),
+      );
       await tester.pumpAndSettle();
       await tester.tap(
-        find.byKey(const Key('tenantAdminEventAddOccurrenceButton')),
+        find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),
       );
       await tester.pumpAndSettle();
 
@@ -1706,8 +1771,18 @@ void main() {
         find.byKey(const Key('tenantAdminOccurrenceProgrammingItem_0')),
         findsOneWidget,
       );
+      expect(
+        find.text(
+          'Salve o evento antes de gerenciar os perfis desta ocorrência.',
+        ),
+        findsNothing,
+      );
+      final manageButtonAfterProgramming = tester.widget<OutlinedButton>(
+        find.byKey(Key('OccurrenceProfileManageGroup_$occurrenceGroupId')),
+      );
+      expect(manageButtonAfterProgramming.onPressed, isNotNull);
 
-      await _selectProfileInGroup(
+      await _removeProfileFromOccurrenceGroup(
         tester,
         keyPrefix: 'OccurrenceProfile',
         groupId: occurrenceGroupId,
@@ -1723,8 +1798,10 @@ void main() {
         isEmpty,
       );
       expect(find.text('1 perfil(is) selecionado(s)'), findsNothing);
-      expect(find.text('Selecionar perfis'), findsOneWidget);
+      expect(find.text('Nenhum perfil vinculado neste grupo.'), findsOneWidget);
 
+      await tester.pageBack();
+      await tester.pumpAndSettle();
       await _closeOccurrenceSheet(tester);
 
       final occurrence =
@@ -1802,10 +1879,7 @@ void main() {
 
     expect(find.text('Local: Venue A'), findsOneWidget);
 
-    await tester.tap(
-      find.byKey(const Key('tenantAdminOccurrenceProgrammingItem_0')),
-    );
-    await tester.pumpAndSettle();
+    await _openOccurrenceProgrammingItem(tester, index: 0);
     expect(find.text('Editar item de programação'), findsOneWidget);
 
     await tester.ensureVisible(
@@ -2189,7 +2263,8 @@ void main() {
           body: TenantAdminEventFormScreen(existingEvent: existingEvent),
         ),
       );
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.text('Local: Casa do Jazz'), findsOneWidget);
 
@@ -2472,10 +2547,7 @@ void main() {
       await _tapProgrammingSaveButton(tester);
       await tester.pumpAndSettle();
 
-      await tester.tap(
-        find.byKey(const Key('tenantAdminOccurrenceProgrammingItem_0')),
-      );
-      await tester.pumpAndSettle();
+      await _openOccurrenceProgrammingItem(tester, index: 0);
       await tester.ensureVisible(
         find.byKey(const Key('tenantAdminProgrammingLocationProfileDropdown')),
       );
@@ -3040,7 +3112,7 @@ void main() {
   );
 
   testWidgets(
-    'multi-occurrence editor accumulates programming items that add occurrence profiles',
+    'multi-occurrence create blocks adding occurrence profiles through programming before first save',
     (tester) async {
       final eventsRepository = _MultipleRelatedCandidatesEventsRepository();
       final taxonomiesRepository = _FakeTaxonomiesRepository();
@@ -3082,46 +3154,49 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await _addOccurrenceProgrammingWithNewProfile(
-        tester,
-        time: '10:00',
-        profileName: 'Artist A',
+      await _ensureOccurrenceProgrammingGroup(tester);
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
+        250,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
+      );
+      await tester.pumpAndSettle();
+      await _setProgrammingTimedState(tester, isTimed: true);
+      await tester.enterText(
+        find.byKey(const Key('tenantAdminProgrammingTimeField')),
+        '10:00',
+      );
+      final addOccurrenceProfileButton = find
+          .byWidgetPredicate(
+            (widget) =>
+                widget is OutlinedButton &&
+                widget.key.toString().contains(
+                  'tenantAdminProgrammingAddOccurrenceProfileButton_',
+                ),
+          )
+          .first;
+
+      expect(
+        tester.widget<OutlinedButton>(addOccurrenceProfileButton).onPressed,
+        isNull,
+      );
+      expect(
+        find.text('Salve o evento para gerenciar perfis desta ocorrência.'),
+        findsWidgets,
       );
       expect(
         find.byKey(const Key('tenantAdminOccurrenceProgrammingItem_0')),
-        findsOneWidget,
+        findsNothing,
       );
-      expect(find.text('Artist A'), findsWidgets);
-
-      await _addOccurrenceProgrammingWithNewProfile(
-        tester,
-        time: '11:00',
-        profileName: 'Artist B',
-      );
-
-      expect(
-        find.byKey(const Key('tenantAdminOccurrenceProgrammingItem_0')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const Key('tenantAdminOccurrenceProgrammingItem_1')),
-        findsOneWidget,
-      );
-      expect(find.text('Artist A'), findsWidgets);
-      expect(find.text('Artist B'), findsWidgets);
-
-      await _closeOccurrenceSheet(tester);
 
       final occurrence =
           controller.eventFormStateStreamValue.value.occurrences[1];
-      expect(occurrence.programmingItems.map((item) => item.time), [
-        '10:00',
-        '11:00',
-      ]);
-      expect(
-        occurrence.relatedAccountProfileIds.map((item) => item.value),
-        containsAll(['artist-1', 'artist-2']),
-      );
+      expect(occurrence.programmingItems, isEmpty);
+      expect(occurrence.relatedAccountProfileIds, isEmpty);
     },
   );
 
@@ -3559,7 +3634,7 @@ void main() {
         time: '10:00',
         profileName: 'Artist A',
       );
-      await _addOccurrenceProgrammingWithExistingProfile(
+      await _addOccurrenceProgrammingWithNewProfile(
         tester,
         time: '11:00',
         profileName: 'Artist A',
@@ -5186,7 +5261,7 @@ void main() {
   });
 
   testWidgets(
-    'related account profile group selector keeps checkbox state canonical',
+    'related account profile groups on create stay metadata-only and block member management',
     (tester) async {
       final eventsRepository = _FakeEventsRepository();
       final taxonomiesRepository = _FakeTaxonomiesRepository();
@@ -5216,52 +5291,25 @@ void main() {
         controller,
         label: 'Participantes',
       );
-      await _selectProfileInGroup(
-        tester,
-        keyPrefix: 'EventProfile',
-        groupId: groupId,
-        profileId: 'artist-1',
-      );
-
+      final state = controller.eventFormStateStreamValue.value;
+      expect(state.profileGroups.single.id, groupId);
+      expect(state.profileGroups.single.accountProfileIdValues, isEmpty);
+      expect(state.selectedRelatedAccountProfileIds, isEmpty);
+      expect(find.text('0 perfis vinculados'), findsOneWidget);
       expect(
-        controller
-            .eventFormStateStreamValue
-            .value
-            .selectedRelatedAccountProfileIds,
-        ['artist-1'],
+        find.text('Salve o evento para gerenciar perfis desta ocorrência.'),
+        findsOneWidget,
       );
 
-      await _openProfileGroupSelector(
-        tester,
-        keyPrefix: 'EventProfile',
-        groupId: groupId,
+      final manageButton = tester.widget<OutlinedButton>(
+        find.byKey(Key('EventProfileManageGroup_$groupId')),
       );
-
-      final candidateKey = Key(
-        'EventProfileNestedAccountCandidate_${groupId}_artist-1',
-      );
-      final selectedTile = tester.widget<CheckboxListTile>(
-        find.byKey(candidateKey),
-      );
-      expect(selectedTile.value, isTrue);
-
-      await tester.tap(find.byKey(candidateKey));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Concluir'));
-      await tester.pumpAndSettle();
-
-      expect(
-        controller
-            .eventFormStateStreamValue
-            .value
-            .selectedRelatedAccountProfileIds,
-        isEmpty,
-      );
+      expect(manageButton.onPressed, isNull);
     },
   );
 
   testWidgets(
-    'adding the first occurrence preserves event-level related profile groups',
+    'adding the first occurrence preserves event-level related profile group metadata only',
     (tester) async {
       final eventsRepository = _FakeEventsRepository();
       final taxonomiesRepository = _FakeTaxonomiesRepository();
@@ -5282,14 +5330,6 @@ void main() {
         controller,
         label: 'Participantes',
       );
-      await _selectProfileInGroup(
-        tester,
-        keyPrefix: 'EventProfile',
-        groupId: groupId,
-        profileId: 'artist-1',
-      );
-
-      expect(find.widgetWithText(InputChip, 'Artist A'), findsOneWidget);
 
       await tester.tap(
         find.byKey(const Key('tenantAdminEventAddOccurrenceButton')),
@@ -5300,27 +5340,20 @@ void main() {
       final state = controller.eventFormStateStreamValue.value;
       expect(state.occurrences, hasLength(1));
       expect(state.profileGroups.single.id, groupId);
-      expect(state.selectedRelatedAccountProfileIds, ['artist-1']);
+      expect(state.profileGroups.single.accountProfileIdValues, isEmpty);
+      expect(state.selectedRelatedAccountProfileIds, isEmpty);
       expect(state.occurrences.single.profileGroups.single.id, groupId);
       expect(
-        state.occurrences.single.profileGroups.single.accountProfileIdValues
-            .map((value) => value.value)
-            .toList(growable: false),
-        ['artist-1'],
+        state.occurrences.single.profileGroups.single.accountProfileIdValues,
+        isEmpty,
       );
-      expect(
-        state.occurrences.single.relatedAccountProfileIds
-            .map((value) => value.value)
-            .toList(growable: false),
-        ['artist-1'],
-      );
-      expect(find.text('1 perfil(is) selecionado(s)'), findsOneWidget);
-      expect(find.widgetWithText(InputChip, 'Artist A'), findsOneWidget);
+      expect(state.occurrences.single.profileGroups.single.memberCount, 0);
+      expect(state.occurrences.single.relatedAccountProfileIds, isEmpty);
     },
   );
 
   testWidgets(
-    'related account profile picker renders backend type options and sends the selected filter to the server',
+    'saved event group picker renders backend type options and sends the selected filter to the server',
     (tester) async {
       final profileTypes = <TenantAdminProfileTypeDefinition>[
         _fixtureProfileType(
@@ -5363,28 +5396,50 @@ void main() {
         accountProfilesRepository: profileTypesRepository,
         taxonomiesRepository: taxonomiesRepository,
       );
+      final existingEvent = TenantAdminEvent(
+        eventIdValue: tenantAdminRequiredText('evt-related-types'),
+        slugValue: tenantAdminRequiredText('evt-related-types'),
+        titleValue: tenantAdminRequiredText('Evento em edição'),
+        contentValue: tenantAdminOptionalText(''),
+        type: TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439141'),
+          nameValue: tenantAdminRequiredText('Show'),
+          slugValue: tenantAdminRequiredText('show'),
+        ),
+        occurrences: <TenantAdminEventOccurrence>[
+          TenantAdminEventOccurrence(
+            occurrenceIdValue: tenantAdminOptionalText('occ-related-types'),
+            dateTimeStartValue: tenantAdminDateTime(DateTime.utc(2026, 4, 20)),
+            profileGroups: <TenantAdminNestedProfileGroup>[
+              TenantAdminNestedProfileGroup(
+                idValue: TenantAdminNestedProfileGroupTextValue('participants'),
+                labelValue: TenantAdminNestedProfileGroupTextValue(
+                  'Participantes',
+                ),
+                orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+              ),
+            ],
+          ),
+        ],
+        publication: TenantAdminEventPublication(
+          statusValue: tenantAdminRequiredText('draft'),
+        ),
+      );
 
       GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
 
       await _pumpWithAutoRoute(
         tester,
-        const Scaffold(body: TenantAdminEventFormScreen()),
+        Scaffold(
+          body: TenantAdminEventFormScreen(existingEvent: existingEvent),
+        ),
       );
 
-      final groupId = await _addEventProfileGroup(
-        tester,
-        controller,
-        label: 'Participantes',
-      );
       await _openProfileGroupSelector(
         tester,
         keyPrefix: 'EventProfile',
-        groupId: groupId,
+        groupId: 'participants',
       );
-
-      final typeFilterKey = Key('EventProfileNestedAccountTypeFilter_$groupId');
-      await tester.tap(find.byKey(typeFilterKey));
-      await tester.pumpAndSettle();
 
       for (final profileType in profileTypes) {
         expect(find.text(profileType.label), findsWidgets);
@@ -5392,7 +5447,7 @@ void main() {
 
       final selectedType = profileTypes.last;
       final typeFilter = tester.widget<DropdownButtonFormField<String>>(
-        find.byKey(typeFilterKey),
+        find.byKey(const Key('tenantAdminAccountProfilePickerTypeFilter')),
       );
       typeFilter.onChanged?.call(selectedType.type);
       await tester.pump();
@@ -5402,7 +5457,7 @@ void main() {
       expect(
         find.byKey(
           Key(
-            'EventProfileNestedAccountCandidate_${groupId}_profile-${selectedType.type}',
+            'tenantAdminAccountProfilePickerCandidate_profile-${selectedType.type}',
           ),
         ),
         findsOneWidget,
@@ -5411,7 +5466,7 @@ void main() {
   );
 
   testWidgets(
-    'shows explicit empty states when no host/related profile candidates',
+    'saved event group picker shows explicit empty state when no eligible related profiles exist',
     (tester) async {
       final eventsRepository = _EmptyCandidatesEventsRepository();
       final taxonomiesRepository = _FakeTaxonomiesRepository();
@@ -5428,38 +5483,58 @@ void main() {
           descriptionValue: tenantAdminOptionalText('Tipo de evento: Show'),
         ),
       ];
+      final existingEvent = TenantAdminEvent(
+        eventIdValue: tenantAdminRequiredText('evt-empty-related-picker'),
+        slugValue: tenantAdminRequiredText('evt-empty-related-picker'),
+        titleValue: tenantAdminRequiredText('Evento em edição'),
+        contentValue: tenantAdminOptionalText(''),
+        type: TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439014'),
+          nameValue: tenantAdminRequiredText('Show'),
+          slugValue: tenantAdminRequiredText('show'),
+        ),
+        occurrences: <TenantAdminEventOccurrence>[
+          TenantAdminEventOccurrence(
+            occurrenceIdValue: tenantAdminOptionalText(
+              'occ-empty-related-picker',
+            ),
+            dateTimeStartValue: tenantAdminDateTime(DateTime.utc(2026, 4, 20)),
+            profileGroups: <TenantAdminNestedProfileGroup>[
+              TenantAdminNestedProfileGroup(
+                idValue: TenantAdminNestedProfileGroupTextValue('participants'),
+                labelValue: TenantAdminNestedProfileGroupTextValue(
+                  'Participantes',
+                ),
+                orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+              ),
+            ],
+          ),
+        ],
+        publication: TenantAdminEventPublication(
+          statusValue: tenantAdminRequiredText('draft'),
+        ),
+      );
 
       GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
 
       await _pumpWithAutoRoute(
         tester,
-        const Scaffold(body: TenantAdminEventFormScreen()),
+        Scaffold(
+          body: TenantAdminEventFormScreen(existingEvent: existingEvent),
+        ),
       );
-
-      await tester.scrollUntilVisible(
-        find.text('Nenhum perfil elegível para host físico.'),
-        280,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.pumpAndSettle();
-
-      expect(
-        find.text('Nenhum perfil elegível para host físico.'),
-        findsOneWidget,
-      );
-
-      final groupId = await _addEventProfileGroup(
+      await _openProfileGroupSelector(
         tester,
-        controller,
-        label: 'Participantes',
+        keyPrefix: 'EventProfile',
+        groupId: 'participants',
       );
-      expect(groupId, isNotEmpty);
-      expect(find.text('Nenhum perfil disponivel.'), findsOneWidget);
+
+      expect(find.text('Nenhum perfil elegível encontrado.'), findsOneWidget);
     },
   );
 
   testWidgets(
-    'related account profile group selector filters loaded candidates after typing',
+    'saved event group picker filters loaded candidates after typing',
     (tester) async {
       final eventsRepository = _MultipleRelatedCandidatesEventsRepository();
       final taxonomiesRepository = _FakeTaxonomiesRepository();
@@ -5476,33 +5551,62 @@ void main() {
         ),
       ];
 
+      final existingEvent = TenantAdminEvent(
+        eventIdValue: tenantAdminRequiredText('evt-filter-related-picker'),
+        slugValue: tenantAdminRequiredText('evt-filter-related-picker'),
+        titleValue: tenantAdminRequiredText('Evento em edição'),
+        contentValue: tenantAdminOptionalText(''),
+        type: TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439099'),
+          nameValue: tenantAdminRequiredText('Show'),
+          slugValue: tenantAdminRequiredText('show'),
+        ),
+        occurrences: <TenantAdminEventOccurrence>[
+          TenantAdminEventOccurrence(
+            occurrenceIdValue: tenantAdminOptionalText(
+              'occ-filter-related-picker',
+            ),
+            dateTimeStartValue: tenantAdminDateTime(DateTime.utc(2026, 4, 20)),
+            profileGroups: <TenantAdminNestedProfileGroup>[
+              TenantAdminNestedProfileGroup(
+                idValue: TenantAdminNestedProfileGroupTextValue('participants'),
+                labelValue: TenantAdminNestedProfileGroupTextValue(
+                  'Participantes',
+                ),
+                orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+              ),
+            ],
+          ),
+        ],
+        publication: TenantAdminEventPublication(
+          statusValue: tenantAdminRequiredText('draft'),
+        ),
+      );
+
       GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
 
       await _pumpWithAutoRoute(
         tester,
-        const Scaffold(body: TenantAdminEventFormScreen()),
+        Scaffold(
+          body: TenantAdminEventFormScreen(existingEvent: existingEvent),
+        ),
       );
 
-      final groupId = await _addEventProfileGroup(
-        tester,
-        controller,
-        label: 'Participantes',
-      );
       await _openProfileGroupSelector(
         tester,
         keyPrefix: 'EventProfile',
-        groupId: groupId,
+        groupId: 'participants',
       );
 
       expect(
         find.byKey(
-          Key('EventProfileNestedAccountCandidate_${groupId}_artist-1'),
+          const Key('tenantAdminAccountProfilePickerCandidate_artist-1'),
         ),
         findsOneWidget,
       );
       expect(
         find.byKey(
-          Key('EventProfileNestedAccountCandidate_${groupId}_artist-2'),
+          const Key('tenantAdminAccountProfilePickerCandidate_artist-2'),
         ),
         findsOneWidget,
       );
@@ -5510,19 +5614,19 @@ void main() {
       await _searchProfileGroupSelector(
         tester,
         keyPrefix: 'EventProfile',
-        groupId: groupId,
+        groupId: 'participants',
         query: 'Artist B',
       );
 
       expect(
         find.byKey(
-          Key('EventProfileNestedAccountCandidate_${groupId}_artist-2'),
+          const Key('tenantAdminAccountProfilePickerCandidate_artist-2'),
         ),
         findsOneWidget,
       );
       expect(
         find.byKey(
-          Key('EventProfileNestedAccountCandidate_${groupId}_artist-1'),
+          const Key('tenantAdminAccountProfilePickerCandidate_artist-1'),
         ),
         findsNothing,
       );
@@ -5530,7 +5634,7 @@ void main() {
   );
 
   testWidgets(
-    'adding a filtered related account profile keeps its summary visible on the form',
+    'saved event group picker adds a filtered related account profile and updates the summary count',
     (tester) async {
       final eventsRepository = _MultipleRelatedCandidatesEventsRepository();
       final taxonomiesRepository = _FakeTaxonomiesRepository();
@@ -5547,45 +5651,86 @@ void main() {
         ),
       ];
 
+      final existingEvent = TenantAdminEvent(
+        eventIdValue: tenantAdminRequiredText('evt-add-filtered-related'),
+        slugValue: tenantAdminRequiredText('evt-add-filtered-related'),
+        titleValue: tenantAdminRequiredText('Evento em edição'),
+        contentValue: tenantAdminOptionalText(''),
+        type: TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439100'),
+          nameValue: tenantAdminRequiredText('Show'),
+          slugValue: tenantAdminRequiredText('show'),
+        ),
+        occurrences: <TenantAdminEventOccurrence>[
+          TenantAdminEventOccurrence(
+            occurrenceIdValue: tenantAdminOptionalText(
+              'occ-add-filtered-related',
+            ),
+            dateTimeStartValue: tenantAdminDateTime(DateTime.utc(2026, 4, 20)),
+            profileGroups: <TenantAdminNestedProfileGroup>[
+              TenantAdminNestedProfileGroup(
+                idValue: TenantAdminNestedProfileGroupTextValue('participants'),
+                labelValue: TenantAdminNestedProfileGroupTextValue(
+                  'Participantes',
+                ),
+                orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+              ),
+            ],
+          ),
+        ],
+        publication: TenantAdminEventPublication(
+          statusValue: tenantAdminRequiredText('draft'),
+        ),
+      );
+
       GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
 
       await _pumpWithAutoRoute(
         tester,
-        const Scaffold(body: TenantAdminEventFormScreen()),
+        Scaffold(
+          body: TenantAdminEventFormScreen(existingEvent: existingEvent),
+        ),
       );
 
-      final groupId = await _addEventProfileGroup(
-        tester,
-        controller,
-        label: 'Participantes',
-      );
       await _openProfileGroupSelector(
         tester,
         keyPrefix: 'EventProfile',
-        groupId: groupId,
+        groupId: 'participants',
       );
       await _searchProfileGroupSelector(
         tester,
         keyPrefix: 'EventProfile',
-        groupId: groupId,
+        groupId: 'participants',
         query: 'B',
       );
       await tester.tap(
         find.byKey(
-          Key('EventProfileNestedAccountCandidate_${groupId}_artist-2'),
+          const Key('tenantAdminAccountProfilePickerCandidate_artist-2'),
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Concluir'));
+      await tester.tap(find.text('Adicionar').last);
+      await tester.pumpAndSettle();
+      await tester.pageBack();
       await tester.pumpAndSettle();
 
-      expect(find.widgetWithText(InputChip, 'Artist B'), findsOneWidget);
-      expect(find.text('Perfil não disponível na lista atual'), findsNothing);
+      expect(find.text('1 perfil vinculado'), findsOneWidget);
+      expect(
+        controller
+            .eventFormStateStreamValue
+            .value
+            .occurrences
+            .single
+            .profileGroups
+            .single
+            .memberCount,
+        1,
+      );
     },
   );
 
   testWidgets(
-    'adding a later-page related account profile keeps its summary visible on the form',
+    'saved event group picker adds a later-page related account profile and updates the summary count',
     (tester) async {
       final eventsRepository = _PagedRelatedCandidatesEventsRepository();
       final taxonomiesRepository = _FakeTaxonomiesRepository();
@@ -5602,33 +5747,60 @@ void main() {
         ),
       ];
 
+      final existingEvent = TenantAdminEvent(
+        eventIdValue: tenantAdminRequiredText('evt-add-later-related'),
+        slugValue: tenantAdminRequiredText('evt-add-later-related'),
+        titleValue: tenantAdminRequiredText('Evento em edição'),
+        contentValue: tenantAdminOptionalText(''),
+        type: TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439100'),
+          nameValue: tenantAdminRequiredText('Show'),
+          slugValue: tenantAdminRequiredText('show'),
+        ),
+        occurrences: <TenantAdminEventOccurrence>[
+          TenantAdminEventOccurrence(
+            occurrenceIdValue: tenantAdminOptionalText('occ-add-later-related'),
+            dateTimeStartValue: tenantAdminDateTime(DateTime.utc(2026, 4, 20)),
+            profileGroups: <TenantAdminNestedProfileGroup>[
+              TenantAdminNestedProfileGroup(
+                idValue: TenantAdminNestedProfileGroupTextValue('participants'),
+                labelValue: TenantAdminNestedProfileGroupTextValue(
+                  'Participantes',
+                ),
+                orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+              ),
+            ],
+          ),
+        ],
+        publication: TenantAdminEventPublication(
+          statusValue: tenantAdminRequiredText('draft'),
+        ),
+      );
+
       GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
 
       await _pumpWithAutoRoute(
         tester,
-        const Scaffold(body: TenantAdminEventFormScreen()),
+        Scaffold(
+          body: TenantAdminEventFormScreen(existingEvent: existingEvent),
+        ),
       );
 
-      final groupId = await _addEventProfileGroup(
-        tester,
-        controller,
-        label: 'Participantes',
-      );
       await _openProfileGroupSelector(
         tester,
         keyPrefix: 'EventProfile',
-        groupId: groupId,
+        groupId: 'participants',
       );
       await _searchProfileGroupSelector(
         tester,
         keyPrefix: 'EventProfile',
-        groupId: groupId,
+        groupId: 'participants',
         query: '021',
       );
       await tester.scrollUntilVisible(
         find.byKey(
-          Key(
-            'EventProfileNestedAccountCandidate_${groupId}_artist-page-2-021',
+          const Key(
+            'tenantAdminAccountProfilePickerCandidate_artist-page-2-021',
           ),
         ),
         250,
@@ -5637,25 +5809,34 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(
         find.byKey(
-          Key(
-            'EventProfileNestedAccountCandidate_${groupId}_artist-page-2-021',
+          const Key(
+            'tenantAdminAccountProfilePickerCandidate_artist-page-2-021',
           ),
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Concluir'));
+      await tester.tap(find.text('Adicionar').last);
+      await tester.pumpAndSettle();
+      await tester.pageBack();
       await tester.pumpAndSettle();
 
+      expect(find.text('1 perfil vinculado'), findsOneWidget);
       expect(
-        find.widgetWithText(InputChip, 'Legacy Artist Page 2 021'),
-        findsOneWidget,
+        controller
+            .eventFormStateStreamValue
+            .value
+            .occurrences
+            .single
+            .profileGroups
+            .single
+            .memberCount,
+        1,
       );
-      expect(find.text('Perfil não disponível na lista atual'), findsNothing);
     },
   );
 
   testWidgets(
-    'editing preserves selected related account profile summaries after candidate preload completes',
+    'editing preserves related profile group summary after candidate preload completes',
     (tester) async {
       final eventsRepository = _DelayedRelatedCandidatesEventsRepository();
       final taxonomiesRepository = _FakeTaxonomiesRepository();
@@ -5672,14 +5853,6 @@ void main() {
         ),
       ];
 
-      final preservedProfile = tenantAdminAccountProfileFromRaw(
-        id: 'artist-zulu',
-        accountId: 'acc-zulu',
-        profileType: 'artist',
-        displayName: 'Zulu Artist',
-        slug: 'zulu-artist',
-      );
-
       final existingEvent = TenantAdminEvent(
         eventIdValue: tenantAdminRequiredText('evt-edit-1'),
         slugValue: tenantAdminRequiredText('event-edit-1'),
@@ -5692,32 +5865,23 @@ void main() {
         ),
         occurrences: <TenantAdminEventOccurrence>[
           TenantAdminEventOccurrence(
+            occurrenceIdValue: tenantAdminOptionalText('occ-edit-1'),
             dateTimeStartValue: tenantAdminDateTime(
               DateTime.utc(2026, 4, 20, 20),
             ),
+            profileGroups: [
+              TenantAdminNestedProfileGroup(
+                idValue: TenantAdminNestedProfileGroupTextValue('artists'),
+                labelValue: TenantAdminNestedProfileGroupTextValue('Artistas'),
+                orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+                memberCountValue: TenantAdminCountValue(1),
+              ),
+            ],
           ),
         ],
         publication: TenantAdminEventPublication(
           statusValue: tenantAdminRequiredText('draft'),
         ),
-        relatedAccountProfiles: [preservedProfile],
-        eventParties: [
-          TenantAdminEventParty(
-            partyTypeValue: tenantAdminRequiredText('artist'),
-            partyRefIdValue: tenantAdminRequiredText('artist-zulu'),
-            canEditValue: tenantAdminFlag(false),
-          ),
-        ],
-        profileGroups: [
-          TenantAdminNestedProfileGroup(
-            idValue: TenantAdminNestedProfileGroupTextValue('artists'),
-            labelValue: TenantAdminNestedProfileGroupTextValue('Artistas'),
-            orderValue: TenantAdminNestedProfileGroupOrderValue(0),
-            accountProfileIdValues: [
-              TenantAdminNestedProfileGroupTextValue('artist-zulu'),
-            ],
-          ),
-        ],
       );
 
       GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
@@ -5729,14 +5893,14 @@ void main() {
         ),
       );
 
-      expect(find.text('Zulu Artist'), findsOneWidget);
-      expect(find.text('Perfil não disponível na lista atual'), findsNothing);
+      expect(find.text('1 perfil vinculado'), findsOneWidget);
+      expect(find.text('Artistas'), findsOneWidget);
 
       await tester.pump(eventsRepository.delay);
       await tester.pumpAndSettle();
 
-      expect(find.text('Zulu Artist'), findsOneWidget);
-      expect(find.text('Perfil não disponível na lista atual'), findsNothing);
+      expect(find.text('1 perfil vinculado'), findsOneWidget);
+      expect(find.text('Artistas'), findsOneWidget);
     },
   );
 
@@ -5910,7 +6074,7 @@ void main() {
   );
 
   testWidgets(
-    'candidate preload failure keeps selected related account profile summaries visible',
+    'candidate preload failure preserves related profile group summary',
     (tester) async {
       final eventsRepository = _FailingRelatedCandidatesEventsRepository();
       final taxonomiesRepository = _FakeTaxonomiesRepository();
@@ -5927,14 +6091,6 @@ void main() {
         ),
       ];
 
-      final preservedProfile = tenantAdminAccountProfileFromRaw(
-        id: 'artist-zulu',
-        accountId: 'acc-zulu',
-        profileType: 'artist',
-        displayName: 'Zulu Artist',
-        slug: 'zulu-artist',
-      );
-
       final existingEvent = TenantAdminEvent(
         eventIdValue: tenantAdminRequiredText('evt-edit-2'),
         slugValue: tenantAdminRequiredText('event-edit-2'),
@@ -5947,32 +6103,23 @@ void main() {
         ),
         occurrences: <TenantAdminEventOccurrence>[
           TenantAdminEventOccurrence(
+            occurrenceIdValue: tenantAdminOptionalText('occ-edit-2'),
             dateTimeStartValue: tenantAdminDateTime(
               DateTime.utc(2026, 4, 20, 20),
             ),
+            profileGroups: [
+              TenantAdminNestedProfileGroup(
+                idValue: TenantAdminNestedProfileGroupTextValue('artists'),
+                labelValue: TenantAdminNestedProfileGroupTextValue('Artistas'),
+                orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+                memberCountValue: TenantAdminCountValue(1),
+              ),
+            ],
           ),
         ],
         publication: TenantAdminEventPublication(
           statusValue: tenantAdminRequiredText('draft'),
         ),
-        relatedAccountProfiles: [preservedProfile],
-        eventParties: [
-          TenantAdminEventParty(
-            partyTypeValue: tenantAdminRequiredText('artist'),
-            partyRefIdValue: tenantAdminRequiredText('artist-zulu'),
-            canEditValue: tenantAdminFlag(false),
-          ),
-        ],
-        profileGroups: [
-          TenantAdminNestedProfileGroup(
-            idValue: TenantAdminNestedProfileGroupTextValue('artists'),
-            labelValue: TenantAdminNestedProfileGroupTextValue('Artistas'),
-            orderValue: TenantAdminNestedProfileGroupOrderValue(0),
-            accountProfileIdValues: [
-              TenantAdminNestedProfileGroupTextValue('artist-zulu'),
-            ],
-          ),
-        ],
       );
 
       GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
@@ -5986,13 +6133,113 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      expect(find.text('Zulu Artist'), findsOneWidget);
-      expect(find.text('Perfil não disponível na lista atual'), findsNothing);
+      expect(find.text('1 perfil vinculado'), findsOneWidget);
+      expect(find.text('Artistas'), findsOneWidget);
     },
   );
 
   testWidgets(
-    'single-occurrence edit reads related profile groups from the canonical occurrence snapshot',
+    'multi-occurrence edit keeps occurrence group management enabled before any user change',
+    (tester) async {
+      final eventsRepository = _EmptyCandidatesEventsRepository();
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+
+      eventsRepository.eventTypes = [
+        TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439103'),
+          nameValue: tenantAdminRequiredText('Show'),
+          slugValue: tenantAdminRequiredText('show'),
+        ),
+      ];
+
+      final existingEvent = TenantAdminEvent(
+        eventIdValue: tenantAdminRequiredText('evt-multi-occurrence-groups'),
+        slugValue: tenantAdminRequiredText('evt-multi-occurrence-groups'),
+        titleValue: tenantAdminRequiredText('Evento com multiplas datas'),
+        contentValue: tenantAdminOptionalText(
+          '<h2>Bio Heading 🎉</h2>'
+          '<p><strong>Bold bio</strong></p>'
+          '<p>Second bio line</p>'
+          '<blockquote><p>Bio quote</p></blockquote>'
+          '<ul><li>Bio bullet</li></ul>',
+        ),
+        type: TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439103'),
+          nameValue: tenantAdminRequiredText('Show'),
+          slugValue: tenantAdminRequiredText('show'),
+        ),
+        occurrences: <TenantAdminEventOccurrence>[
+          TenantAdminEventOccurrence(
+            occurrenceIdValue: tenantAdminOptionalText('occ-primary'),
+            dateTimeStartValue: tenantAdminDateTime(
+              DateTime.utc(2026, 6, 7, 3),
+            ),
+          ),
+          TenantAdminEventOccurrence(
+            occurrenceIdValue: tenantAdminOptionalText('occ-secondary'),
+            dateTimeStartValue: tenantAdminDateTime(
+              DateTime.utc(2026, 6, 8, 3),
+            ),
+            profileGroups: [
+              TenantAdminNestedProfileGroup(
+                idValue: TenantAdminNestedProfileGroupTextValue('facilitator'),
+                labelValue: TenantAdminNestedProfileGroupTextValue(
+                  'Facilitador',
+                ),
+                orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+                memberCountValue: TenantAdminCountValue(1),
+              ),
+            ],
+          ),
+        ],
+        publication: TenantAdminEventPublication(
+          statusValue: tenantAdminRequiredText('draft'),
+        ),
+      );
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        Scaffold(
+          body: TenantAdminEventFormScreen(existingEvent: existingEvent),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(controller.isEventFormDirty, isFalse);
+
+      await tester.ensureVisible(
+        find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),
+      );
+      await tester.pump();
+      await tester.tap(
+        find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(controller.isEventFormDirty, isFalse);
+      expect(
+        find.text(
+          'Salve o evento antes de gerenciar os perfis desta ocorrência.',
+        ),
+        findsNothing,
+      );
+
+      final manageButton = tester.widget<OutlinedButton>(
+        find.byKey(const Key('OccurrenceProfileManageGroup_facilitator')),
+      );
+      expect(manageButton.onPressed, isNotNull);
+    },
+  );
+
+  testWidgets(
+    'single-occurrence edit reads related profile group summary from the canonical occurrence snapshot',
     (tester) async {
       final eventsRepository = _EmptyCandidatesEventsRepository();
       final taxonomiesRepository = _FakeTaxonomiesRepository();
@@ -6008,14 +6255,16 @@ void main() {
           slugValue: tenantAdminRequiredText('show'),
         ),
       ];
-
-      final preservedProfile = tenantAdminAccountProfileFromRaw(
-        id: 'artist-occ-single',
-        accountId: 'acc-artist-occ-single',
-        profileType: 'artist',
-        displayName: 'Occurrence Single Artist',
-        slug: 'occurrence-single-artist',
-      );
+      eventsRepository
+              ._occurrenceGroupMembersByScope['evt-single-occurrence-canonical::occurrence-1::artists'] =
+          <TenantAdminAccountProfileSelectionSummary>[
+            TenantAdminAccountProfileSelectionSummary(
+              idValue: TenantAdminAccountProfileIdValue('artist-occ-single'),
+              displayNameValue: tenantAdminOptionalText(
+                'Occurrence Single Artist',
+              ),
+            ),
+          ];
 
       final existingEvent = TenantAdminEvent(
         eventIdValue: tenantAdminRequiredText(
@@ -6035,18 +6284,12 @@ void main() {
             dateTimeStartValue: tenantAdminDateTime(
               DateTime.utc(2026, 6, 7, 3),
             ),
-            relatedAccountProfileIdValues: [
-              TenantAdminAccountProfileIdValue(preservedProfile.id),
-            ],
-            relatedAccountProfiles: [preservedProfile],
             profileGroups: [
               TenantAdminNestedProfileGroup(
                 idValue: TenantAdminNestedProfileGroupTextValue('artists'),
                 labelValue: TenantAdminNestedProfileGroupTextValue('Artistas'),
                 orderValue: TenantAdminNestedProfileGroupOrderValue(0),
-                accountProfileIdValues: [
-                  TenantAdminNestedProfileGroupTextValue(preservedProfile.id),
-                ],
+                memberCountValue: TenantAdminCountValue(1),
               ),
             ],
           ),
@@ -6068,27 +6311,125 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Abas de perfis relacionados'), findsOneWidget);
-      expect(find.text('1 perfil(is) selecionado(s)'), findsOneWidget);
-      expect(
-        find.widgetWithText(InputChip, 'Occurrence Single Artist'),
-        findsOneWidget,
-      );
+      expect(find.text('1 perfil vinculado'), findsOneWidget);
       expect(
         controller.eventFormStateStreamValue.value.profileGroups.single.id,
         'artists',
       );
+
+      expect(find.text('Artistas'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'single-occurrence primary programming exposes persisted occurrence profiles from canonical group members',
+    (tester) async {
+      final eventsRepository = _EmptyCandidatesEventsRepository();
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+
+      eventsRepository.eventTypes = [
+        TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439105'),
+          nameValue: tenantAdminRequiredText('Show'),
+          slugValue: tenantAdminRequiredText('show'),
+        ),
+      ];
+      eventsRepository
+              ._occurrenceGroupMembersByScope['evt-single-occurrence-programming::occurrence-1::artists'] =
+          <TenantAdminAccountProfileSelectionSummary>[
+            TenantAdminAccountProfileSelectionSummary(
+              idValue: TenantAdminAccountProfileIdValue('artist-occ-single'),
+              displayNameValue: tenantAdminOptionalText(
+                'Occurrence Single Artist',
+              ),
+            ),
+          ];
+
+      final existingEvent = TenantAdminEvent(
+        eventIdValue: tenantAdminRequiredText(
+          'evt-single-occurrence-programming',
+        ),
+        slugValue: tenantAdminRequiredText('evt-single-occurrence-programming'),
+        titleValue: tenantAdminRequiredText('Evento em edição'),
+        contentValue: tenantAdminOptionalText('Conteúdo'),
+        type: TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439105'),
+          nameValue: tenantAdminRequiredText('Show'),
+          slugValue: tenantAdminRequiredText('show'),
+        ),
+        occurrences: <TenantAdminEventOccurrence>[
+          TenantAdminEventOccurrence(
+            occurrenceIdValue: tenantAdminOptionalText('occurrence-1'),
+            dateTimeStartValue: tenantAdminDateTime(
+              DateTime.utc(2026, 6, 7, 3),
+            ),
+            profileGroups: [
+              TenantAdminNestedProfileGroup(
+                idValue: TenantAdminNestedProfileGroupTextValue('artists'),
+                labelValue: TenantAdminNestedProfileGroupTextValue('Artistas'),
+                orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+                memberCountValue: TenantAdminCountValue(1),
+              ),
+            ],
+          ),
+        ],
+        publication: TenantAdminEventPublication(
+          statusValue: tenantAdminRequiredText('draft'),
+        ),
+      );
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        Scaffold(
+          body: TenantAdminEventFormScreen(existingEvent: existingEvent),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.byKey(
+          const Key('tenantAdminPrimaryOccurrenceAddProgrammingButton'),
+        ),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(
+          const Key('tenantAdminPrimaryOccurrenceAddProgrammingButton'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final linkProfileButton = find.byKey(
+        const Key('tenantAdminProgrammingLinkOccurrenceProfileButton'),
+      );
+      await tester.ensureVisible(linkProfileButton);
+      await tester.pumpAndSettle();
+      await tester.tap(linkProfileButton);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Occurrence Single Artist'), findsOneWidget);
+
+      await _tapVisibleText(tester, 'Occurrence Single Artist');
+
       expect(
-        controller
-            .eventFormStateStreamValue
-            .value
-            .selectedRelatedAccountProfileIds,
-        ['artist-occ-single'],
+        find.byKey(
+          const Key('tenantAdminProgrammingProfile_artist-occ-single'),
+        ),
+        findsOneWidget,
       );
     },
   );
 
   testWidgets(
-    'editing occurrence groups keeps occurrence-owned selected summaries visible',
+    'editing occurrence groups keeps occurrence-owned member counts visible',
     (tester) async {
       final eventsRepository = _EmptyCandidatesEventsRepository();
       final taxonomiesRepository = _FakeTaxonomiesRepository();
@@ -6104,35 +6445,6 @@ void main() {
           slugValue: tenantAdminRequiredText('show'),
         ),
       ];
-
-      final bandaAzul = tenantAdminAccountProfileFromRaw(
-        id: 'occ-banda-azul',
-        accountId: 'acc-occ-banda-azul',
-        profileType: 'artist',
-        displayName: 'Manual v0208 Banda Azul',
-        slug: 'manual-v0208-banda-azul',
-      );
-      final bandaVerde = tenantAdminAccountProfileFromRaw(
-        id: 'occ-banda-verde',
-        accountId: 'acc-occ-banda-verde',
-        profileType: 'artist',
-        displayName: 'Manual v0208 Banda Verde',
-        slug: 'manual-v0208-banda-verde',
-      );
-      final expositorSol = tenantAdminAccountProfileFromRaw(
-        id: 'occ-expositor-sol',
-        accountId: 'acc-occ-expositor-sol',
-        profileType: 'exhibitor',
-        displayName: 'Manual v0208 Expositor Sol',
-        slug: 'manual-v0208-expositor-sol',
-      );
-      final expositorMar = tenantAdminAccountProfileFromRaw(
-        id: 'occ-expositor-mar',
-        accountId: 'acc-occ-expositor-mar',
-        profileType: 'exhibitor',
-        displayName: 'Manual v0208 Expositor Mar',
-        slug: 'manual-v0208-expositor-mar',
-      );
 
       final existingEvent = TenantAdminEvent(
         eventIdValue: tenantAdminRequiredText('evt-edit-occurrence-groups'),
@@ -6155,18 +6467,6 @@ void main() {
             dateTimeStartValue: tenantAdminDateTime(
               DateTime.utc(2026, 6, 8, 3),
             ),
-            relatedAccountProfileIdValues: [
-              TenantAdminAccountProfileIdValue(bandaAzul.id),
-              TenantAdminAccountProfileIdValue(bandaVerde.id),
-              TenantAdminAccountProfileIdValue(expositorSol.id),
-              TenantAdminAccountProfileIdValue(expositorMar.id),
-            ],
-            relatedAccountProfiles: [
-              bandaAzul,
-              bandaVerde,
-              expositorSol,
-              expositorMar,
-            ],
             profileGroups: [
               TenantAdminNestedProfileGroup(
                 idValue: TenantAdminNestedProfileGroupTextValue('outro-grupo'),
@@ -6174,12 +6474,7 @@ void main() {
                   'Outro Grupo',
                 ),
                 orderValue: TenantAdminNestedProfileGroupOrderValue(0),
-                accountProfileIdValues: [
-                  TenantAdminNestedProfileGroupTextValue(bandaAzul.id),
-                  TenantAdminNestedProfileGroupTextValue(bandaVerde.id),
-                  TenantAdminNestedProfileGroupTextValue(expositorSol.id),
-                  TenantAdminNestedProfileGroupTextValue(expositorMar.id),
-                ],
+                memberCountValue: TenantAdminCountValue(4),
               ),
             ],
           ),
@@ -6209,23 +6504,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('4 perfil(is) selecionado(s)'), findsOneWidget);
-      expect(
-        find.widgetWithText(InputChip, 'Manual v0208 Banda Azul'),
-        findsOneWidget,
-      );
-      expect(
-        find.widgetWithText(InputChip, 'Manual v0208 Banda Verde'),
-        findsOneWidget,
-      );
-      expect(
-        find.widgetWithText(InputChip, 'Manual v0208 Expositor Sol'),
-        findsOneWidget,
-      );
-      expect(
-        find.widgetWithText(InputChip, 'Manual v0208 Expositor Mar'),
-        findsOneWidget,
-      );
+      expect(find.text('4 perfis vinculados'), findsOneWidget);
+      expect(find.text('Outro Grupo'), findsOneWidget);
     },
   );
 
@@ -6354,6 +6634,29 @@ Future<void> _pumpWithAutoRoute(WidgetTester tester, Widget child) async {
         ),
         builder: (context, routeData) => child,
       ),
+      NamedRouteDef(
+        name: TenantAdminEventOccurrenceGroupMembersRoute.name,
+        path: '/occurrence-group-members',
+        meta: canonicalRouteMeta(
+          family: CanonicalRouteFamily.tenantAdminEventsInternal,
+          chromeMode: RouteChromeMode.fullscreen,
+        ),
+        builder: (_, routeData) {
+          final args =
+              routeData.argsAs<TenantAdminEventOccurrenceGroupMembersRouteArgs>();
+          return TenantAdminEventOccurrenceGroupMembersScreen(
+            key: args.key,
+            eventId: args.eventId,
+            occurrenceId: args.occurrenceId,
+            occurrenceKey: args.occurrenceKey,
+            group: TenantAdminNestedProfileGroup(
+              idValue: TenantAdminNestedProfileGroupTextValue(args.groupId),
+              labelValue: TenantAdminNestedProfileGroupTextValue('Grupo'),
+              orderValue: TenantAdminNestedProfileGroupOrderValue(),
+            ),
+          );
+        },
+      ),
     ],
   )..ignorePopCompleters = true;
 
@@ -6404,9 +6707,9 @@ Future<void> _fillRequiredFields(
 
 Future<void> _closeOccurrenceSheet(WidgetTester tester) async {
   final closeButton = find.byKey(const Key('tenantAdminOccurrenceCloseButton'));
-  await tester.ensureVisible(closeButton);
+  await tester.ensureVisible(closeButton.last);
   await tester.pumpAndSettle();
-  await tester.tap(closeButton);
+  await tester.tap(closeButton.hitTestable().last, warnIfMissed: false);
   await tester.pumpAndSettle();
 }
 
@@ -6435,7 +6738,7 @@ Future<String> _addEventProfileGroup(
   final group = controller.eventFormStateStreamValue.value.profileGroups.last;
   if (label != null) {
     await tester.enterText(
-      find.byKey(Key('EventProfileNestedGroupLabel_${group.id}')),
+      find.byKey(Key('EventProfileProfileGroupLabel_${group.id}')),
       label,
     );
     await tester.pumpAndSettle();
@@ -6468,9 +6771,16 @@ Future<String> _addOccurrenceProfileGroup(
       .last;
   if (label != null) {
     await tester.enterText(
-      find.byKey(Key('OccurrenceProfileNestedGroupLabel_${group.id}')),
+      find.byKey(Key('OccurrenceProfileProfileGroupLabel_${group.id}')),
       label,
     );
+    await tester.pumpAndSettle();
+  }
+  final occurrence =
+      controller.eventFormStateStreamValue.value.occurrences[occurrenceIndex];
+  final occurrenceId = occurrence.occurrenceId?.trim();
+  if (occurrenceId != null && occurrenceId.isNotEmpty) {
+    controller.markEventFormClean();
     await tester.pumpAndSettle();
   }
   return group.id;
@@ -6481,13 +6791,15 @@ Future<void> _openProfileGroupSelector(
   required String keyPrefix,
   required String groupId,
 }) async {
-  await tester.ensureVisible(
-    find.byKey(Key('${keyPrefix}NestedAccountSelector_$groupId')),
-  );
+  final manageButton = find.byKey(Key('${keyPrefix}ManageGroup_$groupId'));
+  await tester.ensureVisible(manageButton);
   await tester.pumpAndSettle();
-  await tester.tap(
-    find.byKey(Key('${keyPrefix}NestedAccountSelector_$groupId')),
-  );
+  await tester.tap(manageButton.hitTestable().last, warnIfMissed: false);
+  await tester.pumpAndSettle();
+  final addMembersButton = find.byTooltip('Adicionar perfis');
+  await tester.ensureVisible(addMembersButton);
+  await tester.pumpAndSettle();
+  await tester.tap(addMembersButton.hitTestable().last, warnIfMissed: false);
   await tester.pumpAndSettle();
 }
 
@@ -6498,7 +6810,7 @@ Future<void> _selectProfileInGroup(
   required String profileId,
 }) async {
   final candidate = find.byKey(
-    Key('${keyPrefix}NestedAccountCandidate_${groupId}_$profileId'),
+    Key('tenantAdminAccountProfilePickerCandidate_$profileId'),
   );
   if (candidate.evaluate().isEmpty) {
     await _openProfileGroupSelector(
@@ -6511,7 +6823,35 @@ Future<void> _selectProfileInGroup(
   await tester.pumpAndSettle();
   await tester.tap(candidate);
   await tester.pumpAndSettle();
-  await tester.tap(find.text('Concluir'));
+  await tester.tap(find.widgetWithText(TextButton, 'Adicionar').last);
+  await tester.pumpAndSettle();
+  await tester.pageBack();
+  await tester.pumpAndSettle();
+}
+
+Future<void> _removeProfileFromOccurrenceGroup(
+  WidgetTester tester, {
+  required String keyPrefix,
+  required String groupId,
+  required String profileId,
+}) async {
+  final memberTile = find.byKey(
+    Key('tenantAdminEventGroupMember_${groupId}_$profileId'),
+  );
+  if (memberTile.evaluate().isEmpty) {
+    final manageButton = find.byKey(Key('${keyPrefix}ManageGroup_$groupId'));
+    await tester.ensureVisible(manageButton);
+    await tester.pumpAndSettle();
+    await tester.tap(manageButton.hitTestable().last, warnIfMissed: false);
+    await tester.pumpAndSettle();
+  }
+  await tester.ensureVisible(memberTile);
+  await tester.pumpAndSettle();
+  final removeButton = find.descendant(
+    of: memberTile,
+    matching: find.byTooltip('Remover perfil'),
+  );
+  await tester.tap(removeButton);
   await tester.pumpAndSettle();
 }
 
@@ -6522,7 +6862,7 @@ Future<void> _searchProfileGroupSelector(
   required String query,
 }) async {
   await tester.enterText(
-    find.byKey(Key('${keyPrefix}NestedAccountSearch_$groupId')),
+    find.byKey(const Key('tenantAdminAccountProfilePickerSearchField')),
     query,
   );
   await tester.pumpAndSettle();
@@ -6722,12 +7062,21 @@ Future<void> _ensureOccurrenceProgrammingGroup(
         (widget) =>
             widget is TextFormField &&
             widget.key.toString().contains(
-              'OccurrenceProfileNestedGroupLabel_',
+              'OccurrenceProfileProfileGroupLabel_',
             ),
       )
       .last;
   await tester.enterText(labelField, label);
   await tester.pumpAndSettle();
+
+  final controller = GetIt.I.get<TenantAdminEventsController>();
+  final currentOccurrence =
+      controller.eventFormStateStreamValue.value.occurrences.lastOrNull;
+  final occurrenceId = currentOccurrence?.occurrenceId?.trim();
+  if (occurrenceId != null && occurrenceId.isNotEmpty) {
+    controller.markEventFormClean();
+    await tester.pumpAndSettle();
+  }
 }
 
 Future<void> _addOccurrenceProgrammingWithNewProfile(
@@ -6752,6 +7101,9 @@ Future<void> _addOccurrenceProgrammingWithNewProfile(
     time,
   );
   await _tapFirstProgrammingAddOccurrenceProfileButton(tester);
+  final relatedSearchField = find.byType(TextField).last;
+  await tester.enterText(relatedSearchField, profileName);
+  await tester.pumpAndSettle();
   await _tapVisibleText(tester, profileName);
   await _tapProgrammingSaveButton(tester);
 }
@@ -6780,8 +7132,30 @@ Future<void> _tapFirstProgrammingAddOccurrenceProfileButton(
   await tester.pumpAndSettle();
 }
 
+Future<void> _openOccurrenceProgrammingItem(
+  WidgetTester tester, {
+  required int index,
+}) async {
+  final item = find.byKey(Key('tenantAdminOccurrenceProgrammingItem_$index'));
+  await _bringIntoView(tester, item);
+  await tester.pumpAndSettle();
+  await tester.tap(item.hitTestable().last, warnIfMissed: false);
+  await tester.pumpAndSettle();
+}
+
 Future<void> _tapVisibleText(WidgetTester tester, String text) async {
-  final textFinder = find.text(text).last;
+  Finder textFinder = find.text(text);
+  for (var attempt = 0; attempt < 10; attempt++) {
+    await tester.pumpAndSettle();
+    if (textFinder.evaluate().isNotEmpty) {
+      textFinder = textFinder.last;
+      break;
+    }
+    await tester.pump(const Duration(milliseconds: 50));
+  }
+  if (textFinder.evaluate().isEmpty) {
+    throw StateError('Unable to find visible text candidate: $text');
+  }
   final tappableAncestor = find.ancestor(
     of: textFinder,
     matching: find.byWidgetPredicate(
@@ -6801,49 +7175,8 @@ Future<void> _tapVisibleText(WidgetTester tester, String text) async {
   await tester.pumpAndSettle();
 }
 
-Future<void> _addOccurrenceProgrammingWithExistingProfile(
-  WidgetTester tester, {
-  required String time,
-  required String profileName,
-}) async {
-  await tester.scrollUntilVisible(
-    find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
-    250,
-    scrollable: find.byType(Scrollable).last,
-  );
-  await tester.pumpAndSettle();
-  await tester.tap(
-    find.byKey(const Key('tenantAdminOccurrenceAddProgrammingButton')),
-  );
-  await tester.pumpAndSettle();
-  await _setProgrammingTimedState(tester, isTimed: true);
-  await tester.enterText(
-    find.byKey(const Key('tenantAdminProgrammingTimeField')),
-    time,
-  );
-  final linkProfileButton = find.byKey(
-    const Key('tenantAdminProgrammingLinkOccurrenceProfileButton'),
-  );
-  await _bringIntoView(tester, linkProfileButton);
-  await tester.pumpAndSettle();
-  await tester.tap(linkProfileButton.hitTestable().last, warnIfMissed: false);
-  await tester.pumpAndSettle();
-  await _tapVisibleText(tester, profileName);
-  await _tapProgrammingSaveButton(tester);
-}
-
 Future<void> _bringIntoView(WidgetTester tester, Finder finder) async {
-  for (var attempt = 0; attempt < 8; attempt++) {
-    await tester.pumpAndSettle();
-    final hitTestable = finder.hitTestable();
-    if (hitTestable.evaluate().isNotEmpty) {
-      return;
-    }
-    final rect = tester.getRect(finder);
-    final scrollable = find.byType(Scrollable).last;
-    final dy = rect.bottom > 560 ? -160.0 : 160.0;
-    await tester.drag(scrollable, Offset(0, dy));
-  }
+  await tester.ensureVisible(finder);
   await tester.pumpAndSettle();
 }
 
@@ -6911,6 +7244,29 @@ class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
   int createOwnEventCalls = 0;
   int updateEventCalls = 0;
   String? lastRelatedProfileType;
+  final Map<String, List<TenantAdminAccountProfileSelectionSummary>>
+  _occurrenceGroupMembersByScope =
+      <String, List<TenantAdminAccountProfileSelectionSummary>>{};
+  int _aggregateRevision = 1;
+
+  String _occurrenceGroupScopeKey({
+    required String eventId,
+    required String occurrenceId,
+    required String groupId,
+  }) => '$eventId::$occurrenceId::$groupId';
+
+  List<TenantAdminAccountProfileSelectionSummary> _selectionSummariesFor(
+    Iterable<TenantAdminAccountProfile> profiles,
+  ) {
+    return profiles
+        .map(
+          (profile) => TenantAdminAccountProfileSelectionSummary(
+            idValue: TenantAdminAccountProfileIdValue(profile.id),
+            displayNameValue: tenantAdminOptionalText(profile.displayName),
+          ),
+        )
+        .toList(growable: false);
+  }
 
   @override
   Future<TenantAdminEvent> createEvent({
@@ -7036,6 +7392,89 @@ class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
       throw updateEventError!;
     }
     return _eventFromDraft(draft);
+  }
+
+  @override
+  Future<TenantAdminNestedGroupMemberPage>
+  fetchOccurrenceProfileGroupMembersPage({
+    required TenantAdminEventsRepoString eventId,
+    required TenantAdminEventsRepoString occurrenceId,
+    required TenantAdminEventsRepoString groupId,
+    TenantAdminEventsRepoString? cursor,
+  }) async {
+    final scopeKey = _occurrenceGroupScopeKey(
+      eventId: eventId.value,
+      occurrenceId: occurrenceId.value,
+      groupId: groupId.value,
+    );
+    final items =
+        _occurrenceGroupMembersByScope[scopeKey] ??
+        const <TenantAdminAccountProfileSelectionSummary>[];
+    return TenantAdminNestedGroupMemberPage(
+      items: items,
+      aggregateRevisionValue: TenantAdminAccountProfileAggregateRevisionValue(
+        _aggregateRevision,
+      ),
+      nextCursorValue: tenantAdminOptionalText(null),
+    );
+  }
+
+  @override
+  Future<TenantAdminNestedGroupMemberMutationResult>
+  patchOccurrenceProfileGroupMembers({
+    required TenantAdminEventsRepoString eventId,
+    required TenantAdminEventsRepoString occurrenceId,
+    required TenantAdminEventsRepoString groupId,
+    List<TenantAdminEventsRepoString> addIds = const [],
+    List<TenantAdminEventsRepoString> removeIds = const [],
+  }) async {
+    final scopeKey = _occurrenceGroupScopeKey(
+      eventId: eventId.value,
+      occurrenceId: occurrenceId.value,
+      groupId: groupId.value,
+    );
+    final currentItems = List<TenantAdminAccountProfileSelectionSummary>.from(
+      _occurrenceGroupMembersByScope[scopeKey] ??
+          const <TenantAdminAccountProfileSelectionSummary>[],
+    );
+    final currentById = <String, TenantAdminAccountProfileSelectionSummary>{
+      for (final item in currentItems) item.id: item,
+    };
+
+    final addIdSet = addIds.map((entry) => entry.value).toSet();
+    final removeIdSet = removeIds.map((entry) => entry.value).toSet();
+    final knownCandidates = await fetchAllEventAccountProfileCandidates(
+      candidateType:
+          TenantAdminEventAccountProfileCandidateType.relatedAccountProfile,
+    );
+    final candidatesById = <String, TenantAdminAccountProfile>{
+      for (final candidate in knownCandidates) candidate.id: candidate,
+    };
+
+    for (final addId in addIdSet) {
+      final candidate = candidatesById[addId];
+      currentById[addId] = candidate == null
+          ? TenantAdminAccountProfileSelectionSummary(
+              idValue: TenantAdminAccountProfileIdValue(addId),
+            )
+          : _selectionSummariesFor(<TenantAdminAccountProfile>[
+              candidate,
+            ]).single;
+    }
+    for (final removeId in removeIdSet) {
+      currentById.remove(removeId);
+    }
+
+    _aggregateRevision += 1;
+    final nextItems = currentById.values.toList(growable: false);
+    _occurrenceGroupMembersByScope[scopeKey] = nextItems;
+
+    return TenantAdminNestedGroupMemberMutationResult(
+      memberCountValue: TenantAdminCountValue(nextItems.length),
+      aggregateRevisionValue: TenantAdminAccountProfileAggregateRevisionValue(
+        _aggregateRevision,
+      ),
+    );
   }
 
   @override

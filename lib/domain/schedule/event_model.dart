@@ -120,7 +120,7 @@ class EventModel {
 
   List<EventLinkedAccountProfile> get counterpartProfiles {
     return List<EventLinkedAccountProfile>.unmodifiable(
-      linkedAccountProfiles.where((profile) {
+      counterpartPreviewProfiles.where((profile) {
         final normalizedPartyType = profile.partyType?.trim().toLowerCase();
         final normalizedProfileType = profile.profileType.trim().toLowerCase();
         return normalizedPartyType != 'venue' &&
@@ -130,13 +130,9 @@ class EventModel {
   }
 
   List<EventLinkedAccountProfile> get heroCounterpartProfiles {
-    if (counterpartPreviewProfiles.isNotEmpty) {
-      return List<EventLinkedAccountProfile>.unmodifiable(
-        counterpartPreviewProfiles,
-      );
-    }
-
-    return counterpartProfiles;
+    return List<EventLinkedAccountProfile>.unmodifiable(
+      counterpartPreviewProfiles,
+    );
   }
 
   int get counterpartCount =>

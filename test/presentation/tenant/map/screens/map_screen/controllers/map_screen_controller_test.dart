@@ -1044,6 +1044,17 @@ EventModel _buildEventDetailModel({
   String? linkedAccountProfileAvatarUrl,
   String? linkedAccountProfileCoverUrl,
 }) {
+  final counterpartPreview = [
+    {
+      'id': 'artist-1',
+      'display_name': 'Ananda Torres',
+      'profile_type': 'artist',
+      'party_type': 'artist',
+      'slug': 'ananda-torres',
+      'avatar_url': linkedAccountProfileAvatarUrl,
+      'cover_url': linkedAccountProfileCoverUrl,
+    },
+  ];
   final dto = EventDTO.fromJson({
     'id': '507f1f77bcf86cd799439099',
     'slug': slug,
@@ -1059,24 +1070,9 @@ EventModel _buildEventDetailModel({
     'date_time_start': '2026-04-07T18:00:00Z',
     'date_time_end': '2026-04-07T21:00:00Z',
     'occurrence_id': occurrenceId,
-    'thumb': thumbUrl == null
-        ? null
-        : {
-            'type': 'image',
-            'data': {'url': thumbUrl},
-          },
-    'artists': const [],
-    'linked_account_profiles': [
-      {
-        'id': 'artist-1',
-        'display_name': 'Ananda Torres',
-        'profile_type': 'artist',
-        'party_type': 'artist',
-        'slug': 'ananda-torres',
-        'avatar_url': linkedAccountProfileAvatarUrl,
-        'cover_url': linkedAccountProfileCoverUrl,
-      },
-    ],
+    'hero_image_url': thumbUrl,
+    'counterpart_preview': counterpartPreview,
+    'counterpart_count': counterpartPreview.length,
   });
   return dto.toDomain();
 }

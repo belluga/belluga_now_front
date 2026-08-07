@@ -5,14 +5,7 @@ List<Map<String, dynamic>> encodeTenantAdminNestedProfileGroups(
 ) {
   return groups
       .map(
-        (group) => {
-          'id': group.id,
-          'label': group.label,
-          'order': group.order,
-          'account_profile_ids': group.accountProfileIdValues
-              .map((entry) => entry.value)
-              .toList(growable: false),
-        },
+        (group) => {'id': group.id, 'label': group.label, 'order': group.order},
       )
       .toList(growable: false);
 }
@@ -20,9 +13,5 @@ List<Map<String, dynamic>> encodeTenantAdminNestedProfileGroups(
 List<Map<String, dynamic>> encodeTenantAdminNestedProfileGroupMetadata(
   List<TenantAdminNestedProfileGroup> groups,
 ) {
-  return groups
-      .map(
-        (group) => {'id': group.id, 'label': group.label, 'order': group.order},
-      )
-      .toList(growable: false);
+  return encodeTenantAdminNestedProfileGroups(groups);
 }

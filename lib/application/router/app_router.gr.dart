@@ -9,16 +9,16 @@
 // coverage:ignore-file
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'package:auto_route/auto_route.dart' as _i70;
+import 'package:auto_route/auto_route.dart' as _i72;
 import 'package:belluga_now/application/router/guards/location_permission_gate_result.dart'
-    as _i72;
+    as _i74;
 import 'package:belluga_now/application/router/guards/location_permission_state.dart'
-    as _i75;
-import 'package:belluga_now/domain/invites/invite_model.dart' as _i74;
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart'
-    as _i76;
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart'
     as _i77;
+import 'package:belluga_now/domain/invites/invite_model.dart' as _i76;
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart'
+    as _i78;
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart'
+    as _i79;
 import 'package:belluga_now/presentation/account_workspace/routes/account_workspace_create_event_route.dart'
     as _i2;
 import 'package:belluga_now/presentation/account_workspace/routes/account_workspace_home_route.dart'
@@ -43,96 +43,100 @@ import 'package:belluga_now/presentation/tenant_admin/account_profiles/routes/te
     as _i26;
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/routes/tenant_admin_account_profile_edit_route.dart'
     as _i27;
+import 'package:belluga_now/presentation/tenant_admin/account_profiles/routes/tenant_admin_account_profile_group_members_route.dart'
+    as _i28;
 import 'package:belluga_now/presentation/tenant_admin/accounts/routes/tenant_admin_account_create_route.dart'
     as _i24;
 import 'package:belluga_now/presentation/tenant_admin/accounts/routes/tenant_admin_account_detail_route.dart'
     as _i25;
 import 'package:belluga_now/presentation/tenant_admin/accounts/routes/tenant_admin_accounts_list_route.dart'
-    as _i28;
-import 'package:belluga_now/presentation/tenant_admin/accounts/routes/tenant_admin_location_picker_route.dart'
-    as _i38;
-import 'package:belluga_now/presentation/tenant_admin/discovery_filters/routes/tenant_admin_discovery_filter_surface_route.dart'
-    as _i30;
-import 'package:belluga_now/presentation/tenant_admin/discovery_filters/routes/tenant_admin_discovery_filters_route.dart'
-    as _i31;
-import 'package:belluga_now/presentation/tenant_admin/events/routes/tenant_admin_event_create_route.dart'
-    as _i32;
-import 'package:belluga_now/presentation/tenant_admin/events/routes/tenant_admin_event_edit_route.dart'
-    as _i33;
-import 'package:belluga_now/presentation/tenant_admin/events/routes/tenant_admin_event_type_create_route.dart'
-    as _i34;
-import 'package:belluga_now/presentation/tenant_admin/events/routes/tenant_admin_event_type_edit_route.dart'
-    as _i35;
-import 'package:belluga_now/presentation/tenant_admin/events/routes/tenant_admin_event_types_route.dart'
-    as _i36;
-import 'package:belluga_now/presentation/tenant_admin/events/routes/tenant_admin_events_route.dart'
-    as _i37;
-import 'package:belluga_now/presentation/tenant_admin/organizations/routes/tenant_admin_organization_create_route.dart'
-    as _i39;
-import 'package:belluga_now/presentation/tenant_admin/organizations/routes/tenant_admin_organization_detail_route.dart'
-    as _i40;
-import 'package:belluga_now/presentation/tenant_admin/organizations/routes/tenant_admin_organizations_list_route.dart'
-    as _i41;
-import 'package:belluga_now/presentation/tenant_admin/profile_types/routes/tenant_admin_profile_type_create_route.dart'
-    as _i42;
-import 'package:belluga_now/presentation/tenant_admin/profile_types/routes/tenant_admin_profile_type_detail_route.dart'
-    as _i43;
-import 'package:belluga_now/presentation/tenant_admin/profile_types/routes/tenant_admin_profile_type_edit_route.dart'
-    as _i44;
-import 'package:belluga_now/presentation/tenant_admin/profile_types/routes/tenant_admin_profile_types_list_route.dart'
-    as _i45;
-import 'package:belluga_now/presentation/tenant_admin/settings/models/tenant_admin_settings_integration_section.dart'
-    as _i78;
-import 'package:belluga_now/presentation/tenant_admin/settings/routes/tenant_admin_settings_domains_route.dart'
-    as _i46;
-import 'package:belluga_now/presentation/tenant_admin/settings/routes/tenant_admin_settings_environment_snapshot_route.dart'
-    as _i47;
-import 'package:belluga_now/presentation/tenant_admin/settings/routes/tenant_admin_settings_local_preferences_route.dart'
-    as _i48;
-import 'package:belluga_now/presentation/tenant_admin/settings/routes/tenant_admin_settings_route.dart'
-    as _i49;
-import 'package:belluga_now/presentation/tenant_admin/settings/routes/tenant_admin_settings_technical_integrations_route.dart'
-    as _i50;
-import 'package:belluga_now/presentation/tenant_admin/settings/routes/tenant_admin_settings_visual_identity_route.dart'
-    as _i51;
-import 'package:belluga_now/presentation/tenant_admin/shell/routes/tenant_admin_dashboard_route.dart'
     as _i29;
-import 'package:belluga_now/presentation/tenant_admin/shell/routes/tenant_admin_shell_route.dart'
+import 'package:belluga_now/presentation/tenant_admin/accounts/routes/tenant_admin_location_picker_route.dart'
+    as _i40;
+import 'package:belluga_now/presentation/tenant_admin/discovery_filters/routes/tenant_admin_discovery_filter_surface_route.dart'
+    as _i31;
+import 'package:belluga_now/presentation/tenant_admin/discovery_filters/routes/tenant_admin_discovery_filters_route.dart'
+    as _i32;
+import 'package:belluga_now/presentation/tenant_admin/events/routes/tenant_admin_event_create_route.dart'
+    as _i33;
+import 'package:belluga_now/presentation/tenant_admin/events/routes/tenant_admin_event_edit_route.dart'
+    as _i34;
+import 'package:belluga_now/presentation/tenant_admin/events/routes/tenant_admin_event_occurrence_group_members_route.dart'
+    as _i35;
+import 'package:belluga_now/presentation/tenant_admin/events/routes/tenant_admin_event_type_create_route.dart'
+    as _i36;
+import 'package:belluga_now/presentation/tenant_admin/events/routes/tenant_admin_event_type_edit_route.dart'
+    as _i37;
+import 'package:belluga_now/presentation/tenant_admin/events/routes/tenant_admin_event_types_route.dart'
+    as _i38;
+import 'package:belluga_now/presentation/tenant_admin/events/routes/tenant_admin_events_route.dart'
+    as _i39;
+import 'package:belluga_now/presentation/tenant_admin/organizations/routes/tenant_admin_organization_create_route.dart'
+    as _i41;
+import 'package:belluga_now/presentation/tenant_admin/organizations/routes/tenant_admin_organization_detail_route.dart'
+    as _i42;
+import 'package:belluga_now/presentation/tenant_admin/organizations/routes/tenant_admin_organizations_list_route.dart'
+    as _i43;
+import 'package:belluga_now/presentation/tenant_admin/profile_types/routes/tenant_admin_profile_type_create_route.dart'
+    as _i44;
+import 'package:belluga_now/presentation/tenant_admin/profile_types/routes/tenant_admin_profile_type_detail_route.dart'
+    as _i45;
+import 'package:belluga_now/presentation/tenant_admin/profile_types/routes/tenant_admin_profile_type_edit_route.dart'
+    as _i46;
+import 'package:belluga_now/presentation/tenant_admin/profile_types/routes/tenant_admin_profile_types_list_route.dart'
+    as _i47;
+import 'package:belluga_now/presentation/tenant_admin/settings/models/tenant_admin_settings_integration_section.dart'
+    as _i80;
+import 'package:belluga_now/presentation/tenant_admin/settings/routes/tenant_admin_settings_domains_route.dart'
+    as _i48;
+import 'package:belluga_now/presentation/tenant_admin/settings/routes/tenant_admin_settings_environment_snapshot_route.dart'
+    as _i49;
+import 'package:belluga_now/presentation/tenant_admin/settings/routes/tenant_admin_settings_local_preferences_route.dart'
+    as _i50;
+import 'package:belluga_now/presentation/tenant_admin/settings/routes/tenant_admin_settings_route.dart'
+    as _i51;
+import 'package:belluga_now/presentation/tenant_admin/settings/routes/tenant_admin_settings_technical_integrations_route.dart'
     as _i52;
-import 'package:belluga_now/presentation/tenant_admin/static_assets/routes/tenant_admin_static_asset_create_route.dart'
+import 'package:belluga_now/presentation/tenant_admin/settings/routes/tenant_admin_settings_visual_identity_route.dart'
     as _i53;
-import 'package:belluga_now/presentation/tenant_admin/static_assets/routes/tenant_admin_static_asset_detail_route.dart'
+import 'package:belluga_now/presentation/tenant_admin/shell/routes/tenant_admin_dashboard_route.dart'
+    as _i30;
+import 'package:belluga_now/presentation/tenant_admin/shell/routes/tenant_admin_shell_route.dart'
     as _i54;
-import 'package:belluga_now/presentation/tenant_admin/static_assets/routes/tenant_admin_static_asset_edit_route.dart'
+import 'package:belluga_now/presentation/tenant_admin/static_assets/routes/tenant_admin_static_asset_create_route.dart'
     as _i55;
-import 'package:belluga_now/presentation/tenant_admin/static_assets/routes/tenant_admin_static_assets_list_route.dart'
+import 'package:belluga_now/presentation/tenant_admin/static_assets/routes/tenant_admin_static_asset_detail_route.dart'
     as _i56;
-import 'package:belluga_now/presentation/tenant_admin/static_profile_types/routes/tenant_admin_static_profile_type_create_route.dart'
+import 'package:belluga_now/presentation/tenant_admin/static_assets/routes/tenant_admin_static_asset_edit_route.dart'
     as _i57;
-import 'package:belluga_now/presentation/tenant_admin/static_profile_types/routes/tenant_admin_static_profile_type_detail_route.dart'
+import 'package:belluga_now/presentation/tenant_admin/static_assets/routes/tenant_admin_static_assets_list_route.dart'
     as _i58;
-import 'package:belluga_now/presentation/tenant_admin/static_profile_types/routes/tenant_admin_static_profile_type_edit_route.dart'
+import 'package:belluga_now/presentation/tenant_admin/static_profile_types/routes/tenant_admin_static_profile_type_create_route.dart'
     as _i59;
-import 'package:belluga_now/presentation/tenant_admin/static_profile_types/routes/tenant_admin_static_profile_types_list_route.dart'
+import 'package:belluga_now/presentation/tenant_admin/static_profile_types/routes/tenant_admin_static_profile_type_detail_route.dart'
     as _i60;
-import 'package:belluga_now/presentation/tenant_admin/taxonomies/routes/tenant_admin_taxonomies_list_route.dart'
+import 'package:belluga_now/presentation/tenant_admin/static_profile_types/routes/tenant_admin_static_profile_type_edit_route.dart'
     as _i61;
-import 'package:belluga_now/presentation/tenant_admin/taxonomies/routes/tenant_admin_taxonomy_create_route_page.dart'
+import 'package:belluga_now/presentation/tenant_admin/static_profile_types/routes/tenant_admin_static_profile_types_list_route.dart'
     as _i62;
-import 'package:belluga_now/presentation/tenant_admin/taxonomies/routes/tenant_admin_taxonomy_edit_route_page.dart'
+import 'package:belluga_now/presentation/tenant_admin/taxonomies/routes/tenant_admin_taxonomies_list_route.dart'
     as _i63;
-import 'package:belluga_now/presentation/tenant_admin/taxonomies/routes/tenant_admin_taxonomy_term_create_route_page.dart'
+import 'package:belluga_now/presentation/tenant_admin/taxonomies/routes/tenant_admin_taxonomy_create_route_page.dart'
     as _i64;
-import 'package:belluga_now/presentation/tenant_admin/taxonomies/routes/tenant_admin_taxonomy_term_detail_route.dart'
+import 'package:belluga_now/presentation/tenant_admin/taxonomies/routes/tenant_admin_taxonomy_edit_route_page.dart'
     as _i65;
-import 'package:belluga_now/presentation/tenant_admin/taxonomies/routes/tenant_admin_taxonomy_term_edit_route_page.dart'
+import 'package:belluga_now/presentation/tenant_admin/taxonomies/routes/tenant_admin_taxonomy_term_create_route_page.dart'
     as _i66;
-import 'package:belluga_now/presentation/tenant_admin/taxonomies/routes/tenant_admin_taxonomy_terms_route.dart'
+import 'package:belluga_now/presentation/tenant_admin/taxonomies/routes/tenant_admin_taxonomy_term_detail_route.dart'
     as _i67;
+import 'package:belluga_now/presentation/tenant_admin/taxonomies/routes/tenant_admin_taxonomy_term_edit_route_page.dart'
+    as _i68;
+import 'package:belluga_now/presentation/tenant_admin/taxonomies/routes/tenant_admin_taxonomy_terms_route.dart'
+    as _i69;
 import 'package:belluga_now/presentation/tenant_public/discovery/routes/discovery_route.dart'
     as _i10;
 import 'package:belluga_now/presentation/tenant_public/home/routes/tenant_home_route.dart'
-    as _i68;
+    as _i70;
 import 'package:belluga_now/presentation/tenant_public/invites/routes/contact_group_management_route.dart'
     as _i9;
 import 'package:belluga_now/presentation/tenant_public/invites/routes/invite_entry_route.dart'
@@ -142,7 +146,7 @@ import 'package:belluga_now/presentation/tenant_public/invites/routes/invite_flo
 import 'package:belluga_now/presentation/tenant_public/invites/routes/invite_share_route.dart'
     as _i16;
 import 'package:belluga_now/presentation/tenant_public/legal/routes/tenant_privacy_policy_route.dart'
-    as _i69;
+    as _i71;
 import 'package:belluga_now/presentation/tenant_public/map/routes/city_map_route.dart'
     as _i8;
 import 'package:belluga_now/presentation/tenant_public/map/routes/poi_details_route.dart'
@@ -158,20 +162,20 @@ import 'package:belluga_now/presentation/tenant_public/schedule/routes/event_sea
 import 'package:belluga_now/presentation/tenant_public/schedule/routes/immersive_event_detail_route.dart'
     as _i12;
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart'
-    as _i73;
+    as _i75;
 import 'package:belluga_now/presentation/tenant_public/static_assets/routes/static_asset_detail_route.dart'
     as _i23;
-import 'package:flutter/material.dart' as _i71;
+import 'package:flutter/material.dart' as _i73;
 
 /// generated route for
 /// [_i1.AccountDeletionResolutionRoutePage]
-class AccountDeletionResolutionRoute extends _i70.PageRouteInfo<void> {
-  const AccountDeletionResolutionRoute({List<_i70.PageRouteInfo>? children})
+class AccountDeletionResolutionRoute extends _i72.PageRouteInfo<void> {
+  const AccountDeletionResolutionRoute({List<_i72.PageRouteInfo>? children})
     : super(AccountDeletionResolutionRoute.name, initialChildren: children);
 
   static const String name = 'AccountDeletionResolutionRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       return const _i1.AccountDeletionResolutionRoutePage();
@@ -182,11 +186,11 @@ class AccountDeletionResolutionRoute extends _i70.PageRouteInfo<void> {
 /// generated route for
 /// [_i2.AccountWorkspaceCreateEventRoutePage]
 class AccountWorkspaceCreateEventRoute
-    extends _i70.PageRouteInfo<AccountWorkspaceCreateEventRouteArgs> {
+    extends _i72.PageRouteInfo<AccountWorkspaceCreateEventRouteArgs> {
   AccountWorkspaceCreateEventRoute({
     required String accountSlug,
-    _i71.Key? key,
-    List<_i70.PageRouteInfo>? children,
+    _i73.Key? key,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          AccountWorkspaceCreateEventRoute.name,
          args: AccountWorkspaceCreateEventRouteArgs(
@@ -199,7 +203,7 @@ class AccountWorkspaceCreateEventRoute
 
   static const String name = 'AccountWorkspaceCreateEventRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final pathParams = data.inheritedPathParams;
@@ -224,7 +228,7 @@ class AccountWorkspaceCreateEventRouteArgs {
 
   final String accountSlug;
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
   @override
   String toString() {
@@ -244,13 +248,13 @@ class AccountWorkspaceCreateEventRouteArgs {
 
 /// generated route for
 /// [_i3.AccountWorkspaceHomeRoutePage]
-class AccountWorkspaceHomeRoute extends _i70.PageRouteInfo<void> {
-  const AccountWorkspaceHomeRoute({List<_i70.PageRouteInfo>? children})
+class AccountWorkspaceHomeRoute extends _i72.PageRouteInfo<void> {
+  const AccountWorkspaceHomeRoute({List<_i72.PageRouteInfo>? children})
     : super(AccountWorkspaceHomeRoute.name, initialChildren: children);
 
   static const String name = 'AccountWorkspaceHomeRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       return const _i3.AccountWorkspaceHomeRoutePage();
@@ -261,11 +265,11 @@ class AccountWorkspaceHomeRoute extends _i70.PageRouteInfo<void> {
 /// generated route for
 /// [_i4.AccountWorkspaceScopedRoutePage]
 class AccountWorkspaceScopedRoute
-    extends _i70.PageRouteInfo<AccountWorkspaceScopedRouteArgs> {
+    extends _i72.PageRouteInfo<AccountWorkspaceScopedRouteArgs> {
   AccountWorkspaceScopedRoute({
     required String accountSlug,
-    _i71.Key? key,
-    List<_i70.PageRouteInfo>? children,
+    _i73.Key? key,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          AccountWorkspaceScopedRoute.name,
          args: AccountWorkspaceScopedRouteArgs(
@@ -278,7 +282,7 @@ class AccountWorkspaceScopedRoute
 
   static const String name = 'AccountWorkspaceScopedRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final pathParams = data.inheritedPathParams;
@@ -300,7 +304,7 @@ class AccountWorkspaceScopedRouteArgs {
 
   final String accountSlug;
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
   @override
   String toString() {
@@ -320,11 +324,11 @@ class AccountWorkspaceScopedRouteArgs {
 
 /// generated route for
 /// [_i5.AppPromotionRoutePage]
-class AppPromotionRoute extends _i70.PageRouteInfo<AppPromotionRouteArgs> {
+class AppPromotionRoute extends _i72.PageRouteInfo<AppPromotionRouteArgs> {
   AppPromotionRoute({
-    _i71.Key? key,
+    _i73.Key? key,
     String? redirectPath,
-    List<_i70.PageRouteInfo>? children,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          AppPromotionRoute.name,
          args: AppPromotionRouteArgs(key: key, redirectPath: redirectPath),
@@ -334,7 +338,7 @@ class AppPromotionRoute extends _i70.PageRouteInfo<AppPromotionRouteArgs> {
 
   static const String name = 'AppPromotionRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final queryParams = data.queryParams;
@@ -354,7 +358,7 @@ class AppPromotionRoute extends _i70.PageRouteInfo<AppPromotionRouteArgs> {
 class AppPromotionRouteArgs {
   const AppPromotionRouteArgs({this.key, this.redirectPath});
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
   final String? redirectPath;
 
@@ -376,13 +380,13 @@ class AppPromotionRouteArgs {
 
 /// generated route for
 /// [_i6.AuthCreateNewPasswordRoutePage]
-class AuthCreateNewPasswordRoute extends _i70.PageRouteInfo<void> {
-  const AuthCreateNewPasswordRoute({List<_i70.PageRouteInfo>? children})
+class AuthCreateNewPasswordRoute extends _i72.PageRouteInfo<void> {
+  const AuthCreateNewPasswordRoute({List<_i72.PageRouteInfo>? children})
     : super(AuthCreateNewPasswordRoute.name, initialChildren: children);
 
   static const String name = 'AuthCreateNewPasswordRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       return const _i6.AuthCreateNewPasswordRoutePage();
@@ -392,11 +396,11 @@ class AuthCreateNewPasswordRoute extends _i70.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i7.AuthLoginRoutePage]
-class AuthLoginRoute extends _i70.PageRouteInfo<AuthLoginRouteArgs> {
+class AuthLoginRoute extends _i72.PageRouteInfo<AuthLoginRouteArgs> {
   AuthLoginRoute({
-    _i71.Key? key,
+    _i73.Key? key,
     String? redirectPath,
-    List<_i70.PageRouteInfo>? children,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          AuthLoginRoute.name,
          args: AuthLoginRouteArgs(key: key, redirectPath: redirectPath),
@@ -406,7 +410,7 @@ class AuthLoginRoute extends _i70.PageRouteInfo<AuthLoginRouteArgs> {
 
   static const String name = 'AuthLoginRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final queryParams = data.queryParams;
@@ -425,7 +429,7 @@ class AuthLoginRoute extends _i70.PageRouteInfo<AuthLoginRouteArgs> {
 class AuthLoginRouteArgs {
   const AuthLoginRouteArgs({this.key, this.redirectPath});
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
   final String? redirectPath;
 
@@ -447,13 +451,13 @@ class AuthLoginRouteArgs {
 
 /// generated route for
 /// [_i8.CityMapRoutePage]
-class CityMapRoute extends _i70.PageRouteInfo<CityMapRouteArgs> {
+class CityMapRoute extends _i72.PageRouteInfo<CityMapRouteArgs> {
   CityMapRoute({
-    _i71.Key? key,
+    _i73.Key? key,
     String? poi,
     String? stack,
-    _i72.LocationPermissionGateResult? locationGateResult,
-    List<_i70.PageRouteInfo>? children,
+    _i74.LocationPermissionGateResult? locationGateResult,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          CityMapRoute.name,
          args: CityMapRouteArgs(
@@ -468,7 +472,7 @@ class CityMapRoute extends _i70.PageRouteInfo<CityMapRouteArgs> {
 
   static const String name = 'CityMapRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final queryParams = data.queryParams;
@@ -496,13 +500,13 @@ class CityMapRouteArgs {
     this.locationGateResult,
   });
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
   final String? poi;
 
   final String? stack;
 
-  final _i72.LocationPermissionGateResult? locationGateResult;
+  final _i74.LocationPermissionGateResult? locationGateResult;
 
   @override
   String toString() {
@@ -529,13 +533,13 @@ class CityMapRouteArgs {
 
 /// generated route for
 /// [_i9.ContactGroupManagementRoutePage]
-class ContactGroupManagementRoute extends _i70.PageRouteInfo<void> {
-  const ContactGroupManagementRoute({List<_i70.PageRouteInfo>? children})
+class ContactGroupManagementRoute extends _i72.PageRouteInfo<void> {
+  const ContactGroupManagementRoute({List<_i72.PageRouteInfo>? children})
     : super(ContactGroupManagementRoute.name, initialChildren: children);
 
   static const String name = 'ContactGroupManagementRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       return const _i9.ContactGroupManagementRoutePage();
@@ -545,13 +549,13 @@ class ContactGroupManagementRoute extends _i70.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i10.DiscoveryRoute]
-class DiscoveryRoute extends _i70.PageRouteInfo<void> {
-  const DiscoveryRoute({List<_i70.PageRouteInfo>? children})
+class DiscoveryRoute extends _i72.PageRouteInfo<void> {
+  const DiscoveryRoute({List<_i72.PageRouteInfo>? children})
     : super(DiscoveryRoute.name, initialChildren: children);
 
   static const String name = 'DiscoveryRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       return const _i10.DiscoveryRoute();
@@ -561,12 +565,12 @@ class DiscoveryRoute extends _i70.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i11.EventSearchRoute]
-class EventSearchRoute extends _i70.PageRouteInfo<EventSearchRouteArgs> {
+class EventSearchRoute extends _i72.PageRouteInfo<EventSearchRouteArgs> {
   EventSearchRoute({
-    _i71.Key? key,
-    _i73.InviteFilter inviteFilter = _i73.InviteFilter.none,
+    _i73.Key? key,
+    _i75.InviteFilter inviteFilter = _i75.InviteFilter.none,
     bool startWithHistory = false,
-    List<_i70.PageRouteInfo>? children,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          EventSearchRoute.name,
          args: EventSearchRouteArgs(
@@ -579,7 +583,7 @@ class EventSearchRoute extends _i70.PageRouteInfo<EventSearchRouteArgs> {
 
   static const String name = 'EventSearchRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final args = data.argsAs<EventSearchRouteArgs>(
@@ -597,13 +601,13 @@ class EventSearchRoute extends _i70.PageRouteInfo<EventSearchRouteArgs> {
 class EventSearchRouteArgs {
   const EventSearchRouteArgs({
     this.key,
-    this.inviteFilter = _i73.InviteFilter.none,
+    this.inviteFilter = _i75.InviteFilter.none,
     this.startWithHistory = false,
   });
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
-  final _i73.InviteFilter inviteFilter;
+  final _i75.InviteFilter inviteFilter;
 
   final bool startWithHistory;
 
@@ -629,13 +633,13 @@ class EventSearchRouteArgs {
 /// generated route for
 /// [_i12.ImmersiveEventDetailRoutePage]
 class ImmersiveEventDetailRoute
-    extends _i70.PageRouteInfo<ImmersiveEventDetailRouteArgs> {
+    extends _i72.PageRouteInfo<ImmersiveEventDetailRouteArgs> {
   ImmersiveEventDetailRoute({
-    _i71.Key? key,
+    _i73.Key? key,
     required String eventSlug,
     String? occurrenceId,
     String? tab,
-    List<_i70.PageRouteInfo>? children,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          ImmersiveEventDetailRoute.name,
          args: ImmersiveEventDetailRouteArgs(
@@ -651,7 +655,7 @@ class ImmersiveEventDetailRoute
 
   static const String name = 'ImmersiveEventDetailRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final pathParams = data.inheritedPathParams;
@@ -663,7 +667,7 @@ class ImmersiveEventDetailRoute
           tab: queryParams.optString('tab'),
         ),
       );
-      return _i70.WrappedRoute(
+      return _i72.WrappedRoute(
         child: _i12.ImmersiveEventDetailRoutePage(
           key: args.key,
           eventSlug: args.eventSlug,
@@ -683,7 +687,7 @@ class ImmersiveEventDetailRouteArgs {
     this.tab,
   });
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
   final String eventSlug;
 
@@ -713,13 +717,13 @@ class ImmersiveEventDetailRouteArgs {
 
 /// generated route for
 /// [_i13.InitRoutePage]
-class InitRoute extends _i70.PageRouteInfo<void> {
-  const InitRoute({List<_i70.PageRouteInfo>? children})
+class InitRoute extends _i72.PageRouteInfo<void> {
+  const InitRoute({List<_i72.PageRouteInfo>? children})
     : super(InitRoute.name, initialChildren: children);
 
   static const String name = 'InitRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       return const _i13.InitRoutePage();
@@ -729,13 +733,13 @@ class InitRoute extends _i70.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i14.InviteEntryRoutePage]
-class InviteEntryRoute extends _i70.PageRouteInfo<void> {
-  const InviteEntryRoute({List<_i70.PageRouteInfo>? children})
+class InviteEntryRoute extends _i72.PageRouteInfo<void> {
+  const InviteEntryRoute({List<_i72.PageRouteInfo>? children})
     : super(InviteEntryRoute.name, initialChildren: children);
 
   static const String name = 'InviteEntryRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       return const _i14.InviteEntryRoutePage();
@@ -745,13 +749,13 @@ class InviteEntryRoute extends _i70.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i15.InviteFlowRoutePage]
-class InviteFlowRoute extends _i70.PageRouteInfo<void> {
-  const InviteFlowRoute({List<_i70.PageRouteInfo>? children})
+class InviteFlowRoute extends _i72.PageRouteInfo<void> {
+  const InviteFlowRoute({List<_i72.PageRouteInfo>? children})
     : super(InviteFlowRoute.name, initialChildren: children);
 
   static const String name = 'InviteFlowRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       return const _i15.InviteFlowRoutePage();
@@ -761,11 +765,11 @@ class InviteFlowRoute extends _i70.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i16.InviteShareRoutePage]
-class InviteShareRoute extends _i70.PageRouteInfo<InviteShareRouteArgs> {
+class InviteShareRoute extends _i72.PageRouteInfo<InviteShareRouteArgs> {
   InviteShareRoute({
-    _i71.Key? key,
-    _i74.InviteModel? invite,
-    List<_i70.PageRouteInfo>? children,
+    _i73.Key? key,
+    _i76.InviteModel? invite,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          InviteShareRoute.name,
          args: InviteShareRouteArgs(key: key, invite: invite),
@@ -774,7 +778,7 @@ class InviteShareRoute extends _i70.PageRouteInfo<InviteShareRouteArgs> {
 
   static const String name = 'InviteShareRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final args = data.argsAs<InviteShareRouteArgs>(
@@ -788,9 +792,9 @@ class InviteShareRoute extends _i70.PageRouteInfo<InviteShareRouteArgs> {
 class InviteShareRouteArgs {
   const InviteShareRouteArgs({this.key, this.invite});
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
-  final _i74.InviteModel? invite;
+  final _i76.InviteModel? invite;
 
   @override
   String toString() {
@@ -810,13 +814,13 @@ class InviteShareRouteArgs {
 
 /// generated route for
 /// [_i17.LandlordHomeRoutePage]
-class LandlordHomeRoute extends _i70.PageRouteInfo<void> {
-  const LandlordHomeRoute({List<_i70.PageRouteInfo>? children})
+class LandlordHomeRoute extends _i72.PageRouteInfo<void> {
+  const LandlordHomeRoute({List<_i72.PageRouteInfo>? children})
     : super(LandlordHomeRoute.name, initialChildren: children);
 
   static const String name = 'LandlordHomeRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       return const _i17.LandlordHomeRoutePage();
@@ -827,14 +831,14 @@ class LandlordHomeRoute extends _i70.PageRouteInfo<void> {
 /// generated route for
 /// [_i18.LocationPermissionRoutePage]
 class LocationPermissionRoute
-    extends _i70.PageRouteInfo<LocationPermissionRouteArgs> {
+    extends _i72.PageRouteInfo<LocationPermissionRouteArgs> {
   LocationPermissionRoute({
-    _i71.Key? key,
-    _i75.LocationPermissionState? initialState,
+    _i73.Key? key,
+    _i77.LocationPermissionState? initialState,
     bool allowContinueWithoutLocation = true,
-    _i71.ValueChanged<_i72.LocationPermissionGateResult>? onResult,
+    _i73.ValueChanged<_i74.LocationPermissionGateResult>? onResult,
     bool popRouteAfterResult = false,
-    List<_i70.PageRouteInfo>? children,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          LocationPermissionRoute.name,
          args: LocationPermissionRouteArgs(
@@ -849,7 +853,7 @@ class LocationPermissionRoute
 
   static const String name = 'LocationPermissionRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final args = data.argsAs<LocationPermissionRouteArgs>(
@@ -875,13 +879,13 @@ class LocationPermissionRouteArgs {
     this.popRouteAfterResult = false,
   });
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
-  final _i75.LocationPermissionState? initialState;
+  final _i77.LocationPermissionState? initialState;
 
   final bool allowContinueWithoutLocation;
 
-  final _i71.ValueChanged<_i72.LocationPermissionGateResult>? onResult;
+  final _i73.ValueChanged<_i74.LocationPermissionGateResult>? onResult;
 
   final bool popRouteAfterResult;
 
@@ -912,11 +916,11 @@ class LocationPermissionRouteArgs {
 
 /// generated route for
 /// [_i19.PartnerDetailRoute]
-class PartnerDetailRoute extends _i70.PageRouteInfo<PartnerDetailRouteArgs> {
+class PartnerDetailRoute extends _i72.PageRouteInfo<PartnerDetailRouteArgs> {
   PartnerDetailRoute({
-    _i71.Key? key,
+    _i73.Key? key,
     required String slug,
-    List<_i70.PageRouteInfo>? children,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          PartnerDetailRoute.name,
          args: PartnerDetailRouteArgs(key: key, slug: slug),
@@ -926,7 +930,7 @@ class PartnerDetailRoute extends _i70.PageRouteInfo<PartnerDetailRouteArgs> {
 
   static const String name = 'PartnerDetailRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final pathParams = data.inheritedPathParams;
@@ -934,7 +938,7 @@ class PartnerDetailRoute extends _i70.PageRouteInfo<PartnerDetailRouteArgs> {
         orElse: () =>
             PartnerDetailRouteArgs(slug: pathParams.getString('slug')),
       );
-      return _i70.WrappedRoute(
+      return _i72.WrappedRoute(
         child: _i19.PartnerDetailRoute(key: args.key, slug: args.slug),
       );
     },
@@ -944,7 +948,7 @@ class PartnerDetailRoute extends _i70.PageRouteInfo<PartnerDetailRouteArgs> {
 class PartnerDetailRouteArgs {
   const PartnerDetailRouteArgs({this.key, required this.slug});
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
   final String slug;
 
@@ -966,13 +970,13 @@ class PartnerDetailRouteArgs {
 
 /// generated route for
 /// [_i20.PoiDetailsRoutePage]
-class PoiDetailsRoute extends _i70.PageRouteInfo<PoiDetailsRouteArgs> {
+class PoiDetailsRoute extends _i72.PageRouteInfo<PoiDetailsRouteArgs> {
   PoiDetailsRoute({
-    _i71.Key? key,
+    _i73.Key? key,
     String? poi,
     String? stack,
-    _i72.LocationPermissionGateResult? locationGateResult,
-    List<_i70.PageRouteInfo>? children,
+    _i74.LocationPermissionGateResult? locationGateResult,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          PoiDetailsRoute.name,
          args: PoiDetailsRouteArgs(
@@ -987,7 +991,7 @@ class PoiDetailsRoute extends _i70.PageRouteInfo<PoiDetailsRouteArgs> {
 
   static const String name = 'PoiDetailsRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final queryParams = data.queryParams;
@@ -1015,13 +1019,13 @@ class PoiDetailsRouteArgs {
     this.locationGateResult,
   });
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
   final String? poi;
 
   final String? stack;
 
-  final _i72.LocationPermissionGateResult? locationGateResult;
+  final _i74.LocationPermissionGateResult? locationGateResult;
 
   @override
   String toString() {
@@ -1048,13 +1052,13 @@ class PoiDetailsRouteArgs {
 
 /// generated route for
 /// [_i21.ProfileRoutePage]
-class ProfileRoute extends _i70.PageRouteInfo<void> {
-  const ProfileRoute({List<_i70.PageRouteInfo>? children})
+class ProfileRoute extends _i72.PageRouteInfo<void> {
+  const ProfileRoute({List<_i72.PageRouteInfo>? children})
     : super(ProfileRoute.name, initialChildren: children);
 
   static const String name = 'ProfileRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       return const _i21.ProfileRoutePage();
@@ -1065,11 +1069,11 @@ class ProfileRoute extends _i70.PageRouteInfo<void> {
 /// generated route for
 /// [_i22.RecoveryPasswordRoutePage]
 class RecoveryPasswordRoute
-    extends _i70.PageRouteInfo<RecoveryPasswordRouteArgs> {
+    extends _i72.PageRouteInfo<RecoveryPasswordRouteArgs> {
   RecoveryPasswordRoute({
-    _i71.Key? key,
+    _i73.Key? key,
     String? initialEmmail,
-    List<_i70.PageRouteInfo>? children,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          RecoveryPasswordRoute.name,
          args: RecoveryPasswordRouteArgs(
@@ -1081,7 +1085,7 @@ class RecoveryPasswordRoute
 
   static const String name = 'RecoveryPasswordRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final args = data.argsAs<RecoveryPasswordRouteArgs>(
@@ -1098,7 +1102,7 @@ class RecoveryPasswordRoute
 class RecoveryPasswordRouteArgs {
   const RecoveryPasswordRouteArgs({this.key, this.initialEmmail});
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
   final String? initialEmmail;
 
@@ -1121,11 +1125,11 @@ class RecoveryPasswordRouteArgs {
 /// generated route for
 /// [_i23.StaticAssetDetailRoute]
 class StaticAssetDetailRoute
-    extends _i70.PageRouteInfo<StaticAssetDetailRouteArgs> {
+    extends _i72.PageRouteInfo<StaticAssetDetailRouteArgs> {
   StaticAssetDetailRoute({
-    _i71.Key? key,
+    _i73.Key? key,
     required String assetRef,
-    List<_i70.PageRouteInfo>? children,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          StaticAssetDetailRoute.name,
          args: StaticAssetDetailRouteArgs(key: key, assetRef: assetRef),
@@ -1135,7 +1139,7 @@ class StaticAssetDetailRoute
 
   static const String name = 'StaticAssetDetailRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final pathParams = data.inheritedPathParams;
@@ -1144,7 +1148,7 @@ class StaticAssetDetailRoute
           assetRef: pathParams.getString('assetRef'),
         ),
       );
-      return _i70.WrappedRoute(
+      return _i72.WrappedRoute(
         child: _i23.StaticAssetDetailRoute(
           key: args.key,
           assetRef: args.assetRef,
@@ -1157,7 +1161,7 @@ class StaticAssetDetailRoute
 class StaticAssetDetailRouteArgs {
   const StaticAssetDetailRouteArgs({this.key, required this.assetRef});
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
   final String assetRef;
 
@@ -1179,13 +1183,13 @@ class StaticAssetDetailRouteArgs {
 
 /// generated route for
 /// [_i24.TenantAdminAccountCreateRoutePage]
-class TenantAdminAccountCreateRoute extends _i70.PageRouteInfo<void> {
-  const TenantAdminAccountCreateRoute({List<_i70.PageRouteInfo>? children})
+class TenantAdminAccountCreateRoute extends _i72.PageRouteInfo<void> {
+  const TenantAdminAccountCreateRoute({List<_i72.PageRouteInfo>? children})
     : super(TenantAdminAccountCreateRoute.name, initialChildren: children);
 
   static const String name = 'TenantAdminAccountCreateRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       return const _i24.TenantAdminAccountCreateRoutePage();
@@ -1196,11 +1200,11 @@ class TenantAdminAccountCreateRoute extends _i70.PageRouteInfo<void> {
 /// generated route for
 /// [_i25.TenantAdminAccountDetailRoutePage]
 class TenantAdminAccountDetailRoute
-    extends _i70.PageRouteInfo<TenantAdminAccountDetailRouteArgs> {
+    extends _i72.PageRouteInfo<TenantAdminAccountDetailRouteArgs> {
   TenantAdminAccountDetailRoute({
-    _i71.Key? key,
+    _i73.Key? key,
     required String accountSlug,
-    List<_i70.PageRouteInfo>? children,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          TenantAdminAccountDetailRoute.name,
          args: TenantAdminAccountDetailRouteArgs(
@@ -1213,7 +1217,7 @@ class TenantAdminAccountDetailRoute
 
   static const String name = 'TenantAdminAccountDetailRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final pathParams = data.inheritedPathParams;
@@ -1236,7 +1240,7 @@ class TenantAdminAccountDetailRouteArgs {
     required this.accountSlug,
   });
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
   final String accountSlug;
 
@@ -1259,11 +1263,11 @@ class TenantAdminAccountDetailRouteArgs {
 /// generated route for
 /// [_i26.TenantAdminAccountProfileCreateRoutePage]
 class TenantAdminAccountProfileCreateRoute
-    extends _i70.PageRouteInfo<TenantAdminAccountProfileCreateRouteArgs> {
+    extends _i72.PageRouteInfo<TenantAdminAccountProfileCreateRouteArgs> {
   TenantAdminAccountProfileCreateRoute({
-    _i71.Key? key,
+    _i73.Key? key,
     required String accountSlug,
-    List<_i70.PageRouteInfo>? children,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          TenantAdminAccountProfileCreateRoute.name,
          args: TenantAdminAccountProfileCreateRouteArgs(
@@ -1276,7 +1280,7 @@ class TenantAdminAccountProfileCreateRoute
 
   static const String name = 'TenantAdminAccountProfileCreateRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final pathParams = data.inheritedPathParams;
@@ -1299,7 +1303,7 @@ class TenantAdminAccountProfileCreateRouteArgs {
     required this.accountSlug,
   });
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
   final String accountSlug;
 
@@ -1322,12 +1326,12 @@ class TenantAdminAccountProfileCreateRouteArgs {
 /// generated route for
 /// [_i27.TenantAdminAccountProfileEditRoutePage]
 class TenantAdminAccountProfileEditRoute
-    extends _i70.PageRouteInfo<TenantAdminAccountProfileEditRouteArgs> {
+    extends _i72.PageRouteInfo<TenantAdminAccountProfileEditRouteArgs> {
   TenantAdminAccountProfileEditRoute({
-    _i71.Key? key,
+    _i73.Key? key,
     required String accountSlug,
     required String accountProfileId,
-    List<_i70.PageRouteInfo>? children,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          TenantAdminAccountProfileEditRoute.name,
          args: TenantAdminAccountProfileEditRouteArgs(
@@ -1344,7 +1348,7 @@ class TenantAdminAccountProfileEditRoute
 
   static const String name = 'TenantAdminAccountProfileEditRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final pathParams = data.inheritedPathParams;
@@ -1370,7 +1374,7 @@ class TenantAdminAccountProfileEditRouteArgs {
     required this.accountProfileId,
   });
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
   final String accountSlug;
 
@@ -1396,45 +1400,133 @@ class TenantAdminAccountProfileEditRouteArgs {
 }
 
 /// generated route for
-/// [_i28.TenantAdminAccountsListRoutePage]
-class TenantAdminAccountsListRoute extends _i70.PageRouteInfo<void> {
-  const TenantAdminAccountsListRoute({List<_i70.PageRouteInfo>? children})
+/// [_i28.TenantAdminAccountProfileGroupMembersRoutePage]
+class TenantAdminAccountProfileGroupMembersRoute
+    extends _i72.PageRouteInfo<TenantAdminAccountProfileGroupMembersRouteArgs> {
+  TenantAdminAccountProfileGroupMembersRoute({
+    _i73.Key? key,
+    required String accountSlug,
+    required String accountProfileId,
+    required String groupId,
+    List<_i72.PageRouteInfo>? children,
+  }) : super(
+         TenantAdminAccountProfileGroupMembersRoute.name,
+         args: TenantAdminAccountProfileGroupMembersRouteArgs(
+           key: key,
+           accountSlug: accountSlug,
+           accountProfileId: accountProfileId,
+           groupId: groupId,
+         ),
+         rawPathParams: {
+           'accountSlug': accountSlug,
+           'accountProfileId': accountProfileId,
+           'groupId': groupId,
+         },
+         initialChildren: children,
+       );
+
+  static const String name = 'TenantAdminAccountProfileGroupMembersRoute';
+
+  static _i72.PageInfo page = _i72.PageInfo(
+    name,
+    builder: (data) {
+      final pathParams = data.inheritedPathParams;
+      final args = data.argsAs<TenantAdminAccountProfileGroupMembersRouteArgs>(
+        orElse: () => TenantAdminAccountProfileGroupMembersRouteArgs(
+          accountSlug: pathParams.getString('accountSlug'),
+          accountProfileId: pathParams.getString('accountProfileId'),
+          groupId: pathParams.getString('groupId'),
+        ),
+      );
+      return _i28.TenantAdminAccountProfileGroupMembersRoutePage(
+        key: args.key,
+        accountSlug: args.accountSlug,
+        accountProfileId: args.accountProfileId,
+        groupId: args.groupId,
+      );
+    },
+  );
+}
+
+class TenantAdminAccountProfileGroupMembersRouteArgs {
+  const TenantAdminAccountProfileGroupMembersRouteArgs({
+    this.key,
+    required this.accountSlug,
+    required this.accountProfileId,
+    required this.groupId,
+  });
+
+  final _i73.Key? key;
+
+  final String accountSlug;
+
+  final String accountProfileId;
+
+  final String groupId;
+
+  @override
+  String toString() {
+    return 'TenantAdminAccountProfileGroupMembersRouteArgs{key: $key, accountSlug: $accountSlug, accountProfileId: $accountProfileId, groupId: $groupId}';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! TenantAdminAccountProfileGroupMembersRouteArgs) return false;
+    return key == other.key &&
+        accountSlug == other.accountSlug &&
+        accountProfileId == other.accountProfileId &&
+        groupId == other.groupId;
+  }
+
+  @override
+  int get hashCode =>
+      key.hashCode ^
+      accountSlug.hashCode ^
+      accountProfileId.hashCode ^
+      groupId.hashCode;
+}
+
+/// generated route for
+/// [_i29.TenantAdminAccountsListRoutePage]
+class TenantAdminAccountsListRoute extends _i72.PageRouteInfo<void> {
+  const TenantAdminAccountsListRoute({List<_i72.PageRouteInfo>? children})
     : super(TenantAdminAccountsListRoute.name, initialChildren: children);
 
   static const String name = 'TenantAdminAccountsListRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
-      return const _i28.TenantAdminAccountsListRoutePage();
+      return const _i29.TenantAdminAccountsListRoutePage();
     },
   );
 }
 
 /// generated route for
-/// [_i29.TenantAdminDashboardRoutePage]
-class TenantAdminDashboardRoute extends _i70.PageRouteInfo<void> {
-  const TenantAdminDashboardRoute({List<_i70.PageRouteInfo>? children})
+/// [_i30.TenantAdminDashboardRoutePage]
+class TenantAdminDashboardRoute extends _i72.PageRouteInfo<void> {
+  const TenantAdminDashboardRoute({List<_i72.PageRouteInfo>? children})
     : super(TenantAdminDashboardRoute.name, initialChildren: children);
 
   static const String name = 'TenantAdminDashboardRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
-      return const _i29.TenantAdminDashboardRoutePage();
+      return const _i30.TenantAdminDashboardRoutePage();
     },
   );
 }
 
 /// generated route for
-/// [_i30.TenantAdminDiscoveryFilterSurfaceRoutePage]
+/// [_i31.TenantAdminDiscoveryFilterSurfaceRoutePage]
 class TenantAdminDiscoveryFilterSurfaceRoute
-    extends _i70.PageRouteInfo<TenantAdminDiscoveryFilterSurfaceRouteArgs> {
+    extends _i72.PageRouteInfo<TenantAdminDiscoveryFilterSurfaceRouteArgs> {
   TenantAdminDiscoveryFilterSurfaceRoute({
-    _i71.Key? key,
+    _i73.Key? key,
     String? surfaceKey,
-    List<_i70.PageRouteInfo>? children,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          TenantAdminDiscoveryFilterSurfaceRoute.name,
          args: TenantAdminDiscoveryFilterSurfaceRouteArgs(
@@ -1447,7 +1539,7 @@ class TenantAdminDiscoveryFilterSurfaceRoute
 
   static const String name = 'TenantAdminDiscoveryFilterSurfaceRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final queryParams = data.queryParams;
@@ -1456,7 +1548,7 @@ class TenantAdminDiscoveryFilterSurfaceRoute
           surfaceKey: queryParams.optString('surface'),
         ),
       );
-      return _i30.TenantAdminDiscoveryFilterSurfaceRoutePage(
+      return _i31.TenantAdminDiscoveryFilterSurfaceRoutePage(
         key: args.key,
         surfaceKey: args.surfaceKey,
       );
@@ -1467,7 +1559,7 @@ class TenantAdminDiscoveryFilterSurfaceRoute
 class TenantAdminDiscoveryFilterSurfaceRouteArgs {
   const TenantAdminDiscoveryFilterSurfaceRouteArgs({this.key, this.surfaceKey});
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
   final String? surfaceKey;
 
@@ -1488,46 +1580,46 @@ class TenantAdminDiscoveryFilterSurfaceRouteArgs {
 }
 
 /// generated route for
-/// [_i31.TenantAdminDiscoveryFiltersRoutePage]
-class TenantAdminDiscoveryFiltersRoute extends _i70.PageRouteInfo<void> {
-  const TenantAdminDiscoveryFiltersRoute({List<_i70.PageRouteInfo>? children})
+/// [_i32.TenantAdminDiscoveryFiltersRoutePage]
+class TenantAdminDiscoveryFiltersRoute extends _i72.PageRouteInfo<void> {
+  const TenantAdminDiscoveryFiltersRoute({List<_i72.PageRouteInfo>? children})
     : super(TenantAdminDiscoveryFiltersRoute.name, initialChildren: children);
 
   static const String name = 'TenantAdminDiscoveryFiltersRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
-      return const _i31.TenantAdminDiscoveryFiltersRoutePage();
+      return const _i32.TenantAdminDiscoveryFiltersRoutePage();
     },
   );
 }
 
 /// generated route for
-/// [_i32.TenantAdminEventCreateRoutePage]
-class TenantAdminEventCreateRoute extends _i70.PageRouteInfo<void> {
-  const TenantAdminEventCreateRoute({List<_i70.PageRouteInfo>? children})
+/// [_i33.TenantAdminEventCreateRoutePage]
+class TenantAdminEventCreateRoute extends _i72.PageRouteInfo<void> {
+  const TenantAdminEventCreateRoute({List<_i72.PageRouteInfo>? children})
     : super(TenantAdminEventCreateRoute.name, initialChildren: children);
 
   static const String name = 'TenantAdminEventCreateRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
-      return const _i32.TenantAdminEventCreateRoutePage();
+      return const _i33.TenantAdminEventCreateRoutePage();
     },
   );
 }
 
 /// generated route for
-/// [_i33.TenantAdminEventEditRoutePage]
+/// [_i34.TenantAdminEventEditRoutePage]
 class TenantAdminEventEditRoute
-    extends _i70.PageRouteInfo<TenantAdminEventEditRouteArgs> {
+    extends _i72.PageRouteInfo<TenantAdminEventEditRouteArgs> {
   TenantAdminEventEditRoute({
-    _i71.Key? key,
+    _i73.Key? key,
     required String eventId,
     String? occurrenceId,
-    List<_i70.PageRouteInfo>? children,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          TenantAdminEventEditRoute.name,
          args: TenantAdminEventEditRouteArgs(
@@ -1542,7 +1634,7 @@ class TenantAdminEventEditRoute
 
   static const String name = 'TenantAdminEventEditRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final pathParams = data.inheritedPathParams;
@@ -1553,8 +1645,8 @@ class TenantAdminEventEditRoute
           occurrenceId: queryParams.optString('occurrence'),
         ),
       );
-      return _i70.WrappedRoute(
-        child: _i33.TenantAdminEventEditRoutePage(
+      return _i72.WrappedRoute(
+        child: _i34.TenantAdminEventEditRoutePage(
           key: args.key,
           eventId: args.eventId,
           occurrenceId: args.occurrenceId,
@@ -1571,7 +1663,7 @@ class TenantAdminEventEditRouteArgs {
     this.occurrenceId,
   });
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
   final String eventId;
 
@@ -1596,29 +1688,130 @@ class TenantAdminEventEditRouteArgs {
 }
 
 /// generated route for
-/// [_i34.TenantAdminEventTypeCreateRoutePage]
-class TenantAdminEventTypeCreateRoute extends _i70.PageRouteInfo<void> {
-  const TenantAdminEventTypeCreateRoute({List<_i70.PageRouteInfo>? children})
+/// [_i35.TenantAdminEventOccurrenceGroupMembersRoutePage]
+class TenantAdminEventOccurrenceGroupMembersRoute
+    extends
+        _i72.PageRouteInfo<TenantAdminEventOccurrenceGroupMembersRouteArgs> {
+  TenantAdminEventOccurrenceGroupMembersRoute({
+    _i73.Key? key,
+    required String eventId,
+    required String occurrenceId,
+    required String occurrenceKey,
+    required String groupId,
+    List<_i72.PageRouteInfo>? children,
+  }) : super(
+         TenantAdminEventOccurrenceGroupMembersRoute.name,
+         args: TenantAdminEventOccurrenceGroupMembersRouteArgs(
+           key: key,
+           eventId: eventId,
+           occurrenceId: occurrenceId,
+           occurrenceKey: occurrenceKey,
+           groupId: groupId,
+         ),
+         rawPathParams: {
+           'eventId': eventId,
+           'occurrenceId': occurrenceId,
+           'occurrenceKey': occurrenceKey,
+           'groupId': groupId,
+         },
+         initialChildren: children,
+       );
+
+  static const String name = 'TenantAdminEventOccurrenceGroupMembersRoute';
+
+  static _i72.PageInfo page = _i72.PageInfo(
+    name,
+    builder: (data) {
+      final pathParams = data.inheritedPathParams;
+      final args = data.argsAs<TenantAdminEventOccurrenceGroupMembersRouteArgs>(
+        orElse: () => TenantAdminEventOccurrenceGroupMembersRouteArgs(
+          eventId: pathParams.getString('eventId'),
+          occurrenceId: pathParams.getString('occurrenceId'),
+          occurrenceKey: pathParams.getString('occurrenceKey'),
+          groupId: pathParams.getString('groupId'),
+        ),
+      );
+      return _i72.WrappedRoute(
+        child: _i35.TenantAdminEventOccurrenceGroupMembersRoutePage(
+          key: args.key,
+          eventId: args.eventId,
+          occurrenceId: args.occurrenceId,
+          occurrenceKey: args.occurrenceKey,
+          groupId: args.groupId,
+        ),
+      );
+    },
+  );
+}
+
+class TenantAdminEventOccurrenceGroupMembersRouteArgs {
+  const TenantAdminEventOccurrenceGroupMembersRouteArgs({
+    this.key,
+    required this.eventId,
+    required this.occurrenceId,
+    required this.occurrenceKey,
+    required this.groupId,
+  });
+
+  final _i73.Key? key;
+
+  final String eventId;
+
+  final String occurrenceId;
+
+  final String occurrenceKey;
+
+  final String groupId;
+
+  @override
+  String toString() {
+    return 'TenantAdminEventOccurrenceGroupMembersRouteArgs{key: $key, eventId: $eventId, occurrenceId: $occurrenceId, occurrenceKey: $occurrenceKey, groupId: $groupId}';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! TenantAdminEventOccurrenceGroupMembersRouteArgs) return false;
+    return key == other.key &&
+        eventId == other.eventId &&
+        occurrenceId == other.occurrenceId &&
+        occurrenceKey == other.occurrenceKey &&
+        groupId == other.groupId;
+  }
+
+  @override
+  int get hashCode =>
+      key.hashCode ^
+      eventId.hashCode ^
+      occurrenceId.hashCode ^
+      occurrenceKey.hashCode ^
+      groupId.hashCode;
+}
+
+/// generated route for
+/// [_i36.TenantAdminEventTypeCreateRoutePage]
+class TenantAdminEventTypeCreateRoute extends _i72.PageRouteInfo<void> {
+  const TenantAdminEventTypeCreateRoute({List<_i72.PageRouteInfo>? children})
     : super(TenantAdminEventTypeCreateRoute.name, initialChildren: children);
 
   static const String name = 'TenantAdminEventTypeCreateRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
-      return const _i34.TenantAdminEventTypeCreateRoutePage();
+      return const _i36.TenantAdminEventTypeCreateRoutePage();
     },
   );
 }
 
 /// generated route for
-/// [_i35.TenantAdminEventTypeEditRoutePage]
+/// [_i37.TenantAdminEventTypeEditRoutePage]
 class TenantAdminEventTypeEditRoute
-    extends _i70.PageRouteInfo<TenantAdminEventTypeEditRouteArgs> {
+    extends _i72.PageRouteInfo<TenantAdminEventTypeEditRouteArgs> {
   TenantAdminEventTypeEditRoute({
-    _i76.TenantAdminEventType? type,
-    _i71.Key? key,
-    List<_i70.PageRouteInfo>? children,
+    _i78.TenantAdminEventType? type,
+    _i73.Key? key,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          TenantAdminEventTypeEditRoute.name,
          args: TenantAdminEventTypeEditRouteArgs(type: type, key: key),
@@ -1627,13 +1820,13 @@ class TenantAdminEventTypeEditRoute
 
   static const String name = 'TenantAdminEventTypeEditRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final args = data.argsAs<TenantAdminEventTypeEditRouteArgs>(
         orElse: () => const TenantAdminEventTypeEditRouteArgs(),
       );
-      return _i35.TenantAdminEventTypeEditRoutePage(
+      return _i37.TenantAdminEventTypeEditRoutePage(
         type: args.type,
         key: args.key,
       );
@@ -1644,9 +1837,9 @@ class TenantAdminEventTypeEditRoute
 class TenantAdminEventTypeEditRouteArgs {
   const TenantAdminEventTypeEditRouteArgs({this.type, this.key});
 
-  final _i76.TenantAdminEventType? type;
+  final _i78.TenantAdminEventType? type;
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
   @override
   String toString() {
@@ -1665,46 +1858,46 @@ class TenantAdminEventTypeEditRouteArgs {
 }
 
 /// generated route for
-/// [_i36.TenantAdminEventTypesRoutePage]
-class TenantAdminEventTypesRoute extends _i70.PageRouteInfo<void> {
-  const TenantAdminEventTypesRoute({List<_i70.PageRouteInfo>? children})
+/// [_i38.TenantAdminEventTypesRoutePage]
+class TenantAdminEventTypesRoute extends _i72.PageRouteInfo<void> {
+  const TenantAdminEventTypesRoute({List<_i72.PageRouteInfo>? children})
     : super(TenantAdminEventTypesRoute.name, initialChildren: children);
 
   static const String name = 'TenantAdminEventTypesRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
-      return const _i36.TenantAdminEventTypesRoutePage();
+      return const _i38.TenantAdminEventTypesRoutePage();
     },
   );
 }
 
 /// generated route for
-/// [_i37.TenantAdminEventsRoutePage]
-class TenantAdminEventsRoute extends _i70.PageRouteInfo<void> {
-  const TenantAdminEventsRoute({List<_i70.PageRouteInfo>? children})
+/// [_i39.TenantAdminEventsRoutePage]
+class TenantAdminEventsRoute extends _i72.PageRouteInfo<void> {
+  const TenantAdminEventsRoute({List<_i72.PageRouteInfo>? children})
     : super(TenantAdminEventsRoute.name, initialChildren: children);
 
   static const String name = 'TenantAdminEventsRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
-      return const _i37.TenantAdminEventsRoutePage();
+      return const _i39.TenantAdminEventsRoutePage();
     },
   );
 }
 
 /// generated route for
-/// [_i38.TenantAdminLocationPickerRoutePage]
+/// [_i40.TenantAdminLocationPickerRoutePage]
 class TenantAdminLocationPickerRoute
-    extends _i70.PageRouteInfo<TenantAdminLocationPickerRouteArgs> {
+    extends _i72.PageRouteInfo<TenantAdminLocationPickerRouteArgs> {
   TenantAdminLocationPickerRoute({
-    _i71.Key? key,
-    _i77.TenantAdminLocation? initialLocation,
-    _i70.PageRouteInfo<dynamic>? backFallbackRoute,
-    List<_i70.PageRouteInfo>? children,
+    _i73.Key? key,
+    _i79.TenantAdminLocation? initialLocation,
+    _i72.PageRouteInfo<dynamic>? backFallbackRoute,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          TenantAdminLocationPickerRoute.name,
          args: TenantAdminLocationPickerRouteArgs(
@@ -1717,13 +1910,13 @@ class TenantAdminLocationPickerRoute
 
   static const String name = 'TenantAdminLocationPickerRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final args = data.argsAs<TenantAdminLocationPickerRouteArgs>(
         orElse: () => const TenantAdminLocationPickerRouteArgs(),
       );
-      return _i38.TenantAdminLocationPickerRoutePage(
+      return _i40.TenantAdminLocationPickerRoutePage(
         key: args.key,
         initialLocation: args.initialLocation,
         backFallbackRoute: args.backFallbackRoute,
@@ -1739,11 +1932,11 @@ class TenantAdminLocationPickerRouteArgs {
     this.backFallbackRoute,
   });
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
-  final _i77.TenantAdminLocation? initialLocation;
+  final _i79.TenantAdminLocation? initialLocation;
 
-  final _i70.PageRouteInfo<dynamic>? backFallbackRoute;
+  final _i72.PageRouteInfo<dynamic>? backFallbackRoute;
 
   @override
   String toString() {
@@ -1765,29 +1958,29 @@ class TenantAdminLocationPickerRouteArgs {
 }
 
 /// generated route for
-/// [_i39.TenantAdminOrganizationCreateRoutePage]
-class TenantAdminOrganizationCreateRoute extends _i70.PageRouteInfo<void> {
-  const TenantAdminOrganizationCreateRoute({List<_i70.PageRouteInfo>? children})
+/// [_i41.TenantAdminOrganizationCreateRoutePage]
+class TenantAdminOrganizationCreateRoute extends _i72.PageRouteInfo<void> {
+  const TenantAdminOrganizationCreateRoute({List<_i72.PageRouteInfo>? children})
     : super(TenantAdminOrganizationCreateRoute.name, initialChildren: children);
 
   static const String name = 'TenantAdminOrganizationCreateRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
-      return const _i39.TenantAdminOrganizationCreateRoutePage();
+      return const _i41.TenantAdminOrganizationCreateRoutePage();
     },
   );
 }
 
 /// generated route for
-/// [_i40.TenantAdminOrganizationDetailRoutePage]
+/// [_i42.TenantAdminOrganizationDetailRoutePage]
 class TenantAdminOrganizationDetailRoute
-    extends _i70.PageRouteInfo<TenantAdminOrganizationDetailRouteArgs> {
+    extends _i72.PageRouteInfo<TenantAdminOrganizationDetailRouteArgs> {
   TenantAdminOrganizationDetailRoute({
-    _i71.Key? key,
+    _i73.Key? key,
     required String organizationId,
-    List<_i70.PageRouteInfo>? children,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          TenantAdminOrganizationDetailRoute.name,
          args: TenantAdminOrganizationDetailRouteArgs(
@@ -1800,7 +1993,7 @@ class TenantAdminOrganizationDetailRoute
 
   static const String name = 'TenantAdminOrganizationDetailRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final pathParams = data.inheritedPathParams;
@@ -1809,7 +2002,7 @@ class TenantAdminOrganizationDetailRoute
           organizationId: pathParams.getString('organizationId'),
         ),
       );
-      return _i40.TenantAdminOrganizationDetailRoutePage(
+      return _i42.TenantAdminOrganizationDetailRoutePage(
         key: args.key,
         organizationId: args.organizationId,
       );
@@ -1823,7 +2016,7 @@ class TenantAdminOrganizationDetailRouteArgs {
     required this.organizationId,
   });
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
   final String organizationId;
 
@@ -1844,45 +2037,45 @@ class TenantAdminOrganizationDetailRouteArgs {
 }
 
 /// generated route for
-/// [_i41.TenantAdminOrganizationsListRoutePage]
-class TenantAdminOrganizationsListRoute extends _i70.PageRouteInfo<void> {
-  const TenantAdminOrganizationsListRoute({List<_i70.PageRouteInfo>? children})
+/// [_i43.TenantAdminOrganizationsListRoutePage]
+class TenantAdminOrganizationsListRoute extends _i72.PageRouteInfo<void> {
+  const TenantAdminOrganizationsListRoute({List<_i72.PageRouteInfo>? children})
     : super(TenantAdminOrganizationsListRoute.name, initialChildren: children);
 
   static const String name = 'TenantAdminOrganizationsListRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
-      return const _i41.TenantAdminOrganizationsListRoutePage();
+      return const _i43.TenantAdminOrganizationsListRoutePage();
     },
   );
 }
 
 /// generated route for
-/// [_i42.TenantAdminProfileTypeCreateRoutePage]
-class TenantAdminProfileTypeCreateRoute extends _i70.PageRouteInfo<void> {
-  const TenantAdminProfileTypeCreateRoute({List<_i70.PageRouteInfo>? children})
+/// [_i44.TenantAdminProfileTypeCreateRoutePage]
+class TenantAdminProfileTypeCreateRoute extends _i72.PageRouteInfo<void> {
+  const TenantAdminProfileTypeCreateRoute({List<_i72.PageRouteInfo>? children})
     : super(TenantAdminProfileTypeCreateRoute.name, initialChildren: children);
 
   static const String name = 'TenantAdminProfileTypeCreateRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
-      return const _i42.TenantAdminProfileTypeCreateRoutePage();
+      return const _i44.TenantAdminProfileTypeCreateRoutePage();
     },
   );
 }
 
 /// generated route for
-/// [_i43.TenantAdminProfileTypeDetailRoutePage]
+/// [_i45.TenantAdminProfileTypeDetailRoutePage]
 class TenantAdminProfileTypeDetailRoute
-    extends _i70.PageRouteInfo<TenantAdminProfileTypeDetailRouteArgs> {
+    extends _i72.PageRouteInfo<TenantAdminProfileTypeDetailRouteArgs> {
   TenantAdminProfileTypeDetailRoute({
-    _i71.Key? key,
+    _i73.Key? key,
     required String profileType,
-    List<_i70.PageRouteInfo>? children,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          TenantAdminProfileTypeDetailRoute.name,
          args: TenantAdminProfileTypeDetailRouteArgs(
@@ -1895,7 +2088,7 @@ class TenantAdminProfileTypeDetailRoute
 
   static const String name = 'TenantAdminProfileTypeDetailRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final pathParams = data.inheritedPathParams;
@@ -1904,7 +2097,7 @@ class TenantAdminProfileTypeDetailRoute
           profileType: pathParams.getString('profileType'),
         ),
       );
-      return _i43.TenantAdminProfileTypeDetailRoutePage(
+      return _i45.TenantAdminProfileTypeDetailRoutePage(
         key: args.key,
         profileType: args.profileType,
       );
@@ -1918,7 +2111,7 @@ class TenantAdminProfileTypeDetailRouteArgs {
     required this.profileType,
   });
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
   final String profileType;
 
@@ -1939,13 +2132,13 @@ class TenantAdminProfileTypeDetailRouteArgs {
 }
 
 /// generated route for
-/// [_i44.TenantAdminProfileTypeEditRoutePage]
+/// [_i46.TenantAdminProfileTypeEditRoutePage]
 class TenantAdminProfileTypeEditRoute
-    extends _i70.PageRouteInfo<TenantAdminProfileTypeEditRouteArgs> {
+    extends _i72.PageRouteInfo<TenantAdminProfileTypeEditRouteArgs> {
   TenantAdminProfileTypeEditRoute({
-    _i71.Key? key,
+    _i73.Key? key,
     required String profileType,
-    List<_i70.PageRouteInfo>? children,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          TenantAdminProfileTypeEditRoute.name,
          args: TenantAdminProfileTypeEditRouteArgs(
@@ -1958,7 +2151,7 @@ class TenantAdminProfileTypeEditRoute
 
   static const String name = 'TenantAdminProfileTypeEditRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final pathParams = data.inheritedPathParams;
@@ -1967,7 +2160,7 @@ class TenantAdminProfileTypeEditRoute
           profileType: pathParams.getString('profileType'),
         ),
       );
-      return _i44.TenantAdminProfileTypeEditRoutePage(
+      return _i46.TenantAdminProfileTypeEditRoutePage(
         key: args.key,
         profileType: args.profileType,
       );
@@ -1981,7 +2174,7 @@ class TenantAdminProfileTypeEditRouteArgs {
     required this.profileType,
   });
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
   final String profileType;
 
@@ -2002,43 +2195,43 @@ class TenantAdminProfileTypeEditRouteArgs {
 }
 
 /// generated route for
-/// [_i45.TenantAdminProfileTypesListRoutePage]
-class TenantAdminProfileTypesListRoute extends _i70.PageRouteInfo<void> {
-  const TenantAdminProfileTypesListRoute({List<_i70.PageRouteInfo>? children})
+/// [_i47.TenantAdminProfileTypesListRoutePage]
+class TenantAdminProfileTypesListRoute extends _i72.PageRouteInfo<void> {
+  const TenantAdminProfileTypesListRoute({List<_i72.PageRouteInfo>? children})
     : super(TenantAdminProfileTypesListRoute.name, initialChildren: children);
 
   static const String name = 'TenantAdminProfileTypesListRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
-      return const _i45.TenantAdminProfileTypesListRoutePage();
+      return const _i47.TenantAdminProfileTypesListRoutePage();
     },
   );
 }
 
 /// generated route for
-/// [_i46.TenantAdminSettingsDomainsRoutePage]
-class TenantAdminSettingsDomainsRoute extends _i70.PageRouteInfo<void> {
-  const TenantAdminSettingsDomainsRoute({List<_i70.PageRouteInfo>? children})
+/// [_i48.TenantAdminSettingsDomainsRoutePage]
+class TenantAdminSettingsDomainsRoute extends _i72.PageRouteInfo<void> {
+  const TenantAdminSettingsDomainsRoute({List<_i72.PageRouteInfo>? children})
     : super(TenantAdminSettingsDomainsRoute.name, initialChildren: children);
 
   static const String name = 'TenantAdminSettingsDomainsRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
-      return const _i46.TenantAdminSettingsDomainsRoutePage();
+      return const _i48.TenantAdminSettingsDomainsRoutePage();
     },
   );
 }
 
 /// generated route for
-/// [_i47.TenantAdminSettingsEnvironmentSnapshotRoutePage]
+/// [_i49.TenantAdminSettingsEnvironmentSnapshotRoutePage]
 class TenantAdminSettingsEnvironmentSnapshotRoute
-    extends _i70.PageRouteInfo<void> {
+    extends _i72.PageRouteInfo<void> {
   const TenantAdminSettingsEnvironmentSnapshotRoute({
-    List<_i70.PageRouteInfo>? children,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          TenantAdminSettingsEnvironmentSnapshotRoute.name,
          initialChildren: children,
@@ -2046,20 +2239,20 @@ class TenantAdminSettingsEnvironmentSnapshotRoute
 
   static const String name = 'TenantAdminSettingsEnvironmentSnapshotRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
-      return const _i47.TenantAdminSettingsEnvironmentSnapshotRoutePage();
+      return const _i49.TenantAdminSettingsEnvironmentSnapshotRoutePage();
     },
   );
 }
 
 /// generated route for
-/// [_i48.TenantAdminSettingsLocalPreferencesRoutePage]
+/// [_i50.TenantAdminSettingsLocalPreferencesRoutePage]
 class TenantAdminSettingsLocalPreferencesRoute
-    extends _i70.PageRouteInfo<void> {
+    extends _i72.PageRouteInfo<void> {
   const TenantAdminSettingsLocalPreferencesRoute({
-    List<_i70.PageRouteInfo>? children,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          TenantAdminSettingsLocalPreferencesRoute.name,
          initialChildren: children,
@@ -2067,40 +2260,40 @@ class TenantAdminSettingsLocalPreferencesRoute
 
   static const String name = 'TenantAdminSettingsLocalPreferencesRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
-      return const _i48.TenantAdminSettingsLocalPreferencesRoutePage();
+      return const _i50.TenantAdminSettingsLocalPreferencesRoutePage();
     },
   );
 }
 
 /// generated route for
-/// [_i49.TenantAdminSettingsRoutePage]
-class TenantAdminSettingsRoute extends _i70.PageRouteInfo<void> {
-  const TenantAdminSettingsRoute({List<_i70.PageRouteInfo>? children})
+/// [_i51.TenantAdminSettingsRoutePage]
+class TenantAdminSettingsRoute extends _i72.PageRouteInfo<void> {
+  const TenantAdminSettingsRoute({List<_i72.PageRouteInfo>? children})
     : super(TenantAdminSettingsRoute.name, initialChildren: children);
 
   static const String name = 'TenantAdminSettingsRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
-      return const _i49.TenantAdminSettingsRoutePage();
+      return const _i51.TenantAdminSettingsRoutePage();
     },
   );
 }
 
 /// generated route for
-/// [_i50.TenantAdminSettingsTechnicalIntegrationsRoutePage]
+/// [_i52.TenantAdminSettingsTechnicalIntegrationsRoutePage]
 class TenantAdminSettingsTechnicalIntegrationsRoute
     extends
-        _i70.PageRouteInfo<TenantAdminSettingsTechnicalIntegrationsRouteArgs> {
+        _i72.PageRouteInfo<TenantAdminSettingsTechnicalIntegrationsRouteArgs> {
   TenantAdminSettingsTechnicalIntegrationsRoute({
-    _i71.Key? key,
-    _i78.TenantAdminSettingsIntegrationSection initialSection =
-        _i78.TenantAdminSettingsIntegrationSection.firebase,
-    List<_i70.PageRouteInfo>? children,
+    _i73.Key? key,
+    _i80.TenantAdminSettingsIntegrationSection initialSection =
+        _i80.TenantAdminSettingsIntegrationSection.firebase,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          TenantAdminSettingsTechnicalIntegrationsRoute.name,
          args: TenantAdminSettingsTechnicalIntegrationsRouteArgs(
@@ -2112,7 +2305,7 @@ class TenantAdminSettingsTechnicalIntegrationsRoute
 
   static const String name = 'TenantAdminSettingsTechnicalIntegrationsRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final args = data
@@ -2120,7 +2313,7 @@ class TenantAdminSettingsTechnicalIntegrationsRoute
             orElse: () =>
                 const TenantAdminSettingsTechnicalIntegrationsRouteArgs(),
           );
-      return _i50.TenantAdminSettingsTechnicalIntegrationsRoutePage(
+      return _i52.TenantAdminSettingsTechnicalIntegrationsRoutePage(
         key: args.key,
         initialSection: args.initialSection,
       );
@@ -2131,12 +2324,12 @@ class TenantAdminSettingsTechnicalIntegrationsRoute
 class TenantAdminSettingsTechnicalIntegrationsRouteArgs {
   const TenantAdminSettingsTechnicalIntegrationsRouteArgs({
     this.key,
-    this.initialSection = _i78.TenantAdminSettingsIntegrationSection.firebase,
+    this.initialSection = _i80.TenantAdminSettingsIntegrationSection.firebase,
   });
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
-  final _i78.TenantAdminSettingsIntegrationSection initialSection;
+  final _i80.TenantAdminSettingsIntegrationSection initialSection;
 
   @override
   String toString() {
@@ -2156,10 +2349,10 @@ class TenantAdminSettingsTechnicalIntegrationsRouteArgs {
 }
 
 /// generated route for
-/// [_i51.TenantAdminSettingsVisualIdentityRoutePage]
-class TenantAdminSettingsVisualIdentityRoute extends _i70.PageRouteInfo<void> {
+/// [_i53.TenantAdminSettingsVisualIdentityRoutePage]
+class TenantAdminSettingsVisualIdentityRoute extends _i72.PageRouteInfo<void> {
   const TenantAdminSettingsVisualIdentityRoute({
-    List<_i70.PageRouteInfo>? children,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          TenantAdminSettingsVisualIdentityRoute.name,
          initialChildren: children,
@@ -2167,54 +2360,54 @@ class TenantAdminSettingsVisualIdentityRoute extends _i70.PageRouteInfo<void> {
 
   static const String name = 'TenantAdminSettingsVisualIdentityRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
-      return const _i51.TenantAdminSettingsVisualIdentityRoutePage();
+      return const _i53.TenantAdminSettingsVisualIdentityRoutePage();
     },
   );
 }
 
 /// generated route for
-/// [_i52.TenantAdminShellRoutePage]
-class TenantAdminShellRoute extends _i70.PageRouteInfo<void> {
-  const TenantAdminShellRoute({List<_i70.PageRouteInfo>? children})
+/// [_i54.TenantAdminShellRoutePage]
+class TenantAdminShellRoute extends _i72.PageRouteInfo<void> {
+  const TenantAdminShellRoute({List<_i72.PageRouteInfo>? children})
     : super(TenantAdminShellRoute.name, initialChildren: children);
 
   static const String name = 'TenantAdminShellRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
-      return const _i52.TenantAdminShellRoutePage();
+      return const _i54.TenantAdminShellRoutePage();
     },
   );
 }
 
 /// generated route for
-/// [_i53.TenantAdminStaticAssetCreateRoutePage]
-class TenantAdminStaticAssetCreateRoute extends _i70.PageRouteInfo<void> {
-  const TenantAdminStaticAssetCreateRoute({List<_i70.PageRouteInfo>? children})
+/// [_i55.TenantAdminStaticAssetCreateRoutePage]
+class TenantAdminStaticAssetCreateRoute extends _i72.PageRouteInfo<void> {
+  const TenantAdminStaticAssetCreateRoute({List<_i72.PageRouteInfo>? children})
     : super(TenantAdminStaticAssetCreateRoute.name, initialChildren: children);
 
   static const String name = 'TenantAdminStaticAssetCreateRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
-      return const _i53.TenantAdminStaticAssetCreateRoutePage();
+      return const _i55.TenantAdminStaticAssetCreateRoutePage();
     },
   );
 }
 
 /// generated route for
-/// [_i54.TenantAdminStaticAssetDetailRoutePage]
+/// [_i56.TenantAdminStaticAssetDetailRoutePage]
 class TenantAdminStaticAssetDetailRoute
-    extends _i70.PageRouteInfo<TenantAdminStaticAssetDetailRouteArgs> {
+    extends _i72.PageRouteInfo<TenantAdminStaticAssetDetailRouteArgs> {
   TenantAdminStaticAssetDetailRoute({
-    _i71.Key? key,
+    _i73.Key? key,
     required String assetId,
-    List<_i70.PageRouteInfo>? children,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          TenantAdminStaticAssetDetailRoute.name,
          args: TenantAdminStaticAssetDetailRouteArgs(
@@ -2227,7 +2420,7 @@ class TenantAdminStaticAssetDetailRoute
 
   static const String name = 'TenantAdminStaticAssetDetailRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final pathParams = data.inheritedPathParams;
@@ -2236,7 +2429,7 @@ class TenantAdminStaticAssetDetailRoute
           assetId: pathParams.getString('assetId'),
         ),
       );
-      return _i54.TenantAdminStaticAssetDetailRoutePage(
+      return _i56.TenantAdminStaticAssetDetailRoutePage(
         key: args.key,
         assetId: args.assetId,
       );
@@ -2250,7 +2443,7 @@ class TenantAdminStaticAssetDetailRouteArgs {
     required this.assetId,
   });
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
   final String assetId;
 
@@ -2271,13 +2464,13 @@ class TenantAdminStaticAssetDetailRouteArgs {
 }
 
 /// generated route for
-/// [_i55.TenantAdminStaticAssetEditRoutePage]
+/// [_i57.TenantAdminStaticAssetEditRoutePage]
 class TenantAdminStaticAssetEditRoute
-    extends _i70.PageRouteInfo<TenantAdminStaticAssetEditRouteArgs> {
+    extends _i72.PageRouteInfo<TenantAdminStaticAssetEditRouteArgs> {
   TenantAdminStaticAssetEditRoute({
-    _i71.Key? key,
+    _i73.Key? key,
     required String assetId,
-    List<_i70.PageRouteInfo>? children,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          TenantAdminStaticAssetEditRoute.name,
          args: TenantAdminStaticAssetEditRouteArgs(key: key, assetId: assetId),
@@ -2287,7 +2480,7 @@ class TenantAdminStaticAssetEditRoute
 
   static const String name = 'TenantAdminStaticAssetEditRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final pathParams = data.inheritedPathParams;
@@ -2296,7 +2489,7 @@ class TenantAdminStaticAssetEditRoute
           assetId: pathParams.getString('assetId'),
         ),
       );
-      return _i55.TenantAdminStaticAssetEditRoutePage(
+      return _i57.TenantAdminStaticAssetEditRoutePage(
         key: args.key,
         assetId: args.assetId,
       );
@@ -2307,7 +2500,7 @@ class TenantAdminStaticAssetEditRoute
 class TenantAdminStaticAssetEditRouteArgs {
   const TenantAdminStaticAssetEditRouteArgs({this.key, required this.assetId});
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
   final String assetId;
 
@@ -2328,26 +2521,26 @@ class TenantAdminStaticAssetEditRouteArgs {
 }
 
 /// generated route for
-/// [_i56.TenantAdminStaticAssetsListRoutePage]
-class TenantAdminStaticAssetsListRoute extends _i70.PageRouteInfo<void> {
-  const TenantAdminStaticAssetsListRoute({List<_i70.PageRouteInfo>? children})
+/// [_i58.TenantAdminStaticAssetsListRoutePage]
+class TenantAdminStaticAssetsListRoute extends _i72.PageRouteInfo<void> {
+  const TenantAdminStaticAssetsListRoute({List<_i72.PageRouteInfo>? children})
     : super(TenantAdminStaticAssetsListRoute.name, initialChildren: children);
 
   static const String name = 'TenantAdminStaticAssetsListRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
-      return const _i56.TenantAdminStaticAssetsListRoutePage();
+      return const _i58.TenantAdminStaticAssetsListRoutePage();
     },
   );
 }
 
 /// generated route for
-/// [_i57.TenantAdminStaticProfileTypeCreateRoutePage]
-class TenantAdminStaticProfileTypeCreateRoute extends _i70.PageRouteInfo<void> {
+/// [_i59.TenantAdminStaticProfileTypeCreateRoutePage]
+class TenantAdminStaticProfileTypeCreateRoute extends _i72.PageRouteInfo<void> {
   const TenantAdminStaticProfileTypeCreateRoute({
-    List<_i70.PageRouteInfo>? children,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          TenantAdminStaticProfileTypeCreateRoute.name,
          initialChildren: children,
@@ -2355,22 +2548,22 @@ class TenantAdminStaticProfileTypeCreateRoute extends _i70.PageRouteInfo<void> {
 
   static const String name = 'TenantAdminStaticProfileTypeCreateRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
-      return const _i57.TenantAdminStaticProfileTypeCreateRoutePage();
+      return const _i59.TenantAdminStaticProfileTypeCreateRoutePage();
     },
   );
 }
 
 /// generated route for
-/// [_i58.TenantAdminStaticProfileTypeDetailRoutePage]
+/// [_i60.TenantAdminStaticProfileTypeDetailRoutePage]
 class TenantAdminStaticProfileTypeDetailRoute
-    extends _i70.PageRouteInfo<TenantAdminStaticProfileTypeDetailRouteArgs> {
+    extends _i72.PageRouteInfo<TenantAdminStaticProfileTypeDetailRouteArgs> {
   TenantAdminStaticProfileTypeDetailRoute({
-    _i71.Key? key,
+    _i73.Key? key,
     required String profileType,
-    List<_i70.PageRouteInfo>? children,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          TenantAdminStaticProfileTypeDetailRoute.name,
          args: TenantAdminStaticProfileTypeDetailRouteArgs(
@@ -2383,7 +2576,7 @@ class TenantAdminStaticProfileTypeDetailRoute
 
   static const String name = 'TenantAdminStaticProfileTypeDetailRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final pathParams = data.inheritedPathParams;
@@ -2392,7 +2585,7 @@ class TenantAdminStaticProfileTypeDetailRoute
           profileType: pathParams.getString('profileType'),
         ),
       );
-      return _i58.TenantAdminStaticProfileTypeDetailRoutePage(
+      return _i60.TenantAdminStaticProfileTypeDetailRoutePage(
         key: args.key,
         profileType: args.profileType,
       );
@@ -2406,7 +2599,7 @@ class TenantAdminStaticProfileTypeDetailRouteArgs {
     required this.profileType,
   });
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
   final String profileType;
 
@@ -2427,13 +2620,13 @@ class TenantAdminStaticProfileTypeDetailRouteArgs {
 }
 
 /// generated route for
-/// [_i59.TenantAdminStaticProfileTypeEditRoutePage]
+/// [_i61.TenantAdminStaticProfileTypeEditRoutePage]
 class TenantAdminStaticProfileTypeEditRoute
-    extends _i70.PageRouteInfo<TenantAdminStaticProfileTypeEditRouteArgs> {
+    extends _i72.PageRouteInfo<TenantAdminStaticProfileTypeEditRouteArgs> {
   TenantAdminStaticProfileTypeEditRoute({
-    _i71.Key? key,
+    _i73.Key? key,
     required String profileType,
-    List<_i70.PageRouteInfo>? children,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          TenantAdminStaticProfileTypeEditRoute.name,
          args: TenantAdminStaticProfileTypeEditRouteArgs(
@@ -2446,7 +2639,7 @@ class TenantAdminStaticProfileTypeEditRoute
 
   static const String name = 'TenantAdminStaticProfileTypeEditRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final pathParams = data.inheritedPathParams;
@@ -2455,7 +2648,7 @@ class TenantAdminStaticProfileTypeEditRoute
           profileType: pathParams.getString('profileType'),
         ),
       );
-      return _i59.TenantAdminStaticProfileTypeEditRoutePage(
+      return _i61.TenantAdminStaticProfileTypeEditRoutePage(
         key: args.key,
         profileType: args.profileType,
       );
@@ -2469,7 +2662,7 @@ class TenantAdminStaticProfileTypeEditRouteArgs {
     required this.profileType,
   });
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
   final String profileType;
 
@@ -2490,10 +2683,10 @@ class TenantAdminStaticProfileTypeEditRouteArgs {
 }
 
 /// generated route for
-/// [_i60.TenantAdminStaticProfileTypesListRoutePage]
-class TenantAdminStaticProfileTypesListRoute extends _i70.PageRouteInfo<void> {
+/// [_i62.TenantAdminStaticProfileTypesListRoutePage]
+class TenantAdminStaticProfileTypesListRoute extends _i72.PageRouteInfo<void> {
   const TenantAdminStaticProfileTypesListRoute({
-    List<_i70.PageRouteInfo>? children,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          TenantAdminStaticProfileTypesListRoute.name,
          initialChildren: children,
@@ -2501,54 +2694,54 @@ class TenantAdminStaticProfileTypesListRoute extends _i70.PageRouteInfo<void> {
 
   static const String name = 'TenantAdminStaticProfileTypesListRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
-      return const _i60.TenantAdminStaticProfileTypesListRoutePage();
+      return const _i62.TenantAdminStaticProfileTypesListRoutePage();
     },
   );
 }
 
 /// generated route for
-/// [_i61.TenantAdminTaxonomiesListRoutePage]
-class TenantAdminTaxonomiesListRoute extends _i70.PageRouteInfo<void> {
-  const TenantAdminTaxonomiesListRoute({List<_i70.PageRouteInfo>? children})
+/// [_i63.TenantAdminTaxonomiesListRoutePage]
+class TenantAdminTaxonomiesListRoute extends _i72.PageRouteInfo<void> {
+  const TenantAdminTaxonomiesListRoute({List<_i72.PageRouteInfo>? children})
     : super(TenantAdminTaxonomiesListRoute.name, initialChildren: children);
 
   static const String name = 'TenantAdminTaxonomiesListRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
-      return const _i61.TenantAdminTaxonomiesListRoutePage();
+      return const _i63.TenantAdminTaxonomiesListRoutePage();
     },
   );
 }
 
 /// generated route for
-/// [_i62.TenantAdminTaxonomyCreateRoutePage]
-class TenantAdminTaxonomyCreateRoute extends _i70.PageRouteInfo<void> {
-  const TenantAdminTaxonomyCreateRoute({List<_i70.PageRouteInfo>? children})
+/// [_i64.TenantAdminTaxonomyCreateRoutePage]
+class TenantAdminTaxonomyCreateRoute extends _i72.PageRouteInfo<void> {
+  const TenantAdminTaxonomyCreateRoute({List<_i72.PageRouteInfo>? children})
     : super(TenantAdminTaxonomyCreateRoute.name, initialChildren: children);
 
   static const String name = 'TenantAdminTaxonomyCreateRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
-      return const _i62.TenantAdminTaxonomyCreateRoutePage();
+      return const _i64.TenantAdminTaxonomyCreateRoutePage();
     },
   );
 }
 
 /// generated route for
-/// [_i63.TenantAdminTaxonomyEditRoutePage]
+/// [_i65.TenantAdminTaxonomyEditRoutePage]
 class TenantAdminTaxonomyEditRoute
-    extends _i70.PageRouteInfo<TenantAdminTaxonomyEditRouteArgs> {
+    extends _i72.PageRouteInfo<TenantAdminTaxonomyEditRouteArgs> {
   TenantAdminTaxonomyEditRoute({
-    _i71.Key? key,
+    _i73.Key? key,
     required String taxonomyId,
-    List<_i70.PageRouteInfo>? children,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          TenantAdminTaxonomyEditRoute.name,
          args: TenantAdminTaxonomyEditRouteArgs(
@@ -2561,7 +2754,7 @@ class TenantAdminTaxonomyEditRoute
 
   static const String name = 'TenantAdminTaxonomyEditRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final pathParams = data.inheritedPathParams;
@@ -2570,7 +2763,7 @@ class TenantAdminTaxonomyEditRoute
           taxonomyId: pathParams.getString('taxonomyId'),
         ),
       );
-      return _i63.TenantAdminTaxonomyEditRoutePage(
+      return _i65.TenantAdminTaxonomyEditRoutePage(
         key: args.key,
         taxonomyId: args.taxonomyId,
       );
@@ -2581,7 +2774,7 @@ class TenantAdminTaxonomyEditRoute
 class TenantAdminTaxonomyEditRouteArgs {
   const TenantAdminTaxonomyEditRouteArgs({this.key, required this.taxonomyId});
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
   final String taxonomyId;
 
@@ -2602,13 +2795,13 @@ class TenantAdminTaxonomyEditRouteArgs {
 }
 
 /// generated route for
-/// [_i64.TenantAdminTaxonomyTermCreateRoutePage]
+/// [_i66.TenantAdminTaxonomyTermCreateRoutePage]
 class TenantAdminTaxonomyTermCreateRoute
-    extends _i70.PageRouteInfo<TenantAdminTaxonomyTermCreateRouteArgs> {
+    extends _i72.PageRouteInfo<TenantAdminTaxonomyTermCreateRouteArgs> {
   TenantAdminTaxonomyTermCreateRoute({
-    _i71.Key? key,
+    _i73.Key? key,
     required String taxonomyId,
-    List<_i70.PageRouteInfo>? children,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          TenantAdminTaxonomyTermCreateRoute.name,
          args: TenantAdminTaxonomyTermCreateRouteArgs(
@@ -2621,7 +2814,7 @@ class TenantAdminTaxonomyTermCreateRoute
 
   static const String name = 'TenantAdminTaxonomyTermCreateRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final pathParams = data.inheritedPathParams;
@@ -2630,7 +2823,7 @@ class TenantAdminTaxonomyTermCreateRoute
           taxonomyId: pathParams.getString('taxonomyId'),
         ),
       );
-      return _i64.TenantAdminTaxonomyTermCreateRoutePage(
+      return _i66.TenantAdminTaxonomyTermCreateRoutePage(
         key: args.key,
         taxonomyId: args.taxonomyId,
       );
@@ -2644,7 +2837,7 @@ class TenantAdminTaxonomyTermCreateRouteArgs {
     required this.taxonomyId,
   });
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
   final String taxonomyId;
 
@@ -2665,14 +2858,14 @@ class TenantAdminTaxonomyTermCreateRouteArgs {
 }
 
 /// generated route for
-/// [_i65.TenantAdminTaxonomyTermDetailRoutePage]
+/// [_i67.TenantAdminTaxonomyTermDetailRoutePage]
 class TenantAdminTaxonomyTermDetailRoute
-    extends _i70.PageRouteInfo<TenantAdminTaxonomyTermDetailRouteArgs> {
+    extends _i72.PageRouteInfo<TenantAdminTaxonomyTermDetailRouteArgs> {
   TenantAdminTaxonomyTermDetailRoute({
-    _i71.Key? key,
+    _i73.Key? key,
     required String taxonomyId,
     required String termId,
-    List<_i70.PageRouteInfo>? children,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          TenantAdminTaxonomyTermDetailRoute.name,
          args: TenantAdminTaxonomyTermDetailRouteArgs(
@@ -2686,7 +2879,7 @@ class TenantAdminTaxonomyTermDetailRoute
 
   static const String name = 'TenantAdminTaxonomyTermDetailRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final pathParams = data.inheritedPathParams;
@@ -2696,7 +2889,7 @@ class TenantAdminTaxonomyTermDetailRoute
           termId: pathParams.getString('termId'),
         ),
       );
-      return _i65.TenantAdminTaxonomyTermDetailRoutePage(
+      return _i67.TenantAdminTaxonomyTermDetailRoutePage(
         key: args.key,
         taxonomyId: args.taxonomyId,
         termId: args.termId,
@@ -2712,7 +2905,7 @@ class TenantAdminTaxonomyTermDetailRouteArgs {
     required this.termId,
   });
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
   final String taxonomyId;
 
@@ -2737,14 +2930,14 @@ class TenantAdminTaxonomyTermDetailRouteArgs {
 }
 
 /// generated route for
-/// [_i66.TenantAdminTaxonomyTermEditRoutePage]
+/// [_i68.TenantAdminTaxonomyTermEditRoutePage]
 class TenantAdminTaxonomyTermEditRoute
-    extends _i70.PageRouteInfo<TenantAdminTaxonomyTermEditRouteArgs> {
+    extends _i72.PageRouteInfo<TenantAdminTaxonomyTermEditRouteArgs> {
   TenantAdminTaxonomyTermEditRoute({
-    _i71.Key? key,
+    _i73.Key? key,
     required String taxonomyId,
     required String termId,
-    List<_i70.PageRouteInfo>? children,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          TenantAdminTaxonomyTermEditRoute.name,
          args: TenantAdminTaxonomyTermEditRouteArgs(
@@ -2758,7 +2951,7 @@ class TenantAdminTaxonomyTermEditRoute
 
   static const String name = 'TenantAdminTaxonomyTermEditRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final pathParams = data.inheritedPathParams;
@@ -2768,7 +2961,7 @@ class TenantAdminTaxonomyTermEditRoute
           termId: pathParams.getString('termId'),
         ),
       );
-      return _i66.TenantAdminTaxonomyTermEditRoutePage(
+      return _i68.TenantAdminTaxonomyTermEditRoutePage(
         key: args.key,
         taxonomyId: args.taxonomyId,
         termId: args.termId,
@@ -2784,7 +2977,7 @@ class TenantAdminTaxonomyTermEditRouteArgs {
     required this.termId,
   });
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
   final String taxonomyId;
 
@@ -2809,13 +3002,13 @@ class TenantAdminTaxonomyTermEditRouteArgs {
 }
 
 /// generated route for
-/// [_i67.TenantAdminTaxonomyTermsRoutePage]
+/// [_i69.TenantAdminTaxonomyTermsRoutePage]
 class TenantAdminTaxonomyTermsRoute
-    extends _i70.PageRouteInfo<TenantAdminTaxonomyTermsRouteArgs> {
+    extends _i72.PageRouteInfo<TenantAdminTaxonomyTermsRouteArgs> {
   TenantAdminTaxonomyTermsRoute({
-    _i71.Key? key,
+    _i73.Key? key,
     required String taxonomyId,
-    List<_i70.PageRouteInfo>? children,
+    List<_i72.PageRouteInfo>? children,
   }) : super(
          TenantAdminTaxonomyTermsRoute.name,
          args: TenantAdminTaxonomyTermsRouteArgs(
@@ -2828,7 +3021,7 @@ class TenantAdminTaxonomyTermsRoute
 
   static const String name = 'TenantAdminTaxonomyTermsRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
       final pathParams = data.inheritedPathParams;
@@ -2837,7 +3030,7 @@ class TenantAdminTaxonomyTermsRoute
           taxonomyId: pathParams.getString('taxonomyId'),
         ),
       );
-      return _i67.TenantAdminTaxonomyTermsRoutePage(
+      return _i69.TenantAdminTaxonomyTermsRoutePage(
         key: args.key,
         taxonomyId: args.taxonomyId,
       );
@@ -2848,7 +3041,7 @@ class TenantAdminTaxonomyTermsRoute
 class TenantAdminTaxonomyTermsRouteArgs {
   const TenantAdminTaxonomyTermsRouteArgs({this.key, required this.taxonomyId});
 
-  final _i71.Key? key;
+  final _i73.Key? key;
 
   final String taxonomyId;
 
@@ -2869,33 +3062,33 @@ class TenantAdminTaxonomyTermsRouteArgs {
 }
 
 /// generated route for
-/// [_i68.TenantHomeRoutePage]
-class TenantHomeRoute extends _i70.PageRouteInfo<void> {
-  const TenantHomeRoute({List<_i70.PageRouteInfo>? children})
+/// [_i70.TenantHomeRoutePage]
+class TenantHomeRoute extends _i72.PageRouteInfo<void> {
+  const TenantHomeRoute({List<_i72.PageRouteInfo>? children})
     : super(TenantHomeRoute.name, initialChildren: children);
 
   static const String name = 'TenantHomeRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
-      return const _i68.TenantHomeRoutePage();
+      return const _i70.TenantHomeRoutePage();
     },
   );
 }
 
 /// generated route for
-/// [_i69.TenantPrivacyPolicyRoutePage]
-class TenantPrivacyPolicyRoute extends _i70.PageRouteInfo<void> {
-  const TenantPrivacyPolicyRoute({List<_i70.PageRouteInfo>? children})
+/// [_i71.TenantPrivacyPolicyRoutePage]
+class TenantPrivacyPolicyRoute extends _i72.PageRouteInfo<void> {
+  const TenantPrivacyPolicyRoute({List<_i72.PageRouteInfo>? children})
     : super(TenantPrivacyPolicyRoute.name, initialChildren: children);
 
   static const String name = 'TenantPrivacyPolicyRoute';
 
-  static _i70.PageInfo page = _i70.PageInfo(
+  static _i72.PageInfo page = _i72.PageInfo(
     name,
     builder: (data) {
-      return const _i69.TenantPrivacyPolicyRoutePage();
+      return const _i71.TenantPrivacyPolicyRoutePage();
     },
   );
 }

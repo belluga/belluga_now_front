@@ -10,18 +10,18 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dar
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/models/tenant_admin_event_form_validation_config.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/widgets/tenant_admin_account_profile_location_picker_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/widgets/tenant_admin_event_occurrence_editor_sheet.dart';
+import 'package:belluga_now/presentation/tenant_admin/events/screens/tenant_admin_event_occurrence_group_members_screen.dart';
+import 'package:belluga_now/presentation/tenant_admin/events/widgets/tenant_admin_event_profile_groups_summary_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/widgets/tenant_admin_programming_item_card.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
@@ -31,7 +31,6 @@ import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admi
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_source_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_upload_field.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_confirmation_dialog.dart';
-import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_nested_profile_groups_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_xfile_preview.dart';
 import 'package:flutter/material.dart';
@@ -190,10 +189,7 @@ class _TenantAdminEventFormScreenState
               ),
               if (formState.occurrences.length <= 1) ...[
                 const SizedBox(height: 16),
-                _buildRelatedAccountProfilesSection(
-                  viewModel.relatedAccountProfiles,
-                  formState: formState,
-                ),
+                _buildRelatedAccountProfilesSection(formState: formState),
               ],
               if (formState.occurrences.length <= 1) ...[
                 const SizedBox(height: 16),
@@ -215,8 +211,6 @@ class _TenantAdminEventFormScreenState
                 onPressed: viewModel.isSubmitting
                     ? null
                     : () => _handleSubmit(
-                        relatedAccountProfiles:
-                            viewModel.relatedAccountProfiles,
                         venues: viewModel.venues,
                         eventTypes: viewModel.eventTypes,
                         formState: formState,
@@ -552,6 +546,7 @@ class _TenantAdminEventFormScreenState
       controller: _controller,
       occurrenceKey: occurrenceKey,
       title: 'Editar ocorrência principal',
+      eventId: widget.existingEvent?.eventId,
       venues: venues,
       pickDateTime: _pickDateTime,
       pickRelatedAccountProfile: _pickRelatedAccountProfile,
@@ -599,7 +594,10 @@ class _TenantAdminEventFormScreenState
   }) {
     final theme = Theme.of(context);
     final end = occurrence.dateTimeEnd;
-    final relatedCount = occurrence.relatedAccountProfileIds.length;
+    final relatedCount = occurrence.profileGroups.fold<int>(
+      0,
+      (total, group) => total + group.memberCount,
+    );
     final programmingCount = occurrence.programmingCount;
     return Card(
       key: Key('tenantAdminEventOccurrenceCard_$index'),
@@ -889,8 +887,7 @@ class _TenantAdminEventFormScreenState
         );
   }
 
-  Widget _buildRelatedAccountProfilesSection(
-    List<TenantAdminAccountProfile> relatedAccountProfiles, {
+  Widget _buildRelatedAccountProfilesSection({
     required TenantAdminEventFormState formState,
   }) {
     final groups = formState.occurrences.length == 1
@@ -902,59 +899,20 @@ class _TenantAdminEventFormScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          StreamValueBuilder<List<TenantAdminProfileTypeDefinition>>(
-            streamValue: _controller.relatedAccountProfileTypesStreamValue,
-            builder: (context, profileTypes) => StreamValueBuilder<String?>(
-              streamValue:
-                  _controller.relatedAccountProfileSelectedTypeStreamValue,
-              builder: (context, selectedProfileType) =>
-                  TenantAdminNestedProfileGroupsEditor(
-                    keyPrefix: 'EventProfile',
-                    title: 'Abas de perfis relacionados',
-                    selectorTitle: 'Perfis',
-                    emptyCandidatesText: 'Nenhum perfil disponivel.',
-                    emptySelectionText: 'Selecionar perfis',
-                    selectedCountLabel: 'perfil(is) selecionado(s)',
-                    searchLabelText: 'Buscar perfil',
-                    emptySearchText: 'Nenhum perfil encontrado.',
-                    groups: groups,
-                    candidatesStreamValue:
-                        _controller.relatedAccountProfileCandidatesStreamValue,
-                    onSearchChanged: (query) => unawaited(
-                      _controller
-                          .searchRelatedAccountProfileCandidatesForNestedGroups(
-                            query,
-                          ),
-                    ),
-                    onOpenPicker: () =>
-                        _controller.prepareRelatedAccountProfilePicker(
-                          accountSlug: widget.accountSlugForOwnCreate,
-                        ),
-                    onLoadMore: _controller
-                        .loadNextRelatedAccountProfileCandidatesForNestedGroups,
-                    searchLoadingStreamValue: _controller
-                        .relatedAccountProfileSearchLoadingStreamValue,
-                    searchPageLoadingStreamValue: _controller
-                        .relatedAccountProfileSearchPageLoadingStreamValue,
-                    searchHasMoreStreamValue: _controller
-                        .relatedAccountProfileSearchHasMoreStreamValue,
-                    profileTypes: profileTypes,
-                    selectedProfileType: selectedProfileType,
-                    onProfileTypeChanged: _controller
-                        .filterRelatedAccountProfileCandidatesByProfileType,
-                    addButtonKey: const Key('TenantAdminEventProfileGroupAdd'),
-                    onAddGroup: _controller.addEventProfileGroup,
-                    onRenameGroup: _controller.renameEventProfileGroup,
-                    onMoveGroup: _controller.moveEventProfileGroup,
-                    onRemoveGroup: _controller.removeEventProfileGroup,
-                    onSelectionChanged: (groupId, profileId, selected) =>
-                        _controller.toggleEventProfileGroupMember(
-                          groupId: groupId,
-                          profileId: profileId,
-                          selected: selected,
-                        ),
-                  ),
-            ),
+          TenantAdminEventProfileGroupsSummaryEditor(
+            keyPrefix: 'EventProfile',
+            title: 'Abas de perfis relacionados',
+            groups: groups,
+            addButtonKey: const Key('TenantAdminEventProfileGroupAdd'),
+            onAddGroup: _controller.addEventProfileGroup,
+            onRenameGroup: _controller.renameEventProfileGroup,
+            onMoveGroup: _controller.moveEventProfileGroup,
+            onRemoveGroup: _controller.removeEventProfileGroup,
+            onManageGroup: _openPrimaryOccurrenceGroupMembers,
+            manageBlockedReasonBuilder: (_) =>
+                _controller.occurrenceRelatedProfilesManageBlockedReason(
+                  formState.occurrences.firstOrNull?.occurrenceId,
+                ),
           ),
           const SizedBox(height: 12),
           FormValidationGroupError(
@@ -993,6 +951,7 @@ class _TenantAdminEventFormScreenState
         context: context,
         controller: _controller,
         occurrenceKey: resolvedOccurrenceKey,
+        eventId: widget.existingEvent?.eventId,
         venues: venues,
         pickRelatedAccountProfile: _pickRelatedAccountProfile,
         closeModalSheet: _closeModalSheet,
@@ -1012,6 +971,7 @@ class _TenantAdminEventFormScreenState
         context: context,
         controller: _controller,
         occurrenceKey: resolvedOccurrenceKey,
+        eventId: widget.existingEvent?.eventId,
         venues: venues,
         pickRelatedAccountProfile: _pickRelatedAccountProfile,
         closeModalSheet: _closeModalSheet,
@@ -1284,6 +1244,7 @@ class _TenantAdminEventFormScreenState
       controller: _controller,
       occurrenceKey: occurrenceKey,
       title: index == null ? 'Adicionar data' : 'Editar data',
+      eventId: widget.existingEvent?.eventId,
       venues: venues,
       pickDateTime: _pickDateTime,
       pickRelatedAccountProfile: _pickRelatedAccountProfile,
@@ -1316,10 +1277,6 @@ class _TenantAdminEventFormScreenState
             TenantAdminEventOccurrence(
               dateTimeStartValue: tenantAdminDateTime(startAt),
               dateTimeEndValue: tenantAdminOptionalDateTime(endAt),
-              relatedAccountProfileIdValues: formState
-                  .selectedRelatedAccountProfileIds
-                  .map(TenantAdminAccountProfileIdValue.new)
-                  .toList(growable: false),
               profileGroups: formState.profileGroups,
             ),
           ]
@@ -1340,8 +1297,6 @@ class _TenantAdminEventFormScreenState
                   ? null
                   : TimezoneConverter.localToUtc(occurrence.dateTimeEnd!),
             ),
-            relatedAccountProfileIdValues: occurrence.relatedAccountProfileIds,
-            relatedAccountProfiles: occurrence.relatedAccountProfiles,
             profileGroups: occurrence.profileGroups,
             programmingItems: occurrence.programmingItems,
             taxonomyTerms: occurrence.taxonomyTerms,
@@ -1418,6 +1373,29 @@ class _TenantAdminEventFormScreenState
         accountSlug: widget.accountSlugForOwnCreate,
       );
     });
+  }
+
+  Future<void> _openPrimaryOccurrenceGroupMembers(
+    TenantAdminNestedProfileGroup group,
+  ) async {
+    final existingEvent = widget.existingEvent;
+    final primaryOccurrence =
+        _controller.eventFormStateStreamValue.value.occurrences.firstOrNull;
+    final occurrenceId = primaryOccurrence?.occurrenceId?.trim();
+    final occurrenceKey = _controller.primaryOccurrenceKey();
+    if (existingEvent == null ||
+        occurrenceId == null ||
+        occurrenceId.isEmpty ||
+        occurrenceKey == null) {
+      return;
+    }
+    await openTenantAdminEventOccurrenceGroupMembersScreen(
+      context: context,
+      eventId: existingEvent.eventId,
+      occurrenceId: occurrenceId,
+      occurrenceKey: occurrenceKey,
+      group: group,
+    );
   }
 
   Future<TenantAdminAccountProfile?> _pickRelatedAccountProfile({
@@ -1816,7 +1794,6 @@ class _TenantAdminEventFormScreenState
   }
 
   Future<void> _handleSubmit({
-    required List<TenantAdminAccountProfile> relatedAccountProfiles,
     required List<TenantAdminAccountProfile> venues,
     required List<TenantAdminEventType> eventTypes,
     required TenantAdminEventFormState formState,
@@ -1890,17 +1867,6 @@ class _TenantAdminEventFormScreenState
       venues,
       formState.selectedVenueId,
     );
-    final knownRelatedAccountProfilesById = <String, TenantAdminAccountProfile>{
-      for (final profile
-          in widget.existingEvent?.relatedAccountProfiles ?? const [])
-        profile.id: profile,
-      for (final profile in relatedAccountProfiles) profile.id: profile,
-    };
-    final selectedRelatedAccountProfiles = formState
-        .selectedRelatedAccountProfileIds
-        .map((profileId) => knownRelatedAccountProfilesById[profileId])
-        .whereType<TenantAdminAccountProfile>()
-        .toList(growable: false);
 
     final taxonomyTerms = <TenantAdminTaxonomyTerm>[];
     final allowedTaxonomySlugs =
@@ -1974,11 +1940,6 @@ class _TenantAdminEventFormScreenState
         placeRef: placeRef,
         coverUpload: coverUpload,
         removeCoverValue: tenantAdminFlag(removeCover),
-        relatedAccountProfileIdValues: formState
-            .selectedRelatedAccountProfileIds
-            .map(TenantAdminAccountProfileIdValue.new)
-            .toList(growable: false),
-        relatedAccountProfiles: selectedRelatedAccountProfiles,
         profileGroups: _rootProfileGroupsForSubmit(occurrencesForSubmit),
         taxonomyTerms: (() {
           final terms = TenantAdminTaxonomyTerms();
@@ -2090,7 +2051,6 @@ class _TenantAdminEventFormViewModel {
     required this.venues,
     required this.partyCandidatesLoading,
     required this.partyCandidatesError,
-    required this.relatedAccountProfiles,
     required this.eventTypes,
     required this.taxonomies,
     required this.termsBySlug,
@@ -2107,7 +2067,6 @@ class _TenantAdminEventFormViewModel {
   final List<TenantAdminAccountProfile> venues;
   final bool partyCandidatesLoading;
   final String? partyCandidatesError;
-  final List<TenantAdminAccountProfile> relatedAccountProfiles;
   final List<TenantAdminEventType> eventTypes;
   final List<TenantAdminTaxonomyDefinition> taxonomies;
   final Map<String, List<TenantAdminTaxonomyTermDefinition>> termsBySlug;
@@ -2154,103 +2113,91 @@ class _TenantAdminEventFormStateScope extends StatelessWidget {
                               .accountProfileCandidatesErrorStreamValue,
                           builder: (context, partyCandidatesError) {
                             return StreamValueBuilder<
-                              List<TenantAdminAccountProfile>
+                              List<TenantAdminEventType>
                             >(
-                              streamValue: controller
-                                  .relatedAccountProfileCandidatesStreamValue,
-                              builder: (context, relatedAccountProfiles) {
+                              streamValue:
+                                  controller.eventTypeCatalogStreamValue,
+                              builder: (context, eventTypes) {
                                 return StreamValueBuilder<
-                                  List<TenantAdminEventType>
+                                  List<TenantAdminTaxonomyDefinition>
                                 >(
-                                  streamValue:
-                                      controller.eventTypeCatalogStreamValue,
-                                  builder: (context, eventTypes) {
-                                    return StreamValueBuilder<
-                                      List<TenantAdminTaxonomyDefinition>
-                                    >(
+                                  streamValue: controller.taxonomiesStreamValue,
+                                  builder: (context, taxonomies) {
+                                    return StreamValueBuilder<bool>(
                                       streamValue:
-                                          controller.taxonomiesStreamValue,
-                                      builder: (context, taxonomies) {
-                                        return StreamValueBuilder<bool>(
+                                          controller.taxonomyLoadingStreamValue,
+                                      builder: (context, taxonomyLoading) {
+                                        return StreamValueBuilder<String?>(
                                           streamValue: controller
-                                              .taxonomyLoadingStreamValue,
-                                          builder: (context, taxonomyLoading) {
-                                            return StreamValueBuilder<String?>(
+                                              .taxonomyErrorStreamValue,
+                                          builder: (context, taxonomyError) {
+                                            return StreamValueBuilder<
+                                              Map<
+                                                String,
+                                                List<
+                                                  TenantAdminTaxonomyTermDefinition
+                                                >
+                                              >
+                                            >(
                                               streamValue: controller
-                                                  .taxonomyErrorStreamValue,
-                                              builder: (context, taxonomyError) {
+                                                  .taxonomyTermsBySlugStreamValue,
+                                              builder: (context, termsBySlug) {
                                                 return StreamValueBuilder<
-                                                  Map<
-                                                    String,
-                                                    List<
-                                                      TenantAdminTaxonomyTermDefinition
-                                                    >
-                                                  >
+                                                  XFile?
                                                 >(
                                                   streamValue: controller
-                                                      .taxonomyTermsBySlugStreamValue,
-                                                  builder: (context, termsBySlug) {
+                                                      .eventCoverFileStreamValue,
+                                                  builder: (context, selectedCover) {
                                                     return StreamValueBuilder<
-                                                      XFile?
+                                                      bool
                                                     >(
                                                       streamValue: controller
-                                                          .eventCoverFileStreamValue,
-                                                      builder: (context, selectedCover) {
+                                                          .eventCoverBusyStreamValue,
+                                                      builder: (context, isCoverBusy) {
                                                         return StreamValueBuilder<
                                                           bool
                                                         >(
                                                           streamValue: controller
-                                                              .eventCoverBusyStreamValue,
-                                                          builder: (context, isCoverBusy) {
-                                                            return StreamValueBuilder<
-                                                              bool
-                                                            >(
-                                                              streamValue:
-                                                                  controller
-                                                                      .eventCoverRemoveStreamValue,
-                                                              builder:
-                                                                  (
-                                                                    context,
-                                                                    isCoverMarkedForRemoval,
-                                                                  ) {
-                                                                    return builder(
-                                                                      context,
-                                                                      _TenantAdminEventFormViewModel(
-                                                                        formState:
-                                                                            formState,
-                                                                        submitError:
-                                                                            submitError,
-                                                                        isSubmitting:
-                                                                            isSubmitting,
-                                                                        venues:
-                                                                            venues,
-                                                                        partyCandidatesLoading:
-                                                                            partyCandidatesLoading,
-                                                                        partyCandidatesError:
-                                                                            partyCandidatesError,
-                                                                        relatedAccountProfiles:
-                                                                            relatedAccountProfiles,
-                                                                        eventTypes:
-                                                                            eventTypes,
-                                                                        taxonomies:
-                                                                            taxonomies,
-                                                                        termsBySlug:
-                                                                            termsBySlug,
-                                                                        taxonomyLoading:
-                                                                            taxonomyLoading,
-                                                                        taxonomyError:
-                                                                            taxonomyError,
-                                                                        selectedCover:
-                                                                            selectedCover,
-                                                                        isCoverBusy:
-                                                                            isCoverBusy,
-                                                                        isCoverMarkedForRemoval:
-                                                                            isCoverMarkedForRemoval,
-                                                                      ),
-                                                                    );
-                                                                  },
-                                                            );
-                                                          },
+                                                              .eventCoverRemoveStreamValue,
+                                                          builder:
+                                                              (
+                                                                context,
+                                                                isCoverMarkedForRemoval,
+                                                              ) {
+                                                                return builder(
+                                                                  context,
+                                                                  _TenantAdminEventFormViewModel(
+                                                                    formState:
+                                                                        formState,
+                                                                    submitError:
+                                                                        submitError,
+                                                                    isSubmitting:
+                                                                        isSubmitting,
+                                                                    venues:
+                                                                        venues,
+                                                                    partyCandidatesLoading:
+                                                                        partyCandidatesLoading,
+                                                                    partyCandidatesError:
+                                                                        partyCandidatesError,
+                                                                    eventTypes:
+                                                                        eventTypes,
+                                                                    taxonomies:
+                                                                        taxonomies,
+                                                                    termsBySlug:
+                                                                        termsBySlug,
+                                                                    taxonomyLoading:
+                                                                        taxonomyLoading,
+                                                                    taxonomyError:
+                                                                        taxonomyError,
+                                                                    selectedCover:
+                                                                        selectedCover,
+                                                                    isCoverBusy:
+                                                                        isCoverBusy,
+                                                                    isCoverMarkedForRemoval:
+                                                                        isCoverMarkedForRemoval,
+                                                                  ),
+                                                                );
+                                                              },
                                                         );
                                                       },
                                                     );
