@@ -132,6 +132,8 @@ class EventSelectedOccurrenceProjection {
       dateTimeStart: selectedOccurrence.dateTimeStartValue,
       dateTimeEnd: _dateTimeEndForSelectedOccurrence(selectedOccurrence),
       linkedAccountProfiles: effectiveLinkedAccountProfiles,
+      counterpartPreviewProfiles: event.counterpartPreviewProfiles,
+      counterpartCountValue: event.counterpartCountValue,
       profileGroups: effectiveProfileGroups,
       occurrences: updatedOccurrences,
       programmingItems: preservesCurrentSelectedProgramming

@@ -28,6 +28,7 @@ import 'package:belluga_now/domain/schedule/event_profile_group.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_counterpart_count_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_profile_group_order_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
@@ -804,8 +805,18 @@ void main() {
   test(
     'selected occurrence projection can retarget an unselected event payload without refetching',
     () {
+      final counterpartPreview = [
+        _buildLinkedProfile(
+          id: 'counterpart-band',
+          displayName: 'Banda Central',
+          profileType: 'artist',
+          slug: 'banda-central',
+        ),
+      ];
       final event = _buildEvent(
         tags: const ['Feira'],
+        counterpartPreviewProfiles: counterpartPreview,
+        counterpartCount: 3,
         occurrences: [
           _buildOccurrence(
             id: 'occurrence-first',
@@ -838,6 +849,9 @@ void main() {
         'Headliner',
       ]);
       expect(projected.tags.map((tag) => tag.value), ['Show']);
+      expect(projected.heroCounterpartProfiles, hasLength(1));
+      expect(projected.heroCounterpartProfiles.first.displayName, 'Banda Central');
+      expect(projected.counterpartCount, 3);
     },
   );
 
@@ -1313,6 +1327,9 @@ EventModel _buildEvent({
   List<EventProfileGroup> profileGroups = const [],
   List<EventLinkedAccountProfile> linkedAccountProfiles =
       const <EventLinkedAccountProfile>[],
+  List<EventLinkedAccountProfile> counterpartPreviewProfiles =
+      const <EventLinkedAccountProfile>[],
+  int? counterpartCount,
   List<EventProgrammingItem> programmingItems = const <EventProgrammingItem>[],
   List<String> tags = const <String>['show'],
 }) {
@@ -1351,8 +1368,11 @@ EventModel _buildEvent({
     dateTimeStart: DateTimeValue(isRequired: true)
       ..parse(DateTime(2026, 3, 15, 20).toIso8601String()),
     dateTimeEnd: null,
-    artists: const [],
     linkedAccountProfiles: linkedAccountProfiles,
+    counterpartPreviewProfiles: counterpartPreviewProfiles,
+    counterpartCountValue: counterpartCount == null
+        ? null
+        : (EventCounterpartCountValue()..parse(counterpartCount.toString())),
     profileGroups: profileGroups,
     occurrences: resolvedOccurrences,
     programmingItems: programmingItems,

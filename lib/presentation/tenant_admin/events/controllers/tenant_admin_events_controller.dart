@@ -5,9 +5,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
 import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/application/tenant_admin/discovery_filters/tenant_admin_taxonomies_sequential_batch_terms_repository.dart';
 import 'package:belluga_now/application/tenant_admin/events/tenant_admin_event_account_profile_candidates_page_loader.dart';
+import 'package:belluga_now/application/tenant_admin/events/tenant_admin_event_occurrence_group_members_page_loader.dart';
 import 'package:belluga_form_validation/belluga_form_validation.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
@@ -15,11 +17,14 @@ import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_c
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate_selection_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_mutation_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_page.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
@@ -52,6 +57,8 @@ class TenantAdminEventsController implements Disposable {
     TenantAdminTenantScopeContract? tenantScope,
     LandlordAuthRepositoryContract? landlordAuthRepository,
     TenantAdminImageIngestionService? imageIngestionService,
+    TenantAdminEventOccurrenceGroupMembersPageLoader?
+    occurrenceGroupMembersPageLoader,
   }) : _eventsRepository =
            eventsRepository ??
            GetIt.I.get<TenantAdminEventsRepositoryContract>(),
@@ -90,7 +97,14 @@ class TenantAdminEventsController implements Disposable {
            imageIngestionService ??
            (GetIt.I.isRegistered<TenantAdminImageIngestionService>()
                ? GetIt.I.get<TenantAdminImageIngestionService>()
-               : TenantAdminImageIngestionService()) {
+               : TenantAdminImageIngestionService()),
+       _occurrenceGroupMembersPageLoader =
+           occurrenceGroupMembersPageLoader ??
+           TenantAdminEventOccurrenceGroupMembersPageLoader(
+             eventsRepository:
+                 eventsRepository ??
+                 GetIt.I.get<TenantAdminEventsRepositoryContract>(),
+           ) {
     _bindTenantScope();
     _bindRepositoryStreams();
     _bindAccountProfilePickerScroll();
@@ -109,6 +123,8 @@ class TenantAdminEventsController implements Disposable {
   final TenantAdminTenantScopeContract? _tenantScope;
   final LandlordAuthRepositoryContract? _landlordAuthRepository;
   final TenantAdminImageIngestionService _imageIngestionService;
+  final TenantAdminEventOccurrenceGroupMembersPageLoader
+  _occurrenceGroupMembersPageLoader;
 
   static TenantAdminTaxonomiesScopedLookupRepositoryContract?
   _resolveTaxonomiesScopedLookupRepository({
@@ -337,6 +353,7 @@ class TenantAdminEventsController implements Disposable {
   bool _submitInFlight = false;
   bool _isFetchingAccountProfilePickerPage = false;
   bool _hasPendingAccountProfilePickerReload = false;
+  bool _pendingInitialRichContentBaselineRefresh = false;
   StreamSubscription<String?>? _tenantScopeSubscription;
   StreamSubscription<TenantAdminEventsRepoBool>? _hasMoreEventsSubscription;
   StreamSubscription<TenantAdminEventsRepoBool>?
@@ -455,6 +472,22 @@ class TenantAdminEventsController implements Disposable {
   bool get isEventFormDirty {
     final baseline = _eventFormInitialFingerprint;
     return baseline != null && baseline != _eventFormFingerprint();
+  }
+
+  bool canManageOccurrenceRelatedProfiles(String? occurrenceId) {
+    final normalizedOccurrenceId = occurrenceId?.trim();
+    if (normalizedOccurrenceId == null || normalizedOccurrenceId.isEmpty) {
+      return false;
+    }
+    return true;
+  }
+
+  String occurrenceRelatedProfilesManageBlockedReason(String? occurrenceId) {
+    final normalizedOccurrenceId = occurrenceId?.trim();
+    if (normalizedOccurrenceId == null || normalizedOccurrenceId.isEmpty) {
+      return 'Salve o evento para gerenciar perfis desta ocorrência.';
+    }
+    return '';
   }
 
   void markEventFormClean() {
@@ -600,7 +633,7 @@ class TenantAdminEventsController implements Disposable {
     _eventTypeTaxonomyFallbackAllowedSlugs = Set<String>.unmodifiable(
       fallbackAllowedSlugs,
     );
-    final localOccurrences = _hydrateLegacySingleOccurrenceOccurrences(
+    final localOccurrences = _hydrateSingleOccurrenceProfileGroups(
       existingEvent: existingEvent,
       occurrences:
           existingEvent?.occurrences
@@ -618,23 +651,11 @@ class TenantAdminEventsController implements Disposable {
     }
     final firstOccurrence = localOccurrences.firstOrNull;
     final profileGroups =
-        existingEvent?.profileGroups ?? const <TenantAdminNestedProfileGroup>[];
-    final selectedRelatedAccountProfileIds = () {
-      if (localOccurrences.length == 1 &&
-          localOccurrences.first.profileGroups.isNotEmpty) {
-        return TenantAdminNestedProfileGroupOperations.memberIds(
-          localOccurrences.first.profileGroups,
-        );
-      }
-      if (profileGroups.isNotEmpty) {
-        return TenantAdminNestedProfileGroupOperations.memberIds(profileGroups);
-      }
-      return [
-        ...?existingEvent?.eventParties
-            .where((party) => party.partyType != 'venue')
-            .map((party) => party.partyRefId),
-      ];
-    }();
+        localOccurrences.length == 1 &&
+            localOccurrences.first.profileGroups.isNotEmpty
+        ? localOccurrences.first.profileGroups
+        : existingEvent?.profileGroups ??
+              const <TenantAdminNestedProfileGroup>[];
     final nextState = _mirrorSingleOccurrenceEventProfileGroups(
       TenantAdminEventFormState(
         startAt: firstOccurrence?.dateTimeStart == null
@@ -652,7 +673,7 @@ class TenantAdminEventsController implements Disposable {
         publicationStatus: existingEvent?.publication.status ?? 'draft',
         selectedVenue: _selectedVenueCandidateFromEvent(existingEvent),
         selectedTypeSlug: existingEvent?.type.slug.trim(),
-        selectedRelatedAccountProfileIds: selectedRelatedAccountProfileIds,
+        selectedRelatedAccountProfileIds: const <String>[],
         profileGroups: profileGroups,
         occurrences: List<TenantAdminEventOccurrence>.unmodifiable(
           localOccurrences,
@@ -667,19 +688,20 @@ class TenantAdminEventsController implements Disposable {
     );
 
     eventTitleController.text = existingEvent?.title ?? '';
-    eventContentController.text = existingEvent?.content ?? '';
+    eventContentController.text = SafeRichHtml.canonicalize(
+      existingEvent?.content ?? '',
+    );
     eventOnlineUrlController.text = existingEvent?.location?.online?.url ?? '';
     eventOnlinePlatformController.text =
         existingEvent?.location?.online?.platform ?? '';
     eventCoverFileStreamValue.addValue(null);
     eventCoverBusyStreamValue.addValue(false);
     eventCoverRemoveStreamValue.addValue(false);
-    relatedAccountProfileCandidatesStreamValue.addValue(
-      List.unmodifiable(_knownRelatedProfilesFromEvent(existingEvent)),
-    );
+    relatedAccountProfileCandidatesStreamValue.addValue(const []);
     _replaceEventFormState(nextState);
     _syncEventDateTimeControllers(nextState);
     markEventFormClean();
+    _pendingInitialRichContentBaselineRefresh = existingEvent != null;
   }
 
   Future<XFile?> pickImageFromDevice({required TenantAdminImageSlot slot}) {
@@ -879,21 +901,6 @@ class TenantAdminEventsController implements Disposable {
         ),
       ),
     );
-  }
-
-  void toggleEventProfileGroupMember({
-    required String groupId,
-    required String profileId,
-    required bool selected,
-  }) {
-    final current = eventFormStateStreamValue.value;
-    final nextGroups = TenantAdminNestedProfileGroupOperations.toggleMember(
-      _eventLevelProfileGroups(current),
-      groupId: groupId,
-      profileId: profileId,
-      selected: selected,
-    );
-    _applyEventProfileGroups(nextGroups);
   }
 
   void reorderRelatedAccountProfile({
@@ -1252,32 +1259,112 @@ class TenantAdminEventsController implements Disposable {
     );
   }
 
-  void addOccurrenceRelatedProfileToGroup({
+  Future<TenantAdminNestedGroupMemberPage>
+  fetchOccurrenceProfileGroupMembersPage({
+    required String eventId,
+    required String occurrenceId,
+    required String groupId,
+    String? cursor,
+  }) {
+    return _occurrenceGroupMembersPageLoader.loadPage(
+      eventId: eventId,
+      occurrenceId: occurrenceId,
+      groupId: groupId,
+      cursor: cursor,
+    );
+  }
+
+  Future<List<TenantAdminAccountProfileSelectionSummary>>
+  fetchAllOccurrenceProfileGroupMembers({
+    required String eventId,
+    required String occurrenceId,
+    required String groupId,
+  }) {
+    return _eventsRepository.fetchAllOccurrenceProfileGroupMembers(
+      eventId: _toEventsText(eventId),
+      occurrenceId: _toEventsText(occurrenceId),
+      groupId: _toEventsText(groupId),
+    );
+  }
+
+  Future<List<TenantAdminAccountProfile>>
+  fetchOccurrenceRelatedProfilesForProgramming({
+    required String eventId,
+    required String occurrenceId,
+    required List<TenantAdminNestedProfileGroup> profileGroups,
+  }) async {
+    final profilesById = <String, TenantAdminAccountProfile>{};
+    final orderedGroups = profileGroups.toList(growable: false)
+      ..sort((left, right) => left.order.compareTo(right.order));
+
+    for (final group in orderedGroups) {
+      final members = await fetchAllOccurrenceProfileGroupMembers(
+        eventId: eventId,
+        occurrenceId: occurrenceId,
+        groupId: group.id,
+      );
+      for (final member in members) {
+        profilesById.putIfAbsent(
+          member.id,
+          () => tenantAdminAccountProfileFromRaw(
+            id: member.id,
+            accountId: member.id,
+            profileType: 'account_profile',
+            displayName: (member.displayName?.trim().isNotEmpty ?? false)
+                ? member.displayName!.trim()
+                : member.id,
+          ),
+        );
+      }
+    }
+
+    return List<TenantAdminAccountProfile>.unmodifiable(profilesById.values);
+  }
+
+  Future<TenantAdminNestedGroupMemberMutationResult>
+  addOccurrenceProfileGroupMembers({
+    required String eventId,
+    required String occurrenceId,
     required String occurrenceKey,
     required String groupId,
-    required TenantAdminAccountProfile profile,
-  }) {
-    _replaceOccurrenceByKey(occurrenceKey, (occurrence) {
-      if (!occurrence.profileGroups.any((group) => group.id == groupId)) {
-        submitErrorMessageStreamValue.addValue('Grupo da ocorrência inválido.');
-        return occurrence;
-      }
-      final knownProfiles =
-          occurrence.relatedAccountProfiles
-              .where((entry) => entry.id != profile.id)
-              .toList(growable: true)
-            ..add(profile);
-      final nextGroups = TenantAdminNestedProfileGroupOperations.toggleMember(
-        occurrence.profileGroups,
-        groupId: groupId,
-        profileId: profile.id,
-        selected: true,
-      );
-      return _applyOccurrenceProfileGroups(
-        _copyOccurrence(occurrence, relatedAccountProfiles: knownProfiles),
-        nextGroups,
-      );
-    }, sort: false);
+    required List<String> addIds,
+  }) async {
+    final result = await _eventsRepository.patchOccurrenceProfileGroupMembers(
+      eventId: _toEventsText(eventId),
+      occurrenceId: _toEventsText(occurrenceId),
+      groupId: _toEventsText(groupId),
+      addIds: addIds.map(_toEventsText).toList(growable: false),
+    );
+    _syncOccurrenceProfileGroupMembers(
+      occurrenceKey: occurrenceKey,
+      groupId: groupId,
+      memberCount: result.memberCount,
+      addIds: addIds,
+    );
+    return result;
+  }
+
+  Future<TenantAdminNestedGroupMemberMutationResult>
+  removeOccurrenceProfileGroupMembers({
+    required String eventId,
+    required String occurrenceId,
+    required String occurrenceKey,
+    required String groupId,
+    required List<String> removeIds,
+  }) async {
+    final result = await _eventsRepository.patchOccurrenceProfileGroupMembers(
+      eventId: _toEventsText(eventId),
+      occurrenceId: _toEventsText(occurrenceId),
+      groupId: _toEventsText(groupId),
+      removeIds: removeIds.map(_toEventsText).toList(growable: false),
+    );
+    _syncOccurrenceProfileGroupMembers(
+      occurrenceKey: occurrenceKey,
+      groupId: groupId,
+      memberCount: result.memberCount,
+      removeIds: removeIds,
+    );
+    return result;
   }
 
   void removeOccurrenceRelatedProfile(String occurrenceKey, String profileId) {
@@ -1298,33 +1385,144 @@ class TenantAdminEventsController implements Disposable {
     }, sort: false);
   }
 
+  void _syncOccurrenceProfileGroupMembers({
+    required String occurrenceKey,
+    required String groupId,
+    required int memberCount,
+    List<String> addIds = const [],
+    List<String> removeIds = const [],
+  }) {
+    _replaceOccurrenceByKey(occurrenceKey, (occurrence) {
+      final currentGroup = _occurrenceProfileGroupById(occurrence, groupId);
+      final nextGroupMemberIds = _applyOccurrenceProfileGroupMemberDelta(
+        currentGroup?.accountProfileIdValues.map((entry) => entry.value) ??
+            const <String>[],
+        addIds: addIds,
+        removeIds: removeIds,
+      );
+      final nextGroups = TenantAdminNestedProfileGroupOperations.replaceMembers(
+        occurrence.profileGroups,
+        groupId: groupId,
+        profileIds: nextGroupMemberIds,
+        memberCount: memberCount,
+      );
+      final allowedProfileIds =
+          TenantAdminNestedProfileGroupOperations.memberIds(nextGroups);
+      final allowedProfileIdSet = allowedProfileIds.toSet();
+      return _copyOccurrence(
+        occurrence,
+        profileGroups: nextGroups,
+        relatedAccountProfileIds: allowedProfileIds
+            .map(TenantAdminAccountProfileIdValue.new)
+            .toList(growable: false),
+        relatedAccountProfiles: _knownOccurrenceRelatedProfiles(
+          occurrence,
+          allowedProfileIds,
+        ),
+        programmingItems: occurrence.programmingItems
+            .map(
+              (item) => _withoutProgrammingProfilesOutsideAllowedSet(
+                item,
+                allowedProfileIdSet,
+              ),
+            )
+            .toList(growable: false),
+      );
+    }, sort: false);
+  }
+
+  TenantAdminNestedProfileGroup? _occurrenceProfileGroupById(
+    TenantAdminEventOccurrence occurrence,
+    String groupId,
+  ) {
+    for (final group in occurrence.profileGroups) {
+      if (group.id == groupId) {
+        return group;
+      }
+    }
+    return null;
+  }
+
+  List<String> _applyOccurrenceProfileGroupMemberDelta(
+    Iterable<String> currentIds, {
+    Iterable<String> addIds = const <String>[],
+    Iterable<String> removeIds = const <String>[],
+  }) {
+    final next = <String>[];
+    for (final rawId in currentIds) {
+      final normalized = rawId.trim();
+      if (normalized.isEmpty || next.contains(normalized)) {
+        continue;
+      }
+      next.add(normalized);
+    }
+    for (final rawId in removeIds) {
+      final normalized = rawId.trim();
+      if (normalized.isEmpty) {
+        continue;
+      }
+      next.removeWhere((entry) => entry == normalized);
+    }
+    for (final rawId in addIds) {
+      final normalized = rawId.trim();
+      if (normalized.isEmpty || next.contains(normalized)) {
+        continue;
+      }
+      next.add(normalized);
+    }
+    return List<String>.unmodifiable(next);
+  }
+
+  List<TenantAdminAccountProfile> _knownOccurrenceRelatedProfiles(
+    TenantAdminEventOccurrence occurrence,
+    List<String> allowedProfileIds,
+  ) {
+    final knownProfiles =
+        _mergeAccountProfiles(occurrence.relatedAccountProfiles, [
+          ...relatedAccountProfileCandidatesStreamValue.value,
+          for (final item in occurrence.programmingItems)
+            ...item.linkedAccountProfiles,
+        ]);
+    final byId = <String, TenantAdminAccountProfile>{
+      for (final profile in knownProfiles) profile.id: profile,
+    };
+    return List<TenantAdminAccountProfile>.unmodifiable([
+      for (final profileId in allowedProfileIds)
+        if (byId.containsKey(profileId)) byId[profileId]!,
+    ]);
+  }
+
+  TenantAdminEventProgrammingItem _withoutProgrammingProfilesOutsideAllowedSet(
+    TenantAdminEventProgrammingItem item,
+    Set<String> allowedProfileIds,
+  ) {
+    return TenantAdminEventProgrammingItem(
+      timeValue: tenantAdminOptionalText(item.time),
+      endTimeValue: tenantAdminOptionalText(item.endTime),
+      titleValue: tenantAdminOptionalText(item.title),
+      accountProfileIdValues: item.accountProfileIds
+          .where((entry) => allowedProfileIds.contains(entry.value))
+          .toList(growable: false),
+      linkedAccountProfiles: item.linkedAccountProfiles
+          .where((profile) => allowedProfileIds.contains(profile.id))
+          .toList(growable: false),
+      locationProfile: item.locationProfile,
+      placeRef: item.placeRef,
+    );
+  }
+
   void addOccurrenceProfileGroup(String occurrenceKey) {
     _replaceOccurrenceByKey(occurrenceKey, (occurrence) {
       if (occurrence.profileGroups.length >= 12) {
         submitErrorMessageStreamValue.addValue('Limite de grupos atingido.');
         return occurrence;
       }
-      final appendedGroups = TenantAdminNestedProfileGroupOperations.append(
-        occurrence.profileGroups,
+      return _copyOccurrence(
+        occurrence,
+        profileGroups: TenantAdminNestedProfileGroupOperations.append(
+          occurrence.profileGroups,
+        ),
       );
-      final seededGroups =
-          occurrence.profileGroups.isEmpty &&
-              occurrence.relatedAccountProfileIds.isNotEmpty &&
-              appendedGroups.isNotEmpty
-          ? [
-              appendedGroups.first.copyWith(
-                accountProfileIdValues: occurrence.relatedAccountProfileIds
-                    .map(
-                      (profileId) => TenantAdminNestedProfileGroupTextValue(
-                        profileId.value,
-                      ),
-                    )
-                    .toList(growable: false),
-              ),
-              ...appendedGroups.skip(1),
-            ]
-          : appendedGroups;
-      return _applyOccurrenceProfileGroups(occurrence, seededGroups);
     }, sort: false);
   }
 
@@ -1353,9 +1551,9 @@ class TenantAdminEventsController implements Disposable {
   }) {
     _replaceOccurrenceByKey(
       occurrenceKey,
-      (occurrence) => _applyOccurrenceProfileGroups(
+      (occurrence) => _copyOccurrence(
         occurrence,
-        TenantAdminNestedProfileGroupOperations.remove(
+        profileGroups: TenantAdminNestedProfileGroupOperations.remove(
           occurrence.profileGroups,
           groupId: groupId,
         ),
@@ -1381,23 +1579,6 @@ class TenantAdminEventsController implements Disposable {
       ),
       sort: false,
     );
-  }
-
-  void toggleOccurrenceProfileGroupMember({
-    required String occurrenceKey,
-    required String groupId,
-    required String profileId,
-    required bool selected,
-  }) {
-    _replaceOccurrenceByKey(occurrenceKey, (occurrence) {
-      final nextGroups = TenantAdminNestedProfileGroupOperations.toggleMember(
-        occurrence.profileGroups,
-        groupId: groupId,
-        profileId: profileId,
-        selected: selected,
-      );
-      return _applyOccurrenceProfileGroups(occurrence, nextGroups);
-    }, sort: false);
   }
 
   void addOccurrenceProgrammingItem(
@@ -3286,6 +3467,7 @@ class TenantAdminEventsController implements Disposable {
     accountProfilePickerSearchController.clear();
     accountProfileCandidatesLoadingStreamValue.addValue(false);
     accountProfileCandidatesErrorStreamValue.addValue(null);
+    _pendingInitialRichContentBaselineRefresh = false;
     clearEventValidation();
     eventCoverFileStreamValue.addValue(null);
     eventCoverBusyStreamValue.addValue(false);
@@ -3343,40 +3525,22 @@ class TenantAdminEventsController implements Disposable {
     TenantAdminEventFormState current,
     List<TenantAdminNestedProfileGroup> profileGroups,
   ) {
-    final selectedRelatedAccountProfileIds =
-        TenantAdminNestedProfileGroupOperations.memberIds(profileGroups);
-    var nextState = current.copyWith(
-      profileGroups: profileGroups,
-      selectedRelatedAccountProfileIds: selectedRelatedAccountProfileIds,
-    );
+    var nextState = current.copyWith(profileGroups: profileGroups);
     if (current.occurrences.length != 1) {
       return nextState;
     }
 
     final occurrences = current.occurrences.toList(growable: true);
-    final nextPrimary = _applyOccurrenceProfileGroups(
+    final nextPrimary = _copyOccurrence(
       occurrences.first,
-      profileGroups,
+      profileGroups: profileGroups,
     );
     occurrences[0] = nextPrimary;
     final occurrenceKeys = _normalizedOccurrenceKeys(current);
-    final itemKeysByOccurrenceKey =
-        _normalizedProgrammingItemKeysByOccurrenceKey(current);
-    final primaryOccurrenceKey = occurrenceKeys.firstOrNull;
-    if (primaryOccurrenceKey != null) {
-      itemKeysByOccurrenceKey[primaryOccurrenceKey] =
-          _reconcileProgrammingItemKeys(
-            currentKeys: itemKeysByOccurrenceKey[primaryOccurrenceKey],
-            items: nextPrimary.programmingItems,
-          );
-    }
 
     nextState = nextState.copyWith(
       occurrences: List<TenantAdminEventOccurrence>.unmodifiable(occurrences),
       occurrenceLocalIds: List<String>.unmodifiable(occurrenceKeys),
-      programmingItemLocalIdsByOccurrenceKey: Map.unmodifiable(
-        itemKeysByOccurrenceKey,
-      ),
     );
     return nextState;
   }
@@ -3419,7 +3583,7 @@ class TenantAdminEventsController implements Disposable {
     );
   }
 
-  List<TenantAdminEventOccurrence> _hydrateLegacySingleOccurrenceOccurrences({
+  List<TenantAdminEventOccurrence> _hydrateSingleOccurrenceProfileGroups({
     required TenantAdminEvent? existingEvent,
     required List<TenantAdminEventOccurrence> occurrences,
   }) {
@@ -3428,35 +3592,16 @@ class TenantAdminEventsController implements Disposable {
     }
 
     final firstOccurrence = occurrences.first;
-    final relatedAccountProfileIds =
-        firstOccurrence.relatedAccountProfileIds.isNotEmpty
-        ? firstOccurrence.relatedAccountProfileIds
-        : existingEvent.relatedAccountProfileIds;
-    final relatedAccountProfiles =
-        firstOccurrence.relatedAccountProfiles.isNotEmpty
-        ? firstOccurrence.relatedAccountProfiles
-        : existingEvent.relatedAccountProfiles;
     final profileGroups = firstOccurrence.profileGroups.isNotEmpty
         ? firstOccurrence.profileGroups
         : existingEvent.profileGroups;
 
-    final requiresHydration =
-        relatedAccountProfileIds.length !=
-            firstOccurrence.relatedAccountProfileIds.length ||
-        relatedAccountProfiles.length !=
-            firstOccurrence.relatedAccountProfiles.length ||
-        profileGroups.length != firstOccurrence.profileGroups.length;
-    if (!requiresHydration) {
+    if (profileGroups.length == firstOccurrence.profileGroups.length) {
       return occurrences;
     }
 
     return <TenantAdminEventOccurrence>[
-      _copyOccurrence(
-        firstOccurrence,
-        relatedAccountProfileIds: relatedAccountProfileIds,
-        relatedAccountProfiles: relatedAccountProfiles,
-        profileGroups: profileGroups,
-      ),
+      _copyOccurrence(firstOccurrence, profileGroups: profileGroups),
     ];
   }
 
@@ -3495,9 +3640,9 @@ class TenantAdminEventsController implements Disposable {
         programmingItems == null &&
         current.profileGroups.isNotEmpty;
     if (shouldSeedEventLevelProfileGroups) {
-      nextPrimary = _applyOccurrenceProfileGroups(
+      nextPrimary = _copyOccurrence(
         nextPrimary,
-        current.profileGroups,
+        profileGroups: current.profileGroups,
       );
     }
     final next = current.occurrences.toList(growable: true);
@@ -3610,87 +3755,6 @@ class TenantAdminEventsController implements Disposable {
       programmingItems: programmingItems ?? occurrence.programmingItems,
       taxonomyTerms: taxonomyTerms ?? occurrence.taxonomyTerms,
     );
-  }
-
-  TenantAdminEventOccurrence _applyOccurrenceProfileGroups(
-    TenantAdminEventOccurrence occurrence,
-    List<TenantAdminNestedProfileGroup> profileGroups,
-  ) {
-    final profileIds = TenantAdminNestedProfileGroupOperations.memberIds(
-      profileGroups,
-    );
-    return _copyOccurrence(
-      occurrence,
-      relatedAccountProfileIds: profileIds
-          .map(TenantAdminAccountProfileIdValue.new)
-          .toList(),
-      relatedAccountProfiles: _knownProfilesForIds(
-        profileIds,
-        occurrence.relatedAccountProfiles,
-      ),
-      profileGroups: profileGroups,
-      programmingItems: _filterProgrammingItemsByProfileIds(
-        occurrence.programmingItems,
-        profileIds,
-      ),
-    );
-  }
-
-  List<TenantAdminAccountProfile> _knownProfilesForIds(
-    List<String> profileIds,
-    List<TenantAdminAccountProfile> currentProfiles,
-  ) {
-    final candidatesById = <String, TenantAdminAccountProfile>{
-      for (final profile in currentProfiles) profile.id: profile,
-      for (final profile in relatedAccountProfileCandidatesStreamValue.value)
-        profile.id: profile,
-      for (final event in eventsStreamValue.value ?? const <TenantAdminEvent>[])
-        for (final profile in event.relatedAccountProfiles) profile.id: profile,
-    };
-    return profileIds
-        .map((profileId) => candidatesById[profileId])
-        .whereType<TenantAdminAccountProfile>()
-        .toList(growable: false);
-  }
-
-  List<TenantAdminAccountProfile> _knownRelatedProfilesFromEvent(
-    TenantAdminEvent? event,
-  ) {
-    if (event == null) {
-      return const <TenantAdminAccountProfile>[];
-    }
-
-    return _mergeAccountProfiles(event.relatedAccountProfiles, [
-      for (final occurrence in event.occurrences)
-        ...occurrence.relatedAccountProfiles,
-      for (final occurrence in event.occurrences)
-        for (final item in occurrence.programmingItems)
-          ...item.linkedAccountProfiles,
-    ]);
-  }
-
-  List<TenantAdminEventProgrammingItem> _filterProgrammingItemsByProfileIds(
-    List<TenantAdminEventProgrammingItem> items,
-    List<String> allowedProfileIds,
-  ) {
-    final allowed = allowedProfileIds.toSet();
-    return items
-        .map(
-          (item) => TenantAdminEventProgrammingItem(
-            timeValue: tenantAdminOptionalText(item.time),
-            endTimeValue: tenantAdminOptionalText(item.endTime),
-            titleValue: tenantAdminOptionalText(item.title),
-            accountProfileIdValues: item.accountProfileIds
-                .where((entry) => allowed.contains(entry.value))
-                .toList(growable: false),
-            linkedAccountProfiles: item.linkedAccountProfiles
-                .where((profile) => allowed.contains(profile.id))
-                .toList(growable: false),
-            locationProfile: item.locationProfile,
-            placeRef: item.placeRef,
-          ),
-        )
-        .toList(growable: false);
   }
 
   int _occurrenceIndexByKey(
@@ -3816,7 +3880,7 @@ class TenantAdminEventsController implements Disposable {
   String _eventFormFingerprint() {
     return jsonEncode(<String, Object?>{
       'title': eventTitleController.text,
-      'content': eventContentController.text,
+      'content': SafeRichHtml.canonicalize(eventContentController.text),
       'startText': eventStartController.text,
       'endText': eventEndController.text,
       'publishText': eventPublishAtController.text,
@@ -3853,7 +3917,6 @@ class TenantAdminEventsController implements Disposable {
           _occurrenceFingerprint(occurrence),
       ],
       'taxonomyTerms': _taxonomyTermsFingerprint(state.selectedTaxonomyTerms),
-      'hasHydratedDefaultVenue': state.hasHydratedDefaultVenue,
     };
   }
 
@@ -4340,6 +4403,12 @@ extension on TenantAdminEventsController {
       return;
     }
     _eventValidationListenersBound = true;
+    eventContentController.addListener(() {
+      if (_pendingInitialRichContentBaselineRefresh) {
+        _pendingInitialRichContentBaselineRefresh = false;
+        markEventFormClean();
+      }
+    });
     eventTitleController.addListener(() {
       clearEventFieldValidation(TenantAdminEventFormValidationTargets.title);
     });

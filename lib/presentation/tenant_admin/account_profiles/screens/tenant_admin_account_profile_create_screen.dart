@@ -23,7 +23,7 @@ import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admi
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_upload_field.dart';
-import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_nested_profile_groups_editor.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_profile_groups_summary_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_xfile_preview.dart';
 import 'package:flutter/foundation.dart';
@@ -63,7 +63,6 @@ class _TenantAdminAccountProfileCreateScreenState
     );
     _controller.loadTaxonomies();
     _controller.loadAccountForCreate(_currentAccountSlugForRequests());
-    _controller.loadNestedProfileCandidates();
   }
 
   bool _isResolvedSlug(String? value) {
@@ -466,33 +465,10 @@ class _TenantAdminAccountProfileCreateScreenState
                           ],
                           if (hasNestedProfileGroups) ...[
                             const SizedBox(height: 16),
-                            TenantAdminNestedProfileGroupsEditor(
+                            TenantAdminProfileGroupsSummaryEditor(
                               keyPrefix: 'tenantAdminCreate',
                               groups: state.nestedProfileGroups,
-                              candidatesStreamValue: _controller
-                                  .nestedProfileCandidatesStreamValue,
-                              profileTypes: _controller
-                                  .profileTypesStreamValue
-                                  .value
-                                  .where(
-                                    (profileType) =>
-                                        profileType.capabilities.isQueryable,
-                                  )
-                                  .toList(growable: false),
-                              onSearchChanged:
-                                  _controller.searchNestedProfileCandidates,
-                              onProfileTypeChanged: _controller
-                                  .filterNestedProfileCandidatesByProfileType,
-                              onLoadMore: _controller
-                                  .loadNextNestedProfileCandidatesPage,
-                              searchLoadingStreamValue: _controller
-                                  .nestedProfileSearchLoadingStreamValue,
-                              searchPageLoadingStreamValue: _controller
-                                  .nestedProfileSearchPageLoadingStreamValue,
-                              searchHasMoreStreamValue: _controller
-                                  .nestedProfileSearchHasMoreStreamValue,
-                              onOpenPicker: () =>
-                                  _controller.loadNestedProfileCandidates(),
+                              title: 'Abas de contas vinculadas',
                               addButtonKey: const Key(
                                 'tenantAdminCreateAddNestedGroupButton',
                               ),
@@ -504,15 +480,8 @@ class _TenantAdminAccountProfileCreateScreenState
                                   _controller.moveCreateNestedProfileGroup,
                               onRemoveGroup:
                                   _controller.removeCreateNestedProfileGroup,
-                              onSelectionChanged:
-                                  (groupId, profileId, selected) {
-                                    _controller
-                                        .toggleCreateNestedProfileGroupMember(
-                                          groupId: groupId,
-                                          profileId: profileId,
-                                          selected: selected,
-                                        );
-                                  },
+                              manageBlockedReasonBuilder: (_) =>
+                                  'Salve o perfil antes de gerenciar os perfis vinculados.',
                             ),
                           ],
                           const SizedBox(height: 24),

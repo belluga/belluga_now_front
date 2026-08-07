@@ -54,8 +54,8 @@ void main() {
   test('decodeRequiredInviteDto tolerates missing event image url', () {
     final dto = decoder.decodeRequiredInviteDto(
       _buildInvitePayload()
-        ..['event_image_url'] = ''
-        ..['linked_account_profiles'] = [
+        ..['hero_image_url'] = ''
+        ..['counterpart_preview'] = [
           {
             'id': 'venue-1',
             'display_name': 'Promotion Smoke Perfil Público',
@@ -149,7 +149,7 @@ Map<String, dynamic> _buildInvitePayload({
     'occurrence_id': occurrenceId,
     'event_name': 'Invite Event',
     'event_date': '2099-01-01T20:00:00Z',
-    'event_image_url': 'https://example.com/event.png',
+    'hero_image_url': 'https://example.com/event.png',
     'location': 'Guarapari',
     'host_name': 'Belluga',
     'message': 'Bora?',
@@ -161,7 +161,7 @@ Map<String, dynamic> _buildInvitePayload({
         'label': 'Music',
       },
     ],
-    'linked_account_profiles': [
+    'counterpart_preview': [
       {
         'id': 'venue-1',
         'display_name': 'Promotion Smoke Perfil Público',

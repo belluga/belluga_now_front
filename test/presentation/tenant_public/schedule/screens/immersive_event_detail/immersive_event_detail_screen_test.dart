@@ -2299,7 +2299,7 @@ void main() {
         'content': '',
         'location': 'Guarapari',
         'date_time_start': '2026-03-03T10:00:00+00:00',
-        'linked_account_profiles': [
+        'counterpart_preview': [
           {
             'id': 'artist-relative',
             'display_name': 'Perfil relativo',
@@ -2311,6 +2311,7 @@ void main() {
             'cover_url': 'account-profiles/artist-relative/cover?v=12',
           },
         ],
+        'counterpart_count': 1,
         'profile_groups': [
           {
             'id': 'artists',
@@ -2323,7 +2324,7 @@ void main() {
         ],
       });
       final event = dto.toDomain();
-      expect(event.linkedAccountProfiles.single.coverUrl, expectedCoverUrl);
+      expect(event.counterpartProfiles.single.coverUrl, expectedCoverUrl);
       expect(event.profileGroups.single.profiles, isEmpty);
 
       final userEventsRepository = _FakeUserEventsRepository();
@@ -2427,7 +2428,7 @@ void main() {
         'content': '',
         'location': 'Guarapari',
         'date_time_start': '2026-03-03T10:00:00+00:00',
-        'linked_account_profiles': [
+        'counterpart_preview': [
           {
             'id': 'artist-relative',
             'display_name': 'Perfil relativo',
@@ -2439,6 +2440,7 @@ void main() {
             'cover_url': 'account-profiles/artist-relative/cover?v=22',
           },
         ],
+        'counterpart_count': 1,
         'profile_groups': [
           {
             'id': 'artists',
@@ -2553,7 +2555,7 @@ void main() {
         'content': '',
         'location': 'Guarapari',
         'date_time_start': '2026-03-03T10:00:00+00:00',
-        'linked_account_profiles': [
+        'counterpart_preview': [
           {
             'id': 'artist-relative',
             'display_name': 'Perfil relativo',
@@ -2565,6 +2567,7 @@ void main() {
             'cover_url': 'account-profiles/artist-relative/cover?v=32',
           },
         ],
+        'counterpart_count': 1,
         'profile_groups': [
           {
             'id': 'artists',
@@ -5885,16 +5888,10 @@ void main() {
   );
 
   testWidgets(
-    'event detail route entry should surface selected-occurrence relative media on counterpart chip when occurrence query is present',
+    'event detail route entry keeps backend-owned counterpart preview media when occurrence query is present',
     (tester) async {
       GetIt.I.registerSingleton<AppData>(_buildAppData());
-      final tenantOrigin = GetIt.I.get<AppData>().mainDomainValue.value;
       const staleAvatarUrl = 'https://tenant.test/stale-avatar.png';
-      const relativeOccurrenceAvatarPath =
-          '/api/v1/media/account-profiles/artist-relative/avatar?v=44';
-      final expectedFreshAvatarUrl = tenantOrigin
-          .resolve(relativeOccurrenceAvatarPath)
-          .toString();
       const routePage = ImmersiveEventDetailRoutePage(
         eventSlug: 'evento-linked-profile-occurrence-media',
         occurrenceId: 'occ-2',
@@ -5902,7 +5899,6 @@ void main() {
       final routeEntryEvent = _buildOccurrenceMediaRegressionEvent(
         selectedOccurrenceId: 'occ-1',
         rootAvatarUrl: staleAvatarUrl,
-        selectedOccurrenceOwnAvatarUrl: relativeOccurrenceAvatarPath,
       );
 
       final userEventsRepository = _FakeUserEventsRepository();
@@ -5957,13 +5953,13 @@ void main() {
         ),
       );
 
-      expect(avatarImage.url, expectedFreshAvatarUrl);
+      expect(avatarImage.url, staleAvatarUrl);
       expect(_takeAllExceptions(tester), isEmpty);
     },
   );
 
   testWidgets(
-    'event detail should keep fresher selected-occurrence counterpart media after a warm occurrence switch even when only media changes',
+    'event detail should replace stale warm counterpart preview media when a fresher backend-owned preview arrives',
     (tester) async {
       GetIt.I.registerSingleton<AppData>(_buildAppData());
       final tenantOrigin = GetIt.I.get<AppData>().mainDomainValue.value;
@@ -5989,7 +5985,6 @@ void main() {
       final staleWarmEvent = _buildOccurrenceMediaRegressionEvent(
         selectedOccurrenceId: 'occ-1',
         rootAvatarUrl: staleAvatarUrl,
-        selectedOccurrenceOwnAvatarUrl: staleAvatarUrl,
       );
       controller.init(staleWarmEvent);
       controller.selectOccurrence(
@@ -6012,7 +6007,6 @@ void main() {
       final freshResolvedEvent = _buildOccurrenceMediaRegressionEvent(
         selectedOccurrenceId: 'occ-2',
         rootAvatarUrl: relativeFreshAvatarPath,
-        selectedOccurrenceOwnAvatarUrl: relativeFreshAvatarPath,
       );
 
       await tester.pumpWidget(
@@ -7319,7 +7313,6 @@ ThumbUriValue? _thumbUriValueOrNull(String? rawUrl) {
 EventModel _buildOccurrenceMediaRegressionEvent({
   required String selectedOccurrenceId,
   required String rootAvatarUrl,
-  required String selectedOccurrenceOwnAvatarUrl,
 }) {
   final dto = EventDTO.fromJson({
     'event_id': '507f1f77bcf86cd799439255',
@@ -7334,7 +7327,7 @@ EventModel _buildOccurrenceMediaRegressionEvent({
     'content': '',
     'location': 'Guarapari',
     'date_time_start': '2026-03-03T10:00:00+00:00',
-    'linked_account_profiles': [
+    'counterpart_preview': [
       {
         'id': 'artist-relative',
         'display_name': 'Perfil relativo',
@@ -7344,6 +7337,7 @@ EventModel _buildOccurrenceMediaRegressionEvent({
         'avatar_url': rootAvatarUrl,
       },
     ],
+    'counterpart_count': 1,
     'profile_groups': [
       {
         'id': 'artists',
@@ -7370,16 +7364,6 @@ EventModel _buildOccurrenceMediaRegressionEvent({
         'occurrence_id': 'occ-2',
         'date_time_start': '2026-03-04T10:00:00+00:00',
         'is_selected': selectedOccurrenceId == 'occ-2',
-        'own_linked_account_profiles': [
-          {
-            'id': 'artist-relative',
-            'display_name': 'Perfil relativo',
-            'profile_type': 'artist',
-            'slug': 'perfil-relativo',
-            'public_detail_path': '/parceiro/perfil-relativo',
-            'avatar_url': selectedOccurrenceOwnAvatarUrl,
-          },
-        ],
         'profile_groups': [
           {
             'id': 'artists',
@@ -7437,9 +7421,10 @@ EventModel _buildEvent({
         ? null
         : (DateTimeValue(isRequired: true)
             ..parse(endDateTime.toIso8601String())),
-    artists: const [],
     linkedAccountProfiles: linkedProfiles,
-    counterpartPreviewProfiles: counterpartPreviewProfiles,
+    counterpartPreviewProfiles: counterpartPreviewProfiles.isNotEmpty
+        ? counterpartPreviewProfiles
+        : linkedProfiles,
     counterpartCountValue: counterpartCount == null
         ? null
         : EventCounterpartCountValue(counterpartCount),

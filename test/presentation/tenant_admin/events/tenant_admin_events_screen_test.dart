@@ -388,7 +388,7 @@ void main() {
   );
 
   testWidgets(
-    'screen renders events from backend payload when related account profiles are summarized',
+    'screen renders events from backend payload without requiring legacy related-profile summaries',
     (tester) async {
       final dio = Dio()
         ..httpClientAdapter = _EventsScreenSummarizedRelatedProfilesAdapter();
@@ -414,7 +414,7 @@ void main() {
 
       expect(find.text('Summarized Artist Event'), findsOneWidget);
       expect(find.textContaining('Casa Solar'), findsOneWidget);
-      expect(find.textContaining('DJ Summary'), findsOneWidget);
+      expect(find.textContaining('DJ Summary'), findsNothing);
       expect(find.text('Unable to load events.'), findsNothing);
       expect(controller.eventsErrorStreamValue.value, isNull);
     },

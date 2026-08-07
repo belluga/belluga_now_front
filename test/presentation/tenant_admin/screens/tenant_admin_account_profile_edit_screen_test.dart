@@ -35,6 +35,7 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optio
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/screens/tenant_admin_account_profile_edit_screen.dart';
+import 'package:belluga_now/presentation/tenant_admin/account_profiles/screens/tenant_admin_account_profile_group_members_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -849,7 +850,7 @@ void main() {
     },
   );
 
-  testWidgets('renders nested group selector when capability is enabled', (
+  testWidgets('renders nested group summary when capability is enabled', (
     tester,
   ) async {
     final profilesRepository =
@@ -860,16 +861,8 @@ void main() {
     ];
     profilesRepository.profileToReturn = _profile(
       id: 'route-profile',
-      nestedProfileGroups: [_nestedGroup()],
+      nestedProfileGroups: [_nestedGroupMetadataOnly(memberCount: 1)],
     );
-    profilesRepository.profilesToReturn = [
-      _profile(
-        id: 'profile-partner',
-        displayName: 'Conta Parceira',
-        profileType: 'poi',
-      ),
-    ];
-
     await _pumpScreen(
       tester,
       TenantAdminAccountProfileEditScreen(
@@ -886,12 +879,89 @@ void main() {
     );
 
     expect(find.text('Abas de contas vinculadas'), findsOneWidget);
-    expect(find.text('Conta Parceira'), findsOneWidget);
-    expect(find.text('1 perfil(is) selecionado(s)'), findsOneWidget);
+    expect(find.text('Parceiros'), findsWidgets);
+    expect(find.text('1 perfil vinculado'), findsOneWidget);
+    expect(find.text('Gerenciar perfis'), findsOneWidget);
   });
 
   testWidgets(
-    'reloads nested picker candidates when the edit-screen modal opens and excludes the current profile',
+    'saving edit profile does not hydrate nested group members before submit',
+    (tester) async {
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+      profilesRepository.profileTypesToReturn = [
+        _profileType(hasGallery: false, hasNestedProfileGroups: true),
+      ];
+      profilesRepository.profileToReturn = _profile(
+        id: 'route-profile',
+        nestedProfileGroups: [_nestedGroupMetadataOnly(memberCount: 3)],
+      );
+      profilesRepository.nestedGroupMemberPagesByGroupId['partners'] = [
+        TenantAdminNestedGroupMemberPage(
+          items: <TenantAdminAccountProfileSelectionSummary>[
+            TenantAdminAccountProfileSelectionSummary(
+              idValue: TenantAdminAccountProfileIdValue('profile-a'),
+              displayNameValue: TenantAdminOptionalTextValue(
+                defaultValue: 'Profile A',
+              ),
+            ),
+          ],
+          aggregateRevisionValue:
+              TenantAdminAccountProfileAggregateRevisionValue(7),
+          nextCursorValue: TenantAdminOptionalTextValue(
+            defaultValue: 'cursor-2',
+          ),
+        ),
+        TenantAdminNestedGroupMemberPage(
+          items: <TenantAdminAccountProfileSelectionSummary>[
+            TenantAdminAccountProfileSelectionSummary(
+              idValue: TenantAdminAccountProfileIdValue('profile-b'),
+              displayNameValue: TenantAdminOptionalTextValue(
+                defaultValue: 'Profile B',
+              ),
+            ),
+            TenantAdminAccountProfileSelectionSummary(
+              idValue: TenantAdminAccountProfileIdValue('profile-c'),
+              displayNameValue: TenantAdminOptionalTextValue(
+                defaultValue: 'Profile C',
+              ),
+            ),
+          ],
+          aggregateRevisionValue:
+              TenantAdminAccountProfileAggregateRevisionValue(8),
+          nextCursorValue: TenantAdminOptionalTextValue(),
+        ),
+      ];
+
+      await _pumpScreen(
+        tester,
+        TenantAdminAccountProfileEditScreen(
+          accountSlug: 'route-account',
+          accountProfileId: 'route-profile',
+        ),
+      );
+
+      final scrollable = find.byType(Scrollable).first;
+      await tester.scrollUntilVisible(
+        find.text('Salvar alteracoes'),
+        200,
+        scrollable: scrollable,
+      );
+      await tester.tap(find.text('Salvar alteracoes'));
+      await tester.pumpAndSettle();
+
+      expect(profilesRepository.fetchAllNestedGroupMembersCalls, 0);
+      expect(profilesRepository.lastNestedProfileGroups, isNotNull);
+      expect(
+        profilesRepository.lastNestedProfileGroups!.single.accountProfileIdValues,
+        isEmpty,
+      );
+    },
+  );
+
+  testWidgets(
+    'manage-group picker reloads candidates and excludes the current profile',
     (tester) async {
       final profilesRepository =
           GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
@@ -911,7 +981,6 @@ void main() {
         ],
       );
       profilesRepository.pagedProfilesToReturnByRequest = [
-        const <TenantAdminAccountProfile>[],
         [
           _profile(
             id: 'route-profile',
@@ -940,20 +1009,26 @@ void main() {
         200,
         scrollable: scrollable,
       );
-      await tester.tap(find.text('Selecionar perfis'));
+      final baselineFetchCalls =
+          profilesRepository.fetchAccountProfilesPageCalls;
+      await tester.tap(
+        find.byKey(const Key('tenantAdminEditManageGroup_partners')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Adicionar perfis'));
       await tester.pumpAndSettle();
 
       expect(find.text('Conta Parceira'), findsOneWidget);
       expect(find.text('Perfil atual'), findsNothing);
       expect(
         profilesRepository.fetchAccountProfilesPageCalls,
-        greaterThanOrEqualTo(2),
+        baselineFetchCalls + 1,
       );
     },
   );
 
   testWidgets(
-    'metadata-only nested groups show first-page chips, load more on demand, and preserve full ids on save',
+    'manage-group screen loads first page and appends more rows by infinite scroll',
     (tester) async {
       final profilesRepository =
           GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
@@ -963,7 +1038,7 @@ void main() {
       ];
       profilesRepository.profileToReturn = _profile(
         id: 'route-profile',
-        nestedProfileGroups: [_nestedGroupMetadataOnly(memberCount: 3)],
+        nestedProfileGroups: [_nestedGroupMetadataOnly(memberCount: 9)],
       );
       profilesRepository.nestedGroupMemberPagesByGroupId['partners'] =
           <TenantAdminNestedGroupMemberPage>[
@@ -971,6 +1046,12 @@ void main() {
               items: const <Map<String, Object?>>[
                 {'id': 'profile-a', 'display_name': 'Alpha profile'},
                 {'id': 'profile-b', 'display_name': 'Beta profile'},
+                {'id': 'profile-d', 'display_name': 'Delta profile'},
+                {'id': 'profile-e', 'display_name': 'Epsilon profile'},
+                {'id': 'profile-f', 'display_name': 'Zeta profile'},
+                {'id': 'profile-g', 'display_name': 'Eta profile'},
+                {'id': 'profile-h', 'display_name': 'Theta profile'},
+                {'id': 'profile-i', 'display_name': 'Iota profile'},
               ],
               aggregateRevision: 4,
               nextCursor: 'cursor-2',
@@ -997,6 +1078,36 @@ void main() {
         displayName: 'Gamma profile',
         profileType: 'poi',
       );
+      profilesRepository.accountProfileFetchOverrides['profile-d'] = _profile(
+        id: 'profile-d',
+        displayName: 'Delta profile',
+        profileType: 'poi',
+      );
+      profilesRepository.accountProfileFetchOverrides['profile-e'] = _profile(
+        id: 'profile-e',
+        displayName: 'Epsilon profile',
+        profileType: 'poi',
+      );
+      profilesRepository.accountProfileFetchOverrides['profile-f'] = _profile(
+        id: 'profile-f',
+        displayName: 'Zeta profile',
+        profileType: 'poi',
+      );
+      profilesRepository.accountProfileFetchOverrides['profile-g'] = _profile(
+        id: 'profile-g',
+        displayName: 'Eta profile',
+        profileType: 'poi',
+      );
+      profilesRepository.accountProfileFetchOverrides['profile-h'] = _profile(
+        id: 'profile-h',
+        displayName: 'Theta profile',
+        profileType: 'poi',
+      );
+      profilesRepository.accountProfileFetchOverrides['profile-i'] = _profile(
+        id: 'profile-i',
+        displayName: 'Iota profile',
+        profileType: 'poi',
+      );
 
       await _pumpScreen(
         tester,
@@ -1014,33 +1125,19 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      await tester.tap(
+        find.byKey(const Key('tenantAdminEditManageGroup_partners')),
+      );
+      await tester.pumpAndSettle();
+
       expect(find.text('Alpha profile'), findsOneWidget);
       expect(find.text('Beta profile'), findsOneWidget);
       expect(find.text('Gamma profile'), findsNothing);
-      expect(find.text('mais'), findsOneWidget);
-
-      await tester.tap(find.text('mais'));
+      await tester.drag(find.byType(ListView).last, const Offset(0, -800));
       await tester.pumpAndSettle();
 
       expect(find.text('Gamma profile'), findsOneWidget);
-
-      await tester.scrollUntilVisible(
-        find.text('Salvar alteracoes'),
-        200,
-        scrollable: scrollable,
-      );
-      await tester.tap(find.text('Salvar alteracoes'));
-      await tester.pumpAndSettle();
-
-      expect(
-        profilesRepository
-            .lastNestedProfileGroups
-            ?.single
-            .accountProfileIdValues
-            .map((entry) => entry.value)
-            .toList(growable: false),
-        <String>['profile-a', 'profile-b', 'profile-c'],
-      );
+      expect(find.text('9 perfis carregados'), findsOneWidget);
     },
   );
 
@@ -1101,6 +1198,27 @@ Future<void> _pumpScreen(WidgetTester tester, Widget child) async {
           chromeMode: RouteChromeMode.fullscreen,
         ),
         builder: (_, _) => child,
+      ),
+      NamedRouteDef(
+        name: TenantAdminAccountProfileGroupMembersRoute.name,
+        path: '/profile-group-members',
+        meta: canonicalRouteMeta(
+          family: CanonicalRouteFamily.tenantAdminAccountsInternal,
+          chromeMode: RouteChromeMode.fullscreen,
+        ),
+        builder: (_, routeData) {
+          final args = routeData
+              .argsAs<TenantAdminAccountProfileGroupMembersRouteArgs>();
+          return TenantAdminAccountProfileGroupMembersScreen(
+            key: args.key,
+            accountProfileId: args.accountProfileId,
+            group: TenantAdminNestedProfileGroup(
+              idValue: TenantAdminNestedProfileGroupTextValue(args.groupId),
+              labelValue: TenantAdminNestedProfileGroupTextValue('Grupo'),
+              orderValue: TenantAdminNestedProfileGroupOrderValue(),
+            ),
+          );
+        },
       ),
     ],
   )..ignorePopCompleters = true;
@@ -1224,6 +1342,7 @@ class _FakeAccountProfilesRepository
   nestedGroupMemberPagesByGroupId =
       <String, List<TenantAdminNestedGroupMemberPage>>{};
   int fetchAccountProfilesPageCalls = 0;
+  int fetchAllNestedGroupMembersCalls = 0;
 
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
@@ -1489,6 +1608,7 @@ class _FakeAccountProfilesRepository
     required TenantAdminAccountProfilesRepoString accountProfileId,
     required TenantAdminAccountProfilesRepoString groupId,
   }) async {
+    fetchAllNestedGroupMembersCalls += 1;
     final pages =
         nestedGroupMemberPagesByGroupId[groupId.value] ??
         <TenantAdminNestedGroupMemberPage>[

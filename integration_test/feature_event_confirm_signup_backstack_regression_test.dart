@@ -953,7 +953,6 @@ EventModel _buildEvent({required String slug}) {
         programmingCountValue: EventProgrammingCountValue()..parse('0'),
       ),
     ],
-    artists: const [],
     coordinate: null,
     tags: const <String>['show'],
     isConfirmedValue: EventIsConfirmedValue()..parse('false'),
