@@ -11,13 +11,14 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_update.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_nested_profile_group_values.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/account_profiles/screens/tenant_admin_account_profile_group_members_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_account_profile_gallery_operations.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
@@ -31,7 +32,7 @@ import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admi
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_crop_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_upload_field.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_source_sheet.dart';
-import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_nested_profile_groups_editor.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_profile_groups_summary_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_xfile_preview.dart';
 import 'package:flutter/foundation.dart';
@@ -489,6 +490,28 @@ class _TenantAdminAccountProfileEditScreenState
     );
   }
 
+  Set<String> _persistedNestedGroupIds() {
+    final profile = _controller.accountProfileStreamValue.value;
+    if (profile == null) {
+      return const <String>{};
+    }
+    return profile.nestedProfileGroups
+        .map((group) => group.id.trim())
+        .where((groupId) => groupId.isNotEmpty)
+        .toSet();
+  }
+
+  String _nestedGroupManageBlockedReason(TenantAdminNestedProfileGroup group) {
+    final profile = _controller.accountProfileStreamValue.value;
+    if (profile == null) {
+      return 'Aguarde o carregamento do perfil.';
+    }
+    if (!_persistedNestedGroupIds().contains(group.id.trim())) {
+      return 'Salve o perfil para persistir o grupo antes de gerenciar os perfis vinculados.';
+    }
+    return '';
+  }
+
   Future<void> _autoSaveImages() async {
     final profile = _controller.accountProfileStreamValue.value;
     if (profile == null) {
@@ -872,57 +895,11 @@ class _TenantAdminAccountProfileEditScreenState
                                           ],
                                           if (hasNestedProfileGroups) ...[
                                             const SizedBox(height: 16),
-                                            TenantAdminNestedProfileGroupsEditor(
+                                            TenantAdminProfileGroupsSummaryEditor(
                                               keyPrefix: 'tenantAdminEdit',
                                               groups: state.nestedProfileGroups,
-                                              candidatesStreamValue: _controller
-                                                  .nestedProfileCandidatesStreamValue,
-                                              profileTypes: _controller
-                                                  .profileTypesStreamValue
-                                                  .value
-                                                  .where(
-                                                    (profileType) => profileType
-                                                        .capabilities
-                                                        .isQueryable,
-                                                  )
-                                                  .toList(growable: false),
-                                              onSearchChanged: _controller
-                                                  .searchNestedProfileCandidates,
-                                              onProfileTypeChanged: _controller
-                                                  .filterNestedProfileCandidatesByProfileType,
-                                              onLoadMore: _controller
-                                                  .loadNextNestedProfileCandidatesPage,
-                                              loadSelectedReadbackPage:
-                                                  ({
-                                                    required groupId,
-                                                    String? cursor,
-                                                  }) => _controller
-                                                      .fetchEditNestedGroupMembersPage(
-                                                        accountProfileId:
-                                                            _currentAccountProfileIdForRequests(),
-                                                        groupId: groupId,
-                                                        cursor: cursor,
-                                                      ),
-                                              ensureSelectedBaselineHydrated:
-                                                  (groupId) => _controller
-                                                      .ensureEditNestedGroupBaselineHydrated(
-                                                        accountProfileId:
-                                                            _currentAccountProfileIdForRequests(),
-                                                        groupId: groupId,
-                                                      ),
-                                              onOpenPicker: () =>
-                                                  _controller
-                                                      .loadNestedProfileCandidates(
-                                                        excludeProfileId:
-                                                            _currentAccountProfileIdForRequests(),
-                                                      ),
-                                              searchLoadingStreamValue: _controller
-                                                  .nestedProfileSearchLoadingStreamValue,
-                                              searchPageLoadingStreamValue:
-                                                  _controller
-                                                      .nestedProfileSearchPageLoadingStreamValue,
-                                              searchHasMoreStreamValue: _controller
-                                                  .nestedProfileSearchHasMoreStreamValue,
+                                              title:
+                                                  'Abas de contas vinculadas',
                                               addButtonKey: const Key(
                                                 'tenantAdminEditAddNestedGroupButton',
                                               ),
@@ -934,19 +911,17 @@ class _TenantAdminAccountProfileEditScreenState
                                                   .moveEditNestedProfileGroup,
                                               onRemoveGroup: _controller
                                                   .removeEditNestedProfileGroup,
-                                              onSelectionChanged:
-                                                  (
-                                                    groupId,
-                                                    profileId,
-                                                    selected,
-                                                  ) {
-                                                    _controller
-                                                        .toggleEditNestedProfileGroupMember(
-                                                          groupId: groupId,
-                                                          profileId: profileId,
-                                                          selected: selected,
-                                                        );
-                                                  },
+                                              onManageGroup: (group) =>
+                                                  openTenantAdminAccountProfileGroupMembersScreen(
+                                                    context: context,
+                                                    accountSlug:
+                                                        _currentAccountSlugForRequests(),
+                                                    accountProfileId:
+                                                        _currentAccountProfileIdForRequests(),
+                                                    group: group,
+                                                  ),
+                                              manageBlockedReasonBuilder:
+                                                  _nestedGroupManageBlockedReason,
                                             ),
                                           ],
                                           const SizedBox(height: 24),
@@ -1085,13 +1060,6 @@ class _TenantAdminAccountProfileEditScreenState
                                                         : null;
                                                     final accountProfileId =
                                                         _currentAccountProfileIdForRequests();
-                                                    if (hasNestedProfileGroups) {
-                                                      await _controller
-                                                          .ensureAllEditNestedGroupBaselinesHydrated(
-                                                            accountProfileId:
-                                                                accountProfileId,
-                                                          );
-                                                    }
                                                     final submitState =
                                                         _controller
                                                             .editStateStreamValue

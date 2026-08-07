@@ -118,7 +118,7 @@ void main() {
     },
   );
 
-  testWidgets('adds nested group editor with searchable selector', (
+  testWidgets('adds nested group summary shell with blocked management', (
     tester,
   ) async {
     final profilesRepository =
@@ -132,19 +132,6 @@ void main() {
         hasNestedProfileGroups: false,
       ),
     ];
-    profilesRepository.profilesToReturn = [
-      _profile(
-        id: 'profile-partner',
-        displayName: 'Conta Parceira',
-        profileType: 'venue',
-      ),
-      _profile(
-        id: 'profile-sender',
-        displayName: 'Runtime Sender',
-        profileType: 'publisher',
-      ),
-    ];
-
     await _pumpScreen(
       tester,
       TenantAdminAccountProfileCreateScreen(accountSlug: 'route-account'),
@@ -165,46 +152,17 @@ void main() {
 
     expect(find.text('Novo grupo'), findsOneWidget);
     expect(find.text('Nome da aba'), findsOneWidget);
-    expect(find.text('Selecionar perfis'), findsOneWidget);
-
-    await tester.tap(find.text('Selecionar perfis'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Conta Parceira'), findsOneWidget);
-    expect(find.text('Runtime Sender'), findsOneWidget);
-
-    final searchField = find.byWidgetPredicate((widget) {
-      return widget is TextField &&
-          widget.decoration?.labelText == 'Buscar perfil';
-    });
-    await tester.enterText(searchField, 'parceira');
-    await tester.pumpAndSettle();
-
-    expect(find.text('Conta Parceira'), findsOneWidget);
-    expect(find.text('Runtime Sender'), findsNothing);
-
-    await tester.enterText(searchField, '');
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Conta Parceira'));
-    await tester.pumpAndSettle();
-
-    final controller = GetIt.I.get<TenantAdminAccountProfilesController>();
+    expect(find.text('0 perfis vinculados'), findsOneWidget);
+    expect(find.text('Gerenciar perfis'), findsOneWidget);
+    expect(find.text('Selecionar perfis'), findsNothing);
     expect(
-      controller
-          .createStateStreamValue
-          .value
-          .nestedProfileGroups
-          .single
-          .accountProfileIdValues
-          .map((entry) => entry.value)
-          .toList(growable: false),
-      ['profile-partner'],
+      find.text('Salve o perfil antes de gerenciar os perfis vinculados.'),
+      findsOneWidget,
     );
   });
 
   testWidgets(
-    'reloads nested picker candidates when the create-screen modal opens',
+    'create-screen nested groups do not preload the canonical picker',
     (tester) async {
       final profilesRepository =
           GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
@@ -216,23 +174,14 @@ void main() {
           hasNestedProfileGroups: true,
         ),
       ];
-      profilesRepository.profilesToReturn = [
-        _profile(
-          id: 'profile-partner',
-          displayName: 'Conta Parceira',
-          profileType: 'venue',
-        ),
-      ];
-      profilesRepository.pagedProfilesToReturnByRequest = [
-        const <TenantAdminAccountProfile>[],
-      ];
-
       await _pumpScreen(
         tester,
         TenantAdminAccountProfileCreateScreen(accountSlug: 'route-account'),
       );
 
       await _selectProfileType(tester, 'Venue');
+      final baselineFetchCalls =
+          profilesRepository.fetchAccountProfilesPageCalls;
 
       final scrollable = find.byType(Scrollable).first;
       await tester.scrollUntilVisible(
@@ -245,81 +194,11 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Selecionar perfis'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Conta Parceira'), findsOneWidget);
       expect(
         profilesRepository.fetchAccountProfilesPageCalls,
-        greaterThanOrEqualTo(2),
+        baselineFetchCalls,
       );
-    },
-  );
-
-  testWidgets(
-    'uses canonical profile types for the nested selector even when the first page does not expose every category',
-    (tester) async {
-      final profilesRepository =
-          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
-              as _FakeAccountProfilesRepository;
-      profilesRepository.profileTypesToReturn = [
-        _profileType(
-          type: 'venue',
-          label: 'Venue',
-          hasNestedProfileGroups: true,
-        ),
-        _profileType(
-          type: 'publisher',
-          label: 'Publisher',
-          hasNestedProfileGroups: false,
-        ),
-      ];
-      profilesRepository.profilesToReturn = List<TenantAdminAccountProfile>.of([
-        for (var index = 0; index < 20; index++)
-          _profile(
-            id: 'profile-venue-$index',
-            displayName: 'Venue $index',
-            profileType: 'venue',
-          ),
-        _profile(
-          id: 'profile-publisher-21',
-          displayName: 'Publisher 21',
-          profileType: 'publisher',
-        ),
-      ]);
-
-      await _pumpScreen(
-        tester,
-        TenantAdminAccountProfileCreateScreen(accountSlug: 'route-account'),
-      );
-
-      await _selectProfileType(tester, 'Venue');
-
-      final scrollable = find.byType(Scrollable).first;
-      await tester.scrollUntilVisible(
-        find.byKey(const Key('tenantAdminCreateAddNestedGroupButton')),
-        300,
-        scrollable: scrollable,
-      );
-      await tester.tap(
-        find.byKey(const Key('tenantAdminCreateAddNestedGroupButton')),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Selecionar perfis'));
-      await tester.pumpAndSettle();
-
-      await tester.tap(
-        find
-            .byWidgetPredicate(
-              (widget) =>
-                  widget is DropdownButtonFormField<String> &&
-                  widget.decoration.labelText == 'Tipo de perfil',
-            )
-            .last,
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text('Publisher'), findsOneWidget);
+      expect(find.text('Gerenciar perfis'), findsOneWidget);
     },
   );
 

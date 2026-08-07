@@ -261,6 +261,52 @@ void main() {
     },
   );
 
+  test(
+    'equivalent rich html markup does not dirty the event form baseline',
+    () {
+      final eventsRepository = _TrackingEventsRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken(
+          'landlord-token',
+        ),
+      );
+
+      controller.initEventForm(
+        existingEvent: TenantAdminEvent(
+          eventIdValue: tenantAdminRequiredText('evt-rich-baseline'),
+          slugValue: tenantAdminRequiredText('evt-rich-baseline'),
+          titleValue: tenantAdminRequiredText('Rich Baseline Event'),
+          contentValue: tenantAdminOptionalText('<p>Conteudo</p>'),
+          type: TenantAdminEventType(
+            nameValue: tenantAdminRequiredText('Show'),
+            slugValue: tenantAdminRequiredText('show'),
+          ),
+          occurrences: <TenantAdminEventOccurrence>[
+            TenantAdminEventOccurrence(
+              occurrenceIdValue: tenantAdminOptionalText('occ-rich-baseline'),
+              dateTimeStartValue: tenantAdminDateTime(
+                DateTime.utc(2026, 4, 20, 20),
+              ),
+            ),
+          ],
+          publication: TenantAdminEventPublication(
+            statusValue: tenantAdminRequiredText('draft'),
+          ),
+        ),
+      );
+
+      expect(controller.isEventFormDirty, isFalse);
+
+      controller.eventContentController.text = '<div>Conteudo</div>';
+      expect(controller.isEventFormDirty, isFalse);
+
+      controller.eventContentController.text = '<p>Conteudo alterado</p>';
+      expect(controller.isEventFormDirty, isTrue);
+    },
+  );
+
   test('clearEventEndAt clears the optional first occurrence end date', () {
     final controller = TenantAdminEventsController(
       eventsRepository: _TrackingEventsRepository(),

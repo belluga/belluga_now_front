@@ -3,8 +3,8 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member
 
 final class TenantAdminEventOccurrenceGroupMembersPageLoader {
   const TenantAdminEventOccurrenceGroupMembersPageLoader({
-    required TenantAdminEventsRepositoryContract eventsRepository,
-  }) : _eventsRepository = eventsRepository;
+    required this._eventsRepository,
+  });
 
   final TenantAdminEventsRepositoryContract _eventsRepository;
 

@@ -1286,168 +1286,82 @@ void main() {
     expect(find.text('Detail: acc-1'), findsOneWidget);
   });
 
-  testWidgets(
-    'shows nested group editor in canonical onboarding flow with remote search and pagination',
-    (tester) async {
-      final profilesRepository =
-          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
-              as _FakeAccountProfilesRepository;
-      profilesRepository._profileTypes = [
-        tenantAdminProfileTypeDefinitionFromRaw(
-          type: 'venue',
-          label: 'Venue',
-          allowedTaxonomies: [],
-          capabilities: TenantAdminProfileTypeCapabilities(
-            isQueryable: TenantAdminFlagValue(true),
-            isFavoritable: TenantAdminFlagValue(true),
-            isPoiEnabled: TenantAdminFlagValue(false),
-            hasBio: TenantAdminFlagValue(false),
-            hasContent: TenantAdminFlagValue(false),
-            hasTaxonomies: TenantAdminFlagValue(false),
-            hasAvatar: TenantAdminFlagValue(false),
-            hasCover: TenantAdminFlagValue(false),
-            hasEvents: TenantAdminFlagValue(false),
-            hasNestedProfileGroups: TenantAdminFlagValue(true),
-          ),
+  testWidgets('shows nested group summary shell in canonical onboarding flow', (
+    tester,
+  ) async {
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+    profilesRepository._profileTypes = [
+      tenantAdminProfileTypeDefinitionFromRaw(
+        type: 'venue',
+        label: 'Venue',
+        allowedTaxonomies: [],
+        capabilities: TenantAdminProfileTypeCapabilities(
+          isQueryable: TenantAdminFlagValue(true),
+          isFavoritable: TenantAdminFlagValue(true),
+          isPoiEnabled: TenantAdminFlagValue(false),
+          hasBio: TenantAdminFlagValue(false),
+          hasContent: TenantAdminFlagValue(false),
+          hasTaxonomies: TenantAdminFlagValue(false),
+          hasAvatar: TenantAdminFlagValue(false),
+          hasCover: TenantAdminFlagValue(false),
+          hasEvents: TenantAdminFlagValue(false),
+          hasNestedProfileGroups: TenantAdminFlagValue(true),
         ),
-        tenantAdminProfileTypeDefinitionFromRaw(
-          type: 'artist',
-          label: 'Artist',
-          allowedTaxonomies: [],
-          capabilities: TenantAdminProfileTypeCapabilities(
-            isQueryable: TenantAdminFlagValue(true),
-            isFavoritable: TenantAdminFlagValue(true),
-            isPoiEnabled: TenantAdminFlagValue(false),
-            hasBio: TenantAdminFlagValue(false),
-            hasContent: TenantAdminFlagValue(false),
-            hasTaxonomies: TenantAdminFlagValue(false),
-            hasAvatar: TenantAdminFlagValue(false),
-            hasCover: TenantAdminFlagValue(false),
-            hasEvents: TenantAdminFlagValue(false),
-            hasNestedProfileGroups: TenantAdminFlagValue(false),
-          ),
+      ),
+      tenantAdminProfileTypeDefinitionFromRaw(
+        type: 'artist',
+        label: 'Artist',
+        allowedTaxonomies: [],
+        capabilities: TenantAdminProfileTypeCapabilities(
+          isQueryable: TenantAdminFlagValue(true),
+          isFavoritable: TenantAdminFlagValue(true),
+          isPoiEnabled: TenantAdminFlagValue(false),
+          hasBio: TenantAdminFlagValue(false),
+          hasContent: TenantAdminFlagValue(false),
+          hasTaxonomies: TenantAdminFlagValue(false),
+          hasAvatar: TenantAdminFlagValue(false),
+          hasCover: TenantAdminFlagValue(false),
+          hasEvents: TenantAdminFlagValue(false),
+          hasNestedProfileGroups: TenantAdminFlagValue(false),
         ),
-      ];
-      profilesRepository.profilesToReturn =
-          List<TenantAdminAccountProfile>.generate(21, (index) {
-            final itemNumber = index + 1;
-            if (itemNumber == 1) {
-              return tenantAdminAccountProfileFromRaw(
-                id: 'profile-1',
-                accountId: 'acc-existing',
-                profileType: 'venue',
-                displayName: 'Conta Parceira',
-                slug: 'conta-parceira',
-              );
-            }
-            if (itemNumber == 2) {
-              return tenantAdminAccountProfileFromRaw(
-                id: 'profile-2',
-                accountId: 'acc-existing-2',
-                profileType: 'artist',
-                displayName: 'Artist Beta',
-                slug: 'artist-beta',
-              );
-            }
-            if (itemNumber == 21) {
-              return tenantAdminAccountProfileFromRaw(
-                id: 'profile-21',
-                accountId: 'acc-existing-21',
-                profileType: 'venue',
-                displayName: 'Runtime Sender',
-                slug: 'runtime-sender',
-              );
-            }
-            return tenantAdminAccountProfileFromRaw(
-              id: 'profile-$itemNumber',
-              accountId: 'acc-existing-$itemNumber',
-              profileType: 'venue',
-              displayName: 'Conta $itemNumber',
-              slug: 'conta-$itemNumber',
-            );
-          });
+      ),
+    ];
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(body: TenantAdminAccountCreateScreen()),
+    );
 
-      await _pumpWithAutoRoute(
-        tester,
-        const Scaffold(body: TenantAdminAccountCreateScreen()),
-      );
+    await _selectProfileType(tester, 'Venue');
 
-      await _selectProfileType(tester, 'Venue');
+    final scrollable = find.byType(Scrollable).first;
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('tenantAdminAccountCreateAddNestedGroupButton')),
+      300,
+      scrollable: scrollable,
+    );
 
-      final scrollable = find.byType(Scrollable).first;
-      await tester.scrollUntilVisible(
-        find.byKey(const Key('tenantAdminAccountCreateAddNestedGroupButton')),
-        300,
-        scrollable: scrollable,
-      );
+    expect(find.text('Abas de contas vinculadas'), findsOneWidget);
+    await tester.tap(
+      find.byKey(const Key('tenantAdminAccountCreateAddNestedGroupButton')),
+    );
+    await tester.pumpAndSettle();
 
-      expect(find.text('Abas de contas vinculadas'), findsOneWidget);
-      await tester.tap(
-        find.byKey(const Key('tenantAdminAccountCreateAddNestedGroupButton')),
-      );
-      await tester.pumpAndSettle();
+    expect(find.text('Novo grupo'), findsOneWidget);
+    expect(find.text('Nome da aba'), findsOneWidget);
+    expect(find.text('0 perfis vinculados'), findsOneWidget);
+    expect(find.text('Gerenciar perfis'), findsOneWidget);
+    expect(find.text('Selecionar perfis'), findsNothing);
+    expect(
+      find.text(
+        'Salve a conta e o perfil antes de gerenciar os perfis vinculados.',
+      ),
+      findsOneWidget,
+    );
+  });
 
-      expect(find.text('Selecionar perfis'), findsOneWidget);
-      await tester.tap(find.text('Selecionar perfis'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Conta Parceira'), findsOneWidget);
-      expect(find.text('Runtime Sender'), findsNothing);
-      expect(find.text('Artist Beta'), findsOneWidget);
-
-      final pickerTypeDropdown = find.byWidgetPredicate((widget) {
-        return widget is DropdownButtonFormField<String> &&
-            widget.decoration.labelText == 'Tipo de perfil';
-      });
-      await tester.tap(pickerTypeDropdown.last, warnIfMissed: false);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Artist').last);
-      await tester.pumpAndSettle();
-
-      expect(profilesRepository.lastFetchPageProfileType, 'artist');
-      expect(find.text('Artist Beta'), findsOneWidget);
-      expect(find.text('Conta Parceira'), findsNothing);
-      expect(find.text('Runtime Sender'), findsNothing);
-
-      await tester.tap(pickerTypeDropdown.last, warnIfMissed: false);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Todos os tipos').last);
-      await tester.pumpAndSettle();
-
-      expect(profilesRepository.lastFetchPageProfileType, isNull);
-      expect(find.text('Conta Parceira'), findsOneWidget);
-      expect(find.text('Artist Beta'), findsOneWidget);
-
-      final searchField = find.byWidgetPredicate((widget) {
-        return widget is TextField &&
-            widget.decoration?.labelText == 'Buscar perfil';
-      });
-      await tester.enterText(searchField, 'runtime');
-      await tester.pump(const Duration(milliseconds: 300));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Runtime Sender'), findsOneWidget);
-      expect(find.text('Conta Parceira'), findsNothing);
-
-      await tester.enterText(searchField, '');
-      await tester.pump(const Duration(milliseconds: 300));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Conta Parceira'), findsOneWidget);
-      expect(find.text('Runtime Sender'), findsNothing);
-
-      await tester.scrollUntilVisible(
-        find.text('Runtime Sender'),
-        300,
-        scrollable: find.byType(Scrollable).last,
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text('Runtime Sender'), findsOneWidget);
-    },
-  );
-
-  testWidgets('submits nested groups through account onboarding', (
+  testWidgets('submits nested group metadata through account onboarding', (
     tester,
   ) async {
     final accountsRepository =
@@ -1474,15 +1388,6 @@ void main() {
         ),
       ),
     ];
-    profilesRepository.profilesToReturn = [
-      tenantAdminAccountProfileFromRaw(
-        id: 'profile-1',
-        accountId: 'acc-existing',
-        profileType: 'venue',
-        displayName: 'Conta Parceira',
-      ),
-    ];
-
     await _pumpWithAutoRoute(
       tester,
       const Scaffold(body: TenantAdminAccountCreateScreen()),
@@ -1509,12 +1414,6 @@ void main() {
       'Integrantes',
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Selecionar perfis'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Conta Parceira'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Concluir'));
-    await tester.pumpAndSettle();
 
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey('tenant_admin_account_create_save')),
@@ -1540,7 +1439,11 @@ void main() {
           .accountProfileIdValues
           .map((entry) => entry.value)
           .toList(growable: false),
-      ['profile-1'],
+      isEmpty,
+    );
+    expect(
+      accountsRepository.lastOnboardingNestedGroups.single.id,
+      startsWith('grupo-'),
     );
   });
 }

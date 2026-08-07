@@ -4,59 +4,54 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate_selection_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
-import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_account_profile_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 
-Future<void> openTenantAdminEventOccurrenceGroupMembersScreen({
+Future<void> openTenantAdminAccountProfileGroupMembersScreen({
   required BuildContext context,
-  required String eventId,
-  required String occurrenceId,
-  required String occurrenceKey,
+  required String accountSlug,
+  required String accountProfileId,
   required TenantAdminNestedProfileGroup group,
 }) {
   final shellRouter =
       context.innerRouterOf<StackRouter>(TenantAdminShellRoute.name);
   final navigationRouter = shellRouter ?? context.router;
   return navigationRouter.push<void>(
-    TenantAdminEventOccurrenceGroupMembersRoute(
-      eventId: eventId,
-      occurrenceId: occurrenceId,
-      occurrenceKey: occurrenceKey,
+    TenantAdminAccountProfileGroupMembersRoute(
+      accountSlug: accountSlug,
+      accountProfileId: accountProfileId,
       groupId: group.id,
     ),
   );
 }
 
-class TenantAdminEventOccurrenceGroupMembersScreen extends StatefulWidget {
-  const TenantAdminEventOccurrenceGroupMembersScreen({
+class TenantAdminAccountProfileGroupMembersScreen extends StatefulWidget {
+  const TenantAdminAccountProfileGroupMembersScreen({
     super.key,
-    required this.eventId,
-    required this.occurrenceId,
-    required this.occurrenceKey,
+    required this.accountProfileId,
     required this.group,
   });
 
-  final String eventId;
-  final String occurrenceId;
-  final String occurrenceKey;
+  final String accountProfileId;
   final TenantAdminNestedProfileGroup group;
 
   @override
-  State<TenantAdminEventOccurrenceGroupMembersScreen> createState() =>
-      _TenantAdminEventOccurrenceGroupMembersScreenState();
+  State<TenantAdminAccountProfileGroupMembersScreen> createState() =>
+      _TenantAdminAccountProfileGroupMembersScreenState();
 }
 
-class _TenantAdminEventOccurrenceGroupMembersScreenState
-    extends State<TenantAdminEventOccurrenceGroupMembersScreen> {
-  final TenantAdminEventsController _controller = GetIt.I
-      .get<TenantAdminEventsController>();
+class _TenantAdminAccountProfileGroupMembersScreenState
+    extends State<TenantAdminAccountProfileGroupMembersScreen> {
+  final TenantAdminAccountProfilesController _controller = GetIt.I
+      .get<TenantAdminAccountProfilesController>();
 
   List<TenantAdminAccountProfileSelectionSummary> _items =
       const <TenantAdminAccountProfileSelectionSummary>[];
   String? _nextCursor;
   String? _errorMessage;
+  int _aggregateRevision = 0;
   bool _initialLoading = true;
   bool _pageLoading = false;
   bool _mutationLoading = false;
@@ -74,9 +69,8 @@ class _TenantAdminEventOccurrenceGroupMembersScreenState
     });
 
     try {
-      final page = await _controller.fetchOccurrenceProfileGroupMembersPage(
-        eventId: widget.eventId,
-        occurrenceId: widget.occurrenceId,
+      final page = await _controller.fetchEditNestedGroupMembersPage(
+        accountProfileId: widget.accountProfileId,
         groupId: widget.group.id,
       );
       if (!mounted) {
@@ -85,6 +79,7 @@ class _TenantAdminEventOccurrenceGroupMembersScreenState
       setState(() {
         _items = page.items;
         _nextCursor = page.nextCursor;
+        _aggregateRevision = page.aggregateRevision;
         _initialLoading = false;
       });
     } catch (error) {
@@ -126,9 +121,8 @@ class _TenantAdminEventOccurrenceGroupMembersScreenState
       _errorMessage = null;
     });
     try {
-      final page = await _controller.fetchOccurrenceProfileGroupMembersPage(
-        eventId: widget.eventId,
-        occurrenceId: widget.occurrenceId,
+      final page = await _controller.fetchEditNestedGroupMembersPage(
+        accountProfileId: widget.accountProfileId,
         groupId: widget.group.id,
         cursor: cursor,
       );
@@ -144,6 +138,7 @@ class _TenantAdminEventOccurrenceGroupMembersScreenState
           nextItems.values,
         );
         _nextCursor = page.nextCursor;
+        _aggregateRevision = page.aggregateRevision;
         _pageLoading = false;
       });
     } catch (error) {
@@ -161,7 +156,9 @@ class _TenantAdminEventOccurrenceGroupMembersScreenState
     if (_mutationLoading) {
       return;
     }
-    await _controller.prepareRelatedAccountProfilePicker();
+    await _controller.loadNestedProfileCandidates(
+      excludeProfileId: widget.accountProfileId,
+    );
     if (!mounted) {
       return;
     }
@@ -171,27 +168,21 @@ class _TenantAdminEventOccurrenceGroupMembersScreenState
 
     await showTenantAdminAccountProfileMultiPicker(
       context: context,
-      candidatesStreamValue:
-          _controller.relatedAccountProfileCandidatesStreamValue,
-      isLoadingStreamValue:
-          _controller.relatedAccountProfileSearchLoadingStreamValue,
+      candidatesStreamValue: _controller.nestedProfileCandidatesStreamValue,
+      isLoadingStreamValue: _controller.nestedProfileSearchLoadingStreamValue,
       isPageLoadingStreamValue:
-          _controller.relatedAccountProfileSearchPageLoadingStreamValue,
-      hasMoreStreamValue:
-          _controller.relatedAccountProfileSearchHasMoreStreamValue,
-      loadNextPage:
-          _controller.loadNextRelatedAccountProfileCandidatesForNestedGroups,
-      onSearchChanged: (query) => unawaited(
-        _controller.searchRelatedAccountProfileCandidatesForNestedGroups(query),
-      ),
-      profileTypes: _controller.relatedAccountProfileTypesStreamValue.value,
+          _controller.nestedProfileSearchPageLoadingStreamValue,
+      hasMoreStreamValue: _controller.nestedProfileSearchHasMoreStreamValue,
+      loadNextPage: _controller.loadNextNestedProfileCandidatesPage,
+      onSearchChanged: _controller.searchNestedProfileCandidates,
+      profileTypes: _controller.profileTypesStreamValue.value
+          .where((profileType) => profileType.capabilities.isQueryable)
+          .toList(growable: false),
       title: 'Adicionar perfis',
       emptyMessage: 'Nenhum perfil elegível encontrado.',
       selectedProfileIds: pendingAddIds,
-      selectedProfileType:
-          _controller.relatedAccountProfileSelectedTypeStreamValue.value,
       onProfileTypeChanged:
-          _controller.filterRelatedAccountProfileCandidatesByProfileType,
+          _controller.filterNestedProfileCandidatesByProfileType,
       onSelectionChanged: (profileId, selected) {
         if (existingIds.contains(profileId)) {
           return;
@@ -215,16 +206,16 @@ class _TenantAdminEventOccurrenceGroupMembersScreenState
       _errorMessage = null;
     });
     try {
-      await _controller.addOccurrenceProfileGroupMembers(
-        eventId: widget.eventId,
-        occurrenceId: widget.occurrenceId,
-        occurrenceKey: widget.occurrenceKey,
+      final result = await _controller.addEditNestedGroupMembers(
+        accountProfileId: widget.accountProfileId,
         groupId: widget.group.id,
+        aggregateRevision: _aggregateRevision,
         addIds: pendingAddIds.toList(growable: false),
       );
       if (!mounted) {
         return;
       }
+      _aggregateRevision = result.aggregateRevision;
       await _loadFirstPage();
     } catch (error) {
       if (!mounted) {
@@ -254,24 +245,17 @@ class _TenantAdminEventOccurrenceGroupMembersScreenState
       _errorMessage = null;
     });
     try {
-      await _controller.removeOccurrenceProfileGroupMembers(
-        eventId: widget.eventId,
-        occurrenceId: widget.occurrenceId,
-        occurrenceKey: widget.occurrenceKey,
+      final result = await _controller.removeEditNestedGroupMembers(
+        accountProfileId: widget.accountProfileId,
         groupId: widget.group.id,
+        aggregateRevision: _aggregateRevision,
         removeIds: <String>[item.id],
       );
       if (!mounted) {
         return;
       }
-      setState(() {
-        _items = _items
-            .where((entry) => entry.id != item.id)
-            .toList(growable: false);
-      });
-      if (_items.isEmpty) {
-        await _loadFirstPage();
-      }
+      _aggregateRevision = result.aggregateRevision;
+      await _loadFirstPage();
     } catch (error) {
       if (!mounted) {
         return;
@@ -323,26 +307,9 @@ class _TenantAdminEventOccurrenceGroupMembersScreenState
           if (_errorMessage != null && _errorMessage!.trim().isNotEmpty)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Material(
-                color: colorScheme.errorContainer,
-                borderRadius: BorderRadius.circular(12),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _errorMessage!,
-                        style: TextStyle(color: colorScheme.onErrorContainer),
-                      ),
-                      const SizedBox(height: 8),
-                      TextButton(
-                        onPressed: _initialLoading ? null : _loadFirstPage,
-                        child: const Text('Tentar novamente'),
-                      ),
-                    ],
-                  ),
-                ),
+              child: Text(
+                _errorMessage!,
+                style: TextStyle(color: colorScheme.error),
               ),
             ),
           Expanded(
@@ -359,8 +326,6 @@ class _TenantAdminEventOccurrenceGroupMembersScreenState
                     onNotification: _handleScrollNotification,
                     child: ListView.separated(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                      itemCount: _items.length + (_pageLoading ? 1 : 0),
-                      separatorBuilder: (_, _) => const SizedBox(height: 8),
                       itemBuilder: (context, index) {
                         if (index >= _items.length) {
                           return const Padding(
@@ -371,21 +336,16 @@ class _TenantAdminEventOccurrenceGroupMembersScreenState
                         final item = _items[index];
                         return ListTile(
                           key: Key(
-                            'tenantAdminEventGroupMember_${widget.group.id}_${item.id}',
-                          ),
-                          shape: RoundedRectangleBorder(
-                            side: BorderSide(color: colorScheme.outlineVariant),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          leading: const CircleAvatar(
-                            child: Icon(Icons.person_outline),
+                            'tenantAdminAccountProfileGroupMember_${item.id}',
                           ),
                           title: Text(
-                            (item.displayName?.trim().isNotEmpty ?? false)
+                            item.displayName?.trim().isNotEmpty == true
                                 ? item.displayName!.trim()
                                 : item.id,
                           ),
-                          subtitle: Text(item.id),
+                          subtitle: item.displayName?.trim().isNotEmpty == true
+                              ? Text(item.id)
+                              : null,
                           trailing: IconButton(
                             tooltip: 'Remover perfil',
                             onPressed: _mutationLoading
@@ -395,15 +355,12 @@ class _TenantAdminEventOccurrenceGroupMembersScreenState
                           ),
                         );
                       },
+                      separatorBuilder: (_, _) => const Divider(height: 1),
+                      itemCount: _items.length + (_pageLoading ? 1 : 0),
                     ),
                   ),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _mutationLoading ? null : _openAddMembersPicker,
-        icon: const Icon(Icons.add),
-        label: const Text('Adicionar'),
       ),
     );
   }
