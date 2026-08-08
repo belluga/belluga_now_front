@@ -1299,7 +1299,6 @@ EventModel _buildScheduleEvent({
     ),
     dateTimeStart: DateTimeValue()..parse(startAt.toIso8601String()),
     dateTimeEnd: null,
-    artists: const [],
     occurrences: occurrenceId == null
         ? const <EventOccurrenceOption>[]
         : [

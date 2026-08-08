@@ -643,7 +643,7 @@ void main() {
             slug: 'evento-live-late',
             title: 'Evento ao vivo tardio',
             artistName: 'Artista Tardio',
-            thumbUrl: null,
+            heroImageUrl: null,
           ),
         ],
       );
@@ -727,7 +727,7 @@ void main() {
             slug: 'evento-live-ui',
             title: 'Evento ao vivo UI',
             artistName: 'Artista UI',
-            thumbUrl: null,
+            heroImageUrl: null,
           ),
         ],
       );
@@ -3525,9 +3525,9 @@ EventModel _event({
   required String slug,
   required String title,
   required String artistName,
-  String? thumbUrl = 'https://tenant.test/live.jpg',
+  String? heroImageUrl = 'https://tenant.test/live.jpg',
 }) {
-  return EventDTO.fromJson({
+  final payload = {
     'event_id': id,
     'slug': slug,
     'type': {
@@ -3545,7 +3545,7 @@ EventModel _event({
     'date_time_end': DateTime.now()
         .add(const Duration(hours: 1))
         .toIso8601String(),
-    'linked_account_profiles': [
+    'counterpart_preview': [
       {
         'id': _mongoId('artist-live'),
         'display_name': artistName,
@@ -3556,12 +3556,12 @@ EventModel _event({
         'genres': ['samba'],
       },
     ],
-    if (thumbUrl != null)
-      'thumb': {
-        'type': 'image',
-        'data': {'url': thumbUrl},
-      },
-  }).toDomain();
+    'counterpart_count': 1,
+  };
+  if (heroImageUrl != null) {
+    payload['hero_image_url'] = heroImageUrl;
+  }
+  return EventDTO.fromJson(payload).toDomain();
 }
 
 String _mongoId(String seed) {

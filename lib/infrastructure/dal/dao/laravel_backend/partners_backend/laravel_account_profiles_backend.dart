@@ -974,10 +974,10 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       final locationLabel =
           _extractAgendaLocationLabel(json) ?? venueTitle ?? '';
       final linkedAccountProfiles = _extractAgendaLinkedAccountProfiles(
-        json['linked_account_profiles'],
+        json['counterpart_preview'],
       );
       ThumbUriValue? imageUriValue;
-      final imageUrl = _extractAgendaImageUrl(json, linkedAccountProfiles);
+      final imageUrl = _extractAgendaImageUrl(json);
       if (imageUrl != null && imageUrl.isNotEmpty) {
         imageUriValue = ThumbUriValue(defaultValue: Uri.parse(imageUrl))
           ..parse(imageUrl);
@@ -1120,41 +1120,10 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     return null;
   }
 
-  String? _extractAgendaImageUrl(
-    Map<String, dynamic> json,
-    List<PartnerSupportedEntityView> linkedAccountProfiles,
-  ) {
-    final rawThumb = json['thumb'];
-    if (rawThumb is Map) {
-      final thumb = Map<String, dynamic>.from(rawThumb);
-      final data = thumb['data'];
-      if (data is Map) {
-        final url = data['url']?.toString().trim();
-        if (url != null && url.isNotEmpty) {
-          return url;
-        }
-      }
-    }
+  String? _extractAgendaImageUrl(Map<String, dynamic> json) {
+    final heroImageUrl = json['hero_image_url']?.toString().trim();
 
-    for (final counterpart in linkedAccountProfiles) {
-      final imageUrl = counterpart.thumb?.trim();
-      if (imageUrl != null && imageUrl.isNotEmpty) {
-        return imageUrl;
-      }
-    }
-
-    final rawVenue = json['venue'];
-    if (rawVenue is Map) {
-      final venue = Map<String, dynamic>.from(rawVenue);
-      for (final key in const ['hero_image_url', 'logo_url']) {
-        final imageUrl = venue[key]?.toString().trim();
-        if (imageUrl != null && imageUrl.isNotEmpty) {
-          return imageUrl;
-        }
-      }
-    }
-
-    return null;
+    return heroImageUrl == null || heroImageUrl.isEmpty ? null : heroImageUrl;
   }
 
   int? _parsePageValue(dynamic raw) {

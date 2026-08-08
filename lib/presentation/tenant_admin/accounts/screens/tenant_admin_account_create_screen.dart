@@ -19,7 +19,7 @@ import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admi
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_upload_field.dart';
-import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_nested_profile_groups_editor.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_profile_groups_summary_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_xfile_preview.dart';
 import 'package:flutter/material.dart';
@@ -52,7 +52,6 @@ class _TenantAdminAccountCreateScreenState
     _controller.resetCreateForm();
     _controller.loadProfileTypes();
     _controller.loadTaxonomies();
-    _controller.loadNestedProfileCandidates();
     _bindCreateSideEffects();
   }
 
@@ -740,34 +739,17 @@ class _TenantAdminAccountCreateScreenState
   }
 
   Widget _buildNestedGroupSection(TenantAdminAccountCreateDraft state) {
-    return TenantAdminNestedProfileGroupsEditor(
+    return TenantAdminProfileGroupsSummaryEditor(
       keyPrefix: 'tenantAdminAccountCreate',
       groups: state.nestedProfileGroups,
-      candidatesStreamValue: _controller.nestedProfileCandidatesStreamValue,
-      profileTypes: _controller.profileTypesStreamValue.value
-          .where((profileType) => profileType.capabilities.isQueryable)
-          .toList(growable: false),
-      onSearchChanged: _controller.searchNestedProfileCandidates,
-      onProfileTypeChanged: _controller.filterNestedProfileCandidatesByProfileType,
-      onLoadMore: _controller.loadNextNestedProfileCandidatesPage,
-      searchLoadingStreamValue:
-          _controller.nestedProfileSearchLoadingStreamValue,
-      searchPageLoadingStreamValue:
-          _controller.nestedProfileSearchPageLoadingStreamValue,
-      searchHasMoreStreamValue:
-          _controller.nestedProfileSearchHasMoreStreamValue,
+      title: 'Abas de contas vinculadas',
       addButtonKey: const Key('tenantAdminAccountCreateAddNestedGroupButton'),
       onAddGroup: _controller.addCreateNestedProfileGroup,
       onRenameGroup: _controller.renameCreateNestedProfileGroup,
       onMoveGroup: _controller.moveCreateNestedProfileGroup,
       onRemoveGroup: _controller.removeCreateNestedProfileGroup,
-      onSelectionChanged: (groupId, profileId, selected) {
-        _controller.toggleCreateNestedProfileGroupMember(
-          groupId: groupId,
-          profileId: profileId,
-          selected: selected,
-        );
-      },
+      manageBlockedReasonBuilder: (_) =>
+          'Salve a conta e o perfil antes de gerenciar os perfis vinculados.',
     );
   }
 

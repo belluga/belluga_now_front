@@ -41,8 +41,8 @@ final class InviteFromEventFactory {
       settingsDefaultImageValue: fallbackImageValue,
     ).toString();
     final locationLabel = event.location.value;
-    final hostName = (event.linkedAccountProfiles.isNotEmpty
-            ? event.linkedAccountProfiles.first.displayName
+    final hostName = (event.counterpartProfiles.isNotEmpty
+            ? event.counterpartProfiles.first.displayName
             : null) ??
         event.venue?.displayName ??
         'Belluga Now';
@@ -77,7 +77,7 @@ final class InviteFromEventFactory {
       )..parse('free_confirmation_only'),
       occurrenceIdValue: InviteOccurrenceIdValue()
         ..parse(event.selectedOccurrenceId),
-      linkedAccountProfiles: event.linkedAccountProfiles,
+      linkedAccountProfiles: event.heroCounterpartProfiles,
       profileGroups: profileGroups ?? event.profileGroups,
       venueAccountProfileIdValue: _venueAccountProfileIdValue(event),
     );

@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_schedule_display.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_counterpart_count_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
@@ -32,15 +33,16 @@ class VenueEventResume {
     VenueEventOptionalTextValue? eventTypeLabelValue,
     VenueEventOptionalTextValue? venueTitleValue,
     VenueEventOptionalTextValue? selectedOccurrenceIdValue,
+    this.counterpartCountValue,
     required this.linkedAccountProfiles,
     required this.tagValues,
     this.coordinate,
     this.mission,
-  })  : eventTypeLabelValue =
-            eventTypeLabelValue ?? VenueEventOptionalTextValue(),
-        venueTitleValue = venueTitleValue ?? VenueEventOptionalTextValue(),
-        selectedOccurrenceIdValue =
-            selectedOccurrenceIdValue ?? VenueEventOptionalTextValue();
+  }) : eventTypeLabelValue =
+           eventTypeLabelValue ?? VenueEventOptionalTextValue(),
+       venueTitleValue = venueTitleValue ?? VenueEventOptionalTextValue(),
+       selectedOccurrenceIdValue =
+           selectedOccurrenceIdValue ?? VenueEventOptionalTextValue();
 
   final MongoIDValue idValue;
   final SlugValue slugValue;
@@ -52,12 +54,14 @@ class VenueEventResume {
   final VenueEventOptionalTextValue eventTypeLabelValue;
   final VenueEventOptionalTextValue venueTitleValue;
   final VenueEventOptionalTextValue selectedOccurrenceIdValue;
+  final EventCounterpartCountValue? counterpartCountValue;
   final List<EventLinkedAccountProfile> linkedAccountProfiles;
   final List<VenueEventTagValue> tagValues;
   final CityCoordinate? coordinate;
   final MissionResume? mission;
-  static final Uri _localPlaceholderUri =
-      Uri.parse('asset://event-placeholder');
+  static final Uri _localPlaceholderUri = Uri.parse(
+    'asset://event-placeholder',
+  );
 
   VenueEventResumePrimString get id => idValue.value;
   VenueEventResumePrimString get slug => slugValue.value;
@@ -80,9 +84,9 @@ class VenueEventResume {
   }
 
   EventScheduleDisplay get scheduleDisplay => EventScheduleDisplay(
-        startValue: startDateTimeValue,
-        endValue: endDateTimeValue,
-      );
+    startValue: startDateTimeValue,
+    endValue: endDateTimeValue,
+  );
 
   VenueEventResumePrimString get detailScheduleLabel =>
       scheduleDisplay.detailLabel;
@@ -121,6 +125,12 @@ class VenueEventResume {
           return partyType != 'venue' && profileType != 'venue';
         }),
       );
+  VenueEventResumePrimInt get counterpartCount {
+    final previewCount = counterpartProfiles.length;
+    final canonicalCount = counterpartCountValue?.value ?? previewCount;
+    return canonicalCount < previewCount ? previewCount : canonicalCount;
+  }
+
   VenueEventResumePrimBool get hasCounterparts =>
       counterpartProfiles.isNotEmpty;
   EventLinkedAccountProfile? get primaryCounterpart =>
@@ -148,43 +158,12 @@ class VenueEventResume {
       return eventCover;
     }
 
-    for (final profile in event.linkedAccountProfiles) {
-      if (_isVenueRelatedProfile(profile)) {
-        continue;
-      }
-
-      final relatedCover = profile.coverUrl?.trim();
-      if (relatedCover != null && relatedCover.isNotEmpty) {
-        return Uri.parse(relatedCover);
-      }
-
-      final relatedAvatar = profile.avatarUrl?.trim();
-      if (relatedAvatar != null && relatedAvatar.isNotEmpty) {
-        return Uri.parse(relatedAvatar);
-      }
-    }
-
-    final hostCover = event.venue?.heroImageUri ?? event.venue?.logoImageUri;
-    if (hostCover != null) {
-      return hostCover;
-    }
-
     if (settingsDefaultImageValue != null &&
         settingsDefaultImageValue.value.toString().trim().isNotEmpty) {
       return settingsDefaultImageValue.value;
     }
 
     return _localPlaceholderUri;
-  }
-
-  static bool _isVenueRelatedProfile(EventLinkedAccountProfile profile) {
-    final partyType = profile.partyType?.trim().toLowerCase();
-    if (partyType == 'venue') {
-      return true;
-    }
-
-    final profileType = profile.profileType.trim().toLowerCase();
-    return profileType == 'venue';
   }
 
   factory VenueEventResume.fromScheduleEvent(
@@ -203,9 +182,10 @@ class VenueEventResume {
       event,
       settingsDefaultImageValue: fallbackImageValue,
     );
-    final thumb =
-        ThumbUriValue(defaultValue: preferredImageUri, isRequired: true)
-          ..parse(preferredImageUri.toString());
+    final thumb = ThumbUriValue(
+      defaultValue: preferredImageUri,
+      isRequired: true,
+    )..parse(preferredImageUri.toString());
 
     final startDateTime = event.dateTimeStart.value;
     if (startDateTime == null) {
@@ -218,7 +198,7 @@ class VenueEventResume {
     final endValue = endDateTime == null
         ? null
         : (DateTimeValue(isRequired: true)
-          ..parse(endDateTime.toIso8601String()));
+            ..parse(endDateTime.toIso8601String()));
 
     return VenueEventResume(
       idValue: event.id,
@@ -234,7 +214,8 @@ class VenueEventResume {
         ..parse(event.venue?.displayName ?? ''),
       selectedOccurrenceIdValue: VenueEventOptionalTextValue()
         ..parse(event.selectedOccurrenceId ?? ''),
-      linkedAccountProfiles: event.linkedAccountProfiles,
+      counterpartCountValue: event.counterpartCountValue,
+      linkedAccountProfiles: event.counterpartProfiles,
       tagValues: event.taxonomyTags,
       coordinate: event.coordinate,
       mission: null, // TODO: Map from EventModel when available

@@ -198,6 +198,18 @@ class TenantAdminModule extends ModuleContract {
                 chromeMode: RouteChromeMode.fullscreen,
               ),
             ),
+            CustomRoute(
+              path:
+                  'events/:eventId/occurrences/:occurrenceId/groups/:groupId/:occurrenceKey',
+              page: TenantAdminEventOccurrenceGroupMembersRoute.page,
+              transitionsBuilder: TransitionsBuilders.slideBottom,
+              duration: const Duration(milliseconds: 260),
+              reverseDuration: const Duration(milliseconds: 220),
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminEventsInternal,
+                chromeMode: RouteChromeMode.fullscreen,
+              ),
+            ),
             AutoRoute(
               path: 'events/types',
               page: TenantAdminEventTypesRoute.page,
@@ -278,6 +290,18 @@ class TenantAdminModule extends ModuleContract {
             CustomRoute(
               path: 'accounts/:accountSlug/profiles/:accountProfileId/edit',
               page: TenantAdminAccountProfileEditRoute.page,
+              transitionsBuilder: TransitionsBuilders.slideBottom,
+              duration: const Duration(milliseconds: 260),
+              reverseDuration: const Duration(milliseconds: 220),
+              meta: canonicalRouteMeta(
+                family: CanonicalRouteFamily.tenantAdminAccountsInternal,
+                chromeMode: RouteChromeMode.fullscreen,
+              ),
+            ),
+            CustomRoute(
+              path:
+                  'accounts/:accountSlug/profiles/:accountProfileId/profile-groups/:groupId',
+              page: TenantAdminAccountProfileGroupMembersRoute.page,
               transitionsBuilder: TransitionsBuilders.slideBottom,
               duration: const Duration(milliseconds: 260),
               reverseDuration: const Duration(milliseconds: 220),

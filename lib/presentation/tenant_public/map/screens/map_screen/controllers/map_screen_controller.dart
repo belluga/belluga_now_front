@@ -220,6 +220,7 @@ class MapScreenController implements Disposable {
         resolution.tenantDefaultCoordinate ??
         resolution.liveUserCoordinate;
   }
+
   bool get hasInitialMapCenter => initialMapCenter != null;
 
   PoiQuery _currentQuery = PoiQuery();
@@ -1870,7 +1871,7 @@ class MapScreenController implements Disposable {
     final venueId = event.venue?.id.trim();
     final seen = <String>{};
     final linkedProfiles = <CityPoiLinkedProfile>[];
-    for (final profile in event.linkedAccountProfiles) {
+    for (final profile in event.counterpartProfiles) {
       final id = profile.id.trim();
       if (id.isEmpty) {
         continue;

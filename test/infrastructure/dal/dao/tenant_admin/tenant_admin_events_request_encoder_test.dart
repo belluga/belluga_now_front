@@ -99,7 +99,6 @@ void main() {
           'id': 'convidados',
           'label': 'Convidados',
           'order': 0,
-          'account_profile_ids': ['artist-2'],
         },
       ]);
       expect(payload.containsKey('event_parties'), isFalse);
@@ -112,7 +111,6 @@ void main() {
           'id': 'convidados',
           'label': 'Convidados',
           'order': 0,
-          'account_profile_ids': ['artist-2'],
         },
       ]);
       expect(occurrence.containsKey('event_parties'), isFalse);
@@ -184,7 +182,6 @@ void main() {
           'id': 'artists',
           'label': 'Artists',
           'order': 0,
-          'account_profile_ids': ['artist-1'],
         },
       ]);
       expect((occurrences[1] as Map<String, dynamic>)['profile_groups'], [
@@ -192,7 +189,6 @@ void main() {
           'id': 'sponsors',
           'label': 'Sponsors',
           'order': 0,
-          'account_profile_ids': ['sponsor-1'],
         },
       ]);
     },
@@ -324,7 +320,6 @@ void main() {
         'id': 'bandas',
         'label': 'Bandas',
         'order': 0,
-        'account_profile_ids': ['artist-1'],
       },
     ]);
     expect(occurrence.containsKey('event_parties'), isFalse);

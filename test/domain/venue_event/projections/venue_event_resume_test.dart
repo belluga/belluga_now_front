@@ -1,4 +1,3 @@
-import 'package:belluga_now/domain/artist/artist_resume.dart';
 import 'package:belluga_now/domain/invites/invite_partner_type.dart';
 import 'package:belluga_now/domain/partner/partner_resume.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_hero_image_value.dart';
@@ -8,6 +7,7 @@ import 'package:belluga_now/domain/partners/value_objects/account_profile_type_v
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_occurrence_option.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_counterpart_count_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_values.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
@@ -51,134 +51,76 @@ void main() {
   });
 
   group('VenueEventResume.resolvePreferredImageUri', () {
-    test('prefers event cover before artist/host/settings', () {
-      final event = _buildEvent(
-        thumb: ThumbModel(
-          thumbUri: ThumbUriValue(
-            defaultValue: Uri.parse('https://cdn.test/event-cover.png'),
-          )..parse('https://cdn.test/event-cover.png'),
-          thumbType: ThumbTypeValue(defaultValue: ThumbTypes.image)
-            ..parse(ThumbTypes.image.name),
-        ),
-        linkedAccountProfiles: [
-          _buildLinkedProfile(
-            id: 'profile-1',
-            displayName: 'Profile One',
-            profileType: 'artist',
-            coverUrl: 'https://cdn.test/profile-cover.png',
+    test(
+      'uses the backend-owned event image without recomputing it locally',
+      () {
+        final event = _buildEvent(
+          thumb: ThumbModel(
+            thumbUri: ThumbUriValue(
+              defaultValue: Uri.parse('https://cdn.test/event-cover.png'),
+            )..parse('https://cdn.test/event-cover.png'),
+            thumbType: ThumbTypeValue(defaultValue: ThumbTypes.image)
+              ..parse(ThumbTypes.image.name),
           ),
-        ],
-        venue: _buildVenue(heroUrl: 'https://cdn.test/host-cover.png'),
-      );
+          linkedAccountProfiles: [
+            _buildLinkedProfile(
+              id: 'profile-1',
+              displayName: 'Profile One',
+              profileType: 'artist',
+              coverUrl: 'https://cdn.test/profile-cover.png',
+            ),
+          ],
+          venue: _buildVenue(heroUrl: 'https://cdn.test/host-cover.png'),
+        );
 
-      final resolved = VenueEventResume.resolvePreferredImageUri(
-        event,
-        settingsDefaultImageValue: ThumbUriValue(
-          defaultValue: Uri.parse('https://cdn.test/settings.png'),
-        )..parse('https://cdn.test/settings.png'),
-      );
+        final resolved = VenueEventResume.resolvePreferredImageUri(
+          event,
+          settingsDefaultImageValue: ThumbUriValue(
+            defaultValue: Uri.parse('https://cdn.test/settings.png'),
+          )..parse('https://cdn.test/settings.png'),
+        );
 
-      expect(resolved.toString(), 'https://cdn.test/event-cover.png');
-    });
+        expect(resolved.toString(), 'https://cdn.test/event-cover.png');
+      },
+    );
 
     test(
-        'applies fallback chain related accounts by order -> venue -> settings -> local',
-        () {
-      final orderedRelatedEvent = _buildEvent(
-        linkedAccountProfiles: [
-          _buildLinkedProfile(
-            id: 'profile-1',
-            displayName: 'Profile One',
-            profileType: 'producer',
-            avatarUrl: 'https://cdn.test/profile-one-avatar.png',
-          ),
-          _buildLinkedProfile(
-            id: 'profile-2',
-            displayName: 'Profile Two',
-            profileType: 'band',
-            coverUrl: 'https://cdn.test/profile-two-cover.png',
-          ),
-        ],
-      );
-      final hostEvent = _buildEvent(
-        venue: _buildVenue(heroUrl: 'https://cdn.test/host-cover.png'),
-      );
-      final settingsEvent = _buildEvent();
-
-      final relatedResolved =
-          VenueEventResume.resolvePreferredImageUri(orderedRelatedEvent);
-      final hostResolved = VenueEventResume.resolvePreferredImageUri(hostEvent);
-      final settingsResolved = VenueEventResume.resolvePreferredImageUri(
-        settingsEvent,
-        settingsDefaultImageValue: ThumbUriValue(
-          defaultValue: Uri.parse('https://cdn.test/settings.png'),
-        )..parse('https://cdn.test/settings.png'),
-      );
-      final localResolved =
-          VenueEventResume.resolvePreferredImageUri(settingsEvent);
-
-      expect(
-        relatedResolved.toString(),
-        'https://cdn.test/profile-one-avatar.png',
-      );
-      expect(hostResolved.toString(), 'https://cdn.test/host-cover.png');
-      expect(settingsResolved.toString(), 'https://cdn.test/settings.png');
-      expect(localResolved.toString(), 'asset://event-placeholder');
-    });
-
-    test('ignores venue entries inside related account ordering', () {
-      final event = _buildEvent(
-        linkedAccountProfiles: [
-          _buildLinkedProfile(
-            id: 'profile-venue',
-            displayName: 'Venue Mirror',
-            profileType: 'venue',
-            partyType: 'venue',
-            coverUrl: 'https://cdn.test/linked-venue-cover.png',
-          ),
-          _buildLinkedProfile(
-            id: 'profile-artist',
-            displayName: 'Profile Artist',
-            profileType: 'artist',
-            avatarUrl: 'https://cdn.test/profile-artist-avatar.png',
-          ),
-        ],
-        venue: _buildVenue(heroUrl: 'https://cdn.test/host-cover.png'),
-      );
-
-      final resolved = VenueEventResume.resolvePreferredImageUri(event);
-
-      expect(
-        resolved.toString(),
-        'https://cdn.test/profile-artist-avatar.png',
-      );
-    });
-
-    test('uses venue fallback after skipping venue entries in related accounts',
-        () {
-      final event = _buildEvent(
-        linkedAccountProfiles: [
-          _buildLinkedProfile(
-            id: 'profile-venue',
-            displayName: 'Venue Mirror',
-            profileType: 'venue',
-            partyType: 'venue',
-            coverUrl: 'https://cdn.test/linked-venue-cover.png',
-          ),
-        ],
-        venue: _buildVenue(heroUrl: 'https://cdn.test/host-cover.png'),
-      );
-
-      final resolved = VenueEventResume.resolvePreferredImageUri(event);
-
-      expect(resolved.toString(), 'https://cdn.test/host-cover.png');
-    });
+      'uses the configured fallback only when the backend image is absent',
+      () {
+        final event = _buildEvent(
+          linkedAccountProfiles: [
+            _buildLinkedProfile(
+              id: 'profile-1',
+              displayName: 'Profile One',
+              profileType: 'producer',
+              avatarUrl: 'https://cdn.test/profile-one-avatar.png',
+            ),
+            _buildLinkedProfile(
+              id: 'profile-2',
+              displayName: 'Profile Two',
+              profileType: 'band',
+              coverUrl: 'https://cdn.test/profile-two-cover.png',
+            ),
+          ],
+          venue: _buildVenue(heroUrl: 'https://cdn.test/host-cover.png'),
+        );
+        final settingsResolved = VenueEventResume.resolvePreferredImageUri(
+          event,
+          settingsDefaultImageValue: ThumbUriValue(
+            defaultValue: Uri.parse('https://cdn.test/settings.png'),
+          )..parse('https://cdn.test/settings.png'),
+        );
+        expect(settingsResolved.toString(), 'https://cdn.test/settings.png');
+        expect(
+          VenueEventResume.resolvePreferredImageUri(_buildEvent()).toString(),
+          'asset://event-placeholder',
+        );
+      },
+    );
   });
 
   test('fromScheduleEvent preserves event type label and venue title', () {
-    final event = _buildEvent(
-      venue: _buildVenue(),
-    );
+    final event = _buildEvent(venue: _buildVenue());
     final fallbackThumb = ThumbUriValue(
       defaultValue: Uri.parse('https://cdn.test/settings.png'),
       isRequired: true,
@@ -188,6 +130,28 @@ void main() {
 
     expect(projection.eventTypeLabel, 'Show');
     expect(projection.venueTitle, 'Host Venue');
+  });
+
+  test('fromScheduleEvent preserves the canonical counterpart count', () {
+    final event = _buildEvent(
+      linkedAccountProfiles: [
+        _buildLinkedProfile(
+          id: 'profile-1',
+          displayName: 'Profile One',
+          profileType: 'artist',
+        ),
+      ],
+      counterpartCount: 3,
+    );
+    final fallbackThumb = ThumbUriValue(
+      defaultValue: Uri.parse('https://cdn.test/settings.png'),
+      isRequired: true,
+    )..parse('https://cdn.test/settings.png');
+
+    final projection = VenueEventResume.fromScheduleEvent(event, fallbackThumb);
+
+    expect(projection.counterpartProfiles, hasLength(1));
+    expect(projection.counterpartCount, 3);
   });
 
   group('human ready schedule labels', () {
@@ -231,9 +195,7 @@ void main() {
     });
 
     test('start only range omits dangling separator', () {
-      final resume = _buildResume(
-        start: DateTime.utc(2026, 4, 1, 10),
-      );
+      final resume = _buildResume(start: DateTime.utc(2026, 4, 1, 10));
 
       expect(resume.detailScheduleLabel, 'Qua, 1 abr · 7h');
       expect(resume.agendaScheduleLabel, '7h');
@@ -241,23 +203,22 @@ void main() {
     });
   });
 
-  test('EventModel exposes selected occurrence human ready schedule labels',
-      () {
-    final event = _buildEvent(
-      occurrenceStart: DateTime.utc(2026, 4, 1, 10, 30),
-      occurrenceEnd: DateTime.utc(2026, 4, 1, 12),
-    );
+  test(
+    'EventModel exposes selected occurrence human ready schedule labels',
+    () {
+      final event = _buildEvent(
+        occurrenceStart: DateTime.utc(2026, 4, 1, 10, 30),
+        occurrenceEnd: DateTime.utc(2026, 4, 1, 12),
+      );
 
-    expect(event.detailScheduleLabel, 'Qua, 1 abr · 7h30 às 9h');
-    expect(event.agendaScheduleLabel, '7h30 às 9h');
-    expect(event.flyerScheduleLabel, 'Qua, 1 abr · 7h30');
-  });
+      expect(event.detailScheduleLabel, 'Qua, 1 abr · 7h30 às 9h');
+      expect(event.agendaScheduleLabel, '7h30 às 9h');
+      expect(event.flyerScheduleLabel, 'Qua, 1 abr · 7h30');
+    },
+  );
 }
 
-VenueEventResume _buildResume({
-  required DateTime start,
-  DateTime? end,
-}) {
+VenueEventResume _buildResume({required DateTime start, DateTime? end}) {
   return VenueEventResume(
     idValue: MongoIDValue()..parse('507f1f77bcf86cd799439099'),
     slugValue: SlugValue()..parse('sample-event'),
@@ -279,8 +240,8 @@ VenueEventResume _buildResume({
 
 EventModel _buildEvent({
   ThumbModel? thumb,
-  List<ArtistResume> artists = const [],
   List<EventLinkedAccountProfile> linkedAccountProfiles = const [],
+  int? counterpartCount,
   PartnerResume? venue,
   DateTime? occurrenceStart,
   DateTime? occurrenceEnd,
@@ -325,8 +286,11 @@ EventModel _buildEvent({
     thumb: thumb,
     dateTimeStart: DateTimeValue()..parse('2026-03-21T10:00:00Z'),
     dateTimeEnd: null,
-    artists: artists,
     linkedAccountProfiles: linkedAccountProfiles,
+    counterpartPreviewProfiles: linkedAccountProfiles,
+    counterpartCountValue: counterpartCount == null
+        ? null
+        : EventCounterpartCountValue(counterpartCount),
     occurrences: occurrences,
     coordinate: null,
     tags: const [],
@@ -396,26 +360,19 @@ EventLinkedAccountProfile _buildLinkedProfile({
     slugValue: SlugValue()..parse('$id-slug'),
     avatarUrlValue: avatarUrl == null
         ? null
-        : (ThumbUriValue(
-            defaultValue: Uri.parse(avatarUrl),
-            isRequired: true,
-          )..parse(avatarUrl)),
+        : (ThumbUriValue(defaultValue: Uri.parse(avatarUrl), isRequired: true)
+            ..parse(avatarUrl)),
     coverUrlValue: coverUrl == null
         ? null
-        : (ThumbUriValue(
-            defaultValue: Uri.parse(coverUrl),
-            isRequired: true,
-          )..parse(coverUrl)),
+        : (ThumbUriValue(defaultValue: Uri.parse(coverUrl), isRequired: true)
+            ..parse(coverUrl)),
     partyTypeValue: partyType == null
         ? null
         : EventLinkedAccountProfileTextValue(partyType),
   );
 }
 
-PartnerResume _buildVenue({
-  String? heroUrl,
-  String? logoUrl,
-}) {
+PartnerResume _buildVenue({String? heroUrl, String? logoUrl}) {
   InvitePartnerHeroImageValue? heroValue;
   if (heroUrl != null && heroUrl.isNotEmpty) {
     heroValue = InvitePartnerHeroImageValue()..parse(heroUrl);
