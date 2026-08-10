@@ -34,9 +34,58 @@ class EventLiveNowCard extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final targetWidth = MediaQuery.of(context).size.width * 0.8;
-        final isFullSize = constraints.maxWidth >= targetWidth * 0.8;
         final height = constraints.maxWidth * 9 / 16 * 0.8;
+        final isCompactCard =
+            constraints.maxWidth < 260 || height < 110;
+        final titleStyle =
+            (isCompactCard
+                    ? theme.textTheme.titleSmall
+                    : theme.textTheme.titleMedium)
+                ?.copyWith(
+                  color: onOverlay,
+                  fontWeight: FontWeight.w800,
+                );
+        final statusRow = Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            InviteStatusIcon(
+              isConfirmed: isConfirmed,
+              pendingInvitesCount: pendingInvitesCount,
+              size: isCompactCard ? 16 : 18,
+              backgroundColor: colorScheme.secondary.withValues(
+                alpha: 0.3,
+              ),
+            ),
+            const SizedBox(width: 10),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: colorScheme.error,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isCompactCard ? 8 : 10,
+                  vertical: isCompactCard ? 4 : 6,
+                ),
+                child: Text(
+                  'AGORA',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: colorScheme.onError,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.1,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+        final titleText = Text(
+          event.title,
+          semanticsLabel: event.title,
+          maxLines: isCompactCard ? 1 : 2,
+          overflow: TextOverflow.ellipsis,
+          style: titleStyle,
+        );
 
         return SizedBox(
           width: constraints.maxWidth,
@@ -82,60 +131,27 @@ class EventLiveNowCard extends StatelessWidget {
                   padding: const EdgeInsets.all(16),
                   child: AnimatedSwitcher(
                     duration: Duration.zero,
-                    child: isFullSize
+                    child: isCompactCard
                         ? Column(
+                            key: const ValueKey('liveContentCompact'),
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              statusRow,
+                              const SizedBox(height: 6),
+                              titleText,
+                            ],
+                          )
+                        : Column(
                             key: const ValueKey('liveContent'),
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  InviteStatusIcon(
-                                    isConfirmed: isConfirmed,
-                                    pendingInvitesCount: pendingInvitesCount,
-                                    size: 18,
-                                    backgroundColor: colorScheme.secondary
-                                        .withValues(alpha: 0.3),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  DecoratedBox(
-                                    decoration: BoxDecoration(
-                                      color: colorScheme.error,
-                                      borderRadius: BorderRadius.circular(999),
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 6,
-                                      ),
-                                      child: Text(
-                                        'AGORA',
-                                        style: theme.textTheme.labelMedium
-                                            ?.copyWith(
-                                          color: colorScheme.onError,
-                                          fontWeight: FontWeight.w800,
-                                          letterSpacing: 1.1,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                              statusRow,
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text(
-                                    event.title,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style:
-                                        theme.textTheme.titleMedium?.copyWith(
-                                      color: onOverlay,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
+                                  titleText,
                                   const SizedBox(height: 10),
                                   EventInfoRow(
                                     icon: Icons.schedule,
@@ -159,8 +175,7 @@ class EventLiveNowCard extends StatelessWidget {
                                 ],
                               ),
                             ],
-                          )
-                        : const SizedBox.shrink(key: ValueKey('liveEmpty')),
+                          ),
                   ),
                 ),
                 Positioned.fill(

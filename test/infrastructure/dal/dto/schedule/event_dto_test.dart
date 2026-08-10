@@ -1469,6 +1469,43 @@ void main() {
   );
 
   test(
+    'falls back to Local a definir when physical location has only geo coordinates',
+    () {
+      final dto = EventDTO.fromJson({
+        'event_id': '507f1f77bcf86cd799439081',
+        'occurrence_id': '507f1f77bcf86cd799439084',
+        'slug': 'festival-physical-geo-only',
+        'type': {
+          'id': 'show',
+          'name': 'Show',
+          'slug': 'show',
+          'description': '',
+        },
+        'title': 'Festival fisico sem label',
+        'content': 'Descricao',
+        'location': {
+          'mode': 'physical',
+          'geo': {
+            'type': 'Point',
+            'coordinates': [-40.495395, -20.671339],
+          },
+        },
+        'venue': null,
+        'latitude': -20.671339,
+        'longitude': -40.495395,
+        'date_time_start': '2026-03-04T17:00:00+00:00',
+        'linked_account_profiles': const [],
+      });
+
+      final domain = dto.toDomain();
+
+      expect(dto.location, 'Local a definir');
+      expect(domain.location.value, 'Local a definir');
+      expect(domain.coordinate, isNotNull);
+    },
+  );
+
+  test(
     'parses effective occurrence taxonomy labels for selected occurrence',
     () {
       final dto = EventDTO.fromJson({
