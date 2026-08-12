@@ -194,6 +194,8 @@ class TenantAdminEventsController implements Disposable {
   final StreamValue<bool> submitLoadingStreamValue = StreamValue<bool>(
     defaultValue: false,
   );
+  final StreamValue<bool> occurrenceProfileGroupMutationBusyStreamValue =
+      StreamValue<bool>(defaultValue: false);
   final StreamValue<String?> submitErrorMessageStreamValue =
       StreamValue<String?>();
   final StreamValue<String?> submitSuccessMessageStreamValue =
@@ -609,6 +611,7 @@ class TenantAdminEventsController implements Disposable {
 
   void initEventForm({TenantAdminEvent? existingEvent}) {
     clearEventValidation();
+    occurrenceProfileGroupMutationBusyStreamValue.addValue(false);
     _eventFormLocalIdSerial = 0;
     final selectedTaxonomyTerms = <String, Set<String>>{};
     for (final term
@@ -1367,6 +1370,105 @@ class TenantAdminEventsController implements Disposable {
     return result;
   }
 
+  Future<void> createOccurrenceProfileGroupHead({
+    required String eventId,
+    required String occurrenceId,
+    required String occurrenceKey,
+    required String label,
+  }) async {
+    if (occurrenceProfileGroupMutationBusyStreamValue.value) {
+      return;
+    }
+
+    occurrenceProfileGroupMutationBusyStreamValue.addValue(true);
+    try {
+      final result = await _eventsRepository.createOccurrenceProfileGroup(
+        eventId: _toEventsText(eventId),
+        occurrenceId: _toEventsText(occurrenceId),
+        label: _toEventsText(label),
+      );
+      _replaceOccurrenceByKey(occurrenceKey, (occurrence) {
+        final nextGroups = _mergeProfileGroupMetadata(
+          currentGroups: occurrence.profileGroups,
+          metadataGroups: result.groups,
+        );
+        return _copyOccurrence(occurrence, profileGroups: nextGroups);
+      }, sort: false);
+      submitErrorMessageStreamValue.addValue(null);
+    } catch (error) {
+      if (_isDisposed) {
+        return;
+      }
+      submitErrorMessageStreamValue.addValue(
+        _describeControllerError(error, 'Não foi possível criar o grupo.'),
+      );
+    } finally {
+      if (!_isDisposed) {
+        occurrenceProfileGroupMutationBusyStreamValue.addValue(false);
+      }
+    }
+  }
+
+  Future<void> deleteOccurrenceProfileGroupHead({
+    required String eventId,
+    required String occurrenceId,
+    required String occurrenceKey,
+    required String groupId,
+  }) async {
+    if (occurrenceProfileGroupMutationBusyStreamValue.value) {
+      return;
+    }
+
+    occurrenceProfileGroupMutationBusyStreamValue.addValue(true);
+    try {
+      final result = await _eventsRepository.deleteOccurrenceProfileGroup(
+        eventId: _toEventsText(eventId),
+        occurrenceId: _toEventsText(occurrenceId),
+        groupId: _toEventsText(groupId),
+      );
+      _replaceOccurrenceByKey(occurrenceKey, (occurrence) {
+        final nextGroups = _mergeProfileGroupMetadata(
+          currentGroups: occurrence.profileGroups,
+          metadataGroups: result.groups,
+        );
+        final allowedProfileIds =
+            TenantAdminNestedProfileGroupOperations.memberIds(nextGroups);
+        final allowedProfileIdSet = allowedProfileIds.toSet();
+        return _copyOccurrence(
+          occurrence,
+          profileGroups: nextGroups,
+          relatedAccountProfileIds: allowedProfileIds
+              .map(TenantAdminAccountProfileIdValue.new)
+              .toList(growable: false),
+          relatedAccountProfiles: _knownOccurrenceRelatedProfiles(
+            occurrence,
+            allowedProfileIds,
+          ),
+          programmingItems: occurrence.programmingItems
+              .map(
+                (item) => _withoutProgrammingProfilesOutsideAllowedSet(
+                  item,
+                  allowedProfileIdSet,
+                ),
+              )
+              .toList(growable: false),
+        );
+      }, sort: false);
+      submitErrorMessageStreamValue.addValue(null);
+    } catch (error) {
+      if (_isDisposed) {
+        return;
+      }
+      submitErrorMessageStreamValue.addValue(
+        _describeControllerError(error, 'Não foi possível remover o grupo.'),
+      );
+    } finally {
+      if (!_isDisposed) {
+        occurrenceProfileGroupMutationBusyStreamValue.addValue(false);
+      }
+    }
+  }
+
   void removeOccurrenceRelatedProfile(String occurrenceKey, String profileId) {
     _replaceOccurrenceByKey(occurrenceKey, (occurrence) {
       final programmingItems = occurrence.programmingItems
@@ -1429,6 +1531,23 @@ class TenantAdminEventsController implements Disposable {
             .toList(growable: false),
       );
     }, sort: false);
+  }
+
+  List<TenantAdminNestedProfileGroup> _mergeProfileGroupMetadata({
+    required List<TenantAdminNestedProfileGroup> currentGroups,
+    required List<TenantAdminNestedProfileGroup> metadataGroups,
+  }) {
+    final currentById = <String, TenantAdminNestedProfileGroup>{
+      for (final group in currentGroups) group.id: group,
+    };
+    return List<TenantAdminNestedProfileGroup>.unmodifiable([
+      for (final metadataGroup in metadataGroups)
+        metadataGroup.copyWith(
+          accountProfileIdValues:
+              currentById[metadataGroup.id]?.accountProfileIdValues ??
+              const <TenantAdminNestedProfileGroupTextValue>[],
+        ),
+    ]);
   }
 
   TenantAdminNestedProfileGroup? _occurrenceProfileGroupById(
@@ -3294,6 +3413,28 @@ class TenantAdminEventsController implements Disposable {
     submitSuccessMessageStreamValue.addValue(null);
   }
 
+  String _describeControllerError(Object error, String fallback) {
+    final rawMessage = error.toString().trim();
+    if (rawMessage.isEmpty) {
+      return fallback;
+    }
+    final withoutTypePrefix = rawMessage.replaceFirst(
+      RegExp(
+        r'^(Exception|Bad state|FormatException|Invalid argument\(s\)):\s*',
+      ),
+      '',
+    );
+    final trailingMessageMatch = RegExp(
+      r'\):\s*(.+)$',
+    ).firstMatch(withoutTypePrefix);
+    final message =
+        trailingMessageMatch?.group(1)?.trim() ?? withoutTypePrefix.trim();
+    if (message.isEmpty) {
+      return fallback;
+    }
+    return message;
+  }
+
   void clearEventValidation() {
     eventValidationController.clearAll();
   }
@@ -3473,6 +3614,7 @@ class TenantAdminEventsController implements Disposable {
     eventCoverBusyStreamValue.addValue(false);
     eventCoverRemoveStreamValue.addValue(false);
     _eventFormInitialFingerprint = null;
+    occurrenceProfileGroupMutationBusyStreamValue.addValue(false);
     clearSubmitMessages();
   }
 
@@ -4330,6 +4472,7 @@ class TenantAdminEventsController implements Disposable {
     relatedAccountProfileFilterStreamValue.dispose();
     temporalFilterStreamValue.dispose();
     submitLoadingStreamValue.dispose();
+    occurrenceProfileGroupMutationBusyStreamValue.dispose();
     submitErrorMessageStreamValue.dispose();
     submitSuccessMessageStreamValue.dispose();
     eventTypeCatalogStreamValue.dispose();

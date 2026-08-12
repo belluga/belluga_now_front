@@ -14,7 +14,6 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dar
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate_selection_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_aggregate_revision_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
@@ -1001,9 +1000,6 @@ TenantAdminNestedGroupMemberPage _nestedGroupMemberPage({
           ),
         )
         .toList(growable: false),
-    aggregateRevisionValue: TenantAdminAccountProfileAggregateRevisionValue(
-      aggregateRevision,
-    ),
     nextCursorValue: TenantAdminOptionalTextValue()..parse(nextCursor),
   );
 }

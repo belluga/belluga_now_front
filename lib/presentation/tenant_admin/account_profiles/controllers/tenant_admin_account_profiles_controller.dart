@@ -157,6 +157,8 @@ class TenantAdminAccountProfilesController implements Disposable {
       StreamValue<String?>();
   final StreamValue<String?> editErrorMessageStreamValue =
       StreamValue<String?>();
+  final StreamValue<bool> editNestedGroupMutationBusyStreamValue =
+      StreamValue<bool>(defaultValue: false);
   final StreamValue<bool> taxonomyAutosavingStreamValue = StreamValue<bool>(
     defaultValue: false,
   );
@@ -298,12 +300,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     );
   }
 
-  Future<
-    ({
-      List<TenantAdminAccountProfileSelectionSummary> selections,
-      int aggregateRevision,
-    })
-  >
+  Future<List<TenantAdminAccountProfileSelectionSummary>>
   loadEditNestedGroupMemberBaseline({
     required String accountProfileId,
     required String groupId,
@@ -321,11 +318,8 @@ class TenantAdminAccountProfilesController implements Disposable {
       ),
     );
 
-    return (
-      selections: List<TenantAdminAccountProfileSelectionSummary>.unmodifiable(
-        page.items,
-      ),
-      aggregateRevision: page.aggregateRevision,
+    return List<TenantAdminAccountProfileSelectionSummary>.unmodifiable(
+      page.items,
     );
   }
 
@@ -344,7 +338,6 @@ class TenantAdminAccountProfilesController implements Disposable {
   Future<TenantAdminNestedGroupMemberMutationResult> addEditNestedGroupMembers({
     required String accountProfileId,
     required String groupId,
-    required int aggregateRevision,
     required List<String> addIds,
   }) async {
     final result = await _profilesRepository.patchNestedGroupMembers(
@@ -358,10 +351,6 @@ class TenantAdminAccountProfilesController implements Disposable {
         defaultValue: '',
         isRequired: true,
       ),
-      aggregateRevision: tenantAdminAccountProfilesRepoInt(
-        aggregateRevision,
-        defaultValue: aggregateRevision,
-      ),
       addIds: addIds
           .map(
             (profileId) => tenantAdminAccountProfilesRepoString(
@@ -372,7 +361,7 @@ class TenantAdminAccountProfilesController implements Disposable {
           )
           .toList(growable: false),
     );
-    _updateEditNestedGroupMemberCount(
+    _applyEditNestedGroupMemberMutation(
       groupId: groupId,
       memberCount: result.memberCount,
     );
@@ -383,7 +372,6 @@ class TenantAdminAccountProfilesController implements Disposable {
   removeEditNestedGroupMembers({
     required String accountProfileId,
     required String groupId,
-    required int aggregateRevision,
     required List<String> removeIds,
   }) async {
     final result = await _profilesRepository.patchNestedGroupMembers(
@@ -397,10 +385,6 @@ class TenantAdminAccountProfilesController implements Disposable {
         defaultValue: '',
         isRequired: true,
       ),
-      aggregateRevision: tenantAdminAccountProfilesRepoInt(
-        aggregateRevision,
-        defaultValue: aggregateRevision,
-      ),
       removeIds: removeIds
           .map(
             (profileId) => tenantAdminAccountProfilesRepoString(
@@ -411,11 +395,87 @@ class TenantAdminAccountProfilesController implements Disposable {
           )
           .toList(growable: false),
     );
-    _updateEditNestedGroupMemberCount(
+    _applyEditNestedGroupMemberMutation(
       groupId: groupId,
       memberCount: result.memberCount,
     );
     return result;
+  }
+
+  Future<void> createEditNestedProfileGroupHead({
+    required String accountProfileId,
+    required String label,
+  }) async {
+    if (editNestedGroupMutationBusyStreamValue.value) {
+      return;
+    }
+
+    editNestedGroupMutationBusyStreamValue.addValue(true);
+    try {
+      final result = await _profilesRepository.createNestedProfileGroup(
+        accountProfileId: tenantAdminAccountProfilesRepoString(
+          accountProfileId,
+          defaultValue: '',
+          isRequired: true,
+        ),
+        label: tenantAdminAccountProfilesRepoString(
+          label,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
+      _applyEditNestedProfileGroupHeadMutation(groups: result.groups);
+      editErrorMessageStreamValue.addValue(null);
+    } catch (error) {
+      if (_isDisposed) {
+        return;
+      }
+      reportEditErrorMessage(
+        _describeControllerError(error, 'Não foi possível criar o grupo.'),
+      );
+    } finally {
+      if (!_isDisposed) {
+        editNestedGroupMutationBusyStreamValue.addValue(false);
+      }
+    }
+  }
+
+  Future<void> deleteEditNestedProfileGroupHead({
+    required String accountProfileId,
+    required String groupId,
+  }) async {
+    if (editNestedGroupMutationBusyStreamValue.value) {
+      return;
+    }
+
+    editNestedGroupMutationBusyStreamValue.addValue(true);
+    try {
+      final result = await _profilesRepository.deleteNestedProfileGroup(
+        accountProfileId: tenantAdminAccountProfilesRepoString(
+          accountProfileId,
+          defaultValue: '',
+          isRequired: true,
+        ),
+        groupId: tenantAdminAccountProfilesRepoString(
+          groupId,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
+      _applyEditNestedProfileGroupHeadMutation(groups: result.groups);
+      editErrorMessageStreamValue.addValue(null);
+    } catch (error) {
+      if (_isDisposed) {
+        return;
+      }
+      reportEditErrorMessage(
+        _describeControllerError(error, 'Não foi possível remover o grupo.'),
+      );
+    } finally {
+      if (!_isDisposed) {
+        editNestedGroupMutationBusyStreamValue.addValue(false);
+      }
+    }
   }
 
   Future<void> ensureEditNestedGroupBaselineHydrated({
@@ -474,7 +534,6 @@ class TenantAdminAccountProfilesController implements Disposable {
   Future<bool> applyEditNestedGroupSelectionDelta({
     required String accountProfileId,
     required String groupId,
-    required int aggregateRevision,
     required List<TenantAdminAccountProfileSelectionSummary> previousSelections,
     required List<TenantAdminAccountProfileSelectionSummary> nextSelections,
   }) async {
@@ -518,10 +577,6 @@ class TenantAdminAccountProfilesController implements Disposable {
           groupId,
           defaultValue: '',
           isRequired: true,
-        ),
-        aggregateRevision: tenantAdminAccountProfilesRepoInt(
-          aggregateRevision,
-          defaultValue: aggregateRevision,
         ),
         addIds: addIds,
         removeIds: removeIds,
@@ -1677,6 +1732,99 @@ class TenantAdminAccountProfilesController implements Disposable {
     editErrorMessageStreamValue.addValue(message);
   }
 
+  void _applyEditNestedProfileGroupHeadMutation({
+    required List<TenantAdminNestedProfileGroup> groups,
+  }) {
+    final mergedGroups = _mergeNestedProfileGroupMetadata(
+      currentGroups: editStateStreamValue.value.nestedProfileGroups,
+      metadataGroups: groups,
+    );
+    final currentProfile = accountProfileStreamValue.value;
+    if (currentProfile != null) {
+      accountProfileStreamValue.addValue(
+        _copyAccountProfileWithNestedProfileGroups(
+          currentProfile,
+          nestedProfileGroups: mergedGroups,
+        ),
+      );
+    }
+    _syncSelectedNestedProfileCache(
+      _selectedNestedProfileIdsAcrossDrafts(editGroups: mergedGroups),
+    );
+    _updateEditState(
+      editStateStreamValue.value.copyWith(nestedProfileGroups: mergedGroups),
+    );
+    _publishNestedProfileCandidates();
+  }
+
+  List<TenantAdminNestedProfileGroup> _mergeNestedProfileGroupMetadata({
+    required List<TenantAdminNestedProfileGroup> currentGroups,
+    required List<TenantAdminNestedProfileGroup> metadataGroups,
+  }) {
+    final currentById = <String, TenantAdminNestedProfileGroup>{
+      for (final group in currentGroups) group.id: group,
+    };
+    return List<TenantAdminNestedProfileGroup>.unmodifiable([
+      for (final metadataGroup in metadataGroups)
+        metadataGroup.copyWith(
+          accountProfileIdValues:
+              currentById[metadataGroup.id]?.accountProfileIdValues ?? const [],
+        ),
+    ]);
+  }
+
+  TenantAdminAccountProfile _copyAccountProfileWithNestedProfileGroups(
+    TenantAdminAccountProfile profile, {
+    required List<TenantAdminNestedProfileGroup> nestedProfileGroups,
+  }) {
+    return TenantAdminAccountProfile(
+      idValue: profile.idValue,
+      accountIdValue: profile.accountIdValue,
+      profileTypeValue: profile.profileTypeValue,
+      displayNameValue: profile.displayNameValue,
+      aggregateRevisionValue: profile.aggregateRevisionValue,
+      slugValue: profile.slugValue,
+      avatarUrlValue: profile.avatarUrlValue,
+      coverUrlValue: profile.coverUrlValue,
+      bioValue: profile.bioValue,
+      contentValue: profile.contentValue,
+      location: profile.location,
+      taxonomyTerms: profile.taxonomyTerms,
+      galleryGroups: profile.galleryGroups,
+      nestedProfileGroups: nestedProfileGroups,
+      ownershipState: profile.ownershipState,
+      contactModeValue: profile.contactModeValue,
+      contactSourceAccountProfileId: profile.contactSourceAccountProfileIdValue,
+      contactChannels: profile.contactChannelsValue,
+      contactBubbleChannelId: profile.contactBubbleChannelIdValue,
+      effectiveContactChannels: profile.effectiveContactChannelsValue,
+      contactSourceProfile: profile.contactSourceProfile,
+      effectiveContactSourceProfile: profile.effectiveContactSourceProfile,
+    );
+  }
+
+  String _describeControllerError(Object error, String fallback) {
+    final rawMessage = error.toString().trim();
+    if (rawMessage.isEmpty) {
+      return fallback;
+    }
+    final withoutTypePrefix = rawMessage.replaceFirst(
+      RegExp(
+        r'^(Exception|Bad state|FormatException|Invalid argument\(s\)):\s*',
+      ),
+      '',
+    );
+    final trailingMessageMatch = RegExp(
+      r'\):\s*(.+)$',
+    ).firstMatch(withoutTypePrefix);
+    final message =
+        trailingMessageMatch?.group(1)?.trim() ?? withoutTypePrefix.trim();
+    if (message.isEmpty) {
+      return fallback;
+    }
+    return message;
+  }
+
   void updateAvatarPreloadUrl(String? url) {
     _updateEditState(
       editStateStreamValue.value.copyWith(avatarPreloadUrl: url),
@@ -1696,6 +1844,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     _updateEditState(TenantAdminAccountProfileEditDraft.initial());
     editLoadingStreamValue.addValue(false);
     editLoadErrorStreamValue.addValue(null);
+    editNestedGroupMutationBusyStreamValue.addValue(false);
     taxonomyAutosavingStreamValue.addValue(false);
     _removeAvatarOnSubmit = false;
     _removeCoverOnSubmit = false;
@@ -2327,8 +2476,8 @@ class TenantAdminAccountProfilesController implements Disposable {
       final nextGroups = TenantAdminNestedProfileGroupOperations.replaceMembers(
         editStateStreamValue.value.nestedProfileGroups,
         groupId: groupId,
-        profileIds: baseline.selections.map((entry) => entry.id),
-        memberCount: baseline.selections.length,
+        profileIds: baseline.map((entry) => entry.id),
+        memberCount: baseline.length,
       );
       _updateEditState(
         editStateStreamValue.value.copyWith(nestedProfileGroups: nextGroups),
@@ -2363,7 +2512,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     return group.memberCount > 0 && currentIds.length < group.memberCount;
   }
 
-  void _updateEditNestedGroupMemberCount({
+  void _applyEditNestedGroupMemberMutation({
     required String groupId,
     required int memberCount,
   }) {
@@ -2376,6 +2525,15 @@ class TenantAdminAccountProfilesController implements Disposable {
               : group,
         )
         .toList(growable: false);
+    final currentProfile = accountProfileStreamValue.value;
+    if (currentProfile != null) {
+      accountProfileStreamValue.addValue(
+        _copyAccountProfileWithNestedProfileGroups(
+          currentProfile,
+          nestedProfileGroups: nextGroups,
+        ),
+      );
+    }
     _updateEditState(
       editStateStreamValue.value.copyWith(nestedProfileGroups: nextGroups),
     );
@@ -2784,7 +2942,6 @@ class TenantAdminAccountProfilesController implements Disposable {
           : tenantAdminAccountProfilesRepoString(filtered.coverUrl),
       avatarUpload: filtered.avatarUpload,
       coverUpload: filtered.coverUpload,
-      nestedProfileGroups: nestedProfileGroups,
       contactMode: contactMode,
       contactSourceAccountProfileId: contactSourceValue,
       contactChannelDrafts:
@@ -2885,7 +3042,6 @@ class TenantAdminAccountProfilesController implements Disposable {
           : tenantAdminAccountProfilesRepoBool(removeCover),
       avatarUpload: filtered.avatarUpload,
       coverUpload: filtered.coverUpload,
-      nestedProfileGroups: nestedProfileGroups,
       contactMode: contactMode,
       contactSourceAccountProfileId: contactSourceValue,
       contactChannelDrafts: contactChannelDrafts,
@@ -3202,6 +3358,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     editSubmittingStreamValue.dispose();
     editSuccessMessageStreamValue.dispose();
     editErrorMessageStreamValue.dispose();
+    editNestedGroupMutationBusyStreamValue.dispose();
     taxonomyAutosavingStreamValue.dispose();
     createSubmittingStreamValue.dispose();
     createSuccessMessageStreamValue.dispose();

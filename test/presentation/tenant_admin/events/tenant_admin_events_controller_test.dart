@@ -12,6 +12,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profi
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_head_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
@@ -127,6 +128,194 @@ void main() {
       expect(
         controller.eventsErrorStreamValue.value,
         contains('filtered load failed'),
+      );
+    },
+  );
+
+  test(
+    'createOccurrenceProfileGroupHead keeps one in-flight command and adopts returned metadata',
+    () async {
+      final eventsRepository = _OccurrenceGroupMutationTrackingRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken(
+          'landlord-token',
+        ),
+      );
+
+      controller.initEventForm(
+        existingEvent: TenantAdminEvent(
+          eventIdValue: tenantAdminRequiredText('evt-occ-group-head'),
+          slugValue: tenantAdminRequiredText('evt-occ-group-head'),
+          titleValue: tenantAdminRequiredText('Occurrence Group Event'),
+          contentValue: tenantAdminOptionalText('Conteudo'),
+          type: TenantAdminEventType(
+            nameValue: tenantAdminRequiredText('Show'),
+            slugValue: tenantAdminRequiredText('show'),
+          ),
+          occurrences: <TenantAdminEventOccurrence>[
+            TenantAdminEventOccurrence(
+              occurrenceIdValue: tenantAdminOptionalText('occ-1'),
+              occurrenceSlugValue: tenantAdminOptionalText('occ-1'),
+              dateTimeStartValue: tenantAdminDateTime(
+                DateTime.utc(2026, 4, 20, 20),
+              ),
+            ),
+            TenantAdminEventOccurrence(
+              occurrenceIdValue: tenantAdminOptionalText('occ-2'),
+              occurrenceSlugValue: tenantAdminOptionalText('occ-2'),
+              dateTimeStartValue: tenantAdminDateTime(
+                DateTime.utc(2026, 4, 21, 20),
+              ),
+            ),
+          ],
+          publication: TenantAdminEventPublication(
+            statusValue: tenantAdminRequiredText('draft'),
+          ),
+        ),
+      );
+
+      final gate = Completer<TenantAdminNestedGroupHeadMutationResult>();
+      eventsRepository.createOccurrenceProfileGroupGate = gate.future;
+      final occurrenceKey = controller.occurrenceKeyAt(1)!;
+
+      final first = controller.createOccurrenceProfileGroupHead(
+        eventId: 'evt-occ-group-head',
+        occurrenceId: 'occ-2',
+        occurrenceKey: occurrenceKey,
+        label: 'Bandas',
+      );
+      final duplicate = controller.createOccurrenceProfileGroupHead(
+        eventId: 'evt-occ-group-head',
+        occurrenceId: 'occ-2',
+        occurrenceKey: occurrenceKey,
+        label: 'Ignorado',
+      );
+
+      expect(
+        controller.occurrenceProfileGroupMutationBusyStreamValue.value,
+        isTrue,
+      );
+      expect(eventsRepository.createOccurrenceProfileGroupCalls, 1);
+      expect(
+        eventsRepository.lastCreateOccurrenceGroupEventId,
+        'evt-occ-group-head',
+      );
+      expect(eventsRepository.lastCreateOccurrenceGroupOccurrenceId, 'occ-2');
+      expect(eventsRepository.lastCreateOccurrenceGroupLabel, 'Bandas');
+
+      gate.complete(
+        TenantAdminNestedGroupHeadMutationResult(
+          occurrenceIdValue: tenantAdminOptionalText('occ-2'),
+          groups: <TenantAdminNestedProfileGroup>[
+            TenantAdminNestedProfileGroup(
+              idValue: TenantAdminNestedProfileGroupTextValue('bandas'),
+              labelValue: TenantAdminNestedProfileGroupTextValue('Bandas'),
+              orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+              memberCountValue: TenantAdminCountValue(0),
+            ),
+          ],
+        ),
+      );
+
+      await first;
+      await duplicate;
+
+      expect(
+        controller.occurrenceProfileGroupMutationBusyStreamValue.value,
+        isFalse,
+      );
+      final occurrence =
+          controller.eventFormStateStreamValue.value.occurrences[1];
+      expect(occurrence.profileGroups, hasLength(1));
+      expect(occurrence.profileGroups.single.id, 'bandas');
+      expect(occurrence.profileGroups.single.label, 'Bandas');
+      expect(controller.submitErrorMessageStreamValue.value, isNull);
+    },
+  );
+
+  test(
+    'deleteOccurrenceProfileGroupHead reports failure and releases busy state',
+    () async {
+      final eventsRepository = _OccurrenceGroupMutationTrackingRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken(
+          'landlord-token',
+        ),
+      );
+
+      controller.initEventForm(
+        existingEvent: TenantAdminEvent(
+          eventIdValue: tenantAdminRequiredText('evt-occ-group-delete'),
+          slugValue: tenantAdminRequiredText('evt-occ-group-delete'),
+          titleValue: tenantAdminRequiredText('Occurrence Group Delete Event'),
+          contentValue: tenantAdminOptionalText('Conteudo'),
+          type: TenantAdminEventType(
+            nameValue: tenantAdminRequiredText('Show'),
+            slugValue: tenantAdminRequiredText('show'),
+          ),
+          occurrences: <TenantAdminEventOccurrence>[
+            TenantAdminEventOccurrence(
+              occurrenceIdValue: tenantAdminOptionalText('occ-1'),
+              occurrenceSlugValue: tenantAdminOptionalText('occ-1'),
+              dateTimeStartValue: tenantAdminDateTime(
+                DateTime.utc(2026, 4, 20, 20),
+              ),
+            ),
+            TenantAdminEventOccurrence(
+              occurrenceIdValue: tenantAdminOptionalText('occ-2'),
+              occurrenceSlugValue: tenantAdminOptionalText('occ-2'),
+              dateTimeStartValue: tenantAdminDateTime(
+                DateTime.utc(2026, 4, 21, 20),
+              ),
+              profileGroups: <TenantAdminNestedProfileGroup>[
+                TenantAdminNestedProfileGroup(
+                  idValue: TenantAdminNestedProfileGroupTextValue('bandas'),
+                  labelValue: TenantAdminNestedProfileGroupTextValue('Bandas'),
+                  orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+                  memberCountValue: TenantAdminCountValue(2),
+                ),
+              ],
+            ),
+          ],
+          publication: TenantAdminEventPublication(
+            statusValue: tenantAdminRequiredText('draft'),
+          ),
+        ),
+      );
+
+      eventsRepository.deleteOccurrenceProfileGroupError = StateError(
+        'delete failed',
+      );
+
+      await controller.deleteOccurrenceProfileGroupHead(
+        eventId: 'evt-occ-group-delete',
+        occurrenceId: 'occ-2',
+        occurrenceKey: controller.occurrenceKeyAt(1)!,
+        groupId: 'bandas',
+      );
+
+      expect(eventsRepository.deleteOccurrenceProfileGroupCalls, 1);
+      expect(
+        eventsRepository.lastDeleteOccurrenceGroupEventId,
+        'evt-occ-group-delete',
+      );
+      expect(eventsRepository.lastDeleteOccurrenceGroupOccurrenceId, 'occ-2');
+      expect(eventsRepository.lastDeleteOccurrenceGroupGroupId, 'bandas');
+      expect(
+        controller.occurrenceProfileGroupMutationBusyStreamValue.value,
+        isFalse,
+      );
+      expect(
+        controller.submitErrorMessageStreamValue.value,
+        contains('delete failed'),
+      );
+      expect(
+        controller.eventFormStateStreamValue.value.occurrences[1].profileGroups,
+        hasLength(1),
       );
     },
   );
@@ -2158,6 +2347,79 @@ class _DelayedBatchTaxonomiesRepository extends _NoopTaxonomiesRepository
     _pendingCompleter = Completer<TenantAdminTaxonomyTermsByTaxonomyId>();
     _pendingStarted = Completer<void>()..complete();
     return _pendingCompleter!.future;
+  }
+}
+
+class _OccurrenceGroupMutationTrackingRepository
+    extends _TrackingEventsRepository {
+  int createOccurrenceProfileGroupCalls = 0;
+  String? lastCreateOccurrenceGroupEventId;
+  String? lastCreateOccurrenceGroupOccurrenceId;
+  String? lastCreateOccurrenceGroupLabel;
+  Future<TenantAdminNestedGroupHeadMutationResult>?
+  createOccurrenceProfileGroupGate;
+  Object? createOccurrenceProfileGroupError;
+
+  int deleteOccurrenceProfileGroupCalls = 0;
+  String? lastDeleteOccurrenceGroupEventId;
+  String? lastDeleteOccurrenceGroupOccurrenceId;
+  String? lastDeleteOccurrenceGroupGroupId;
+  Future<TenantAdminNestedGroupHeadMutationResult>?
+  deleteOccurrenceProfileGroupGate;
+  Object? deleteOccurrenceProfileGroupError;
+
+  @override
+  Future<TenantAdminNestedGroupHeadMutationResult>
+  createOccurrenceProfileGroup({
+    required TenantAdminEventsRepoString eventId,
+    required TenantAdminEventsRepoString occurrenceId,
+    required TenantAdminEventsRepoString label,
+  }) async {
+    createOccurrenceProfileGroupCalls += 1;
+    lastCreateOccurrenceGroupEventId = eventId.value;
+    lastCreateOccurrenceGroupOccurrenceId = occurrenceId.value;
+    lastCreateOccurrenceGroupLabel = label.value;
+    if (createOccurrenceProfileGroupError != null) {
+      throw createOccurrenceProfileGroupError!;
+    }
+    if (createOccurrenceProfileGroupGate != null) {
+      return createOccurrenceProfileGroupGate!;
+    }
+    return TenantAdminNestedGroupHeadMutationResult(
+      occurrenceIdValue: tenantAdminOptionalText(occurrenceId.value),
+      groups: <TenantAdminNestedProfileGroup>[
+        TenantAdminNestedProfileGroup(
+          idValue: TenantAdminNestedProfileGroupTextValue('bandas'),
+          labelValue: TenantAdminNestedProfileGroupTextValue(label.value),
+          orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+          memberCountValue: TenantAdminCountValue(0),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Future<TenantAdminNestedGroupHeadMutationResult>
+  deleteOccurrenceProfileGroup({
+    required TenantAdminEventsRepoString eventId,
+    required TenantAdminEventsRepoString occurrenceId,
+    required TenantAdminEventsRepoString groupId,
+  }) async {
+    deleteOccurrenceProfileGroupCalls += 1;
+    lastDeleteOccurrenceGroupEventId = eventId.value;
+    lastDeleteOccurrenceGroupOccurrenceId = occurrenceId.value;
+    lastDeleteOccurrenceGroupGroupId = groupId.value;
+    if (deleteOccurrenceProfileGroupError != null) {
+      throw deleteOccurrenceProfileGroupError!;
+    }
+    if (deleteOccurrenceProfileGroupGate != null) {
+      return deleteOccurrenceProfileGroupGate!;
+    }
+    return TenantAdminNestedGroupHeadMutationResult(
+      occurrenceIdValue: tenantAdminOptionalText(occurrenceId.value),
+      deletedGroupIdValue: tenantAdminOptionalText(groupId.value),
+      groups: const <TenantAdminNestedProfileGroup>[],
+    );
   }
 }
 

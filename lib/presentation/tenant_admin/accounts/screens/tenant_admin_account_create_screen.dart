@@ -744,10 +744,14 @@ class _TenantAdminAccountCreateScreenState
       groups: state.nestedProfileGroups,
       title: 'Abas de contas vinculadas',
       addButtonKey: const Key('tenantAdminAccountCreateAddNestedGroupButton'),
-      onAddGroup: _controller.addCreateNestedProfileGroup,
+      onAddGroup: () async {
+        _controller.addCreateNestedProfileGroup();
+      },
       onRenameGroup: _controller.renameCreateNestedProfileGroup,
       onMoveGroup: _controller.moveCreateNestedProfileGroup,
-      onRemoveGroup: _controller.removeCreateNestedProfileGroup,
+      onRemoveGroup: (groupId) async {
+        _controller.removeCreateNestedProfileGroup(groupId);
+      },
       manageBlockedReasonBuilder: (_) =>
           'Salve a conta e o perfil antes de gerenciar os perfis vinculados.',
     );

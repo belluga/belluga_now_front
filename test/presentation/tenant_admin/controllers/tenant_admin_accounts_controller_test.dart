@@ -21,7 +21,6 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_aggregate_revision_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
@@ -586,22 +585,18 @@ class _FakeAccountProfilesRepository
   Future<TenantAdminNestedGroupMemberMutationResult> patchNestedGroupMembers({
     required TenantAdminAccountProfilesRepoString accountProfileId,
     required TenantAdminAccountProfilesRepoString groupId,
-    required TenantAdminAccountProfilesRepoInt aggregateRevision,
     List<TenantAdminAccountProfilesRepoString> addIds = const [],
     List<TenantAdminAccountProfilesRepoString> removeIds = const [],
   }) async {
     lastPatchNestedGroupMembersProfileId = accountProfileId.value;
     lastPatchNestedGroupMembersGroupId = groupId.value;
-    lastPatchNestedGroupMembersAggregateRevision = aggregateRevision.value;
+    lastPatchNestedGroupMembersAggregateRevision = null;
     lastPatchNestedGroupAddIds = addIds.map((entry) => entry.value).toList();
     lastPatchNestedGroupRemoveIds = removeIds
         .map((entry) => entry.value)
         .toList();
     return TenantAdminNestedGroupMemberMutationResult(
       memberCountValue: TenantAdminCountValue(addIds.length),
-      aggregateRevisionValue: TenantAdminAccountProfileAggregateRevisionValue(
-        aggregateRevision.value + 1,
-      ),
     );
   }
 

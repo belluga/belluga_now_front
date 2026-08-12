@@ -283,7 +283,7 @@ void main() {
   );
 
   test(
-    'createAccountProfile sends nested profile group metadata only',
+    'createAccountProfile omits nested profile group lifecycle from aggregate payload',
     () async {
       final adapter = _CaptureAdapter();
       final dio = Dio()..httpClientAdapter = adapter;
@@ -321,14 +321,15 @@ void main() {
 
       final data = adapter.lastRequest?.data;
       expect(data, isA<Map<String, dynamic>>());
-      expect((data as Map<String, dynamic>)['nested_profile_groups'], [
-        {'id': 'parceiros', 'label': 'Parceiros', 'order': 0},
-      ]);
+      expect(
+        (data as Map<String, dynamic>).containsKey('nested_profile_groups'),
+        isFalse,
+      );
     },
   );
 
   test(
-    'updateAccountProfile sends nested profile group metadata only',
+    'updateAccountProfile omits nested profile group lifecycle from aggregate payload',
     () async {
       final adapter = _CaptureAdapter();
       final dio = Dio()..httpClientAdapter = adapter;
@@ -363,9 +364,10 @@ void main() {
 
       final data = adapter.lastRequest?.data;
       expect(data, isA<Map<String, dynamic>>());
-      expect((data as Map<String, dynamic>)['nested_profile_groups'], [
-        {'id': 'parceiros', 'label': 'Parceiros', 'order': 0},
-      ]);
+      expect(
+        (data as Map<String, dynamic>).containsKey('nested_profile_groups'),
+        isFalse,
+      );
       expect(data['aggregate_revision'], 4);
     },
   );
@@ -420,7 +422,6 @@ void main() {
             },
           ],
           'next_cursor': 'cursor-2',
-          'aggregate_revision': 4,
         },
       );
       final dio = Dio()..httpClientAdapter = adapter;
@@ -449,7 +450,6 @@ void main() {
       expect(adapter.lastRequest?.queryParameters, <String, dynamic>{
         'per_page': 20,
       });
-      expect(page.aggregateRevision, 4);
       expect(page.nextCursor, 'cursor-2');
       expect(page.items, hasLength(2));
       expect(page.items.first.id, '507f1f77bcf86cd799439081');
@@ -468,7 +468,6 @@ void main() {
         responseBody: <String, dynamic>{
           'data': const <Map<String, dynamic>>[],
           'next_cursor': null,
-          'aggregate_revision': 4,
         },
       );
       final dio = Dio()..httpClientAdapter = adapter;
@@ -500,11 +499,11 @@ void main() {
   );
 
   test(
-    'patchNestedGroupMembers sends aggregate revision and delta ids',
+    'patchNestedGroupMembers sends delta ids without aggregate revision',
     () async {
       final adapter = _CaptureAdapter(
         responseBody: <String, dynamic>{
-          'data': <String, dynamic>{'member_count': 2, 'aggregate_revision': 5},
+          'data': <String, dynamic>{'member_count': 2},
         },
       );
       final dio = Dio()..httpClientAdapter = adapter;
@@ -520,10 +519,6 @@ void main() {
           'linked',
           defaultValue: '',
           isRequired: true,
-        ),
-        aggregateRevision: tenantAdminAccountProfilesRepoInt(
-          4,
-          defaultValue: 4,
         ),
         addIds: <TenantAdminAccountProfilesRepoString>[
           tenantAdminAccountProfilesRepoString(
@@ -549,12 +544,144 @@ void main() {
         ),
       );
       expect(adapter.lastRequest?.data, <String, dynamic>{
-        'aggregate_revision': 4,
         'add_ids': <String>['507f1f77bcf86cd799439081'],
         'remove_ids': <String>['507f1f77bcf86cd799439082'],
       });
       expect(result.memberCount, 2);
-      expect(result.aggregateRevision, 5);
+    },
+  );
+
+  test(
+    'createNestedProfileGroup uses dedicated endpoint and decodes group metadata',
+    () async {
+      final adapter = _CaptureAdapter(
+        responseBody: <String, dynamic>{
+          'data': <String, dynamic>{
+            'nested_profile_groups': <Map<String, dynamic>>[
+              <String, dynamic>{
+                'id': 'partners',
+                'label': 'Parceiros',
+                'order': 0,
+                'member_count': 0,
+              },
+            ],
+          },
+        },
+      );
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+      final result = await repository.createNestedProfileGroup(
+        accountProfileId: tenantAdminAccountProfilesRepoString(
+          'profile-1',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        label: tenantAdminAccountProfilesRepoString(
+          'Parceiros',
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
+
+      expect(adapter.lastRequest?.method, 'POST');
+      expect(
+        adapter.lastRequest?.path,
+        contains(
+          'https://tenant.test/admin/api/v1/account_profiles/profile-1/nested_profile_groups',
+        ),
+      );
+      expect(adapter.lastRequest?.data, <String, dynamic>{
+        'label': 'Parceiros',
+      });
+      expect(result.deletedGroupId, isNull);
+      expect(result.groups, hasLength(1));
+      expect(result.groups.single.id, 'partners');
+      expect(result.groups.single.label, 'Parceiros');
+      expect(result.groups.single.memberCount, 0);
+    },
+  );
+
+  test(
+    'createNestedProfileGroup rethrows accepted 422 responses as validation failures',
+    () async {
+      final adapter = _PermissiveNestedGroupValidationAdapter();
+      final dio = Dio(
+        BaseOptions(validateStatus: (status) => status != null && status < 500),
+      )..httpClientAdapter = adapter;
+      final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+      await expectLater(
+        () => repository.createNestedProfileGroup(
+          accountProfileId: tenantAdminAccountProfilesRepoString(
+            'profile-1',
+            defaultValue: '',
+            isRequired: true,
+          ),
+          label: tenantAdminAccountProfilesRepoString(
+            'Parceiros',
+            defaultValue: '',
+            isRequired: true,
+          ),
+        ),
+        throwsA(
+          isA<FormValidationFailure>().having(
+            (error) => error.fieldErrors['nested_profile_groups'],
+            'fieldErrors.nested_profile_groups',
+            contains('Nested profile groups exceed the configured limit.'),
+          ),
+        ),
+      );
+    },
+  );
+
+  test(
+    'deleteNestedProfileGroup uses dedicated endpoint and decodes group metadata',
+    () async {
+      final adapter = _CaptureAdapter(
+        responseBody: <String, dynamic>{
+          'data': <String, dynamic>{
+            'deleted_group_id': 'partners',
+            'nested_profile_groups': <Map<String, dynamic>>[
+              <String, dynamic>{
+                'id': 'artists',
+                'label': 'Artistas',
+                'order': 0,
+                'member_count': 2,
+              },
+            ],
+          },
+        },
+      );
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+      final result = await repository.deleteNestedProfileGroup(
+        accountProfileId: tenantAdminAccountProfilesRepoString(
+          'profile-1',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        groupId: tenantAdminAccountProfilesRepoString(
+          'partners',
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
+
+      expect(adapter.lastRequest?.method, 'DELETE');
+      expect(
+        adapter.lastRequest?.path,
+        contains(
+          'https://tenant.test/admin/api/v1/account_profiles/profile-1/nested_profile_groups/partners',
+        ),
+      );
+      expect(adapter.lastRequest?.data, <String, dynamic>{});
+      expect(result.deletedGroupId, 'partners');
+      expect(result.groups, hasLength(1));
+      expect(result.groups.single.id, 'artists');
+      expect(result.groups.single.label, 'Artistas');
+      expect(result.groups.single.memberCount, 2);
     },
   );
 
@@ -1608,6 +1735,44 @@ class _ProfileTypesRoutingAdapter implements HttpClientAdapter {
   ResponseBody _jsonResponse(Map<String, dynamic> payload) {
     return ResponseBody.fromString(
       jsonEncode(payload),
+      200,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+}
+
+class _PermissiveNestedGroupValidationAdapter implements HttpClientAdapter {
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future? cancelFuture,
+  ) async {
+    if (options.path.endsWith('/nested_profile_groups') &&
+        options.method == 'POST') {
+      return ResponseBody.fromString(
+        jsonEncode({
+          'message': 'The given data was invalid.',
+          'errors': {
+            'nested_profile_groups': [
+              'Nested profile groups exceed the configured limit.',
+            ],
+          },
+        }),
+        422,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
+
+    return ResponseBody.fromString(
+      jsonEncode({'data': {}}),
       200,
       headers: {
         Headers.contentTypeHeader: ['application/json'],
