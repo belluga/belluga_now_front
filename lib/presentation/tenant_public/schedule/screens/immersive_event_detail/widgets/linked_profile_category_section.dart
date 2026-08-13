@@ -91,6 +91,7 @@ class _LinkedProfileCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isDarkTheme = theme.brightness == Brightness.dark;
     final favoriteLabel = isFavorite ? 'Favoritado' : 'Favoritar';
     final tags = profile.taxonomyTerms
         .map((term) => term.labelValue.value.trim())
@@ -108,7 +109,7 @@ class _LinkedProfileCard extends StatelessWidget {
           tapKey: Key('linkedProfileCardTapTarget_${profile.id}'),
           titleStyle: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w700,
-            color: colorScheme.primary,
+            color: isDarkTheme ? colorScheme.onSurface : colorScheme.primary,
           ),
           titleMaxLines: 2,
           avatarSize: 64,
@@ -126,7 +127,16 @@ class _LinkedProfileCard extends StatelessWidget {
             child: DecoratedBox(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: colorScheme.surface.withValues(alpha: 0.94),
+                color:
+                    (isDarkTheme
+                            ? colorScheme.surfaceContainerHighest
+                            : colorScheme.surface)
+                        .withValues(alpha: 0.94),
+                border: Border.all(
+                  color: colorScheme.outlineVariant.withValues(
+                    alpha: isDarkTheme ? 0.42 : 0.18,
+                  ),
+                ),
               ),
               child: IconButton(
                 key: Key('linkedProfileFavoriteButton_${profile.id}'),

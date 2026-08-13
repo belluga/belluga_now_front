@@ -39,12 +39,12 @@ void main() {
       expect(payload.containsKey('artists'), isFalse);
       expect(payload.containsKey('artistProfiles'), isFalse);
       expect(payload.containsKey('event_parties'), isFalse);
-      expect(payload['profile_groups'], isEmpty);
+      expect(payload.containsKey('profile_groups'), isFalse);
     },
   );
 
   test(
-    'encodes root profile_groups from the single canonical occurrence without event_parties',
+    'omits event and occurrence profile_groups from aggregate draft writes',
     () {
       const encoder = TenantAdminEventsRequestEncoder();
       final payload = encoder.encodeDraft(
@@ -94,25 +94,13 @@ void main() {
         ),
       );
 
-      expect(payload['profile_groups'], [
-        {
-          'id': 'convidados',
-          'label': 'Convidados',
-          'order': 0,
-        },
-      ]);
+      expect(payload.containsKey('profile_groups'), isFalse);
       expect(payload.containsKey('event_parties'), isFalse);
 
       final occurrence =
           (payload['occurrences'] as List<Object?>).first
               as Map<String, dynamic>;
-      expect(occurrence['profile_groups'], [
-        {
-          'id': 'convidados',
-          'label': 'Convidados',
-          'order': 0,
-        },
-      ]);
+      expect(occurrence.containsKey('profile_groups'), isFalse);
       expect(occurrence.containsKey('event_parties'), isFalse);
     },
   );
@@ -175,27 +163,23 @@ void main() {
         ),
       );
 
-      expect(payload['profile_groups'], isEmpty);
+      expect(payload.containsKey('profile_groups'), isFalse);
       final occurrences = payload['occurrences'] as List<Object?>;
-      expect((occurrences.first as Map<String, dynamic>)['profile_groups'], [
-        {
-          'id': 'artists',
-          'label': 'Artists',
-          'order': 0,
-        },
-      ]);
-      expect((occurrences[1] as Map<String, dynamic>)['profile_groups'], [
-        {
-          'id': 'sponsors',
-          'label': 'Sponsors',
-          'order': 0,
-        },
-      ]);
+      expect(
+        (occurrences.first as Map<String, dynamic>).containsKey(
+          'profile_groups',
+        ),
+        isFalse,
+      );
+      expect(
+        (occurrences[1] as Map<String, dynamic>).containsKey('profile_groups'),
+        isFalse,
+      );
     },
   );
 
   test(
-    'encodes empty canonical profile_groups payload when no related account profiles are selected',
+    'omits canonical profile_groups payload when no related account profiles are selected',
     () {
       const encoder = TenantAdminEventsRequestEncoder();
       final payload = encoder.encodeDraft(
@@ -217,8 +201,7 @@ void main() {
         ),
       );
 
-      expect(payload.containsKey('profile_groups'), isTrue);
-      expect(payload['profile_groups'], isEmpty);
+      expect(payload.containsKey('profile_groups'), isFalse);
     },
   );
 
@@ -255,7 +238,7 @@ void main() {
 
       expect(occurrence['occurrence_id'], '507f1f77bcf86cd799439011');
       expect(occurrence['occurrence_slug'], 'evento-abc-0');
-      expect(occurrence['profile_groups'], isEmpty);
+      expect(occurrence.containsKey('profile_groups'), isFalse);
       expect(occurrence['taxonomy_terms'], isEmpty);
       expect(occurrence['programming_items'], isEmpty);
     },
@@ -315,13 +298,7 @@ void main() {
     final occurrence =
         (payload['occurrences'] as List<Object?>).first as Map<String, dynamic>;
 
-    expect(occurrence['profile_groups'], [
-      {
-        'id': 'bandas',
-        'label': 'Bandas',
-        'order': 0,
-      },
-    ]);
+    expect(occurrence.containsKey('profile_groups'), isFalse);
     expect(occurrence.containsKey('event_parties'), isFalse);
     expect(occurrence['taxonomy_terms'], [
       {'type': 'sport', 'value': 'football'},
@@ -369,7 +346,7 @@ void main() {
               as Map<String, dynamic>;
 
       expect(occurrence.containsKey('event_parties'), isFalse);
-      expect(occurrence['profile_groups'], isEmpty);
+      expect(occurrence.containsKey('profile_groups'), isFalse);
     },
   );
 }

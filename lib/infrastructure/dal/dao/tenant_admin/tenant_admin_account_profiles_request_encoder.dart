@@ -6,7 +6,6 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
-import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/support/tenant_admin_nested_profile_group_payload_encoder.dart';
 
 class TenantAdminAccountProfilesRequestEncoder {
   const TenantAdminAccountProfilesRequestEncoder();
@@ -129,15 +128,18 @@ class TenantAdminAccountProfilesRequestEncoder {
   }
 
   Map<String, dynamic> encodePatchNestedGroupMembers({
-    required int aggregateRevision,
     List<String> addIds = const <String>[],
     List<String> removeIds = const <String>[],
   }) {
-    return <String, dynamic>{
-      'aggregate_revision': aggregateRevision,
-      'add_ids': addIds,
-      'remove_ids': removeIds,
-    };
+    return <String, dynamic>{'add_ids': addIds, 'remove_ids': removeIds};
+  }
+
+  Map<String, dynamic> encodeCreateNestedProfileGroup({required String label}) {
+    return <String, dynamic>{'label': label.trim()};
+  }
+
+  Map<String, dynamic> encodeDeleteNestedProfileGroup() {
+    return const <String, dynamic>{};
   }
 
   Map<String, dynamic> encodeCreateAccountProfile({
@@ -174,10 +176,6 @@ class TenantAdminAccountProfilesRequestEncoder {
       'content': ?content,
       'avatar_url': ?avatarUrl,
       'cover_url': ?coverUrl,
-      if (nestedProfileGroups.isNotEmpty)
-        'nested_profile_groups': encodeTenantAdminNestedProfileGroups(
-          nestedProfileGroups,
-        ),
       'contact_mode': contactMode.rawValue,
       'contact_source_account_profile_id': ?contactSourceAccountProfileId,
       'contact_channels': contactChannelDrafts
@@ -232,11 +230,6 @@ class TenantAdminAccountProfilesRequestEncoder {
     if (coverUrl != null) payload['cover_url'] = coverUrl;
     if (removeAvatar == true) payload['remove_avatar'] = true;
     if (removeCover == true) payload['remove_cover'] = true;
-    if (nestedProfileGroups != null) {
-      payload['nested_profile_groups'] = encodeTenantAdminNestedProfileGroups(
-        nestedProfileGroups,
-      );
-    }
     if (contactMode != null) {
       payload['contact_mode'] = contactMode.rawValue;
     }

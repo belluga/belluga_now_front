@@ -15,8 +15,9 @@ Future<void> openTenantAdminAccountProfileGroupMembersScreen({
   required String accountProfileId,
   required TenantAdminNestedProfileGroup group,
 }) {
-  final shellRouter =
-      context.innerRouterOf<StackRouter>(TenantAdminShellRoute.name);
+  final shellRouter = context.innerRouterOf<StackRouter>(
+    TenantAdminShellRoute.name,
+  );
   final navigationRouter = shellRouter ?? context.router;
   return navigationRouter.push<void>(
     TenantAdminAccountProfileGroupMembersRoute(
@@ -51,7 +52,6 @@ class _TenantAdminAccountProfileGroupMembersScreenState
       const <TenantAdminAccountProfileSelectionSummary>[];
   String? _nextCursor;
   String? _errorMessage;
-  int _aggregateRevision = 0;
   bool _initialLoading = true;
   bool _pageLoading = false;
   bool _mutationLoading = false;
@@ -79,7 +79,6 @@ class _TenantAdminAccountProfileGroupMembersScreenState
       setState(() {
         _items = page.items;
         _nextCursor = page.nextCursor;
-        _aggregateRevision = page.aggregateRevision;
         _initialLoading = false;
       });
     } catch (error) {
@@ -138,7 +137,6 @@ class _TenantAdminAccountProfileGroupMembersScreenState
           nextItems.values,
         );
         _nextCursor = page.nextCursor;
-        _aggregateRevision = page.aggregateRevision;
         _pageLoading = false;
       });
     } catch (error) {
@@ -179,7 +177,7 @@ class _TenantAdminAccountProfileGroupMembersScreenState
           .where((profileType) => profileType.capabilities.isQueryable)
           .toList(growable: false),
       title: 'Adicionar perfis',
-      emptyMessage: 'Nenhum perfil elegível encontrado.',
+      emptyMessage: 'Nenhum perfil elegivel encontrado.',
       selectedProfileIds: pendingAddIds,
       onProfileTypeChanged:
           _controller.filterNestedProfileCandidatesByProfileType,
@@ -206,16 +204,14 @@ class _TenantAdminAccountProfileGroupMembersScreenState
       _errorMessage = null;
     });
     try {
-      final result = await _controller.addEditNestedGroupMembers(
+      await _controller.addEditNestedGroupMembers(
         accountProfileId: widget.accountProfileId,
         groupId: widget.group.id,
-        aggregateRevision: _aggregateRevision,
         addIds: pendingAddIds.toList(growable: false),
       );
       if (!mounted) {
         return;
       }
-      _aggregateRevision = result.aggregateRevision;
       await _loadFirstPage();
     } catch (error) {
       if (!mounted) {
@@ -245,16 +241,14 @@ class _TenantAdminAccountProfileGroupMembersScreenState
       _errorMessage = null;
     });
     try {
-      final result = await _controller.removeEditNestedGroupMembers(
+      await _controller.removeEditNestedGroupMembers(
         accountProfileId: widget.accountProfileId,
         groupId: widget.group.id,
-        aggregateRevision: _aggregateRevision,
         removeIds: <String>[item.id],
       );
       if (!mounted) {
         return;
       }
-      _aggregateRevision = result.aggregateRevision;
       await _loadFirstPage();
     } catch (error) {
       if (!mounted) {
@@ -278,7 +272,18 @@ class _TenantAdminAccountProfileGroupMembersScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.group.label),
+        leading: IconButton(
+          tooltip: 'Voltar',
+          onPressed: () {
+            unawaited(context.router.maybePop());
+          },
+          icon: const Icon(Icons.arrow_back),
+        ),
+        title: Text(
+          widget.group.label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
         actions: [
           IconButton(
             tooltip: 'Adicionar perfis',
@@ -342,9 +347,15 @@ class _TenantAdminAccountProfileGroupMembersScreenState
                             item.displayName?.trim().isNotEmpty == true
                                 ? item.displayName!.trim()
                                 : item.id,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
                           subtitle: item.displayName?.trim().isNotEmpty == true
-                              ? Text(item.id)
+                              ? Text(
+                                  item.id,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                )
                               : null,
                           trailing: IconButton(
                             tooltip: 'Remover perfil',

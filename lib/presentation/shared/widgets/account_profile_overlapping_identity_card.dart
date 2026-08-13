@@ -46,17 +46,24 @@ class AccountProfileOverlappingIdentityCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isDarkTheme = theme.brightness == Brightness.dark;
     final hasAvatar = visual.hasIdentityAvatar;
     final hasLeadingVisual = hasAvatar || visual.typeVisual != null;
     final effectiveCardLeft = hasLeadingVisual ? cardLeft : 0.0;
     final effectiveLeadingInset = hasLeadingVisual ? contentLeadingInset : 20.0;
     final effectiveMinimumHeight = hasLeadingVisual ? minimumCardHeight : 0.0;
+    final cardBackgroundColor = isDarkTheme
+        ? colorScheme.surfaceContainerHigh
+        : colorScheme.surface;
+    final cardBorderColor = colorScheme.outlineVariant.withValues(
+      alpha: isDarkTheme ? 0.42 : 0.22,
+    );
     final effectiveTitleStyle =
         titleStyle ??
         theme.textTheme.headlineSmall?.copyWith(
           fontWeight: FontWeight.w800,
           height: 1.05,
-          color: colorScheme.primary,
+          color: isDarkTheme ? colorScheme.onSurface : colorScheme.primary,
         );
     final content = ConstrainedBox(
       constraints: BoxConstraints(minHeight: effectiveMinimumHeight),
@@ -122,6 +129,13 @@ class AccountProfileOverlappingIdentityCard extends StatelessWidget {
             child: Card(
               key: cardKey,
               clipBehavior: Clip.antiAlias,
+              color: cardBackgroundColor,
+              elevation: isDarkTheme ? 2 : 1,
+              surfaceTintColor: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(28),
+                side: BorderSide(color: cardBorderColor),
+              ),
               child: onTap == null
                   ? content
                   : InkWell(key: tapKey, onTap: onTap, child: content),
@@ -136,6 +150,11 @@ class AccountProfileOverlappingIdentityCard extends StatelessWidget {
               avatarUrl: visual.identityAvatarUrl,
               typeVisual: visual.typeVisual,
               size: avatarSize,
+              backgroundColor: isDarkTheme
+                  ? colorScheme.surfaceContainerHighest
+                  : colorScheme.surface,
+              borderColor: cardBorderColor,
+              shadowOpacity: isDarkTheme ? 0.2 : 0.08,
             ),
           ),
       ],
@@ -148,11 +167,17 @@ class _AccountProfileOverlappingAvatar extends StatelessWidget {
     required this.avatarUrl,
     required this.typeVisual,
     required this.size,
+    required this.backgroundColor,
+    required this.borderColor,
+    required this.shadowOpacity,
   });
 
   final String? avatarUrl;
   final ResolvedProfileTypeVisual? typeVisual;
   final double size;
+  final Color backgroundColor;
+  final Color borderColor;
+  final double shadowOpacity;
 
   @override
   Widget build(BuildContext context) {
@@ -162,11 +187,12 @@ class _AccountProfileOverlappingAvatar extends StatelessWidget {
       height: size,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: backgroundColor,
         shape: BoxShape.circle,
+        border: Border.all(color: borderColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
+            color: Colors.black.withValues(alpha: shadowOpacity),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),

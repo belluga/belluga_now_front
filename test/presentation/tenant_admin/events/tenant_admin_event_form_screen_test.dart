@@ -13,6 +13,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profi
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_head_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_page.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
@@ -21,7 +22,6 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms_by_taxonomy_id.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_aggregate_revision_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
@@ -3170,19 +3170,15 @@ void main() {
         find.byKey(const Key('tenantAdminProgrammingTimeField')),
         '10:00',
       );
-      final addOccurrenceProfileButton = find
-          .byWidgetPredicate(
-            (widget) =>
-                widget is OutlinedButton &&
-                widget.key.toString().contains(
-                  'tenantAdminProgrammingAddOccurrenceProfileButton_',
-                ),
-          )
-          .first;
-
       expect(
-        tester.widget<OutlinedButton>(addOccurrenceProfileButton).onPressed,
-        isNull,
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is OutlinedButton &&
+              widget.key.toString().contains(
+                'tenantAdminProgrammingAddOccurrenceProfileButton_',
+              ),
+        ),
+        findsNothing,
       );
       expect(
         find.text('Salve o evento para gerenciar perfis desta ocorrência.'),
@@ -5261,7 +5257,7 @@ void main() {
   });
 
   testWidgets(
-    'related account profile groups on create stay metadata-only and block member management',
+    'related account profile groups on create stay empty until the event is first saved',
     (tester) async {
       final eventsRepository = _FakeEventsRepository();
       final taxonomiesRepository = _FakeTaxonomiesRepository();
@@ -5286,30 +5282,31 @@ void main() {
         const Scaffold(body: TenantAdminEventFormScreen()),
       );
 
-      final groupId = await _addEventProfileGroup(
-        tester,
-        controller,
-        label: 'Participantes',
-      );
       final state = controller.eventFormStateStreamValue.value;
-      expect(state.profileGroups.single.id, groupId);
-      expect(state.profileGroups.single.accountProfileIdValues, isEmpty);
+      expect(state.profileGroups, isEmpty);
+      expect(state.occurrences, isEmpty);
       expect(state.selectedRelatedAccountProfileIds, isEmpty);
-      expect(find.text('0 perfis vinculados'), findsOneWidget);
       expect(
-        find.text('Salve o evento para gerenciar perfis desta ocorrência.'),
+        find.text('Gerencie os grupos dentro de cada ocorrência.'),
         findsOneWidget,
       );
-
-      final manageButton = tester.widget<OutlinedButton>(
-        find.byKey(Key('EventProfileManageGroup_$groupId')),
+      final addButton = tester.widget<OutlinedButton>(
+        find.byKey(const Key('TenantAdminEventProfileGroupAdd')),
       );
-      expect(manageButton.onPressed, isNull);
+      expect(addButton.onPressed, isNull);
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is OutlinedButton &&
+              widget.key.toString().contains('EventProfileManageGroup_'),
+        ),
+        findsNothing,
+      );
     },
   );
 
   testWidgets(
-    'adding the first occurrence preserves event-level related profile group metadata only',
+    'adding the first occurrence keeps related profile groups empty before first save',
     (tester) async {
       final eventsRepository = _FakeEventsRepository();
       final taxonomiesRepository = _FakeTaxonomiesRepository();
@@ -5325,12 +5322,6 @@ void main() {
         const Scaffold(body: TenantAdminEventFormScreen()),
       );
 
-      final groupId = await _addEventProfileGroup(
-        tester,
-        controller,
-        label: 'Participantes',
-      );
-
       await tester.tap(
         find.byKey(const Key('tenantAdminEventAddOccurrenceButton')),
       );
@@ -5339,16 +5330,18 @@ void main() {
 
       final state = controller.eventFormStateStreamValue.value;
       expect(state.occurrences, hasLength(1));
-      expect(state.profileGroups.single.id, groupId);
-      expect(state.profileGroups.single.accountProfileIdValues, isEmpty);
+      expect(state.profileGroups, isEmpty);
       expect(state.selectedRelatedAccountProfileIds, isEmpty);
-      expect(state.occurrences.single.profileGroups.single.id, groupId);
-      expect(
-        state.occurrences.single.profileGroups.single.accountProfileIdValues,
-        isEmpty,
-      );
-      expect(state.occurrences.single.profileGroups.single.memberCount, 0);
+      expect(state.occurrences.single.profileGroups, isEmpty);
       expect(state.occurrences.single.relatedAccountProfileIds, isEmpty);
+      expect(
+        find.text('Salve o evento para gerenciar perfis desta ocorrência.'),
+        findsOneWidget,
+      );
+      final addButton = tester.widget<OutlinedButton>(
+        find.byKey(const Key('TenantAdminEventProfileGroupAdd')),
+      );
+      expect(addButton.onPressed, isNull);
     },
   );
 
@@ -6322,6 +6315,378 @@ void main() {
   );
 
   testWidgets(
+    'creates occurrence group head from the occurrence editor dialog',
+    (tester) async {
+      final eventsRepository = _FakeEventsRepository();
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+
+      eventsRepository.eventTypes = [
+        TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439102'),
+          nameValue: tenantAdminRequiredText('Show'),
+          slugValue: tenantAdminRequiredText('show'),
+        ),
+      ];
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        Scaffold(
+          body: TenantAdminEventFormScreen(
+            existingEvent: _buildOccurrenceGroupHeadEvent(),
+          ),
+        ),
+      );
+      await tester.ensureVisible(
+        find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('TenantAdminOccurrenceProfileGroupAdd')),
+        250,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('TenantAdminOccurrenceProfileGroupAdd')),
+      );
+      await tester.pumpAndSettle();
+
+      final groupNameField = find.byWidgetPredicate(
+        (widget) =>
+            widget is TextField &&
+            widget.decoration?.labelText == 'Nome do grupo',
+      );
+      expect(groupNameField, findsOneWidget);
+      await tester.enterText(groupNameField, 'Bandas');
+      await tester.tap(find.text('Criar grupo'));
+      await tester.pumpAndSettle();
+
+      expect(eventsRepository.createOccurrenceProfileGroupCalls, 1);
+      expect(
+        eventsRepository.lastCreateOccurrenceProfileGroupEventId,
+        'evt-occurrence-group-head',
+      );
+      expect(
+        eventsRepository.lastCreateOccurrenceProfileGroupOccurrenceId,
+        'occ-2',
+      );
+      expect(eventsRepository.lastCreateOccurrenceProfileGroupLabel, 'Bandas');
+      expect(find.text('Bandas'), findsOneWidget);
+      expect(find.text('0 perfis vinculados'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'delete occurrence group head requires confirmation only when the group has members',
+    (tester) async {
+      final eventsRepository = _FakeEventsRepository();
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+
+      eventsRepository.eventTypes = [
+        TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439103'),
+          nameValue: tenantAdminRequiredText('Show'),
+          slugValue: tenantAdminRequiredText('show'),
+        ),
+      ];
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        Scaffold(
+          body: TenantAdminEventFormScreen(
+            existingEvent: _buildOccurrenceGroupHeadEvent(
+              occurrenceGroups: <TenantAdminNestedProfileGroup>[
+                TenantAdminNestedProfileGroup(
+                  idValue: TenantAdminNestedProfileGroupTextValue('bandas'),
+                  labelValue: TenantAdminNestedProfileGroupTextValue('Bandas'),
+                  orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+                  memberCountValue: TenantAdminCountValue(2),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.ensureVisible(
+        find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('OccurrenceProfileManageGroup_bandas')),
+        250,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Remover grupo'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Excluir grupo'), findsOneWidget);
+      expect(
+        find.textContaining('A exclusão removerá o grupo e todos os vínculos'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('Cancelar'));
+      await tester.pumpAndSettle();
+
+      expect(eventsRepository.deleteOccurrenceProfileGroupCalls, 0);
+      expect(find.text('Bandas'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Remover grupo'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Excluir'));
+      await tester.pumpAndSettle();
+
+      expect(eventsRepository.deleteOccurrenceProfileGroupCalls, 1);
+      expect(
+        eventsRepository.lastDeleteOccurrenceProfileGroupEventId,
+        'evt-occurrence-group-head',
+      );
+      expect(
+        eventsRepository.lastDeleteOccurrenceProfileGroupOccurrenceId,
+        'occ-2',
+      );
+      expect(
+        eventsRepository.lastDeleteOccurrenceProfileGroupGroupId,
+        'bandas',
+      );
+      expect(find.text('Bandas'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'occurrence group head create failure stays in the sheet and shows an inline error',
+    (tester) async {
+      final eventsRepository = _FakeEventsRepository()
+        ..createOccurrenceProfileGroupError = FormValidationFailure(
+          statusCode: 422,
+          message: 'The given data was invalid.',
+          fieldErrors: <String, List<String>>{
+            'profile_groups': const <String>[
+              'Related-account groups exceed the configured limit.',
+            ],
+          },
+        );
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+
+      eventsRepository.eventTypes = [
+        TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439104'),
+          nameValue: tenantAdminRequiredText('Show'),
+          slugValue: tenantAdminRequiredText('show'),
+        ),
+      ];
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        Scaffold(
+          body: TenantAdminEventFormScreen(
+            existingEvent: _buildOccurrenceGroupHeadEvent(),
+          ),
+        ),
+      );
+      await tester.ensureVisible(
+        find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('TenantAdminOccurrenceProfileGroupAdd')),
+        250,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('TenantAdminOccurrenceProfileGroupAdd')),
+      );
+      await tester.pumpAndSettle();
+
+      final groupNameField = find.byWidgetPredicate(
+        (widget) =>
+            widget is TextField &&
+            widget.decoration?.labelText == 'Nome do grupo',
+      );
+      await tester.enterText(groupNameField, 'Bandas');
+      await tester.tap(find.text('Criar grupo'));
+      await tester.pumpAndSettle();
+
+      expect(eventsRepository.createOccurrenceProfileGroupCalls, 1);
+      expect(
+        find.textContaining(
+          'Related-account groups exceed the configured limit.',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('OccurrenceProfileProfileGroup_bandas')),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets(
+    'occurrence group head delete failure stays in the sheet and shows an inline error',
+    (tester) async {
+      final eventsRepository = _FakeEventsRepository()
+        ..deleteOccurrenceProfileGroupError = StateError(
+          'Não foi possível remover o grupo.',
+        );
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+
+      eventsRepository.eventTypes = [
+        TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439104'),
+          nameValue: tenantAdminRequiredText('Show'),
+          slugValue: tenantAdminRequiredText('show'),
+        ),
+      ];
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        Scaffold(
+          body: TenantAdminEventFormScreen(
+            existingEvent: _buildOccurrenceGroupHeadEvent(
+              occurrenceGroups: <TenantAdminNestedProfileGroup>[
+                TenantAdminNestedProfileGroup(
+                  idValue: TenantAdminNestedProfileGroupTextValue('bandas'),
+                  labelValue: TenantAdminNestedProfileGroupTextValue('Bandas'),
+                  orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+                  memberCountValue: TenantAdminCountValue(2),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.ensureVisible(
+        find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('OccurrenceProfileManageGroup_bandas')),
+        250,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Remover grupo'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Excluir'));
+      await tester.pumpAndSettle();
+
+      expect(eventsRepository.deleteOccurrenceProfileGroupCalls, 1);
+      expect(find.text('Não foi possível remover o grupo.'), findsOneWidget);
+      expect(
+        find.byKey(const Key('OccurrenceProfileProfileGroup_bandas')),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'delete empty occurrence group head skips destructive confirmation',
+    (tester) async {
+      final eventsRepository = _FakeEventsRepository();
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+
+      eventsRepository.eventTypes = [
+        TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439105'),
+          nameValue: tenantAdminRequiredText('Show'),
+          slugValue: tenantAdminRequiredText('show'),
+        ),
+      ];
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        Scaffold(
+          body: TenantAdminEventFormScreen(
+            existingEvent: _buildOccurrenceGroupHeadEvent(
+              occurrenceGroups: <TenantAdminNestedProfileGroup>[
+                TenantAdminNestedProfileGroup(
+                  idValue: TenantAdminNestedProfileGroupTextValue('bandas'),
+                  labelValue: TenantAdminNestedProfileGroupTextValue('Bandas'),
+                  orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+                  memberCountValue: TenantAdminCountValue(0),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.ensureVisible(
+        find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('tenantAdminEventOccurrenceCard_1')),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('OccurrenceProfileManageGroup_bandas')),
+        250,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Remover grupo'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Excluir grupo'), findsNothing);
+      expect(eventsRepository.deleteOccurrenceProfileGroupCalls, 1);
+      expect(find.text('Bandas'), findsNothing);
+    },
+  );
+
+  testWidgets(
     'single-occurrence primary programming exposes persisted occurrence profiles from canonical group members',
     (tester) async {
       final eventsRepository = _EmptyCandidatesEventsRepository();
@@ -6642,8 +7007,8 @@ Future<void> _pumpWithAutoRoute(WidgetTester tester, Widget child) async {
           chromeMode: RouteChromeMode.fullscreen,
         ),
         builder: (_, routeData) {
-          final args =
-              routeData.argsAs<TenantAdminEventOccurrenceGroupMembersRouteArgs>();
+          final args = routeData
+              .argsAs<TenantAdminEventOccurrenceGroupMembersRouteArgs>();
           return TenantAdminEventOccurrenceGroupMembersScreen(
             key: args.key,
             eventId: args.eventId,
@@ -6721,65 +7086,62 @@ Future<void> _tapProgrammingSaveButton(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-Future<String> _addEventProfileGroup(
-  WidgetTester tester,
-  TenantAdminEventsController controller, {
-  String? label,
-}) async {
-  await tester.scrollUntilVisible(
-    find.byKey(const Key('TenantAdminEventProfileGroupAdd')),
-    250,
-    scrollable: find.byType(Scrollable).first,
-  );
-  await tester.pumpAndSettle();
-  await tester.tap(find.byKey(const Key('TenantAdminEventProfileGroupAdd')));
-  await tester.pumpAndSettle();
-
-  final group = controller.eventFormStateStreamValue.value.profileGroups.last;
-  if (label != null) {
-    await tester.enterText(
-      find.byKey(Key('EventProfileProfileGroupLabel_${group.id}')),
-      label,
-    );
-    await tester.pumpAndSettle();
-  }
-  return group.id;
-}
-
 Future<String> _addOccurrenceProfileGroup(
   WidgetTester tester,
   TenantAdminEventsController controller, {
   required int occurrenceIndex,
   String? label,
 }) async {
-  await tester.scrollUntilVisible(
-    find.byKey(const Key('TenantAdminOccurrenceProfileGroupAdd')),
-    250,
-    scrollable: find.byType(Scrollable).last,
+  final effectiveLabel = (label?.trim().isNotEmpty ?? false)
+      ? label!.trim()
+      : 'Novo grupo';
+  final formScreen = tester.widget<TenantAdminEventFormScreen>(
+    find.byType(TenantAdminEventFormScreen).first,
   );
-  await tester.pumpAndSettle();
-  await tester.tap(
-    find.byKey(const Key('TenantAdminOccurrenceProfileGroupAdd')),
+  final occurrence =
+      controller.eventFormStateStreamValue.value.occurrences[occurrenceIndex];
+  final eventId = formScreen.existingEvent?.eventId.trim() ?? '';
+  final occurrenceId = occurrence.occurrenceId?.trim() ?? '';
+  final occurrenceKey = controller.occurrenceKeyAt(occurrenceIndex) ?? '';
+  if (eventId.isEmpty || occurrenceId.isEmpty || occurrenceKey.isEmpty) {
+    throw StateError(
+      'Occurrence group creation requires a persisted event and occurrence.',
+    );
+  }
+  await controller.createOccurrenceProfileGroupHead(
+    eventId: eventId,
+    occurrenceId: occurrenceId,
+    occurrenceKey: occurrenceKey,
+    label: effectiveLabel,
   );
   await tester.pumpAndSettle();
 
-  final group = controller
-      .eventFormStateStreamValue
-      .value
-      .occurrences[occurrenceIndex]
-      .profileGroups
-      .last;
-  if (label != null) {
-    await tester.enterText(
-      find.byKey(Key('OccurrenceProfileProfileGroupLabel_${group.id}')),
-      label,
-    );
+  TenantAdminNestedProfileGroup? group;
+  for (var attempt = 0; attempt < 10; attempt++) {
     await tester.pumpAndSettle();
+    final groups = controller
+        .eventFormStateStreamValue
+        .value
+        .occurrences[occurrenceIndex]
+        .profileGroups;
+    for (final candidate in groups.reversed) {
+      if (candidate.label == effectiveLabel) {
+        group = candidate;
+        break;
+      }
+    }
+    group ??= groups.isEmpty ? null : groups.last;
+    if (group != null) {
+      break;
+    }
+    await tester.pump(const Duration(milliseconds: 50));
   }
-  final occurrence =
-      controller.eventFormStateStreamValue.value.occurrences[occurrenceIndex];
-  final occurrenceId = occurrence.occurrenceId?.trim();
-  if (occurrenceId != null && occurrenceId.isNotEmpty) {
+  if (group == null) {
+    throw StateError(
+      'Occurrence group was not created for label "$effectiveLabel".',
+    );
+  }
+  if (occurrenceId.isNotEmpty) {
     controller.markEventFormClean();
     await tester.pumpAndSettle();
   }
@@ -7046,37 +7408,21 @@ Future<void> _ensureOccurrenceProgrammingGroup(
     return;
   }
 
-  await tester.scrollUntilVisible(
-    find.byKey(const Key('TenantAdminOccurrenceProfileGroupAdd')),
-    250,
-    scrollable: find.byType(Scrollable).last,
-  );
-  await tester.pumpAndSettle();
-  await tester.tap(
-    find.byKey(const Key('TenantAdminOccurrenceProfileGroupAdd')),
-  );
-  await tester.pumpAndSettle();
-
-  final labelField = find
-      .byWidgetPredicate(
-        (widget) =>
-            widget is TextFormField &&
-            widget.key.toString().contains(
-              'OccurrenceProfileProfileGroupLabel_',
-            ),
-      )
-      .last;
-  await tester.enterText(labelField, label);
-  await tester.pumpAndSettle();
-
   final controller = GetIt.I.get<TenantAdminEventsController>();
-  final currentOccurrence =
-      controller.eventFormStateStreamValue.value.occurrences.lastOrNull;
-  final occurrenceId = currentOccurrence?.occurrenceId?.trim();
-  if (occurrenceId != null && occurrenceId.isNotEmpty) {
-    controller.markEventFormClean();
-    await tester.pumpAndSettle();
+  final formScreen = tester.widget<TenantAdminEventFormScreen>(
+    find.byType(TenantAdminEventFormScreen).first,
+  );
+  if ((formScreen.existingEvent?.eventId.trim() ?? '').isEmpty) {
+    return;
   }
+  final occurrenceIndex =
+      controller.eventFormStateStreamValue.value.occurrences.length - 1;
+  await _addOccurrenceProfileGroup(
+    tester,
+    controller,
+    occurrenceIndex: occurrenceIndex,
+    label: label,
+  );
 }
 
 Future<void> _addOccurrenceProgrammingWithNewProfile(
@@ -7240,13 +7586,26 @@ class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
   Object? createEventError;
   Object? createOwnEventError;
   Object? updateEventError;
+  Object? createOccurrenceProfileGroupError;
+  Object? deleteOccurrenceProfileGroupError;
   int createEventCalls = 0;
   int createOwnEventCalls = 0;
   int updateEventCalls = 0;
+  int createOccurrenceProfileGroupCalls = 0;
+  int deleteOccurrenceProfileGroupCalls = 0;
   String? lastRelatedProfileType;
+  String? lastCreateOccurrenceProfileGroupEventId;
+  String? lastCreateOccurrenceProfileGroupOccurrenceId;
+  String? lastCreateOccurrenceProfileGroupLabel;
+  String? lastDeleteOccurrenceProfileGroupEventId;
+  String? lastDeleteOccurrenceProfileGroupOccurrenceId;
+  String? lastDeleteOccurrenceProfileGroupGroupId;
   final Map<String, List<TenantAdminAccountProfileSelectionSummary>>
   _occurrenceGroupMembersByScope =
       <String, List<TenantAdminAccountProfileSelectionSummary>>{};
+  final Map<String, List<TenantAdminNestedProfileGroup>>
+  _occurrenceGroupHeadsByScope =
+      <String, List<TenantAdminNestedProfileGroup>>{};
   int _aggregateRevision = 1;
 
   String _occurrenceGroupScopeKey({
@@ -7254,6 +7613,23 @@ class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
     required String occurrenceId,
     required String groupId,
   }) => '$eventId::$occurrenceId::$groupId';
+
+  String _occurrenceGroupHeadScopeKey({
+    required String eventId,
+    required String occurrenceId,
+  }) => '$eventId::$occurrenceId';
+
+  String _slugifyGroupId(String label) {
+    final normalized = label
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+        .replaceAll(RegExp(r'^-+|-+$'), '');
+    if (normalized.isNotEmpty) {
+      return normalized;
+    }
+    return 'group-${_aggregateRevision + 1}';
+  }
 
   List<TenantAdminAccountProfileSelectionSummary> _selectionSummariesFor(
     Iterable<TenantAdminAccountProfile> profiles,
@@ -7412,9 +7788,6 @@ class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
         const <TenantAdminAccountProfileSelectionSummary>[];
     return TenantAdminNestedGroupMemberPage(
       items: items,
-      aggregateRevisionValue: TenantAdminAccountProfileAggregateRevisionValue(
-        _aggregateRevision,
-      ),
       nextCursorValue: tenantAdminOptionalText(null),
     );
   }
@@ -7471,9 +7844,85 @@ class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
 
     return TenantAdminNestedGroupMemberMutationResult(
       memberCountValue: TenantAdminCountValue(nextItems.length),
-      aggregateRevisionValue: TenantAdminAccountProfileAggregateRevisionValue(
-        _aggregateRevision,
+    );
+  }
+
+  @override
+  Future<TenantAdminNestedGroupHeadMutationResult>
+  createOccurrenceProfileGroup({
+    required TenantAdminEventsRepoString eventId,
+    required TenantAdminEventsRepoString occurrenceId,
+    required TenantAdminEventsRepoString label,
+  }) async {
+    createOccurrenceProfileGroupCalls += 1;
+    lastCreateOccurrenceProfileGroupEventId = eventId.value;
+    lastCreateOccurrenceProfileGroupOccurrenceId = occurrenceId.value;
+    lastCreateOccurrenceProfileGroupLabel = label.value;
+    if (createOccurrenceProfileGroupError != null) {
+      throw createOccurrenceProfileGroupError!;
+    }
+    final scopeKey = _occurrenceGroupHeadScopeKey(
+      eventId: eventId.value,
+      occurrenceId: occurrenceId.value,
+    );
+    final currentGroups = List<TenantAdminNestedProfileGroup>.from(
+      _occurrenceGroupHeadsByScope[scopeKey] ??
+          const <TenantAdminNestedProfileGroup>[],
+    );
+    final normalizedLabel = label.value.trim();
+    final groupId = _slugifyGroupId(normalizedLabel);
+    currentGroups.removeWhere((group) => group.id == groupId);
+    currentGroups.add(
+      TenantAdminNestedProfileGroup(
+        idValue: TenantAdminNestedProfileGroupTextValue(groupId),
+        labelValue: TenantAdminNestedProfileGroupTextValue(normalizedLabel),
+        orderValue: TenantAdminNestedProfileGroupOrderValue(
+          currentGroups.length,
+        ),
+        memberCountValue: TenantAdminCountValue(0),
       ),
+    );
+    _occurrenceGroupHeadsByScope[scopeKey] = currentGroups;
+    return TenantAdminNestedGroupHeadMutationResult(
+      occurrenceIdValue: tenantAdminOptionalText(occurrenceId.value),
+      groups: List<TenantAdminNestedProfileGroup>.unmodifiable(currentGroups),
+    );
+  }
+
+  @override
+  Future<TenantAdminNestedGroupHeadMutationResult>
+  deleteOccurrenceProfileGroup({
+    required TenantAdminEventsRepoString eventId,
+    required TenantAdminEventsRepoString occurrenceId,
+    required TenantAdminEventsRepoString groupId,
+  }) async {
+    deleteOccurrenceProfileGroupCalls += 1;
+    lastDeleteOccurrenceProfileGroupEventId = eventId.value;
+    lastDeleteOccurrenceProfileGroupOccurrenceId = occurrenceId.value;
+    lastDeleteOccurrenceProfileGroupGroupId = groupId.value;
+    if (deleteOccurrenceProfileGroupError != null) {
+      throw deleteOccurrenceProfileGroupError!;
+    }
+    final scopeKey = _occurrenceGroupHeadScopeKey(
+      eventId: eventId.value,
+      occurrenceId: occurrenceId.value,
+    );
+    final currentGroups = List<TenantAdminNestedProfileGroup>.from(
+      _occurrenceGroupHeadsByScope[scopeKey] ??
+          const <TenantAdminNestedProfileGroup>[],
+    )..removeWhere((group) => group.id == groupId.value);
+    _occurrenceGroupHeadsByScope[scopeKey] = currentGroups;
+    _occurrenceGroupMembersByScope.remove(
+      _occurrenceGroupScopeKey(
+        eventId: eventId.value,
+        occurrenceId: occurrenceId.value,
+        groupId: groupId.value,
+      ),
+    );
+    return TenantAdminNestedGroupHeadMutationResult(
+      occurrenceIdValue: tenantAdminOptionalText(occurrenceId.value),
+      deletedGroupIdValue: tenantAdminOptionalText(groupId.value),
+      groups: List<TenantAdminNestedProfileGroup>.unmodifiable(currentGroups),
     );
   }
 
@@ -7587,6 +8036,39 @@ TenantAdminEvent _buildMountedReuseEditEvent({
       TenantAdminEventOccurrence(
         occurrenceIdValue: tenantAdminOptionalText(secondOccurrenceId),
         dateTimeStartValue: tenantAdminDateTime(DateTime.utc(2026, 7, 2, 20)),
+      ),
+    ],
+    publication: TenantAdminEventPublication(
+      statusValue: tenantAdminRequiredText('draft'),
+    ),
+  );
+}
+
+TenantAdminEvent _buildOccurrenceGroupHeadEvent({
+  List<TenantAdminNestedProfileGroup> occurrenceGroups =
+      const <TenantAdminNestedProfileGroup>[],
+}) {
+  return TenantAdminEvent(
+    eventIdValue: tenantAdminRequiredText('evt-occurrence-group-head'),
+    slugValue: tenantAdminRequiredText('evt-occurrence-group-head'),
+    titleValue: tenantAdminRequiredText('Evento com grupos por ocorrência'),
+    contentValue: tenantAdminOptionalText('Conteudo'),
+    type: TenantAdminEventType(
+      idValue: tenantAdminOptionalText('507f1f77bcf86cd799439106'),
+      nameValue: tenantAdminRequiredText('Show'),
+      slugValue: tenantAdminRequiredText('show'),
+    ),
+    occurrences: <TenantAdminEventOccurrence>[
+      TenantAdminEventOccurrence(
+        occurrenceIdValue: tenantAdminOptionalText('occ-1'),
+        occurrenceSlugValue: tenantAdminOptionalText('occ-1'),
+        dateTimeStartValue: tenantAdminDateTime(DateTime.utc(2026, 7, 1, 20)),
+      ),
+      TenantAdminEventOccurrence(
+        occurrenceIdValue: tenantAdminOptionalText('occ-2'),
+        occurrenceSlugValue: tenantAdminOptionalText('occ-2'),
+        dateTimeStartValue: tenantAdminDateTime(DateTime.utc(2026, 7, 2, 20)),
+        profileGroups: occurrenceGroups,
       ),
     ],
     publication: TenantAdminEventPublication(

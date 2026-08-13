@@ -50,6 +50,37 @@ void main() {
     expect(find.textContaining('07:00'), findsNothing);
     expect(find.textContaining('12:00'), findsNothing);
   });
+
+  testWidgets('live now card keeps overlay content visible on compact width',
+      (tester) async {
+    final event = buildVenueEventResume(
+      id: 'event-compact',
+      slug: 'event-compact',
+      title: 'Evento ao Vivo Compacto',
+      imageUri: Uri.parse('https://tenant.test/media/event-compact.png'),
+      startDateTime: DateTime.utc(2026, 4, 1, 10, 0),
+      endDateTime: DateTime.utc(2026, 4, 1, 12, 0),
+      location: 'Carvoeiro',
+    );
+
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(size: Size(360, 800)),
+        child: MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 220,
+              child: EventLiveNowCard(
+                event: event,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Evento ao Vivo Compacto'), findsOneWidget);
+  });
 }
 
 class _FakeTimezoneService implements TimezoneServiceContract {

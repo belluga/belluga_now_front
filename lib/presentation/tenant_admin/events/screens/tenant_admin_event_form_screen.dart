@@ -27,6 +27,7 @@ import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_group_label_dialog.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_crop_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_source_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_upload_field.dart';
@@ -899,20 +900,33 @@ class _TenantAdminEventFormScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TenantAdminEventProfileGroupsSummaryEditor(
-            keyPrefix: 'EventProfile',
-            title: 'Abas de perfis relacionados',
-            groups: groups,
-            addButtonKey: const Key('TenantAdminEventProfileGroupAdd'),
-            onAddGroup: _controller.addEventProfileGroup,
-            onRenameGroup: _controller.renameEventProfileGroup,
-            onMoveGroup: _controller.moveEventProfileGroup,
-            onRemoveGroup: _controller.removeEventProfileGroup,
-            onManageGroup: _openPrimaryOccurrenceGroupMembers,
-            manageBlockedReasonBuilder: (_) =>
-                _controller.occurrenceRelatedProfilesManageBlockedReason(
-                  formState.occurrences.firstOrNull?.occurrenceId,
+          StreamValueBuilder<bool>(
+            streamValue:
+                _controller.occurrenceProfileGroupMutationBusyStreamValue,
+            builder: (context, isBusy) {
+              return TenantAdminEventProfileGroupsSummaryEditor(
+                keyPrefix: 'EventProfile',
+                title: 'Abas de perfis relacionados',
+                groups: groups,
+                addButtonKey: const Key('TenantAdminEventProfileGroupAdd'),
+                onAddGroup: () => _createPrimaryOccurrenceGroupHead(formState),
+                onRenameGroup: (_, _) {},
+                onMoveGroup: (_, _) {},
+                onRemoveGroup: (groupId) =>
+                    _deletePrimaryOccurrenceGroupHead(formState, groupId),
+                addBlockedReason: _primaryOccurrenceGroupAddBlockedReason(
+                  formState,
                 ),
+                groupsMutationBusy: isBusy,
+                enableLabelEditing: false,
+                enableReorder: false,
+                onManageGroup: _openPrimaryOccurrenceGroupMembers,
+                manageBlockedReasonBuilder: (_) =>
+                    _controller.occurrenceRelatedProfilesManageBlockedReason(
+                      formState.occurrences.firstOrNull?.occurrenceId,
+                    ),
+              );
+            },
           ),
           const SizedBox(height: 12),
           FormValidationGroupError(
@@ -1395,6 +1409,111 @@ class _TenantAdminEventFormScreenState
       occurrenceId: occurrenceId,
       occurrenceKey: occurrenceKey,
       group: group,
+    );
+  }
+
+  String _primaryOccurrenceGroupAddBlockedReason(
+    TenantAdminEventFormState formState,
+  ) {
+    if (formState.occurrences.length != 1) {
+      return 'Gerencie os grupos dentro de cada ocorrência.';
+    }
+    return _controller.occurrenceRelatedProfilesManageBlockedReason(
+      formState.occurrences.firstOrNull?.occurrenceId,
+    );
+  }
+
+  Future<void> _createPrimaryOccurrenceGroupHead(
+    TenantAdminEventFormState formState,
+  ) async {
+    final eventId = widget.existingEvent?.eventId.trim();
+    final primaryOccurrence = formState.occurrences.firstOrNull;
+    final occurrenceId = primaryOccurrence?.occurrenceId?.trim();
+    final occurrenceKey = _controller.primaryOccurrenceKey();
+    if (eventId == null ||
+        eventId.isEmpty ||
+        primaryOccurrence == null ||
+        occurrenceId == null ||
+        occurrenceId.isEmpty ||
+        occurrenceKey == null) {
+      _controller.submitErrorMessageStreamValue.addValue(
+        _primaryOccurrenceGroupAddBlockedReason(formState),
+      );
+      return;
+    }
+    _controller.clearSubmitMessages();
+    final label = await showTenantAdminGroupLabelDialog(
+      context: context,
+      title: 'Novo grupo da ocorrência principal',
+    );
+    if (label == null) {
+      return;
+    }
+    await _controller.createOccurrenceProfileGroupHead(
+      eventId: eventId,
+      occurrenceId: occurrenceId,
+      occurrenceKey: occurrenceKey,
+      label: label,
+    );
+  }
+
+  Future<void> _deletePrimaryOccurrenceGroupHead(
+    TenantAdminEventFormState formState,
+    String groupId,
+  ) async {
+    final eventId = widget.existingEvent?.eventId.trim();
+    final primaryOccurrence = formState.occurrences.firstOrNull;
+    final occurrenceId = primaryOccurrence?.occurrenceId?.trim();
+    final occurrenceKey = _controller.primaryOccurrenceKey();
+    if (eventId == null ||
+        eventId.isEmpty ||
+        primaryOccurrence == null ||
+        occurrenceId == null ||
+        occurrenceId.isEmpty ||
+        occurrenceKey == null) {
+      _controller.submitErrorMessageStreamValue.addValue(
+        'Salve o evento antes de remover grupos da ocorrência principal.',
+      );
+      return;
+    }
+    final matchingGroups = primaryOccurrence.profileGroups
+        .where((candidate) => candidate.id == groupId)
+        .toList(growable: false);
+    if (matchingGroups.isEmpty) {
+      return;
+    }
+    final group = matchingGroups.first;
+    if (group.memberCount > 0) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text('Excluir grupo'),
+            content: Text(
+              'Este grupo possui ${group.memberCount} perfil(is) vinculado(s). A exclusão removerá o grupo e todos os vínculos associados. Deseja continuar?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => dialogContext.router.maybePop(false),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () => dialogContext.router.maybePop(true),
+                child: const Text('Excluir'),
+              ),
+            ],
+          );
+        },
+      );
+      if (confirmed != true) {
+        return;
+      }
+    }
+    await _controller.deleteOccurrenceProfileGroupHead(
+      eventId: eventId,
+      occurrenceId: occurrenceId,
+      occurrenceKey: occurrenceKey,
+      groupId: groupId,
     );
   }
 

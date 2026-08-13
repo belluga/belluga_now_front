@@ -27,13 +27,73 @@ class MyEventsCarouselCard extends StatelessWidget {
     final inferredEnd = explicitEnd ?? start.add(const Duration(hours: 3));
     final now = DateTime.now();
     final isLiveNow = now.isAfter(start) && now.isBefore(inferredEnd);
-    final scheduleLabel =
-        isLiveNow ? event.agendaScheduleLabel : event.detailScheduleLabel;
+    final scheduleLabel = isLiveNow
+        ? event.agendaScheduleLabel
+        : event.detailScheduleLabel;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    const overlayForeground = Colors.white;
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        final cardHeight = constraints.maxWidth * 9 / 16;
+        final isCompactCard =
+            constraints.maxWidth < 260 || cardHeight < 150;
+        final titleStyle =
+            (isCompactCard
+                    ? theme.textTheme.titleSmall
+                    : theme.textTheme.titleMedium)
+                ?.copyWith(
+                  color: overlayForeground,
+                  fontWeight: FontWeight.w800,
+                );
+        final statusRow = Align(
+          alignment: Alignment.topRight,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              InviteStatusIcon(
+                isConfirmed: isConfirmed,
+                pendingInvitesCount: pendingInvitesCount,
+                size: isCompactCard ? 16 : 18,
+                backgroundColor: colorScheme.secondary.withValues(
+                  alpha: 0.3,
+                ),
+              ),
+              if (isLiveNow) ...[
+                const SizedBox(width: 10),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: colorScheme.error,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isCompactCard ? 8 : 10,
+                      vertical: isCompactCard ? 4 : 6,
+                    ),
+                    child: Text(
+                      'AGORA',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: colorScheme.onError,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.1,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+
+        final titleText = Text(
+          event.title,
+          semanticsLabel: event.title,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: titleStyle,
+        );
         return InkWell(
           borderRadius: BorderRadius.circular(20),
           onTap: () {
@@ -50,77 +110,53 @@ class MyEventsCarouselCard extends StatelessWidget {
             overlayMode: CarouselCardOverlayMode.fill,
             overlayAlignment: Alignment.topLeft,
             contentOverlay: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              padding: EdgeInsets.symmetric(
+                horizontal: isCompactCard ? 12 : 16,
+                vertical: isCompactCard ? 8 : 10,
+              ),
+              child: Stack(
+                fit: StackFit.expand,
                 children: [
-                  Align(
-                    alignment: Alignment.topRight,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        InviteStatusIcon(
-                          isConfirmed: isConfirmed,
-                          pendingInvitesCount: pendingInvitesCount,
-                          size: 18,
-                          backgroundColor:
-                              colorScheme.secondary.withValues(alpha: 0.3),
-                        ),
-                        if (isLiveNow) ...[
-                          const SizedBox(width: 10),
-                          DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: colorScheme.error,
-                              borderRadius: BorderRadius.circular(999),
+                  Positioned(
+                    top: 0,
+                    right: 0,
+                    child: statusRow,
+                  ),
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: isCompactCard ? 44 : 52,
+                    child: titleText,
+                  ),
+                  if (!isCompactCard)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          EventInfoRow(
+                            icon: Icons.schedule,
+                            label: scheduleLabel,
+                            color: overlayForeground.withValues(
+                              alpha: 0.95,
                             ),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
-                              ),
-                              child: Text(
-                                'AGORA',
-                                style: theme.textTheme.labelMedium?.copyWith(
-                                  color: colorScheme.onError,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 1.1,
-                                ),
-                              ),
+                          ),
+                          const SizedBox(height: 4),
+                          EventInfoRow(
+                            icon: Icons.place_outlined,
+                            label: distanceLabel == null
+                                ? event.location
+                                : '${event.location} (${distanceLabel!})',
+                            color: overlayForeground.withValues(
+                              alpha: 0.9,
                             ),
                           ),
                         ],
-                      ],
+                      ),
                     ),
-                  ),
-                  Align(
-                    alignment: Alignment.bottomLeft,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          event.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        EventInfoRow(
-                          icon: Icons.schedule,
-                          label: scheduleLabel,
-                        ),
-                        const SizedBox(height: 4),
-                        EventInfoRow(
-                          icon: Icons.place_outlined,
-                          label: distanceLabel == null
-                              ? event.location
-                              : '${event.location} (${distanceLabel!})',
-                        ),
-                      ],
-                    ),
-                  ),
                 ],
               ),
             ),

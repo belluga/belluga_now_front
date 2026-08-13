@@ -1,4 +1,5 @@
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/my_events_carousel_card.dart';
+import 'package:belluga_now/presentation/tenant_public/widgets/event_info_row.dart';
 import 'package:belluga_now/domain/services/timezone_service_contract.dart';
 import 'package:belluga_now/domain/services/value_objects/timezone_service_contract_values.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
@@ -18,8 +19,9 @@ void main() {
     await GetIt.I.reset();
   });
 
-  testWidgets('home event card shows explicit end time when provided',
-      (tester) async {
+  testWidgets('home event card shows explicit end time when provided', (
+    tester,
+  ) async {
     final event = buildVenueEventResume(
       id: 'event-1',
       slug: 'event-1',
@@ -54,8 +56,9 @@ void main() {
     expect(find.textContaining('07:00 -'), findsNothing);
   });
 
-  testWidgets('home event card does not show inferred end time',
-      (tester) async {
+  testWidgets('home event card does not show inferred end time', (
+    tester,
+  ) async {
     final event = buildVenueEventResume(
       id: 'event-1',
       slug: 'event-1',
@@ -88,6 +91,99 @@ void main() {
     expect(find.textContaining('07:00 -'), findsNothing);
     expect(find.textContaining('Qua, 1 abr · 7h'), findsOneWidget);
     expect(find.textContaining('07:00'), findsNothing);
+  });
+
+  testWidgets('home event card keeps overlay text readable in light theme', (
+    tester,
+  ) async {
+    final event = buildVenueEventResume(
+      id: 'event-contrast',
+      slug: 'event-contrast',
+      title: 'Evento Contraste',
+      imageUri: Uri.parse('https://tenant.test/media/event-contrast.png'),
+      startDateTime: DateTime.utc(2026, 4, 1, 10, 0),
+      location: 'Carvoeiro',
+    );
+
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(size: Size(360, 800)),
+        child: MaterialApp(
+          theme: ThemeData(
+            useMaterial3: true,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: Colors.orange,
+              brightness: Brightness.light,
+            ),
+          ),
+          home: Scaffold(
+            body: SizedBox(
+              width: 320,
+              child: MyEventsCarouselCard(
+                event: event,
+                isConfirmed: true,
+                pendingInvitesCount: 0,
+                distanceLabel: '760m',
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final eventTitle = tester.widget<Text>(find.text('Evento Contraste'));
+    final infoRows = tester.widgetList<EventInfoRow>(find.byType(EventInfoRow));
+
+    expect(eventTitle.style?.color, Colors.white);
+    expect(infoRows, hasLength(2));
+    expect(
+      infoRows.map((row) => row.color).toSet(),
+      equals({
+        Colors.white.withValues(alpha: 0.95),
+        Colors.white.withValues(alpha: 0.9),
+      }),
+    );
+  });
+
+  testWidgets('home event card keeps overlay content visible on compact width', (
+    tester,
+  ) async {
+    final event = buildVenueEventResume(
+      id: 'event-compact',
+      slug: 'event-compact',
+      title: 'Evento Compacto',
+      imageUri: Uri.parse('https://tenant.test/media/event-compact.png'),
+      startDateTime: DateTime.utc(2026, 4, 1, 10, 0),
+      location: 'Carvoeiro',
+    );
+
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(size: Size(360, 800)),
+        child: MaterialApp(
+          theme: ThemeData(
+            useMaterial3: true,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: Colors.orange,
+              brightness: Brightness.light,
+            ),
+          ),
+          home: Scaffold(
+            body: SizedBox(
+              width: 220,
+              child: MyEventsCarouselCard(
+                event: event,
+                isConfirmed: true,
+                pendingInvitesCount: 0,
+                distanceLabel: '760m',
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Evento Compacto'), findsOneWidget);
   });
 }
 
