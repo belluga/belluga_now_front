@@ -79,4 +79,58 @@ void main() {
     }
     expect(tester.getSize(find.byKey(cardKey)).height, greaterThan(180));
   });
+
+  testWidgets('dark theme keeps the identity card visually separated at rest', (
+    tester,
+  ) async {
+    const cardKey = Key('darkThemeIdentityCard');
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(
+          useMaterial3: true,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: Colors.teal,
+            brightness: Brightness.dark,
+          ),
+        ),
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 344,
+              child: AccountProfileOverlappingIdentityCard(
+                cardKey: cardKey,
+                name: 'Casa Noturna',
+                visual: const ResolvedAccountProfileVisual(
+                  typeLabel: 'Local',
+                  typeVisual: ResolvedProfileTypeVisual.icon(
+                    iconData: Icons.place,
+                    backgroundColor: Colors.teal,
+                    iconColor: Colors.white,
+                  ),
+                  surfaceImageUrl: null,
+                  compactImageUrl: null,
+                  identityAvatarUrl: null,
+                  themeSeedColor: null,
+                ),
+                tags: const ['Música'],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final theme = Theme.of(tester.element(find.byKey(cardKey)));
+    final card = tester.widget<Card>(find.byKey(cardKey));
+    final cardShape = card.shape! as RoundedRectangleBorder;
+    final title = tester.widget<Text>(find.text('Casa Noturna'));
+
+    expect(card.color, theme.colorScheme.surfaceContainerHigh);
+    expect(
+      cardShape.side.color,
+      theme.colorScheme.outlineVariant.withValues(alpha: 0.42),
+    );
+    expect(title.style?.color, theme.colorScheme.onSurface);
+  });
 }

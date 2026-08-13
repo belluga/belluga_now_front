@@ -4,6 +4,10 @@ import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_acc
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_nested_group_member_mutation_result_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_nested_group_member_page_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_profile_type_dto.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_head_mutation_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 
 class TenantAdminAccountProfilesResponseDecoder {
   const TenantAdminAccountProfilesResponseDecoder({
@@ -14,10 +18,7 @@ class TenantAdminAccountProfilesResponseDecoder {
 
   TenantAdminAccountProfileDTO decodeAccountProfileItem(Object? rawResponse) {
     return TenantAdminAccountProfileDTO.fromJson(
-      _envelopeDecoder.decodeItemMap(
-        rawResponse,
-        label: 'account profile',
-      ),
+      _envelopeDecoder.decodeItemMap(rawResponse, label: 'account profile'),
     );
   }
 
@@ -25,10 +26,7 @@ class TenantAdminAccountProfilesResponseDecoder {
     Object? rawResponse,
   ) {
     return _envelopeDecoder
-        .decodeListMap(
-          rawResponse,
-          label: 'account profiles',
-        )
+        .decodeListMap(rawResponse, label: 'account profiles')
         .map(TenantAdminAccountProfileDTO.fromJson)
         .toList(growable: false);
   }
@@ -67,21 +65,40 @@ class TenantAdminAccountProfilesResponseDecoder {
     return TenantAdminNestedGroupMemberMutationResultDTO.fromJson(item);
   }
 
+  TenantAdminNestedGroupHeadMutationResult decodeNestedGroupHeadMutationResult(
+    Object? rawResponse,
+  ) {
+    final item = _envelopeDecoder.decodeItemMap(
+      rawResponse,
+      label: 'nested group head mutation result',
+    );
+    final rawGroups = item['nested_profile_groups'];
+    if (rawGroups is! List) {
+      throw const FormatException(
+        'Invalid nested group head mutation response.',
+      );
+    }
+
+    return TenantAdminNestedGroupHeadMutationResult(
+      deletedGroupIdValue: tenantAdminOptionalText(item['deleted_group_id']),
+      groups: rawGroups
+          .whereType<Map>()
+          .map((group) => Map<String, dynamic>.from(group))
+          .map(_decodeNestedProfileGroup)
+          .whereType<TenantAdminNestedProfileGroup>()
+          .toList(growable: false),
+    );
+  }
+
   TenantAdminProfileTypeDTO decodeProfileTypeItem(Object? rawResponse) {
     return TenantAdminProfileTypeDTO.fromJson(
-      _envelopeDecoder.decodeItemMap(
-        rawResponse,
-        label: 'profile type',
-      ),
+      _envelopeDecoder.decodeItemMap(rawResponse, label: 'profile type'),
     );
   }
 
   List<TenantAdminProfileTypeDTO> decodeProfileTypeList(Object? rawResponse) {
     return _envelopeDecoder
-        .decodeListMap(
-          rawResponse,
-          label: 'profile types',
-        )
+        .decodeListMap(rawResponse, label: 'profile types')
         .map(TenantAdminProfileTypeDTO.fromJson)
         .toList(growable: false);
   }
@@ -96,5 +113,37 @@ class TenantAdminAccountProfilesResponseDecoder {
       return rawCount.toInt();
     }
     return 0;
+  }
+
+  TenantAdminNestedProfileGroup? _decodeNestedProfileGroup(
+    Map<String, dynamic> row,
+  ) {
+    final id = _asString(row['id']);
+    final label = _asString(row['label']);
+    if (id == null || label == null) {
+      return null;
+    }
+
+    return TenantAdminNestedProfileGroup(
+      idValue: TenantAdminNestedProfileGroupTextValue(id),
+      labelValue: TenantAdminNestedProfileGroupTextValue(label),
+      orderValue: TenantAdminNestedProfileGroupOrderValue(_asInt(row['order'])),
+      memberCountValue: TenantAdminCountValue(_asInt(row['member_count'])),
+    );
+  }
+
+  String? _asString(Object? raw) {
+    final normalized = raw?.toString().trim() ?? '';
+    if (normalized.isEmpty) {
+      return null;
+    }
+    return normalized;
+  }
+
+  int _asInt(Object? raw) {
+    if (raw is num) {
+      return raw.toInt();
+    }
+    return int.tryParse(raw?.toString() ?? '') ?? 0;
   }
 }

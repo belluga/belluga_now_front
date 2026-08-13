@@ -41,8 +41,6 @@ class CarouselCard extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final targetWidth = MediaQuery.of(context).size.width * 0.8;
-        final isFullSize = constraints.maxWidth >= targetWidth * 0.8;
         final height = constraints.maxWidth * 9 / 16;
         final overlayChild = DefaultTextStyle.merge(
           style: TextStyle(color: onOverlay),
@@ -112,31 +110,28 @@ class CarouselCard extends StatelessWidget {
                       : (overlayMode == CarouselCardOverlayMode.fill
                             ? 0
                             : null),
-                  child: isFullSize
-                      ? AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 250),
-                          switchInCurve: Curves.easeOut,
-                          transitionBuilder: (child, animation) =>
-                              FadeTransition(
-                                opacity: animation,
-                                child: SizeTransition(
-                                  sizeFactor: animation,
-                                  alignment: const Alignment(-1.0, -1.0),
-                                  child: child,
-                                ),
-                              ),
-                          child: ConstrainedBox(
-                            key: const ValueKey('details'),
-                            constraints: const BoxConstraints(minWidth: 0),
-                            child: overlayMode == CarouselCardOverlayMode.fill
-                                ? Align(
-                                    alignment: overlayAlignment,
-                                    child: overlayChild,
-                                  )
-                                : overlayChild,
-                          ),
-                        )
-                      : const SizedBox.shrink(key: ValueKey('empty')),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 250),
+                    switchInCurve: Curves.easeOut,
+                    transitionBuilder: (child, animation) => FadeTransition(
+                      opacity: animation,
+                      child: SizeTransition(
+                        sizeFactor: animation,
+                        alignment: const Alignment(-1.0, -1.0),
+                        child: child,
+                      ),
+                    ),
+                    child: ConstrainedBox(
+                      key: const ValueKey('details'),
+                      constraints: const BoxConstraints(minWidth: 0),
+                      child: overlayMode == CarouselCardOverlayMode.fill
+                          ? Align(
+                              alignment: overlayAlignment,
+                              child: overlayChild,
+                            )
+                          : overlayChild,
+                    ),
+                  ),
                 ),
               ],
             ),

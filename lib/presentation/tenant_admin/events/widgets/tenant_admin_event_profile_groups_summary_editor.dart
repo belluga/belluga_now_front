@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
 import 'package:flutter/material.dart';
@@ -12,6 +14,10 @@ class TenantAdminEventProfileGroupsSummaryEditor extends StatelessWidget {
     required this.onRenameGroup,
     required this.onMoveGroup,
     required this.onRemoveGroup,
+    this.addBlockedReason,
+    this.groupsMutationBusy = false,
+    this.enableLabelEditing = true,
+    this.enableReorder = true,
     this.onManageGroup,
     this.manageBlockedReasonBuilder,
     this.title = 'Abas de perfis relacionados',
@@ -21,10 +27,14 @@ class TenantAdminEventProfileGroupsSummaryEditor extends StatelessWidget {
   final String keyPrefix;
   final List<TenantAdminNestedProfileGroup> groups;
   final Key addButtonKey;
-  final VoidCallback onAddGroup;
+  final Future<void> Function() onAddGroup;
   final void Function(String groupId, String label) onRenameGroup;
   final void Function(String groupId, int delta) onMoveGroup;
-  final ValueChanged<String> onRemoveGroup;
+  final Future<void> Function(String groupId) onRemoveGroup;
+  final String? addBlockedReason;
+  final bool groupsMutationBusy;
+  final bool enableLabelEditing;
+  final bool enableReorder;
   final Future<void> Function(TenantAdminNestedProfileGroup group)?
   onManageGroup;
   final String Function(TenantAdminNestedProfileGroup group)?
@@ -34,6 +44,12 @@ class TenantAdminEventProfileGroupsSummaryEditor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final normalizedAddBlockedReason = addBlockedReason?.trim() ?? '';
+    final canAdd =
+        !groupsMutationBusy &&
+        normalizedAddBlockedReason.isEmpty &&
+        groups.length < 12;
+
     return TenantAdminFormSectionCard(
       title: title,
       child: Column(
@@ -50,17 +66,33 @@ class TenantAdminEventProfileGroupsSummaryEditor extends StatelessWidget {
               onRenameGroup: onRenameGroup,
               onMoveGroup: onMoveGroup,
               onRemoveGroup: onRemoveGroup,
+              groupsMutationBusy: groupsMutationBusy,
+              enableLabelEditing: enableLabelEditing,
+              enableReorder: enableReorder,
               onManageGroup: onManageGroup,
               manageBlockedReasonBuilder: manageBlockedReasonBuilder,
             ),
             const SizedBox(height: 12),
           ],
-          OutlinedButton.icon(
-            key: addButtonKey,
-            onPressed: groups.length >= 12 ? null : onAddGroup,
-            icon: const Icon(Icons.add),
-            label: const Text('Adicionar grupo'),
+          Tooltip(
+            message: normalizedAddBlockedReason,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton.icon(
+                key: addButtonKey,
+                onPressed: canAdd ? () => unawaited(onAddGroup()) : null,
+                icon: const Icon(Icons.add),
+                label: const Text('Adicionar grupo'),
+              ),
+            ),
           ),
+          if (normalizedAddBlockedReason.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              normalizedAddBlockedReason,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
         ],
       ),
     );
@@ -76,6 +108,9 @@ class _TenantAdminEventProfileGroupSummaryCard extends StatelessWidget {
     required this.onRenameGroup,
     required this.onMoveGroup,
     required this.onRemoveGroup,
+    required this.groupsMutationBusy,
+    required this.enableLabelEditing,
+    required this.enableReorder,
     required this.onManageGroup,
     required this.manageBlockedReasonBuilder,
   });
@@ -86,7 +121,10 @@ class _TenantAdminEventProfileGroupSummaryCard extends StatelessWidget {
   final int total;
   final void Function(String groupId, String label) onRenameGroup;
   final void Function(String groupId, int delta) onMoveGroup;
-  final ValueChanged<String> onRemoveGroup;
+  final Future<void> Function(String groupId) onRemoveGroup;
+  final bool groupsMutationBusy;
+  final bool enableLabelEditing;
+  final bool enableReorder;
   final Future<void> Function(TenantAdminNestedProfileGroup group)?
   onManageGroup;
   final String Function(TenantAdminNestedProfileGroup group)?
@@ -96,7 +134,8 @@ class _TenantAdminEventProfileGroupSummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final blockedReason = manageBlockedReasonBuilder?.call(group).trim() ?? '';
-    final canManage = onManageGroup != null && blockedReason.isEmpty;
+    final canManage =
+        !groupsMutationBusy && onManageGroup != null && blockedReason.isEmpty;
 
     return Container(
       key: Key('${keyPrefix}ProfileGroup_${group.id}'),
@@ -111,34 +150,48 @@ class _TenantAdminEventProfileGroupSummaryCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: TextFormField(
-                  key: Key('${keyPrefix}ProfileGroupLabel_${group.id}'),
-                  initialValue: group.label,
-                  decoration: const InputDecoration(labelText: 'Nome da aba'),
-                  onChanged: (value) => onRenameGroup(group.id, value),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Nome da aba e obrigatorio.';
-                    }
-                    return null;
-                  },
-                ),
+                child: enableLabelEditing
+                    ? TextFormField(
+                        key: Key('${keyPrefix}ProfileGroupLabel_${group.id}'),
+                        initialValue: group.label,
+                        decoration: const InputDecoration(
+                          labelText: 'Nome da aba',
+                        ),
+                        onChanged: (value) => onRenameGroup(group.id, value),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Nome da aba e obrigatorio.';
+                          }
+                          return null;
+                        },
+                      )
+                    : InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'Nome da aba',
+                        ),
+                        child: Text(group.label),
+                      ),
               ),
               IconButton(
                 tooltip: 'Mover para cima',
-                onPressed: index == 0 ? null : () => onMoveGroup(group.id, -1),
+                onPressed: !enableReorder || groupsMutationBusy || index == 0
+                    ? null
+                    : () => onMoveGroup(group.id, -1),
                 icon: const Icon(Icons.arrow_upward),
               ),
               IconButton(
                 tooltip: 'Mover para baixo',
-                onPressed: index >= total - 1
+                onPressed:
+                    !enableReorder || groupsMutationBusy || index >= total - 1
                     ? null
                     : () => onMoveGroup(group.id, 1),
                 icon: const Icon(Icons.arrow_downward),
               ),
               IconButton(
                 tooltip: 'Remover grupo',
-                onPressed: () => onRemoveGroup(group.id),
+                onPressed: groupsMutationBusy
+                    ? null
+                    : () => unawaited(onRemoveGroup(group.id)),
                 icon: const Icon(Icons.delete_outline),
               ),
             ],
@@ -157,7 +210,9 @@ class _TenantAdminEventProfileGroupSummaryCard extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: OutlinedButton.icon(
                 key: Key('${keyPrefix}ManageGroup_${group.id}'),
-                onPressed: canManage ? () => onManageGroup!(group) : null,
+                onPressed: canManage
+                    ? () => unawaited(onManageGroup!(group))
+                    : null,
                 icon: const Icon(Icons.people_alt_outlined),
                 label: const Text('Gerenciar perfis'),
               ),

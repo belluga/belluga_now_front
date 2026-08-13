@@ -23,7 +23,6 @@ import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admi
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_upload_field.dart';
-import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_profile_groups_summary_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_xfile_preview.dart';
 import 'package:flutter/foundation.dart';
@@ -465,23 +464,11 @@ class _TenantAdminAccountProfileCreateScreenState
                           ],
                           if (hasNestedProfileGroups) ...[
                             const SizedBox(height: 16),
-                            TenantAdminProfileGroupsSummaryEditor(
-                              keyPrefix: 'tenantAdminCreate',
-                              groups: state.nestedProfileGroups,
+                            TenantAdminFormSectionCard(
                               title: 'Abas de contas vinculadas',
-                              addButtonKey: const Key(
-                                'tenantAdminCreateAddNestedGroupButton',
+                              child: const Text(
+                                'Salve o perfil primeiro. Depois disso, a edição de grupos acontece de forma independente, com criação e exclusão persistidas imediatamente.',
                               ),
-                              onAddGroup:
-                                  _controller.addCreateNestedProfileGroup,
-                              onRenameGroup:
-                                  _controller.renameCreateNestedProfileGroup,
-                              onMoveGroup:
-                                  _controller.moveCreateNestedProfileGroup,
-                              onRemoveGroup:
-                                  _controller.removeCreateNestedProfileGroup,
-                              manageBlockedReasonBuilder: (_) =>
-                                  'Salve o perfil antes de gerenciar os perfis vinculados.',
                             ),
                           ],
                           const SizedBox(height: 24),
@@ -561,6 +548,7 @@ class _TenantAdminAccountProfileCreateScreenState
                           DropdownButtonFormField<String>(
                             key: ValueKey(state.selectedProfileType),
                             initialValue: state.selectedProfileType,
+                            isExpanded: true,
                             decoration: const InputDecoration(
                               labelText: 'Tipo de perfil',
                             ),

@@ -8,6 +8,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profi
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_head_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_page.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
@@ -228,6 +229,30 @@ abstract class TenantAdminEventsRepositoryContract {
     throw UnimplementedError(
       'patchOccurrenceProfileGroupMembers must be implemented by '
       'tenant-admin events repositories.',
+    );
+  }
+
+  Future<TenantAdminNestedGroupHeadMutationResult>
+  createOccurrenceProfileGroup({
+    required TenantAdminEventsRepoString eventId,
+    required TenantAdminEventsRepoString occurrenceId,
+    required TenantAdminEventsRepoString label,
+  }) async {
+    throw UnimplementedError(
+      'createOccurrenceProfileGroup must be implemented by tenant-admin '
+      'events repositories.',
+    );
+  }
+
+  Future<TenantAdminNestedGroupHeadMutationResult>
+  deleteOccurrenceProfileGroup({
+    required TenantAdminEventsRepoString eventId,
+    required TenantAdminEventsRepoString occurrenceId,
+    required TenantAdminEventsRepoString groupId,
+  }) async {
+    throw UnimplementedError(
+      'deleteOccurrenceProfileGroup must be implemented by tenant-admin '
+      'events repositories.',
     );
   }
 

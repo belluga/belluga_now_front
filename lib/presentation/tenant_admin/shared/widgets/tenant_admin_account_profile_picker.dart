@@ -165,8 +165,7 @@ class _TenantAdminAccountProfilePicker extends StatefulWidget {
   final Key? searchFieldKey;
   final Key? typeFilterKey;
   final Key? listKey;
-  final TenantAdminAccountProfilePickerCandidateKeyBuilder?
-  candidateKeyBuilder;
+  final TenantAdminAccountProfilePickerCandidateKeyBuilder? candidateKeyBuilder;
 
   @override
   State<_TenantAdminAccountProfilePicker> createState() =>
@@ -297,6 +296,7 @@ class _TenantAdminAccountProfilePickerState
         16 + MediaQuery.viewInsetsOf(context).bottom,
       ),
       child: SizedBox(
+        key: const Key('tenantAdminAccountProfilePickerSheet'),
         height: MediaQuery.sizeOf(context).height * 0.72,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -333,6 +333,7 @@ class _TenantAdminAccountProfilePickerState
               key:
                   widget.typeFilterKey ??
                   const Key('tenantAdminAccountProfilePickerTypeFilter'),
+              isExpanded: true,
               initialValue: _selectedTypeKey,
               decoration: const InputDecoration(labelText: 'Tipo de perfil'),
               items: [
@@ -357,20 +358,47 @@ class _TenantAdminAccountProfilePickerState
               },
             ),
             const SizedBox(height: 12),
-            Expanded(
-              child: _buildResults(),
-            ),
-            if (widget.mode == _TenantAdminAccountProfilePickerMode.multiple) ...[
+            Expanded(child: _buildResults()),
+            if (widget.mode ==
+                _TenantAdminAccountProfilePickerMode.multiple) ...[
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Text('${_selectedProfileIds.length} selecionado(s)'),
-                  const Spacer(),
-                  TextButton(
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final textScaler = MediaQuery.textScalerOf(context);
+                  final shouldStackFooter =
+                      constraints.maxWidth <= 360 || textScaler.scale(14) > 16;
+                  final selectionSummary = Text(
+                    '${_selectedProfileIds.length} selecionado(s)',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  );
+                  final doneButton = TextButton(
                     onPressed: () => context.router.maybePop(),
                     child: Text(widget.doneLabel),
-                  ),
-                ],
+                  );
+
+                  if (shouldStackFooter) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        selectionSummary,
+                        const SizedBox(height: 8),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: doneButton,
+                        ),
+                      ],
+                    );
+                  }
+
+                  return Row(
+                    children: [
+                      Expanded(child: selectionSummary),
+                      const SizedBox(width: 8),
+                      doneButton,
+                    ],
+                  );
+                },
               ),
             ],
           ],
@@ -400,20 +428,21 @@ class _TenantAdminAccountProfilePickerState
     return StreamValueBuilder<String>(
       streamValue: errorStreamValue,
       onNullWidget: results,
-      builder: (context, errorMessage) => _TenantAdminAccountProfilePickerResults(
-        mode: widget.mode,
-        candidatesStreamValue: widget.candidatesStreamValue,
-        isLoadingStreamValue: widget.isLoadingStreamValue,
-        isPageLoadingStreamValue: widget.isPageLoadingStreamValue,
-        scrollController: _scrollController,
-        emptyMessage: widget.emptyMessage,
-        selectedProfileIds: _selectedProfileIds,
-        errorMessage: errorMessage,
-        profileTypeLabels: _profileTypeLabels(),
-        onCandidateTap: _handleCandidateTap,
-        listKey: widget.listKey,
-        candidateKeyBuilder: widget.candidateKeyBuilder,
-      ),
+      builder: (context, errorMessage) =>
+          _TenantAdminAccountProfilePickerResults(
+            mode: widget.mode,
+            candidatesStreamValue: widget.candidatesStreamValue,
+            isLoadingStreamValue: widget.isLoadingStreamValue,
+            isPageLoadingStreamValue: widget.isPageLoadingStreamValue,
+            scrollController: _scrollController,
+            emptyMessage: widget.emptyMessage,
+            selectedProfileIds: _selectedProfileIds,
+            errorMessage: errorMessage,
+            profileTypeLabels: _profileTypeLabels(),
+            onCandidateTap: _handleCandidateTap,
+            listKey: widget.listKey,
+            candidateKeyBuilder: widget.candidateKeyBuilder,
+          ),
     );
   }
 }
@@ -445,8 +474,7 @@ class _TenantAdminAccountProfilePickerResults extends StatelessWidget {
   final void Function(TenantAdminAccountProfile profile) onCandidateTap;
   final String? errorMessage;
   final Key? listKey;
-  final TenantAdminAccountProfilePickerCandidateKeyBuilder?
-  candidateKeyBuilder;
+  final TenantAdminAccountProfilePickerCandidateKeyBuilder? candidateKeyBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -459,11 +487,8 @@ class _TenantAdminAccountProfilePickerResults extends StatelessWidget {
             return StreamValueBuilder<List<TenantAdminAccountProfile>>(
               streamValue: candidatesStreamValue,
               onNullWidget: _emptyState(isLoading),
-              builder: (context, candidates) => _candidateState(
-                candidates,
-                isLoading,
-                isPageLoading,
-              ),
+              builder: (context, candidates) =>
+                  _candidateState(candidates, isLoading, isPageLoading),
             );
           },
         );
@@ -510,6 +535,13 @@ class _TenantAdminAccountProfilePickerResults extends StatelessWidget {
             Key('tenantAdminAccountProfilePickerCandidate_${profile.id}');
         final subtitle = Text(
           profileTypeLabels[profile.profileType] ?? profile.profileType,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        );
+        final title = Text(
+          profile.displayName,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
         );
 
         if (mode == _TenantAdminAccountProfilePickerMode.multiple) {
@@ -518,7 +550,7 @@ class _TenantAdminAccountProfilePickerResults extends StatelessWidget {
             dense: true,
             controlAffinity: ListTileControlAffinity.leading,
             value: selected,
-            title: Text(profile.displayName),
+            title: title,
             subtitle: subtitle,
             onChanged: (_) => onCandidateTap(profile),
           );
@@ -528,11 +560,9 @@ class _TenantAdminAccountProfilePickerResults extends StatelessWidget {
           child: ListTile(
             key: candidateKey,
             leading: const Icon(Icons.person_outline),
-            title: Text(profile.displayName),
+            title: title,
             subtitle: subtitle,
-            trailing: Icon(
-              selected ? Icons.check_circle : Icons.chevron_right,
-            ),
+            trailing: Icon(selected ? Icons.check_circle : Icons.chevron_right),
             onTap: () => onCandidateTap(profile),
           ),
         );

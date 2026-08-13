@@ -1,10 +1,35 @@
 import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 
 class TenantAdminEventsRequestEncoder {
   const TenantAdminEventsRequestEncoder();
+
+  Map<String, dynamic> encodePatchOccurrenceProfileGroupMembers({
+    List<String> addIds = const <String>[],
+    List<String> removeIds = const <String>[],
+  }) {
+    final payload = <String, dynamic>{};
+    if (addIds.isNotEmpty) {
+      payload['add_ids'] = addIds
+          .map((entry) => entry.trim())
+          .where((entry) => entry.isNotEmpty)
+          .toList(growable: false);
+    }
+    if (removeIds.isNotEmpty) {
+      payload['remove_ids'] = removeIds
+          .map((entry) => entry.trim())
+          .where((entry) => entry.isNotEmpty)
+          .toList(growable: false);
+    }
+    return payload;
+  }
+
+  Map<String, dynamic> encodeCreateOccurrenceProfileGroup({
+    required String label,
+  }) {
+    return <String, dynamic>{'label': label.trim()};
+  }
 
   Map<String, dynamic> encodeEventTypePatch({
     String? name,
@@ -83,7 +108,6 @@ class TenantAdminEventsRequestEncoder {
             draft.publication.publishAt!,
           ).toIso8601String(),
       },
-      'profile_groups': _encodeRootProfileGroups(draft),
     };
 
     if (draft.taxonomyTerms.isNotEmpty) {
@@ -134,7 +158,6 @@ class TenantAdminEventsRequestEncoder {
         'date_time_end': TimezoneConverter.localToUtc(
           occurrence.dateTimeEnd!,
         ).toIso8601String(),
-      'profile_groups': _encodeProfileGroups(occurrence.profileGroups),
     };
 
     payload['taxonomy_terms'] = occurrence.taxonomyTerms
@@ -164,29 +187,6 @@ class TenantAdminEventsRequestEncoder {
         .toList(growable: false);
 
     return payload;
-  }
-
-  List<Map<String, dynamic>> _encodeRootProfileGroups(
-    TenantAdminEventDraft draft,
-  ) {
-    if (draft.occurrences.length != 1) {
-      return const <Map<String, dynamic>>[];
-    }
-    return _encodeProfileGroups(draft.occurrences.first.profileGroups);
-  }
-
-  List<Map<String, dynamic>> _encodeProfileGroups(
-    List<TenantAdminNestedProfileGroup> groups,
-  ) {
-    return groups
-        .map(
-          (group) => <String, dynamic>{
-            'id': group.id,
-            'label': group.label,
-            'order': group.order,
-          },
-        )
-        .toList(growable: false);
   }
 
   Map<String, dynamic> _encodeLocation(TenantAdminEventLocation location) {

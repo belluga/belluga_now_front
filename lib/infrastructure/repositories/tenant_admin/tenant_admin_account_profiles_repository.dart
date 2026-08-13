@@ -1,9 +1,11 @@
+import 'package:belluga_form_validation/belluga_form_validation.dart';
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_head_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_mutation_result.dart';
@@ -12,6 +14,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
+import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/support/tenant_admin_mutation_response_guard.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_account_profiles_request_encoder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_media_form_data_builder.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_account_profiles_response_decoder.dart';
@@ -346,7 +349,6 @@ class TenantAdminAccountProfilesRepository
   }) async {
     final items = <TenantAdminAccountProfileSelectionSummary>[];
     TenantAdminAccountProfilesRepoString? cursor;
-    TenantAdminNestedGroupMemberPage? lastPage;
 
     do {
       final page = await fetchNestedGroupMembersPage(
@@ -357,7 +359,6 @@ class TenantAdminAccountProfilesRepository
             : null,
         cursor: cursor,
       );
-      lastPage = page;
       items.addAll(page.items);
       final rawCursor = page.nextCursor;
       cursor = rawCursor == null || rawCursor.isEmpty
@@ -370,7 +371,6 @@ class TenantAdminAccountProfilesRepository
 
     return TenantAdminNestedGroupMemberPage(
       items: items,
-      aggregateRevisionValue: lastPage.aggregateRevisionValue,
       nextCursorValue: TenantAdminOptionalTextValue(),
     );
   }
@@ -379,7 +379,6 @@ class TenantAdminAccountProfilesRepository
   Future<TenantAdminNestedGroupMemberMutationResult> patchNestedGroupMembers({
     required TenantAdminAccountProfilesRepoString accountProfileId,
     required TenantAdminAccountProfilesRepoString groupId,
-    required TenantAdminAccountProfilesRepoInt aggregateRevision,
     List<TenantAdminAccountProfilesRepoString> addIds = const [],
     List<TenantAdminAccountProfilesRepoString> removeIds = const [],
   }) async {
@@ -388,7 +387,6 @@ class TenantAdminAccountProfilesRepository
         '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}'
         '/nested_profile_groups/${groupId.value}/members',
         data: _requestEncoder.encodePatchNestedGroupMembers(
-          aggregateRevision: aggregateRevision.value,
           addIds: addIds.map((entry) => entry.value).toList(growable: false),
           removeIds: removeIds
               .map((entry) => entry.value)
@@ -401,6 +399,86 @@ class TenantAdminAccountProfilesRepository
           .toDomain();
     } on DioException catch (error) {
       throw _wrapError(error, 'patch nested group members');
+    }
+  }
+
+  @override
+  Future<TenantAdminNestedGroupHeadMutationResult> createNestedProfileGroup({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString label,
+  }) async {
+    final uri =
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}'
+        '/nested_profile_groups';
+    try {
+      final response = await _dio.post(
+        uri,
+        data: _requestEncoder.encodeCreateNestedProfileGroup(
+          label: label.value,
+        ),
+        options: Options(headers: _buildHeaders()),
+      );
+      tenantAdminAssertSuccessfulMutationResponse(
+        response,
+        label: 'create nested profile group',
+        uri: uri,
+      );
+      return _responseDecoder.decodeNestedGroupHeadMutationResult(
+        response.data,
+      );
+    } on DioException catch (error) {
+      throw _wrapError(error, 'create nested profile group');
+    } on FormValidationFailure {
+      rethrow;
+    } on FormApiFailure {
+      rethrow;
+    } on FormatException catch (error) {
+      throw FormatException(
+        'Failed to create nested profile group [decode] ($uri): ${error.message}',
+      );
+    } catch (error) {
+      throw FormatException(
+        'Failed to create nested profile group [decode] ($uri): $error',
+      );
+    }
+  }
+
+  @override
+  Future<TenantAdminNestedGroupHeadMutationResult> deleteNestedProfileGroup({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+  }) async {
+    final uri =
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}'
+        '/nested_profile_groups/${groupId.value}';
+    try {
+      final response = await _dio.delete(
+        uri,
+        data: _requestEncoder.encodeDeleteNestedProfileGroup(),
+        options: Options(headers: _buildHeaders()),
+      );
+      tenantAdminAssertSuccessfulMutationResponse(
+        response,
+        label: 'delete nested profile group',
+        uri: uri,
+      );
+      return _responseDecoder.decodeNestedGroupHeadMutationResult(
+        response.data,
+      );
+    } on DioException catch (error) {
+      throw _wrapError(error, 'delete nested profile group');
+    } on FormValidationFailure {
+      rethrow;
+    } on FormApiFailure {
+      rethrow;
+    } on FormatException catch (error) {
+      throw FormatException(
+        'Failed to delete nested profile group [decode] ($uri): ${error.message}',
+      );
+    } catch (error) {
+      throw FormatException(
+        'Failed to delete nested profile group [decode] ($uri): $error',
+      );
     }
   }
 

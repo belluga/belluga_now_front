@@ -29,6 +29,7 @@ import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admi
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_group_label_dialog.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_crop_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_upload_field.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_source_sheet.dart';
@@ -490,26 +491,77 @@ class _TenantAdminAccountProfileEditScreenState
     );
   }
 
-  Set<String> _persistedNestedGroupIds() {
-    final profile = _controller.accountProfileStreamValue.value;
-    if (profile == null) {
-      return const <String>{};
-    }
-    return profile.nestedProfileGroups
-        .map((group) => group.id.trim())
-        .where((groupId) => groupId.isNotEmpty)
-        .toSet();
-  }
-
   String _nestedGroupManageBlockedReason(TenantAdminNestedProfileGroup group) {
     final profile = _controller.accountProfileStreamValue.value;
     if (profile == null) {
       return 'Aguarde o carregamento do perfil.';
     }
-    if (!_persistedNestedGroupIds().contains(group.id.trim())) {
-      return 'Salve o perfil para persistir o grupo antes de gerenciar os perfis vinculados.';
-    }
     return '';
+  }
+
+  Future<void> _createNestedGroupHead() async {
+    final accountProfileId = _currentAccountProfileIdForRequests().trim();
+    if (accountProfileId.isEmpty) {
+      _controller.reportEditErrorMessage(
+        'Aguarde o carregamento do perfil antes de criar grupos.',
+      );
+      return;
+    }
+    _controller.clearEditErrorMessage();
+    final label = await showTenantAdminGroupLabelDialog(
+      context: context,
+      title: 'Novo grupo',
+    );
+    if (label == null) {
+      return;
+    }
+    await _controller.createEditNestedProfileGroupHead(
+      accountProfileId: accountProfileId,
+      label: label,
+    );
+  }
+
+  Future<void> _deleteNestedGroupHead(String groupId) async {
+    final matchingGroups = _controller
+        .editStateStreamValue
+        .value
+        .nestedProfileGroups
+        .where((candidate) => candidate.id == groupId)
+        .toList(growable: false);
+    if (matchingGroups.isEmpty) {
+      return;
+    }
+    final group = matchingGroups.first;
+    if (group.memberCount > 0) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text('Excluir grupo'),
+            content: Text(
+              'Este grupo possui ${group.memberCount} conta(s) vinculada(s). A exclusão removerá o grupo e todos os vínculos associados. Deseja continuar?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => dialogContext.router.maybePop(false),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () => dialogContext.router.maybePop(true),
+                child: const Text('Excluir'),
+              ),
+            ],
+          );
+        },
+      );
+      if (confirmed != true) {
+        return;
+      }
+    }
+    await _controller.deleteEditNestedProfileGroupHead(
+      accountProfileId: _currentAccountProfileIdForRequests(),
+      groupId: groupId,
+    );
   }
 
   Future<void> _autoSaveImages() async {
@@ -895,33 +947,61 @@ class _TenantAdminAccountProfileEditScreenState
                                           ],
                                           if (hasNestedProfileGroups) ...[
                                             const SizedBox(height: 16),
-                                            TenantAdminProfileGroupsSummaryEditor(
-                                              keyPrefix: 'tenantAdminEdit',
-                                              groups: state.nestedProfileGroups,
-                                              title:
-                                                  'Abas de contas vinculadas',
-                                              addButtonKey: const Key(
-                                                'tenantAdminEditAddNestedGroupButton',
-                                              ),
-                                              onAddGroup: _controller
-                                                  .addEditNestedProfileGroup,
-                                              onRenameGroup: _controller
-                                                  .renameEditNestedProfileGroup,
-                                              onMoveGroup: _controller
-                                                  .moveEditNestedProfileGroup,
-                                              onRemoveGroup: _controller
-                                                  .removeEditNestedProfileGroup,
-                                              onManageGroup: (group) =>
-                                                  openTenantAdminAccountProfileGroupMembersScreen(
-                                                    context: context,
-                                                    accountSlug:
-                                                        _currentAccountSlugForRequests(),
-                                                    accountProfileId:
-                                                        _currentAccountProfileIdForRequests(),
-                                                    group: group,
+                                            StreamValueBuilder<bool>(
+                                              streamValue: _controller
+                                                  .editNestedGroupMutationBusyStreamValue,
+                                              builder: (context, isBusy) {
+                                                return TenantAdminProfileGroupsSummaryEditor(
+                                                  keyPrefix: 'tenantAdminEdit',
+                                                  groups:
+                                                      state.nestedProfileGroups,
+                                                  title:
+                                                      'Abas de contas vinculadas',
+                                                  addButtonKey: const Key(
+                                                    'tenantAdminEditAddNestedGroupButton',
                                                   ),
-                                              manageBlockedReasonBuilder:
-                                                  _nestedGroupManageBlockedReason,
+                                                  onAddGroup:
+                                                      _createNestedGroupHead,
+                                                  onRenameGroup: (_, _) {},
+                                                  onMoveGroup: (_, _) {},
+                                                  onRemoveGroup:
+                                                      _deleteNestedGroupHead,
+                                                  groupsMutationBusy: isBusy,
+                                                  addBlockedReason:
+                                                      _controller
+                                                              .accountProfileStreamValue
+                                                              .value ==
+                                                          null
+                                                      ? 'Aguarde o carregamento do perfil.'
+                                                      : '',
+                                                  enableLabelEditing: false,
+                                                  enableReorder: false,
+                                                  onManageGroup: (group) async {
+                                                    _controller
+                                                        .editNestedGroupMutationBusyStreamValue
+                                                        .addValue(true);
+                                                    try {
+                                                      await openTenantAdminAccountProfileGroupMembersScreen(
+                                                        context: context,
+                                                        accountSlug:
+                                                            _currentAccountSlugForRequests(),
+                                                        accountProfileId:
+                                                            _currentAccountProfileIdForRequests(),
+                                                        group: group,
+                                                      );
+                                                      if (!mounted) {
+                                                        return;
+                                                      }
+                                                    } finally {
+                                                      _controller
+                                                          .editNestedGroupMutationBusyStreamValue
+                                                          .addValue(false);
+                                                    }
+                                                  },
+                                                  manageBlockedReasonBuilder:
+                                                      _nestedGroupManageBlockedReason,
+                                                );
+                                              },
                                             ),
                                           ],
                                           const SizedBox(height: 24),
@@ -1256,12 +1336,13 @@ class _TenantAdminAccountProfileEditScreenState
           DropdownButtonFormField<TenantAdminOwnershipState>(
             key: ValueKey(_selectedOwnershipState ?? accountOwnership),
             initialValue: _selectedOwnershipState ?? accountOwnership,
+            isExpanded: true,
             decoration: const InputDecoration(labelText: 'Gestao da conta'),
             items: _editableOwnershipStates
                 .map(
                   (state) => DropdownMenuItem<TenantAdminOwnershipState>(
                     value: state,
-                    child: Text(state.label),
+                    child: Text(state.label, overflow: TextOverflow.ellipsis),
                   ),
                 )
                 .toList(growable: false),

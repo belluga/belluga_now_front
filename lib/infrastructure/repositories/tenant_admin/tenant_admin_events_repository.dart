@@ -1,3 +1,4 @@
+import 'package:belluga_form_validation/belluga_form_validation.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
@@ -9,10 +10,12 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profi
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_head_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_page.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
+import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/support/tenant_admin_mutation_response_guard.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_account_profiles_response_decoder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_events_media_payload_normalizer.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_media_form_data_builder.dart';
@@ -318,18 +321,12 @@ class TenantAdminEventsRepository
     try {
       final response = await _dio.patch(
         uri,
-        data: {
-          if (addIds.isNotEmpty)
-            'add_ids': addIds
-                .map((entry) => entry.value.trim())
-                .where((value) => value.isNotEmpty)
-                .toList(growable: false),
-          if (removeIds.isNotEmpty)
-            'remove_ids': removeIds
-                .map((entry) => entry.value.trim())
-                .where((value) => value.isNotEmpty)
-                .toList(growable: false),
-        },
+        data: _requestEncoder.encodePatchOccurrenceProfileGroupMembers(
+          addIds: addIds.map((entry) => entry.value).toList(growable: false),
+          removeIds: removeIds
+              .map((entry) => entry.value)
+              .toList(growable: false),
+        ),
         options: Options(headers: _buildLandlordHeaders()),
       );
       return _nestedMembersDecoder
@@ -347,6 +344,95 @@ class TenantAdminEventsRepository
       throw _wrapUnknownDecodeError(
         error,
         context: 'patch occurrence group members',
+        uri: uri,
+      );
+    }
+  }
+
+  @override
+  Future<TenantAdminNestedGroupHeadMutationResult>
+  createOccurrenceProfileGroup({
+    required TenantAdminEventsRepoString eventId,
+    required TenantAdminEventsRepoString occurrenceId,
+    required TenantAdminEventsRepoString label,
+  }) async {
+    final uri =
+        '$_apiBaseUrl/v1/events/${eventId.value}/occurrences/${occurrenceId.value}/profile_groups';
+    try {
+      final response = await _dio.post(
+        uri,
+        data: _requestEncoder.encodeCreateOccurrenceProfileGroup(
+          label: label.value,
+        ),
+        options: Options(headers: _buildLandlordHeaders()),
+      );
+      tenantAdminAssertSuccessfulMutationResponse(
+        response,
+        label: 'create occurrence profile group',
+        uri: uri,
+      );
+      return _responseDecoder.decodeOccurrenceGroupHeadMutationResult(
+        response.data,
+      );
+    } on DioException catch (error) {
+      throw _wrapMutationError(error, 'create occurrence profile group');
+    } on FormValidationFailure {
+      rethrow;
+    } on FormApiFailure {
+      rethrow;
+    } on FormatException catch (error) {
+      throw _wrapDecodeError(
+        error,
+        context: 'create occurrence profile group',
+        uri: uri,
+      );
+    } catch (error) {
+      throw _wrapUnknownDecodeError(
+        error,
+        context: 'create occurrence profile group',
+        uri: uri,
+      );
+    }
+  }
+
+  @override
+  Future<TenantAdminNestedGroupHeadMutationResult>
+  deleteOccurrenceProfileGroup({
+    required TenantAdminEventsRepoString eventId,
+    required TenantAdminEventsRepoString occurrenceId,
+    required TenantAdminEventsRepoString groupId,
+  }) async {
+    final uri =
+        '$_apiBaseUrl/v1/events/${eventId.value}/occurrences/${occurrenceId.value}/profile_groups/${groupId.value}';
+    try {
+      final response = await _dio.delete(
+        uri,
+        options: Options(headers: _buildLandlordHeaders()),
+      );
+      tenantAdminAssertSuccessfulMutationResponse(
+        response,
+        label: 'delete occurrence profile group',
+        uri: uri,
+      );
+      return _responseDecoder.decodeOccurrenceGroupHeadMutationResult(
+        response.data,
+      );
+    } on DioException catch (error) {
+      throw _wrapMutationError(error, 'delete occurrence profile group');
+    } on FormValidationFailure {
+      rethrow;
+    } on FormApiFailure {
+      rethrow;
+    } on FormatException catch (error) {
+      throw _wrapDecodeError(
+        error,
+        context: 'delete occurrence profile group',
+        uri: uri,
+      );
+    } catch (error) {
+      throw _wrapUnknownDecodeError(
+        error,
+        context: 'delete occurrence profile group',
         uri: uri,
       );
     }
