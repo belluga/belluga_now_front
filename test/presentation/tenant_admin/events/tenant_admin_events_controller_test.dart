@@ -321,6 +321,151 @@ void main() {
   );
 
   test(
+    'deleteOccurrenceProfileGroupHead keeps related profiles and programming links when response groups are metadata-only',
+    () async {
+      final eventsRepository = _OccurrenceGroupMutationTrackingRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken(
+          'landlord-token',
+        ),
+      );
+      final preservedProfile = tenantAdminAccountProfileFromRaw(
+        id: 'artist-1',
+        accountId: 'acc-artist-1',
+        profileType: 'artist',
+        displayName: 'Artist A',
+      );
+
+      controller.initEventForm(
+        existingEvent: TenantAdminEvent(
+          eventIdValue: tenantAdminRequiredText('evt-occ-group-delete-safe'),
+          slugValue: tenantAdminRequiredText('evt-occ-group-delete-safe'),
+          titleValue: tenantAdminRequiredText(
+            'Occurrence Group Delete Safe Event',
+          ),
+          contentValue: tenantAdminOptionalText('Conteudo'),
+          type: TenantAdminEventType(
+            nameValue: tenantAdminRequiredText('Show'),
+            slugValue: tenantAdminRequiredText('show'),
+          ),
+          occurrences: <TenantAdminEventOccurrence>[
+            TenantAdminEventOccurrence(
+              occurrenceIdValue: tenantAdminOptionalText('occ-1'),
+              occurrenceSlugValue: tenantAdminOptionalText('occ-1'),
+              dateTimeStartValue: tenantAdminDateTime(
+                DateTime.utc(2026, 4, 20, 20),
+              ),
+            ),
+            TenantAdminEventOccurrence(
+              occurrenceIdValue: tenantAdminOptionalText('occ-2'),
+              occurrenceSlugValue: tenantAdminOptionalText('occ-2'),
+              dateTimeStartValue: tenantAdminDateTime(
+                DateTime.utc(2026, 4, 21, 20),
+              ),
+              relatedAccountProfileIdValues: [
+                TenantAdminAccountProfileIdValue('artist-1'),
+              ],
+              relatedAccountProfiles: [preservedProfile],
+              profileGroups: <TenantAdminNestedProfileGroup>[
+                TenantAdminNestedProfileGroup(
+                  idValue: TenantAdminNestedProfileGroupTextValue('bandas'),
+                  labelValue: TenantAdminNestedProfileGroupTextValue('Bandas'),
+                  orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+                  memberCountValue: TenantAdminCountValue(1),
+                  accountProfileIdValues: [
+                    TenantAdminNestedProfileGroupTextValue('artist-1'),
+                  ],
+                ),
+                TenantAdminNestedProfileGroup(
+                  idValue: TenantAdminNestedProfileGroupTextValue(
+                    'expositores',
+                  ),
+                  labelValue: TenantAdminNestedProfileGroupTextValue(
+                    'Expositores',
+                  ),
+                  orderValue: TenantAdminNestedProfileGroupOrderValue(1),
+                  memberCountValue: TenantAdminCountValue(1),
+                  accountProfileIdValues: [
+                    TenantAdminNestedProfileGroupTextValue('artist-1'),
+                  ],
+                ),
+              ],
+              programmingItems: <TenantAdminEventProgrammingItem>[
+                TenantAdminEventProgrammingItem(
+                  timeValue: tenantAdminOptionalText('20:00'),
+                  titleValue: tenantAdminOptionalText('Show principal'),
+                  accountProfileIdValues: [
+                    TenantAdminAccountProfileIdValue('artist-1'),
+                  ],
+                  linkedAccountProfiles: [preservedProfile],
+                ),
+              ],
+            ),
+          ],
+          publication: TenantAdminEventPublication(
+            statusValue: tenantAdminRequiredText('draft'),
+          ),
+        ),
+      );
+
+      eventsRepository.deleteOccurrenceProfileGroupGate = Future.value(
+        TenantAdminNestedGroupHeadMutationResult(
+          occurrenceIdValue: tenantAdminOptionalText('occ-2'),
+          deletedGroupIdValue: tenantAdminOptionalText('bandas'),
+          groups: <TenantAdminNestedProfileGroup>[
+            TenantAdminNestedProfileGroup(
+              idValue: TenantAdminNestedProfileGroupTextValue('expositores'),
+              labelValue: TenantAdminNestedProfileGroupTextValue(
+                'Expositores',
+              ),
+              orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+              memberCountValue: TenantAdminCountValue(1),
+            ),
+          ],
+        ),
+      );
+
+      await controller.deleteOccurrenceProfileGroupHead(
+        eventId: 'evt-occ-group-delete-safe',
+        occurrenceId: 'occ-2',
+        occurrenceKey: controller.occurrenceKeyAt(1)!,
+        groupId: 'bandas',
+      );
+
+      final occurrence = controller.eventFormStateStreamValue.value.occurrences[1];
+      expect(occurrence.profileGroups, hasLength(1));
+      expect(occurrence.profileGroups.single.id, 'expositores');
+      expect(
+        occurrence.relatedAccountProfileIds
+            .map((value) => value.value)
+            .toList(growable: false),
+        ['artist-1'],
+      );
+      expect(
+        occurrence.relatedAccountProfiles
+            .map((profile) => profile.id)
+            .toList(growable: false),
+        ['artist-1'],
+      );
+      expect(
+        occurrence.programmingItems.single.accountProfileIds
+            .map((value) => value.value)
+            .toList(growable: false),
+        ['artist-1'],
+      );
+      expect(
+        occurrence.programmingItems.single.linkedAccountProfiles
+            .map((profile) => profile.id)
+            .toList(growable: false),
+        ['artist-1'],
+      );
+      expect(controller.submitErrorMessageStreamValue.value, isNull);
+    },
+  );
+
+  test(
     'root programming stays on the first occurrence after a second occurrence is drafted and populated',
     () {
       final eventsRepository = _TrackingEventsRepository();

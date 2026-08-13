@@ -1431,28 +1431,7 @@ class TenantAdminEventsController implements Disposable {
           currentGroups: occurrence.profileGroups,
           metadataGroups: result.groups,
         );
-        final allowedProfileIds =
-            TenantAdminNestedProfileGroupOperations.memberIds(nextGroups);
-        final allowedProfileIdSet = allowedProfileIds.toSet();
-        return _copyOccurrence(
-          occurrence,
-          profileGroups: nextGroups,
-          relatedAccountProfileIds: allowedProfileIds
-              .map(TenantAdminAccountProfileIdValue.new)
-              .toList(growable: false),
-          relatedAccountProfiles: _knownOccurrenceRelatedProfiles(
-            occurrence,
-            allowedProfileIds,
-          ),
-          programmingItems: occurrence.programmingItems
-              .map(
-                (item) => _withoutProgrammingProfilesOutsideAllowedSet(
-                  item,
-                  allowedProfileIdSet,
-                ),
-              )
-              .toList(growable: false),
-        );
+        return _copyOccurrence(occurrence, profileGroups: nextGroups);
       }, sort: false);
       submitErrorMessageStreamValue.addValue(null);
     } catch (error) {
