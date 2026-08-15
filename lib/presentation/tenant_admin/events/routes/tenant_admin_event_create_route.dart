@@ -8,6 +8,6 @@ class TenantAdminEventCreateRoutePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const TenantAdminEventFormScreen();
+    return const TenantAdminEventFormScreen(reducedBootstrapCreate: true);
   }
 }

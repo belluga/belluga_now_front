@@ -66,6 +66,7 @@ void main() {
       eventsRepository.lastTemporalBuckets,
       equals(TenantAdminEventTemporalBucket.defaultSelection),
     );
+    expect(eventsRepository.lastLoadStatus, 'published');
   });
 
   test(
@@ -417,9 +418,7 @@ void main() {
           groups: <TenantAdminNestedProfileGroup>[
             TenantAdminNestedProfileGroup(
               idValue: TenantAdminNestedProfileGroupTextValue('expositores'),
-              labelValue: TenantAdminNestedProfileGroupTextValue(
-                'Expositores',
-              ),
+              labelValue: TenantAdminNestedProfileGroupTextValue('Expositores'),
               orderValue: TenantAdminNestedProfileGroupOrderValue(0),
               memberCountValue: TenantAdminCountValue(1),
             ),
@@ -434,7 +433,8 @@ void main() {
         groupId: 'bandas',
       );
 
-      final occurrence = controller.eventFormStateStreamValue.value.occurrences[1];
+      final occurrence =
+          controller.eventFormStateStreamValue.value.occurrences[1];
       expect(occurrence.profileGroups, hasLength(1));
       expect(occurrence.profileGroups.single.id, 'expositores');
       expect(
@@ -1092,7 +1092,7 @@ void main() {
   );
 
   test(
-    'resetEventFilters clears specific date, venue, related profile, and restores default temporal selection',
+    'resetEventFilters clears specific date, venue, related profile, resets publication status, and restores default temporal selection',
     () {
       final controller = TenantAdminEventsController(
         eventsRepository: _TrackingEventsRepository(),
@@ -1119,12 +1119,14 @@ void main() {
           displayName: 'DJ Test',
         ),
       );
+      controller.selectPublicationStatusFilter('draft');
 
       controller.resetEventFilters();
 
       expect(controller.specificDateFilterStreamValue.value, isNull);
       expect(controller.venueFilterStreamValue.value, isNull);
       expect(controller.relatedAccountProfileFilterStreamValue.value, isNull);
+      expect(controller.publicationStatusFilterStreamValue.value, 'published');
       expect(
         controller.temporalFilterStreamValue.value,
         equals(TenantAdminEventTemporalBucket.defaultSelection),
@@ -2265,6 +2267,7 @@ class _TrackingEventsRepository extends TenantAdminEventsRepositoryContract
   int fetchEventsCalls = 0;
   int fetchEventsPageCalls = 0;
   String? lastLoadSpecificDate;
+  String? lastLoadStatus;
   String? lastLoadVenueProfileId;
   String? lastLoadRelatedAccountProfileId;
   Set<TenantAdminEventTemporalBucket>? lastTemporalBuckets;
@@ -2306,6 +2309,7 @@ class _TrackingEventsRepository extends TenantAdminEventsRepositoryContract
   }) async {
     fetchEventsCalls += 1;
     lastLoadSpecificDate = specificDate?.value;
+    lastLoadStatus = status?.value;
     lastLoadVenueProfileId = venueProfileId?.value;
     lastLoadRelatedAccountProfileId = relatedAccountProfileId?.value;
     lastTemporalBuckets = temporalBuckets;
@@ -2326,6 +2330,7 @@ class _TrackingEventsRepository extends TenantAdminEventsRepositoryContract
   }) async {
     fetchEventsPageCalls += 1;
     lastLoadSpecificDate = specificDate?.value;
+    lastLoadStatus = status?.value;
     lastLoadVenueProfileId = venueProfileId?.value;
     lastLoadRelatedAccountProfileId = relatedAccountProfileId?.value;
     lastTemporalBuckets = temporalBuckets;
