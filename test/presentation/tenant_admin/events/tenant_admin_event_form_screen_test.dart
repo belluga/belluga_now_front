@@ -4216,6 +4216,102 @@ void main() {
     expect(eventsRepository.lastCreateOwnDraft, isNotNull);
   });
 
+  testWidgets(
+    'reduced bootstrap create hides rich authoring and skips hidden related-profile/taxonomy preload',
+    (tester) async {
+      final eventsRepository = _FakeEventsRepository();
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+
+      eventsRepository.eventTypes = [
+        TenantAdminEventType.withAllowedTaxonomies(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439099'),
+          nameValue: tenantAdminRequiredText('Workshop'),
+          slugValue: tenantAdminRequiredText('workshop'),
+          descriptionValue: tenantAdminOptionalText('Tipo reduzido'),
+          allowedTaxonomiesValue: tenantAdminTrimmedStringList([
+            _fixtureTaxonomySlug(1),
+          ]),
+        ),
+      ];
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(
+          body: TenantAdminEventFormScreen(reducedBootstrapCreate: true),
+        ),
+      );
+
+      expect(eventsRepository.candidateRequestTypes, [
+        TenantAdminEventAccountProfileCandidateType.physicalHost,
+      ]);
+      expect(taxonomiesRepository.fetchTermsCalls, 0);
+      expect(taxonomiesRepository.batchFetchTaxonomyIds, isEmpty);
+      expect(find.text('Descrição (opcional)'), findsNothing);
+      expect(find.text('Capa do evento'), findsNothing);
+      expect(find.text('Publicação'), findsNothing);
+      expect(find.text('Taxonomias'), findsNothing);
+      expect(find.text('Programação'), findsNothing);
+      expect(find.text('Abas de perfis relacionados'), findsNothing);
+      expect(
+        find.byKey(const Key('tenantAdminEventEditPrimaryOccurrenceButton')),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets(
+    'reduced bootstrap create redirects straight to the canonical edit route on success',
+    (tester) async {
+      final eventsRepository = _FakeEventsRepository();
+      final taxonomiesRepository = _FakeTaxonomiesRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+      );
+
+      eventsRepository.eventTypes = [
+        TenantAdminEventType(
+          idValue: tenantAdminOptionalText('507f1f77bcf86cd799439098'),
+          nameValue: tenantAdminRequiredText('Live'),
+          slugValue: tenantAdminRequiredText('live'),
+          descriptionValue: tenantAdminOptionalText('Tipo reduzido'),
+        ),
+      ];
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(
+          body: TenantAdminEventFormScreen(reducedBootstrapCreate: true),
+        ),
+      );
+
+      await _fillRequiredFields(
+        tester,
+        controller: controller,
+        includeDescription: false,
+      );
+      await tester.scrollUntilVisible(
+        find.widgetWithText(FilledButton, 'Criar evento'),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Criar evento'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TenantAdminEventFormScreen), findsNothing);
+      expect(find.text('Edit: evt-1'), findsOneWidget);
+    },
+  );
+
   testWidgets('online mode omits venue coordinates on submit', (tester) async {
     final eventsRepository = _FakeEventsRepository();
     final taxonomiesRepository = _FakeTaxonomiesRepository();
@@ -7022,6 +7118,17 @@ Future<void> _pumpWithAutoRoute(WidgetTester tester, Widget child) async {
           );
         },
       ),
+      NamedRouteDef(
+        name: TenantAdminEventEditRoute.name,
+        path: '/admin/events/:eventId/edit',
+        meta: canonicalRouteMeta(
+          family: CanonicalRouteFamily.tenantAdminEventsInternal,
+          chromeMode: RouteChromeMode.fullscreen,
+        ),
+        builder: (_, routeData) => Scaffold(
+          body: Text('Edit: ${routeData.pathParams.getString('eventId')}'),
+        ),
+      ),
     ],
   )..ignorePopCompleters = true;
 
@@ -7594,6 +7701,8 @@ class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
   int createOccurrenceProfileGroupCalls = 0;
   int deleteOccurrenceProfileGroupCalls = 0;
   String? lastRelatedProfileType;
+  final List<TenantAdminEventAccountProfileCandidateType>
+  candidateRequestTypes = <TenantAdminEventAccountProfileCandidateType>[];
   String? lastCreateOccurrenceProfileGroupEventId;
   String? lastCreateOccurrenceProfileGroupOccurrenceId;
   String? lastCreateOccurrenceProfileGroupLabel;
@@ -7726,6 +7835,7 @@ class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
     TenantAdminEventsRepoString? profileType,
     TenantAdminEventsRepoString? accountSlug,
   }) async {
+    candidateRequestTypes.add(candidateType);
     final sourceItems = switch (candidateType) {
       TenantAdminEventAccountProfileCandidateType.physicalHost =>
         physicalHostCandidates,

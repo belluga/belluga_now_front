@@ -46,6 +46,8 @@ import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value.dart';
 
+enum _TenantAdminEventFormDependencyMode { full, bootstrapCreate }
+
 class TenantAdminEventsController implements Disposable {
   TenantAdminEventsController({
     TenantAdminEventsRepositoryContract? eventsRepository,
@@ -186,6 +188,8 @@ class TenantAdminEventsController implements Disposable {
   final StreamValue<TenantAdminAccountProfile?>
   relatedAccountProfileFilterStreamValue =
       StreamValue<TenantAdminAccountProfile?>(defaultValue: null);
+  final StreamValue<String> publicationStatusFilterStreamValue =
+      StreamValue<String>(defaultValue: 'published');
   final StreamValue<Set<TenantAdminEventTemporalBucket>>
   temporalFilterStreamValue = StreamValue<Set<TenantAdminEventTemporalBucket>>(
     defaultValue: TenantAdminEventTemporalBucket.defaultSelection,
@@ -373,6 +377,8 @@ class TenantAdminEventsController implements Disposable {
   int _accountProfilePickerCurrentPage = 0;
   int _accountProfilePickerRequestToken = 0;
   int _formDependenciesLoadSerial = 0;
+  _TenantAdminEventFormDependencyMode _formDependencyMode =
+      _TenantAdminEventFormDependencyMode.full;
   int _eventFormLocalIdSerial = 0;
   String? _eventFormInitialFingerprint;
   TenantAdminEventAccountProfileCandidateType? _accountProfilePickerType;
@@ -517,6 +523,7 @@ class TenantAdminEventsController implements Disposable {
     }
     await _eventsRepository.loadEvents(
       specificDate: _toNullableEventsText(_specificDateQueryValue()),
+      status: _toNullableEventsText(publicationStatusFilterStreamValue.value),
       venueProfileId: _toNullableEventsText(venueFilterStreamValue.value?.id),
       relatedAccountProfileId: _toNullableEventsText(
         relatedAccountProfileFilterStreamValue.value?.id,
@@ -534,6 +541,7 @@ class TenantAdminEventsController implements Disposable {
     }
     await _eventsRepository.loadNextEventsPage(
       specificDate: _toNullableEventsText(_specificDateQueryValue()),
+      status: _toNullableEventsText(publicationStatusFilterStreamValue.value),
       venueProfileId: _toNullableEventsText(venueFilterStreamValue.value?.id),
       relatedAccountProfileId: _toNullableEventsText(
         relatedAccountProfileFilterStreamValue.value?.id,
@@ -581,10 +589,21 @@ class TenantAdminEventsController implements Disposable {
     relatedAccountProfileFilterStreamValue.addValue(null);
   }
 
+  void selectPublicationStatusFilter(String status) {
+    final normalized = status.trim();
+    if (normalized.isEmpty ||
+        normalized == publicationStatusFilterStreamValue.value) {
+      return;
+    }
+
+    publicationStatusFilterStreamValue.addValue(normalized);
+  }
+
   void resetEventFilters() {
     specificDateFilterStreamValue.addValue(null);
     venueFilterStreamValue.addValue(null);
     relatedAccountProfileFilterStreamValue.addValue(null);
+    publicationStatusFilterStreamValue.addValue('published');
     temporalFilterStreamValue.addValue(
       TenantAdminEventTemporalBucket.defaultSelection,
     );
@@ -764,7 +783,9 @@ class TenantAdminEventsController implements Disposable {
     clearEventFieldValidation(TenantAdminEventFormValidationTargets.eventType);
     clearEventGroupValidation(TenantAdminEventFormValidationTargets.taxonomies);
     _replaceEventFormState(_sanitizeEventTaxonomyTermsForSelectedType(current));
-    unawaited(_refreshSelectedEventTypeTaxonomyDependencies());
+    if (_formDependencyMode == _TenantAdminEventFormDependencyMode.full) {
+      unawaited(_refreshSelectedEventTypeTaxonomyDependencies());
+    }
   }
 
   void updateEventPublicationStatus(String status) {
@@ -2264,6 +2285,7 @@ class TenantAdminEventsController implements Disposable {
   }
 
   Future<void> loadFormDependencies({String? accountSlug}) async {
+    _formDependencyMode = _TenantAdminEventFormDependencyMode.full;
     final requestToken = ++_formDependenciesLoadSerial;
     final normalizedAccountSlug = _normalizeOptionalText(accountSlug);
     _formAccountProfileCandidatesAccountSlug = normalizedAccountSlug;
@@ -2285,6 +2307,34 @@ class TenantAdminEventsController implements Disposable {
       _hydrateDefaultEventVenueFromCandidates();
       _hydrateDefaultEventTypeFromCatalog();
       await _refreshSelectedEventTypeTaxonomyDependencies();
+      if (canRefreshCleanBaseline) {
+        markEventFormClean();
+      }
+    }
+  }
+
+  Future<void> loadBootstrapCreateDependencies({String? accountSlug}) async {
+    _formDependencyMode = _TenantAdminEventFormDependencyMode.bootstrapCreate;
+    final requestToken = ++_formDependenciesLoadSerial;
+    final normalizedAccountSlug = _normalizeOptionalText(accountSlug);
+    _formAccountProfileCandidatesAccountSlug = normalizedAccountSlug;
+    final cleanBaselineBeforeLoad = _eventFormInitialFingerprint;
+    _resetHiddenBootstrapDependencyState();
+
+    await Future.wait<void>(<Future<void>>[
+      _loadEventTypeCatalog(requestToken: requestToken),
+      _loadVenueCandidates(
+        accountSlug: normalizedAccountSlug,
+        requestToken: requestToken,
+      ),
+    ]);
+
+    if (!_isDisposed && requestToken == _formDependenciesLoadSerial) {
+      final canRefreshCleanBaseline =
+          cleanBaselineBeforeLoad != null &&
+          _eventFormFingerprint() == cleanBaselineBeforeLoad;
+      _hydrateDefaultEventVenueFromCandidates();
+      _hydrateDefaultEventTypeFromCatalog();
       if (canRefreshCleanBaseline) {
         markEventFormClean();
       }
@@ -2903,6 +2953,50 @@ class TenantAdminEventsController implements Disposable {
 
       venueCandidatesStreamValue.addValue(List.unmodifiable(venues));
       _publishVisibleRelatedAccountProfileCandidates(relatedAccountProfiles);
+    } catch (error) {
+      if (_isDisposed ||
+          (requestToken != null &&
+              requestToken != _formDependenciesLoadSerial)) {
+        return;
+      }
+      accountProfileCandidatesErrorStreamValue.addValue(error.toString());
+    } finally {
+      if (!_isDisposed &&
+          (requestToken == null ||
+              requestToken == _formDependenciesLoadSerial)) {
+        accountProfileCandidatesLoadingStreamValue.addValue(false);
+      }
+    }
+  }
+
+  Future<void> _loadVenueCandidates({
+    String? accountSlug,
+    int? requestToken,
+  }) async {
+    final normalizedAccountSlug = _normalizeOptionalText(accountSlug);
+    accountProfileCandidatesLoadingStreamValue.addValue(true);
+    accountProfileCandidatesErrorStreamValue.addValue(null);
+
+    try {
+      final venuePage = await _fetchAccountProfileCandidatesFirstPage(
+        candidateType: TenantAdminEventAccountProfileCandidateType.physicalHost,
+        accountSlug: normalizedAccountSlug,
+      );
+
+      if (_isDisposed ||
+          (requestToken != null &&
+              requestToken != _formDependenciesLoadSerial)) {
+        return;
+      }
+
+      final mergedVenueItems = _mergeBootstrapVenueCandidates(venuePage.items);
+      _bootstrapVenueCandidatesPage = tenantAdminPagedResultFromRaw(
+        items: mergedVenueItems,
+        hasMore: venuePage.hasMore,
+      );
+      venueCandidatesStreamValue.addValue(
+        List.unmodifiable(_bootstrapVenueCandidatesPage!.items),
+      );
     } catch (error) {
       if (_isDisposed ||
           (requestToken != null &&
@@ -3557,6 +3651,7 @@ class TenantAdminEventsController implements Disposable {
     specificDateFilterStreamValue.addValue(null);
     venueFilterStreamValue.addValue(null);
     relatedAccountProfileFilterStreamValue.addValue(null);
+    publicationStatusFilterStreamValue.addValue('published');
     temporalFilterStreamValue.addValue(
       TenantAdminEventTemporalBucket.defaultSelection,
     );
@@ -4449,6 +4544,7 @@ class TenantAdminEventsController implements Disposable {
     specificDateFilterStreamValue.dispose();
     venueFilterStreamValue.dispose();
     relatedAccountProfileFilterStreamValue.dispose();
+    publicationStatusFilterStreamValue.dispose();
     temporalFilterStreamValue.dispose();
     submitLoadingStreamValue.dispose();
     occurrenceProfileGroupMutationBusyStreamValue.dispose();
@@ -4520,6 +4616,36 @@ class TenantAdminEventsController implements Disposable {
 }
 
 extension on TenantAdminEventsController {
+  void _resetHiddenBootstrapDependencyState() {
+    _bootstrapRelatedAccountProfileCandidatesPage = null;
+    _accountProfilePickerType = null;
+    _accountProfilePickerAccountSlug = null;
+    _accountProfilePickerCurrentPage = 0;
+    _accountProfilePickerRequestToken = 0;
+    _relatedAccountProfileSelectedType = null;
+    relatedAccountProfileSelectedTypeStreamValue.addValue(null);
+    relatedAccountProfileTypesStreamValue.addValue(const []);
+    relatedAccountProfileCandidatesStreamValue.addValue(const []);
+    accountProfilePickerResultsStreamValue.addValue(const []);
+    accountProfilePickerLoadingStreamValue.addValue(false);
+    accountProfilePickerPageLoadingStreamValue.addValue(false);
+    accountProfilePickerHasMoreStreamValue.addValue(true);
+    accountProfilePickerErrorStreamValue.addValue('');
+    accountProfilePickerQueryStreamValue.addValue('');
+    taxonomiesStreamValue.addValue(const []);
+    taxonomyTermsBySlugStreamValue.addValue(const {});
+    _taxonomyDefinitionsCacheBySlug.clear();
+    _taxonomyDefinitionsLoadSerial += 1;
+    _taxonomyTermsCacheBySlug.clear();
+    _loadedTaxonomyTermsKey = null;
+    _loadingTaxonomyTermsKey = null;
+    _taxonomyTermsLoadSerial += 1;
+    taxonomyLoadingStreamValue.addValue(false);
+    taxonomyErrorStreamValue.addValue(null);
+    _initialEventTypeAllowedTaxonomies = const <String>[];
+    eventTypeAllowedTaxonomiesStreamValue.addValue(const []);
+  }
+
   void _bindEventValidationListeners() {
     if (_eventValidationListenersBound) {
       return;

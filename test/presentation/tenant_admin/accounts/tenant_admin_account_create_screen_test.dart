@@ -29,14 +29,10 @@ import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_lo
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_account_create_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/models/tenant_admin_account_create_validation_config.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/screens/tenant_admin_account_create_screen.dart';
-import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
-import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_upload_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
-import 'package:image/image.dart' as img;
-import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class _FakeAccountsRepository
@@ -758,9 +754,6 @@ void main() {
     GetIt.I.registerSingleton<TenantAdminExternalImageProxyContract>(
       _FakeExternalImageProxy(),
     );
-    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
-      TenantAdminImageIngestionService(),
-    );
     GetIt.I.registerSingleton<TenantAdminAccountCreateController>(
       TenantAdminAccountCreateController(
         locationSelectionService: locationSelectionService,
@@ -819,9 +812,9 @@ void main() {
     },
   );
 
-  testWidgets('shows selected avatar and allows clear', (tester) async {
-    final avatarFile = _createTempImageFile('avatar.png');
-    final coverFile = _createTempImageFile('cover.png');
+  testWidgets('hides media authoring in reduced account create flow', (
+    tester,
+  ) async {
     await _pumpWithAutoRoute(
       tester,
       Scaffold(body: TenantAdminAccountCreateScreen()),
@@ -845,128 +838,15 @@ void main() {
 
     expect(
       find.byKey(const ValueKey('tenant_admin_account_create_avatar_pick')),
-      findsOneWidget,
+      findsNothing,
     );
     expect(
       find.byKey(const ValueKey('tenant_admin_account_create_cover_pick')),
-      findsOneWidget,
-    );
-    expect(find.byType(TenantAdminImageUploadField), findsNWidgets(2));
-
-    expect(find.text('Remover'), findsNothing);
-    final controller = GetIt.I.get<TenantAdminAccountCreateController>();
-    controller.updateCreateAvatarFile(avatarFile);
-    await tester.pumpAndSettle();
-
-    expect(
-      find.byKey(const ValueKey('tenant_admin_account_create_avatar_remove')),
-      findsOneWidget,
-    );
-
-    final avatarRemove = find.byKey(
-      const ValueKey('tenant_admin_account_create_avatar_remove'),
-    );
-    await tester.ensureVisible(avatarRemove);
-    await tester.tap(avatarRemove, warnIfMissed: false);
-    await tester.pumpAndSettle();
-
-    expect(find.text('Remover'), findsNothing);
-    controller.updateCreateCoverFile(coverFile);
-    await tester.pumpAndSettle();
-
-    expect(
-      find.byKey(const ValueKey('tenant_admin_account_create_cover_remove')),
-      findsOneWidget,
+      findsNothing,
     );
   });
 
-  testWidgets(
-    'keeps avatar and cover files when web URLs are cleared pre-submit',
-    (tester) async {
-      final profilesRepository =
-          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
-              as _FakeAccountProfilesRepository;
-      profilesRepository._profileTypes = [
-        tenantAdminProfileTypeDefinitionFromRaw(
-          type: 'media',
-          label: 'Media',
-          allowedTaxonomies: const [],
-          capabilities: TenantAdminProfileTypeCapabilities(
-            isFavoritable: TenantAdminFlagValue(true),
-            isPoiEnabled: TenantAdminFlagValue(false),
-            hasBio: TenantAdminFlagValue(false),
-            hasContent: TenantAdminFlagValue(false),
-            hasTaxonomies: TenantAdminFlagValue(false),
-            hasAvatar: TenantAdminFlagValue(true),
-            hasCover: TenantAdminFlagValue(true),
-            hasEvents: TenantAdminFlagValue(false),
-          ),
-        ),
-      ];
-      final avatarFile = _createTempImageFile('avatar-submit.png');
-      final coverFile = _createTempImageFile('cover-submit.png');
-      final controller = GetIt.I.get<TenantAdminAccountCreateController>();
-      controller.profileTypesStreamValue.addValue(
-        List<TenantAdminProfileTypeDefinition>.from(
-          profilesRepository._profileTypes,
-        ),
-      );
-      controller.resetCreateState();
-      controller.updateCreateSelectedProfileType('media');
-      expect(
-        controller.createStateStreamValue.value.selectedProfileType,
-        'media',
-      );
-      controller.nameController.text = 'Conta com imagem';
-      controller.updateCreateAvatarFile(avatarFile);
-      controller.updateCreateCoverFile(coverFile);
-      expect(controller.createStateStreamValue.value.avatarFile, isNotNull);
-      expect(controller.createStateStreamValue.value.coverFile, isNotNull);
-
-      // Mimics screen submit flow that clears web URLs before creating.
-      controller.updateCreateAvatarWebUrl(null);
-      controller.updateCreateCoverWebUrl(null);
-      expect(controller.createStateStreamValue.value.avatarFile, isNotNull);
-      expect(controller.createStateStreamValue.value.coverFile, isNotNull);
-    },
-  );
-
-  test('createAccountFromForm forwards avatar and cover uploads', () async {
-    final accountsRepository =
-        GetIt.I.get<TenantAdminAccountsRepositoryContract>()
-            as _FakeAccountsRepository;
-    final profilesRepository =
-        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
-            as _FakeAccountProfilesRepository;
-    final controller = GetIt.I.get<TenantAdminAccountCreateController>();
-    final avatarFile = _createTempImageFile('avatar-onboarding.png');
-    final coverFile = _createTempImageFile('cover-onboarding.png');
-
-    controller.profileTypesStreamValue.addValue(
-      List<TenantAdminProfileTypeDefinition>.from(
-        profilesRepository._profileTypes,
-      ),
-    );
-    controller.updateCreateSelectedProfileType('venue');
-    controller.nameController.text = 'Conta com upload';
-    controller.updateCreateAvatarFile(avatarFile);
-    controller.updateCreateCoverFile(coverFile);
-    await controller.createAccountFromForm(location: null);
-
-    expect(accountsRepository.createOnboardingCallCount, 1);
-    expect(accountsRepository.lastOnboardingAvatarUpload, isNotNull);
-    expect(accountsRepository.lastOnboardingCoverUpload, isNotNull);
-    expect(
-      accountsRepository.lastOnboardingAvatarUpload?.bytes.isNotEmpty,
-      isTrue,
-    );
-    expect(
-      accountsRepository.lastOnboardingCoverUpload?.bytes.isNotEmpty,
-      isTrue,
-    );
-  });
-
-  testWidgets('disables avatar pick and shows progress when busy', (
+  testWidgets('keeps media busy state hidden in reduced account create flow', (
     tester,
   ) async {
     await _pumpWithAutoRoute(
@@ -982,98 +862,80 @@ void main() {
     await tester.pumpAndSettle();
 
     final controller = GetIt.I.get<TenantAdminAccountCreateController>();
-    controller.updateCreateAvatarBusy(true);
+    controller.createSubmittingStreamValue.addValue(true);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
-    expect(find.byType(LinearProgressIndicator), findsAtLeastNWidgets(1));
-
-    final pickButton = find.byKey(
-      const ValueKey('tenant_admin_account_create_avatar_pick'),
-    );
-    final button = tester.widget<FilledButton>(pickButton);
-    expect(button.onPressed, isNull);
-  });
-
-  testWidgets('shows bio and taxonomy fields in account create flow', (
-    tester,
-  ) async {
-    final profilesRepository =
-        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
-            as _FakeAccountProfilesRepository;
-    profilesRepository._profileTypes = [
-      tenantAdminProfileTypeDefinitionFromRaw(
-        type: 'complete',
-        label: 'Completo',
-        allowedTaxonomies: ['genre'],
-        capabilities: TenantAdminProfileTypeCapabilities(
-          isFavoritable: TenantAdminFlagValue(true),
-          isPoiEnabled: TenantAdminFlagValue(false),
-          hasBio: TenantAdminFlagValue(true),
-          hasContent: TenantAdminFlagValue(false),
-          hasTaxonomies: TenantAdminFlagValue(true),
-          hasAvatar: TenantAdminFlagValue(false),
-          hasCover: TenantAdminFlagValue(false),
-          hasEvents: TenantAdminFlagValue(false),
-        ),
-      ),
-    ];
-    final taxonomiesRepository =
-        GetIt.I.get<TenantAdminTaxonomiesRepositoryContract>()
-            as _FakeTaxonomiesRepository;
-    taxonomiesRepository
-      .._taxonomies = [
-        tenantAdminTaxonomyDefinitionFromRaw(
-          id: 'tax-1',
-          slug: 'genre',
-          name: 'Genero',
-          appliesTo: ['account_profile'],
-          icon: null,
-          color: null,
-        ),
-      ]
-      .._termsByTaxonomyId = {
-        'tax-1': [
-          tenantAdminTaxonomyTermDefinitionFromRaw(
-            id: 'term-1',
-            taxonomyId: 'tax-1',
-            slug: 'urbana',
-            name: 'Urbana',
-          ),
-        ],
-      };
-
-    await _pumpWithAutoRoute(
-      tester,
-      const Scaffold(body: TenantAdminAccountCreateScreen()),
-    );
-
-    await tester.tap(find.byType(DropdownButtonFormField<String>).last);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Completo').last);
-    await tester.pumpAndSettle();
-
-    expect(find.text('Bio'), findsOneWidget);
-    expect(find.text('Taxonomias'), findsOneWidget);
-    expect(find.text('Urbana'), findsOneWidget);
-
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Nome'),
-      'Conta A',
-    );
-    final controller = GetIt.I.get<TenantAdminAccountCreateController>();
-    controller.bioController.text = '<p>Bio teste</p>';
-    await tester.pump();
-    final urbanaChip = find.text('Urbana').last;
-    await tester.ensureVisible(urbanaChip);
-    await tester.tap(urbanaChip, warnIfMissed: false);
-    await tester.pumpAndSettle();
-    expect(controller.bioController.text, '<p>Bio teste</p>');
+    expect(find.byType(LinearProgressIndicator), findsNothing);
     expect(
-      controller.selectedTaxonomyTermsStreamValue.value['genre'],
-      equals({'urbana'}),
+      find.byKey(const ValueKey('tenant_admin_account_create_avatar_pick')),
+      findsNothing,
     );
   });
+
+  testWidgets(
+    'hides bio and taxonomy authoring in reduced account create flow',
+    (tester) async {
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+      profilesRepository._profileTypes = [
+        tenantAdminProfileTypeDefinitionFromRaw(
+          type: 'complete',
+          label: 'Completo',
+          allowedTaxonomies: ['genre'],
+          capabilities: TenantAdminProfileTypeCapabilities(
+            isFavoritable: TenantAdminFlagValue(true),
+            isPoiEnabled: TenantAdminFlagValue(false),
+            hasBio: TenantAdminFlagValue(true),
+            hasContent: TenantAdminFlagValue(false),
+            hasTaxonomies: TenantAdminFlagValue(true),
+            hasAvatar: TenantAdminFlagValue(false),
+            hasCover: TenantAdminFlagValue(false),
+            hasEvents: TenantAdminFlagValue(false),
+          ),
+        ),
+      ];
+      final taxonomiesRepository =
+          GetIt.I.get<TenantAdminTaxonomiesRepositoryContract>()
+              as _FakeTaxonomiesRepository;
+      taxonomiesRepository
+        .._taxonomies = [
+          tenantAdminTaxonomyDefinitionFromRaw(
+            id: 'tax-1',
+            slug: 'genre',
+            name: 'Genero',
+            appliesTo: ['account_profile'],
+            icon: null,
+            color: null,
+          ),
+        ]
+        .._termsByTaxonomyId = {
+          'tax-1': [
+            tenantAdminTaxonomyTermDefinitionFromRaw(
+              id: 'term-1',
+              taxonomyId: 'tax-1',
+              slug: 'urbana',
+              name: 'Urbana',
+            ),
+          ],
+        };
+
+      await _pumpWithAutoRoute(
+        tester,
+        const Scaffold(body: TenantAdminAccountCreateScreen()),
+      );
+
+      await tester.tap(find.byType(DropdownButtonFormField<String>).last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Completo').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Bio'), findsNothing);
+      expect(find.text('Taxonomias'), findsNothing);
+      expect(find.text('Urbana'), findsNothing);
+    },
+  );
 
   testWidgets('renders backend global validation inline without snackbar', (
     tester,
@@ -1241,7 +1103,7 @@ void main() {
     expect(find.textContaining('backend exploded'), findsOneWidget);
   });
 
-  testWidgets('replaces create route with account detail on success', (
+  testWidgets('replaces create route with account profile edit on success', (
     tester,
   ) async {
     final profilesRepository =
@@ -1283,10 +1145,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(TenantAdminAccountCreateScreen), findsNothing);
-    expect(find.text('Detail: acc-1'), findsOneWidget);
+    expect(find.text('Edit: acc-1/profile-1'), findsOneWidget);
   });
 
-  testWidgets('shows nested group summary shell in canonical onboarding flow', (
+  testWidgets('hides nested group authoring in reduced account create flow', (
     tester,
   ) async {
     final profilesRepository =
@@ -1310,23 +1172,6 @@ void main() {
           hasNestedProfileGroups: TenantAdminFlagValue(true),
         ),
       ),
-      tenantAdminProfileTypeDefinitionFromRaw(
-        type: 'artist',
-        label: 'Artist',
-        allowedTaxonomies: [],
-        capabilities: TenantAdminProfileTypeCapabilities(
-          isQueryable: TenantAdminFlagValue(true),
-          isFavoritable: TenantAdminFlagValue(true),
-          isPoiEnabled: TenantAdminFlagValue(false),
-          hasBio: TenantAdminFlagValue(false),
-          hasContent: TenantAdminFlagValue(false),
-          hasTaxonomies: TenantAdminFlagValue(false),
-          hasAvatar: TenantAdminFlagValue(false),
-          hasCover: TenantAdminFlagValue(false),
-          hasEvents: TenantAdminFlagValue(false),
-          hasNestedProfileGroups: TenantAdminFlagValue(false),
-        ),
-      ),
     ];
     await _pumpWithAutoRoute(
       tester,
@@ -1335,33 +1180,14 @@ void main() {
 
     await _selectProfileType(tester, 'Venue');
 
-    final scrollable = find.byType(Scrollable).first;
-    await tester.scrollUntilVisible(
-      find.byKey(const Key('tenantAdminAccountCreateAddNestedGroupButton')),
-      300,
-      scrollable: scrollable,
-    );
-
-    expect(find.text('Abas de contas vinculadas'), findsOneWidget);
-    await tester.tap(
-      find.byKey(const Key('tenantAdminAccountCreateAddNestedGroupButton')),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('Novo grupo'), findsOneWidget);
-    expect(find.text('Nome da aba'), findsOneWidget);
-    expect(find.text('0 perfis vinculados'), findsOneWidget);
-    expect(find.text('Gerenciar perfis'), findsOneWidget);
-    expect(find.text('Selecionar perfis'), findsNothing);
+    expect(find.text('Abas de contas vinculadas'), findsNothing);
     expect(
-      find.text(
-        'Salve a conta e o perfil antes de gerenciar os perfis vinculados.',
-      ),
-      findsOneWidget,
+      find.byKey(const Key('tenantAdminAccountCreateAddNestedGroupButton')),
+      findsNothing,
     );
   });
 
-  testWidgets('submits nested group metadata through account onboarding', (
+  testWidgets('submits reduced onboarding without nested group metadata', (
     tester,
   ) async {
     final accountsRepository =
@@ -1398,28 +1224,6 @@ void main() {
       find.widgetWithText(TextFormField, 'Nome'),
       'Conta criada',
     );
-
-    final scrollable = find.byType(Scrollable).first;
-    await tester.scrollUntilVisible(
-      find.byKey(const Key('tenantAdminAccountCreateAddNestedGroupButton')),
-      300,
-      scrollable: scrollable,
-    );
-    await tester.tap(
-      find.byKey(const Key('tenantAdminAccountCreateAddNestedGroupButton')),
-    );
-    await tester.pumpAndSettle();
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Nome da aba'),
-      'Integrantes',
-    );
-    await tester.pumpAndSettle();
-
-    await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('tenant_admin_account_create_save')),
-      300,
-      scrollable: scrollable,
-    );
     await tester.tap(
       find.byKey(const ValueKey('tenant_admin_account_create_save')),
       warnIfMissed: false,
@@ -1427,24 +1231,7 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    expect(accountsRepository.lastOnboardingNestedGroups, hasLength(1));
-    expect(
-      accountsRepository.lastOnboardingNestedGroups.single.label,
-      'Integrantes',
-    );
-    expect(
-      accountsRepository
-          .lastOnboardingNestedGroups
-          .single
-          .accountProfileIdValues
-          .map((entry) => entry.value)
-          .toList(growable: false),
-      isEmpty,
-    );
-    expect(
-      accountsRepository.lastOnboardingNestedGroups.single.id,
-      startsWith('grupo-'),
-    );
+    expect(accountsRepository.lastOnboardingNestedGroups, isEmpty);
   });
 }
 
@@ -1471,6 +1258,19 @@ Future<void> _pumpWithAutoRoute(WidgetTester tester, Widget child) async {
           body: Text('Detail: ${data.params.getString('accountSlug')}'),
         ),
       ),
+      NamedRouteDef(
+        name: TenantAdminAccountProfileEditRoute.name,
+        path: '/admin/accounts/:accountSlug/profiles/:accountProfileId/edit',
+        meta: canonicalRouteMeta(
+          family: CanonicalRouteFamily.tenantAdminAccountsInternal,
+          chromeMode: RouteChromeMode.fullscreen,
+        ),
+        builder: (_, data) => Scaffold(
+          body: Text(
+            'Edit: ${data.params.getString('accountSlug')}/${data.params.getString('accountProfileId')}',
+          ),
+        ),
+      ),
     ],
   );
 
@@ -1491,15 +1291,6 @@ Future<void> _selectProfileType(WidgetTester tester, String label) async {
   await tester.pumpAndSettle();
   await tester.tap(find.text(label).last);
   await tester.pumpAndSettle();
-}
-
-XFile _createTempImageFile(String name) {
-  final dir = Directory.systemTemp.createTempSync('belluga_test_');
-  final file = File('${dir.path}/$name');
-  final image = img.Image(width: 64, height: 64);
-  img.fill(image, color: img.ColorRgb8(120, 45, 180));
-  file.writeAsBytesSync(img.encodePng(image), flush: true);
-  return XFile(file.path, name: name, mimeType: 'image/png');
 }
 
 class _FakeExternalImageProxy implements TenantAdminExternalImageProxyContract {
