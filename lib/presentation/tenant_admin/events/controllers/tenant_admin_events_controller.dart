@@ -3651,6 +3651,7 @@ class TenantAdminEventsController implements Disposable {
     specificDateFilterStreamValue.addValue(null);
     venueFilterStreamValue.addValue(null);
     relatedAccountProfileFilterStreamValue.addValue(null);
+    publicationStatusFilterStreamValue.addValue('published');
     temporalFilterStreamValue.addValue(
       TenantAdminEventTemporalBucket.defaultSelection,
     );

@@ -1793,6 +1793,29 @@ void main() {
   );
 
   test(
+    'tenant scope change resets publication filter to published before reloading admin events',
+    () async {
+      final eventsRepository = _TrackingEventsRepository();
+      final tenantScope = _FakeTenantScope();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        tenantScope: tenantScope,
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken(
+          'landlord-token',
+        ),
+      );
+
+      controller.selectPublicationStatusFilter('draft');
+
+      tenantScope.selectTenantDomain('guarappari.belluga.space');
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(controller.publicationStatusFilterStreamValue.value, 'published');
+    },
+  );
+
+  test(
     'saveEventType sends null description when edit description is cleared',
     () async {
       final eventsRepository = _EventTypeUpdateTrackingRepository();
