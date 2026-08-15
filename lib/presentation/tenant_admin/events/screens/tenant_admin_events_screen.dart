@@ -776,9 +776,11 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
               runSpacing: 8,
               children:
                   const <(String, String)>[
+                        ('todos', 'Todos'),
                         ('published', 'Publicados'),
                         ('draft', 'Rascunhos'),
                         ('publish_scheduled', 'Agendados'),
+                        ('ended', 'Encerrados'),
                       ]
                       .map(
                         (option) => ChoiceChip(

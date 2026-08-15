@@ -466,7 +466,11 @@ class TenantAdminEventsController implements Disposable {
     if (value == null) {
       return null;
     }
-    return _toEventsText(value);
+    final normalized = value.trim();
+    if (normalized.isEmpty || normalized == 'todos') {
+      return null;
+    }
+    return _toEventsText(normalized);
   }
 
   String? _normalizeOptionalText(String? value) {

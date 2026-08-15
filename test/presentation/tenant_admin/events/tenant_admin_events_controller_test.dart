@@ -107,6 +107,23 @@ void main() {
     },
   );
 
+  test('loadEvents omits status when publication filter is todos', () async {
+    final eventsRepository = _TrackingEventsRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+      landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken(
+        'landlord-token',
+      ),
+    );
+
+    controller.selectPublicationStatusFilter('todos');
+
+    await controller.loadEvents();
+
+    expect(eventsRepository.lastLoadStatus, isNull);
+  });
+
   test(
     'loadEvents records repository errors when a filtered reload fails',
     () async {

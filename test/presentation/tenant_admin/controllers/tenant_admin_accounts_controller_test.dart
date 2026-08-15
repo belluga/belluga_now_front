@@ -1,12 +1,10 @@
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:belluga_form_validation/belluga_form_validation.dart'
     show FormValidationFailure;
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_onboarding_result.dart';
@@ -18,9 +16,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_accounts_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
@@ -692,118 +688,6 @@ class _FakeAccountProfilesRepository
         })
         .toList(growable: false);
   }
-}
-
-class _FakeTaxonomiesRepository
-    with TenantAdminTaxonomiesPaginationMixin
-    implements TenantAdminTaxonomiesRepositoryContract {
-  @override
-  Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async => [];
-
-  @override
-  Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
-  fetchTaxonomiesPage({
-    required TenantAdminTaxRepoInt page,
-    required TenantAdminTaxRepoInt pageSize,
-  }) async {
-    return tenantAdminPagedResultFromRaw(
-      items: <TenantAdminTaxonomyDefinition>[],
-      hasMore: false,
-    );
-  }
-
-  @override
-  Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
-    required TenantAdminTaxRepoString taxonomyId,
-  }) async => [];
-
-  @override
-  Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
-  fetchTermsPage({
-    required TenantAdminTaxRepoString taxonomyId,
-    required TenantAdminTaxRepoInt page,
-    required TenantAdminTaxRepoInt pageSize,
-  }) async {
-    return tenantAdminPagedResultFromRaw(
-      items: <TenantAdminTaxonomyTermDefinition>[],
-      hasMore: false,
-    );
-  }
-
-  @override
-  Future<TenantAdminTaxonomyDefinition> createTaxonomy({
-    required TenantAdminTaxRepoString slug,
-    required TenantAdminTaxRepoString name,
-    required List<TenantAdminTaxRepoString> appliesTo,
-    TenantAdminTaxRepoString? icon,
-    TenantAdminTaxRepoString? color,
-  }) async {
-    return tenantAdminTaxonomyDefinitionFromRaw(
-      id: 'tax-1',
-      slug: slug,
-      name: name,
-      appliesTo: appliesTo,
-      icon: icon,
-      color: color,
-    );
-  }
-
-  @override
-  Future<TenantAdminTaxonomyDefinition> updateTaxonomy({
-    required TenantAdminTaxRepoString taxonomyId,
-    TenantAdminTaxRepoString? slug,
-    TenantAdminTaxRepoString? name,
-    List<TenantAdminTaxRepoString>? appliesTo,
-    TenantAdminTaxRepoString? icon,
-    TenantAdminTaxRepoString? color,
-  }) async {
-    return tenantAdminTaxonomyDefinitionFromRaw(
-      id: taxonomyId,
-      slug: slug ?? 'taxonomy',
-      name: name ?? 'Taxonomy',
-      appliesTo: appliesTo ?? [],
-      icon: icon,
-      color: color,
-    );
-  }
-
-  @override
-  Future<void> deleteTaxonomy(TenantAdminTaxRepoString taxonomyId) async {}
-
-  @override
-  Future<TenantAdminTaxonomyTermDefinition> createTerm({
-    required TenantAdminTaxRepoString taxonomyId,
-    required TenantAdminTaxRepoString slug,
-    required TenantAdminTaxRepoString name,
-  }) async {
-    return tenantAdminTaxonomyTermDefinitionFromRaw(
-      id: 'term-1',
-      taxonomyId: taxonomyId,
-      slug: slug,
-      name: name,
-    );
-  }
-
-  @override
-  Future<TenantAdminTaxonomyTermDefinition> updateTerm({
-    required TenantAdminTaxRepoString taxonomyId,
-    required TenantAdminTaxRepoString termId,
-    TenantAdminTaxRepoString? slug,
-    TenantAdminTaxRepoString? name,
-  }) async {
-    return tenantAdminTaxonomyTermDefinitionFromRaw(
-      id: termId,
-      taxonomyId: taxonomyId,
-      slug: slug ?? 'term',
-      name: name ?? 'Term',
-    );
-  }
-
-  @override
-  Future<void> deleteTerm({
-    required TenantAdminTaxRepoString taxonomyId,
-    required TenantAdminTaxRepoString termId,
-  }) async {}
 }
 
 TenantAdminAccountsController _buildListController({
