@@ -466,7 +466,11 @@ class TenantAdminEventsController implements Disposable {
     if (value == null) {
       return null;
     }
-    final normalized = value.trim();
+    return _toEventsText(value);
+  }
+
+  TenantAdminEventsRepoString? _toNullablePublicationStatusFilter() {
+    final normalized = publicationStatusFilterStreamValue.value.trim();
     if (normalized.isEmpty || normalized == 'todos') {
       return null;
     }
@@ -527,7 +531,7 @@ class TenantAdminEventsController implements Disposable {
     }
     await _eventsRepository.loadEvents(
       specificDate: _toNullableEventsText(_specificDateQueryValue()),
-      status: _toNullableEventsText(publicationStatusFilterStreamValue.value),
+      status: _toNullablePublicationStatusFilter(),
       venueProfileId: _toNullableEventsText(venueFilterStreamValue.value?.id),
       relatedAccountProfileId: _toNullableEventsText(
         relatedAccountProfileFilterStreamValue.value?.id,
@@ -545,7 +549,7 @@ class TenantAdminEventsController implements Disposable {
     }
     await _eventsRepository.loadNextEventsPage(
       specificDate: _toNullableEventsText(_specificDateQueryValue()),
-      status: _toNullableEventsText(publicationStatusFilterStreamValue.value),
+      status: _toNullablePublicationStatusFilter(),
       venueProfileId: _toNullableEventsText(venueFilterStreamValue.value?.id),
       relatedAccountProfileId: _toNullableEventsText(
         relatedAccountProfileFilterStreamValue.value?.id,

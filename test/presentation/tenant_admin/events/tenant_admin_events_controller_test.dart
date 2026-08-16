@@ -107,22 +107,34 @@ void main() {
     },
   );
 
-  test('loadEvents omits status when publication filter is todos', () async {
-    final eventsRepository = _TrackingEventsRepository();
-    final controller = TenantAdminEventsController(
-      eventsRepository: eventsRepository,
-      taxonomiesRepository: _NoopTaxonomiesRepository(),
-      landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken(
-        'landlord-token',
-      ),
-    );
+  test(
+    'loadEvents omits the todos publication sentinel while preserving a literal todos venue id',
+    () async {
+      final eventsRepository = _TrackingEventsRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: eventsRepository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken(
+          'landlord-token',
+        ),
+      );
 
-    controller.selectPublicationStatusFilter('todos');
+      controller.selectVenueFilter(
+        tenantAdminAccountProfileFromRaw(
+          id: 'todos',
+          accountId: 'acc-venue-todos',
+          profileType: 'venue',
+          displayName: 'Venue Todos',
+        ),
+      );
+      controller.selectPublicationStatusFilter('todos');
 
-    await controller.loadEvents();
+      await controller.loadEvents();
 
-    expect(eventsRepository.lastLoadStatus, isNull);
-  });
+      expect(eventsRepository.lastLoadStatus, isNull);
+      expect(eventsRepository.lastLoadVenueProfileId, 'todos');
+    },
+  );
 
   test(
     'loadEvents records repository errors when a filtered reload fails',
