@@ -7126,7 +7126,9 @@ Future<void> _pumpWithAutoRoute(WidgetTester tester, Widget child) async {
           chromeMode: RouteChromeMode.fullscreen,
         ),
         builder: (_, routeData) => Scaffold(
-          body: Text('Edit: ${routeData.pathParams.getString('eventId')}'),
+          body: Text(
+            'Edit: ${routeData.inheritedPathParams.getString('eventId')}',
+          ),
         ),
       ),
     ],
