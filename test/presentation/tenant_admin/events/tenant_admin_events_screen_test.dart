@@ -326,6 +326,51 @@ void main() {
   );
 
   testWidgets(
+    'publication filter exposes ended and todos and forwards the expected status query',
+    (tester) async {
+      final repository = _PublicationFilterEventsRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: repository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _ScreenLandlordAuthRepository(),
+      );
+
+      GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+      await _pumpEventsRouter(tester);
+
+      expect(find.text('Published Event'), findsOneWidget);
+      expect(find.text('Ended Event'), findsNothing);
+      expect(find.text('Draft Event'), findsNothing);
+      expect(repository.lastStatus, 'published');
+
+      await tester.tap(
+        find.byKey(
+          const ValueKey<String>('tenant-admin-events-publication-ended'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Published Event'), findsNothing);
+      expect(find.text('Ended Event'), findsOneWidget);
+      expect(find.text('Draft Event'), findsNothing);
+      expect(repository.lastStatus, 'ended');
+
+      await tester.tap(
+        find.byKey(
+          const ValueKey<String>('tenant-admin-events-publication-todos'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Published Event'), findsOneWidget);
+      expect(find.text('Ended Event'), findsOneWidget);
+      expect(find.text('Draft Event'), findsOneWidget);
+      expect(repository.lastStatus, isNull);
+    },
+  );
+
+  testWidgets(
     'screen keeps date groups continuous across appended pages and resets them when filters change',
     (tester) async {
       final repository = _PagedGroupingEventsRepository();
@@ -1019,6 +1064,176 @@ class _FilterableEventsRepository extends TenantAdminEventsRepositoryContract
       ],
     ),
   ];
+}
+
+class _PublicationFilterEventsRepository
+    extends TenantAdminEventsRepositoryContract
+    with TenantAdminEventsPaginationMixin {
+  String? lastStatus;
+
+  @override
+  Future<TenantAdminEvent> createEvent({required TenantAdminEventDraft draft}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<TenantAdminEvent> createOwnEvent({
+    required TenantAdminEventsRepoString accountSlug,
+    required TenantAdminEventDraft draft,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> deleteEvent(TenantAdminEventsRepoString eventId) async {}
+
+  @override
+  Future<TenantAdminEvent> fetchEvent(
+    TenantAdminEventsRepoString eventIdOrSlug,
+  ) async {
+    return _events.first;
+  }
+
+  @override
+  Future<List<TenantAdminEvent>> fetchEvents({
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? specificDate,
+    TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoString? venueProfileId,
+    TenantAdminEventsRepoString? relatedAccountProfileId,
+    TenantAdminEventsRepoBool? archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
+  }) async {
+    lastStatus = status?.value;
+    return _events
+        .where(
+          (event) =>
+              lastStatus == null || event.publication.status == lastStatus,
+        )
+        .toList(growable: false);
+  }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminEvent>> fetchEventsPage({
+    required TenantAdminEventsRepoInt page,
+    required TenantAdminEventsRepoInt pageSize,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? specificDate,
+    TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoString? venueProfileId,
+    TenantAdminEventsRepoString? relatedAccountProfileId,
+    TenantAdminEventsRepoBool? archived,
+    Set<TenantAdminEventTemporalBucket>? temporalBuckets,
+  }) async {
+    final items = await fetchEvents(
+      search: search,
+      specificDate: specificDate,
+      status: status,
+      venueProfileId: venueProfileId,
+      relatedAccountProfileId: relatedAccountProfileId,
+      archived: archived,
+      temporalBuckets: temporalBuckets,
+    );
+
+    return tenantAdminPagedResultFromRaw(items: items, hasMore: false);
+  }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
+  fetchEventAccountProfileCandidatesPage({
+    required TenantAdminEventAccountProfileCandidateType candidateType,
+    required TenantAdminEventsRepoInt page,
+    required TenantAdminEventsRepoInt pageSize,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? profileType,
+    TenantAdminEventsRepoString? accountSlug,
+  }) async {
+    return tenantAdminPagedResultFromRaw(
+      items: const <TenantAdminAccountProfile>[],
+      hasMore: false,
+    );
+  }
+
+  @override
+  Future<TenantAdminEvent> updateEvent({
+    required TenantAdminEventsRepoString eventId,
+    required TenantAdminEventDraft draft,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<TenantAdminLegacyEventPartiesSummary>
+  fetchLegacyEventPartiesSummary() async {
+    return TenantAdminLegacyEventPartiesSummary(
+      scannedValue: TenantAdminCountValue(0),
+      invalidValue: TenantAdminCountValue(0),
+      repairedValue: TenantAdminCountValue(0),
+      unchangedValue: TenantAdminCountValue(0),
+      failedValue: TenantAdminCountValue(0),
+    );
+  }
+
+  @override
+  Future<TenantAdminLegacyEventPartiesSummary>
+  repairLegacyEventParties() async {
+    return TenantAdminLegacyEventPartiesSummary(
+      scannedValue: TenantAdminCountValue(0),
+      invalidValue: TenantAdminCountValue(0),
+      repairedValue: TenantAdminCountValue(0),
+      unchangedValue: TenantAdminCountValue(0),
+      failedValue: TenantAdminCountValue(0),
+    );
+  }
+
+  static final List<TenantAdminEvent> _events = <TenantAdminEvent>[
+    _buildEvent(
+      eventId: 'evt-published',
+      title: 'Published Event',
+      slug: 'published-event',
+      status: 'published',
+    ),
+    _buildEvent(
+      eventId: 'evt-ended',
+      title: 'Ended Event',
+      slug: 'ended-event',
+      status: 'ended',
+    ),
+    _buildEvent(
+      eventId: 'evt-draft',
+      title: 'Draft Event',
+      slug: 'draft-event',
+      status: 'draft',
+    ),
+  ];
+
+  static TenantAdminEvent _buildEvent({
+    required String eventId,
+    required String title,
+    required String slug,
+    required String status,
+  }) {
+    return TenantAdminEvent(
+      eventIdValue: tenantAdminRequiredText(eventId),
+      slugValue: tenantAdminRequiredText(slug),
+      titleValue: tenantAdminRequiredText(title),
+      contentValue: tenantAdminOptionalText('Content'),
+      type: TenantAdminEventType(
+        nameValue: tenantAdminRequiredText('Show'),
+        slugValue: tenantAdminRequiredText('show'),
+      ),
+      occurrences: <TenantAdminEventOccurrence>[
+        TenantAdminEventOccurrence(
+          dateTimeStartValue: tenantAdminDateTime(
+            DateTime.utc(2026, 4, 10, 20),
+          ),
+        ),
+      ],
+      publication: TenantAdminEventPublication(
+        statusValue: tenantAdminRequiredText(status),
+      ),
+    );
+  }
 }
 
 class _PagedGroupingEventsRepository extends TenantAdminEventsRepositoryContract
