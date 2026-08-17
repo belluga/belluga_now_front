@@ -308,6 +308,51 @@ class _TenantAdminAccountDetailScreenState
     return account.ownershipState == TenantAdminOwnershipState.unmanaged;
   }
 
+  Widget _buildAccountStateScaffold({
+    required VoidCallback onBack,
+    required Widget body,
+  }) {
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          tooltip: 'Voltar',
+          onPressed: onBack,
+          icon: const Icon(Icons.arrow_back),
+        ),
+        title: Text('Conta: ${_currentAccountSlugForRequests()}'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: body,
+      ),
+    );
+  }
+
+  Widget _buildMissingAccountState(VoidCallback onBack) {
+    return _buildAccountStateScaffold(
+      onBack: onBack,
+      body: Card(
+        margin: EdgeInsets.zero,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Inconsistencia de dados',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Conta nao carregada. Este estado e invalido para tenant-admin e deve ser corrigido por rotina de reparo backend.',
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _profilesController.resetAccountDetail();
@@ -326,40 +371,28 @@ class _TenantAdminAccountDetailScreenState
             return StreamValueBuilder<String?>(
               streamValue: _profilesController.accountDetailErrorStreamValue,
               builder: (context, errorMessage) {
+                if (isLoading) {
+                  return _buildAccountStateScaffold(
+                    onBack: backPolicy.handleBack,
+                    body: const Center(child: CircularProgressIndicator()),
+                  );
+                }
+                if (errorMessage?.isNotEmpty ?? false) {
+                  return _buildAccountStateScaffold(
+                    onBack: backPolicy.handleBack,
+                    body: TenantAdminErrorBanner(
+                      rawError: errorMessage ?? '',
+                      fallbackMessage:
+                          'Não foi possível carregar os dados da conta.',
+                      onRetry: () => _profilesController.loadAccountDetail(
+                        _currentAccountSlugForRequests(),
+                      ),
+                    ),
+                  );
+                }
                 return StreamValueBuilder<TenantAdminAccount>(
                   streamValue: _profilesController.accountStreamValue,
-                  onNullWidget: Scaffold(
-                    appBar: AppBar(
-                      leading: IconButton(
-                        tooltip: 'Voltar',
-                        onPressed: backPolicy.handleBack,
-                        icon: const Icon(Icons.arrow_back),
-                      ),
-                      title: Text('Conta: ${_currentAccountSlugForRequests()}'),
-                    ),
-                    body: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Card(
-                        margin: EdgeInsets.zero,
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Inconsistencia de dados',
-                                style: Theme.of(context).textTheme.titleMedium,
-                              ),
-                              const SizedBox(height: 8),
-                              const Text(
-                                'Conta nao carregada. Este estado e invalido para tenant-admin e deve ser corrigido por rotina de reparo backend.',
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+                  onNullWidget: _buildMissingAccountState(backPolicy.handleBack),
                   builder: (context, account) {
                     _normalizeRouteParamIfNeeded(account);
                     return StreamValueBuilder<TenantAdminAccountProfile?>(
@@ -392,21 +425,7 @@ class _TenantAdminAccountDetailScreenState
                           ),
                           body: Padding(
                             padding: const EdgeInsets.all(16),
-                            child: isLoading
-                                ? const Center(
-                                    child: CircularProgressIndicator(),
-                                  )
-                                : (errorMessage?.isNotEmpty ?? false)
-                                ? TenantAdminErrorBanner(
-                                    rawError: errorMessage ?? '',
-                                    fallbackMessage:
-                                        'Não foi possível carregar os dados da conta.',
-                                    onRetry: () =>
-                                        _profilesController.loadAccountDetail(
-                                          _currentAccountSlugForRequests(),
-                                        ),
-                                  )
-                                : StreamValueBuilder<
+                            child: StreamValueBuilder<
                                     List<TenantAdminProfileTypeDefinition>
                                   >(
                                     streamValue: _profilesController

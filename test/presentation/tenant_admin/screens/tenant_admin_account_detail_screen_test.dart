@@ -95,6 +95,55 @@ void main() {
     expect(find.text('Rascunho'), findsOneWidget);
   });
 
+  testWidgets(
+    'keeps the loading spinner visible while the account is still null',
+    (tester) async {
+      final accountsRepository = _DelayedFetchAccountsRepository();
+      _registerController(accountsRepository: accountsRepository);
+
+      await _pumpScreen(
+        tester,
+        TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
+        settle: false,
+      );
+      await tester.pump();
+
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.text('Inconsistencia de dados'), findsNothing);
+
+      accountsRepository.completeFetch();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Conta base'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'shows retry banner instead of invalid-state banner when the first load fails',
+    (tester) async {
+      final accountsRepository = _FailThenRecoverAccountsRepository(
+        remainingFailures: 1,
+      );
+      _registerController(accountsRepository: accountsRepository);
+
+      await _pumpScreen(
+        tester,
+        TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
+      );
+
+      expect(find.text('Tentar novamente'), findsOneWidget);
+      expect(find.text('Inconsistencia de dados'), findsNothing);
+      expect(accountsRepository.fetchAccountBySlugCalls, 1);
+
+      await tester.tap(find.text('Tentar novamente'));
+      await tester.pumpAndSettle();
+
+      expect(accountsRepository.fetchAccountBySlugCalls, 2);
+      expect(find.text('Conta base'), findsOneWidget);
+      expect(find.text('Tentar novamente'), findsNothing);
+    },
+  );
+
   testWidgets('edits publication status from the account details card', (
     tester,
   ) async {
@@ -383,7 +432,11 @@ TenantAdminAccountDetailController _registerController({
   return detailController;
 }
 
-Future<void> _pumpScreen(WidgetTester tester, Widget child) async {
+Future<void> _pumpScreen(
+  WidgetTester tester,
+  Widget child, {
+  bool settle = true,
+}) async {
   final router = RootStackRouter.build(
     routes: [
       NamedRouteDef(
@@ -410,7 +463,10 @@ Future<void> _pumpScreen(WidgetTester tester, Widget child) async {
       theme: ThemeData(splashFactory: NoSplash.splashFactory),
     ),
   );
-  await tester.pumpAndSettle();
+  await tester.pump();
+  if (settle) {
+    await tester.pumpAndSettle();
+  }
 }
 
 class _TestProfileEditRouteScreen extends StatelessWidget {
@@ -704,6 +760,25 @@ class _DelayedFetchAccountsRepository extends _FakeAccountsRepository {
     );
     _seedAccount(account);
     _fetchCompleter.complete(account);
+  }
+}
+
+class _FailThenRecoverAccountsRepository extends _FakeAccountsRepository {
+  _FailThenRecoverAccountsRepository({required this.remainingFailures});
+
+  int remainingFailures;
+
+  @override
+  Future<TenantAdminAccount> fetchAccountBySlug(
+    TenantAdminAccountsRepositoryContractPrimString accountSlug,
+  ) async {
+    if (remainingFailures > 0) {
+      fetchAccountBySlugCalls += 1;
+      lastFetchedSlug = accountSlug.value;
+      remainingFailures -= 1;
+      throw StateError('backend unavailable');
+    }
+    return super.fetchAccountBySlug(accountSlug);
   }
 }
 

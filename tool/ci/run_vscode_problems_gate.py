@@ -46,6 +46,15 @@ def diagnostics_hash(payload: dict) -> str:
     ).hexdigest()
 
 
+def scoped_snapshot_hash(payload: dict) -> str:
+    scoped_state = {
+        "scope": payload.get("scope"),
+        "workspaceFolders": payload.get("workspaceFolders", []),
+        "diagnostics": payload.get("diagnostics", []),
+    }
+    return hashlib.sha256(json.dumps(scoped_state, sort_keys=True).encode("utf-8")).hexdigest()
+
+
 def severity_counts(payload: dict) -> dict[str, int]:
     counts: dict[str, int] = {}
     for diagnostic in payload.get("diagnostics", []):
@@ -75,16 +84,23 @@ def summarize_snapshot(prefix: str, health: dict, payload: dict) -> dict:
         "scope": payload.get("scope"),
         "diagnosticCount": payload.get("diagnosticCount", 0),
         "severityCounts": counts,
-        "payloadSha256": diagnostics_hash(payload),
+        "diagnosticsSha256": diagnostics_hash(payload),
+        "scopedSnapshotSha256": scoped_snapshot_hash(payload),
     }
     print(
         f"{prefix}: capturedAt={summary['capturedAt']} revision={summary['revision']} "
         f"lastDiagnosticsChangeAt={summary['lastDiagnosticsChangeAt']} "
-        f"diagnosticCount={summary['diagnosticCount']} payloadSha256={summary['payloadSha256']}"
+        f"diagnosticCount={summary['diagnosticCount']} "
+        f"diagnosticsSha256={summary['diagnosticsSha256']} "
+        f"scopedSnapshotSha256={summary['scopedSnapshotSha256']}"
     )
     print(f"{prefix}: severityCounts={summary['severityCounts']}")
     print(f"{prefix}: workspaceFolders={summary['workspaceFolders']}")
     return summary
+
+
+def scoped_snapshot_is_stable(before: dict, after: dict) -> bool:
+    return before["scopedSnapshotSha256"] == after["scopedSnapshotSha256"]
 
 
 def print_diagnostics(label: str, payload: dict) -> None:
@@ -191,11 +207,9 @@ def main() -> int:
         # The bridge can republish the same scoped diagnostics snapshot with a newer
         # diagnosticsRevision while Analysis Server churn elsewhere settles. For the
         # local gate, what matters is whether the scoped payload changed during the
-        # quiet interval, not whether the bridge reissued the same payload id.
-        stable = (
-            before["payloadSha256"] == after["payloadSha256"]
-            and before["lastDiagnosticsChangeAt"] == after["lastDiagnosticsChangeAt"]
-        )
+        # quiet interval, not whether the bridge reissued the same payload id or
+        # observed unrelated churn elsewhere in the workspace.
+        stable = scoped_snapshot_is_stable(before, after)
         if stable:
             counts = severity_counts(payload_after)
             errors = counts.get("Error", 0)
@@ -215,9 +229,9 @@ def main() -> int:
             return 0
 
         last_failure = (
-            f"payload/change marker changed during quiet interval: before="
-            f"{before['revision']}/{before['lastDiagnosticsChangeAt']}/{before['payloadSha256']} after="
-            f"{after['revision']}/{after['lastDiagnosticsChangeAt']}/{after['payloadSha256']}"
+            f"scoped snapshot changed during quiet interval: before="
+            f"{before['revision']}/{before['lastDiagnosticsChangeAt']}/{before['scopedSnapshotSha256']} after="
+            f"{after['revision']}/{after['lastDiagnosticsChangeAt']}/{after['scopedSnapshotSha256']}"
         )
         print(f"INFO: bridge snapshot not yet stable ({last_failure}); retrying.")
 
