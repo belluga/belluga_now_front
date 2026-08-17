@@ -79,6 +79,7 @@ def summarize_snapshot(prefix: str, health: dict, payload: dict) -> dict:
     }
     print(
         f"{prefix}: capturedAt={summary['capturedAt']} revision={summary['revision']} "
+        f"lastDiagnosticsChangeAt={summary['lastDiagnosticsChangeAt']} "
         f"diagnosticCount={summary['diagnosticCount']} payloadSha256={summary['payloadSha256']}"
     )
     print(f"{prefix}: severityCounts={summary['severityCounts']}")
@@ -187,9 +188,13 @@ def main() -> int:
             return 1
 
         after = summarize_snapshot("INFO: after", health_after, payload_after)
+        # The bridge can republish the same scoped diagnostics snapshot with a newer
+        # diagnosticsRevision while Analysis Server churn elsewhere settles. For the
+        # local gate, what matters is whether the scoped payload changed during the
+        # quiet interval, not whether the bridge reissued the same payload id.
         stable = (
-            before["revision"] == after["revision"]
-            and before["payloadSha256"] == after["payloadSha256"]
+            before["payloadSha256"] == after["payloadSha256"]
+            and before["lastDiagnosticsChangeAt"] == after["lastDiagnosticsChangeAt"]
         )
         if stable:
             counts = severity_counts(payload_after)
@@ -210,9 +215,9 @@ def main() -> int:
             return 0
 
         last_failure = (
-            f"revision/hash changed during quiet interval: before="
-            f"{before['revision']}/{before['payloadSha256']} after="
-            f"{after['revision']}/{after['payloadSha256']}"
+            f"payload/change marker changed during quiet interval: before="
+            f"{before['revision']}/{before['lastDiagnosticsChangeAt']}/{before['payloadSha256']} after="
+            f"{after['revision']}/{after['lastDiagnosticsChangeAt']}/{after['payloadSha256']}"
         )
         print(f"INFO: bridge snapshot not yet stable ({last_failure}); retrying.")
 
