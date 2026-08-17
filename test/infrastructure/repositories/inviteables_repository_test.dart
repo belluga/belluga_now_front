@@ -55,6 +55,83 @@ void main() {
     expect(repository.inviteableRecipientsStreamValue.value, recipients);
   });
 
+  test(
+    'fetchInviteableRecipients preserves recipients when nested sent status is malformed',
+    () async {
+      final backend = _FakeInvitesBackend(
+        response: {
+          'items': [
+            {
+              ..._inviteablePayload(
+                userId: 'user-bad',
+                accountProfileId: 'profile-bad',
+                displayName: 'Quebrado',
+              ),
+              'sent_invite_status': {
+                'receiver_account_profile_id': 'profile-bad',
+                'receiver_user_id': 'user-bad',
+                'display_name': 'Quebrado',
+                'sent_at': 'invalid-date',
+              },
+            },
+            _inviteablePayload(
+              userId: 'user-4',
+              accountProfileId: 'profile-4',
+              displayName: 'Dora',
+            ),
+          ],
+        },
+      );
+      final repository = InviteablesRepository(backend: backend);
+
+      final recipients = await repository.fetchInviteableRecipients();
+
+      expect(recipients, hasLength(2));
+      final malformedRecipient = recipients.firstWhere(
+        (recipient) => recipient.receiverAccountProfileId == 'profile-bad',
+      );
+      expect(malformedRecipient.sentInviteStatus, isNull);
+      expect(
+        recipients.any(
+          (recipient) => recipient.receiverAccountProfileId == 'profile-4',
+        ),
+        isTrue,
+      );
+      expect(repository.inviteableRecipientsStreamValue.value, recipients);
+    },
+  );
+
+  test(
+    'fetchInviteableRecipients keeps valid recipients when one top-level payload is malformed',
+    () async {
+      final backend = _FakeInvitesBackend(
+        response: {
+          'items': [
+            {
+              ..._inviteablePayload(
+                userId: 'user-bad',
+                accountProfileId: 'profile-bad',
+                displayName: 'A',
+              ),
+            },
+            _inviteablePayload(
+              userId: 'user-5',
+              accountProfileId: 'profile-5',
+              displayName: 'Elisa',
+            ),
+          ],
+        },
+      );
+      final repository = InviteablesRepository(backend: backend);
+
+      final recipients = await repository.fetchInviteableRecipients();
+
+      expect(recipients, hasLength(1));
+      expect(recipients.single.receiverAccountProfileId, 'profile-5');
+      expect(repository.inviteableRecipientsStreamValue.value, recipients);
+    },
+  );
+
   test('fetchInviteableRecipients dedupes concurrent refreshes', () async {
     final gate = Completer<void>();
     final backend = _FakeInvitesBackend(

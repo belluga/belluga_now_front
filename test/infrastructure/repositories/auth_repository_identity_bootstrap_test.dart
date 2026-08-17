@@ -116,7 +116,7 @@ void main() {
   });
 
   test(
-    'init skips identity bootstrap in landlord admin mode on tenant host',
+    'init keeps tenant-public identity bootstrap active on tenant host even when landlord admin mode is active',
     () async {
       final authBackend = _FakeAuthBackend(
         tokenToReturn: 'identity-token-admin-mode',
@@ -136,10 +136,10 @@ void main() {
       await repository.init();
       await Future<void>.delayed(const Duration(milliseconds: 10));
 
-      expect(authBackend.issueCount, 0);
-      expect(repository.userToken, '');
+      expect(authBackend.issueCount, 1);
+      expect(repository.userToken, 'identity-token-admin-mode');
       final stored = await AuthRepository.storage.read(key: 'user_token');
-      expect(stored, isNull);
+      expect(stored, 'identity-token-admin-mode');
     },
   );
 
@@ -262,6 +262,34 @@ void main() {
       expect(repository.userToken, 'stored-token');
       expect(repository.isAuthorized, isTrue);
       expect(proximityRepository.syncCount, 0);
+    },
+  );
+
+  test(
+    'ensureTenantPublicIdentityReady does not cache readiness when tenant host bootstrap finishes without a token',
+    () async {
+      final authBackend = _FakeAuthBackend(
+        tokenToReturn: '',
+        userIdToReturn: 'user-missing-token',
+      );
+      GetIt.I.registerSingleton<BackendContract>(
+        _FakeBackend(auth: authBackend),
+      );
+
+      final repository = AuthRepository();
+
+      await expectLater(
+        repository.ensureTenantPublicIdentityReady(),
+        throwsA(isA<StateError>()),
+      );
+      expect(authBackend.issueCount, 1);
+      expect(repository.userToken, '');
+
+      await expectLater(
+        repository.ensureTenantPublicIdentityReady(),
+        throwsA(isA<StateError>()),
+      );
+      expect(authBackend.issueCount, 2);
     },
   );
 

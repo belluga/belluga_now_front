@@ -27,6 +27,7 @@ import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_group_label_dialog.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_crop_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_source_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_upload_field.dart';
@@ -43,10 +44,12 @@ class TenantAdminEventFormScreen extends StatefulWidget {
     super.key,
     this.existingEvent,
     this.accountSlugForOwnCreate,
+    this.reducedBootstrapCreate = false,
   });
 
   final TenantAdminEvent? existingEvent;
   final String? accountSlugForOwnCreate;
+  final bool reducedBootstrapCreate;
 
   @override
   State<TenantAdminEventFormScreen> createState() =>
@@ -61,6 +64,7 @@ class _TenantAdminEventFormScreenState
   bool _submitInFlight = false;
 
   bool get _isEditing => widget.existingEvent != null;
+  bool get _isBootstrapCreate => !_isEditing && widget.reducedBootstrapCreate;
 
   @override
   void initState() {
@@ -68,9 +72,7 @@ class _TenantAdminEventFormScreenState
     _controller.initEventForm(existingEvent: widget.existingEvent);
 
     _controller.clearSubmitMessages();
-    _controller.loadFormDependencies(
-      accountSlug: widget.accountSlugForOwnCreate,
-    );
+    _loadFormDependencies();
   }
 
   @override
@@ -88,11 +90,7 @@ class _TenantAdminEventFormScreenState
     _submitInFlight = false;
     _controller.initEventForm(existingEvent: widget.existingEvent);
     _controller.clearSubmitMessages();
-    unawaited(
-      _controller.loadFormDependencies(
-        accountSlug: widget.accountSlugForOwnCreate,
-      ),
-    );
+    unawaited(_loadFormDependencies());
   }
 
   @override
@@ -118,11 +116,13 @@ class _TenantAdminEventFormScreenState
       ),
       title: _isEditing ? 'Editar evento' : 'Criar evento',
       showHandle: false,
-      floatingActionButton: _buildAddOccurrenceFloatingActionButton(
-        formState: formState,
-        venues: viewModel.venues,
-        isSubmitting: viewModel.isSubmitting,
-      ),
+      floatingActionButton: _isBootstrapCreate
+          ? null
+          : _buildAddOccurrenceFloatingActionButton(
+              formState: formState,
+              venues: viewModel.venues,
+              isSubmitting: viewModel.isSubmitting,
+            ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       child: Form(
         key: _controller.eventFormKey,
@@ -157,21 +157,13 @@ class _TenantAdminEventFormScreenState
                   padding: const EdgeInsets.only(bottom: 8),
                   child: TenantAdminErrorBanner(
                     rawError: viewModel.partyCandidatesError ?? '',
-                    fallbackMessage:
-                        'Falha ao carregar hosts físicos e perfis relacionados.',
-                    onRetry: () => _controller.loadFormDependencies(
-                      accountSlug: widget.accountSlugForOwnCreate,
-                    ),
+                    fallbackMessage: _isBootstrapCreate
+                        ? 'Falha ao carregar hosts físicos.'
+                        : 'Falha ao carregar hosts físicos e perfis relacionados.',
+                    onRetry: _loadFormDependencies,
                   ),
                 ),
-              _buildBasicSection(),
-              const SizedBox(height: 16),
-              _buildCoverSection(
-                selectedCover: viewModel.selectedCover,
-                isCoverBusy: viewModel.isCoverBusy,
-                isCoverMarkedForRemoval: viewModel.isCoverMarkedForRemoval,
-                isSubmitting: viewModel.isSubmitting,
-              ),
+              _buildBasicSection(showRichContent: !_isBootstrapCreate),
               const SizedBox(height: 16),
               _buildTypeSection(viewModel.eventTypes, formState: formState),
               const SizedBox(height: 16),
@@ -180,31 +172,41 @@ class _TenantAdminEventFormScreenState
                 venues: viewModel.venues,
               ),
               const SizedBox(height: 16),
-              _buildPublicationSection(formState: formState),
-              const SizedBox(height: 16),
               _buildLocationSection(
                 viewModel.venues,
                 formState: formState,
                 partyCandidatesLoading: viewModel.partyCandidatesLoading,
               ),
-              if (formState.occurrences.length <= 1) ...[
+              if (!_isBootstrapCreate) ...[
+                const SizedBox(height: 16),
+                _buildCoverSection(
+                  selectedCover: viewModel.selectedCover,
+                  isCoverBusy: viewModel.isCoverBusy,
+                  isCoverMarkedForRemoval: viewModel.isCoverMarkedForRemoval,
+                  isSubmitting: viewModel.isSubmitting,
+                ),
+                const SizedBox(height: 16),
+                _buildPublicationSection(formState: formState),
+              ],
+              if (!_isBootstrapCreate && formState.occurrences.length <= 1) ...[
                 const SizedBox(height: 16),
                 _buildRelatedAccountProfilesSection(formState: formState),
               ],
-              if (formState.occurrences.length <= 1) ...[
+              if (!_isBootstrapCreate && formState.occurrences.length <= 1) ...[
                 const SizedBox(height: 16),
                 _buildPrimaryOccurrenceProgrammingSection(
                   formState: formState,
                   venues: viewModel.venues,
                 ),
               ],
-              ..._buildTaxonomySectionEntries(
-                taxonomies: allowedTaxonomies,
-                termsBySlug: viewModel.termsBySlug,
-                formState: formState,
-                isLoading: viewModel.taxonomyLoading,
-                loadError: viewModel.taxonomyError,
-              ),
+              if (!_isBootstrapCreate)
+                ..._buildTaxonomySectionEntries(
+                  taxonomies: allowedTaxonomies,
+                  termsBySlug: viewModel.termsBySlug,
+                  formState: formState,
+                  isLoading: viewModel.taxonomyLoading,
+                  loadError: viewModel.taxonomyError,
+                ),
               const SizedBox(height: 24),
               TenantAdminPrimaryFormAction(
                 label: _isEditing ? 'Salvar alterações' : 'Criar evento',
@@ -227,7 +229,7 @@ class _TenantAdminEventFormScreenState
     );
   }
 
-  Widget _buildBasicSection() {
+  Widget _buildBasicSection({required bool showRichContent}) {
     return TenantAdminFormSectionCard(
       title: 'Identificação',
       child: Column(
@@ -250,15 +252,17 @@ class _TenantAdminEventFormScreenState
               },
             ),
           ),
-          const SizedBox(height: 12),
-          TenantAdminRichTextEditor(
-            controller: _controller.eventContentController,
-            label: 'Descrição (opcional)',
-            placeholder: 'Escreva a descrição do evento',
-            minHeight: 280,
-            maxContentBytes: tenantAdminRichTextMaxBytes,
-            warningThreshold: tenantAdminRichTextWarningThreshold,
-          ),
+          if (showRichContent) ...[
+            const SizedBox(height: 12),
+            TenantAdminRichTextEditor(
+              controller: _controller.eventContentController,
+              label: 'Descrição (opcional)',
+              placeholder: 'Escreva a descrição do evento',
+              minHeight: 280,
+              maxContentBytes: tenantAdminRichTextMaxBytes,
+              warningThreshold: tenantAdminRichTextWarningThreshold,
+            ),
+          ],
         ],
       ),
     );
@@ -461,14 +465,16 @@ class _TenantAdminEventFormScreenState
                   totalCount: occurrences.length,
                   venues: venues,
                 ),
-              const SizedBox(height: 12),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: _buildAddOccurrenceInlineButton(
-                  formState: formState,
-                  venues: venues,
+              if (!_isBootstrapCreate) ...[
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: _buildAddOccurrenceInlineButton(
+                    formState: formState,
+                    venues: venues,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
@@ -505,26 +511,28 @@ class _TenantAdminEventFormScreenState
                   ? null
                   : _controller.clearEventEndAt,
             ),
-            const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: OutlinedButton.icon(
-                key: const Key('tenantAdminEventEditPrimaryOccurrenceButton'),
-                onPressed: canEditPrimaryOccurrence
-                    ? () => _openPrimaryOccurrenceEditor(venues: venues)
-                    : null,
-                icon: const Icon(Icons.tune_outlined),
-                label: const Text('Editar ocorrência principal'),
+            if (!_isBootstrapCreate) ...[
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  key: const Key('tenantAdminEventEditPrimaryOccurrenceButton'),
+                  onPressed: canEditPrimaryOccurrence
+                      ? () => _openPrimaryOccurrenceEditor(venues: venues)
+                      : null,
+                  icon: const Icon(Icons.tune_outlined),
+                  label: const Text('Editar ocorrência principal'),
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: _buildAddOccurrenceInlineButton(
-                formState: formState,
-                venues: venues,
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: _buildAddOccurrenceInlineButton(
+                  formState: formState,
+                  venues: venues,
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),
@@ -899,20 +907,33 @@ class _TenantAdminEventFormScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TenantAdminEventProfileGroupsSummaryEditor(
-            keyPrefix: 'EventProfile',
-            title: 'Abas de perfis relacionados',
-            groups: groups,
-            addButtonKey: const Key('TenantAdminEventProfileGroupAdd'),
-            onAddGroup: _controller.addEventProfileGroup,
-            onRenameGroup: _controller.renameEventProfileGroup,
-            onMoveGroup: _controller.moveEventProfileGroup,
-            onRemoveGroup: _controller.removeEventProfileGroup,
-            onManageGroup: _openPrimaryOccurrenceGroupMembers,
-            manageBlockedReasonBuilder: (_) =>
-                _controller.occurrenceRelatedProfilesManageBlockedReason(
-                  formState.occurrences.firstOrNull?.occurrenceId,
+          StreamValueBuilder<bool>(
+            streamValue:
+                _controller.occurrenceProfileGroupMutationBusyStreamValue,
+            builder: (context, isBusy) {
+              return TenantAdminEventProfileGroupsSummaryEditor(
+                keyPrefix: 'EventProfile',
+                title: 'Abas de perfis relacionados',
+                groups: groups,
+                addButtonKey: const Key('TenantAdminEventProfileGroupAdd'),
+                onAddGroup: () => _createPrimaryOccurrenceGroupHead(formState),
+                onRenameGroup: (_, _) {},
+                onMoveGroup: (_, _) {},
+                onRemoveGroup: (groupId) =>
+                    _deletePrimaryOccurrenceGroupHead(formState, groupId),
+                addBlockedReason: _primaryOccurrenceGroupAddBlockedReason(
+                  formState,
                 ),
+                groupsMutationBusy: isBusy,
+                enableLabelEditing: false,
+                enableReorder: false,
+                onManageGroup: _openPrimaryOccurrenceGroupMembers,
+                manageBlockedReasonBuilder: (_) =>
+                    _controller.occurrenceRelatedProfilesManageBlockedReason(
+                      formState.occurrences.firstOrNull?.occurrenceId,
+                    ),
+              );
+            },
           ),
           const SizedBox(height: 12),
           FormValidationGroupError(
@@ -1395,6 +1416,111 @@ class _TenantAdminEventFormScreenState
       occurrenceId: occurrenceId,
       occurrenceKey: occurrenceKey,
       group: group,
+    );
+  }
+
+  String _primaryOccurrenceGroupAddBlockedReason(
+    TenantAdminEventFormState formState,
+  ) {
+    if (formState.occurrences.length != 1) {
+      return 'Gerencie os grupos dentro de cada ocorrência.';
+    }
+    return _controller.occurrenceRelatedProfilesManageBlockedReason(
+      formState.occurrences.firstOrNull?.occurrenceId,
+    );
+  }
+
+  Future<void> _createPrimaryOccurrenceGroupHead(
+    TenantAdminEventFormState formState,
+  ) async {
+    final eventId = widget.existingEvent?.eventId.trim();
+    final primaryOccurrence = formState.occurrences.firstOrNull;
+    final occurrenceId = primaryOccurrence?.occurrenceId?.trim();
+    final occurrenceKey = _controller.primaryOccurrenceKey();
+    if (eventId == null ||
+        eventId.isEmpty ||
+        primaryOccurrence == null ||
+        occurrenceId == null ||
+        occurrenceId.isEmpty ||
+        occurrenceKey == null) {
+      _controller.submitErrorMessageStreamValue.addValue(
+        _primaryOccurrenceGroupAddBlockedReason(formState),
+      );
+      return;
+    }
+    _controller.clearSubmitMessages();
+    final label = await showTenantAdminGroupLabelDialog(
+      context: context,
+      title: 'Novo grupo da ocorrência principal',
+    );
+    if (label == null) {
+      return;
+    }
+    await _controller.createOccurrenceProfileGroupHead(
+      eventId: eventId,
+      occurrenceId: occurrenceId,
+      occurrenceKey: occurrenceKey,
+      label: label,
+    );
+  }
+
+  Future<void> _deletePrimaryOccurrenceGroupHead(
+    TenantAdminEventFormState formState,
+    String groupId,
+  ) async {
+    final eventId = widget.existingEvent?.eventId.trim();
+    final primaryOccurrence = formState.occurrences.firstOrNull;
+    final occurrenceId = primaryOccurrence?.occurrenceId?.trim();
+    final occurrenceKey = _controller.primaryOccurrenceKey();
+    if (eventId == null ||
+        eventId.isEmpty ||
+        primaryOccurrence == null ||
+        occurrenceId == null ||
+        occurrenceId.isEmpty ||
+        occurrenceKey == null) {
+      _controller.submitErrorMessageStreamValue.addValue(
+        'Salve o evento antes de remover grupos da ocorrência principal.',
+      );
+      return;
+    }
+    final matchingGroups = primaryOccurrence.profileGroups
+        .where((candidate) => candidate.id == groupId)
+        .toList(growable: false);
+    if (matchingGroups.isEmpty) {
+      return;
+    }
+    final group = matchingGroups.first;
+    if (group.memberCount > 0) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text('Excluir grupo'),
+            content: Text(
+              'Este grupo possui ${group.memberCount} perfil(is) vinculado(s). A exclusão removerá o grupo e todos os vínculos associados. Deseja continuar?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => dialogContext.router.maybePop(false),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () => dialogContext.router.maybePop(true),
+                child: const Text('Excluir'),
+              ),
+            ],
+          );
+        },
+      );
+      if (confirmed != true) {
+        return;
+      }
+    }
+    await _controller.deleteOccurrenceProfileGroupHead(
+      eventId: eventId,
+      occurrenceId: occurrenceId,
+      occurrenceKey: occurrenceKey,
+      groupId: groupId,
     );
   }
 
@@ -1976,6 +2102,13 @@ class _TenantAdminEventFormScreenState
   }
 
   void _completeSubmit(TenantAdminEvent result) {
+    if (_isBootstrapCreate) {
+      context.router.replace(
+        TenantAdminEventEditRoute(eventId: result.eventId),
+      );
+      return;
+    }
+
     context.router.maybePop<TenantAdminEvent>(result);
   }
 
@@ -1985,6 +2118,17 @@ class _TenantAdminEventFormScreenState
       return null;
     }
     return trimmed;
+  }
+
+  Future<void> _loadFormDependencies() {
+    if (_isBootstrapCreate) {
+      return _controller.loadBootstrapCreateDependencies(
+        accountSlug: widget.accountSlugForOwnCreate,
+      );
+    }
+    return _controller.loadFormDependencies(
+      accountSlug: widget.accountSlugForOwnCreate,
+    );
   }
 
   TenantAdminEventLocation _buildLocationFromSelection(

@@ -27,8 +27,8 @@ class TenantAdminEventsScreen extends StatefulWidget {
 }
 
 class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
-  final TenantAdminEventsController _controller =
-      GetIt.I.get<TenantAdminEventsController>();
+  final TenantAdminEventsController _controller = GetIt.I
+      .get<TenantAdminEventsController>();
 
   @override
   void initState() {
@@ -56,18 +56,16 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
 
   void _openCreateForm() {
     context.router
-        .push<TenantAdminEvent>(
-      const TenantAdminEventCreateRoute(),
-    )
+        .push<TenantAdminEvent>(const TenantAdminEventCreateRoute())
         .then((created) {
-      if (created == null || !mounted) {
-        return;
-      }
+          if (created == null || !mounted) {
+            return;
+          }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Evento criado com sucesso.')),
-      );
-    });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Evento criado com sucesso.')),
+          );
+        });
   }
 
   void _openEditForm(
@@ -77,22 +75,23 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
     final selectedOccurrenceId = selectedOccurrence?.occurrenceId?.trim();
     context.router
         .push<TenantAdminEvent>(
-      TenantAdminEventEditRoute(
-        eventId: event.eventId,
-        occurrenceId: selectedOccurrenceId == null || selectedOccurrenceId.isEmpty
-            ? null
-            : selectedOccurrenceId,
-      ),
-    )
+          TenantAdminEventEditRoute(
+            eventId: event.eventId,
+            occurrenceId:
+                selectedOccurrenceId == null || selectedOccurrenceId.isEmpty
+                ? null
+                : selectedOccurrenceId,
+          ),
+        )
         .then((updated) {
-      if (updated == null || !mounted) {
-        return;
-      }
+          if (updated == null || !mounted) {
+            return;
+          }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Evento atualizado com sucesso.')),
-      );
-    });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Evento atualizado com sucesso.')),
+          );
+        });
   }
 
   Future<void> _confirmDelete(TenantAdminEvent event) async {
@@ -113,9 +112,9 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Evento removido.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Evento removido.')));
     } catch (_) {
       if (!mounted) {
         return;
@@ -181,21 +180,21 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
             final content = currentError != null
                 ? Text(currentError!)
                 : currentSummary == null
-                    ? const SizedBox(
-                        height: 64,
-                        child: Center(child: CircularProgressIndicator()),
-                      )
-                    : Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Escaneados: ${currentSummary!.scanned}'),
-                          Text('Inválidos: ${currentSummary!.invalid}'),
-                          Text('Corrigidos: ${currentSummary!.repaired}'),
-                          Text('Sem mudança: ${currentSummary!.unchanged}'),
-                          Text('Falhas: ${currentSummary!.failed}'),
-                        ],
-                      );
+                ? const SizedBox(
+                    height: 64,
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Escaneados: ${currentSummary!.scanned}'),
+                      Text('Inválidos: ${currentSummary!.invalid}'),
+                      Text('Corrigidos: ${currentSummary!.repaired}'),
+                      Text('Sem mudança: ${currentSummary!.unchanged}'),
+                      Text('Falhas: ${currentSummary!.failed}'),
+                    ],
+                  );
 
             return AlertDialog(
               title: const Text('Eventos legados'),
@@ -303,10 +302,7 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
+                Text(title, style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _controller.accountProfilePickerSearchController,
@@ -331,7 +327,8 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
                                 .accountProfilePickerPageLoadingStreamValue,
                             builder: (context, isSearchPageLoading) {
                               return StreamValueBuilder<
-                                  List<TenantAdminAccountProfile>>(
+                                List<TenantAdminAccountProfile>
+                              >(
                                 streamValue: _controller
                                     .accountProfilePickerResultsStreamValue,
                                 builder: (context, searchResults) {
@@ -356,8 +353,9 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
                                           FilledButton(
                                             onPressed: _controller
                                                 .retryAccountProfilePickerSearch,
-                                            child:
-                                                const Text('Tentar novamente'),
+                                            child: const Text(
+                                              'Tentar novamente',
+                                            ),
                                           ),
                                         ],
                                       ),
@@ -365,12 +363,11 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
                                   }
 
                                   if (searchResults.isEmpty) {
-                                    return Center(
-                                      child: Text(emptyMessage),
-                                    );
+                                    return Center(child: Text(emptyMessage));
                                   }
 
-                                  final itemCount = searchResults.length +
+                                  final itemCount =
+                                      searchResults.length +
                                       (isSearchPageLoading ? 1 : 0);
 
                                   return ListView.separated(
@@ -405,9 +402,8 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
                                           subtitle: Text(
                                             profile.slug ?? profile.profileType,
                                           ),
-                                          onTap: () => context.router.maybePop(
-                                            profile,
-                                          ),
+                                          onTap: () =>
+                                              context.router.maybePop(profile),
                                         ),
                                       );
                                     },
@@ -525,10 +521,12 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
 
     for (final section in sections) {
       section.items.sort((left, right) {
-        final leftDate = left.occurrence?.dateTimeStart ??
+        final leftDate =
+            left.occurrence?.dateTimeStart ??
             left.event.updatedAt ??
             DateTime.fromMillisecondsSinceEpoch(0);
-        final rightDate = right.occurrence?.dateTimeStart ??
+        final rightDate =
+            right.occurrence?.dateTimeStart ??
             right.event.updatedAt ??
             DateTime.fromMillisecondsSinceEpoch(0);
         return leftDate.compareTo(rightDate);
@@ -577,10 +575,7 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
         : TimezoneConverter.utcToLocal(occurrence.dateTimeEnd!);
     final rangeLabel = end == null
         ? startTime
-        : '$startTime às ${localizations.formatTimeOfDay(
-            TimeOfDay.fromDateTime(end),
-            alwaysUse24HourFormat: true,
-          )}';
+        : '$startTime às ${localizations.formatTimeOfDay(TimeOfDay.fromDateTime(end), alwaysUse24HourFormat: true)}';
 
     return '$startDate • $rangeLabel'.toUpperCase();
   }
@@ -664,8 +659,10 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: colorScheme.secondaryContainer,
                   borderRadius: BorderRadius.circular(24),
@@ -738,8 +735,9 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
       streamValue: _controller.venueFilterStreamValue,
       builder: (context, selectedVenue) {
         return InputChip(
-          key:
-              const ValueKey<String>('tenant-admin-events-venue-filter-button'),
+          key: const ValueKey<String>(
+            'tenant-admin-events-venue-filter-button',
+          ),
           avatar: const Icon(Icons.location_on_outlined),
           label: Text(selectedVenue?.displayName ?? 'Filtrar local'),
           onPressed: _openVenueFilterPicker,
@@ -765,57 +763,96 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
       },
     );
 
-    final temporalFilter =
-        StreamValueBuilder<Set<TenantAdminEventTemporalBucket>>(
-      streamValue: _controller.temporalFilterStreamValue,
-      builder: (context, selectedBuckets) {
+    final publicationFilter = StreamValueBuilder<String>(
+      streamValue: _controller.publicationStatusFilterStreamValue,
+      builder: (context, selectedStatus) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Temporalidade',
-              style: Theme.of(context).textTheme.labelLarge,
-            ),
+            Text('Visibilidade', style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: TenantAdminEventTemporalBucket.values
-                  .map(
-                    (bucket) => FilterChip(
-                      key: ValueKey<String>(
-                        'tenant-admin-events-temporal-${bucket.apiValue}',
-                      ),
-                      label: Text(bucket.label),
-                      selected: selectedBuckets.contains(bucket),
-                      onSelected: (_) {
-                        _controller.toggleTemporalFilter(bucket);
-                        _controller.applyFilters();
-                      },
-                    ),
-                  )
-                  .toList(growable: false),
+              children:
+                  const <(String, String)>[
+                        ('todos', 'Todos'),
+                        ('published', 'Publicados'),
+                        ('draft', 'Rascunhos'),
+                        ('publish_scheduled', 'Agendados'),
+                        ('ended', 'Encerrados'),
+                      ]
+                      .map(
+                        (option) => ChoiceChip(
+                          key: ValueKey<String>(
+                            'tenant-admin-events-publication-${option.$1}',
+                          ),
+                          label: Text(option.$2),
+                          selected: selectedStatus == option.$1,
+                          onSelected: (_) {
+                            _controller.selectPublicationStatusFilter(
+                              option.$1,
+                            );
+                            _controller.applyFilters();
+                          },
+                        ),
+                      )
+                      .toList(growable: false),
             ),
           ],
         );
       },
     );
 
+    final temporalFilter =
+        StreamValueBuilder<Set<TenantAdminEventTemporalBucket>>(
+          streamValue: _controller.temporalFilterStreamValue,
+          builder: (context, selectedBuckets) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Temporalidade',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: TenantAdminEventTemporalBucket.values
+                      .map(
+                        (bucket) => FilterChip(
+                          key: ValueKey<String>(
+                            'tenant-admin-events-temporal-${bucket.apiValue}',
+                          ),
+                          label: Text(bucket.label),
+                          selected: selectedBuckets.contains(bucket),
+                          onSelected: (_) {
+                            _controller.toggleTemporalFilter(bucket);
+                            _controller.applyFilters();
+                          },
+                        ),
+                      )
+                      .toList(growable: false),
+                ),
+              ],
+            );
+          },
+        );
+
     final filterChips = Wrap(
       spacing: 12,
       runSpacing: 12,
       crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        specificDateFilter,
-        venueFilter,
-        relatedProfileFilter,
-      ],
+      children: [specificDateFilter, venueFilter, relatedProfileFilter],
     );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         filterChips,
+        const SizedBox(height: 12),
+        publicationFilter,
         const SizedBox(height: 12),
         temporalFilter,
       ],
@@ -833,8 +870,9 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
           label: Text(isCompactLayout ? 'Tipos de evento' : 'Tipos'),
         ),
         OutlinedButton.icon(
-          key:
-              const ValueKey<String>('tenant-admin-events-legacy-check-button'),
+          key: const ValueKey<String>(
+            'tenant-admin-events-legacy-check-button',
+          ),
           onPressed: _openLegacyEventsDialog,
           icon: const Icon(Icons.health_and_safety_outlined),
           label: Text(
@@ -867,6 +905,7 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
     required DateTime? selectedDate,
     required TenantAdminAccountProfile? selectedVenue,
     required TenantAdminAccountProfile? selectedProfile,
+    required String publicationStatus,
     required Set<TenantAdminEventTemporalBucket> temporalBuckets,
   }) {
     var count = 0;
@@ -877,6 +916,9 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
       count += 1;
     }
     if (selectedProfile != null) {
+      count += 1;
+    }
+    if (publicationStatus != 'published') {
       count += 1;
     }
     if (selectedDate == null &&
@@ -901,16 +943,24 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
             return StreamValueBuilder<TenantAdminAccountProfile?>(
               streamValue: _controller.relatedAccountProfileFilterStreamValue,
               builder: (context, selectedProfile) {
-                return StreamValueBuilder<Set<TenantAdminEventTemporalBucket>>(
-                  streamValue: _controller.temporalFilterStreamValue,
-                  builder: (context, temporalBuckets) {
-                    return builder(
-                      _countAppliedFilters(
-                        selectedDate: selectedDate,
-                        selectedVenue: selectedVenue,
-                        selectedProfile: selectedProfile,
-                        temporalBuckets: temporalBuckets,
-                      ),
+                return StreamValueBuilder<String>(
+                  streamValue: _controller.publicationStatusFilterStreamValue,
+                  builder: (context, publicationStatus) {
+                    return StreamValueBuilder<
+                      Set<TenantAdminEventTemporalBucket>
+                    >(
+                      streamValue: _controller.temporalFilterStreamValue,
+                      builder: (context, temporalBuckets) {
+                        return builder(
+                          _countAppliedFilters(
+                            selectedDate: selectedDate,
+                            selectedVenue: selectedVenue,
+                            selectedProfile: selectedProfile,
+                            publicationStatus: publicationStatus,
+                            temporalBuckets: temporalBuckets,
+                          ),
+                        );
+                      },
                     );
                   },
                 );
@@ -966,8 +1016,9 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
             : '$appliedCount filtro${appliedCount == 1 ? '' : 's'} ativo${appliedCount == 1 ? '' : 's'}';
 
         return _buildCompactToolbarAction(
-          key:
-              const ValueKey<String>('tenant-admin-events-open-filters-button'),
+          key: const ValueKey<String>(
+            'tenant-admin-events-open-filters-button',
+          ),
           tooltip: tooltip,
           onPressed: _openCompactFiltersSheet,
           isHighlighted: appliedCount > 0,
@@ -997,9 +1048,9 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
                         'tenant-admin-events-open-filters-badge-label',
                       ),
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onPrimary,
-                            fontWeight: FontWeight.w700,
-                          ),
+                        color: Theme.of(context).colorScheme.onPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
@@ -1111,7 +1162,8 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
               const SizedBox(width: 8),
               _buildCompactToolbarAction(
                 key: const ValueKey<String>(
-                    'tenant-admin-events-legacy-check-button'),
+                  'tenant-admin-events-legacy-check-button',
+                ),
                 tooltip: 'Verificar eventos legados',
                 onPressed: _openLegacyEventsDialog,
                 icon: const Icon(Icons.health_and_safety_outlined),
@@ -1381,7 +1433,8 @@ class _TenantAdminEventCard extends StatelessWidget {
                                   _TenantAdminMetaPill(label: publicationLabel),
                                   if (event.deletedAt != null)
                                     const _TenantAdminMetaPill(
-                                        label: 'Arquivado'),
+                                      label: 'Arquivado',
+                                    ),
                                 ],
                               ),
                               if (event.slug.trim().isNotEmpty) ...[
@@ -1466,9 +1519,7 @@ class _TenantAdminEventCard extends StatelessWidget {
 }
 
 class _TenantAdminEventThumb extends StatelessWidget {
-  const _TenantAdminEventThumb({
-    required this.imageUrl,
-  });
+  const _TenantAdminEventThumb({required this.imageUrl});
 
   final String? imageUrl;
 
@@ -1500,9 +1551,7 @@ class _TenantAdminEventThumb extends StatelessWidget {
 }
 
 class _TenantAdminMetaPill extends StatelessWidget {
-  const _TenantAdminMetaPill({
-    required this.label,
-  });
+  const _TenantAdminMetaPill({required this.label});
 
   final String label;
 
@@ -1517,18 +1566,16 @@ class _TenantAdminMetaPill extends StatelessWidget {
       child: Text(
         label,
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface,
-              fontWeight: FontWeight.w700,
-            ),
+          color: Theme.of(context).colorScheme.onSurface,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
 }
 
 class _TenantAdminProfileChip extends StatelessWidget {
-  const _TenantAdminProfileChip({
-    required this.profile,
-  });
+  const _TenantAdminProfileChip({required this.profile});
 
   final TenantAdminAccountProfile profile;
 
@@ -1538,8 +1585,9 @@ class _TenantAdminProfileChip extends StatelessWidget {
     final avatar = avatarUrl == null || avatarUrl.isEmpty
         ? CircleAvatar(
             radius: 12,
-            backgroundColor:
-                Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+            backgroundColor: Theme.of(
+              context,
+            ).colorScheme.primary.withValues(alpha: 0.12),
             child: Icon(
               Icons.person_outline,
               size: 14,
@@ -1569,9 +1617,9 @@ class _TenantAdminProfileChip extends StatelessWidget {
           Text(
             profile.displayName,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface,
-                  fontWeight: FontWeight.w700,
-                ),
+              color: Theme.of(context).colorScheme.onSurface,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ],
       ),
@@ -1580,10 +1628,7 @@ class _TenantAdminProfileChip extends StatelessWidget {
 }
 
 class _TenantAdminInfoRow extends StatelessWidget {
-  const _TenantAdminInfoRow({
-    required this.icon,
-    required this.text,
-  });
+  const _TenantAdminInfoRow({required this.icon, required this.text});
 
   final IconData icon;
   final String text;
@@ -1602,9 +1647,9 @@ class _TenantAdminInfoRow extends StatelessWidget {
           child: Text(
             text,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ],

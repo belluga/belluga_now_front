@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
@@ -12,6 +13,7 @@ import 'package:belluga_now/presentation/tenant_admin/events/screens/tenant_admi
 import 'package:belluga_now/presentation/tenant_admin/events/widgets/tenant_admin_account_profile_location_picker_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/widgets/tenant_admin_event_profile_groups_summary_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/widgets/tenant_admin_programming_item_card.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_group_label_dialog.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
 import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -173,6 +175,16 @@ class _TenantAdminEventOccurrenceEditorSheet extends StatefulWidget {
 class _TenantAdminEventOccurrenceEditorSheetState
     extends State<_TenantAdminEventOccurrenceEditorSheet> {
   String? _errorMessage;
+
+  String? _consumeOccurrenceGroupMutationError() {
+    final message = widget.controller.submitErrorMessageStreamValue.value
+        ?.trim();
+    if (message == null || message.isEmpty) {
+      return null;
+    }
+    widget.controller.submitErrorMessageStreamValue.addValue(null);
+    return message;
+  }
 
   List<TenantAdminAccountProfile> get _currentVenues {
     final liveVenues = widget.controller.venueCandidatesStreamValue.value;
@@ -373,6 +385,106 @@ class _TenantAdminEventOccurrenceEditorSheetState
     );
   }
 
+  Future<void> _createOccurrenceGroupHead() async {
+    final eventId = widget.eventId?.trim();
+    final occurrenceId = widget.occurrence.occurrenceId?.trim();
+    if (eventId == null ||
+        eventId.isEmpty ||
+        occurrenceId == null ||
+        occurrenceId.isEmpty) {
+      setState(() {
+        _errorMessage =
+            'Salve o evento antes de criar grupos nesta ocorrência.';
+      });
+      return;
+    }
+    setState(() {
+      _errorMessage = null;
+    });
+    final label = await showTenantAdminGroupLabelDialog(
+      context: context,
+      title: 'Novo grupo da ocorrência',
+    );
+    if (label == null) {
+      return;
+    }
+    await widget.controller.createOccurrenceProfileGroupHead(
+      eventId: eventId,
+      occurrenceId: occurrenceId,
+      occurrenceKey: widget.occurrenceKey,
+      label: label,
+    );
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _errorMessage = _consumeOccurrenceGroupMutationError();
+    });
+  }
+
+  Future<void> _deleteOccurrenceGroupHead(String groupId) async {
+    final eventId = widget.eventId?.trim();
+    final occurrenceId = widget.occurrence.occurrenceId?.trim();
+    if (eventId == null ||
+        eventId.isEmpty ||
+        occurrenceId == null ||
+        occurrenceId.isEmpty) {
+      setState(() {
+        _errorMessage =
+            'Salve o evento antes de remover grupos nesta ocorrência.';
+      });
+      return;
+    }
+    final group = widget.occurrence.profileGroups
+        .where((candidate) => candidate.id == groupId)
+        .toList(growable: false);
+    if (group.isEmpty) {
+      return;
+    }
+    final targetGroup = group.first;
+    if (targetGroup.memberCount > 0) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text('Excluir grupo'),
+            content: Text(
+              'Este grupo possui ${targetGroup.memberCount} perfil(is) vinculado(s). A exclusão removerá o grupo e todos os vínculos associados. Deseja continuar?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => dialogContext.router.maybePop(false),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () => dialogContext.router.maybePop(true),
+                child: const Text('Excluir'),
+              ),
+            ],
+          );
+        },
+      );
+      if (confirmed != true) {
+        return;
+      }
+    }
+    setState(() {
+      _errorMessage = null;
+    });
+    await widget.controller.deleteOccurrenceProfileGroupHead(
+      eventId: eventId,
+      occurrenceId: occurrenceId,
+      occurrenceKey: widget.occurrenceKey,
+      groupId: groupId,
+    );
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _errorMessage = _consumeOccurrenceGroupMutationError();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -448,37 +560,44 @@ class _TenantAdminEventOccurrenceEditorSheetState
             ),
             _buildOccurrenceTaxonomySection(context),
             const Divider(height: 28),
-            TenantAdminEventProfileGroupsSummaryEditor(
-              keyPrefix: 'OccurrenceProfile',
-              title: 'Abas de perfis próprios da ocorrência',
-              groups: widget.occurrence.profileGroups,
-              addButtonKey: const Key('TenantAdminOccurrenceProfileGroupAdd'),
-              onAddGroup: () => widget.controller.addOccurrenceProfileGroup(
-                widget.occurrenceKey,
-              ),
-              onRenameGroup: (groupId, label) =>
-                  widget.controller.renameOccurrenceProfileGroup(
-                    occurrenceKey: widget.occurrenceKey,
-                    groupId: groupId,
-                    label: label,
+            StreamValueBuilder<bool>(
+              streamValue: widget
+                  .controller
+                  .occurrenceProfileGroupMutationBusyStreamValue,
+              builder: (context, isBusy) {
+                return TenantAdminEventProfileGroupsSummaryEditor(
+                  keyPrefix: 'OccurrenceProfile',
+                  title: 'Abas de perfis próprios da ocorrência',
+                  groups: widget.occurrence.profileGroups,
+                  addButtonKey: const Key(
+                    'TenantAdminOccurrenceProfileGroupAdd',
                   ),
-              onMoveGroup: (groupId, delta) =>
-                  widget.controller.moveOccurrenceProfileGroup(
-                    occurrenceKey: widget.occurrenceKey,
-                    groupId: groupId,
-                    delta: delta,
-                  ),
-              onRemoveGroup: (groupId) =>
-                  widget.controller.removeOccurrenceProfileGroup(
-                    occurrenceKey: widget.occurrenceKey,
-                    groupId: groupId,
-                  ),
-              onManageGroup: _openOccurrenceGroupMembers,
-              manageBlockedReasonBuilder: (_) => widget.controller
-                  .occurrenceRelatedProfilesManageBlockedReason(
-                    widget.occurrence.occurrenceId,
-                  ),
+                  onAddGroup: _createOccurrenceGroupHead,
+                  onRenameGroup: (_, _) {},
+                  onMoveGroup: (_, _) {},
+                  onRemoveGroup: _deleteOccurrenceGroupHead,
+                  addBlockedReason: widget.controller
+                      .occurrenceRelatedProfilesManageBlockedReason(
+                        widget.occurrence.occurrenceId,
+                      ),
+                  groupsMutationBusy: isBusy,
+                  enableLabelEditing: false,
+                  enableReorder: false,
+                  onManageGroup: _openOccurrenceGroupMembers,
+                  manageBlockedReasonBuilder: (_) => widget.controller
+                      .occurrenceRelatedProfilesManageBlockedReason(
+                        widget.occurrence.occurrenceId,
+                      ),
+                );
+              },
             ),
+            if (_errorMessage != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _errorMessage!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ],
             const Divider(height: 28),
             Text('Programação', style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: 8),
@@ -571,13 +690,6 @@ class _TenantAdminEventOccurrenceEditorSheetState
               icon: const Icon(Icons.add),
               label: const Text('Adicionar item de programação'),
             ),
-            if (_errorMessage != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                _errorMessage!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-            ],
             const SizedBox(height: 18),
           ],
         ),

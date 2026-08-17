@@ -5,6 +5,7 @@ import 'package:belluga_now/infrastructure/dal/dao/invites/invites_backend_reque
 import 'package:belluga_now/infrastructure/dal/dao/invites/invites_response_decoder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/shared/tenant_public_auth_headers.dart';
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_realtime_delta_dto.dart';
+import 'package:belluga_now/infrastructure/observability/invite_flow_debug_logger.dart';
 import 'package:belluga_now/infrastructure/services/invites_backend_contract.dart';
 import 'package:belluga_now/infrastructure/services/sse/sse_client.dart';
 import 'package:dio/dio.dart';
@@ -104,7 +105,12 @@ class LaravelInvitesBackend implements InvitesBackendContract {
 
   @override
   Future<Map<String, dynamic>> sendInvites(InviteSendRequest request) {
-    return _post('$_apiBaseUrl/v1/invites', data: request.toJson());
+    return _post(
+      '$_apiBaseUrl/v1/invites',
+      data: request.toJson(),
+      debugOperation: 'invites.send',
+      debugSummary: _summarizeSendInvitesRequest(request),
+    );
   }
 
   @override
@@ -153,7 +159,12 @@ class LaravelInvitesBackend implements InvitesBackendContract {
   Future<Map<String, dynamic>> importContacts(
     InviteContactImportRequest request,
   ) {
-    return _post('$_apiBaseUrl/v1/contacts/import', data: request.toJson());
+    return _post(
+      '$_apiBaseUrl/v1/contacts/import',
+      data: request.toJson(),
+      debugOperation: 'contacts.import',
+      debugSummary: _summarizeContactImportRequest(request),
+    );
   }
 
   @override
@@ -163,6 +174,11 @@ class LaravelInvitesBackend implements InvitesBackendContract {
     return _get(
       '$_apiBaseUrl/v1/contacts/inviteables',
       queryParameters: request.toQueryParameters(),
+      debugOperation: 'contacts.inviteables',
+      debugSummary: <String, Object?>{
+        'page': request.page,
+        'page_size': request.pageSize,
+      },
     );
   }
 
@@ -208,42 +224,126 @@ class LaravelInvitesBackend implements InvitesBackendContract {
   Future<Map<String, dynamic>> _get(
     String url, {
     Map<String, dynamic>? queryParameters,
+    String? debugOperation,
+    Map<String, Object?>? debugSummary,
   }) async {
+    final traceId = debugOperation == null
+        ? null
+        : InviteFlowDebugLogger.nextTraceId(debugOperation);
+    _logBackendStart(
+      traceId: traceId,
+      operation: debugOperation,
+      method: 'GET',
+      url: url,
+      summary: debugSummary,
+    );
     try {
       return await TenantPublicAuthHeaders.retryOnceOnUnauthorized(
         includeJsonAccept: true,
+        debugContext: traceId,
         action: (headers) async {
           final response = await _dio.get(
             url,
             queryParameters: queryParameters,
             options: Options(headers: headers),
           );
-          return _normalizeResponse(response.data);
+          final normalized = _normalizeResponse(response.data);
+          _logBackendSuccess(
+            traceId: traceId,
+            operation: debugOperation,
+            method: 'GET',
+            url: url,
+            statusCode: response.statusCode,
+            authPresent: headers.containsKey('Authorization'),
+            summary: debugSummary,
+            response: normalized,
+          );
+          return normalized;
         },
       );
     } on DioException catch (error) {
+      _logBackendFailure(
+        traceId: traceId,
+        operation: debugOperation,
+        method: 'GET',
+        url: url,
+        summary: debugSummary,
+        error: error,
+      );
       throw _wrapException('GET', error);
+    } catch (error) {
+      _logBackendUnexpectedFailure(
+        traceId: traceId,
+        operation: debugOperation,
+        method: 'GET',
+        url: url,
+        summary: debugSummary,
+        error: error,
+      );
+      rethrow;
     }
   }
 
   Future<Map<String, dynamic>> _post(
     String url, {
     Map<String, dynamic>? data,
+    String? debugOperation,
+    Map<String, Object?>? debugSummary,
   }) async {
+    final traceId = debugOperation == null
+        ? null
+        : InviteFlowDebugLogger.nextTraceId(debugOperation);
+    _logBackendStart(
+      traceId: traceId,
+      operation: debugOperation,
+      method: 'POST',
+      url: url,
+      summary: debugSummary,
+    );
     try {
       return await TenantPublicAuthHeaders.retryOnceOnUnauthorized(
         includeJsonAccept: true,
+        debugContext: traceId,
         action: (headers) async {
           final response = await _dio.post(
             url,
             data: data,
             options: Options(headers: headers),
           );
-          return _normalizeResponse(response.data);
+          final normalized = _normalizeResponse(response.data);
+          _logBackendSuccess(
+            traceId: traceId,
+            operation: debugOperation,
+            method: 'POST',
+            url: url,
+            statusCode: response.statusCode,
+            authPresent: headers.containsKey('Authorization'),
+            summary: debugSummary,
+            response: normalized,
+          );
+          return normalized;
         },
       );
     } on DioException catch (error) {
+      _logBackendFailure(
+        traceId: traceId,
+        operation: debugOperation,
+        method: 'POST',
+        url: url,
+        summary: debugSummary,
+        error: error,
+      );
       throw _wrapException('POST', error);
+    } catch (error) {
+      _logBackendUnexpectedFailure(
+        traceId: traceId,
+        operation: debugOperation,
+        method: 'POST',
+        url: url,
+        summary: debugSummary,
+        error: error,
+      );
+      rethrow;
     }
   }
 
@@ -356,5 +456,191 @@ class LaravelInvitesBackend implements InvitesBackendContract {
       return null;
     }
     return value;
+  }
+
+  Map<String, Object?> _summarizeContactImportRequest(
+    InviteContactImportRequest request,
+  ) {
+    final contactTypeCounts = <String, int>{};
+    for (final item in request.contacts) {
+      contactTypeCounts.update(
+        item.type,
+        (count) => count + 1,
+        ifAbsent: () {
+          return 1;
+        },
+      );
+    }
+
+    return <String, Object?>{
+      'contact_count': request.contacts.length,
+      'contact_type_counts': contactTypeCounts,
+    };
+  }
+
+  Map<String, Object?> _summarizeSendInvitesRequest(InviteSendRequest request) {
+    final normalizedMessage = request.message?.trim() ?? '';
+    return <String, Object?>{
+      'recipient_count': request.recipients.length,
+      'has_message': normalizedMessage.isNotEmpty,
+      'message_length': normalizedMessage.length,
+      'has_event_target': request.targetRef.eventId.trim().isNotEmpty,
+      'has_occurrence_target': request.targetRef.occurrenceId.trim().isNotEmpty,
+    };
+  }
+
+  void _logBackendStart({
+    required String? traceId,
+    required String? operation,
+    required String method,
+    required String url,
+    Map<String, Object?>? summary,
+  }) {
+    if (traceId == null || operation == null) {
+      return;
+    }
+
+    InviteFlowDebugLogger.log(
+      'invite_backend.request.start',
+      traceId: traceId,
+      fields: <String, Object?>{
+        'operation': operation,
+        'method': method,
+        'path': _pathForUrl(url),
+        ...?summary,
+      },
+    );
+  }
+
+  void _logBackendSuccess({
+    required String? traceId,
+    required String? operation,
+    required String method,
+    required String url,
+    required int? statusCode,
+    required bool authPresent,
+    required Map<String, dynamic> response,
+    Map<String, Object?>? summary,
+  }) {
+    if (traceId == null || operation == null) {
+      return;
+    }
+
+    InviteFlowDebugLogger.log(
+      'invite_backend.request.success',
+      traceId: traceId,
+      fields: <String, Object?>{
+        'operation': operation,
+        'method': method,
+        'path': _pathForUrl(url),
+        'status_code': statusCode,
+        'auth_present': authPresent,
+        ...?summary,
+        ..._summarizeResponse(operation, response),
+      },
+    );
+  }
+
+  void _logBackendFailure({
+    required String? traceId,
+    required String? operation,
+    required String method,
+    required String url,
+    required DioException error,
+    Map<String, Object?>? summary,
+  }) {
+    if (traceId == null || operation == null) {
+      return;
+    }
+
+    InviteFlowDebugLogger.log(
+      'invite_backend.request.failure',
+      traceId: traceId,
+      fields: <String, Object?>{
+        'operation': operation,
+        'method': method,
+        'path': _pathForUrl(url),
+        'status_code': error.response?.statusCode,
+        'dio_type': error.type.name,
+        'response_keys': _responseKeys(error.response?.data),
+        ...?summary,
+      },
+    );
+  }
+
+  void _logBackendUnexpectedFailure({
+    required String? traceId,
+    required String? operation,
+    required String method,
+    required String url,
+    required Object error,
+    Map<String, Object?>? summary,
+  }) {
+    if (traceId == null || operation == null) {
+      return;
+    }
+
+    InviteFlowDebugLogger.log(
+      'invite_backend.request.unexpected_failure',
+      traceId: traceId,
+      fields: <String, Object?>{
+        'operation': operation,
+        'method': method,
+        'path': _pathForUrl(url),
+        'error_type': error.runtimeType.toString(),
+        ...?summary,
+      },
+    );
+  }
+
+  Map<String, Object?> _summarizeResponse(
+    String operation,
+    Map<String, dynamic> response,
+  ) {
+    switch (operation) {
+      case 'contacts.import':
+        return <String, Object?>{
+          'match_count': _countCollection(response['matches']),
+          'response_keys': _responseKeys(response),
+        };
+      case 'contacts.inviteables':
+        return <String, Object?>{
+          'inviteable_count': _countCollection(response['items']),
+          'response_keys': _responseKeys(response),
+        };
+      case 'invites.send':
+        return <String, Object?>{
+          'created_count': _countCollection(response['created']),
+          'already_invited_count': _countCollection(
+            response['already_invited'],
+          ),
+          'response_keys': _responseKeys(response),
+        };
+    }
+
+    return <String, Object?>{'response_keys': _responseKeys(response)};
+  }
+
+  int _countCollection(Object? raw) {
+    if (raw is Iterable) {
+      return raw.length;
+    }
+    if (raw is Map) {
+      return raw.length;
+    }
+    return 0;
+  }
+
+  List<String> _responseKeys(Object? raw) {
+    if (raw is Map) {
+      final keys = raw.keys.map((key) => key.toString()).toList(growable: false)
+        ..sort();
+      return keys;
+    }
+    return const <String>[];
+  }
+
+  String _pathForUrl(String url) {
+    return Uri.parse(url).path;
   }
 }

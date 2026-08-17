@@ -760,9 +760,18 @@ class EventDTO {
       return 'Online';
     }
 
-    return _asString(venuePayload['display_name']) ??
-        _asString(venuePayload['name']) ??
-        '';
+    final venueName =
+        _asString(venuePayload['display_name']) ??
+        _asString(venuePayload['name']);
+    if (venueName != null && venueName.trim().isNotEmpty) {
+      return venueName;
+    }
+
+    if (locationMap.isNotEmpty) {
+      return 'Local a definir';
+    }
+
+    return '';
   }
 
   static ({double? latitude, double? longitude}) _resolveCoordinates({

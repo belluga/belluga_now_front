@@ -246,6 +246,7 @@ class TenantAdminAccountsRepository
     TenantAdminAccountsRepositoryContractPrimString? slug,
     TenantAdminDocument? document,
     TenantAdminOwnershipState? ownershipState,
+    TenantAdminAccountPublication? publication,
   }) async {
     try {
       final payload = _requestEncoder.encodeUpdateAccount(
@@ -253,6 +254,7 @@ class TenantAdminAccountsRepository
         slug: slug?.value,
         document: document,
         ownershipState: ownershipState,
+        publicationStatus: publication?.status.value,
       );
       final response = await _dio.patch(
         '$_apiBaseUrl/v1/accounts/${accountSlug.value}',
@@ -395,6 +397,7 @@ class TenantAdminAccountsRepository
       documentNumber: dto.documentNumber,
       organizationId: dto.organizationId,
       ownershipState: dto.ownershipState,
+      publicationStatus: dto.publicationStatus,
       avatarUrl: _normalizeAccountAvatarUrl(dto.avatarUrl),
     );
   }

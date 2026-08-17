@@ -2,26 +2,16 @@ import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_form_validation/belluga_form_validation.dart';
-import 'package:belluga_now/application/rich_text/account_profile_rich_text_limits.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_onboarding_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
-import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_account_create_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/models/tenant_admin_account_create_validation_config.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
-import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
-import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_canonical_image_upload_field.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
-import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_upload_field.dart';
-import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_profile_groups_summary_editor.dart';
-import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
-import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_xfile_preview.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -51,7 +41,6 @@ class _TenantAdminAccountCreateScreenState
     _controller.resetCreateState();
     _controller.resetCreateForm();
     _controller.loadProfileTypes();
-    _controller.loadTaxonomies();
     _bindCreateSideEffects();
   }
 
@@ -81,11 +70,6 @@ class _TenantAdminAccountCreateScreenState
     return definition?.capabilities.isPoiEnabled ?? false;
   }
 
-  bool _hasNestedProfileGroups(String? selectedType) {
-    final definition = _profileTypeDefinition(selectedType);
-    return definition?.capabilities.hasNestedProfileGroups ?? false;
-  }
-
   Future<void> _openMapPicker() async {
     final currentLocation = _currentLocation();
     context.router.push<TenantAdminLocation?>(
@@ -110,21 +94,6 @@ class _TenantAdminAccountCreateScreenState
     return tenantAdminLocationFromRaw(latitude: lat, longitude: lng);
   }
 
-  void _clearImage({required bool isAvatar}) {
-    if (isAvatar) {
-      _controller.updateCreateAvatarFile(null);
-      _controller.updateCreateAvatarWebUrl(null);
-    } else {
-      _controller.updateCreateCoverFile(null);
-      _controller.updateCreateCoverWebUrl(null);
-    }
-  }
-
-  void _clearWebUrlsFromState() {
-    _controller.updateCreateAvatarWebUrl(null);
-    _controller.updateCreateCoverWebUrl(null);
-  }
-
   void _bindCreateSideEffects() {
     _createErrorSubscription ??= _controller
         .createErrorMessageStreamValue
@@ -145,7 +114,6 @@ class _TenantAdminAccountCreateScreenState
       await _scrollToFirstInvalidTarget();
       return;
     }
-    _clearWebUrlsFromState();
     final created = await _controller.submitCreateAccountFromForm(
       location: location,
     );
@@ -180,7 +148,10 @@ class _TenantAdminAccountCreateScreenState
     }
     _controller.clearCreateSuccessAccount();
     context.router.replace(
-      TenantAdminAccountDetailRoute(accountSlug: result.account.slug),
+      TenantAdminAccountProfileEditRoute(
+        accountSlug: result.account.slug,
+        accountProfileId: result.accountProfile.id,
+      ),
     );
   }
 
@@ -191,16 +162,6 @@ class _TenantAdminAccountCreateScreenState
       builder: (context, draft) {
         final state = draft;
         final requiresLocation = _requiresLocation(state.selectedProfileType);
-        final definition = _profileTypeDefinition(state.selectedProfileType);
-        final hasBio = definition?.capabilities.hasBio ?? false;
-        final hasContent = definition?.capabilities.hasContent ?? false;
-        final hasTaxonomies = definition?.capabilities.hasTaxonomies ?? false;
-        final showAvatar = definition?.capabilities.hasAvatar ?? false;
-        final showCover = definition?.capabilities.hasCover ?? false;
-        final hasNestedProfileGroups = _hasNestedProfileGroups(
-          state.selectedProfileType,
-        );
-        final showMediaSection = showAvatar || showCover;
         return TenantAdminFormScaffold(
           closePolicy: buildTenantAdminCurrentRouteBackPolicy(context),
           title: 'Criar Conta',
@@ -223,35 +184,10 @@ class _TenantAdminAccountCreateScreenState
                       collapseLabel: 'Ocultar',
                     ),
                   ),
-                  _buildOwnershipSection(state),
-                  const SizedBox(height: 16),
                   _buildAccountSection(context, state),
-                  if (showMediaSection) ...[
-                    const SizedBox(height: 16),
-                    _buildMediaSection(
-                      context,
-                      state,
-                      showAvatar: showAvatar,
-                      showCover: showCover,
-                    ),
-                  ],
-                  if (hasBio || hasContent || hasTaxonomies) ...[
-                    const SizedBox(height: 16),
-                    _buildProfileContentSection(
-                      context,
-                      state,
-                      hasBio: hasBio,
-                      hasContent: hasContent,
-                      hasTaxonomies: hasTaxonomies,
-                    ),
-                  ],
                   if (requiresLocation) ...[
                     const SizedBox(height: 16),
                     _buildLocationSection(context),
-                  ],
-                  if (hasNestedProfileGroups) ...[
-                    const SizedBox(height: 16),
-                    _buildNestedGroupSection(state),
                   ],
                   const SizedBox(height: 24),
                   StreamValueBuilder<bool>(
@@ -344,8 +280,6 @@ class _TenantAdminAccountCreateScreenState
                                       .toList(growable: false),
                                   onChanged: hasTypes
                                       ? (value) {
-                                          final definition =
-                                              _profileTypeDefinition(value);
                                           _controller
                                               .updateCreateSelectedProfileType(
                                                 value,
@@ -354,35 +288,6 @@ class _TenantAdminAccountCreateScreenState
                                             _controller.latitudeController
                                                 .clear();
                                             _controller.longitudeController
-                                                .clear();
-                                          }
-                                          if (!(definition
-                                                  ?.capabilities
-                                                  .hasAvatar ??
-                                              false)) {
-                                            _controller.updateCreateAvatarFile(
-                                              null,
-                                            );
-                                          }
-                                          if (!(definition
-                                                  ?.capabilities
-                                                  .hasCover ??
-                                              false)) {
-                                            _controller.updateCreateCoverFile(
-                                              null,
-                                            );
-                                          }
-                                          if (!(definition
-                                                  ?.capabilities
-                                                  .hasBio ??
-                                              false)) {
-                                            _controller.bioController.clear();
-                                          }
-                                          if (!(definition
-                                                  ?.capabilities
-                                                  .hasContent ??
-                                              false)) {
-                                            _controller.contentController
                                                 .clear();
                                           }
                                         }
@@ -450,419 +355,6 @@ class _TenantAdminAccountCreateScreenState
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildOwnershipSection(TenantAdminAccountCreateDraft state) {
-    return FormValidationAnchor(
-      anchors: _validationAnchors,
-      targetId: TenantAdminAccountCreateValidationTargets.ownership,
-      child: TenantAdminFormSectionCard(
-        title: 'Propriedade da conta',
-        description: 'Defina a vinculação da conta ao tenant.',
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SegmentedButton<TenantAdminOwnershipState>(
-              segments: const [
-                ButtonSegment<TenantAdminOwnershipState>(
-                  value: TenantAdminOwnershipState.tenantOwned,
-                  label: Text('Do tenant'),
-                ),
-                ButtonSegment<TenantAdminOwnershipState>(
-                  value: TenantAdminOwnershipState.unmanaged,
-                  label: Text('Nao gerenciada'),
-                ),
-              ],
-              selected: <TenantAdminOwnershipState>{state.ownershipState},
-              onSelectionChanged: (selection) {
-                if (selection.isEmpty) {
-                  return;
-                }
-                _controller.updateCreateOwnershipState(selection.first);
-              },
-            ),
-            FormValidationGroupError(
-              validationStreamValue: _controller.createValidationStreamValue,
-              groupId: TenantAdminAccountCreateValidationTargets.ownership,
-              summarySuffixBuilder: _validationSummarySuffix,
-              expandLabel: 'Ver todos',
-              collapseLabel: 'Ocultar',
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMediaSection(
-    BuildContext context,
-    TenantAdminAccountCreateDraft state, {
-    required bool showAvatar,
-    required bool showCover,
-  }) {
-    return FormValidationAnchor(
-      anchors: _validationAnchors,
-      targetId: TenantAdminAccountCreateValidationTargets.media,
-      child: TenantAdminFormSectionCard(
-        title: 'Imagem e identidade visual',
-        description:
-            'Campos exibidos conforme capabilities do tipo de perfil selecionado.',
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (showAvatar) ...[
-              TenantAdminCanonicalImageUploadField(
-                variant: TenantAdminImageUploadVariant.avatar,
-                preview: state.avatarFile != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(36),
-                        child: TenantAdminXFilePreview(
-                          file: state.avatarFile!,
-                          width: 72,
-                          height: 72,
-                          fit: BoxFit.cover,
-                        ),
-                      )
-                    : (state.avatarWebUrl != null &&
-                          state.avatarWebUrl!.isNotEmpty)
-                    ? Container(
-                        width: 72,
-                        height: 72,
-                        decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(36),
-                        ),
-                        child: const Icon(Icons.link_outlined),
-                      )
-                    : Container(
-                        width: 72,
-                        height: 72,
-                        decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(36),
-                        ),
-                        child: const Icon(Icons.person_outline),
-                      ),
-                selectedLabel:
-                    state.avatarFile?.name ??
-                    state.avatarWebUrl ??
-                    'Nenhuma imagem selecionada',
-                addLabel: 'Adicionar avatar',
-                addButtonKey: const ValueKey(
-                  'tenant_admin_account_create_avatar_pick',
-                ),
-                removeButtonKey: const ValueKey(
-                  'tenant_admin_account_create_avatar_remove',
-                ),
-                sourceSheetTitle: 'Adicionar avatar',
-                urlPromptTitle: 'URL do avatar',
-                busy: state.avatarBusy,
-                canRemove:
-                    state.avatarFile != null ||
-                    (state.avatarWebUrl != null &&
-                        state.avatarWebUrl!.isNotEmpty),
-                onRemove: () => _clearImage(isAvatar: true),
-                initialWebUrl: state.avatarWebUrl,
-                slot: TenantAdminImageSlot.avatar,
-                pickFromDevice: () => _controller.pickImageFromDevice(
-                  slot: TenantAdminImageSlot.avatar,
-                ),
-                fetchImageFromUrlForCrop: _controller.fetchImageFromUrlForCrop,
-                readBytesForCrop: _controller.readImageBytesForCrop,
-                prepareCroppedFile: _controller.prepareCroppedImage,
-                onBusyChanged: _controller.updateCreateAvatarBusy,
-                onImageSelected: (cropped) async {
-                  _controller.updateCreateAvatarFile(cropped);
-                },
-              ),
-            ],
-            if (showAvatar && showCover) const SizedBox(height: 16),
-            if (showCover) ...[
-              TenantAdminCanonicalImageUploadField(
-                variant: TenantAdminImageUploadVariant.cover,
-                preview: state.coverFile != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: TenantAdminXFilePreview(
-                          file: state.coverFile!,
-                          width: double.infinity,
-                          height: 140,
-                          fit: BoxFit.cover,
-                        ),
-                      )
-                    : (state.coverWebUrl != null &&
-                          state.coverWebUrl!.isNotEmpty)
-                    ? Container(
-                        width: double.infinity,
-                        height: 140,
-                        decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Center(child: Icon(Icons.link_outlined)),
-                      )
-                    : Container(
-                        width: double.infinity,
-                        height: 140,
-                        decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Center(child: Icon(Icons.image_outlined)),
-                      ),
-                selectedLabel:
-                    state.coverFile?.name ??
-                    state.coverWebUrl ??
-                    'Nenhuma imagem selecionada',
-                addLabel: 'Adicionar capa',
-                addButtonKey: const ValueKey(
-                  'tenant_admin_account_create_cover_pick',
-                ),
-                removeButtonKey: const ValueKey(
-                  'tenant_admin_account_create_cover_remove',
-                ),
-                sourceSheetTitle: 'Adicionar capa',
-                urlPromptTitle: 'URL da capa',
-                busy: state.coverBusy,
-                canRemove:
-                    state.coverFile != null ||
-                    (state.coverWebUrl != null &&
-                        state.coverWebUrl!.isNotEmpty),
-                onRemove: () => _clearImage(isAvatar: false),
-                initialWebUrl: state.coverWebUrl,
-                slot: TenantAdminImageSlot.accountProfileHeroCover,
-                pickFromDevice: () => _controller.pickImageFromDevice(
-                  slot: TenantAdminImageSlot.accountProfileHeroCover,
-                ),
-                fetchImageFromUrlForCrop: _controller.fetchImageFromUrlForCrop,
-                readBytesForCrop: _controller.readImageBytesForCrop,
-                prepareCroppedFile: _controller.prepareCroppedImage,
-                onBusyChanged: _controller.updateCreateCoverBusy,
-                onImageSelected: (cropped) async {
-                  _controller.updateCreateCoverFile(cropped);
-                },
-              ),
-            ],
-            FormValidationGroupError(
-              validationStreamValue: _controller.createValidationStreamValue,
-              groupId: TenantAdminAccountCreateValidationTargets.media,
-              summarySuffixBuilder: _validationSummarySuffix,
-              expandLabel: 'Ver todos',
-              collapseLabel: 'Ocultar',
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProfileContentSection(
-    BuildContext context,
-    TenantAdminAccountCreateDraft state, {
-    required bool hasBio,
-    required bool hasContent,
-    required bool hasTaxonomies,
-  }) {
-    final allowedTaxonomies = _allowedTaxonomyDefinitions(
-      state.selectedProfileType,
-    );
-    return TenantAdminFormSectionCard(
-      title: 'Conteudo do perfil',
-      description:
-          'Campos exibidos conforme capabilities do tipo de perfil selecionado.',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (hasBio) ...[
-            FormValidationAnchor(
-              anchors: _validationAnchors,
-              targetId: TenantAdminAccountCreateValidationTargets.bio,
-              child: FormValidationFieldErrorBuilder(
-                validationStreamValue: _controller.createValidationStreamValue,
-                fieldId: TenantAdminAccountCreateValidationTargets.bio,
-                builder: (context, errorText) {
-                  return TenantAdminRichTextEditor(
-                    controller: _controller.bioController,
-                    label: 'Bio',
-                    placeholder: 'Escreva a bio do perfil',
-                    minHeight: 160,
-                    errorText: errorText,
-                    maxContentBytes: accountProfileRichTextMaxBytes,
-                    warningThreshold: accountProfileRichTextWarningThreshold,
-                  );
-                },
-              ),
-            ),
-          ],
-          if (hasContent) ...[
-            if (hasBio) const SizedBox(height: 16),
-            FormValidationAnchor(
-              anchors: _validationAnchors,
-              targetId: TenantAdminAccountCreateValidationTargets.content,
-              child: FormValidationFieldErrorBuilder(
-                validationStreamValue: _controller.createValidationStreamValue,
-                fieldId: TenantAdminAccountCreateValidationTargets.content,
-                builder: (context, errorText) {
-                  return TenantAdminRichTextEditor(
-                    controller: _controller.contentController,
-                    label: 'Conteudo',
-                    placeholder: 'Escreva o conteudo estendido do perfil',
-                    minHeight: 220,
-                    errorText: errorText,
-                    maxContentBytes: accountProfileRichTextMaxBytes,
-                    warningThreshold: accountProfileRichTextWarningThreshold,
-                  );
-                },
-              ),
-            ),
-          ],
-          if (hasTaxonomies) ...[
-            if (hasBio || hasContent) const SizedBox(height: 16),
-            FormValidationAnchor(
-              anchors: _validationAnchors,
-              targetId: TenantAdminAccountCreateValidationTargets.taxonomies,
-              child: _buildTaxonomySection(allowedTaxonomies),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNestedGroupSection(TenantAdminAccountCreateDraft state) {
-    return TenantAdminProfileGroupsSummaryEditor(
-      keyPrefix: 'tenantAdminAccountCreate',
-      groups: state.nestedProfileGroups,
-      title: 'Abas de contas vinculadas',
-      addButtonKey: const Key('tenantAdminAccountCreateAddNestedGroupButton'),
-      onAddGroup: _controller.addCreateNestedProfileGroup,
-      onRenameGroup: _controller.renameCreateNestedProfileGroup,
-      onMoveGroup: _controller.moveCreateNestedProfileGroup,
-      onRemoveGroup: _controller.removeCreateNestedProfileGroup,
-      manageBlockedReasonBuilder: (_) =>
-          'Salve a conta e o perfil antes de gerenciar os perfis vinculados.',
-    );
-  }
-
-  List<TenantAdminTaxonomyDefinition> _allowedTaxonomyDefinitions(
-    String? profileType,
-  ) {
-    final definition = _profileTypeDefinition(profileType);
-    final allowed = (definition?.allowedTaxonomies ?? const []).toSet();
-    return _controller.taxonomiesStreamValue.value
-        .where((taxonomy) => allowed.contains(taxonomy.slug))
-        .toList(growable: false);
-  }
-
-  Widget _buildTaxonomySection(
-    List<TenantAdminTaxonomyDefinition> allowedTaxonomies,
-  ) {
-    return StreamValueBuilder<bool>(
-      streamValue: _controller.taxonomiesLoadingStreamValue,
-      builder: (context, isLoading) {
-        return StreamValueBuilder<String?>(
-          streamValue: _controller.taxonomiesErrorStreamValue,
-          builder: (context, error) {
-            return StreamValueBuilder<
-              Map<String, List<TenantAdminTaxonomyTermDefinition>>
-            >(
-              streamValue: _controller.taxonomyTermsStreamValue,
-              builder: (context, termsByTaxonomy) {
-                return StreamValueBuilder<Map<String, Set<String>>>(
-                  streamValue: _controller.selectedTaxonomyTermsStreamValue,
-                  builder: (context, selected) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Taxonomias',
-                          style: Theme.of(context).textTheme.labelLarge,
-                        ),
-                        const SizedBox(height: 8),
-                        if (isLoading) const LinearProgressIndicator(),
-                        if (error?.isNotEmpty ?? false)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: TenantAdminErrorBanner(
-                              rawError: error ?? '',
-                              fallbackMessage:
-                                  'Nao foi possivel carregar taxonomias.',
-                              onRetry: _controller.loadTaxonomies,
-                            ),
-                          ),
-                        if (allowedTaxonomies.isEmpty && !isLoading)
-                          const Padding(
-                            padding: EdgeInsets.only(top: 8),
-                            child: Text(
-                              'Nenhuma taxonomia permitida para este tipo.',
-                            ),
-                          ),
-                        FormValidationGroupError(
-                          validationStreamValue:
-                              _controller.createValidationStreamValue,
-                          groupId: TenantAdminAccountCreateValidationTargets
-                              .taxonomies,
-                          summarySuffixBuilder: _validationSummarySuffix,
-                          expandLabel: 'Ver todos',
-                          collapseLabel: 'Ocultar',
-                        ),
-                        for (final taxonomy in allowedTaxonomies) ...[
-                          const SizedBox(height: 12),
-                          Text(taxonomy.name),
-                          const SizedBox(height: 6),
-                          _buildTaxonomyChips(
-                            taxonomySlug: taxonomy.slug,
-                            terms: termsByTaxonomy[taxonomy.slug] ?? const [],
-                            selected: selected[taxonomy.slug] ?? const {},
-                          ),
-                        ],
-                      ],
-                    );
-                  },
-                );
-              },
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildTaxonomyChips({
-    required String taxonomySlug,
-    required List<TenantAdminTaxonomyTermDefinition> terms,
-    required Set<String> selected,
-  }) {
-    if (terms.isEmpty) {
-      return const Text('Sem termos cadastrados.');
-    }
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: terms
-          .map(
-            (term) => FilterChip(
-              label: Text(term.name),
-              selected: selected.contains(term.slug),
-              onSelected: (enabled) {
-                _controller.updateTaxonomySelection(
-                  taxonomySlug: taxonomySlug,
-                  termSlug: term.slug,
-                  selected: enabled,
-                );
-              },
-            ),
-          )
-          .toList(growable: false),
     );
   }
 

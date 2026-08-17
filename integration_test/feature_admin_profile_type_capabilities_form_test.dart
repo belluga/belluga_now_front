@@ -219,6 +219,7 @@ class _FakeTenantAdminAccountsRepository
     TenantAdminAccountsRepositoryContractPrimString? slug,
     TenantAdminDocument? document,
     TenantAdminOwnershipState? ownershipState,
+    TenantAdminAccountPublication? publication,
   }) async {
     return tenantAdminAccountFromRaw(
       id: 'account-1',

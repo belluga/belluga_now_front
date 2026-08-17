@@ -14,7 +14,6 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dar
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate_selection_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_aggregate_revision_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
@@ -79,6 +78,97 @@ void main() {
 
     expect(find.text('Conta atualizada'), findsOneWidget);
     expect(accountsRepository.fetchAccountBySlugCalls, 1);
+  });
+
+  testWidgets('renders publication status in the account details card', (
+    tester,
+  ) async {
+    final accountsRepository = _FakeAccountsRepository();
+    _registerController(accountsRepository: accountsRepository);
+
+    await _pumpScreen(
+      tester,
+      TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
+    );
+
+    expect(find.text('Publicacao'), findsOneWidget);
+    expect(find.text('Rascunho'), findsOneWidget);
+  });
+
+  testWidgets(
+    'keeps the loading spinner visible while the account is still null',
+    (tester) async {
+      final accountsRepository = _DelayedFetchAccountsRepository();
+      _registerController(accountsRepository: accountsRepository);
+
+      await _pumpScreen(
+        tester,
+        TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
+        settle: false,
+      );
+      await tester.pump();
+
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.text('Inconsistencia de dados'), findsNothing);
+
+      accountsRepository.completeFetch();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Conta base'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'shows retry banner instead of invalid-state banner when the first load fails',
+    (tester) async {
+      final accountsRepository = _FailThenRecoverAccountsRepository(
+        remainingFailures: 1,
+      );
+      _registerController(accountsRepository: accountsRepository);
+
+      await _pumpScreen(
+        tester,
+        TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
+      );
+
+      expect(find.text('Tentar novamente'), findsOneWidget);
+      expect(find.text('Inconsistencia de dados'), findsNothing);
+      expect(accountsRepository.fetchAccountBySlugCalls, 1);
+
+      await tester.tap(find.text('Tentar novamente'));
+      await tester.pumpAndSettle();
+
+      expect(accountsRepository.fetchAccountBySlugCalls, 2);
+      expect(find.text('Conta base'), findsOneWidget);
+      expect(find.text('Tentar novamente'), findsNothing);
+    },
+  );
+
+  testWidgets('edits publication status from the account details card', (
+    tester,
+  ) async {
+    final accountsRepository = _FakeAccountsRepository();
+    _registerController(accountsRepository: accountsRepository);
+
+    await _pumpScreen(
+      tester,
+      TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
+    );
+
+    await tester.tap(find.byTooltip('Editar Publicacao'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Publicado'));
+    await tester.pumpAndSettle();
+
+    expect(
+      accountsRepository.lastUpdatedPublication?.status.value,
+      'published',
+    );
+    expect(find.text('Publicado'), findsOneWidget);
+    expect(
+      find.textContaining('Publicacao da conta atualizada para Publicado'),
+      findsOneWidget,
+    );
   });
 
   testWidgets(
@@ -342,7 +432,11 @@ TenantAdminAccountDetailController _registerController({
   return detailController;
 }
 
-Future<void> _pumpScreen(WidgetTester tester, Widget child) async {
+Future<void> _pumpScreen(
+  WidgetTester tester,
+  Widget child, {
+  bool settle = true,
+}) async {
   final router = RootStackRouter.build(
     routes: [
       NamedRouteDef(
@@ -369,7 +463,10 @@ Future<void> _pumpScreen(WidgetTester tester, Widget child) async {
       theme: ThemeData(splashFactory: NoSplash.splashFactory),
     ),
   );
-  await tester.pumpAndSettle();
+  await tester.pump();
+  if (settle) {
+    await tester.pumpAndSettle();
+  }
 }
 
 class _TestProfileEditRouteScreen extends StatelessWidget {
@@ -414,6 +511,7 @@ class _FakeAccountsRepository
   String? lastFetchedSlug;
   int deleteAccountCalls = 0;
   String? lastDeletedSlug;
+  TenantAdminAccountPublication? lastUpdatedPublication;
 
   @override
   Future<void> loadAccounts({
@@ -537,8 +635,10 @@ class _FakeAccountsRepository
     TenantAdminAccountsRepositoryContractPrimString? slug,
     TenantAdminDocument? document,
     TenantAdminOwnershipState? ownershipState,
+    TenantAdminAccountPublication? publication,
   }) async {
     final current = await fetchAccountBySlug(accountSlug);
+    lastUpdatedPublication = publication;
     final updated = tenantAdminAccountFromRaw(
       id: current.id,
       name: name?.value ?? current.name,
@@ -546,12 +646,18 @@ class _FakeAccountsRepository
       document: document ?? current.document,
       ownershipState: ownershipState ?? current.ownershipState,
       organizationId: current.organizationId,
+      publicationStatus:
+          publication?.status.value ?? current.publication.status.value,
     );
     _seedAccount(updated);
     return updated;
   }
 
-  void emitUpdatedAccount({required String name, required String slug}) {
+  void emitUpdatedAccount({
+    required String name,
+    required String slug,
+    String? publicationStatus,
+  }) {
     final current = _accountsById['acc-1'];
     if (current == null) {
       return;
@@ -564,6 +670,8 @@ class _FakeAccountsRepository
         document: current.document,
         ownershipState: current.ownershipState,
         organizationId: current.organizationId,
+        publicationStatus:
+            publicationStatus ?? current.publication.status.value,
       ),
     );
   }
@@ -652,6 +760,25 @@ class _DelayedFetchAccountsRepository extends _FakeAccountsRepository {
     );
     _seedAccount(account);
     _fetchCompleter.complete(account);
+  }
+}
+
+class _FailThenRecoverAccountsRepository extends _FakeAccountsRepository {
+  _FailThenRecoverAccountsRepository({required this.remainingFailures});
+
+  int remainingFailures;
+
+  @override
+  Future<TenantAdminAccount> fetchAccountBySlug(
+    TenantAdminAccountsRepositoryContractPrimString accountSlug,
+  ) async {
+    if (remainingFailures > 0) {
+      fetchAccountBySlugCalls += 1;
+      lastFetchedSlug = accountSlug.value;
+      remainingFailures -= 1;
+      throw StateError('backend unavailable');
+    }
+    return super.fetchAccountBySlug(accountSlug);
   }
 }
 
@@ -1001,9 +1128,6 @@ TenantAdminNestedGroupMemberPage _nestedGroupMemberPage({
           ),
         )
         .toList(growable: false),
-    aggregateRevisionValue: TenantAdminAccountProfileAggregateRevisionValue(
-      aggregateRevision,
-    ),
     nextCursorValue: TenantAdminOptionalTextValue()..parse(nextCursor),
   );
 }

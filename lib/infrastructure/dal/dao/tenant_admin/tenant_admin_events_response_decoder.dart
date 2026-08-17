@@ -3,6 +3,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dar
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_head_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
@@ -94,6 +95,26 @@ class TenantAdminEventsResponseDecoder {
       return map.toString();
     }
     return fallback;
+  }
+
+  TenantAdminNestedGroupHeadMutationResult
+  decodeOccurrenceGroupHeadMutationResult(Object? rawResponse) {
+    final item = _envelopeDecoder.decodeItemMap(
+      rawResponse,
+      label: 'occurrence group head mutation result',
+    );
+    final rawGroups = item['profile_groups'];
+    if (rawGroups is! List) {
+      throw const FormatException(
+        'Invalid occurrence group head mutation response.',
+      );
+    }
+
+    return TenantAdminNestedGroupHeadMutationResult(
+      occurrenceIdValue: tenantAdminOptionalText(item['occurrence_id']),
+      deletedGroupIdValue: tenantAdminOptionalText(item['deleted_group_id']),
+      groups: _decodeProfileGroups(rawGroups),
+    );
   }
 
   TenantAdminEvent _mapEvent(Map<String, dynamic> row) {

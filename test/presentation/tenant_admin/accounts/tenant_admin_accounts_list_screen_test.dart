@@ -24,12 +24,11 @@ void main() {
     await GetIt.I.reset();
   });
 
-  testWidgets('shows loading state while accounts stream is null',
-      (tester) async {
+  testWidgets('shows loading state while accounts stream is null', (
+    tester,
+  ) async {
     final controller = TenantAdminAccountsController(
-      accountsRepository: _FakeAccountsRepository(
-        initialAccounts: null,
-      ),
+      accountsRepository: _FakeAccountsRepository(initialAccounts: null),
     );
     GetIt.I.registerSingleton<TenantAdminAccountsController>(controller);
 
@@ -40,8 +39,9 @@ void main() {
     expect(find.text('Nenhuma conta encontrada'), findsNothing);
   });
 
-  testWidgets('shows empty state only when list is loaded and empty',
-      (tester) async {
+  testWidgets('shows empty state only when list is loaded and empty', (
+    tester,
+  ) async {
     final controller = TenantAdminAccountsController(
       accountsRepository: _FakeAccountsRepository(initialAccounts: []),
     );
@@ -76,8 +76,9 @@ void main() {
     expect(find.text('Conta 1'), findsOneWidget);
   });
 
-  testWidgets('unmanaged filter does not include user_owned accounts',
-      (tester) async {
+  testWidgets('unmanaged filter does not include user_owned accounts', (
+    tester,
+  ) async {
     final controller = TenantAdminAccountsController(
       accountsRepository: _FakeAccountsRepository(
         initialAccounts: [
@@ -104,8 +105,9 @@ void main() {
     expect(find.text('conta-legacy'), findsNothing);
   });
 
-  testWidgets('segment switch reloads with backend ownership filter',
-      (tester) async {
+  testWidgets('segment switch reloads with backend ownership filter', (
+    tester,
+  ) async {
     final repository = _FakeAccountsRepository.byOwnership(
       accountsByOwnership: {
         TenantAdminOwnershipState.tenantOwned: [],
@@ -144,8 +146,9 @@ void main() {
     );
   });
 
-  testWidgets('search field triggers backend-first reload with query',
-      (tester) async {
+  testWidgets('search field triggers backend-first reload with query', (
+    tester,
+  ) async {
     final repository = _FakeAccountsRepository(
       initialAccounts: [
         tenantAdminAccountFromRaw(
@@ -173,15 +176,11 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(
-      find.byKey(
-        const ValueKey<String>('tenant_admin_accounts_search_toggle'),
-      ),
+      find.byKey(const ValueKey<String>('tenant_admin_accounts_search_toggle')),
     );
     await tester.pumpAndSettle();
     await tester.enterText(
-      find.byKey(
-        const ValueKey<String>('tenant_admin_accounts_search_field'),
-      ),
+      find.byKey(const ValueKey<String>('tenant_admin_accounts_search_field')),
       'Beta',
     );
     await tester.pump(const Duration(milliseconds: 400));
@@ -192,8 +191,9 @@ void main() {
     expect(find.text('Conta Alpha'), findsNothing);
   });
 
-  testWidgets('reloads list when returning from account detail route',
-      (tester) async {
+  testWidgets('reloads list when returning from account detail route', (
+    tester,
+  ) async {
     final repository = _FakeAccountsRepository(
       initialAccounts: [
         tenantAdminAccountFromRaw(
@@ -216,20 +216,25 @@ void main() {
     expect(repository.loadAccountsOwnershipCalls, hasLength(1));
 
     await tester.tap(
-        find.byKey(const ValueKey<String>('tenant_admin_account_card_acc-1')));
+      find.byKey(const ValueKey<String>('tenant_admin_account_card_acc-1')),
+    );
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey<String>('account_detail_close')),
-        findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('account_detail_close')),
+      findsOneWidget,
+    );
 
-    await tester
-        .tap(find.byKey(const ValueKey<String>('account_detail_close')));
+    await tester.tap(
+      find.byKey(const ValueKey<String>('account_detail_close')),
+    );
     await tester.pumpAndSettle();
 
     expect(repository.loadAccountsOwnershipCalls, hasLength(2));
   });
 
-  testWidgets('reloads list after successful account create return',
-      (tester) async {
+  testWidgets('reloads list after successful account create return', (
+    tester,
+  ) async {
     final repository = _FakeAccountsRepository(
       initialAccounts: [
         tenantAdminAccountFromRaw(
@@ -253,11 +258,14 @@ void main() {
 
     await tester.tap(find.text('Criar conta'));
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey<String>('account_create_success')),
-        findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('account_create_success')),
+      findsOneWidget,
+    );
 
-    await tester
-        .tap(find.byKey(const ValueKey<String>('account_create_success')));
+    await tester.tap(
+      find.byKey(const ValueKey<String>('account_create_success')),
+    );
     await tester.pumpAndSettle();
 
     expect(repository.loadAccountsOwnershipCalls, hasLength(2));
@@ -328,12 +336,12 @@ class _TestAccountCreateRouteScreen extends StatelessWidget {
 class _FakeAccountsRepository
     with TenantAdminAccountsRepositoryPaginationMixin
     implements TenantAdminAccountsRepositoryContract {
-  _FakeAccountsRepository({
-    required this.initialAccounts,
-  }) : accountsByOwnership = const {} {
+  _FakeAccountsRepository({required this.initialAccounts})
+    : accountsByOwnership = const {} {
     if (initialAccounts != null) {
-      accountsStreamValue
-          .addValue(List<TenantAdminAccount>.from(initialAccounts!));
+      accountsStreamValue.addValue(
+        List<TenantAdminAccount>.from(initialAccounts!),
+      );
       hasMoreAccountsStreamValue.addValue(
         TenantAdminAccountsRepositoryContractPrimBool.fromRaw(
           false,
@@ -343,13 +351,12 @@ class _FakeAccountsRepository
     }
   }
 
-  _FakeAccountsRepository.byOwnership({
-    required this.accountsByOwnership,
-  }) : initialAccounts = null;
+  _FakeAccountsRepository.byOwnership({required this.accountsByOwnership})
+    : initialAccounts = null;
 
   final List<TenantAdminAccount>? initialAccounts;
   final Map<TenantAdminOwnershipState, List<TenantAdminAccount>>
-      accountsByOwnership;
+  accountsByOwnership;
   final List<TenantAdminOwnershipState?> loadAccountsOwnershipCalls =
       <TenantAdminOwnershipState?>[];
   final List<String?> loadAccountsSearchCalls = <String?>[];
@@ -367,8 +374,9 @@ class _FakeAccountsRepository
       searchQuery: searchQuery?.value,
     );
     if (selectedAccounts != null) {
-      accountsStreamValue
-          .addValue(List<TenantAdminAccount>.from(selectedAccounts));
+      accountsStreamValue.addValue(
+        List<TenantAdminAccount>.from(selectedAccounts),
+      );
       hasMoreAccountsStreamValue.addValue(
         TenantAdminAccountsRepositoryContractPrimBool.fromRaw(
           false,
@@ -382,8 +390,9 @@ class _FakeAccountsRepository
       accountsStreamValue.addValue(null);
       return;
     }
-    accountsStreamValue
-        .addValue(List<TenantAdminAccount>.from(initialAccounts!));
+    accountsStreamValue.addValue(
+      List<TenantAdminAccount>.from(initialAccounts!),
+    );
     hasMoreAccountsStreamValue.addValue(
       TenantAdminAccountsRepositoryContractPrimBool.fromRaw(
         false,
@@ -448,7 +457,8 @@ class _FakeAccountsRepository
 
   @override
   Future<TenantAdminAccount> fetchAccountBySlug(
-      TenantAdminAccountsRepositoryContractPrimString accountSlug) {
+    TenantAdminAccountsRepositoryContractPrimString accountSlug,
+  ) {
     throw UnimplementedError();
   }
 
@@ -487,25 +497,29 @@ class _FakeAccountsRepository
     TenantAdminAccountsRepositoryContractPrimString? slug,
     TenantAdminDocument? document,
     TenantAdminOwnershipState? ownershipState,
+    TenantAdminAccountPublication? publication,
   }) {
     throw UnimplementedError();
   }
 
   @override
   Future<void> deleteAccount(
-      TenantAdminAccountsRepositoryContractPrimString accountSlug) {
+    TenantAdminAccountsRepositoryContractPrimString accountSlug,
+  ) {
     throw UnimplementedError();
   }
 
   @override
   Future<TenantAdminAccount> restoreAccount(
-      TenantAdminAccountsRepositoryContractPrimString accountSlug) {
+    TenantAdminAccountsRepositoryContractPrimString accountSlug,
+  ) {
     throw UnimplementedError();
   }
 
   @override
   Future<void> forceDeleteAccount(
-      TenantAdminAccountsRepositoryContractPrimString accountSlug) {
+    TenantAdminAccountsRepositoryContractPrimString accountSlug,
+  ) {
     throw UnimplementedError();
   }
 
@@ -516,20 +530,22 @@ class _FakeAccountsRepository
     final normalizedSearch = searchQuery?.trim().toLowerCase() ?? '';
     final source = accountsByOwnership.isEmpty
         ? (initialAccounts == null
-            ? null
-            : List<TenantAdminAccount>.from(initialAccounts!))
+              ? null
+              : List<TenantAdminAccount>.from(initialAccounts!))
         : List<TenantAdminAccount>.from(
-            accountsByOwnership[
-                    ownershipState ?? TenantAdminOwnershipState.tenantOwned] ??
+            accountsByOwnership[ownershipState ??
+                    TenantAdminOwnershipState.tenantOwned] ??
                 <TenantAdminAccount>[],
           );
     if (source == null || normalizedSearch.isEmpty) {
       return source;
     }
-    return source.where((account) {
-      return account.name.toLowerCase().contains(normalizedSearch) ||
-          account.slug.toLowerCase().contains(normalizedSearch) ||
-          account.document.number.toLowerCase().contains(normalizedSearch);
-    }).toList(growable: false);
+    return source
+        .where((account) {
+          return account.name.toLowerCase().contains(normalizedSearch) ||
+              account.slug.toLowerCase().contains(normalizedSearch) ||
+              account.document.number.toLowerCase().contains(normalizedSearch);
+        })
+        .toList(growable: false);
   }
 }

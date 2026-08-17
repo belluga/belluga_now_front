@@ -118,7 +118,7 @@ void main() {
     },
   );
 
-  testWidgets('adds nested group summary shell with blocked management', (
+  testWidgets('shows save-first guidance for nested groups on create', (
     tester,
   ) async {
     final profilesRepository =
@@ -139,68 +139,51 @@ void main() {
 
     await _selectProfileType(tester, 'Venue');
 
-    final scrollable = find.byType(Scrollable).first;
-    await tester.scrollUntilVisible(
+    expect(find.text('Abas de contas vinculadas'), findsOneWidget);
+    expect(
       find.byKey(const Key('tenantAdminCreateAddNestedGroupButton')),
-      300,
-      scrollable: scrollable,
+      findsNothing,
     );
-    await tester.tap(
-      find.byKey(const Key('tenantAdminCreateAddNestedGroupButton')),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('Novo grupo'), findsOneWidget);
-    expect(find.text('Nome da aba'), findsOneWidget);
-    expect(find.text('0 perfis vinculados'), findsOneWidget);
-    expect(find.text('Gerenciar perfis'), findsOneWidget);
+    expect(find.text('Gerenciar perfis'), findsNothing);
     expect(find.text('Selecionar perfis'), findsNothing);
     expect(
-      find.text('Salve o perfil antes de gerenciar os perfis vinculados.'),
+      find.text(
+        'Salve o perfil primeiro. Depois disso, a edição de grupos acontece de forma independente, com criação e exclusão persistidas imediatamente.',
+      ),
       findsOneWidget,
     );
   });
 
-  testWidgets(
-    'create-screen nested groups do not preload the canonical picker',
-    (tester) async {
-      final profilesRepository =
-          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
-              as _FakeAccountProfilesRepository;
-      profilesRepository.profileTypesToReturn = [
-        _profileType(
-          type: 'venue',
-          label: 'Venue',
-          hasNestedProfileGroups: true,
-        ),
-      ];
-      await _pumpScreen(
-        tester,
-        TenantAdminAccountProfileCreateScreen(accountSlug: 'route-account'),
-      );
+  testWidgets('create-screen nested groups stay inert before the first save', (
+    tester,
+  ) async {
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+    profilesRepository.profileTypesToReturn = [
+      _profileType(type: 'venue', label: 'Venue', hasNestedProfileGroups: true),
+    ];
+    await _pumpScreen(
+      tester,
+      TenantAdminAccountProfileCreateScreen(accountSlug: 'route-account'),
+    );
 
-      await _selectProfileType(tester, 'Venue');
-      final baselineFetchCalls =
-          profilesRepository.fetchAccountProfilesPageCalls;
+    await _selectProfileType(tester, 'Venue');
+    final baselineFetchCalls = profilesRepository.fetchAccountProfilesPageCalls;
 
-      final scrollable = find.byType(Scrollable).first;
-      await tester.scrollUntilVisible(
-        find.byKey(const Key('tenantAdminCreateAddNestedGroupButton')),
-        300,
-        scrollable: scrollable,
-      );
-      await tester.tap(
-        find.byKey(const Key('tenantAdminCreateAddNestedGroupButton')),
-      );
-      await tester.pumpAndSettle();
+    await tester.pumpAndSettle();
 
-      expect(
-        profilesRepository.fetchAccountProfilesPageCalls,
-        baselineFetchCalls,
-      );
-      expect(find.text('Gerenciar perfis'), findsOneWidget);
-    },
-  );
+    expect(
+      profilesRepository.fetchAccountProfilesPageCalls,
+      baselineFetchCalls,
+    );
+    expect(
+      find.byKey(const Key('tenantAdminCreateAddNestedGroupButton')),
+      findsNothing,
+    );
+    expect(find.text('Gerenciar perfis'), findsNothing);
+    expect(find.text('Selecionar perfis'), findsNothing);
+  });
 
   testWidgets(
     'renders the source bubble selection as an inert mirrored indicator',
@@ -456,6 +439,7 @@ class _FakeAccountsRepository extends TenantAdminAccountsRepositoryContract {
     TenantAdminAccountsRepositoryContractPrimString? slug,
     TenantAdminDocument? document,
     TenantAdminOwnershipState? ownershipState,
+    TenantAdminAccountPublication? publication,
   }) {
     throw UnimplementedError();
   }

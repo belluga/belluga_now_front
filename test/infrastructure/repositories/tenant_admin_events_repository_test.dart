@@ -345,12 +345,10 @@ void main() {
       }
 
       expect(
-        hasField('occurrences[1][profile_groups][0][id]', 'bandas'),
-        isTrue,
-      );
-      expect(
-        hasField('occurrences[1][profile_groups][0][label]', 'Bandas'),
-        isTrue,
+        formData.fields.any(
+          (entry) => entry.key.startsWith('occurrences[1][profile_groups]'),
+        ),
+        isFalse,
       );
       expect(
         hasField(
@@ -425,7 +423,7 @@ void main() {
   });
 
   test(
-    'updateEvent remove_cover multipart path preserves explicit empty profile_groups clear intent',
+    'updateEvent remove_cover multipart path omits root profile_groups from aggregate write',
     () async {
       final adapter = _EventsRoutingAdapter();
       final dio = Dio()..httpClientAdapter = adapter;
@@ -449,7 +447,7 @@ void main() {
         formData.fields.any(
           (entry) => entry.key == 'profile_groups' && entry.value == '[]',
         ),
-        isTrue,
+        isFalse,
       );
       expect(
         formData.fields.any(
@@ -467,7 +465,7 @@ void main() {
   );
 
   test(
-    'updateEvent remove_cover multipart path preserves explicit empty nested occurrence profile_groups clear intent',
+    'updateEvent remove_cover multipart path omits occurrence profile_groups from aggregate write',
     () async {
       final adapter = _EventsRoutingAdapter();
       final dio = Dio()..httpClientAdapter = adapter;
@@ -501,7 +499,7 @@ void main() {
               entry.key == 'occurrences[0][profile_groups]' &&
               entry.value == '[]',
         ),
-        isTrue,
+        isFalse,
       );
       expect(
         formData.fields.any(
@@ -519,7 +517,7 @@ void main() {
   );
 
   test(
-    'updateEvent sends empty profile_groups when clearing related accounts',
+    'updateEvent omits root profile_groups when clearing related accounts',
     () async {
       final adapter = _EventsRoutingAdapter();
       final dio = Dio()..httpClientAdapter = adapter;
@@ -539,8 +537,104 @@ void main() {
       expect(request.path, endsWith('/admin/api/v1/events/evt-1'));
       expect(request.data, isA<Map<String, dynamic>>());
       final payload = request.data as Map<String, dynamic>;
-      expect(payload.containsKey('profile_groups'), isTrue);
-      expect(payload['profile_groups'], isEmpty);
+      expect(payload.containsKey('profile_groups'), isFalse);
+    },
+  );
+
+  test(
+    'createOccurrenceProfileGroup uses dedicated endpoint and decodes group metadata',
+    () async {
+      final adapter = _EventsRoutingAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      final result = await repository.createOccurrenceProfileGroup(
+        eventId: _repoText('evt-1'),
+        occurrenceId: _repoText('occ-1'),
+        label: _repoText('Backline'),
+      );
+
+      final request = adapter.requests.last;
+      expect(request.method, 'POST');
+      expect(
+        request.path,
+        endsWith('/admin/api/v1/events/evt-1/occurrences/occ-1/profile_groups'),
+      );
+      expect(request.data, <String, dynamic>{'label': 'Backline'});
+      expect(result.occurrenceId, 'occ-1');
+      expect(result.deletedGroupId, isNull);
+      expect(result.groups, hasLength(1));
+      expect(result.groups.single.id, 'group-created');
+      expect(result.groups.single.label, 'Backline');
+      expect(result.groups.single.memberCount, 0);
+    },
+  );
+
+  test(
+    'createOccurrenceProfileGroup rethrows accepted 422 responses as validation failures',
+    () async {
+      final adapter = _OccurrenceGroupPermissiveValidationAdapter();
+      final dio = Dio(
+        BaseOptions(validateStatus: (status) => status != null && status < 500),
+      )..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      await expectLater(
+        () => repository.createOccurrenceProfileGroup(
+          eventId: _repoText('evt-1'),
+          occurrenceId: _repoText('occ-1'),
+          label: _repoText('Backline'),
+        ),
+        throwsA(
+          isA<FormValidationFailure>().having(
+            (error) => error.fieldErrors['profile_groups'],
+            'fieldErrors.profile_groups',
+            contains('Related-account groups exceed the configured limit.'),
+          ),
+        ),
+      );
+    },
+  );
+
+  test(
+    'deleteOccurrenceProfileGroup uses dedicated endpoint and decodes group metadata',
+    () async {
+      final adapter = _EventsRoutingAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+      final repository = TenantAdminEventsRepository(
+        dio: dio,
+        tenantScope: scope,
+      );
+
+      final result = await repository.deleteOccurrenceProfileGroup(
+        eventId: _repoText('evt-1'),
+        occurrenceId: _repoText('occ-1'),
+        groupId: _repoText('group-created'),
+      );
+
+      final request = adapter.requests.last;
+      expect(request.method, 'DELETE');
+      expect(
+        request.path,
+        endsWith(
+          '/admin/api/v1/events/evt-1/occurrences/occ-1/profile_groups/group-created',
+        ),
+      );
+      expect(result.occurrenceId, 'occ-1');
+      expect(result.deletedGroupId, 'group-created');
+      expect(result.groups, hasLength(1));
+      expect(result.groups.single.id, 'remaining-group');
+      expect(result.groups.single.label, 'Remaining Group');
+      expect(result.groups.single.memberCount, 2);
     },
   );
 
@@ -1656,6 +1750,48 @@ class _EventsRoutingAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     requests.add(options);
+    if (options.path.contains('/occurrences/') &&
+        options.path.endsWith('/profile_groups') &&
+        options.method == 'POST') {
+      final payload = options.data is Map<String, dynamic>
+          ? options.data as Map<String, dynamic>
+          : <String, dynamic>{};
+      final label = (payload['label']?.toString() ?? '').trim();
+      return _jsonResponse({
+        'data': {
+          'occurrence_id': 'occ-1',
+          'profile_groups': [
+            {
+              'id': 'group-created',
+              'label': label.isEmpty ? 'Novo Grupo' : label,
+              'order': 0,
+              'member_count': 0,
+            },
+          ],
+        },
+      });
+    }
+
+    if (options.path.contains('/occurrences/') &&
+        options.path.contains('/profile_groups/') &&
+        options.method == 'DELETE') {
+      final deletedGroupId = options.path.split('/').last;
+      return _jsonResponse({
+        'data': {
+          'occurrence_id': 'occ-1',
+          'deleted_group_id': deletedGroupId,
+          'profile_groups': [
+            {
+              'id': 'remaining-group',
+              'label': 'Remaining Group',
+              'order': 0,
+              'member_count': 2,
+            },
+          ],
+        },
+      });
+    }
+
     if ((options.path.endsWith('/v1/events') ||
             options.path.contains('/v1/events/')) &&
         (options.method == 'POST' || options.method == 'PATCH')) {
@@ -1726,6 +1862,45 @@ class _EventsCreateValidationAdapter implements HttpClientAdapter {
           'message': 'validation.required_if',
           'errors': {
             'place_ref': ['validation.required_if'],
+          },
+        }),
+        422,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
+
+    return ResponseBody.fromString(
+      jsonEncode({'data': {}}),
+      200,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+}
+
+class _OccurrenceGroupPermissiveValidationAdapter implements HttpClientAdapter {
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    if (options.path.contains('/occurrences/') &&
+        options.path.endsWith('/profile_groups') &&
+        options.method == 'POST') {
+      return ResponseBody.fromString(
+        jsonEncode({
+          'message': 'The given data was invalid.',
+          'errors': {
+            'profile_groups': [
+              'Related-account groups exceed the configured limit.',
+            ],
           },
         }),
         422,
