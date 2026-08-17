@@ -11,6 +11,7 @@ TenantAdminAccount tenantAdminAccountFromRaw({
   required TenantAdminOwnershipState ownershipState,
   Object? organizationId,
   Object? avatarUrl,
+  Object? publicationStatus,
 }) {
   return TenantAdminAccount(
     idValue: tenantAdminRequiredText(id),
@@ -18,6 +19,9 @@ TenantAdminAccount tenantAdminAccountFromRaw({
     slugValue: tenantAdminRequiredText(slug),
     document: document,
     ownershipState: ownershipState,
+    publication: tenantAdminAccountPublicationFromRaw(
+      status: publicationStatus,
+    ),
     organizationIdValue: tenantAdminOptionalText(organizationId),
     avatarUrlValue: tenantAdminOptionalUrl(avatarUrl),
   );

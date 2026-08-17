@@ -21,12 +21,10 @@ class InviteablesRepository extends InviteablesRepositoryContract {
   Future<List<InviteableRecipient>> fetchInviteableRecipients() {
     final activeRefresh = _activeRefresh;
     if (activeRefresh != null) {
-      InviteFlowDebugLogger.log(
+      InviteFlowDebugLogger.logPagedFetch(
         'contacts.inviteables.repository.reuse_active_refresh',
-        fields: const <String, Object?>{
-          'page': 1,
-          'page_size': routeCriticalPageSize,
-        },
+        page: 1,
+        pageSize: routeCriticalPageSize,
       );
       return activeRefresh;
     }
@@ -45,13 +43,11 @@ class InviteablesRepository extends InviteablesRepositoryContract {
     final traceId = InviteFlowDebugLogger.nextTraceId(
       'contacts.inviteables.repository',
     );
-    InviteFlowDebugLogger.log(
+    InviteFlowDebugLogger.logPagedFetch(
       'contacts.inviteables.repository.start',
       traceId: traceId,
-      fields: const <String, Object?>{
-        'page': 1,
-        'page_size': routeCriticalPageSize,
-      },
+      page: 1,
+      pageSize: routeCriticalPageSize,
     );
     final response = await _backend.fetchInviteableContacts(
       const InviteableContactsRequest(page: 1, pageSize: routeCriticalPageSize),
@@ -59,10 +55,11 @@ class InviteablesRepository extends InviteablesRepositoryContract {
     final recipients = _responseDecoder.decodeInviteableRecipients(
       _responseDecoder.itemsPayload(response),
     );
-    InviteFlowDebugLogger.log(
+    InviteFlowDebugLogger.logCount(
       'contacts.inviteables.repository.decoded',
       traceId: traceId,
-      fields: <String, Object?>{'decoded_recipient_count': recipients.length},
+      field: 'decoded_recipient_count',
+      count: recipients.length,
     );
     inviteableRecipientsStreamValue.addValue(recipients);
     return recipients;

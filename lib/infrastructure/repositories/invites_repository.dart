@@ -533,49 +533,41 @@ class InvitesRepository extends InvitesRepositoryContract
     );
     final snapshot = await _resolveFreshImportedContactMatchSnapshot(contacts);
     if (snapshot == null) {
-      InviteFlowDebugLogger.log(
-        'contacts.import.repository.skipped',
+      InviteFlowDebugLogger.logContactsImportSkipped(
         traceId: traceId,
-        fields: <String, Object?>{
-          'reason': 'no_import_items',
-          'input_contact_count': contacts.items.length,
-          'force_import': contacts.forceImport,
-          'region_code_present': contacts.regionCode?.trim().isNotEmpty == true,
-        },
+        inputContactCount: contacts.items.length,
+        forceImport: contacts.forceImport,
+        regionCodePresent: contacts.regionCode?.trim().isNotEmpty == true,
       );
       return const <InviteContactMatch>[];
     }
 
-    InviteFlowDebugLogger.log(
-      'contacts.import.repository.snapshot',
+    InviteFlowDebugLogger.logContactsImportSnapshot(
       traceId: traceId,
-      fields: <String, Object?>{
-        'input_contact_count': contacts.items.length,
-        'force_import': contacts.forceImport,
-        'region_code_present': contacts.regionCode?.trim().isNotEmpty == true,
-        'import_item_count': snapshot.importItems.length,
-        'cache_hit': snapshot.isFresh,
-        'cached_match_count': snapshot.matches.length,
-      },
+      inputContactCount: contacts.items.length,
+      forceImport: contacts.forceImport,
+      regionCodePresent: contacts.regionCode?.trim().isNotEmpty == true,
+      importItemCount: snapshot.importItems.length,
+      cacheHit: snapshot.isFresh,
+      cachedMatchCount: snapshot.matches.length,
     );
 
     if (!contacts.forceImport && snapshot.isFresh) {
       if (snapshot.matches.isNotEmpty) {
-        InviteFlowDebugLogger.log(
+        InviteFlowDebugLogger.logCount(
           'contacts.import.repository.cache_used',
           traceId: traceId,
-          fields: <String, Object?>{
-            'cached_match_count': snapshot.matches.length,
-          },
+          field: 'cached_match_count',
+          count: snapshot.matches.length,
         );
         importedContactMatchesStreamValue.addValue(snapshot.matches);
         return snapshot.matches;
       }
 
-      InviteFlowDebugLogger.log(
+      InviteFlowDebugLogger.logReason(
         'contacts.import.repository.cache_bypassed',
         traceId: traceId,
-        fields: <String, Object?>{'reason': 'empty_cached_matches'},
+        reason: 'empty_cached_matches',
       );
     }
 
@@ -605,10 +597,11 @@ class InvitesRepository extends InvitesRepositoryContract
     );
 
     final matches = matchesByProfileId.values.toList(growable: false);
-    InviteFlowDebugLogger.log(
+    InviteFlowDebugLogger.logCount(
       'contacts.import.repository.decoded',
       traceId: traceId,
-      fields: <String, Object?>{'decoded_match_count': matches.length},
+      field: 'decoded_match_count',
+      count: matches.length,
     );
     importedContactMatchesStreamValue.addValue(matches);
     return matches;
@@ -705,10 +698,10 @@ class InvitesRepository extends InvitesRepositoryContract
       'invites.send.repository',
     );
     if (recipients.isEmpty) {
-      InviteFlowDebugLogger.log(
+      InviteFlowDebugLogger.logReason(
         'invites.send.repository.skipped',
         traceId: traceId,
-        fields: const <String, Object?>{'reason': 'no_recipients'},
+        reason: 'no_recipients',
       );
       return;
     }
@@ -732,27 +725,23 @@ class InvitesRepository extends InvitesRepositoryContract
         )
         .toList(growable: false);
     if (recipientPayloads.isEmpty) {
-      InviteFlowDebugLogger.log(
+      InviteFlowDebugLogger.logReasonWithCount(
         'invites.send.repository.skipped',
         traceId: traceId,
-        fields: <String, Object?>{
-          'reason': 'no_recipient_account_profiles',
-          'recipient_count': recipients.items.length,
-        },
+        reason: 'no_recipient_account_profiles',
+        countField: 'recipient_count',
+        count: recipients.items.length,
       );
       return;
     }
 
     final hasMessage =
         normalizedMessage != null && normalizedMessage.isNotEmpty;
-    InviteFlowDebugLogger.log(
-      'invites.send.repository.request',
+    InviteFlowDebugLogger.logInviteSendRequest(
       traceId: traceId,
-      fields: <String, Object?>{
-        'recipient_count': recipientPayloads.length,
-        'has_message': hasMessage,
-        'message_length': hasMessage ? normalizedMessage.length : 0,
-      },
+      recipientCount: recipientPayloads.length,
+      hasMessage: hasMessage,
+      messageLength: hasMessage ? normalizedMessage.length : 0,
     );
 
     final response = await _backend.sendInvites(
@@ -772,10 +761,11 @@ class InvitesRepository extends InvitesRepositoryContract
     };
 
     if (acknowledgedRecipientIds.isEmpty) {
-      InviteFlowDebugLogger.log(
+      InviteFlowDebugLogger.logCount(
         'invites.send.repository.acknowledged_none',
         traceId: traceId,
-        fields: const <String, Object?>{'acknowledged_count': 0},
+        field: 'acknowledged_count',
+        count: 0,
       );
       return;
     }
@@ -821,13 +811,10 @@ class InvitesRepository extends InvitesRepositoryContract
       ...currentByOccurrence,
       occurrenceKey: existingByRecipient.values.toList(growable: false),
     });
-    InviteFlowDebugLogger.log(
-      'invites.send.repository.state_updated',
+    InviteFlowDebugLogger.logInviteSendStateUpdated(
       traceId: traceId,
-      fields: <String, Object?>{
-        'recipient_count': recipientPayloads.length,
-        'acknowledged_count': acknowledgedRecipientIds.length,
-      },
+      recipientCount: recipientPayloads.length,
+      acknowledgedCount: acknowledgedRecipientIds.length,
     );
   }
 

@@ -80,6 +80,48 @@ void main() {
     expect(accountsRepository.fetchAccountBySlugCalls, 1);
   });
 
+  testWidgets('renders publication status in the account details card', (
+    tester,
+  ) async {
+    final accountsRepository = _FakeAccountsRepository();
+    _registerController(accountsRepository: accountsRepository);
+
+    await _pumpScreen(
+      tester,
+      TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
+    );
+
+    expect(find.text('Publicacao'), findsOneWidget);
+    expect(find.text('Rascunho'), findsOneWidget);
+  });
+
+  testWidgets('edits publication status from the account details card', (
+    tester,
+  ) async {
+    final accountsRepository = _FakeAccountsRepository();
+    _registerController(accountsRepository: accountsRepository);
+
+    await _pumpScreen(
+      tester,
+      TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
+    );
+
+    await tester.tap(find.byTooltip('Editar Publicacao'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Publicado'));
+    await tester.pumpAndSettle();
+
+    expect(
+      accountsRepository.lastUpdatedPublication?.status.value,
+      'published',
+    );
+    expect(find.text('Publicado'), findsOneWidget);
+    expect(
+      find.textContaining('Publicacao da conta atualizada para Publicado'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets(
     'reloads account detail after returning from profile edit route',
     (tester) async {
@@ -413,6 +455,7 @@ class _FakeAccountsRepository
   String? lastFetchedSlug;
   int deleteAccountCalls = 0;
   String? lastDeletedSlug;
+  TenantAdminAccountPublication? lastUpdatedPublication;
 
   @override
   Future<void> loadAccounts({
@@ -536,8 +579,10 @@ class _FakeAccountsRepository
     TenantAdminAccountsRepositoryContractPrimString? slug,
     TenantAdminDocument? document,
     TenantAdminOwnershipState? ownershipState,
+    TenantAdminAccountPublication? publication,
   }) async {
     final current = await fetchAccountBySlug(accountSlug);
+    lastUpdatedPublication = publication;
     final updated = tenantAdminAccountFromRaw(
       id: current.id,
       name: name?.value ?? current.name,
@@ -545,12 +590,18 @@ class _FakeAccountsRepository
       document: document ?? current.document,
       ownershipState: ownershipState ?? current.ownershipState,
       organizationId: current.organizationId,
+      publicationStatus:
+          publication?.status.value ?? current.publication.status.value,
     );
     _seedAccount(updated);
     return updated;
   }
 
-  void emitUpdatedAccount({required String name, required String slug}) {
+  void emitUpdatedAccount({
+    required String name,
+    required String slug,
+    String? publicationStatus,
+  }) {
     final current = _accountsById['acc-1'];
     if (current == null) {
       return;
@@ -563,6 +614,8 @@ class _FakeAccountsRepository
         document: current.document,
         ownershipState: current.ownershipState,
         organizationId: current.organizationId,
+        publicationStatus:
+            publicationStatus ?? current.publication.status.value,
       ),
     );
   }

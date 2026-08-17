@@ -194,6 +194,7 @@ class _FakeAccountsRepository
     TenantAdminAccountsRepositoryContractPrimString? slug,
     TenantAdminDocument? document,
     TenantAdminOwnershipState? ownershipState,
+    TenantAdminAccountPublication? publication,
   }) async {
     lastUpdatedOwnershipState = ownershipState;
     final account = tenantAdminAccountFromRaw(
@@ -203,6 +204,7 @@ class _FakeAccountsRepository
       document:
           document ?? tenantAdminDocumentFromRaw(type: 'cpf', number: '000'),
       ownershipState: ownershipState ?? TenantAdminOwnershipState.tenantOwned,
+      publicationStatus: publication?.status.value,
     );
     _upsertAccount(account);
     return account;

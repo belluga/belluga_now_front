@@ -325,6 +325,7 @@ class _FakeAccountsRepository
     TenantAdminAccountsRepositoryContractPrimString? slug,
     TenantAdminDocument? document,
     TenantAdminOwnershipState? ownershipState,
+    TenantAdminAccountPublication? publication,
   }) async {
     return fetchAccountBySlug(accountSlug);
   }
