@@ -227,6 +227,7 @@ class _FakeAccountsRepository
     TenantAdminAccountsRepositoryContractPrimString? slug,
     TenantAdminDocument? document,
     TenantAdminOwnershipState? ownershipState,
+    TenantAdminAccountPublication? publication,
   }) async {
     return tenantAdminAccountFromRaw(
       id: 'acc-1',
@@ -235,6 +236,7 @@ class _FakeAccountsRepository
       document:
           document ?? tenantAdminDocumentFromRaw(type: 'cpf', number: '000'),
       ownershipState: TenantAdminOwnershipState.tenantOwned,
+      publicationStatus: publication?.status.value,
     );
   }
 }

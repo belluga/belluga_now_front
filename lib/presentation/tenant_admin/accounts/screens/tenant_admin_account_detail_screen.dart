@@ -64,19 +64,20 @@ class _TenantAdminAccountDetailScreenState
     return kIsWeb && context.router.currentPath.contains('/:');
   }
 
-  void _normalizeRouteParamIfNeeded(TenantAdminAccount? account) {
+  void _normalizeRouteParamIfNeeded(TenantAdminAccount account) {
     if (_routeParamNormalized || !mounted) {
       return;
     }
     final incoming = widget.accountSlug;
-    final resolved = account?.slug;
+    final resolved = account.slug;
     final needsPathNormalization = _requiresPathNormalization();
     if (!needsPathNormalization && _isResolvedSlug(incoming)) {
       _routeParamNormalized = true;
       return;
     }
     final resolvedSlug = _isResolvedSlug(incoming) ? incoming : resolved;
-    if (!_isResolvedSlug(resolvedSlug)) {
+    final normalizedSlug = resolvedSlug.trim();
+    if (normalizedSlug.isEmpty || normalizedSlug.startsWith(':')) {
       return;
     }
     _routeParamNormalized = true;
@@ -85,7 +86,7 @@ class _TenantAdminAccountDetailScreenState
         return;
       }
       context.router.replace(
-        TenantAdminAccountDetailRoute(accountSlug: resolvedSlug!.trim()),
+        TenantAdminAccountDetailRoute(accountSlug: normalizedSlug),
       );
     });
   }
@@ -198,6 +199,66 @@ class _TenantAdminAccountDetailScreenState
     );
   }
 
+  String _publicationLabel(String status) {
+    switch (status.trim()) {
+      case 'published':
+        return 'Publicado';
+      case 'draft':
+      default:
+        return 'Rascunho';
+    }
+  }
+
+  Future<void> _editAccountPublication(TenantAdminAccount account) async {
+    final selectedStatus = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final currentStatus = account.publication.status.value;
+
+        ListTile buildOption({required String status, required String label}) {
+          return ListTile(
+            title: Text(label),
+            trailing: currentStatus == status ? const Icon(Icons.check) : null,
+            onTap: () => sheetContext.router.maybePop(status),
+          );
+        }
+
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              buildOption(status: 'draft', label: 'Rascunho'),
+              buildOption(status: 'published', label: 'Publicado'),
+            ],
+          ),
+        );
+      },
+    );
+    if (!mounted || selectedStatus == null) {
+      return;
+    }
+    if (selectedStatus == account.publication.status.value) {
+      return;
+    }
+
+    final messenger = ScaffoldMessenger.of(context);
+    final updated = await _profilesController.updateAccount(
+      accountSlug: _currentAccountSlugForRequests(),
+      publication: tenantAdminAccountPublicationFromRaw(status: selectedStatus),
+    );
+    if (!mounted || updated == null) {
+      return;
+    }
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          'Publicacao da conta atualizada para ${_publicationLabel(updated.publication.status.value)}.',
+        ),
+      ),
+    );
+  }
+
   Future<void> _confirmDeleteAccount(TenantAdminAccount account) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -247,6 +308,51 @@ class _TenantAdminAccountDetailScreenState
     return account.ownershipState == TenantAdminOwnershipState.unmanaged;
   }
 
+  Widget _buildAccountStateScaffold({
+    required VoidCallback onBack,
+    required Widget body,
+  }) {
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          tooltip: 'Voltar',
+          onPressed: onBack,
+          icon: const Icon(Icons.arrow_back),
+        ),
+        title: Text('Conta: ${_currentAccountSlugForRequests()}'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: body,
+      ),
+    );
+  }
+
+  Widget _buildMissingAccountState(VoidCallback onBack) {
+    return _buildAccountStateScaffold(
+      onBack: onBack,
+      body: Card(
+        margin: EdgeInsets.zero,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Inconsistencia de dados',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Conta nao carregada. Este estado e invalido para tenant-admin e deve ser corrigido por rotina de reparo backend.',
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _profilesController.resetAccountDetail();
@@ -265,8 +371,28 @@ class _TenantAdminAccountDetailScreenState
             return StreamValueBuilder<String?>(
               streamValue: _profilesController.accountDetailErrorStreamValue,
               builder: (context, errorMessage) {
-                return StreamValueBuilder<TenantAdminAccount?>(
+                if (isLoading) {
+                  return _buildAccountStateScaffold(
+                    onBack: backPolicy.handleBack,
+                    body: const Center(child: CircularProgressIndicator()),
+                  );
+                }
+                if (errorMessage?.isNotEmpty ?? false) {
+                  return _buildAccountStateScaffold(
+                    onBack: backPolicy.handleBack,
+                    body: TenantAdminErrorBanner(
+                      rawError: errorMessage ?? '',
+                      fallbackMessage:
+                          'Não foi possível carregar os dados da conta.',
+                      onRetry: () => _profilesController.loadAccountDetail(
+                        _currentAccountSlugForRequests(),
+                      ),
+                    ),
+                  );
+                }
+                return StreamValueBuilder<TenantAdminAccount>(
                   streamValue: _profilesController.accountStreamValue,
+                  onNullWidget: _buildMissingAccountState(backPolicy.handleBack),
                   builder: (context, account) {
                     _normalizeRouteParamIfNeeded(account);
                     return StreamValueBuilder<TenantAdminAccountProfile?>(
@@ -276,8 +402,7 @@ class _TenantAdminAccountDetailScreenState
                         final coverUrl = profile?.coverUrl;
                         final avatarUrl = profile?.avatarUrl;
                         final location = profile?.location;
-                        final accountSlugForUi =
-                            account?.slug ?? _currentAccountSlugForRequests();
+                        final accountSlugForUi = account.slug;
 
                         return Scaffold(
                           appBar: AppBar(
@@ -300,21 +425,7 @@ class _TenantAdminAccountDetailScreenState
                           ),
                           body: Padding(
                             padding: const EdgeInsets.all(16),
-                            child: isLoading
-                                ? const Center(
-                                    child: CircularProgressIndicator(),
-                                  )
-                                : (errorMessage?.isNotEmpty ?? false)
-                                ? TenantAdminErrorBanner(
-                                    rawError: errorMessage ?? '',
-                                    fallbackMessage:
-                                        'Não foi possível carregar os dados da conta.',
-                                    onRetry: () =>
-                                        _profilesController.loadAccountDetail(
-                                          _currentAccountSlugForRequests(),
-                                        ),
-                                  )
-                                : StreamValueBuilder<
+                            child: StreamValueBuilder<
                                     List<TenantAdminProfileTypeDefinition>
                                   >(
                                     streamValue: _profilesController
@@ -339,40 +450,46 @@ class _TenantAdminAccountDetailScreenState
                                                   const SizedBox(height: 12),
                                                   _buildEditableRow(
                                                     label: 'Slug',
-                                                    value: account?.slug ?? '-',
-                                                    onEdit: switch (account) {
-                                                      final value? =>
-                                                        () => _editAccountSlug(
-                                                          value,
+                                                    value: account.slug,
+                                                    onEdit: () =>
+                                                        _editAccountSlug(
+                                                          account,
                                                         ),
-                                                      null => null,
-                                                    },
                                                   ),
                                                   const SizedBox(height: 8),
                                                   _buildEditableRow(
                                                     label: 'Nome',
-                                                    value: account?.name ?? '-',
-                                                    onEdit: switch (account) {
-                                                      final value? =>
-                                                        () => _editAccountName(
-                                                          value,
+                                                    value: account.name,
+                                                    onEdit: () =>
+                                                        _editAccountName(
+                                                          account,
                                                         ),
-                                                      null => null,
-                                                    },
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  _buildEditableRow(
+                                                    label: 'Publicacao',
+                                                    value: _publicationLabel(
+                                                      account
+                                                          .publication
+                                                          .status
+                                                          .value,
+                                                    ),
+                                                    onEdit: () =>
+                                                        _editAccountPublication(
+                                                          account,
+                                                        ),
                                                   ),
                                                   const SizedBox(height: 8),
                                                   _buildRow(
                                                     'Documento',
-                                                    account?.document.number ??
-                                                        '-',
+                                                    account.document.number,
                                                   ),
                                                   const SizedBox(height: 8),
                                                   _buildRow(
                                                     'Segmentacao',
                                                     account
-                                                            ?.ownershipState
-                                                            .label ??
-                                                        '-',
+                                                        .ownershipState
+                                                        .label,
                                                   ),
                                                   if (_canDeleteAccount(
                                                     account,
@@ -382,10 +499,7 @@ class _TenantAdminAccountDetailScreenState
                                                       alignment:
                                                           Alignment.centerRight,
                                                       child: TextButton.icon(
-                                                        onPressed:
-                                                            isDeleting ||
-                                                                account
-                                                                    is! TenantAdminAccount
+                                                        onPressed: isDeleting
                                                             ? null
                                                             : () =>
                                                                   _confirmDeleteAccount(

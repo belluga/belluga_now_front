@@ -50,6 +50,7 @@ import 'package:belluga_now/infrastructure/dal/dao/invites/invites_backend_reque
 import 'package:belluga_now/infrastructure/dal/dao/push/invite_push_payload_decoder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/invites_backend/laravel_invites_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_realtime_delta_dto.dart';
+import 'package:belluga_now/infrastructure/observability/invite_flow_debug_logger.dart';
 import 'package:belluga_now/infrastructure/repositories/push/push_payload_upsert_mixin.dart';
 import 'package:belluga_now/infrastructure/services/invites_backend_contract.dart';
 import 'package:belluga_now/domain/repositories/friends_repository_contract.dart';
@@ -527,14 +528,47 @@ class InvitesRepository extends InvitesRepositoryContract
   Future<List<InviteContactMatch>> importContacts(
     InviteContacts contacts,
   ) async {
+    final traceId = InviteFlowDebugLogger.nextTraceId(
+      'contacts.import.repository',
+    );
     final snapshot = await _resolveFreshImportedContactMatchSnapshot(contacts);
     if (snapshot == null) {
+      InviteFlowDebugLogger.logContactsImportSkipped(
+        traceId: traceId,
+        inputContactCount: contacts.items.length,
+        forceImport: contacts.forceImport,
+        regionCodePresent: contacts.regionCode?.trim().isNotEmpty == true,
+      );
       return const <InviteContactMatch>[];
     }
 
+    InviteFlowDebugLogger.logContactsImportSnapshot(
+      traceId: traceId,
+      inputContactCount: contacts.items.length,
+      forceImport: contacts.forceImport,
+      regionCodePresent: contacts.regionCode?.trim().isNotEmpty == true,
+      importItemCount: snapshot.importItems.length,
+      cacheHit: snapshot.isFresh,
+      cachedMatchCount: snapshot.matches.length,
+    );
+
     if (!contacts.forceImport && snapshot.isFresh) {
-      importedContactMatchesStreamValue.addValue(snapshot.matches);
-      return snapshot.matches;
+      if (snapshot.matches.isNotEmpty) {
+        InviteFlowDebugLogger.logCount(
+          'contacts.import.repository.cache_used',
+          traceId: traceId,
+          field: 'cached_match_count',
+          count: snapshot.matches.length,
+        );
+        importedContactMatchesStreamValue.addValue(snapshot.matches);
+        return snapshot.matches;
+      }
+
+      InviteFlowDebugLogger.logReason(
+        'contacts.import.repository.cache_bypassed',
+        traceId: traceId,
+        reason: 'empty_cached_matches',
+      );
     }
 
     final response = await _backend.importContacts(
@@ -563,6 +597,12 @@ class InvitesRepository extends InvitesRepositoryContract
     );
 
     final matches = matchesByProfileId.values.toList(growable: false);
+    InviteFlowDebugLogger.logCount(
+      'contacts.import.repository.decoded',
+      traceId: traceId,
+      field: 'decoded_match_count',
+      count: matches.length,
+    );
     importedContactMatchesStreamValue.addValue(matches);
     return matches;
   }
@@ -654,7 +694,15 @@ class InvitesRepository extends InvitesRepositoryContract
     required InvitesRepositoryContractPrimString occurrenceId,
     InvitesRepositoryContractPrimString? message,
   }) async {
+    final traceId = InviteFlowDebugLogger.nextTraceId(
+      'invites.send.repository',
+    );
     if (recipients.isEmpty) {
+      InviteFlowDebugLogger.logReason(
+        'invites.send.repository.skipped',
+        traceId: traceId,
+        reason: 'no_recipients',
+      );
       return;
     }
 
@@ -677,8 +725,24 @@ class InvitesRepository extends InvitesRepositoryContract
         )
         .toList(growable: false);
     if (recipientPayloads.isEmpty) {
+      InviteFlowDebugLogger.logReasonWithCount(
+        'invites.send.repository.skipped',
+        traceId: traceId,
+        reason: 'no_recipient_account_profiles',
+        countField: 'recipient_count',
+        count: recipients.items.length,
+      );
       return;
     }
+
+    final hasMessage =
+        normalizedMessage != null && normalizedMessage.isNotEmpty;
+    InviteFlowDebugLogger.logInviteSendRequest(
+      traceId: traceId,
+      recipientCount: recipientPayloads.length,
+      hasMessage: hasMessage,
+      messageLength: hasMessage ? normalizedMessage.length : 0,
+    );
 
     final response = await _backend.sendInvites(
       InviteSendRequest(
@@ -697,6 +761,12 @@ class InvitesRepository extends InvitesRepositoryContract
     };
 
     if (acknowledgedRecipientIds.isEmpty) {
+      InviteFlowDebugLogger.logCount(
+        'invites.send.repository.acknowledged_none',
+        traceId: traceId,
+        field: 'acknowledged_count',
+        count: 0,
+      );
       return;
     }
 
@@ -741,6 +811,11 @@ class InvitesRepository extends InvitesRepositoryContract
       ...currentByOccurrence,
       occurrenceKey: existingByRecipient.values.toList(growable: false),
     });
+    InviteFlowDebugLogger.logInviteSendStateUpdated(
+      traceId: traceId,
+      recipientCount: recipientPayloads.length,
+      acknowledgedCount: acknowledgedRecipientIds.length,
+    );
   }
 
   @override

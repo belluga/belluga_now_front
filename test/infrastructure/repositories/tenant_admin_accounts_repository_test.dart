@@ -6,6 +6,7 @@ import 'package:belluga_now/domain/repositories/landlord_auth_repository_contrac
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
@@ -519,6 +520,32 @@ void main() {
       expect(formData.files.any((entry) => entry.key == 'cover'), isTrue);
     },
   );
+
+  test('updateAccount sends publication status and maps response', () async {
+    final adapter = _AccountsRoutingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminAccountsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final updated = await repository.updateAccount(
+      accountSlug: _repoText('acc-1'),
+      publication: tenantAdminAccountPublicationFromRaw(status: 'published'),
+    );
+
+    expect(updated.publication.status.value, 'published');
+    expect(adapter.requests.last.path, contains('/v1/accounts/acc-1'));
+    expect(
+      adapter.requests.last.data,
+      isA<Map<String, dynamic>>().having(
+        (payload) => payload['publication'],
+        'publication',
+        <String, dynamic>{'status': 'published'},
+      ),
+    );
+  });
 }
 
 class _StubAuthRepo implements LandlordAuthRepositoryContract {
@@ -598,6 +625,25 @@ class _AccountsRoutingAdapter implements HttpClientAdapter {
     final page = (options.queryParameters['page'] as int?) ?? 1;
     final ownershipState =
         options.queryParameters['ownership_state'] as String?;
+
+    if (options.method == 'PATCH' && options.path.contains('/v1/accounts/')) {
+      final payload =
+          (options.data as Map?)?.cast<String, dynamic>() ??
+          const <String, dynamic>{};
+      final publication = payload['publication'];
+      final publicationStatus = publication is Map
+          ? publication['status']?.toString()
+          : null;
+      final slug = options.path.split('/').last;
+      return _jsonResponse({
+        'data': _accountJson(
+          id: '1',
+          slug: slug,
+          name: payload['name']?.toString() ?? 'Conta 1',
+          publicationStatus: publicationStatus ?? 'draft',
+        ),
+      });
+    }
 
     if (options.path.endsWith('/v1/accounts') &&
         ownershipState == 'unmanaged' &&
@@ -681,15 +727,18 @@ class _AccountsRoutingAdapter implements HttpClientAdapter {
   Map<String, dynamic> _accountJson({
     required String id,
     required String slug,
+    String? name,
     String? ownershipState,
+    String? publicationStatus,
     String? avatarUrl,
   }) {
     return {
       'id': id,
-      'name': 'Conta $id',
+      'name': name ?? 'Conta $id',
       'slug': slug,
       'avatar_url': avatarUrl ?? 'https://cdn.test/avatars/$slug.png',
       'document': {'type': 'cpf', 'number': '000$id'},
+      'publication': <String, dynamic>{'status': publicationStatus ?? 'draft'},
       if (includeOwnershipState)
         'ownership_state': ownershipState ?? ownershipStateValue,
     };

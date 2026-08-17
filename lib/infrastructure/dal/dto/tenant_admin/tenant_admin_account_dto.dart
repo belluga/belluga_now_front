@@ -11,6 +11,7 @@ class TenantAdminAccountDTO {
     required this.documentNumber,
     this.organizationId,
     this.ownershipState,
+    this.publicationStatus,
     this.avatarUrl,
   });
 
@@ -21,15 +22,21 @@ class TenantAdminAccountDTO {
   final String documentNumber;
   final String? organizationId;
   final String? ownershipState;
+  final String? publicationStatus;
   final String? avatarUrl;
 
   factory TenantAdminAccountDTO.fromJson(Map<String, dynamic> json) {
     final document = json['document'];
     String? documentType;
     String? documentNumber;
+    final publication = json['publication'];
+    String? publicationStatus;
     if (document is Map<String, dynamic>) {
       documentType = document['type']?.toString();
       documentNumber = document['number']?.toString();
+    }
+    if (publication is Map) {
+      publicationStatus = publication['status']?.toString();
     }
     return TenantAdminAccountDTO(
       id: json['id']?.toString() ?? '',
@@ -39,6 +46,7 @@ class TenantAdminAccountDTO {
       documentNumber: documentNumber ?? '',
       organizationId: json['organization_id']?.toString(),
       ownershipState: json['ownership_state']?.toString(),
+      publicationStatus: publicationStatus,
       avatarUrl: json['avatar_url']?.toString(),
     );
   }
@@ -47,8 +55,8 @@ class TenantAdminAccountDTO {
     final ownershipStateRaw = ownershipState?.trim();
     final resolvedOwnershipState =
         (ownershipStateRaw == null || ownershipStateRaw.isEmpty)
-            ? TenantAdminOwnershipState.unmanaged
-            : tenantAdminOwnershipStateFromRaw(ownershipStateRaw);
+        ? TenantAdminOwnershipState.unmanaged
+        : tenantAdminOwnershipStateFromRaw(ownershipStateRaw);
     return tenantAdminAccountFromRaw(
       id: id,
       name: name,
@@ -59,6 +67,7 @@ class TenantAdminAccountDTO {
       ),
       organizationId: organizationId,
       ownershipState: resolvedOwnershipState,
+      publicationStatus: publicationStatus,
       avatarUrl: avatarUrl,
     );
   }
