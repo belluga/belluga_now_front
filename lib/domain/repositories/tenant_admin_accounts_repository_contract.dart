@@ -247,6 +247,7 @@ abstract class TenantAdminAccountsRepositoryContract {
     TenantAdminAccountsRepositoryContractPrimString? slug,
     TenantAdminDocument? document,
     TenantAdminOwnershipState? ownershipState,
+    TenantAdminAccountPublication? publication,
   });
   Future<void> deleteAccount(
       TenantAdminAccountsRepositoryContractPrimString accountSlug);

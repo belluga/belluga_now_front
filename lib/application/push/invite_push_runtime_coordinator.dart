@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/push/invite_accepted_push_payload.dart';
 import 'package:belluga_now/infrastructure/dal/dao/push/invite_push_payload_decoder.dart';
+import 'package:belluga_now/infrastructure/observability/invite_flow_debug_logger.dart';
 import 'package:belluga_now/infrastructure/repositories/push/push_payload_upsert_mixin.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -32,6 +33,10 @@ class InvitePushRuntimeCoordinator {
       return;
     }
 
+    InviteFlowDebugLogger.log(
+      'invite_push.message.received',
+      fields: _debugPayloadSummary(payload, message: message),
+    );
     _applyInvitePayload(payload);
     await _refreshInviteStateIfNeeded(payload);
   }
@@ -44,11 +49,23 @@ class InvitePushRuntimeCoordinator {
 
     final tapKey = _resolveTapKey(message: message, payload: payload);
     if (tapKey != null && !_claimTapKey(tapKey)) {
+      InviteFlowDebugLogger.log(
+        'invite_push.tap.duplicate_suppressed',
+        fields: _debugPayloadSummary(payload, message: message),
+      );
       return null;
     }
 
     _applyInvitePayload(payload);
-    return _resolveNavigationPath(payload);
+    final path = _resolveNavigationPath(payload);
+    InviteFlowDebugLogger.log(
+      'invite_push.tap.path_prepared',
+      fields: <String, Object?>{
+        ..._debugPayloadSummary(payload, message: message),
+        'path_target': _classifyPath(path),
+      },
+    );
+    return path;
   }
 
   Future<void> refreshNotificationTapData(RemoteMessage message) async {
@@ -92,12 +109,32 @@ class InvitePushRuntimeCoordinator {
     }
 
     if (_payloadDecoder.decodeInviteDtos(payload).isNotEmpty) {
+      InviteFlowDebugLogger.log(
+        'invite_push.pending_refresh.skipped_embedded_payload',
+        fields: <String, Object?>{
+          ..._debugPayloadSummary(payload),
+          'embedded_invite_count': _payloadDecoder
+              .decodeInviteDtos(payload)
+              .length,
+        },
+      );
       return;
     }
 
     try {
       await invitesRepository.refreshPendingInvites();
+      InviteFlowDebugLogger.log(
+        'invite_push.pending_refresh.completed',
+        fields: _debugPayloadSummary(payload),
+      );
     } catch (error) {
+      InviteFlowDebugLogger.log(
+        'invite_push.pending_refresh.failed',
+        fields: <String, Object?>{
+          ..._debugPayloadSummary(payload),
+          'error_type': error.runtimeType.toString(),
+        },
+      );
       debugPrint('[Push] Invite refresh failed after receipt: $error');
     }
   }
@@ -158,7 +195,30 @@ class InvitePushRuntimeCoordinator {
                 isRequired: true,
               ),
       );
+      InviteFlowDebugLogger.log(
+        'invite_push.accepted_refresh.completed',
+        fields: <String, Object?>{
+          'has_event_id':
+              payload.eventId != null && payload.eventId!.isNotEmpty,
+          'has_occurrence_id': payload.occurrenceId.isNotEmpty,
+          'has_account_profile_id':
+              payload.accountProfileId != null &&
+              payload.accountProfileId!.isNotEmpty,
+        },
+      );
     } catch (error) {
+      InviteFlowDebugLogger.log(
+        'invite_push.accepted_refresh.failed',
+        fields: <String, Object?>{
+          'has_event_id':
+              payload.eventId != null && payload.eventId!.isNotEmpty,
+          'has_occurrence_id': payload.occurrenceId.isNotEmpty,
+          'has_account_profile_id':
+              payload.accountProfileId != null &&
+              payload.accountProfileId!.isNotEmpty,
+          'error_type': error.runtimeType.toString(),
+        },
+      );
       debugPrint('[Push] Invite accepted status refresh failed: $error');
     }
   }
@@ -267,5 +327,41 @@ class InvitePushRuntimeCoordinator {
   String? _normalizeString(Object? value) {
     final normalized = value?.toString().trim() ?? '';
     return normalized.isEmpty ? null : normalized;
+  }
+
+  Map<String, Object?> _debugPayloadSummary(
+    Map<String, dynamic> payload, {
+    RemoteMessage? message,
+  }) {
+    final payloadKeys =
+        payload.keys.map((key) => key.toString()).toList(growable: false)
+          ..sort();
+    return <String, Object?>{
+      'push_type': _pushType(payload) ?? 'unknown',
+      'key_count': payloadKeys.length,
+      'payload_keys': payloadKeys,
+      'has_invite_id': _normalizeString(payload['invite_id']) != null,
+      'has_event_id': _normalizeString(payload['event_id']) != null,
+      'has_occurrence_id': _normalizeString(payload['occurrence_id']) != null,
+      'has_push_message_id':
+          _normalizeString(payload['push_message_id']) != null,
+      'message_id_present': message?.messageId?.trim().isNotEmpty == true,
+    };
+  }
+
+  String _classifyPath(String? path) {
+    if (path == null || path.isEmpty) {
+      return 'none';
+    }
+    if (path.startsWith('/convites')) {
+      return 'invites';
+    }
+    if (path.startsWith('/agenda/evento/')) {
+      return 'event_detail';
+    }
+    if (path == '/') {
+      return 'root';
+    }
+    return 'other';
   }
 }
