@@ -220,7 +220,7 @@ class _TenantAdminAccountDetailScreenState
           return ListTile(
             title: Text(label),
             trailing: currentStatus == status ? const Icon(Icons.check) : null,
-            onTap: () => Navigator.of(sheetContext).pop(status),
+            onTap: () => sheetContext.router.maybePop(status),
           );
         }
 
