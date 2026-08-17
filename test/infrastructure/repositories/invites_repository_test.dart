@@ -495,7 +495,7 @@ void main() {
   );
 
   test(
-    'importContacts skips repeated unchanged hash import while cache is fresh',
+    'importContacts reimports repeated unchanged hash import when cached matches are empty',
     () async {
       final importedAt = DateTime.utc(2026, 5);
       var now = importedAt;
@@ -524,8 +524,8 @@ void main() {
       now = importedAt.add(const Duration(minutes: 10));
       await repository.importContacts(contacts);
 
-      expect(backend.importContactPayloads, hasLength(1));
-      expect(cache.writeCount, 1);
+      expect(backend.importContactPayloads, hasLength(2));
+      expect(cache.writeCount, 2);
     },
   );
 

@@ -32,6 +32,7 @@ import 'package:belluga_now/infrastructure/services/push/push_answer_resolver.da
 import 'package:belluga_now/infrastructure/services/push/push_action_dispatcher.dart';
 import 'package:belluga_now/infrastructure/services/push/invite_push_tap_source.dart';
 import 'package:belluga_now/infrastructure/services/push/invite_aware_push_message_presenter.dart';
+import 'package:belluga_now/infrastructure/observability/invite_flow_debug_logger.dart';
 import 'package:belluga_now/infrastructure/services/push/push_telemetry_forwarder.dart';
 import 'package:belluga_now/infrastructure/services/telemetry/telemetry_route_observer.dart';
 import 'package:belluga_now/presentation/shared/push/controllers/push_options_resolver.dart';
@@ -160,9 +161,17 @@ abstract class ApplicationContract extends ModularAppContract {
   @visibleForTesting
   Future<void> handlePushPresentationReady() async {
     if (_pushPresentationReady) {
+      InviteFlowDebugLogger.log(
+        'push.presentation.ready.duplicate',
+        fields: const <String, Object?>{'presentation_ready': true},
+      );
       return;
     }
     _pushPresentationReady = true;
+    InviteFlowDebugLogger.log(
+      'push.presentation.ready',
+      fields: const <String, Object?>{'presentation_ready': true},
+    );
     await _maybeInitializeDeferredIosPush();
   }
 
@@ -198,20 +207,49 @@ abstract class ApplicationContract extends ModularAppContract {
       'DISABLE_PUSH',
       defaultValue: false,
     );
-    if (disablePush) {
-      debugPrint('[Push] Disabled via DISABLE_PUSH dart-define.');
-      return;
-    }
     final isWeb = isWebOverride ?? kIsWeb;
     final resolvedPlatform =
         platformOverride ?? BellugaConstants.settings.platform;
+    final traceId = InviteFlowDebugLogger.nextTraceId('push.bootstrap');
+    InviteFlowDebugLogger.log(
+      'push.bootstrap.start',
+      traceId: traceId,
+      fields: <String, Object?>{
+        'platform': resolvedPlatform,
+        'is_web': isWeb,
+        'push_disabled': disablePush,
+        'presentation_ready': _pushPresentationReady,
+      },
+    );
+    if (disablePush) {
+      InviteFlowDebugLogger.log(
+        'push.bootstrap.skipped',
+        traceId: traceId,
+        fields: const <String, Object?>{'reason': 'disabled'},
+      );
+      debugPrint('[Push] Disabled via DISABLE_PUSH dart-define.');
+      return;
+    }
     if (isWeb) {
+      InviteFlowDebugLogger.log(
+        'push.bootstrap.skipped',
+        traceId: traceId,
+        fields: const <String, Object?>{'reason': 'web'},
+      );
       debugPrint(
         '[Push] Web registration skipped; Firebase web config/VAPID not configured.',
       );
       return;
     }
     if (!_canUseFirebaseMessagingRuntime(resolvedPlatform)) {
+      InviteFlowDebugLogger.log(
+        'push.bootstrap.skipped',
+        traceId: traceId,
+        fields: <String, Object?>{
+          'reason': 'firebase_runtime_unavailable',
+          'platform': resolvedPlatform,
+        },
+      );
       return;
     }
     final authRepository =
@@ -227,6 +265,15 @@ abstract class ApplicationContract extends ModularAppContract {
         isWeb: isWeb,
         tapSource: invitePushTapSource,
         coordinator: invitePushRuntimeCoordinator,
+        debugTraceId: traceId,
+      );
+      InviteFlowDebugLogger.log(
+        'push.bootstrap.deferred_ios',
+        traceId: traceId,
+        fields: <String, Object?>{
+          'platform': resolvedPlatform,
+          'is_authorized': authRepository.isAuthorized,
+        },
       );
       await _bindDeferredIosPushInitialization(
         authRepository: authRepository,
@@ -238,6 +285,7 @@ abstract class ApplicationContract extends ModularAppContract {
           invitePushTapSourceOverride: invitePushTapSource,
           invitePushRuntimeCoordinatorOverride: invitePushRuntimeCoordinator,
           initializeInviteTapHandling: false,
+          debugTraceId: traceId,
         ),
       );
       return;
@@ -249,6 +297,7 @@ abstract class ApplicationContract extends ModularAppContract {
       authRepositoryOverride: authRepository,
       invitePushTapSourceOverride: invitePushTapSource,
       invitePushRuntimeCoordinatorOverride: invitePushRuntimeCoordinator,
+      debugTraceId: traceId,
     );
   }
 
@@ -300,8 +349,14 @@ abstract class ApplicationContract extends ModularAppContract {
     InvitePushTapSource? invitePushTapSourceOverride,
     InvitePushRuntimeCoordinator? invitePushRuntimeCoordinatorOverride,
     bool initializeInviteTapHandling = true,
+    String? debugTraceId,
   }) async {
     if (_pushRepository != null) {
+      InviteFlowDebugLogger.log(
+        'push.bootstrap.repository_reused',
+        traceId: debugTraceId,
+        fields: const <String, Object?>{'repository_present': true},
+      );
       return true;
     }
     const disablePush = bool.fromEnvironment(
@@ -309,11 +364,21 @@ abstract class ApplicationContract extends ModularAppContract {
       defaultValue: false,
     );
     if (disablePush) {
+      InviteFlowDebugLogger.log(
+        'push.bootstrap.skipped',
+        traceId: debugTraceId,
+        fields: const <String, Object?>{'reason': 'disabled_internal'},
+      );
       debugPrint('[Push] Disabled via DISABLE_PUSH dart-define.');
       return false;
     }
     final isWeb = isWebOverride ?? kIsWeb;
     if (isWeb) {
+      InviteFlowDebugLogger.log(
+        'push.bootstrap.skipped',
+        traceId: debugTraceId,
+        fields: const <String, Object?>{'reason': 'web_internal'},
+      );
       debugPrint(
         '[Push] Web registration skipped; Firebase web config/VAPID not configured.',
       );
@@ -322,6 +387,14 @@ abstract class ApplicationContract extends ModularAppContract {
     final resolvedPlatform =
         platformOverride ?? BellugaConstants.settings.platform;
     if (!_canUseFirebaseMessagingRuntime(resolvedPlatform)) {
+      InviteFlowDebugLogger.log(
+        'push.bootstrap.skipped',
+        traceId: debugTraceId,
+        fields: <String, Object?>{
+          'reason': 'firebase_runtime_unavailable_internal',
+          'platform': resolvedPlatform,
+        },
+      );
       return false;
     }
     final authRepository =
@@ -433,11 +506,20 @@ abstract class ApplicationContract extends ModularAppContract {
             invitePushTapSourceOverride ??
             (isWeb ? kNoopInvitePushTapSource : kFirebaseInvitePushTapSource),
         coordinator: invitePushRuntimeCoordinator,
+        debugTraceId: debugTraceId,
       );
     }
     try {
       await repository.init();
     } catch (error, stackTrace) {
+      InviteFlowDebugLogger.log(
+        'push.bootstrap.init_failed',
+        traceId: debugTraceId,
+        fields: <String, Object?>{
+          'platform': resolvedPlatform,
+          'error_type': error.runtimeType.toString(),
+        },
+      );
       await SentryErrorReporter.captureRecoverable(
         origin: 'application.push.init',
         error: error,
@@ -447,6 +529,14 @@ abstract class ApplicationContract extends ModularAppContract {
       return false;
     }
     _pushRepository = repository;
+    InviteFlowDebugLogger.log(
+      'push.bootstrap.initialized',
+      traceId: debugTraceId,
+      fields: <String, Object?>{
+        'platform': resolvedPlatform,
+        'invite_tap_handling_initialized': initializeInviteTapHandling,
+      },
+    );
     _listenForInvitePushUpdates(repository, invitePushRuntimeCoordinator);
     return true;
   }
@@ -507,6 +597,7 @@ abstract class ApplicationContract extends ModularAppContract {
     required bool isWeb,
     required InvitePushTapSource tapSource,
     required InvitePushRuntimeCoordinator coordinator,
+    String? debugTraceId,
   }) async {
     await _pushTapSubscription?.cancel();
     _pushTapSubscription = null;
@@ -517,6 +608,11 @@ abstract class ApplicationContract extends ModularAppContract {
 
     final initialMessage = await tapSource.getInitialMessage();
     if (initialMessage != null) {
+      InviteFlowDebugLogger.log(
+        'push.tap.initial_message_detected',
+        traceId: debugTraceId,
+        fields: _pushDebugSummary(initialMessage),
+      );
       final initialPath = coordinator.prepareNotificationTapPath(
         initialMessage,
       );
@@ -527,6 +623,11 @@ abstract class ApplicationContract extends ModularAppContract {
     }
 
     _pushTapSubscription = tapSource.onMessageOpenedApp.listen((message) {
+      InviteFlowDebugLogger.log(
+        'push.tap.opened_app_message',
+        traceId: debugTraceId,
+        fields: _pushDebugSummary(message),
+      );
       unawaited(coordinator.handleNotificationTap(message));
     });
   }
@@ -568,13 +669,17 @@ abstract class ApplicationContract extends ModularAppContract {
     _pushMessageSubscription?.cancel();
     _pushMessageSubscription = repository.messageStream.listen((message) async {
       if (message.data.isEmpty) {
+        InviteFlowDebugLogger.log(
+          'push.message.empty_payload',
+          fields: <String, Object?>{
+            'message_id_present': message.messageId?.trim().isNotEmpty == true,
+          },
+        );
         return;
       }
-      final dataKeys = message.data.keys.map((key) => key.toString()).toList()
-        ..sort();
-      debugPrint(
-        '[Push] Invite payload received; '
-        'message_id=${message.messageId ?? ''} keys=${dataKeys.join(',')}',
+      InviteFlowDebugLogger.log(
+        'push.message.received',
+        fields: _pushDebugSummary(message),
       );
       await coordinator.handleIncomingMessage(message);
     });
@@ -704,6 +809,39 @@ abstract class ApplicationContract extends ModularAppContract {
     }
 
     return settings.androidBootstrapAppId ?? settings.iosBootstrapAppId;
+  }
+
+  Map<String, Object?> _pushDebugSummary(RemoteMessage message) {
+    final payloadKeys =
+        message.data.keys.map((key) => key.toString()).toList(growable: false)
+          ..sort();
+    return <String, Object?>{
+      'push_type': _resolvePushType(message.data),
+      'key_count': payloadKeys.length,
+      'payload_keys': payloadKeys,
+      'has_invite_id': _payloadHasValue(message.data, 'invite_id'),
+      'has_event_id': _payloadHasValue(message.data, 'event_id'),
+      'has_occurrence_id': _payloadHasValue(message.data, 'occurrence_id'),
+      'has_push_message_id': _payloadHasValue(message.data, 'push_message_id'),
+      'message_id_present': message.messageId?.trim().isNotEmpty == true,
+    };
+  }
+
+  String _resolvePushType(Map<String, dynamic> data) {
+    final pushType = data['push_type']?.toString().trim();
+    if (pushType != null && pushType.isNotEmpty) {
+      return pushType;
+    }
+    final eventType = data['event']?.toString().trim();
+    if (eventType != null && eventType.isNotEmpty) {
+      return eventType;
+    }
+    return 'unknown';
+  }
+
+  bool _payloadHasValue(Map<String, dynamic> data, String key) {
+    final value = data[key]?.toString().trim() ?? '';
+    return value.isNotEmpty;
   }
 
   ThemeData getThemeData() => GetIt.I
