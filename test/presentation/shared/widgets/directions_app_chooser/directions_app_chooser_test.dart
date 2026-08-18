@@ -20,6 +20,7 @@ void main() {
         availableMapsLoader: () async => const <SupportedMap>[
           SupportedMap(map: MapApp.google, isInstalled: true),
           SupportedMap(map: MapApp.waze, isInstalled: true),
+          SupportedMap(map: MapApp.apple, isInstalled: false),
         ],
         canLaunchUrl: (_) async => true,
         launchUrl: (_, _) async => true,
@@ -45,6 +46,7 @@ void main() {
           'Abrir no navegador',
         ]),
       );
+      expect(labels, isNot(contains('Apple Maps')));
     },
   );
 

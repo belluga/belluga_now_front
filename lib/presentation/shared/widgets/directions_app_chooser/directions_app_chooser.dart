@@ -118,7 +118,7 @@ class DirectionsAppChooser implements DirectionsAppChooserContract {
 
       try {
         final maps = await _availableMapsLoader();
-        for (final map in maps) {
+        for (final map in maps.where((candidate) => candidate.isInstalled)) {
           choices.add(
             DirectionsAppChoice(
               id: 'map:${map.map.id}',

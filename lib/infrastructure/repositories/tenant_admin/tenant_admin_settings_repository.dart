@@ -660,7 +660,7 @@ class TenantAdminSettingsRepository
           'Failed to update branding settings [status=${response.statusCode}]',
         );
       }
-      return fetchBrandingSettings();
+      return await fetchBrandingSettings();
     } on DioException catch (error) {
       throw _wrapError(error, 'update branding settings');
     }
