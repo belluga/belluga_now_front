@@ -990,14 +990,10 @@ class EventDTO {
         final modalUrl = normalizeTenantPublicMediaUrl(
           _asNullableString(item['modal_url']),
         );
-        final resolvedImageUrl = imageUrl ?? cardUrl ?? thumbUrl ?? modalUrl;
-        final resolvedThumbUrl = thumbUrl ?? cardUrl ?? imageUrl ?? modalUrl;
-        final resolvedCardUrl = cardUrl ?? thumbUrl ?? imageUrl ?? modalUrl;
-        final resolvedModalUrl = modalUrl ?? imageUrl ?? cardUrl ?? thumbUrl;
-        if (resolvedImageUrl == null ||
-            resolvedThumbUrl == null ||
-            resolvedCardUrl == null ||
-            resolvedModalUrl == null) {
+        if (imageUrl == null &&
+            thumbUrl == null &&
+            cardUrl == null &&
+            modalUrl == null) {
           continue;
         }
 
@@ -1013,10 +1009,10 @@ class EventDTO {
             orderValue: AccountProfileNestedGroupOrderValue(
               _asInt(item['order']),
             ),
-            imageUrlValue: _requiredThumbUriValue(resolvedImageUrl),
-            thumbUrlValue: _requiredThumbUriValue(resolvedThumbUrl),
-            cardUrlValue: _requiredThumbUriValue(resolvedCardUrl),
-            modalUrlValue: _requiredThumbUriValue(resolvedModalUrl),
+            imageUrlValue: _optionalThumbUriValue(imageUrl),
+            thumbUrlValue: _optionalThumbUriValue(thumbUrl),
+            cardUrlValue: _optionalThumbUriValue(cardUrl),
+            modalUrlValue: _optionalThumbUriValue(modalUrl),
           ),
         );
       }
@@ -1043,9 +1039,12 @@ class EventDTO {
     return List<AccountProfileGalleryGroup>.unmodifiable(groups);
   }
 
-  static ThumbUriValue _requiredThumbUriValue(String url) {
-    return ThumbUriValue(defaultValue: Uri.parse(url), isRequired: true)
-      ..parse(url);
+  static ThumbUriValue _optionalThumbUriValue(String? url) {
+    final value = ThumbUriValue(defaultValue: Uri());
+    if (url != null && url.isNotEmpty) {
+      value.parse(url);
+    }
+    return value;
   }
 
   Map<String, dynamic> toJson() {
