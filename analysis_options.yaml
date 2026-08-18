@@ -9,6 +9,13 @@ analyzer:
     - lib/application/configurations/belluga_nattive_icons.dart
     - "**/*.mocks.dart"
     - "**/test_fixtures/**"
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**
 
 linter:
   rules:

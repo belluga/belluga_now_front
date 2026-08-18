@@ -227,6 +227,11 @@ void main() {
                 'card_url': 'https://tenant.test/gallery/card.jpg',
                 'modal_url': 'https://tenant.test/gallery/modal.jpg',
               },
+              {
+                'item_id': 'gallery-2',
+                'thumb_url': 'https://tenant.test/gallery/thumb-2.jpg',
+                'modal_url': 'https://tenant.test/gallery/modal-2.jpg',
+              },
             ],
           },
         ],
@@ -244,9 +249,40 @@ void main() {
       ['Beach Club'],
     );
     expect(venue.galleryGroups, hasLength(1));
+    expect(venue.galleryGroups.first.items, hasLength(2));
     expect(
-      venue.galleryGroups.first.items.single.previewUrl,
-      contains('thumb'),
+      venue.galleryGroups.first.items.first.imageUrl,
+      'https://tenant.test/gallery/image.jpg',
+    );
+    expect(
+      venue.galleryGroups.first.items.first.thumbUrl,
+      'https://tenant.test/gallery/thumb.jpg',
+    );
+    expect(
+      venue.galleryGroups.first.items.first.cardUrl,
+      'https://tenant.test/gallery/card.jpg',
+    );
+    expect(
+      venue.galleryGroups.first.items.first.modalUrl,
+      'https://tenant.test/gallery/modal.jpg',
+    );
+    expect(
+      venue.galleryGroups.first.items.first.previewUrl,
+      'https://tenant.test/gallery/image.jpg',
+    );
+    expect(venue.galleryGroups.first.items.last.imageUrl, '');
+    expect(
+      venue.galleryGroups.first.items.last.thumbUrl,
+      'https://tenant.test/gallery/thumb-2.jpg',
+    );
+    expect(venue.galleryGroups.first.items.last.cardUrl, '');
+    expect(
+      venue.galleryGroups.first.items.last.modalUrl,
+      'https://tenant.test/gallery/modal-2.jpg',
+    );
+    expect(
+      venue.galleryGroups.first.items.last.previewUrl,
+      'https://tenant.test/gallery/modal-2.jpg',
     );
     expect(venue.supportsPublicNavigation, isFalse);
     expect(venue.normalizedProfileType, 'venue');
