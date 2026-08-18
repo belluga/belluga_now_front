@@ -17,7 +17,7 @@ class DirectionsInfo {
   final CityCoordinate coordinate;
   final Coords destination;
   final DirectionsDestinationNameValue destinationNameValue;
-  final List<AvailableMap> availableMaps;
+  final List<SupportedMap> availableMaps;
   final List<RideShareOption> rideShareOptions;
   final DirectionsFallbackUrlValue fallbackUrlValue;
 

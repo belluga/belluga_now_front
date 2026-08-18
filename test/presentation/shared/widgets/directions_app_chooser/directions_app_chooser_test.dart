@@ -17,17 +17,9 @@ void main() {
       final chooser = DirectionsAppChooser(
         isWebProvider: () => false,
         platformProvider: () => TargetPlatform.android,
-        availableMapsLoader: () async => <AvailableMap>[
-          AvailableMap(
-            mapName: 'Google Maps',
-            mapType: MapType.google,
-            icon: 'packages/map_launcher/assets/icons/google.svg',
-          ),
-          AvailableMap(
-            mapName: 'Waze',
-            mapType: MapType.waze,
-            icon: 'packages/map_launcher/assets/icons/waze.svg',
-          ),
+        availableMapsLoader: () async => const <SupportedMap>[
+          SupportedMap(map: MapApp.google, isInstalled: true),
+          SupportedMap(map: MapApp.waze, isInstalled: true),
         ],
         canLaunchUrl: (_) async => true,
         launchUrl: (_, _) async => true,
@@ -62,7 +54,7 @@ void main() {
       final chooser = DirectionsAppChooser(
         isWebProvider: () => true,
         platformProvider: () => TargetPlatform.iOS,
-        availableMapsLoader: () async => const <AvailableMap>[],
+        availableMapsLoader: () async => const <SupportedMap>[],
         canLaunchUrl: (_) async => true,
         launchUrl: (_, _) async => true,
       );
@@ -92,12 +84,8 @@ void main() {
       final chooser = DirectionsAppChooser(
         isWebProvider: () => false,
         platformProvider: () => TargetPlatform.android,
-        availableMapsLoader: () async => <AvailableMap>[
-          AvailableMap(
-            mapName: 'Google Maps',
-            mapType: MapType.google,
-            icon: 'packages/map_launcher/assets/icons/google.svg',
-          ),
+        availableMapsLoader: () async => const <SupportedMap>[
+          SupportedMap(map: MapApp.google, isInstalled: true),
         ],
         canLaunchUrl: (_) async => true,
         launchUrl: (_, _) async => true,
@@ -122,7 +110,7 @@ void main() {
     final chooser = DirectionsAppChooser(
       isWebProvider: () => true,
       platformProvider: () => TargetPlatform.android,
-      availableMapsLoader: () async => const <AvailableMap>[],
+      availableMapsLoader: () async => const <SupportedMap>[],
       canLaunchUrl: (_) async => true,
       launchUrl: (uri, _) async {
         launchedUris.add(uri);
@@ -163,7 +151,7 @@ void main() {
     final chooser = DirectionsAppChooser(
       isWebProvider: () => true,
       platformProvider: () => TargetPlatform.android,
-      availableMapsLoader: () async => const <AvailableMap>[],
+      availableMapsLoader: () async => const <SupportedMap>[],
       canLaunchUrl: (_) async => true,
       launchUrl: (uri, _) async {
         launchedUris.add(uri);

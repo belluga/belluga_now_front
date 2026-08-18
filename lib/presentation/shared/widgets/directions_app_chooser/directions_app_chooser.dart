@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:map_launcher/map_launcher.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-typedef DirectionsAvailableMapsLoader = Future<List<AvailableMap>> Function();
+typedef DirectionsAvailableMapsLoader = Future<List<SupportedMap>> Function();
 typedef DirectionsCanLaunchUrl = Future<bool> Function(Uri uri);
 typedef DirectionsLaunchUrl = Future<bool> Function(Uri uri, LaunchMode mode);
 
@@ -30,8 +30,8 @@ class DirectionsAppChooser implements DirectionsAppChooserContract {
   final bool Function() _isWebProvider;
   final TargetPlatform Function() _platformProvider;
 
-  static Future<List<AvailableMap>> _defaultAvailableMaps() =>
-      MapLauncher.installedMaps;
+  static Future<List<SupportedMap>> _defaultAvailableMaps() =>
+      MapLauncher.getAvailableMaps(MapApp.all);
 
   static Future<bool> _defaultCanLaunchUrl(Uri uri) => canLaunchUrl(uri);
 
@@ -107,24 +107,27 @@ class DirectionsAppChooser implements DirectionsAppChooserContract {
   ) async {
     final choices = <DirectionsAppChoice>[];
     if (target.hasCoordinates) {
-      final destination = Coords(target.latitude!, target.longitude!);
+      final directionsRequest = MapLauncher.directions(
+        Location.coords(
+          target.latitude!,
+          target.longitude!,
+          title: target.destinationName,
+        ),
+        from: _originLocation(target),
+      );
 
       try {
         final maps = await _availableMapsLoader();
         for (final map in maps) {
           choices.add(
             DirectionsAppChoice(
-              id: 'map:${map.mapType.name}',
-              label: map.mapName,
+              id: 'map:${map.map.id}',
+              label: map.name,
               subtitle: 'Abrir navegação externa',
-              visualType: DirectionsAppVisualType.mapAsset,
-              assetPath: map.icon,
+              visualType: _nativeVisualTypeForMap(map),
               onSelected: () async {
                 try {
-                  await map.showDirections(
-                    destination: destination,
-                    destinationTitle: target.destinationName,
-                  );
+                  await directionsRequest.show(map: map.map);
                   return true;
                 } catch (_) {
                   return false;
@@ -141,6 +144,29 @@ class DirectionsAppChooser implements DirectionsAppChooserContract {
     choices.addAll(await _buildRideShareChoices(target, useWebUrisOnly: false));
     choices.add(_buildBrowserChoice(target));
     return choices;
+  }
+
+  static Location? _originLocation(DirectionsLaunchTarget target) {
+    if (target.hasOriginCoordinates) {
+      return Location.coords(
+        target.originLatitude!,
+        target.originLongitude!,
+        title: target.originDisplayName,
+      );
+    }
+    if (target.hasOriginAddress) {
+      return Location.search(target.trimmedOriginAddress);
+    }
+    return null;
+  }
+
+  static DirectionsAppVisualType _nativeVisualTypeForMap(SupportedMap map) {
+    return switch (map.map.id) {
+      'google' => DirectionsAppVisualType.googleMaps,
+      'apple' => DirectionsAppVisualType.appleMaps,
+      'waze' => DirectionsAppVisualType.waze,
+      _ => DirectionsAppVisualType.mapAsset,
+    };
   }
 
   Future<List<DirectionsAppChoice>> _buildWebChoices(
