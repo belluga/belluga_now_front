@@ -19,7 +19,7 @@ class StreamValue<T> {
 // expect_lint: multi_public_class_file_warning
 class StreamValueBuilder<T> {
   StreamValueBuilder({
-    required Object streamValue,
+    required StreamValue<T?> streamValue,
     required T Function(Object context, T value) builder,
     Object? onNullWidget,
   });
@@ -60,9 +60,17 @@ class _UiBuilderCase {
   // expect_lint: ui_future_stream_builder_forbidden
   final StreamBuilder<int> streamBuilder = StreamBuilder<int>();
 
+  StreamValueBuilder<String> streamValueBuilderWithOnNullWidget() {
+    return StreamValueBuilder<String>(
+      streamValue: StreamValue<String?>(),
+      onNullWidget: Object(),
+      builder: (context, value) => value,
+    );
+  }
+
   StreamValueBuilder<String?> streamValueBuilderWithNullCheck() {
     return StreamValueBuilder<String?>(
-      streamValue: Object(),
+      streamValue: StreamValue<String?>(),
       onNullWidget: Object(),
       builder: (context, value) {
         // expect_lint: ui_streamvalue_builder_null_check_forbidden

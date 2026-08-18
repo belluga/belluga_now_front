@@ -117,6 +117,59 @@ void main() {
     expect(decoded.first.id, 'invite-valid');
   });
 
+  test(
+    'decodeInviteableRecipients preserves the recipient when nested sent status is malformed',
+    () {
+      final recipients = decoder.decodeInviteableRecipients([
+        {
+          'user_id': 'user-1',
+          'receiver_account_profile_id': 'profile-1',
+          'display_name': 'Ana',
+          'profile_exposure_level': 'full_profile',
+          'inviteable_reasons': ['contact_match'],
+          'is_inviteable': true,
+          'sent_invite_status': {
+            'receiver_account_profile_id': 'profile-1',
+            'receiver_user_id': 'user-1',
+            'display_name': 'Ana',
+            'sent_at': 'invalid-date',
+          },
+        },
+      ]);
+
+      expect(recipients, hasLength(1));
+      expect(recipients.single.receiverAccountProfileId, 'profile-1');
+      expect(recipients.single.sentInviteStatus, isNull);
+    },
+  );
+
+  test(
+    'decodeInviteableRecipients keeps valid recipients when one top-level payload is malformed',
+    () {
+      final recipients = decoder.decodeInviteableRecipients([
+        {
+          'user_id': 'user-bad',
+          'receiver_account_profile_id': 'profile-bad',
+          'display_name': 'A',
+          'profile_exposure_level': 'full_profile',
+          'inviteable_reasons': ['contact_match'],
+          'is_inviteable': true,
+        },
+        {
+          'user_id': 'user-2',
+          'receiver_account_profile_id': 'profile-2',
+          'display_name': 'Beatriz',
+          'profile_exposure_level': 'full_profile',
+          'inviteable_reasons': ['contact_match'],
+          'is_inviteable': true,
+        },
+      ]);
+
+      expect(recipients, hasLength(1));
+      expect(recipients.single.receiverAccountProfileId, 'profile-2');
+    },
+  );
+
   test('decodeRequiredInviteDto rejects payload missing occurrence identity',
       () {
     final payload = _buildInvitePayload()..remove('occurrence_id');

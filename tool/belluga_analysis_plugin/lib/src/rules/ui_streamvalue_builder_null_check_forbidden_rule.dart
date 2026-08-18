@@ -17,7 +17,7 @@ class UiStreamValueBuilderNullCheckForbiddenRule extends DartLintRule {
           problemMessage:
               'Do not null-check StreamValueBuilder value inside builder.',
           correctionMessage:
-              'Treatments: use onNullWidget for null-state rendering and keep builder focused on non-null data.',
+              'Treatments: keep StreamValueBuilder<T> non-nullable, pass StreamValue<T?> when the stream can be null, render the null-state with onNullWidget, and keep builder focused on non-null data.',
         ),
       );
 

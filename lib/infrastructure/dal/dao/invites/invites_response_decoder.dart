@@ -31,6 +31,7 @@ import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invite_share_code_target_ref.dart';
+import 'package:belluga_now/infrastructure/observability/invite_flow_debug_logger.dart';
 import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 
 class InvitesResponseDecoder {
@@ -150,18 +151,41 @@ class InvitesResponseDecoder {
     }
 
     final dedupedByProfileId = <String, InviteableRecipient>{};
-    for (final item in rawItems) {
+    for (var index = 0; index < rawItems.length; index++) {
+      final item = rawItems[index];
       if (item is! Map) {
         continue;
       }
-      final recipient =
-          _mapInviteableRecipient(Map<String, dynamic>.from(item));
+      InviteableRecipient? recipient;
+      try {
+        recipient = _mapInviteableRecipient(Map<String, dynamic>.from(item));
+      } catch (error) {
+        final itemMap = Map<String, dynamic>.from(item);
+        InviteFlowDebugLogger.log(
+          'contacts.inviteables.decoder.item_skipped',
+          fields: <String, Object?>{
+            'item_index': index,
+            'error_type': error.runtimeType.toString(),
+            'item_keys': itemMap.keys.toList(growable: false),
+            'has_avatar_url': _stringOrNull(itemMap['avatar_url']) != null,
+            'profile_exposure_level': _stringOrEmpty(
+              itemMap['profile_exposure_level'],
+            ),
+            'inviteable_reason_count':
+                _parseStringList(itemMap['inviteable_reasons']).length,
+            'contact_type': _stringOrEmpty(
+              itemMap['contact_type'] ?? itemMap['type'],
+            ),
+          },
+        );
+        continue;
+      }
       if (recipient == null) {
         continue;
       }
       dedupedByProfileId.putIfAbsent(
         recipient.receiverAccountProfileId,
-        () => recipient,
+        () => recipient!,
       );
     }
 
@@ -407,7 +431,12 @@ class InvitesResponseDecoder {
     if (raw is! Map) {
       return null;
     }
-    return _mapSentInviteStatus(Map<String, dynamic>.from(raw));
+    try {
+      return _mapSentInviteStatus(Map<String, dynamic>.from(raw));
+    } catch (_) {
+      // Sent invite status is optional decoration for an inviteable recipient.
+      return null;
+    }
   }
 
   InviteContactGroup? _mapContactGroup(Map<String, dynamic> map) {

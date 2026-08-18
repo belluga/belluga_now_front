@@ -400,6 +400,7 @@ class _RichTextAccountsRepository
     TenantAdminAccountsRepositoryContractPrimString? slug,
     TenantAdminDocument? document,
     TenantAdminOwnershipState? ownershipState,
+    TenantAdminAccountPublication? publication,
   }) async {
     return account;
   }

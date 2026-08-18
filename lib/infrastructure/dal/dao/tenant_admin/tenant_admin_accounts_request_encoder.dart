@@ -62,6 +62,7 @@ class TenantAdminAccountsRequestEncoder {
     String? slug,
     TenantAdminDocument? document,
     TenantAdminOwnershipState? ownershipState,
+    String? publicationStatus,
   }) {
     final payload = <String, dynamic>{};
     if (name != null && name.trim().isNotEmpty) {
@@ -75,6 +76,13 @@ class TenantAdminAccountsRequestEncoder {
     }
     if (ownershipState != null) {
       payload['ownership_state'] = ownershipState.apiValue;
+    }
+    final normalizedPublicationStatus = publicationStatus?.trim();
+    if (normalizedPublicationStatus != null &&
+        normalizedPublicationStatus.isNotEmpty) {
+      payload['publication'] = <String, dynamic>{
+        'status': normalizedPublicationStatus,
+      };
     }
     return payload;
   }

@@ -157,6 +157,7 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
               tokenLoadedFromStorage || userToken.trim().isNotEmpty,
         );
         await _ensureIdentityToken();
+        _assertTenantPublicIdentityReady();
         _hasCompletedTenantPublicIdentityReadiness = true;
         completer.complete();
       } catch (error, stackTrace) {
@@ -604,7 +605,7 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
     if (userToken.isNotEmpty) {
       return;
     }
-    if (_isLandlordScope() || _isLandlordAdminModeActive()) {
+    if (_isLandlordScope()) {
       return;
     }
     final deviceId = await getDeviceId();
@@ -620,6 +621,18 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
     if (response.userId != null && response.userId!.isNotEmpty) {
       await _setUserId(response.userId);
     }
+  }
+
+  void _assertTenantPublicIdentityReady() {
+    if (_isLandlordScope()) {
+      return;
+    }
+    if (userToken.trim().isNotEmpty) {
+      return;
+    }
+    throw StateError(
+      'Tenant-public identity readiness completed without a bearer token.',
+    );
   }
 
   void _setAccountDeletionJourney(AccountDeletionJourneyPhase phase) {

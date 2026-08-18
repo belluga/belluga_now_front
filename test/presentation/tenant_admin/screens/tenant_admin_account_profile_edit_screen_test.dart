@@ -1726,6 +1726,7 @@ class _FakeAccountsRepository extends TenantAdminAccountsRepositoryContract {
     TenantAdminAccountsRepositoryContractPrimString? slug,
     TenantAdminDocument? document,
     TenantAdminOwnershipState? ownershipState,
+    TenantAdminAccountPublication? publication,
   }) {
     throw UnimplementedError();
   }

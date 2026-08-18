@@ -1035,6 +1035,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     String? name,
     String? slug,
     TenantAdminOwnershipState? ownershipState,
+    TenantAdminAccountPublication? publication,
   }) async {
     accountUpdatingStreamValue.addValue(true);
     try {
@@ -1057,6 +1058,7 @@ class TenantAdminAccountProfilesController implements Disposable {
                 defaultValue: '',
               ),
         ownershipState: ownershipState,
+        publication: publication,
       );
       if (_isDisposed) {
         return null;
