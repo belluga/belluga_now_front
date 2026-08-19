@@ -658,7 +658,7 @@ class _TenantAdminAccountProfileEditScreenState
         return null;
       }
 
-      return showTenantAdminImageCropSheet(
+      return await showTenantAdminImageCropSheet(
         context: context,
         sourceFile: sourceFile,
         slot: TenantAdminImageSlot.accountProfileGallery,
