@@ -7,7 +7,7 @@ import 'belluga_network_image_safe_web_loader_stub.dart'
     if (dart.library.js_interop) 'belluga_network_image_safe_web_loader_web.dart'
     as safe_web;
 
-class BellugaNetworkImage extends StatelessWidget {
+class BellugaNetworkImage extends StatefulWidget {
   const BellugaNetworkImage(
     this.url, {
     super.key,
@@ -43,87 +43,91 @@ class BellugaNetworkImage extends StatelessWidget {
   final Widget? errorWidget;
   final BorderRadius? clipBorderRadius;
 
+  @override
+  State<BellugaNetworkImage> createState() => _BellugaNetworkImageState();
+}
+
+class _BellugaNetworkImageState extends State<BellugaNetworkImage> {
+  bool _retryPending = false;
+  bool _hasRetried = false;
+
   Widget _buildPlaceholder(BuildContext context) {
     return Container(
-      width: width,
-      height: height,
+      width: widget.width,
+      height: widget.height,
       color: Theme.of(context).colorScheme.surfaceContainerHighest,
       alignment: Alignment.center,
       child: const Icon(Icons.image_outlined),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (kIsWeb && safe_web.shouldUseBellugaSafeWebImageLoader(url)) {
-      Widget image = Image(
-        image: ResizeImage.resizeIfNeeded(
-          cacheWidth,
-          cacheHeight,
-          _BellugaSafeWebNetworkImageProvider(url),
-        ),
-        width: width,
-        height: height,
-        fit: fit,
-        alignment: alignment,
-        color: color,
-        colorBlendMode: colorBlendMode,
-        filterQuality: filterQuality,
-        semanticLabel: semanticLabel,
-        excludeFromSemantics: excludeFromSemantics,
-        gaplessPlayback: true,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return placeholder ?? _buildPlaceholder(context);
-        },
-        errorBuilder: (context, error, stackTrace) {
-          return errorWidget ?? _buildPlaceholder(context);
-        },
-      );
-      return _buildWithImage(context, image);
+  ImageProvider<Object> _effectiveProvider() {
+    final ImageProvider<Object> provider =
+        kIsWeb && safe_web.shouldUseBellugaSafeWebImageLoader(widget.url)
+        ? _BellugaSafeWebNetworkImageProvider(widget.url)
+        : NetworkImage(widget.url);
+    return ResizeImage.resizeIfNeeded(
+      widget.cacheWidth,
+      widget.cacheHeight,
+      provider,
+    );
+  }
+
+  void _scheduleRetry(ImageProvider<Object> provider) {
+    if (_hasRetried || _retryPending) {
+      return;
     }
 
-    Widget image = Image.network(
-      url,
-      width: width,
-      height: height,
-      fit: fit,
-      alignment: alignment,
-      color: color,
-      colorBlendMode: colorBlendMode,
-      filterQuality: filterQuality,
-      semanticLabel: semanticLabel,
-      excludeFromSemantics: excludeFromSemantics,
-      cacheWidth: cacheWidth,
-      cacheHeight: cacheHeight,
+    _retryPending = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) {
+        return;
+      }
+
+      await provider.evict();
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _retryPending = false;
+        _hasRetried = true;
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = _effectiveProvider();
+    Widget image = Image(
+      key: ValueKey<bool>(_hasRetried),
+      image: provider,
+      width: widget.width,
+      height: widget.height,
+      fit: widget.fit,
+      alignment: widget.alignment,
+      color: widget.color,
+      colorBlendMode: widget.colorBlendMode,
+      filterQuality: widget.filterQuality,
+      semanticLabel: widget.semanticLabel,
+      excludeFromSemantics: widget.excludeFromSemantics,
       gaplessPlayback: true,
       loadingBuilder: (context, child, loadingProgress) {
         if (loadingProgress == null) return child;
-        return placeholder ?? _buildPlaceholder(context);
+        return widget.placeholder ?? _buildPlaceholder(context);
       },
       errorBuilder: (context, error, stackTrace) {
-        return errorWidget ?? _buildPlaceholder(context);
+        if (!_hasRetried) {
+          _scheduleRetry(provider);
+          return widget.placeholder ?? _buildPlaceholder(context);
+        }
+        return widget.errorWidget ?? _buildPlaceholder(context);
       },
     );
 
-    final borderRadius = clipBorderRadius;
+    final borderRadius = widget.clipBorderRadius;
     if (borderRadius != null) {
-      image = ClipRRect(
-        borderRadius: borderRadius,
-        child: image,
-      );
-    }
-
-    return image;
-  }
-
-  Widget _buildWithImage(BuildContext context, Widget image) {
-    final borderRadius = clipBorderRadius;
-    if (borderRadius != null) {
-      image = ClipRRect(
-        borderRadius: borderRadius,
-        child: image,
-      );
+      image = ClipRRect(borderRadius: borderRadius, child: image);
     }
 
     return image;
