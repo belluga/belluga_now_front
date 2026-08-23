@@ -37,15 +37,18 @@ class AccountProfileGalleryItem {
   String get modalUrl => modalUrlValue.value.toString();
 
   String get previewUrl {
-    if (thumbUrl.trim().isNotEmpty) {
-      return thumbUrl;
+    final image = imageUrl.trim();
+    if (image.isNotEmpty) {
+      return image;
     }
-    if (cardUrl.trim().isNotEmpty) {
-      return cardUrl;
+    final card = cardUrl.trim();
+    if (card.isNotEmpty) {
+      return card;
     }
-    if (imageUrl.trim().isNotEmpty) {
-      return imageUrl;
+    final modal = modalUrl.trim();
+    if (modal.isNotEmpty) {
+      return modal;
     }
-    return modalUrl;
+    return thumbUrl.trim();
   }
 }

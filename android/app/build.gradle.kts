@@ -1,12 +1,7 @@
-// CÓDIGO FINAL E CORRIGIDO - 13 de Agosto, 2025
-
 plugins {
     id("com.android.application")
-    id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
 }
-
-// Imports essenciais para as classes Java
 import java.io.FileInputStream
 import java.io.File
 import java.net.URI
@@ -254,15 +249,11 @@ val appLinkHostsByFlavor = mutableMapOf<String, List<String>>()
 android {
     namespace = "com.belluga_now"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "28.2.13676358"
+    ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
-
-    kotlinOptions {
-        jvmTarget = "11"
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     defaultConfig {
@@ -361,6 +352,12 @@ android {
                     .asFile,
             )
         }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
 }
 

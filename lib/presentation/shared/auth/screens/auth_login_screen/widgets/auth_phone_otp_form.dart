@@ -101,14 +101,10 @@ class _PhoneEntryForm extends StatelessWidget {
               helperText: 'Selecione o país e informe o número.',
               prefixIcon: Padding(
                 padding: const EdgeInsetsDirectional.only(start: 12, end: 8),
-                child: CountryButton(
+                child: _CountrySelectorButton(
                   isoCode: selectedCountry,
                   enabled: enabled,
                   onTap: enabled ? () => _selectCountry(context) : null,
-                  showDialCode: true,
-                  showFlag: true,
-                  showIsoCode: true,
-                  flagSize: 16,
                 ),
               ),
               prefixIconConstraints: const BoxConstraints(
@@ -153,6 +149,66 @@ class _PhoneEntryForm extends StatelessWidget {
     }
     controller.updatePhoneOtpCountry(selectedCountry);
     controller.phoneFocusNode.requestFocus();
+  }
+}
+
+class _CountrySelectorButton extends StatelessWidget {
+  const _CountrySelectorButton({
+    required this.isoCode,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final IsoCode isoCode;
+  final bool enabled;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final textColor = enabled ? null : theme.disabledColor;
+    final dialCode = PhoneNumber(isoCode: isoCode, nsn: '').countryCode;
+
+    return Material(
+      type: MaterialType.transparency,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _flagEmojiForIsoCode(isoCode),
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                isoCode.name,
+                style: theme.textTheme.bodyMedium?.copyWith(color: textColor),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '+ $dialCode',
+                style: theme.textTheme.bodyMedium?.copyWith(color: textColor),
+              ),
+              Icon(
+                Icons.arrow_drop_down,
+                color: textColor ?? theme.iconTheme.color,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _flagEmojiForIsoCode(IsoCode isoCode) {
+    final codeUnits = isoCode.name.toUpperCase().codeUnits;
+    return String.fromCharCodes(
+      codeUnits.map((unit) => unit + 127397),
+    );
   }
 }
 

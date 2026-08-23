@@ -1,7 +1,7 @@
 name: belluga_now
 description: "A new Flutter project."
 publish_to: 'none'
-version: 0.4.2+21
+version: 0.4.4+23
 
 environment:
   sdk: ">=3.12.0 <4.0.0"
@@ -42,23 +42,23 @@ dependencies:
   get_it: ^9.0.5
   get_it_modular_with_auto_route: ^2.2.1
   geolocator: ^14.0.2
-  geocoding: ^4.0.0
+  geocoding: ^5.0.0
   http_parser: ^4.0.2
   image_picker: ^1.2.2
   image: ^4.5.4
   intl: ^0.20.2
-  phone_form_field: ^10.0.17
+  phone_form_field: ^11.0.1
   phone_numbers_parser: ^9.0.19
   pinput: ^6.0.2
   google_fonts: ^8.1.0
   latlong2: ^0.9.1
-  map_launcher: ^4.5.0
+  map_launcher: ^6.0.0
   material_color_utilities: ^0.13.0
   meta: ^1.16.0
   package_info_plus: ^8.3.1
   path_provider: ^2.1.6
   push_handler: ^0.2.0
-  sentry_flutter: ^9.22.0
+  sentry_flutter: ^9.27.0
   share_plus: ^12.0.2
   stream_value: ^0.0.6
   slugify: ^2.0.0

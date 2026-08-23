@@ -11,11 +11,13 @@ import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
+import 'package:belluga_now/domain/partners/account_profile_gallery_item.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_fields.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
@@ -25,12 +27,14 @@ import 'package:belluga_now/domain/repositories/proximity_preferences_repository
 import 'package:belluga_now/domain/repositories/static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
+import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/static_assets/public_static_asset_model.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/account_profile_detail_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_state.dart';
 import 'package:belluga_now/presentation/shared/widgets/account_profile_overlapping_identity_card.dart';
+import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/upcoming_event_card.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_screen_controller.dart';
@@ -153,12 +157,12 @@ void main() {
                 groupId: 'group-1',
                 subtitle: 'Ambiente',
                 items: [
-                  buildAccountProfileGalleryItemFromPrimitives(
+                  _buildGalleryItemWithOptionalPreviewVariants(
                     itemId: 'gallery-item-1',
                     description: 'Vista para o palco',
                     imageUrl: 'https://tenant.test/gallery/image.jpg',
-                    thumbUrl: 'https://tenant.test/gallery/thumb.jpg',
                     cardUrl: 'https://tenant.test/gallery/card.jpg',
+                    thumbUrl: 'https://tenant.test/gallery/thumb.jpg',
                     modalUrl: 'https://tenant.test/gallery/modal.jpg',
                   ),
                 ],
@@ -179,6 +183,15 @@ void main() {
     final galleryItem = find.byKey(
       const Key('accountProfileGalleryItem_gallery-item-1'),
     );
+    final galleryPreview = tester.widget<BellugaNetworkImage>(
+      find.descendant(
+        of: galleryItem,
+        matching: find.byType(BellugaNetworkImage),
+      ),
+    );
+
+    expect(galleryPreview.url, 'https://tenant.test/gallery/image.jpg');
+
     await tester.drag(find.byType(NestedScrollView), const Offset(0, -320));
     await tester.pumpAndSettle();
 
@@ -195,6 +208,13 @@ void main() {
       find.byKey(const Key('accountProfileGalleryModal_gallery-item-1')),
       findsOneWidget,
     );
+    final modalPreview = tester.widget<BellugaNetworkImage>(
+      find.descendant(
+        of: find.byKey(const Key('accountProfileGalleryModal_gallery-item-1')),
+        matching: find.byType(BellugaNetworkImage),
+      ),
+    );
+    expect(modalPreview.url, 'https://tenant.test/gallery/modal.jpg');
     expect(find.text('Vista para o palco'), findsOneWidget);
   });
 
@@ -3511,8 +3531,8 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
        _nestedGroupMembersByPath =
            (nestedGroupMembersByPath.isEmpty
                    ? <String, List<AccountProfileNestedGroupMember>>{
-                       _nestedPartnersMembersPath: _buildNestedAccountProfileGroup()
-                           .profiles,
+                       _nestedPartnersMembersPath:
+                           _buildNestedAccountProfileGroup().profiles,
                        _nestedSecondaryMembersPath:
                            _buildSecondaryNestedAccountProfileGroup().profiles,
                      }
@@ -4219,4 +4239,31 @@ AppData _buildAppData({
     remoteData: remoteData,
     localInfo: localInfo,
   );
+}
+
+AccountProfileGalleryItem _buildGalleryItemWithOptionalPreviewVariants({
+  required String itemId,
+  String description = '',
+  String? imageUrl,
+  String? thumbUrl,
+  String? cardUrl,
+  String? modalUrl,
+}) {
+  return AccountProfileGalleryItem(
+    itemIdValue: AccountProfileNestedGroupIdValue(itemId),
+    descriptionValue: AccountProfileNestedGroupMemberTextValue(description),
+    orderValue: AccountProfileNestedGroupOrderValue(0),
+    imageUrlValue: _buildOptionalThumbUriValue(imageUrl),
+    thumbUrlValue: _buildOptionalThumbUriValue(thumbUrl),
+    cardUrlValue: _buildOptionalThumbUriValue(cardUrl),
+    modalUrlValue: _buildOptionalThumbUriValue(modalUrl),
+  );
+}
+
+ThumbUriValue _buildOptionalThumbUriValue(String? url) {
+  final value = ThumbUriValue(defaultValue: Uri());
+  if (url != null && url.isNotEmpty) {
+    value.parse(url);
+  }
+  return value;
 }

@@ -3854,7 +3854,13 @@ void main() {
                     galleryGroups: <AccountProfileGalleryGroup>[
                       _buildGalleryGroup(
                         items: <AccountProfileGalleryItem>[
-                          _buildGalleryItem(itemId: 'gallery-1'),
+                          _buildGalleryItem(
+                            itemId: 'gallery-1',
+                            imageUrl: null,
+                            thumbUrl: 'https://tenant.test/gallery/thumb-1.jpg',
+                            cardUrl: 'https://tenant.test/gallery/card-1.jpg',
+                            modalUrl: 'https://tenant.test/gallery/modal-1.jpg',
+                          ),
                           _buildGalleryItem(
                             itemId: 'gallery-2',
                             imageUrl: 'https://tenant.test/gallery/image-2.jpg',
@@ -3864,9 +3870,9 @@ void main() {
                           ),
                           _buildGalleryItem(
                             itemId: 'gallery-3',
-                            imageUrl: 'https://tenant.test/gallery/image-3.jpg',
+                            imageUrl: null,
                             thumbUrl: 'https://tenant.test/gallery/thumb-3.jpg',
-                            cardUrl: 'https://tenant.test/gallery/card-3.jpg',
+                            cardUrl: null,
                             modalUrl: 'https://tenant.test/gallery/modal-3.jpg',
                           ),
                         ],
@@ -3887,6 +3893,27 @@ void main() {
       expect(find.byKey(const Key('eventLocalHeroWithCover')), findsOneWidget);
       expect(find.byKey(const Key('eventLocalDescription')), findsOneWidget);
       expect(find.byKey(const Key('eventLocalGalleryStrip')), findsOneWidget);
+      final galleryPreviewImages = tester
+          .widgetList<BellugaNetworkImage>(
+            find.descendant(
+              of: find.byKey(const Key('eventLocalGalleryStrip')),
+              matching: find.byType(BellugaNetworkImage),
+            ),
+          )
+          .toList(growable: false);
+      expect(galleryPreviewImages, hasLength(3));
+      expect(
+        galleryPreviewImages[0].url,
+        'https://tenant.test/gallery/card-1.jpg',
+      );
+      expect(
+        galleryPreviewImages[1].url,
+        'https://tenant.test/gallery/image-2.jpg',
+      );
+      expect(
+        galleryPreviewImages[2].url,
+        'https://tenant.test/gallery/modal-3.jpg',
+      );
       expect(
         find.byKey(const Key('eventLocalPrimaryDirectionsMapTile')),
         findsOneWidget,
@@ -7139,25 +7166,29 @@ AccountProfileGalleryGroup _buildGalleryGroup({
 
 AccountProfileGalleryItem _buildGalleryItem({
   String itemId = 'gallery-item-1',
-  String imageUrl = 'https://tenant.test/gallery/image.jpg',
-  String thumbUrl = 'https://tenant.test/gallery/thumb.jpg',
-  String cardUrl = 'https://tenant.test/gallery/card.jpg',
-  String modalUrl = 'https://tenant.test/gallery/modal.jpg',
+  String? imageUrl = 'https://tenant.test/gallery/image.jpg',
+  String? thumbUrl = 'https://tenant.test/gallery/thumb.jpg',
+  String? cardUrl = 'https://tenant.test/gallery/card.jpg',
+  String? modalUrl = 'https://tenant.test/gallery/modal.jpg',
   String description = 'Vista principal',
 }) {
   return AccountProfileGalleryItem(
     itemIdValue: AccountProfileNestedGroupIdValue(itemId),
     descriptionValue: AccountProfileNestedGroupMemberTextValue(description),
     orderValue: AccountProfileNestedGroupOrderValue(0),
-    imageUrlValue: ThumbUriValue(defaultValue: Uri.parse(imageUrl))
-      ..parse(imageUrl),
-    thumbUrlValue: ThumbUriValue(defaultValue: Uri.parse(thumbUrl))
-      ..parse(thumbUrl),
-    cardUrlValue: ThumbUriValue(defaultValue: Uri.parse(cardUrl))
-      ..parse(cardUrl),
-    modalUrlValue: ThumbUriValue(defaultValue: Uri.parse(modalUrl))
-      ..parse(modalUrl),
+    imageUrlValue: _buildOptionalThumbUriValue(imageUrl),
+    thumbUrlValue: _buildOptionalThumbUriValue(thumbUrl),
+    cardUrlValue: _buildOptionalThumbUriValue(cardUrl),
+    modalUrlValue: _buildOptionalThumbUriValue(modalUrl),
   );
+}
+
+ThumbUriValue _buildOptionalThumbUriValue(String? url) {
+  final value = ThumbUriValue(defaultValue: Uri());
+  if (url != null && url.isNotEmpty) {
+    value.parse(url);
+  }
+  return value;
 }
 
 EventLinkedAccountProfile _buildLinkedAccountProfile({
