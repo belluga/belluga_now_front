@@ -50,8 +50,9 @@ void main() {
     expect(labelFinder, findsOneWidget);
 
     final labelWidget = tester.widget<Text>(labelFinder);
-    expect(labelWidget.maxLines, 2);
+    expect(labelWidget.maxLines, 1);
     expect(labelWidget.overflow, isNot(TextOverflow.ellipsis));
+    expect(labelWidget.softWrap, isFalse);
     final labelRect = tester.getRect(labelFinder);
     expect(labelRect.left, greaterThanOrEqualTo(0));
     expect(labelRect.right, lessThanOrEqualTo(390));

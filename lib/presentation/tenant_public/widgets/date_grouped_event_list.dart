@@ -211,49 +211,45 @@ class DateGroupedEventList extends StatelessWidget {
                               ),
                             ),
                           ),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
+                        Stack(
+                          alignment: Alignment.center,
                           children: [
-                            Expanded(
-                              child: Divider(
-                                color: colorScheme.primary.withValues(
-                                  alpha: 0.3,
-                                ),
-                                thickness: 1.5,
-                              ),
+                            Divider(
+                              color: colorScheme.primary.withValues(alpha: 0.3),
+                              thickness: 1.5,
                             ),
-                            Expanded(
-                              flex: 3,
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                ),
-                                child: Text(
-                                  section.label,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.visible,
-                                  softWrap: true,
-                                  style:
-                                      theme.textTheme.titleSmall?.copyWith(
-                                        color: colorScheme.primary,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: 1.3,
-                                      ) ??
-                                      TextStyle(
-                                        color: colorScheme.primary,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: 1.3,
-                                      ),
-                                  textAlign: TextAlign.center,
-                                ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
                               ),
-                            ),
-                            Expanded(
-                              child: Divider(
-                                color: colorScheme.primary.withValues(
-                                  alpha: 0.3,
+                              child: ColoredBox(
+                                color: colorScheme.surface,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                  ),
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      section.label,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.visible,
+                                      softWrap: false,
+                                      style:
+                                          theme.textTheme.titleSmall?.copyWith(
+                                            color: colorScheme.primary,
+                                            fontWeight: FontWeight.w800,
+                                            letterSpacing: 1.3,
+                                          ) ??
+                                          TextStyle(
+                                            color: colorScheme.primary,
+                                            fontWeight: FontWeight.w800,
+                                            letterSpacing: 1.3,
+                                          ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
                                 ),
-                                thickness: 1.5,
                               ),
                             ),
                           ],
