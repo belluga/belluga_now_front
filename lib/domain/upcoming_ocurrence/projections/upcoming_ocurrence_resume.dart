@@ -291,8 +291,11 @@ class UpcomingOcurrenceResume {
       final profileName = profile.title.trim();
       final normalizedProfileType = profile.profileType?.trim().toLowerCase();
       final normalizedPartyType = profile.partyType?.trim().toLowerCase();
-      if (profileId == normalizedViewedId ||
-          profileName.toLowerCase() == normalizedViewedName ||
+      final matchesViewedProfile =
+          profileId == normalizedViewedId ||
+          (profileId.isEmpty &&
+              profileName.toLowerCase() == normalizedViewedName);
+      if (matchesViewedProfile ||
           (normalizedVenueId != null && profileId == normalizedVenueId) ||
           normalizedProfileType == 'venue' ||
           normalizedPartyType == 'venue' ||

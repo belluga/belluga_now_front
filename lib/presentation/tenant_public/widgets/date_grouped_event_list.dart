@@ -22,6 +22,7 @@ class DateGroupedEventList extends StatelessWidget {
     this.keyNamespace = 'dateGroupedEventCard',
     this.padding = const EdgeInsets.symmetric(horizontal: 16),
     this.showVenueAddress = true,
+    this.scaleDateHeaderToFit = false,
     this.footer,
   });
 
@@ -41,6 +42,7 @@ class DateGroupedEventList extends StatelessWidget {
   final String keyNamespace;
   final EdgeInsetsGeometry padding;
   final bool showVenueAddress;
+  final bool scaleDateHeaderToFit;
   final Widget? footer;
 
   @override
@@ -80,11 +82,7 @@ class DateGroupedEventList extends StatelessWidget {
       ..sort((a, b) => sortDescending ? b.compareTo(a) : a.compareTo(b));
 
     // Sort "now" events consistently
-    nowEvents.sort(
-      (a, b) => sortDescending
-          ? b.startDateTime.compareTo(a.startDateTime)
-          : a.startDateTime.compareTo(b.startDateTime),
-    );
+    nowEvents.sort(_compareEvents);
 
     final sections = <_EventSection>[];
     if (highlightNowEvents && nowEvents.isNotEmpty) {
@@ -101,13 +99,9 @@ class DateGroupedEventList extends StatelessWidget {
 
     for (final key in sortedDates) {
       final date = DateTime.parse(key);
-      final dateEvents =
-          List<UpcomingOcurrenceResume>.from(groupedEvents[key] ?? const [])
-            ..sort(
-              (a, b) => sortDescending
-                  ? b.startDateTime.compareTo(a.startDateTime)
-                  : a.startDateTime.compareTo(b.startDateTime),
-            );
+      final dateEvents = List<UpcomingOcurrenceResume>.from(
+        groupedEvents[key] ?? const [],
+      )..sort(_compareEvents);
       final tag = highlightTodayEvents ? _tagForDate(date, now) : null;
       sections.add(
         _EventSection(
@@ -211,48 +205,9 @@ class DateGroupedEventList extends StatelessWidget {
                               ),
                             ),
                           ),
-                        Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            Divider(
-                              color: colorScheme.primary.withValues(alpha: 0.3),
-                              thickness: 1.5,
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                              ),
-                              child: ColoredBox(
-                                color: colorScheme.surface,
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                  ),
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: Text(
-                                      section.label,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.visible,
-                                      softWrap: false,
-                                      style:
-                                          theme.textTheme.titleSmall?.copyWith(
-                                            color: colorScheme.primary,
-                                            fontWeight: FontWeight.w800,
-                                            letterSpacing: 1.3,
-                                          ) ??
-                                          TextStyle(
-                                            color: colorScheme.primary,
-                                            fontWeight: FontWeight.w800,
-                                            letterSpacing: 1.3,
-                                          ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+                        _DateSectionHeader(
+                          label: section.label,
+                          scaleToFit: scaleDateHeaderToFit,
                         ),
                       ],
                     ),
@@ -309,6 +264,108 @@ class DateGroupedEventList extends StatelessWidget {
     }
 
     return 'index:$sectionIndex:$eventIndex';
+  }
+
+  int _compareEvents(
+    UpcomingOcurrenceResume left,
+    UpcomingOcurrenceResume right,
+  ) {
+    final startComparison = left.startDateTime.compareTo(right.startDateTime);
+    if (startComparison != 0) {
+      return sortDescending ? -startComparison : startComparison;
+    }
+
+    for (final selector in <String Function(UpcomingOcurrenceResume)>[
+      (event) => event.selectedOccurrenceId?.trim() ?? '',
+      (event) => event.id.trim(),
+      (event) => event.slug.trim(),
+      (event) => event.title.trim(),
+    ]) {
+      final comparison = selector(left).compareTo(selector(right));
+      if (comparison != 0) {
+        return sortDescending ? -comparison : comparison;
+      }
+    }
+
+    return 0;
+  }
+}
+
+class _DateSectionHeader extends StatelessWidget {
+  const _DateSectionHeader({required this.label, required this.scaleToFit});
+
+  final String label;
+  final bool scaleToFit;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final labelStyle =
+        theme.textTheme.titleSmall?.copyWith(
+          color: colorScheme.primary,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 1.3,
+        ) ??
+        TextStyle(
+          color: colorScheme.primary,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 1.3,
+        );
+
+    if (scaleToFit) {
+      return Stack(
+        alignment: Alignment.center,
+        children: [
+          Divider(
+            color: colorScheme.primary.withValues(alpha: 0.3),
+            thickness: 1.5,
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: ColoredBox(
+              color: colorScheme.surface,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.visible,
+                    softWrap: false,
+                    style: labelStyle,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: Divider(
+            color: colorScheme.primary.withValues(alpha: 0.3),
+            thickness: 1.5,
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text(label, style: labelStyle, textAlign: TextAlign.center),
+        ),
+        Expanded(
+          child: Divider(
+            color: colorScheme.primary.withValues(alpha: 0.3),
+            thickness: 1.5,
+          ),
+        ),
+      ],
+    );
   }
 }
 

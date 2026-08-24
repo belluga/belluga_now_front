@@ -177,15 +177,26 @@ void main() {
         venueTitle: 'Casa Marracini',
         startDateTime: DateTime.utc(2026, 8, 25, 2, 30),
         imageUri: null,
-        artistNames: const ['Marco Aurélio', 'Casa Marracini', 'DJ Lua'],
+        artistNames: const [
+          'Marco Aurélio',
+          'Casa Marracini',
+          'Marco Aurélio',
+          'DJ Lua',
+        ],
         artistIds: const [
           '507f1f77bcf86cd799439099',
           '507f1f77bcf86cd799439015',
+          '507f1f77bcf86cd799439198',
           '507f1f77bcf86cd799439199',
         ],
-        artistProfileTypes: const ['artist', 'venue', 'artist'],
-        artistPartyTypes: const ['artist', 'venue', 'artist'],
-        artistThumbUrls: const [null, null, 'https://cdn.test/dj-lua.png'],
+        artistProfileTypes: const ['artist', 'venue', 'artist', 'artist'],
+        artistPartyTypes: const ['artist', 'venue', 'artist', 'artist'],
+        artistThumbUrls: const [
+          null,
+          null,
+          null,
+          'https://cdn.test/dj-lua.png',
+        ],
         counterpartCount: 7,
       );
 
@@ -198,11 +209,15 @@ void main() {
       expect(projection.id, '507f1f77bcf86cd799439021');
       expect(projection.selectedOccurrenceId, '507f1f77bcf86cd799439121');
       expect(projection.venueId, '507f1f77bcf86cd799439015');
+      expect(projection.startDateTime, DateTime(2026, 8, 24, 23, 30));
       expect(projection.imageUri, Uri.parse('asset://event-placeholder'));
-      expect(projection.counterpartProfiles, hasLength(1));
-      expect(projection.counterpartProfiles.single.displayName, 'DJ Lua');
-      expect(projection.counterpartProfiles.single.profileType, 'artist');
-      expect(projection.counterpartProfiles.single.partyType, 'artist');
+      expect(projection.counterpartProfiles, hasLength(2));
+      expect(
+        projection.counterpartProfiles.map((profile) => profile.displayName),
+        ['Marco Aurélio', 'DJ Lua'],
+      );
+      expect(projection.counterpartProfiles.last.profileType, 'artist');
+      expect(projection.counterpartProfiles.last.partyType, 'artist');
       expect(projection.counterpartCount, 7);
     },
   );

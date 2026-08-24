@@ -1684,6 +1684,7 @@ class _AccountProfileDetailScreenState
               keyNamespace: 'accountProfileAgendaCard',
               padding: EdgeInsets.zero,
               showVenueAddress: false,
+              scaleDateHeaderToFit: true,
               isConfirmed: (event) => _controller.isOccurrenceConfirmed(
                 event.selectedOccurrenceId ?? '',
               ),

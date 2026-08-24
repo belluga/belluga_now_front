@@ -1739,6 +1739,11 @@ void main() {
         find.text(DateFormat.MMMMEEEEd().format(firstDate).toUpperCase()),
         findsOneWidget,
       );
+      final firstDateHeader = tester.widget<Text>(
+        find.text(DateFormat.MMMMEEEEd().format(firstDate).toUpperCase()),
+      );
+      expect(firstDateHeader.maxLines, 1);
+      expect(firstDateHeader.softWrap, isFalse);
       expect(
         find.text(DateFormat.MMMMEEEEd().format(secondDate).toUpperCase()),
         findsOneWidget,
