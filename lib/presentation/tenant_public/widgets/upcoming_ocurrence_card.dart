@@ -1,13 +1,13 @@
-export 'package:belluga_now/presentation/tenant_public/widgets/upcoming_event_card_models.dart';
+export 'package:belluga_now/presentation/tenant_public/widgets/upcoming_ocurrence_card_models.dart';
 
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/invite_status_icon.dart';
-import 'package:belluga_now/presentation/tenant_public/widgets/upcoming_event_card_models.dart';
+import 'package:belluga_now/presentation/tenant_public/widgets/upcoming_ocurrence_card_models.dart';
 import 'package:flutter/material.dart';
 
-class UpcomingEventCard extends StatelessWidget {
-  const UpcomingEventCard({
+class UpcomingOcurrenceCard extends StatelessWidget {
+  const UpcomingOcurrenceCard({
     super.key,
     required this.data,
     this.onTap,
@@ -18,9 +18,9 @@ class UpcomingEventCard extends StatelessWidget {
     this.cardId,
   });
 
-  factory UpcomingEventCard.fromVenueEventResume({
+  factory UpcomingOcurrenceCard.fromUpcomingOcurrenceResume({
     Key? key,
-    required VenueEventResume event,
+    required UpcomingOcurrenceResume event,
     VoidCallback? onTap,
     bool isConfirmed = false,
     int pendingInvitesCount = 0,
@@ -28,17 +28,19 @@ class UpcomingEventCard extends StatelessWidget {
     String? distanceLabel,
     String? keyNamespace,
     String? cardId,
+    bool showVenueAddress = true,
   }) {
     final venueName = (event.venueTitle?.trim().isNotEmpty ?? false)
         ? event.venueTitle!.trim()
         : event.location.trim();
     final locationText = event.location.trim();
-    final venueAddress =
-        venueName == locationText || locationText.isEmpty ? null : locationText;
+    final venueAddress = venueName == locationText || locationText.isEmpty
+        ? null
+        : locationText;
 
-    return UpcomingEventCard(
+    return UpcomingOcurrenceCard(
       key: key,
-      data: UpcomingEventCardData(
+      data: UpcomingOcurrenceCardData(
         imageUri: event.imageUri,
         headline: event.title,
         metaLabel: event.agendaScheduleLabel,
@@ -54,7 +56,7 @@ class UpcomingEventCard extends StatelessWidget {
         counterpartCount: event.counterpartCount,
         venueName: venueName.isEmpty ? null : venueName,
         venueDistanceLabel: distanceLabel,
-        venueAddress: venueAddress,
+        venueAddress: showVenueAddress ? venueAddress : null,
       ),
       onTap: onTap,
       isConfirmed: isConfirmed,
@@ -65,7 +67,7 @@ class UpcomingEventCard extends StatelessWidget {
     );
   }
 
-  final UpcomingEventCardData data;
+  final UpcomingOcurrenceCardData data;
   final VoidCallback? onTap;
   final bool isConfirmed;
   final int pendingInvitesCount;
@@ -84,8 +86,8 @@ class UpcomingEventCard extends StatelessWidget {
     final cardColor = isConfirmed
         ? Color.alphaBlend(confirmedTint, surface)
         : (pendingInvitesCount > 0
-            ? Color.alphaBlend(pendingTint, surface)
-            : surface);
+              ? Color.alphaBlend(pendingTint, surface)
+              : surface);
     final statusWidget = _buildStatusWidget(theme, cardColor);
 
     return Material(
@@ -104,7 +106,7 @@ class UpcomingEventCard extends StatelessWidget {
                 child: SizedBox(
                   width: 84,
                   height: 112,
-                  child: _UpcomingEventImage(imageUri: data.imageUri),
+                  child: _UpcomingOcurrenceImage(imageUri: data.imageUri),
                 ),
               ),
               const SizedBox(width: 14),
@@ -183,13 +185,13 @@ class UpcomingEventCard extends StatelessWidget {
       runSpacing: 6,
       children: [
         ...visibleCounterparts.asMap().entries.map(
-              (entry) => _UpcomingEventCounterpartChip(
-                key: _scopedKey('Counterpart${entry.key}'),
-                counterpart: entry.value,
-              ),
-            ),
+          (entry) => _UpcomingOcurrenceCounterpartChip(
+            key: _scopedKey('Counterpart${entry.key}'),
+            counterpart: entry.value,
+          ),
+        ),
         if (hiddenCount > 0)
-          _UpcomingEventMoreCounterpartChip(
+          _UpcomingOcurrenceMoreCounterpartChip(
             key: _scopedKey('CounterpartMore'),
             hiddenCount: hiddenCount,
           ),
@@ -226,9 +228,9 @@ class UpcomingEventCard extends StatelessWidget {
           child: Text(
             buffer.toString(),
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ],
@@ -243,10 +245,11 @@ class UpcomingEventCard extends StatelessWidget {
       isConfirmed: isConfirmed,
       pendingInvitesCount: pendingInvitesCount,
       size: statusIconSize,
-      backgroundColor: (isConfirmed
-              ? theme.colorScheme.primary
-              : theme.colorScheme.secondary)
-          .withValues(alpha: 0.18),
+      backgroundColor:
+          (isConfirmed
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.secondary)
+              .withValues(alpha: 0.18),
     );
   }
 
@@ -260,8 +263,8 @@ class UpcomingEventCard extends StatelessWidget {
   }
 }
 
-class _UpcomingEventMoreCounterpartChip extends StatelessWidget {
-  const _UpcomingEventMoreCounterpartChip({
+class _UpcomingOcurrenceMoreCounterpartChip extends StatelessWidget {
+  const _UpcomingOcurrenceMoreCounterpartChip({
     super.key,
     required this.hiddenCount,
   });
@@ -281,21 +284,21 @@ class _UpcomingEventMoreCounterpartChip extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w800,
-            ),
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }
 }
 
-class _UpcomingEventCounterpartChip extends StatelessWidget {
-  const _UpcomingEventCounterpartChip({
+class _UpcomingOcurrenceCounterpartChip extends StatelessWidget {
+  const _UpcomingOcurrenceCounterpartChip({
     super.key,
     required this.counterpart,
   });
 
-  final UpcomingEventCounterpartData counterpart;
+  final UpcomingOcurrenceCounterpartData counterpart;
 
   @override
   Widget build(BuildContext context) {
@@ -308,7 +311,7 @@ class _UpcomingEventCounterpartChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _UpcomingEventCounterpartVisual(counterpart: counterpart),
+          _UpcomingOcurrenceCounterpartVisual(counterpart: counterpart),
           const SizedBox(width: 6),
           Flexible(
             child: Text(
@@ -316,9 +319,9 @@ class _UpcomingEventCounterpartChip extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface,
-                    fontWeight: FontWeight.w700,
-                  ),
+                color: Theme.of(context).colorScheme.onSurface,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -327,12 +330,10 @@ class _UpcomingEventCounterpartChip extends StatelessWidget {
   }
 }
 
-class _UpcomingEventCounterpartVisual extends StatelessWidget {
-  const _UpcomingEventCounterpartVisual({
-    required this.counterpart,
-  });
+class _UpcomingOcurrenceCounterpartVisual extends StatelessWidget {
+  const _UpcomingOcurrenceCounterpartVisual({required this.counterpart});
 
-  final UpcomingEventCounterpartData counterpart;
+  final UpcomingOcurrenceCounterpartData counterpart;
 
   @override
   Widget build(BuildContext context) {
@@ -358,10 +359,8 @@ class _UpcomingEventCounterpartVisual extends StatelessWidget {
   }
 }
 
-class _UpcomingEventImage extends StatelessWidget {
-  const _UpcomingEventImage({
-    required this.imageUri,
-  });
+class _UpcomingOcurrenceImage extends StatelessWidget {
+  const _UpcomingOcurrenceImage({required this.imageUri});
 
   final Uri? imageUri;
 

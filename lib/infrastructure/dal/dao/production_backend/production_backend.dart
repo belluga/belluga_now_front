@@ -12,7 +12,7 @@ import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/static_assets
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/static_assets_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart';
-import 'package:belluga_now/infrastructure/dal/dao/venue_event_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/event_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/production_backend/live_only_unsupported_backends.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 
@@ -24,7 +24,7 @@ class ProductionBackend extends BackendContract {
     AccountProfilesBackendContract? accountProfiles,
     StaticAssetsBackendContract? staticAssets,
     FavoriteBackendContract? favorites,
-    VenueEventBackendContract? venueEvents,
+    EventBackendContract? events,
     ScheduleBackendContract? schedule,
   })  : _appData = appData ?? AppDataBackend(),
         _auth = auth ?? LaravelAuthBackend(),
@@ -32,8 +32,8 @@ class ProductionBackend extends BackendContract {
         _accountProfiles = accountProfiles ?? LaravelAccountProfilesBackend(),
         _staticAssets = staticAssets ?? LaravelStaticAssetsBackend(),
         _favorites = favorites ?? LaravelFavoriteBackend(),
-        _venueEvents =
-            venueEvents ?? const LiveOnlyUnsupportedVenueEventBackend(),
+        _events =
+            events ?? const LiveOnlyUnsupportedEventBackend(),
         _schedule = schedule ?? LaravelScheduleBackend();
 
   BackendContext? _context;
@@ -43,7 +43,7 @@ class ProductionBackend extends BackendContract {
   final AccountProfilesBackendContract _accountProfiles;
   final StaticAssetsBackendContract _staticAssets;
   final FavoriteBackendContract _favorites;
-  final VenueEventBackendContract _venueEvents;
+  final EventBackendContract _events;
   final ScheduleBackendContract _schedule;
 
   @override
@@ -73,7 +73,7 @@ class ProductionBackend extends BackendContract {
   FavoriteBackendContract get favorites => _favorites;
 
   @override
-  VenueEventBackendContract get venueEvents => _venueEvents;
+  EventBackendContract get events => _events;
 
   @override
   ScheduleBackendContract get schedule => _schedule;

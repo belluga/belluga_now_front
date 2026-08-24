@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
-typedef UpcomingEventCounterpartData = ({
+typedef UpcomingOcurrenceCounterpartData = ({
   String label,
   String? thumbUrl,
   IconData fallbackIcon,
 });
 
-class UpcomingEventCardData {
-  const UpcomingEventCardData({
+class UpcomingOcurrenceCardData {
+  const UpcomingOcurrenceCardData({
     required this.imageUri,
     required this.headline,
     required this.metaLabel,
@@ -21,7 +21,7 @@ class UpcomingEventCardData {
   final Uri? imageUri;
   final String headline;
   final String metaLabel;
-  final List<UpcomingEventCounterpartData> counterparts;
+  final List<UpcomingOcurrenceCounterpartData> counterparts;
   final String? venueName;
   final int? counterpartCount;
   final String? venueDistanceLabel;

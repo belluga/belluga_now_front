@@ -1,7 +1,7 @@
 import 'package:belluga_now/domain/services/timezone_service_contract.dart';
 import 'package:belluga_now/domain/services/value_objects/timezone_service_contract_values.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -54,7 +54,7 @@ void main() {
       isRequired: true,
     )..parse('https://tenant.test/fallback.jpg');
 
-    final projection = VenueEventResume.fromScheduleEvent(event, fallbackThumb);
+    final projection = UpcomingOcurrenceResume.fromScheduleEvent(event, fallbackThumb);
 
     expect(projection.startDateTime.hour, 20);
     expect(projection.startDateTime.day, 29);

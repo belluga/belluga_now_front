@@ -34,6 +34,7 @@ import 'package:get_it/get_it.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_counterpart_count_value.dart';
 
 class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
   static const int _publicVisibleNameMinLength = 3;
@@ -1002,6 +1003,9 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
               ? null
               : partnerProjectionOptionalText(venueTitle),
           imageUriValue: imageUriValue,
+          counterpartCountValue: json['counterpart_count'] == null
+              ? null
+              : EventCounterpartCountValue(json['counterpart_count']),
           linkedAccountProfiles: linkedAccountProfiles,
         ),
       );
@@ -1027,6 +1031,8 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       }
 
       final thumb = json['avatar_url']?.toString().trim();
+      final profileType = json['profile_type']?.toString().trim();
+      final partyType = json['party_type']?.toString().trim();
       linkedAccountProfiles.add(
         PartnerSupportedEntityView(
           idValue: (() {
@@ -1040,6 +1046,12 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           thumbValue: thumb == null || thumb.isEmpty
               ? null
               : partnerProjectionOptionalText(thumb),
+          profileTypeValue: profileType == null || profileType.isEmpty
+              ? null
+              : partnerProjectionOptionalText(profileType),
+          partyTypeValue: partyType == null || partyType.isEmpty
+              ? null
+              : partnerProjectionOptionalText(partyType),
         ),
       );
     }

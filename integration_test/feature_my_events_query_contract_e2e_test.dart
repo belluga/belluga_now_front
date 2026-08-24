@@ -1,7 +1,7 @@
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/auth_repository_contract_values.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_source.dart';
@@ -108,7 +108,7 @@ void main() {
     );
 
     final myEvents = await userEventsRepository.fetchMyEvents();
-    expect(myEvents, isA<List<VenueEventResume>>());
+    expect(myEvents, isA<List<UpcomingOcurrenceResume>>());
 
     for (final event in myEvents) {
       expect(event.id.trim(), isNotEmpty);

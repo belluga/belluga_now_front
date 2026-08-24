@@ -20,6 +20,9 @@ import 'package:belluga_now/domain/repositories/account_profiles_repository_cont
 import 'package:belluga_now/presentation/shared/favorites/account_profile_favorite_auth_gate.dart';
 import 'package:belluga_now/presentation/shared/sharing/public_share_launcher.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_agenda_presentation.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
+import 'package:belluga_now/presentation/tenant_public/widgets/date_grouped_event_list.dart';
 import 'package:belluga_now/presentation/shared/visuals/resolved_profile_type_visual.dart';
 import 'package:belluga_now/presentation/shared/widgets/account_profile_overlapping_identity_card.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
@@ -37,7 +40,6 @@ import 'package:belluga_now/domain/partners/projections/partner_profile_module_d
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/invite_status_icon.dart';
-import 'package:belluga_now/presentation/tenant_public/widgets/upcoming_event_card.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart' hide Marker;
@@ -826,16 +828,13 @@ class _AccountProfileDetailScreenState
     PartnerProfileConfig config,
     Map<ProfileModuleId, Object?> moduleData,
   ) {
-    final agendaEvents = _agendaEventsFromModuleData(moduleData);
+    final agenda = _agendaPresentationFromModuleData(moduleData);
     final locationView = _locationFromModuleData(moduleData);
 
     final tabs = config.tabs
         .where(
-          (tab) => _shouldRenderTab(
-            tab,
-            agendaEvents: agendaEvents,
-            location: locationView,
-          ),
+          (tab) =>
+              _shouldRenderTab(tab, agenda: agenda, location: locationView),
         )
         .map((tab) => _buildConfiguredTab(tab, moduleData))
         .toList();
@@ -911,7 +910,7 @@ class _AccountProfileDetailScreenState
 
   bool _shouldRenderTab(
     ProfileTabConfig tab, {
-    required List<PartnerEventView> agendaEvents,
+    required AccountProfileAgendaPresentation? agenda,
     required PartnerLocationView? location,
   }) {
     final lowerTitle = tab.title.toLowerCase();
@@ -919,7 +918,7 @@ class _AccountProfileDetailScreenState
       return _canRenderLocationSection(location);
     }
     if (lowerTitle.contains('evento') || lowerTitle.contains('agenda')) {
-      return agendaEvents.isNotEmpty;
+      return agenda != null && !agenda.isEmpty;
     }
     return true;
   }
@@ -1474,14 +1473,14 @@ class _AccountProfileDetailScreenState
     context.router.push(route);
   }
 
-  List<PartnerEventView> _agendaEventsFromModuleData(
+  AccountProfileAgendaPresentation? _agendaPresentationFromModuleData(
     Map<ProfileModuleId, Object?> moduleData,
   ) {
     final raw = moduleData[ProfileModuleId.agendaList];
-    if (raw is List<PartnerEventView>) {
+    if (raw is AccountProfileAgendaPresentation) {
       return raw;
     }
-    return const <PartnerEventView>[];
+    return null;
   }
 
   PartnerLocationView? _locationFromModuleData(
@@ -1489,22 +1488,6 @@ class _AccountProfileDetailScreenState
   ) {
     final raw = moduleData[ProfileModuleId.locationInfo];
     return raw is PartnerLocationView ? raw : null;
-  }
-
-  PartnerEventView? _resolveLiveEvent(List<PartnerEventView> events) {
-    for (final event in events) {
-      if (_isHappeningNow(event)) {
-        return event;
-      }
-    }
-    return null;
-  }
-
-  bool _isHappeningNow(PartnerEventView event) {
-    final now = DateTime.now();
-    final start = event.startDateTime;
-    final end = event.endDateTime ?? start.add(const Duration(hours: 3));
-    return !now.isBefore(start) && !now.isAfter(end);
   }
 
   Widget? _buildFavoriteFooterIfAvailable(
@@ -1650,10 +1633,9 @@ class _AccountProfileDetailScreenState
 
   Widget _agendaList(
     AccountProfileModel accountProfile,
-    List<PartnerEventView>? events,
+    AccountProfileAgendaPresentation? presentation,
   ) {
-    final agenda = events ?? const <PartnerEventView>[];
-    if (agenda.isEmpty) {
+    if (presentation == null || presentation.isEmpty) {
       return Padding(
         padding: const EdgeInsets.all(16),
         child: Text(
@@ -1663,20 +1645,12 @@ class _AccountProfileDetailScreenState
       );
     }
 
-    final featuredEvent = _resolveLiveEvent(agenda);
-    final upcomingEvents = agenda
-        .where(
-          (event) =>
-              featuredEvent == null || event.uniqueId != featuredEvent.uniqueId,
-        )
-        .toList(growable: false);
-
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (featuredEvent != null) ...[
+          if (presentation.liveOccurrences.isNotEmpty) ...[
             Text(
               'Acontecendo Agora',
               style: Theme.of(
@@ -1684,10 +1658,15 @@ class _AccountProfileDetailScreenState
               ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 14),
-            _buildAgendaLiveHighlightCard(accountProfile, featuredEvent),
+            ...presentation.liveOccurrences.map(
+              (event) => Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: _buildAgendaLiveHighlightCard(accountProfile, event),
+              ),
+            ),
             const SizedBox(height: 28),
           ],
-          if (upcomingEvents.isNotEmpty) ...[
+          if (presentation.upcomingOccurrences.isNotEmpty) ...[
             Text(
               'Próximos Eventos',
               style: Theme.of(
@@ -1695,14 +1674,39 @@ class _AccountProfileDetailScreenState
               ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 14),
-            ...upcomingEvents.map(
-              (event) => Padding(
-                padding: const EdgeInsets.only(bottom: 14),
-                child: _buildAgendaEventCard(accountProfile, event),
+            DateGroupedEventList(
+              events: presentation.upcomingOccurrences,
+              onEventSelected: _openUpcomingAgendaOccurrence,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              primary: false,
+              highlightNowEvents: false,
+              keyNamespace: 'accountProfileAgendaCard',
+              padding: EdgeInsets.zero,
+              showVenueAddress: false,
+              isConfirmed: (event) => _controller.isOccurrenceConfirmed(
+                event.selectedOccurrenceId ?? '',
               ),
+              pendingInvitesCount: (event) => _controller.pendingInviteCount(
+                event.selectedOccurrenceId ?? '',
+              ),
+              distanceLabel: (event) =>
+                  _controller.distanceLabelFor(accountProfile, event),
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  void _openUpcomingAgendaOccurrence(UpcomingOcurrenceResume event) {
+    final occurrenceId = event.selectedOccurrenceId?.trim();
+    _safeRouterPush(
+      ImmersiveEventDetailRoute(
+        eventSlug: event.slug,
+        occurrenceId: occurrenceId == null || occurrenceId.isEmpty
+            ? null
+            : occurrenceId,
       ),
     );
   }
@@ -2148,46 +2152,6 @@ class _AccountProfileDetailScreenState
     );
   }
 
-  Widget _buildAgendaEventCard(
-    AccountProfileModel accountProfile,
-    PartnerEventView event,
-  ) {
-    return UpcomingEventCard(
-      data: UpcomingEventCardData(
-        imageUri: event.imageUri,
-        headline: _agendaPrimaryLabel(accountProfile, event),
-        metaLabel: event.agendaScheduleLabel,
-        counterparts: _agendaCounterparts(accountProfile, event)
-            .map(
-              (counterpart) => (
-                label: counterpart.label,
-                thumbUrl: counterpart.thumbUrl,
-                fallbackIcon: Icons.music_note,
-              ),
-            )
-            .toList(growable: false),
-        venueName: _agendaVenueName(event),
-        venueDistanceLabel: _controller.distanceLabelFor(accountProfile, event),
-        venueAddress: _agendaVenueAddress(event),
-      ),
-      onTap: () => _safeRouterPush(
-        // Keep upcoming and live agenda cards aligned on occurrence trimming.
-        ImmersiveEventDetailRoute(
-          eventSlug: event.slug,
-          occurrenceId: () {
-            final occurrenceId = event.occurrenceId.trim();
-            return occurrenceId.isEmpty ? null : occurrenceId;
-          }(),
-        ),
-      ),
-      isConfirmed: _controller.isOccurrenceConfirmed(event.occurrenceId),
-      pendingInvitesCount: _controller.pendingInviteCount(event.occurrenceId),
-      statusIconSize: 24,
-      keyNamespace: 'accountProfileAgendaCard',
-      cardId: event.uniqueId,
-    );
-  }
-
   Widget _buildAgendaImage(PartnerEventView event) {
     final colorScheme = Theme.of(context).colorScheme;
     final imageUri = event.imageUri;
@@ -2397,7 +2361,10 @@ class _AccountProfileDetailScreenState
     if (venueName == null) {
       return null;
     }
-    final distanceLabel = _controller.distanceLabelFor(accountProfile, event);
+    final distanceLabel = _controller.distanceLabelForLiveOccurrence(
+      accountProfile,
+      event,
+    );
     final address = _agendaVenueAddress(event);
     final buffer = StringBuffer(venueName);
     if (distanceLabel != null && distanceLabel.trim().isNotEmpty) {
@@ -3201,7 +3168,7 @@ class _AccountProfileDetailScreenState
       case ProfileModuleId.agendaList:
         return _agendaList(
           widget.accountProfile,
-          data is List<PartnerEventView> ? data : null,
+          data is AccountProfileAgendaPresentation ? data : null,
         );
       case ProfileModuleId.musicPlayer:
         return _musicPlayer(data is List<PartnerMediaView> ? data : null);

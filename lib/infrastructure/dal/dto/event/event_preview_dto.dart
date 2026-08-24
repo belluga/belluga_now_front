@@ -1,5 +1,5 @@
-class VenueEventPreviewDTO {
-  const VenueEventPreviewDTO({
+class EventPreviewDTO {
+  const EventPreviewDTO({
     required this.id,
     required this.title,
     required this.imageUrl,

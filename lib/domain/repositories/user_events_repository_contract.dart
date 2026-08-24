@@ -1,4 +1,4 @@
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:stream_value/core/stream_value.dart';
 
@@ -25,10 +25,10 @@ abstract class UserEventsRepositoryContract {
   }
 
   /// Fetch occurrences that the user has confirmed attendance for.
-  Future<List<VenueEventResume>> fetchMyEvents();
+  Future<List<UpcomingOcurrenceResume>> fetchMyEvents();
 
   /// Fetch featured/recommended events for the user
-  Future<List<VenueEventResume>> fetchFeaturedEvents();
+  Future<List<UpcomingOcurrenceResume>> fetchFeaturedEvents();
 
   /// Mark an occurrence as confirmed for the user.
   Future<void> confirmEventAttendance(

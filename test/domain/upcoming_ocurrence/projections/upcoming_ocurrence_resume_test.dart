@@ -25,7 +25,8 @@ import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_type_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
+import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -50,7 +51,7 @@ void main() {
     await GetIt.I.reset();
   });
 
-  group('VenueEventResume.resolvePreferredImageUri', () {
+  group('UpcomingOcurrenceResume.resolvePreferredImageUri', () {
     test(
       'uses the backend-owned event image without recomputing it locally',
       () {
@@ -73,7 +74,7 @@ void main() {
           venue: _buildVenue(heroUrl: 'https://cdn.test/host-cover.png'),
         );
 
-        final resolved = VenueEventResume.resolvePreferredImageUri(
+        final resolved = UpcomingOcurrenceResume.resolvePreferredImageUri(
           event,
           settingsDefaultImageValue: ThumbUriValue(
             defaultValue: Uri.parse('https://cdn.test/settings.png'),
@@ -104,15 +105,18 @@ void main() {
           ],
           venue: _buildVenue(heroUrl: 'https://cdn.test/host-cover.png'),
         );
-        final settingsResolved = VenueEventResume.resolvePreferredImageUri(
-          event,
-          settingsDefaultImageValue: ThumbUriValue(
-            defaultValue: Uri.parse('https://cdn.test/settings.png'),
-          )..parse('https://cdn.test/settings.png'),
-        );
+        final settingsResolved =
+            UpcomingOcurrenceResume.resolvePreferredImageUri(
+              event,
+              settingsDefaultImageValue: ThumbUriValue(
+                defaultValue: Uri.parse('https://cdn.test/settings.png'),
+              )..parse('https://cdn.test/settings.png'),
+            );
         expect(settingsResolved.toString(), 'https://cdn.test/settings.png');
         expect(
-          VenueEventResume.resolvePreferredImageUri(_buildEvent()).toString(),
+          UpcomingOcurrenceResume.resolvePreferredImageUri(
+            _buildEvent(),
+          ).toString(),
           'asset://event-placeholder',
         );
       },
@@ -126,7 +130,10 @@ void main() {
       isRequired: true,
     )..parse('https://cdn.test/settings.png');
 
-    final projection = VenueEventResume.fromScheduleEvent(event, fallbackThumb);
+    final projection = UpcomingOcurrenceResume.fromScheduleEvent(
+      event,
+      fallbackThumb,
+    );
 
     expect(projection.eventTypeLabel, 'Show');
     expect(projection.venueTitle, 'Host Venue');
@@ -148,11 +155,57 @@ void main() {
       isRequired: true,
     )..parse('https://cdn.test/settings.png');
 
-    final projection = VenueEventResume.fromScheduleEvent(event, fallbackThumb);
+    final projection = UpcomingOcurrenceResume.fromScheduleEvent(
+      event,
+      fallbackThumb,
+    );
 
     expect(projection.counterpartProfiles, hasLength(1));
     expect(projection.counterpartCount, 3);
   });
+
+  test(
+    'fromPartnerEventView preserves occurrence metadata and filters viewed host and venue',
+    () {
+      final event = buildPartnerEventView(
+        eventId: '507f1f77bcf86cd799439021',
+        occurrenceId: '507f1f77bcf86cd799439121',
+        slug: 'jazz-na-orla',
+        title: 'Jazz na Orla',
+        location: 'Deck Principal',
+        venueId: '507f1f77bcf86cd799439015',
+        venueTitle: 'Casa Marracini',
+        startDateTime: DateTime.utc(2026, 8, 25, 2, 30),
+        imageUri: null,
+        artistNames: const ['Marco Aurélio', 'Casa Marracini', 'DJ Lua'],
+        artistIds: const [
+          '507f1f77bcf86cd799439099',
+          '507f1f77bcf86cd799439015',
+          '507f1f77bcf86cd799439199',
+        ],
+        artistProfileTypes: const ['artist', 'venue', 'artist'],
+        artistPartyTypes: const ['artist', 'venue', 'artist'],
+        artistThumbUrls: const [null, null, 'https://cdn.test/dj-lua.png'],
+        counterpartCount: 7,
+      );
+
+      final projection = UpcomingOcurrenceResume.fromPartnerEventView(
+        event,
+        viewedProfileId: MongoIDValue()..parse('507f1f77bcf86cd799439099'),
+        viewedProfileName: TitleValue(minLenght: 1)..parse('Marco Aurélio'),
+      );
+
+      expect(projection.id, '507f1f77bcf86cd799439021');
+      expect(projection.selectedOccurrenceId, '507f1f77bcf86cd799439121');
+      expect(projection.venueId, '507f1f77bcf86cd799439015');
+      expect(projection.imageUri, Uri.parse('asset://event-placeholder'));
+      expect(projection.counterpartProfiles, hasLength(1));
+      expect(projection.counterpartProfiles.single.displayName, 'DJ Lua');
+      expect(projection.counterpartProfiles.single.profileType, 'artist');
+      expect(projection.counterpartProfiles.single.partyType, 'artist');
+      expect(projection.counterpartCount, 7);
+    },
+  );
 
   group('human ready schedule labels', () {
     test('same day range uses one date context and whole-hour h labels', () {
@@ -218,8 +271,8 @@ void main() {
   );
 }
 
-VenueEventResume _buildResume({required DateTime start, DateTime? end}) {
-  return VenueEventResume(
+UpcomingOcurrenceResume _buildResume({required DateTime start, DateTime? end}) {
+  return UpcomingOcurrenceResume(
     idValue: MongoIDValue()..parse('507f1f77bcf86cd799439099'),
     slugValue: SlugValue()..parse('sample-event'),
     titleValue: TitleValue(minLenght: 1)..parse('Sample Event'),

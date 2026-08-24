@@ -1,9 +1,9 @@
-import 'package:belluga_now/infrastructure/dal/dao/venue_event_backend_contract.dart';
-import 'package:belluga_now/infrastructure/dal/dto/venue_event/venue_event_preview_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dao/event_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dto/event/event_preview_dto.dart';
 
-class MockVenueEventBackend extends VenueEventBackendContract {
-  static final List<VenueEventPreviewDTO> _featuredEvents = [
-    VenueEventPreviewDTO(
+class MockEventBackend extends EventBackendContract {
+  static final List<EventPreviewDTO> _featuredEvents = [
+    EventPreviewDTO(
       id: 'event-day0-morning-flow',
       title: 'Festival de Verao',
       imageUrl:
@@ -12,7 +12,7 @@ class MockVenueEventBackend extends VenueEventBackendContract {
       location: 'Praia do Morro',
       artist: 'DJ Mare Alta',
     ),
-    VenueEventPreviewDTO(
+    EventPreviewDTO(
       id: 'event-day0-sunset-acoustic',
       title: 'Luau Exclusivo',
       imageUrl:
@@ -21,7 +21,7 @@ class MockVenueEventBackend extends VenueEventBackendContract {
       location: 'Areia Preta',
       artist: 'Banda Eclipse',
     ),
-    VenueEventPreviewDTO(
+    EventPreviewDTO(
       id: 'event-day0-electro-sunset',
       title: 'Sunset Experience',
       imageUrl:
@@ -32,8 +32,8 @@ class MockVenueEventBackend extends VenueEventBackendContract {
     ),
   ];
 
-  static final List<VenueEventPreviewDTO> _upcomingEvents = [
-    VenueEventPreviewDTO(
+  static final List<EventPreviewDTO> _upcomingEvents = [
+    EventPreviewDTO(
       id: 'event-day1-coffee-lab',
       title: 'Circuito Gastronomico',
       imageUrl:
@@ -42,7 +42,7 @@ class MockVenueEventBackend extends VenueEventBackendContract {
       location: 'Bistro da Orla',
       artist: 'Chef Paula Figueiredo',
     ),
-    VenueEventPreviewDTO(
+    EventPreviewDTO(
       id: 'event-day1-coastal-run',
       title: 'Passeio de Escuna',
       imageUrl:
@@ -51,7 +51,7 @@ class MockVenueEventBackend extends VenueEventBackendContract {
       location: 'Porto da Barra',
       artist: 'Guia Clara Nunes',
     ),
-    VenueEventPreviewDTO(
+    EventPreviewDTO(
       id: 'event-day1-artisan-stage',
       title: 'Tour Historico a Pe',
       imageUrl:
@@ -63,12 +63,12 @@ class MockVenueEventBackend extends VenueEventBackendContract {
   ];
 
   @override
-  Future<List<VenueEventPreviewDTO>> fetchFeaturedEvents() async {
-    return List<VenueEventPreviewDTO>.unmodifiable(_featuredEvents);
+  Future<List<EventPreviewDTO>> fetchFeaturedEvents() async {
+    return List<EventPreviewDTO>.unmodifiable(_featuredEvents);
   }
 
   @override
-  Future<List<VenueEventPreviewDTO>> fetchUpcomingEvents() async {
-    return List<VenueEventPreviewDTO>.unmodifiable(_upcomingEvents);
+  Future<List<EventPreviewDTO>> fetchUpcomingEvents() async {
+    return List<EventPreviewDTO>.unmodifiable(_upcomingEvents);
   }
 }

@@ -1,5 +1,5 @@
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
-import 'package:belluga_now/presentation/tenant_public/widgets/upcoming_event_card.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
+import 'package:belluga_now/presentation/tenant_public/widgets/upcoming_ocurrence_card.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -19,22 +19,28 @@ class DateGroupedEventList extends StatelessWidget {
     this.highlightTodayEvents = false,
     this.defaultEventDuration = const Duration(hours: 3),
     this.sortDescending = false,
+    this.keyNamespace = 'dateGroupedEventCard',
+    this.padding = const EdgeInsets.symmetric(horizontal: 16),
+    this.showVenueAddress = true,
     this.footer,
   });
 
-  final List<VenueEventResume> events;
-  final ValueChanged<VenueEventResume> onEventSelected;
+  final List<UpcomingOcurrenceResume> events;
+  final ValueChanged<UpcomingOcurrenceResume> onEventSelected;
   final bool shrinkWrap;
   final ScrollPhysics? physics;
   final bool? primary;
-  final bool Function(VenueEventResume event)? isConfirmed;
-  final int Function(VenueEventResume event)? pendingInvitesCount;
-  final String? Function(VenueEventResume event)? distanceLabel;
+  final bool Function(UpcomingOcurrenceResume event)? isConfirmed;
+  final int Function(UpcomingOcurrenceResume event)? pendingInvitesCount;
+  final String? Function(UpcomingOcurrenceResume event)? distanceLabel;
   final double? statusIconSize;
   final bool highlightNowEvents;
   final bool highlightTodayEvents;
   final Duration defaultEventDuration;
   final bool sortDescending;
+  final String keyNamespace;
+  final EdgeInsetsGeometry padding;
+  final bool showVenueAddress;
   final Widget? footer;
 
   @override
@@ -45,10 +51,10 @@ class DateGroupedEventList extends StatelessWidget {
     final now = DateTime.now();
 
     // Partition events into "now" and date groups
-    final nowEvents = <VenueEventResume>[];
-    final Map<String, List<VenueEventResume>> groupedEvents = {};
+    final nowEvents = <UpcomingOcurrenceResume>[];
+    final Map<String, List<UpcomingOcurrenceResume>> groupedEvents = {};
 
-    bool isHappeningNow(VenueEventResume event) {
+    bool isHappeningNow(UpcomingOcurrenceResume event) {
       final start = event.startDateTime;
       final end = event.endDateTime ?? start.add(defaultEventDuration);
       if (end.isBefore(start)) {
@@ -74,9 +80,11 @@ class DateGroupedEventList extends StatelessWidget {
       ..sort((a, b) => sortDescending ? b.compareTo(a) : a.compareTo(b));
 
     // Sort "now" events consistently
-    nowEvents.sort((a, b) => sortDescending
-        ? b.startDateTime.compareTo(a.startDateTime)
-        : a.startDateTime.compareTo(b.startDateTime));
+    nowEvents.sort(
+      (a, b) => sortDescending
+          ? b.startDateTime.compareTo(a.startDateTime)
+          : a.startDateTime.compareTo(b.startDateTime),
+    );
 
     final sections = <_EventSection>[];
     if (highlightNowEvents && nowEvents.isNotEmpty) {
@@ -93,11 +101,13 @@ class DateGroupedEventList extends StatelessWidget {
 
     for (final key in sortedDates) {
       final date = DateTime.parse(key);
-      final dateEvents = List<VenueEventResume>.from(
-        groupedEvents[key] ?? const [],
-      )..sort((a, b) => sortDescending
-          ? b.startDateTime.compareTo(a.startDateTime)
-          : a.startDateTime.compareTo(b.startDateTime));
+      final dateEvents =
+          List<UpcomingOcurrenceResume>.from(groupedEvents[key] ?? const [])
+            ..sort(
+              (a, b) => sortDescending
+                  ? b.startDateTime.compareTo(a.startDateTime)
+                  : a.startDateTime.compareTo(b.startDateTime),
+            );
       final tag = highlightTodayEvents ? _tagForDate(date, now) : null;
       sections.add(
         _EventSection(
@@ -114,7 +124,7 @@ class DateGroupedEventList extends StatelessWidget {
       primary: primary,
       shrinkWrap: shrinkWrap,
       physics: physics,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+      padding: padding,
       itemCount: sections.length + (footer != null ? 1 : 0),
       itemBuilder: (context, index) {
         if (footer != null && index == sections.length) {
@@ -145,8 +155,9 @@ class DateGroupedEventList extends StatelessWidget {
                           borderRadius: BorderRadius.circular(26),
                           boxShadow: [
                             BoxShadow(
-                              color: colorScheme.errorContainer
-                                  .withValues(alpha: 0.18),
+                              color: colorScheme.errorContainer.withValues(
+                                alpha: 0.18,
+                              ),
                               blurRadius: 10,
                               offset: const Offset(0, 6),
                             ),
@@ -154,7 +165,8 @@ class DateGroupedEventList extends StatelessWidget {
                         ),
                         child: Text(
                           section.label,
-                          style: theme.textTheme.labelLarge?.copyWith(
+                          style:
+                              theme.textTheme.labelLarge?.copyWith(
                                 color: colorScheme.onErrorContainer,
                                 fontWeight: FontWeight.w900,
                                 letterSpacing: 1.2,
@@ -184,7 +196,8 @@ class DateGroupedEventList extends StatelessWidget {
                               ),
                               child: Text(
                                 section.tag!,
-                                style: theme.textTheme.labelLarge?.copyWith(
+                                style:
+                                    theme.textTheme.labelLarge?.copyWith(
                                       color: colorScheme.onSecondaryContainer,
                                       fontWeight: FontWeight.w800,
                                       letterSpacing: 1.2,
@@ -203,33 +216,41 @@ class DateGroupedEventList extends StatelessWidget {
                           children: [
                             Expanded(
                               child: Divider(
-                                color:
-                                    colorScheme.primary.withValues(alpha: 0.3),
+                                color: colorScheme.primary.withValues(
+                                  alpha: 0.3,
+                                ),
                                 thickness: 1.5,
                               ),
                             ),
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 12),
-                              child: Text(
-                                section.label,
-                                style: theme.textTheme.titleSmall?.copyWith(
-                                      color: colorScheme.primary,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 1.3,
-                                    ) ??
-                                    TextStyle(
-                                      color: colorScheme.primary,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 1.3,
-                                    ),
-                                textAlign: TextAlign.center,
+                            Flexible(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                                child: Text(
+                                  section.label,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style:
+                                      theme.textTheme.titleSmall?.copyWith(
+                                        color: colorScheme.primary,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 1.3,
+                                      ) ??
+                                      TextStyle(
+                                        color: colorScheme.primary,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 1.3,
+                                      ),
+                                  textAlign: TextAlign.center,
+                                ),
                               ),
                             ),
                             Expanded(
                               child: Divider(
-                                color:
-                                    colorScheme.primary.withValues(alpha: 0.3),
+                                color: colorScheme.primary.withValues(
+                                  alpha: 0.3,
+                                ),
                                 thickness: 1.5,
                               ),
                             ),
@@ -246,9 +267,13 @@ class DateGroupedEventList extends StatelessWidget {
                 sectionIndex: index,
                 eventIndex: entry.key,
               );
+              final cardId =
+                  event.selectedOccurrenceId?.trim().isNotEmpty == true
+                  ? event.selectedOccurrenceId!.trim()
+                  : cardIdentity;
               return Padding(
                 padding: const EdgeInsets.only(bottom: 16),
-                child: UpcomingEventCard.fromVenueEventResume(
+                child: UpcomingOcurrenceCard.fromUpcomingOcurrenceResume(
                   key: ValueKey<String>(
                     'date-grouped-event-card-$cardIdentity',
                   ),
@@ -258,8 +283,9 @@ class DateGroupedEventList extends StatelessWidget {
                   pendingInvitesCount: pendingInvitesCount?.call(event) ?? 0,
                   distanceLabel: distanceLabel?.call(event),
                   statusIconSize: statusIconSize ?? 24,
-                  keyNamespace: 'dateGroupedEventCard',
-                  cardId: cardIdentity,
+                  keyNamespace: keyNamespace,
+                  cardId: cardId,
+                  showVenueAddress: showVenueAddress,
                 ),
               );
             }),
@@ -270,7 +296,7 @@ class DateGroupedEventList extends StatelessWidget {
   }
 
   String _cardIdentityFor({
-    required VenueEventResume event,
+    required UpcomingOcurrenceResume event,
     required int sectionIndex,
     required int eventIndex,
   }) {
@@ -298,7 +324,7 @@ class _EventSection {
   });
 
   final String label;
-  final List<VenueEventResume> events;
+  final List<UpcomingOcurrenceResume> events;
   final String? tag;
   final bool isNow;
   final DateTime? date;

@@ -24,11 +24,15 @@ import 'package:belluga_now/domain/repositories/user_events_repository_contract.
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_state.dart';
+import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_agenda_presentation.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/presentation/shared/visuals/account_profile_visual_resolver.dart';
 import 'package:belluga_now/presentation/shared/visuals/resolved_account_profile_visual.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
+import 'package:belluga_now/domain/value_objects/title_value.dart';
 
 enum AccountProfileFavoriteToggleOutcome { toggled, requiresAuthentication }
 
@@ -518,10 +522,23 @@ class AccountProfileDetailController implements Disposable {
 
   String? distanceLabelFor(
     AccountProfileModel accountProfile,
+    UpcomingOcurrenceResume event,
+  ) {
+    return _distanceLabelForVenueId(accountProfile, event.venueId);
+  }
+
+  String? distanceLabelForLiveOccurrence(
+    AccountProfileModel accountProfile,
     PartnerEventView event,
   ) {
+    return _distanceLabelForVenueId(accountProfile, event.venueId);
+  }
+
+  String? _distanceLabelForVenueId(
+    AccountProfileModel accountProfile,
+    String? venueId,
+  ) {
     final distanceMeters = accountProfile.distanceMeters;
-    final venueId = event.venueId;
     if (distanceMeters == null ||
         venueId == null ||
         venueId != accountProfile.id) {
@@ -554,7 +571,7 @@ class AccountProfileDetailController implements Disposable {
       modules[ProfileModuleId.locationInfo] = location;
     }
     final agenda = _buildAgendaModuleData(accountProfile);
-    if (agenda.isNotEmpty) {
+    if (!agenda.isEmpty) {
       modules[ProfileModuleId.agendaList] = agenda;
     }
     return modules;
@@ -633,10 +650,57 @@ class AccountProfileDetailController implements Disposable {
     );
   }
 
-  List<PartnerEventView> _buildAgendaModuleData(
+  AccountProfileAgendaPresentation _buildAgendaModuleData(
     AccountProfileModel accountProfile,
   ) {
-    return accountProfile.agendaEvents;
+    return buildAgendaPresentation(accountProfile, accountProfile.agendaEvents);
+  }
+
+  AccountProfileAgendaPresentation buildAgendaPresentation(
+    AccountProfileModel accountProfile,
+    List<PartnerEventView> events, {
+    DateTime? now,
+  }) {
+    final referenceNow = now ?? DateTime.now();
+    final liveOccurrences =
+        events
+            .where((event) => _isHappeningNow(event, referenceNow))
+            .toList(growable: false)
+          ..sort(_compareAgendaEvents);
+    final liveIds = liveOccurrences.map((event) => event.uniqueId).toSet();
+    final upcomingOccurrences = events
+        .where((event) => !liveIds.contains(event.uniqueId))
+        .map(
+          (event) => UpcomingOcurrenceResume.fromPartnerEventView(
+            event,
+            viewedProfileId: MongoIDValue()..parse(accountProfile.id),
+            viewedProfileName: TitleValue(minLenght: 1)
+              ..parse(accountProfile.name),
+          ),
+        )
+        .toList(growable: false);
+
+    return AccountProfileAgendaPresentation(
+      liveOccurrences: liveOccurrences,
+      upcomingOccurrences: upcomingOccurrences,
+    );
+  }
+
+  bool _isHappeningNow(PartnerEventView event, DateTime now) {
+    final start = event.startDateTime;
+    final end = event.endDateTime ?? start.add(const Duration(hours: 3));
+    if (end.isBefore(start)) {
+      return false;
+    }
+    return !now.isBefore(start) && !now.isAfter(end);
+  }
+
+  int _compareAgendaEvents(PartnerEventView left, PartnerEventView right) {
+    final byStart = left.startDateTime.compareTo(right.startDateTime);
+    if (byStart != 0) {
+      return byStart;
+    }
+    return left.occurrenceId.compareTo(right.occurrenceId);
   }
 
   void _logContactTelemetry(

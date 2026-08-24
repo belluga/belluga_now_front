@@ -15,7 +15,7 @@ import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorites_section_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/invites_banner/controllers/invites_banner_builder_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/section_header.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
@@ -369,7 +369,7 @@ void main() {
         );
     mockito
         .when(mockController.myEventsFilteredStreamValue)
-        .thenReturn(StreamValue<List<VenueEventResume>>(defaultValue: []));
+        .thenReturn(StreamValue<List<UpcomingOcurrenceResume>>(defaultValue: []));
     mockito
         .when(mockController.scrollController)
         .thenReturn(testScrollController);
@@ -452,7 +452,7 @@ void main() {
 
   testWidgets('TenantHomeScreen renders correctly', (tester) async {
     final now = DateTime.now();
-    final event = buildVenueEventResume(
+    final event = buildUpcomingOcurrenceResume(
       id: 'event-1',
       slug: 'event-1',
       title: 'Evento do Teste Longo',
@@ -462,7 +462,7 @@ void main() {
     );
     mockito
         .when(mockController.myEventsFilteredStreamValue)
-        .thenReturn(StreamValue<List<VenueEventResume>>(defaultValue: [event]));
+        .thenReturn(StreamValue<List<UpcomingOcurrenceResume>>(defaultValue: [event]));
     final mockRouter = MockStackRouter();
     _stubMockRouterRoot(mockRouter);
     mockito.when(mockRouter.push(mockito.any)).thenAnswer((_) async => null);
@@ -532,7 +532,7 @@ void main() {
 
   testWidgets('taps My Events card and pushes detail route', (tester) async {
     final now = DateTime.now();
-    final event = buildVenueEventResume(
+    final event = buildUpcomingOcurrenceResume(
       id: 'event-1',
       slug: 'event-1',
       title: 'Evento do Teste Longo',
@@ -543,7 +543,7 @@ void main() {
     );
     mockito
         .when(mockController.myEventsFilteredStreamValue)
-        .thenReturn(StreamValue<List<VenueEventResume>>(defaultValue: [event]));
+        .thenReturn(StreamValue<List<UpcomingOcurrenceResume>>(defaultValue: [event]));
 
     final mockRouter = MockStackRouter();
     _stubMockRouterRoot(mockRouter);

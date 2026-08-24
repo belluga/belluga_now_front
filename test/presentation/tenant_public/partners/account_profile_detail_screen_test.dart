@@ -17,7 +17,6 @@ import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
-import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_fields.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
@@ -35,7 +34,7 @@ import 'package:belluga_now/presentation/tenant_public/partners/controllers/acco
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_state.dart';
 import 'package:belluga_now/presentation/shared/widgets/account_profile_overlapping_identity_card.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
-import 'package:belluga_now/presentation/tenant_public/widgets/upcoming_event_card.dart';
+import 'package:belluga_now/presentation/tenant_public/widgets/upcoming_ocurrence_card.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_screen_controller.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_store_platform.dart';
@@ -1554,14 +1553,14 @@ void main() {
       _buildRoutedTestApp(
         router: router,
         child: AccountProfileDetailScreen(
-          accountProfile: _buildArtistProfileWithPaddedUpcomingOccurrence(),
+          accountProfile: _buildArtistProfileWithPaddedUpcomingOcurrence(),
         ),
       ),
     );
     await tester.pumpAndSettle();
 
     final futureCard = tester
-        .widgetList<UpcomingEventCard>(find.byType(UpcomingEventCard))
+        .widgetList<UpcomingOcurrenceCard>(find.byType(UpcomingOcurrenceCard))
         .last;
     futureCard.onTap?.call();
     await tester.pump();
@@ -1714,6 +1713,54 @@ void main() {
     expect(find.text('Acontecendo Agora'), findsNothing);
     expect(find.text('Próximos Eventos'), findsOneWidget);
   });
+
+  testWidgets(
+    'Account Profile Agenda renders a visible local-date header for each upcoming date',
+    (tester) async {
+      final repository = _FakeAccountProfilesRepository();
+      final controller = AccountProfileDetailController(
+        accountProfilesRepository: repository,
+      );
+      GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+      final profile = _buildArtistWithTwoUpcomingDates();
+      final firstDate = profile.agendaEvents.first.startDateTime;
+      final secondDate = profile.agendaEvents[1].startDateTime;
+
+      await tester.pumpWidget(
+        _buildRoutedTestApp(
+          router: _RecordingStackRouter(),
+          child: AccountProfileDetailScreen(accountProfile: profile),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Próximos Eventos'), findsOneWidget);
+      expect(
+        find.text(DateFormat.MMMMEEEEd().format(firstDate).toUpperCase()),
+        findsOneWidget,
+      );
+      expect(
+        find.text(DateFormat.MMMMEEEEd().format(secondDate).toUpperCase()),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(
+          const Key(
+            'accountProfileAgendaCardHeadline_507f1f77bcf86cd799439231',
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(
+          const Key(
+            'accountProfileAgendaCardHeadline_507f1f77bcf86cd799439232',
+          ),
+        ),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets(
     'live-only agenda renders the occurrence only in Acontecendo Agora',
@@ -3728,6 +3775,47 @@ AccountProfileModel _buildArtistRecurringOccurrenceProfile() {
   );
 }
 
+AccountProfileModel _buildArtistWithTwoUpcomingDates() {
+  final firstDate = DateTime.utc(2030, 5, 15, 18);
+  final secondDate = DateTime.utc(2030, 5, 16, 18);
+  return buildAccountProfileModelFromPrimitives(
+    id: '507f1f77bcf86cd799439011',
+    name: 'Cafe de la Musique',
+    slug: 'cafe-de-la-musique',
+    type: 'artist',
+    agendaEvents: [
+      buildPartnerEventView(
+        eventId: '507f1f77bcf86cd799439031',
+        occurrenceId: '507f1f77bcf86cd799439231',
+        slug: 'agenda-em-dois-dias',
+        title: 'Agenda em Dois Dias',
+        eventTypeLabel: 'Show',
+        location: 'Deck Principal',
+        venueTitle: 'Cafe de la Musique',
+        venueId: '507f1f77bcf86cd799439011',
+        startDateTime: firstDate,
+        artistNames: const ['Marco Aurélio'],
+        artistIds: const ['507f1f77bcf86cd799439099'],
+        imageUri: Uri.parse('https://example.com/agenda-em-dois-dias.jpg'),
+      ),
+      buildPartnerEventView(
+        eventId: '507f1f77bcf86cd799439031',
+        occurrenceId: '507f1f77bcf86cd799439232',
+        slug: 'agenda-em-dois-dias',
+        title: 'Agenda em Dois Dias',
+        eventTypeLabel: 'Show',
+        location: 'Deck Principal',
+        venueTitle: 'Cafe de la Musique',
+        venueId: '507f1f77bcf86cd799439011',
+        startDateTime: secondDate,
+        artistNames: const ['Marco Aurélio'],
+        artistIds: const ['507f1f77bcf86cd799439099'],
+        imageUri: Uri.parse('https://example.com/agenda-em-dois-dias.jpg'),
+      ),
+    ],
+  );
+}
+
 AccountProfileModel _buildRestaurantProfile() {
   return buildAccountProfileModelFromPrimitives(
     id: '507f1f77bcf86cd799439012',
@@ -3979,7 +4067,7 @@ AccountProfileModel _buildArtistProfileWithContact({
   );
 }
 
-AccountProfileModel _buildArtistProfileWithPaddedUpcomingOccurrence() {
+AccountProfileModel _buildArtistProfileWithPaddedUpcomingOcurrence() {
   final now = DateTime.now().toUtc();
   return buildAccountProfileModelFromPrimitives(
     id: '507f1f77bcf86cd799439011',

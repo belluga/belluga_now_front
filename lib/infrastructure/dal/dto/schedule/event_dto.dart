@@ -38,7 +38,7 @@ import 'package:belluga_now/domain/value_objects/domain_optional_date_time_value
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
-import 'package:belluga_now/domain/venue_event/value_objects/venue_event_tag_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_tag_value.dart';
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_public_profile_payload_decoder.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_type_dto.dart';
@@ -415,7 +415,7 @@ class EventDTO {
           ),
           tags: _resolveCanonicalTaxonomyLabels(
             occurrenceTaxonomyTerms,
-          ).map(VenueEventTagValue.new).toList(growable: false),
+          ).map(EventTagValue.new).toList(growable: false),
         ),
       );
     }

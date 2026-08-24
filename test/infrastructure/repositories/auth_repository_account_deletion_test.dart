@@ -11,7 +11,7 @@ import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/contacts/contacts_local_cache_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/favorite_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart';
-import 'package:belluga_now/infrastructure/dal/dao/venue_event_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/event_backend_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/auth_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/contacts_repository.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
@@ -461,7 +461,7 @@ class _FakeBackend extends BackendContract {
   FavoriteBackendContract get favorites => throw UnimplementedError();
 
   @override
-  VenueEventBackendContract get venueEvents => throw UnimplementedError();
+  EventBackendContract get events => throw UnimplementedError();
 
   @override
   ScheduleBackendContract get schedule => throw UnimplementedError();

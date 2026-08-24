@@ -1,6 +1,6 @@
 import 'package:belluga_now/domain/services/timezone_service_contract.dart';
 import 'package:belluga_now/domain/services/value_objects/timezone_service_contract_values.dart';
-import 'package:belluga_now/presentation/tenant_public/widgets/upcoming_event_card.dart';
+import 'package:belluga_now/presentation/tenant_public/widgets/upcoming_ocurrence_card.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -21,7 +21,7 @@ void main() {
   testWidgets(
       'agenda card shows end day and time when event ends on another day',
       (tester) async {
-    final event = buildVenueEventResume(
+    final event = buildUpcomingOcurrenceResume(
       id: 'event-1',
       slug: 'evento-longo',
       title: 'Evento Longo',
@@ -34,7 +34,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: UpcomingEventCard.fromVenueEventResume(
+          body: UpcomingOcurrenceCard.fromUpcomingOcurrenceResume(
             event: event,
             distanceLabel: '759 m',
           ),
@@ -53,7 +53,7 @@ void main() {
 
   testWidgets('agenda card omits inferred end time when absent',
       (tester) async {
-    final event = buildVenueEventResume(
+    final event = buildUpcomingOcurrenceResume(
       id: 'event-1',
       slug: 'evento-longo',
       title: 'Evento Longo',
@@ -65,7 +65,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: UpcomingEventCard.fromVenueEventResume(
+          body: UpcomingOcurrenceCard.fromUpcomingOcurrenceResume(
             event: event,
             distanceLabel: '759 m',
           ),
@@ -80,7 +80,7 @@ void main() {
   testWidgets(
       'agenda card shows only end time when explicit end stays on same day',
       (tester) async {
-    final event = buildVenueEventResume(
+    final event = buildUpcomingOcurrenceResume(
       id: 'event-1',
       slug: 'evento-curto',
       title: 'Evento Curto',
@@ -93,7 +93,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: UpcomingEventCard.fromVenueEventResume(
+          body: UpcomingOcurrenceCard.fromUpcomingOcurrenceResume(
             event: event,
             distanceLabel: '759 m',
           ),
@@ -111,11 +111,11 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: UpcomingEventCard(
+          body: UpcomingOcurrenceCard(
             keyNamespace: 'homeAgendaCard',
             cardId: 'event-1',
             isConfirmed: true,
-            data: UpcomingEventCardData(
+            data: UpcomingOcurrenceCardData(
               imageUri: Uri.parse('https://tenant.test/media/event.png'),
               headline: 'Encontro na Praia',
               metaLabel: 'Qua, 1 abr · 7h às 10h',
@@ -155,8 +155,8 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: UpcomingEventCard(
-              data: UpcomingEventCardData(
+            body: UpcomingOcurrenceCard(
+              data: UpcomingOcurrenceCardData(
                 imageUri: Uri.parse('https://tenant.test/media/event.png'),
                 headline: 'Evento com Preview Truncado',
                 metaLabel: 'Qua, 1 abr · 7h',
@@ -188,9 +188,9 @@ void main() {
           body: Center(
             child: SizedBox(
               width: 300,
-              child: UpcomingEventCard(
+              child: UpcomingOcurrenceCard(
                 isConfirmed: true,
-                data: UpcomingEventCardData(
+                data: UpcomingOcurrenceCardData(
                   imageUri: Uri.parse('https://tenant.test/media/event.png'),
                   headline:
                       'Titulo grande para validar a linha do icone de status',

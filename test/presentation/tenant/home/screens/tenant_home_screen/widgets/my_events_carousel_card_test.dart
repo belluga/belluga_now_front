@@ -22,7 +22,7 @@ void main() {
   testWidgets('home event card shows explicit end time when provided', (
     tester,
   ) async {
-    final event = buildVenueEventResume(
+    final event = buildUpcomingOcurrenceResume(
       id: 'event-1',
       slug: 'event-1',
       title: 'Evento Longo',
@@ -59,7 +59,7 @@ void main() {
   testWidgets('home event card does not show inferred end time', (
     tester,
   ) async {
-    final event = buildVenueEventResume(
+    final event = buildUpcomingOcurrenceResume(
       id: 'event-1',
       slug: 'event-1',
       title: 'Evento Longo',
@@ -96,7 +96,7 @@ void main() {
   testWidgets('home event card keeps overlay text readable in light theme', (
     tester,
   ) async {
-    final event = buildVenueEventResume(
+    final event = buildUpcomingOcurrenceResume(
       id: 'event-contrast',
       slug: 'event-contrast',
       title: 'Evento Contraste',
@@ -148,7 +148,7 @@ void main() {
   testWidgets('home event card keeps overlay content visible on compact width', (
     tester,
   ) async {
-    final event = buildVenueEventResume(
+    final event = buildUpcomingOcurrenceResume(
       id: 'event-compact',
       slug: 'event-compact',
       title: 'Evento Compacto',

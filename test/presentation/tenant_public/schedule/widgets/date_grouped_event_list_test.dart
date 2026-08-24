@@ -4,18 +4,19 @@ import 'package:belluga_now/domain/artist/value_objects/artist_genre_value.dart'
 import 'package:belluga_now/domain/artist/value_objects/artist_id_value.dart';
 import 'package:belluga_now/domain/artist/value_objects/artist_is_highlight_value.dart';
 import 'package:belluga_now/domain/artist/value_objects/artist_name_value.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/date_grouped_event_list.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/intl.dart';
 
 void main() {
   testWidgets(
     'highlights long-running event in AGORA section when endDateTime is in the future',
     (tester) async {
       final now = DateTime.now();
-      final event = buildVenueEventResume(
+      final event = buildUpcomingOcurrenceResume(
         id: '507f1f77bcf86cd799439099',
         slug: 'ongoing-event',
         title: 'Evento em Andamento',
@@ -58,8 +59,8 @@ void main() {
     (tester) async {
       final eventId = '507f1f77bcf86cd799439099';
       final baseDate = DateTime(2026, 5, 15, 18);
-      final events = <VenueEventResume>[
-        buildVenueEventResume(
+      final events = <UpcomingOcurrenceResume>[
+        buildUpcomingOcurrenceResume(
           id: eventId,
           slug: 'festa-da-imigracao-italiana',
           title: '5 ª Festa da Imigração Italiana',
@@ -68,7 +69,7 @@ void main() {
           location: 'Campo do Buenos Aires',
           selectedOccurrenceId: '69dd8398d698348015047b62',
         ),
-        buildVenueEventResume(
+        buildUpcomingOcurrenceResume(
           id: eventId,
           slug: 'festa-da-imigracao-italiana',
           title: '5 ª Festa da Imigração Italiana',
@@ -77,7 +78,7 @@ void main() {
           location: 'Campo do Buenos Aires',
           selectedOccurrenceId: '69ee1dafb70a4bcfef05e979',
         ),
-        buildVenueEventResume(
+        buildUpcomingOcurrenceResume(
           id: eventId,
           slug: 'festa-da-imigracao-italiana',
           title: '5 ª Festa da Imigração Italiana',
@@ -126,6 +127,26 @@ void main() {
           const ValueKey<String>(
             'date-grouped-event-card-occurrence:69ee1f37b861740a340d94d0',
           ),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text(DateFormat.MMMMEEEEd().format(baseDate).toUpperCase()),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          DateFormat.MMMMEEEEd()
+              .format(baseDate.add(const Duration(days: 1)))
+              .toUpperCase(),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          DateFormat.MMMMEEEEd()
+              .format(baseDate.add(const Duration(days: 2)))
+              .toUpperCase(),
         ),
         findsOneWidget,
       );

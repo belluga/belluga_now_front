@@ -44,7 +44,7 @@ import 'package:belluga_now/domain/user/friend.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:belluga_now/presentation/shared/init/screens/init_screen/controllers/init_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart';
@@ -424,7 +424,7 @@ void _registerTenantBootstrapDependencies({
   );
   when(
     mockController.myEventsFilteredStreamValue,
-  ).thenReturn(StreamValue<List<VenueEventResume>>(defaultValue: const []));
+  ).thenReturn(StreamValue<List<UpcomingOcurrenceResume>>(defaultValue: const []));
   when(mockController.scrollController).thenReturn(testScrollController);
 
   when(
@@ -629,10 +629,10 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   }) async {}
 
   @override
-  Future<List<VenueEventResume>> fetchFeaturedEvents() async => const [];
+  Future<List<UpcomingOcurrenceResume>> fetchFeaturedEvents() async => const [];
 
   @override
-  Future<List<VenueEventResume>> fetchMyEvents() async => const [];
+  Future<List<UpcomingOcurrenceResume>> fetchMyEvents() async => const [];
 
   @override
   UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
