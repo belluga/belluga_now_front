@@ -222,7 +222,8 @@ class DateGroupedEventList extends StatelessWidget {
                                 thickness: 1.5,
                               ),
                             ),
-                            Flexible(
+                            Expanded(
+                              flex: 3,
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 12,
@@ -230,7 +231,8 @@ class DateGroupedEventList extends StatelessWidget {
                                 child: Text(
                                   section.label,
                                   maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
+                                  overflow: TextOverflow.visible,
+                                  softWrap: true,
                                   style:
                                       theme.textTheme.titleSmall?.copyWith(
                                         color: colorScheme.primary,

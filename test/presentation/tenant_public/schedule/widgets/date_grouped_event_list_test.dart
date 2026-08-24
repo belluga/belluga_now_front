@@ -12,6 +12,51 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
 
 void main() {
+  testWidgets('keeps the full date header visible on a mobile-width viewport', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    final date = DateTime(2030, 8, 26);
+    final event = buildUpcomingOcurrenceResume(
+      id: '507f1f77bcf86cd799439098',
+      slug: 'mobile-date-header',
+      title: 'Evento com cabeçalho de data',
+      imageUri: Uri.parse('http://example.com/event.jpg'),
+      startDateTime: date.add(const Duration(hours: 18)),
+      location: 'Campo do Buenos Aires',
+      venueTitle: 'Carvoeiro',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: DateGroupedEventList(
+            events: [event],
+            onEventSelected: (_) {},
+            primary: false,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final label = DateFormat.MMMMEEEEd().format(date).toUpperCase();
+    final labelFinder = find.text(label);
+    expect(labelFinder, findsOneWidget);
+
+    final labelWidget = tester.widget<Text>(labelFinder);
+    expect(labelWidget.maxLines, 2);
+    expect(labelWidget.overflow, isNot(TextOverflow.ellipsis));
+    final labelRect = tester.getRect(labelFinder);
+    expect(labelRect.left, greaterThanOrEqualTo(0));
+    expect(labelRect.right, lessThanOrEqualTo(390));
+  });
+
   testWidgets(
     'highlights long-running event in AGORA section when endDateTime is in the future',
     (tester) async {
