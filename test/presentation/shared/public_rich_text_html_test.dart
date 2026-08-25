@@ -300,8 +300,11 @@ void main() {
     final rendererKey = GlobalKey();
     final firstMessengerKey = GlobalKey<ScaffoldMessengerState>();
     final secondMessengerKey = GlobalKey<ScaffoldMessengerState>();
-    final PublicRichTextUrlLauncher launcher =
-        (uri, {required mode, required webOnlyWindowName}) => gate.future;
+    Future<bool> launcher(
+      Uri uri, {
+      required LaunchMode mode,
+      required String webOnlyWindowName,
+    }) => gate.future;
 
     Widget buildApp({required bool useSecondMessenger}) => MaterialApp(
       home: Row(

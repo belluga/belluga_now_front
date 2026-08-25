@@ -9,6 +9,7 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/application/router/support/route_instance_scope.dart';
+import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
@@ -3765,8 +3766,10 @@ void main() {
                       avatarUrl: 'https://example.com/ananda.png',
                     ),
                   ],
-                  contentHtml:
-                      '<p><strong>Evento 🎉</strong> <u>aleatório</u> <a href="https://example.com">longe</a> <s>riscado</s></p>',
+                  contentHtml: SafeRichHtml.canonicalize(
+                    '<p><strong>Evento 🎉</strong> <u>aleatório</u> <a href="https://example.com">longe</a> <s>riscado</s></p>',
+                    allowExplicitHttpsLinks: true,
+                  ),
                 ),
               ),
             ),
