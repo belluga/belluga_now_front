@@ -127,6 +127,7 @@ class DiscoveryFilterBar extends StatelessWidget {
           final isActive = selection.primaryKeys.contains(item.key);
           return _HorizontalRevealRowItem(
             identity: item.key,
+            layoutFingerprint: item.label,
             child: _PrimaryFilterChip(
               key: ValueKey<String>('discoveryFilterPrimaryItem_${item.key}'),
               item: item,
@@ -378,13 +379,18 @@ class _HorizontalRevealRowState extends State<_HorizontalRevealRow> {
     // mounted anchors are intentionally not replayed after equivalent builds.
     final anchorWasAddedToCatalog = widget.anchorId != null &&
         !oldWidget.children.any((item) => item.identity == widget.anchorId);
-    final catalogOrderChanged = _childOrderChanged(
+    final catalogLayoutChanged = _childLayoutChanged(
       oldWidget.children,
       widget.children,
     );
     // Consume a row interaction only when its expected selection publication
     // arrives. Loading/catalog rebuilds can happen before that publication.
-    final pendingSelection = _pendingSuppressionSelection;
+    final pendingSelection = catalogLayoutChanged
+        ? null
+        : _pendingSuppressionSelection;
+    if (catalogLayoutChanged) {
+      _pendingSuppressionSelection = null;
+    }
     final selectionChanged = !listEquals(
       oldWidget.selectedItemIds,
       widget.selectedItemIds,
@@ -401,12 +407,12 @@ class _HorizontalRevealRowState extends State<_HorizontalRevealRow> {
     }
     if (oldWidget.anchorId != widget.anchorId) {
       _scheduleReveal(widget.anchorId);
-    } else if (catalogOrderChanged && pendingSelection == null) {
+    } else if (catalogLayoutChanged) {
       _scheduleReveal(widget.anchorId);
     }
   }
 
-  bool _childOrderChanged(
+  bool _childLayoutChanged(
     List<_HorizontalRevealRowItem> previous,
     List<_HorizontalRevealRowItem> current,
   ) {
@@ -414,7 +420,9 @@ class _HorizontalRevealRowState extends State<_HorizontalRevealRow> {
       return true;
     }
     for (var index = 0; index < current.length; index++) {
-      if (previous[index].identity != current[index].identity) {
+      if (previous[index].identity != current[index].identity ||
+          previous[index].layoutFingerprint !=
+              current[index].layoutFingerprint) {
         return true;
       }
     }
@@ -492,9 +500,14 @@ class _HorizontalRevealRowState extends State<_HorizontalRevealRow> {
 }
 
 class _HorizontalRevealRowItem {
-  const _HorizontalRevealRowItem({required this.identity, required this.child});
+  const _HorizontalRevealRowItem({
+    required this.identity,
+    required this.layoutFingerprint,
+    required this.child,
+  });
 
   final String identity;
+  final Object layoutFingerprint;
   final Widget child;
 }
 
@@ -630,6 +643,7 @@ class _TaxonomyGroupBlock extends StatelessWidget {
                         false;
                 return _HorizontalRevealRowItem(
                   identity: '${group.option.key}_${term.value}',
+                  layoutFingerprint: term.label,
                   child: _TaxonomyTermChip(
                     key: ValueKey<String>(
                       'discoveryFilterTaxonomyItem_${group.option.key}_${term.value}',

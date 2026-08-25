@@ -510,6 +510,113 @@ void main() {
     expect(_rowPixels(tester, 'discoveryFilterPrimaryList'), greaterThan(0));
   });
 
+  testWidgets('catalog label growth reveals the unchanged persisted anchor',
+      (tester) async {
+    Widget build({required bool widened}) => _NarrowHarness(
+          width: 240,
+          child: DiscoveryFilterBar(
+            key: const ValueKey<String>('relabeledCatalogBar'),
+            catalog: DiscoveryFilterCatalog(
+              surface: 'home.events',
+              filters: <DiscoveryFilterCatalogItem>[
+                DiscoveryFilterCatalogItem(
+                  key: 'first',
+                  label: widened
+                      ? 'A very long catalog label that changes the row layout'
+                      : 'A',
+                  target: 'event_occurrence',
+                  entities: const <String>{'event'},
+                ),
+                const DiscoveryFilterCatalogItem(
+                  key: 'selected',
+                  label: 'Selected',
+                  target: 'event_occurrence',
+                  entities: <String>{'event'},
+                ),
+              ],
+            ),
+            selection: const DiscoveryFilterSelection(
+              primaryKeys: <String>{'selected'},
+            ),
+            policy: const DiscoveryFilterPolicy(
+              primaryLayoutMode: DiscoveryFilterLayoutMode.row,
+            ),
+            onSelectionChanged: (_) {},
+          ),
+        );
+
+    await tester.pumpWidget(build(widened: false));
+    await tester.pumpAndSettle();
+    final initialOffset = _rowPixels(tester, 'discoveryFilterPrimaryList');
+
+    await tester.pumpWidget(build(widened: true));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .getRect(find.byKey(const ValueKey<String>(
+            'discoveryFilterPrimary_selected',
+          )))
+          .right,
+      lessThanOrEqualTo(240),
+    );
+    expect(
+      _rowPixels(tester, 'discoveryFilterPrimaryList'),
+      greaterThan(initialOffset),
+    );
+  });
+
+  testWidgets('catalog reorder invalidates pending interaction suppression',
+      (tester) async {
+    var catalog = _widePrimaryCatalog;
+    var selection = const DiscoveryFilterSelection(
+      primaryKeys: <String>{'music'},
+    );
+    DiscoveryFilterSelection? publishedSelection;
+    Widget build() => _NarrowHarness(
+          width: 180,
+          child: DiscoveryFilterBar(
+            key: const ValueKey<String>('reorderedInteractionBar'),
+            catalog: catalog,
+            selection: selection,
+            policy: const DiscoveryFilterPolicy(
+              primaryLayoutMode: DiscoveryFilterLayoutMode.row,
+              primarySelectionMode: DiscoveryFilterSelectionMode.single,
+            ),
+            onSelectionChanged: (next) => publishedSelection = next,
+          ),
+        );
+
+    await tester.pumpWidget(build());
+    await tester.pumpAndSettle();
+    final row = find.byKey(
+      const ValueKey<String>('discoveryFilterPrimaryList'),
+    );
+    await tester.drag(row, const Offset(-1200, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Teatro'));
+    expect(publishedSelection?.primaryKeys, <String>{'theatre'});
+
+    catalog = DiscoveryFilterCatalog(
+      surface: _widePrimaryCatalog.surface,
+      filters: _widePrimaryCatalog.filters.reversed.toList(growable: false),
+    );
+    await tester.pumpWidget(build());
+    await tester.pumpAndSettle();
+
+    selection = publishedSelection!;
+    await tester.pumpWidget(build());
+    await tester.pumpAndSettle();
+
+    final selectedRect = tester.getRect(
+      find.byKey(
+        const ValueKey<String>('discoveryFilterPrimary_theatre'),
+      ),
+    );
+    expect(selectedRect.left, greaterThanOrEqualTo(-0.1));
+    expect(selectedRect.right, lessThanOrEqualTo(180));
+  });
+
   testWidgets('pending reveal follows the latest hydrated anchor',
       (tester) async {
     Widget build(DiscoveryFilterSelection selection) => _NarrowHarness(
