@@ -293,6 +293,75 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('reports a pending failure through the current messenger', (
+    tester,
+  ) async {
+    final gate = Completer<bool>();
+    final rendererKey = GlobalKey();
+    final firstMessengerKey = GlobalKey<ScaffoldMessengerState>();
+    final secondMessengerKey = GlobalKey<ScaffoldMessengerState>();
+    final PublicRichTextUrlLauncher launcher =
+        (uri, {required mode, required webOnlyWindowName}) => gate.future;
+
+    Widget buildApp({required bool useSecondMessenger}) => MaterialApp(
+      home: Row(
+        children: [
+          Expanded(
+            child: ScaffoldMessenger(
+              key: firstMessengerKey,
+              child: Scaffold(
+                body: useSecondMessenger
+                    ? const SizedBox.shrink()
+                    : PublicRichTextHtml(
+                        key: rendererKey,
+                        html: '<p><a href="https://example.test">link</a></p>',
+                        launcher: launcher,
+                      ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: ScaffoldMessenger(
+              key: secondMessengerKey,
+              child: Scaffold(
+                body: useSecondMessenger
+                    ? PublicRichTextHtml(
+                        key: rendererKey,
+                        html: '<p><a href="https://example.test">link</a></p>',
+                        launcher: launcher,
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    await tester.pumpWidget(buildApp(useSecondMessenger: false));
+    await _tapRichText(tester, 'link');
+    await tester.pumpWidget(buildApp(useSecondMessenger: true));
+    gate.complete(false);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+
+    expect(
+      find.descendant(
+        of: find.byKey(secondMessengerKey),
+        matching: find.text('Não foi possível abrir o link.'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(firstMessengerKey),
+        matching: find.text('Não foi possível abrir o link.'),
+      ),
+      findsNothing,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('plain text has no launch callback', (tester) async {
     var calls = 0;
     await tester.pumpWidget(
