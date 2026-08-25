@@ -566,6 +566,65 @@ void main() {
     );
   });
 
+  testWidgets('catalog visual change reveals the unchanged persisted anchor',
+      (tester) async {
+    Widget build({required bool useImage}) => _NarrowHarness(
+          width: 240,
+          child: DiscoveryFilterBar(
+            key: const ValueKey<String>('visualCatalogBar'),
+            catalog: DiscoveryFilterCatalog(
+              surface: 'home.events',
+              filters: <DiscoveryFilterCatalogItem>[
+                DiscoveryFilterCatalogItem(
+                  key: 'first',
+                  label: 'First',
+                  imageUri: useImage ? 'https://example.com/first.png' : null,
+                  target: 'event_occurrence',
+                  entities: const <String>{'event'},
+                ),
+                const DiscoveryFilterCatalogItem(
+                  key: 'selected',
+                  label: 'Selected',
+                  target: 'event_occurrence',
+                  entities: <String>{'event'},
+                ),
+              ],
+            ),
+            selection: const DiscoveryFilterSelection(
+              primaryKeys: <String>{'selected'},
+            ),
+            policy: const DiscoveryFilterPolicy(
+              primaryLayoutMode: DiscoveryFilterLayoutMode.row,
+            ),
+            iconBuilder: (context, item, isActive, foregroundColor) =>
+                item.imageUri == null
+                    ? Icon(Icons.tune, size: 20, color: foregroundColor)
+                    : const SizedBox.square(dimension: 24),
+            onSelectionChanged: (_) {},
+          ),
+        );
+
+    await tester.pumpWidget(build(useImage: false));
+    await tester.pumpAndSettle();
+    final initialOffset = _rowPixels(tester, 'discoveryFilterPrimaryList');
+
+    await tester.pumpWidget(build(useImage: true));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .getRect(find.byKey(const ValueKey<String>(
+            'discoveryFilterPrimary_selected',
+          )))
+          .right,
+      lessThanOrEqualTo(240),
+    );
+    expect(
+      _rowPixels(tester, 'discoveryFilterPrimaryList'),
+      greaterThan(initialOffset),
+    );
+  });
+
   testWidgets('catalog reorder invalidates pending interaction suppression',
       (tester) async {
     var catalog = _widePrimaryCatalog;

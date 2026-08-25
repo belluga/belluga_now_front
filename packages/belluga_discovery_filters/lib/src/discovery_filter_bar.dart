@@ -32,6 +32,9 @@ class DiscoveryFilterBar extends StatelessWidget {
   final DiscoveryFilterPolicy policy;
   final ValueChanged<DiscoveryFilterSelection> onSelectionChanged;
   final bool isLoading;
+
+  /// Custom builders should keep geometry stable while the item's label and
+  /// visual fields (`iconKey`, `colorHex`, and `imageUri`) are unchanged.
   final DiscoveryFilterIconBuilder? iconBuilder;
 
   /// Measurement-only copies of the bar opt out of post-frame reveal work.
@@ -127,7 +130,12 @@ class DiscoveryFilterBar extends StatelessWidget {
           final isActive = selection.primaryKeys.contains(item.key);
           return _HorizontalRevealRowItem(
             identity: item.key,
-            layoutFingerprint: item.label,
+            layoutFingerprint: (
+              item.label,
+              item.iconKey,
+              item.colorHex,
+              item.imageUri,
+            ),
             child: _PrimaryFilterChip(
               key: ValueKey<String>('discoveryFilterPrimaryItem_${item.key}'),
               item: item,
