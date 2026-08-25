@@ -1,21 +1,18 @@
-import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/presentation/shared/widgets/public_rich_text_html.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 
 class EventInfoSection extends StatelessWidget {
-  const EventInfoSection({
-    required this.event,
-    super.key,
-  });
+  const EventInfoSection({required this.event, super.key});
 
   final EventModel event;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final html = SafeRichHtml.canonicalize(event.content.value?.trim() ?? '');
-    if (SafeRichHtml.isEffectivelyEmpty(html)) {
+    final html = event.content.value?.trim() ?? '';
+    if (html.isEmpty) {
       return const SizedBox.shrink();
     }
     return SingleChildScrollView(
@@ -29,8 +26,8 @@ class EventInfoSection extends StatelessWidget {
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
-          Html(
-            data: html,
+          PublicRichTextHtml(
+            html: html,
             style: {
               'body': Style(
                 margin: Margins.zero,
@@ -41,16 +38,12 @@ class EventInfoSection extends StatelessWidget {
                 ),
                 lineHeight: const LineHeight(1.45),
               ),
-              'p': Style(
-                margin: Margins.only(bottom: 12),
-              ),
+              'p': Style(margin: Margins.only(bottom: 12)),
               'strong': Style(
                 color: colorScheme.onSurface,
                 fontWeight: FontWeight.w800,
               ),
-              'br': Style(
-                display: Display.block,
-              ),
+              'br': Style(display: Display.block),
             },
           ),
         ],

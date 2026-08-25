@@ -1435,6 +1435,7 @@ class _TenantAdminAccountProfileEditScreenState
               minHeight: 160,
               maxContentBytes: accountProfileRichTextMaxBytes,
               warningThreshold: accountProfileRichTextWarningThreshold,
+              allowExplicitHttpsLinks: true,
             ),
           ],
           if (hasContent) ...[
@@ -1446,6 +1447,7 @@ class _TenantAdminAccountProfileEditScreenState
               minHeight: 220,
               maxContentBytes: accountProfileRichTextMaxBytes,
               warningThreshold: accountProfileRichTextWarningThreshold,
+              allowExplicitHttpsLinks: true,
             ),
           ],
           if (_hasTaxonomies(state.selectedProfileType)) ...[

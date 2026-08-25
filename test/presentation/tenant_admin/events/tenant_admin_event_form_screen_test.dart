@@ -7044,10 +7044,13 @@ void main() {
       await tester.pumpAndSettle();
 
       final expected =
-          '<p><strong>Olá 🎉</strong> mundo link <s>riscado</s></p>';
+          '<p><strong>Olá 🎉</strong> mundo <a href="https://example.com">link</a> <s>riscado</s></p>';
       expect(controller.eventContentController.text, expected);
       expect(controller.eventContentController.text, isNot(contains('<u>')));
-      expect(controller.eventContentController.text, isNot(contains('<a')));
+      expect(
+        controller.eventContentController.text,
+        contains('<a href="https://example.com">link</a>'),
+      );
       expect(controller.eventContentController.text, contains('🎉'));
 
       final quillEditor = tester.widget<QuillEditor>(find.byType(QuillEditor));
@@ -7058,7 +7061,12 @@ void main() {
             'insert': 'Olá 🎉',
             'attributes': {'bold': true},
           },
-          {'insert': ' mundo link '},
+          {'insert': ' mundo '},
+          {
+            'insert': 'link',
+            'attributes': {'link': 'https://example.com'},
+          },
+          {'insert': ' '},
           {
             'insert': 'riscado',
             'attributes': {'strike': true},

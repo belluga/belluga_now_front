@@ -3798,7 +3798,10 @@ void main() {
       final htmlWidget = tester.widget<Html>(find.byType(Html));
       expect(htmlWidget.data, contains('<s>riscado</s>'));
       expect(htmlWidget.data, isNot(contains('<u>')));
-      expect(htmlWidget.data, isNot(contains('<a')));
+      expect(
+        htmlWidget.data,
+        contains('<a href="https://example.com">longe</a>'),
+      );
       expect(htmlWidget.data, contains('🎉'));
 
       await _tapImmersiveTabByLabel(tester, 'O Local');

@@ -1,3 +1,4 @@
+import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
 import 'package:belluga_now/domain/invites/invite_partner_type.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
@@ -280,9 +281,13 @@ class EventDTO {
   }
 
   static HTMLContentValue _htmlContentValue(String rawContent) {
+    final canonicalContent = SafeRichHtml.canonicalize(
+      rawContent,
+      allowExplicitHttpsLinks: true,
+    );
     final value = HTMLContentValue(minLenght: 0);
-    value.validate(rawContent);
-    value.set(rawContent);
+    value.validate(canonicalContent);
+    value.set(canonicalContent);
     return value;
   }
 

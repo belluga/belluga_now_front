@@ -720,6 +720,7 @@ class TenantAdminEventsController implements Disposable {
     eventTitleController.text = existingEvent?.title ?? '';
     eventContentController.text = SafeRichHtml.canonicalize(
       existingEvent?.content ?? '',
+      allowExplicitHttpsLinks: true,
     );
     eventOnlineUrlController.text = existingEvent?.location?.online?.url ?? '';
     eventOnlinePlatformController.text =
@@ -4104,7 +4105,10 @@ class TenantAdminEventsController implements Disposable {
   String _eventFormFingerprint() {
     return jsonEncode(<String, Object?>{
       'title': eventTitleController.text,
-      'content': SafeRichHtml.canonicalize(eventContentController.text),
+      'content': SafeRichHtml.canonicalize(
+        eventContentController.text,
+        allowExplicitHttpsLinks: true,
+      ),
       'startText': eventStartController.text,
       'endText': eventEndController.text,
       'publishText': eventPublishAtController.text,

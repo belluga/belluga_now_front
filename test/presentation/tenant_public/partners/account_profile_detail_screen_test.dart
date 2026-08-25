@@ -34,6 +34,7 @@ import 'package:belluga_now/presentation/tenant_public/partners/controllers/acco
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_state.dart';
 import 'package:belluga_now/presentation/shared/widgets/account_profile_overlapping_identity_card.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
+import 'package:belluga_now/presentation/shared/widgets/public_rich_text_html.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/upcoming_ocurrence_card.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_screen_controller.dart';
@@ -2994,6 +2995,21 @@ void main() {
       expect(find.text('Resumo da casa'), findsOneWidget);
       expect(find.text('Programação curatorial'), findsOneWidget);
       expect(find.text('Conteúdo principal do perfil 😄'), findsOneWidget);
+      final richTextBlocks = tester
+          .widgetList<PublicRichTextHtml>(find.byType(PublicRichTextHtml))
+          .toList();
+      expect(richTextBlocks, hasLength(2));
+      expect(
+        richTextBlocks.first.html,
+        contains('<a href="https://example.com/bio">Bio HTTPS link</a>'),
+      );
+      expect(
+        richTextBlocks.last.html,
+        contains(
+          '<a href="https://example.com/content">Content HTTPS link</a>',
+        ),
+      );
+      expect(richTextBlocks.last.html, isNot(contains('href="http://')));
     },
   );
 
@@ -3021,7 +3037,9 @@ void main() {
     expect(find.text('Conteúdo institucional sem bio'), findsOneWidget);
   });
 
-  testWidgets('renders legacy plain text newlines faithfully', (tester) async {
+  testWidgets('projects legacy plain text newlines to canonical html once', (
+    tester,
+  ) async {
     final repository = _FakeAccountProfilesRepository();
     final controller = AccountProfileDetailController(
       accountProfilesRepository: repository,
@@ -3038,9 +3056,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Primeira linha'), findsOneWidget);
-    expect(find.text('Segunda linha'), findsOneWidget);
-    expect(find.text('Novo parágrafo'), findsOneWidget);
+    final rendered = tester.widget<PublicRichTextHtml>(
+      find.byType(PublicRichTextHtml),
+    );
+    expect(
+      rendered.html,
+      '<p>Primeira linha<br />Segunda linha</p><p>Novo parágrafo</p>',
+    );
   });
 
   testWidgets(
@@ -3894,9 +3916,13 @@ AccountProfileModel _buildVenueWithBioAndContentProfile() {
     name: 'Casa de Cultura',
     slug: 'casa-de-cultura',
     type: 'venue',
-    bio: '<p><strong>Resumo da casa</strong></p>',
+    bio:
+        '<p><strong>Resumo da casa</strong></p>'
+        '<p><a href="https://example.com/bio">Bio HTTPS link</a></p>',
     content:
-        '<h2>Programação curatorial</h2><p>Conteúdo principal do perfil 😄</p>',
+        '<h2>Programação curatorial</h2><p>Conteúdo principal do perfil 😄</p>'
+        '<p><a href="https://example.com/content">Content HTTPS link</a></p>'
+        '<p><a href="http://example.com/unsafe">Unsafe profile link</a></p>',
   );
 }
 

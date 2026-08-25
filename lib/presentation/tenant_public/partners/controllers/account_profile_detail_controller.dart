@@ -605,9 +605,11 @@ class AccountProfileDetailController implements Disposable {
     final canRenderContent = capabilities?.hasContent ?? true;
     final rawBio = accountProfile.bio?.trim() ?? '';
     final rawContent = accountProfile.content?.trim() ?? '';
-    final canonicalBio = canRenderBio ? SafeRichHtml.canonicalize(rawBio) : '';
+    final canonicalBio = canRenderBio
+        ? SafeRichHtml.canonicalize(rawBio, allowExplicitHttpsLinks: true)
+        : '';
     final canonicalContent = canRenderContent
-        ? SafeRichHtml.canonicalize(rawContent)
+        ? SafeRichHtml.canonicalize(rawContent, allowExplicitHttpsLinks: true)
         : '';
     final hasBio = canonicalBio.isNotEmpty;
     final hasContent = canonicalContent.isNotEmpty;
@@ -618,12 +620,16 @@ class AccountProfileDetailController implements Disposable {
 
     if (hasBio && hasContent) {
       return [
-        AccountProfileRichTextBlock(title: 'Sobre', html: rawBio),
-        AccountProfileRichTextBlock(title: 'Conteúdo', html: rawContent),
+        AccountProfileRichTextBlock(title: 'Sobre', html: canonicalBio),
+        AccountProfileRichTextBlock(title: 'Conteúdo', html: canonicalContent),
       ];
     }
 
-    return [AccountProfileRichTextBlock(html: hasBio ? rawBio : rawContent)];
+    return [
+      AccountProfileRichTextBlock(
+        html: hasBio ? canonicalBio : canonicalContent,
+      ),
+    ];
   }
 
   PartnerLocationView? _buildLocationModuleData(

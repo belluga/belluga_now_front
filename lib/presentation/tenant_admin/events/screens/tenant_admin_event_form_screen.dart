@@ -261,6 +261,7 @@ class _TenantAdminEventFormScreenState
               minHeight: 280,
               maxContentBytes: tenantAdminRichTextMaxBytes,
               warningThreshold: tenantAdminRichTextWarningThreshold,
+              allowExplicitHttpsLinks: true,
             ),
           ],
         ],

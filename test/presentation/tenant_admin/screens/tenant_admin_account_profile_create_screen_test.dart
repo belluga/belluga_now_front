@@ -24,6 +24,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_defin
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/screens/tenant_admin_account_profile_create_screen.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -117,6 +118,37 @@ void main() {
       );
     },
   );
+
+  testWidgets('enables explicit HTTPS links only for profile bio and content', (
+    tester,
+  ) async {
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+    profilesRepository.profileTypesToReturn = [
+      _profileType(
+        hasNestedProfileGroups: false,
+        hasBio: true,
+        hasContent: true,
+      ),
+    ];
+
+    await _pumpScreen(
+      tester,
+      const TenantAdminAccountProfileCreateScreen(accountSlug: 'route-account'),
+    );
+    await _selectProfileType(tester, 'Venue');
+
+    final editors = tester.widgetList<TenantAdminRichTextEditor>(
+      find.byType(TenantAdminRichTextEditor),
+    );
+    expect(editors, hasLength(2));
+    expect(
+      editors.map((editor) => editor.label),
+      containsAll(<String>['Bio', 'Conteudo']),
+    );
+    expect(editors.every((editor) => editor.allowExplicitHttpsLinks), isTrue);
+  });
 
   testWidgets('shows save-first guidance for nested groups on create', (
     tester,
@@ -789,6 +821,8 @@ TenantAdminAccountProfile _profile({
 TenantAdminProfileTypeDefinition _profileType({
   required bool hasNestedProfileGroups,
   bool hasContactChannels = false,
+  bool hasBio = false,
+  bool hasContent = false,
   String type = 'venue',
   String label = 'Venue',
 }) {
@@ -799,8 +833,8 @@ TenantAdminProfileTypeDefinition _profileType({
     capabilities: TenantAdminProfileTypeCapabilities(
       isFavoritable: TenantAdminFlagValue(false),
       isPoiEnabled: TenantAdminFlagValue(false),
-      hasBio: TenantAdminFlagValue(false),
-      hasContent: TenantAdminFlagValue(false),
+      hasBio: TenantAdminFlagValue(hasBio),
+      hasContent: TenantAdminFlagValue(hasContent),
       hasTaxonomies: TenantAdminFlagValue(false),
       hasAvatar: TenantAdminFlagValue(false),
       hasCover: TenantAdminFlagValue(false),

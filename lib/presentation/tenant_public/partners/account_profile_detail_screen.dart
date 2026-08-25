@@ -5,7 +5,6 @@ import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/application/extensions/compute_on_color.dart';
 import 'package:belluga_now/application/sharing/account_profile_public_share_payload.dart';
 import 'package:belluga_now/application/rich_text/account_profile_rich_text_block.dart';
-import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
@@ -35,6 +34,7 @@ import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_hero_action.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_directions_section.dart';
+import 'package:belluga_now/presentation/shared/widgets/public_rich_text_html.dart';
 import 'package:belluga_now/presentation/shared/widgets/nested_accounts_load_more_indicator.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
@@ -3060,8 +3060,7 @@ class _AccountProfileDetailScreenState
         .map(
           (block) => _VisibleRichTextBlock(
             title: block.title,
-            raw: block.html.trim(),
-            html: SafeRichHtml.canonicalize(block.html),
+            html: block.html.trim(),
           ),
         )
         .where((block) => block.html.isNotEmpty)
@@ -3088,65 +3087,29 @@ class _AccountProfileDetailScreenState
               ),
               const SizedBox(height: 8),
             ],
-            if (SafeRichHtml.looksLikeHtml(visibleBlocks[index].raw))
-              Html(
-                data: visibleBlocks[index].html,
-                style: {
-                  'body': Style(
-                    margin: Margins.zero,
-                    padding: HtmlPaddings.zero,
-                    color: colorScheme.onSurfaceVariant,
-                    fontSize: FontSize(
-                      Theme.of(context).textTheme.bodyLarge?.fontSize ?? 16,
-                    ),
-                    lineHeight: const LineHeight(1.45),
+            PublicRichTextHtml(
+              html: visibleBlocks[index].html,
+              style: {
+                'body': Style(
+                  margin: Margins.zero,
+                  padding: HtmlPaddings.zero,
+                  color: colorScheme.onSurfaceVariant,
+                  fontSize: FontSize(
+                    Theme.of(context).textTheme.bodyLarge?.fontSize ?? 16,
                   ),
-                  'p': Style(margin: Margins.only(bottom: 12)),
-                  'strong': Style(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.w800,
-                  ),
-                  'br': Style(display: Display.block),
-                },
-              )
-            else
-              _plainRichTextBody(visibleBlocks[index].raw, colorScheme),
+                  lineHeight: const LineHeight(1.45),
+                ),
+                'p': Style(margin: Margins.only(bottom: 12)),
+                'strong': Style(
+                  color: colorScheme.onSurface,
+                  fontWeight: FontWeight.w800,
+                ),
+                'br': Style(display: Display.block),
+              },
+            ),
           ],
         ],
       ),
-    );
-  }
-
-  Widget _plainRichTextBody(String body, ColorScheme colorScheme) {
-    final normalized = body
-        .replaceAll('\r\n', '\n')
-        .replaceAll('\r', '\n')
-        .trim();
-    final paragraphs = normalized
-        .split(RegExp(r'\n\s*\n+'))
-        .where((paragraph) => paragraph.trim().isNotEmpty)
-        .toList(growable: false);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (
-          var paragraphIndex = 0;
-          paragraphIndex < paragraphs.length;
-          paragraphIndex++
-        ) ...[
-          if (paragraphIndex > 0) const SizedBox(height: 12),
-          for (final line in paragraphs[paragraphIndex].split('\n'))
-            if (line.trim().isNotEmpty)
-              Text(
-                line.trimRight(),
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                  height: 1.45,
-                ),
-              ),
-        ],
-      ],
     );
   }
 
@@ -3321,13 +3284,8 @@ class _AgendaCounterpart {
 }
 
 class _VisibleRichTextBlock {
-  const _VisibleRichTextBlock({
-    required this.raw,
-    required this.html,
-    this.title,
-  });
+  const _VisibleRichTextBlock({required this.html, this.title});
 
-  final String raw;
   final String html;
   final String? title;
 }
