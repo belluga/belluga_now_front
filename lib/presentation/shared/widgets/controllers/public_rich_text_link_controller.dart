@@ -10,6 +10,7 @@ typedef PublicRichTextUrlLauncher =
       required String webOnlyWindowName,
     });
 
+/// Owns link-launch state and failure effects for one rich-text renderer.
 final class PublicRichTextLinkController {
   PublicRichTextLinkController({PublicRichTextUrlLauncher? launcher})
     : _launcher = launcher ?? _defaultLauncher;

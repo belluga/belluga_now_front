@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:belluga_now/application/rich_text/public_rich_text_link_controller.dart';
+import 'package:belluga_now/presentation/shared/widgets/controllers/public_rich_text_link_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 
@@ -22,6 +22,7 @@ class PublicRichTextHtml extends StatefulWidget {
 class _PublicRichTextHtmlState extends State<PublicRichTextHtml> {
   late PublicRichTextLinkController _linkController;
   StreamSubscription<void>? _failureSubscription;
+  ScaffoldMessengerState? _messenger;
 
   @override
   void initState() {
@@ -37,10 +38,16 @@ class _PublicRichTextHtmlState extends State<PublicRichTextHtml> {
     _bindController();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _messenger = ScaffoldMessenger.maybeOf(context);
+  }
+
   void _bindController() {
     _linkController = PublicRichTextLinkController(launcher: widget.launcher);
     _failureSubscription = _linkController.failureEffects.listen((_) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      _messenger?.showSnackBar(
         const SnackBar(content: Text('Não foi possível abrir o link.')),
       );
     });
@@ -57,6 +64,7 @@ class _PublicRichTextHtmlState extends State<PublicRichTextHtml> {
 
   @override
   void dispose() {
+    _messenger = null;
     _unbindController();
     super.dispose();
   }

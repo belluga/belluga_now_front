@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:belluga_now/application/rich_text/public_rich_text_link_controller.dart';
+import 'package:belluga_now/presentation/shared/widgets/controllers/public_rich_text_link_controller.dart';
 import 'package:belluga_now/presentation/shared/widgets/public_rich_text_html.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
