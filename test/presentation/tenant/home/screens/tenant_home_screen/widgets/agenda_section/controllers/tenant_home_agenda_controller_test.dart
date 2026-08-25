@@ -2787,9 +2787,7 @@ void main() {
       expect(backend.requestedPages, [1]);
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(body: HomeAgendaBody(controller: controller)),
-        ),
+        MaterialApp(home: Scaffold(body: _homeAgendaBody(controller))),
       );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
@@ -2829,10 +2827,7 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
-              body: SizedBox(
-                height: 520,
-                child: HomeAgendaBody(controller: controller),
-              ),
+              body: SizedBox(height: 520, child: _homeAgendaBody(controller)),
             ),
           ),
         );
@@ -2897,10 +2892,7 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
-              body: SizedBox(
-                height: 520,
-                child: HomeAgendaBody(controller: controller),
-              ),
+              body: SizedBox(height: 520, child: _homeAgendaBody(controller)),
             ),
           ),
         );
@@ -2970,10 +2962,7 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
-              body: SizedBox(
-                height: 520,
-                child: HomeAgendaBody(controller: controller),
-              ),
+              body: SizedBox(height: 520, child: _homeAgendaBody(controller)),
             ),
           ),
         );
@@ -3061,10 +3050,7 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
-              body: SizedBox(
-                height: 520,
-                child: HomeAgendaBody(controller: controller),
-              ),
+              body: SizedBox(height: 520, child: _homeAgendaBody(controller)),
             ),
           ),
         );
@@ -3139,9 +3125,7 @@ void main() {
         await controller.init();
 
         await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(body: HomeAgendaBody(controller: controller)),
-          ),
+          MaterialApp(home: Scaffold(body: _homeAgendaBody(controller))),
         );
         await tester.pumpAndSettle();
 
@@ -3191,9 +3175,7 @@ void main() {
         await controller.init();
 
         await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(body: HomeAgendaBody(controller: controller)),
-          ),
+          MaterialApp(home: Scaffold(body: _homeAgendaBody(controller))),
         );
         await tester.pumpAndSettle();
 
@@ -3912,9 +3894,7 @@ void main() {
       );
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(body: HomeAgendaBody(controller: controller)),
-        ),
+        MaterialApp(home: Scaffold(body: _homeAgendaBody(controller))),
       );
       await tester.pump();
 
@@ -6680,4 +6660,12 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
 
   @override
   Future<void> stopTracking() async {}
+}
+
+HomeAgendaBody _homeAgendaBody(TenantHomeAgendaController controller) {
+  return HomeAgendaBody(
+    controller: controller,
+    catalog: controller.discoveryFilterCatalogStreamValue.value,
+    selection: controller.discoveryFilterSelectionStreamValue.value,
+  );
 }

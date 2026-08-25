@@ -174,6 +174,14 @@ class _TestTenantHomeAgendaController extends MockTenantHomeAgendaController {
 
   @override
   bool get shouldShowInviteFilterAction => true;
+
+  void setDiscoveryFilters(
+    DiscoveryFilterCatalog catalog,
+    DiscoveryFilterSelection selection,
+  ) {
+    _discoveryFilterCatalogStreamValue.addValue(catalog);
+    _discoveryFilterSelectionStreamValue.addValue(selection);
+  }
 }
 
 class _RecordingBackRouter extends Fake implements StackRouter {
@@ -369,7 +377,9 @@ void main() {
         );
     mockito
         .when(mockController.myEventsFilteredStreamValue)
-        .thenReturn(StreamValue<List<UpcomingOcurrenceResume>>(defaultValue: []));
+        .thenReturn(
+          StreamValue<List<UpcomingOcurrenceResume>>(defaultValue: []),
+        );
     mockito
         .when(mockController.scrollController)
         .thenReturn(testScrollController);
@@ -462,7 +472,9 @@ void main() {
     );
     mockito
         .when(mockController.myEventsFilteredStreamValue)
-        .thenReturn(StreamValue<List<UpcomingOcurrenceResume>>(defaultValue: [event]));
+        .thenReturn(
+          StreamValue<List<UpcomingOcurrenceResume>>(defaultValue: [event]),
+        );
     final mockRouter = MockStackRouter();
     _stubMockRouterRoot(mockRouter);
     mockito.when(mockRouter.push(mockito.any)).thenAnswer((_) async => null);
@@ -490,6 +502,173 @@ void main() {
         matching: find.byIcon(Icons.arrow_forward),
       ),
       findsNothing,
+    );
+  });
+
+  testWidgets('tenant home keeps the no-public-filter empty baseline', (
+    tester,
+  ) async {
+    final router = MockStackRouter();
+    _stubMockRouterRoot(router);
+    mockito.when(router.push(mockito.any)).thenAnswer((_) async => null);
+
+    await tester.pumpWidget(_buildRoutedTenantHomeApp(router));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Nenhum evento disponível no momento'), findsOneWidget);
+  });
+
+  testWidgets('tenant home keeps invite-only empty state generic', (
+    tester,
+  ) async {
+    mockito
+        .when(mockAgendaController.inviteFilterStreamValue)
+        .thenReturn(StreamValue(defaultValue: InviteFilter.confirmedOnly));
+    final router = MockStackRouter();
+    _stubMockRouterRoot(router);
+    mockito.when(router.push(mockito.any)).thenAnswer((_) async => null);
+
+    await tester.pumpWidget(_buildRoutedTenantHomeApp(router));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Nenhum resultado encontrado'), findsOneWidget);
+  });
+
+  testWidgets('tenant home keeps history-only empty state generic', (
+    tester,
+  ) async {
+    mockito
+        .when(mockAgendaController.showHistoryStreamValue)
+        .thenReturn(StreamValue<bool>(defaultValue: true));
+    final router = MockStackRouter();
+    _stubMockRouterRoot(router);
+    mockito.when(router.push(mockito.any)).thenAnswer((_) async => null);
+
+    await tester.pumpWidget(_buildRoutedTenantHomeApp(router));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Nenhum resultado encontrado'), findsOneWidget);
+  });
+
+  testWidgets(
+    'tenant home renders contextual copy for public filtered empty agenda',
+    (tester) async {
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      const catalog = DiscoveryFilterCatalog(
+        surface: 'home.events',
+        filters: <DiscoveryFilterCatalogItem>[
+          DiscoveryFilterCatalogItem(
+            key: 'shows',
+            label: 'Shows',
+            entities: <String>{'event'},
+            taxonomyConfigs: <String, DiscoveryFilterTaxonomyConfig>{
+              'styles': DiscoveryFilterTaxonomyConfig(
+                taxonomyKey: 'styles',
+                labelOverride: 'Estilos',
+              ),
+            },
+          ),
+        ],
+        taxonomyOptionsByKey: <String, DiscoveryFilterTaxonomyGroupOption>{
+          'styles': DiscoveryFilterTaxonomyGroupOption(
+            key: 'styles',
+            label: 'Gêneros',
+            terms: <DiscoveryFilterTaxonomyTermOption>[
+              DiscoveryFilterTaxonomyTermOption(value: 'rock', label: 'Rock'),
+            ],
+          ),
+        },
+      );
+      mockAgendaController.setDiscoveryFilters(
+        catalog,
+        const DiscoveryFilterSelection(
+          primaryKeys: <String>{'shows'},
+          taxonomyTermKeys: <String, Set<String>>{
+            'styles': <String>{'rock'},
+          },
+        ),
+      );
+      final router = MockStackRouter();
+      _stubMockRouterRoot(router);
+      mockito.when(router.push(mockito.any)).thenAnswer((_) async => null);
+
+      await tester.pumpWidget(_buildRoutedTenantHomeApp(router));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          'Nenhum resultado para os filtros selecionados: Shows · Estilos: Rock.',
+        ),
+        findsOneWidget,
+      );
+      final bars = find.byType(DiscoveryFilterBar, skipOffstage: false);
+      expect(bars, findsNWidgets(2));
+      Finder? hiddenBar;
+      Finder? visibleBar;
+      for (var index = 0; index < bars.evaluate().length; index++) {
+        final bar = tester.widget<DiscoveryFilterBar>(bars.at(index));
+        if (bar.autoRevealSelectedChips) {
+          visibleBar = bars.at(index);
+        } else {
+          hiddenBar = bars.at(index);
+        }
+      }
+      expect(hiddenBar, isNotNull);
+      expect(visibleBar, isNotNull);
+      expect(
+        find
+            .ancestor(
+              of: hiddenBar!,
+              matching: find.byType(Offstage, skipOffstage: false),
+            )
+            .evaluate(),
+        isNotEmpty,
+      );
+    },
+  );
+
+  testWidgets('tenant home forwards reactive public filters into both bars', (
+    tester,
+  ) async {
+    final router = MockStackRouter();
+    _stubMockRouterRoot(router);
+    mockito.when(router.push(mockito.any)).thenAnswer((_) async => null);
+
+    await tester.pumpWidget(_buildRoutedTenantHomeApp(router));
+    await tester.pumpAndSettle();
+    expect(find.byType(DiscoveryFilterBar, skipOffstage: false), findsNothing);
+
+    const catalog = DiscoveryFilterCatalog(
+      surface: 'home.events',
+      filters: <DiscoveryFilterCatalogItem>[
+        DiscoveryFilterCatalogItem(
+          key: 'shows',
+          label: 'Shows',
+          entities: <String>{'event'},
+        ),
+      ],
+    );
+    const selection = DiscoveryFilterSelection(primaryKeys: <String>{'shows'});
+    mockAgendaController.setDiscoveryFilters(catalog, selection);
+    await tester.pumpAndSettle();
+
+    final bars = find.byType(DiscoveryFilterBar, skipOffstage: false);
+    expect(bars, findsNWidgets(2));
+    for (var index = 0; index < bars.evaluate().length; index++) {
+      final bar = tester.widget<DiscoveryFilterBar>(bars.at(index));
+      expect(bar.catalog, catalog);
+      expect(bar.selection, selection);
+    }
+    expect(
+      tester.widget<DiscoveryFilterBar>(bars.at(0)).autoRevealSelectedChips,
+      isFalse,
+    );
+    expect(
+      tester.widget<DiscoveryFilterBar>(bars.at(1)).autoRevealSelectedChips,
+      isTrue,
     );
   });
 
@@ -543,7 +722,9 @@ void main() {
     );
     mockito
         .when(mockController.myEventsFilteredStreamValue)
-        .thenReturn(StreamValue<List<UpcomingOcurrenceResume>>(defaultValue: [event]));
+        .thenReturn(
+          StreamValue<List<UpcomingOcurrenceResume>>(defaultValue: [event]),
+        );
 
     final mockRouter = MockStackRouter();
     _stubMockRouterRoot(mockRouter);
