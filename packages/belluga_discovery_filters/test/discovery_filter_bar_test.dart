@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -470,6 +468,46 @@ void main() {
 
     expect(afterFirstReveal, greaterThan(0));
     expect(horizontalNotifications, afterFirstReveal);
+  });
+
+  testWidgets('catalog reorder reveals the unchanged persisted anchor',
+      (tester) async {
+    Widget build({required bool reversed}) => _NarrowHarness(
+          width: 180,
+          child: DiscoveryFilterBar(
+            key: const ValueKey<String>('reorderedCatalogBar'),
+            catalog: DiscoveryFilterCatalog(
+              surface: _widePrimaryCatalog.surface,
+              filters: reversed
+                  ? _widePrimaryCatalog.filters.reversed.toList(growable: false)
+                  : _widePrimaryCatalog.filters,
+            ),
+            selection: const DiscoveryFilterSelection(
+              primaryKeys: <String>{'music'},
+            ),
+            policy: const DiscoveryFilterPolicy(
+              primaryLayoutMode: DiscoveryFilterLayoutMode.row,
+            ),
+            onSelectionChanged: (_) {},
+          ),
+        );
+
+    await tester.pumpWidget(build(reversed: false));
+    await tester.pumpAndSettle();
+    expect(_rowPixels(tester, 'discoveryFilterPrimaryList'), 0);
+
+    await tester.pumpWidget(build(reversed: true));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .getRect(find.byKey(const ValueKey<String>(
+            'discoveryFilterPrimary_music',
+          )))
+          .right,
+      lessThanOrEqualTo(180),
+    );
+    expect(_rowPixels(tester, 'discoveryFilterPrimaryList'), greaterThan(0));
   });
 
   testWidgets('pending reveal follows the latest hydrated anchor',
@@ -1227,17 +1265,41 @@ void main() {
     expect(selectedRect.right, lessThanOrEqualTo(viewportRect.right + 0.1));
   });
 
-  test('horizontal primary row uses an eager scrolling viewport', () {
-    const candidates = <String>[
-      'lib/src/discovery_filter_bar.dart',
-      'packages/belluga_discovery_filters/lib/src/discovery_filter_bar.dart',
-    ];
-    final sourceFile =
-        candidates.map(File.new).firstWhere((file) => file.existsSync());
-    final source = sourceFile.readAsStringSync();
+  testWidgets('horizontal primary row uses an eager scrolling viewport',
+      (tester) async {
+    await tester.pumpWidget(
+      _NarrowHarness(
+        width: 180,
+        child: DiscoveryFilterBar(
+          catalog: _widePrimaryCatalog,
+          selection: const DiscoveryFilterSelection(),
+          policy: const DiscoveryFilterPolicy(
+            primaryLayoutMode: DiscoveryFilterLayoutMode.row,
+          ),
+          onSelectionChanged: (_) {},
+        ),
+      ),
+    );
 
-    expect(source, contains('SingleChildScrollView'));
-    expect(source, contains('discoveryFilterPrimaryList'));
+    final primaryRow = find.byKey(
+      const ValueKey<String>('discoveryFilterPrimaryList'),
+    );
+    expect(
+      find.descendant(
+        of: primaryRow,
+        matching: find.byType(SingleChildScrollView),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: primaryRow,
+        matching: find.byKey(
+          const ValueKey<String>('discoveryFilterPrimary_theatre'),
+        ),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('iconBuilder receives the same foreground color as the label',

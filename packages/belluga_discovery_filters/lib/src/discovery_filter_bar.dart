@@ -378,6 +378,10 @@ class _HorizontalRevealRowState extends State<_HorizontalRevealRow> {
     // mounted anchors are intentionally not replayed after equivalent builds.
     final anchorWasAddedToCatalog = widget.anchorId != null &&
         !oldWidget.children.any((item) => item.identity == widget.anchorId);
+    final catalogOrderChanged = _childOrderChanged(
+      oldWidget.children,
+      widget.children,
+    );
     // Consume a row interaction only when its expected selection publication
     // arrives. Loading/catalog rebuilds can happen before that publication.
     final pendingSelection = _pendingSuppressionSelection;
@@ -397,7 +401,24 @@ class _HorizontalRevealRowState extends State<_HorizontalRevealRow> {
     }
     if (oldWidget.anchorId != widget.anchorId) {
       _scheduleReveal(widget.anchorId);
+    } else if (catalogOrderChanged && pendingSelection == null) {
+      _scheduleReveal(widget.anchorId);
     }
+  }
+
+  bool _childOrderChanged(
+    List<_HorizontalRevealRowItem> previous,
+    List<_HorizontalRevealRowItem> current,
+  ) {
+    if (previous.length != current.length) {
+      return true;
+    }
+    for (var index = 0; index < current.length; index++) {
+      if (previous[index].identity != current[index].identity) {
+        return true;
+      }
+    }
+    return false;
   }
 
   void _scheduleReveal(String? anchorId) {
