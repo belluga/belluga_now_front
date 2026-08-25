@@ -11,7 +11,10 @@ String? publicDiscoveryFilterEmptyStateMessage({
 
   final segments = <String>[];
   final selectedFilters = catalog.filters
-      .where((filter) => selection.primaryKeys.contains(filter.key))
+      .where(
+        (filter) =>
+            filter.isValid && selection.primaryKeys.contains(filter.key),
+      )
       .toList(growable: false);
   segments.addAll(selectedFilters.map((filter) => filter.label));
 

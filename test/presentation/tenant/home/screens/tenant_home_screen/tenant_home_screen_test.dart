@@ -618,15 +618,12 @@ void main() {
       }
       expect(hiddenBar, isNotNull);
       expect(visibleBar, isNotNull);
-      expect(
-        find
-            .ancestor(
-              of: hiddenBar!,
-              matching: find.byType(Offstage, skipOffstage: false),
-            )
-            .evaluate(),
-        isNotEmpty,
+      final hiddenAncestors = find.ancestor(
+        of: hiddenBar!,
+        matching: find.byType(Offstage, skipOffstage: false),
       );
+      expect(hiddenAncestors, findsWidgets);
+      expect(tester.widget<Offstage>(hiddenAncestors.first).offstage, isTrue);
     },
   );
 

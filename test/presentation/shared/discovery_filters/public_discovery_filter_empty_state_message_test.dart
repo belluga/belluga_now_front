@@ -36,6 +36,44 @@ void main() {
     );
   });
 
+  test('does not expose catalog items that the filter bar cannot render', () {
+    const catalog = DiscoveryFilterCatalog(
+      surface: 'home.events',
+      filters: <DiscoveryFilterCatalogItem>[
+        DiscoveryFilterCatalogItem(
+          key: 'hidden',
+          label: 'Hidden label',
+          entities: <String>{},
+          taxonomyConfigs: <String, DiscoveryFilterTaxonomyConfig>{
+            'styles': DiscoveryFilterTaxonomyConfig(taxonomyKey: 'styles'),
+          },
+        ),
+      ],
+      taxonomyOptionsByKey: <String, DiscoveryFilterTaxonomyGroupOption>{
+        'styles': DiscoveryFilterTaxonomyGroupOption(
+          key: 'styles',
+          label: 'Styles',
+          terms: <DiscoveryFilterTaxonomyTermOption>[
+            DiscoveryFilterTaxonomyTermOption(value: 'rock', label: 'Rock'),
+          ],
+        ),
+      },
+    );
+
+    expect(
+      publicDiscoveryFilterEmptyStateMessage(
+        catalog: catalog,
+        selection: const DiscoveryFilterSelection(
+          primaryKeys: <String>{'hidden'},
+          taxonomyTermKeys: <String, Set<String>>{
+            'styles': <String>{'rock'},
+          },
+        ),
+      ),
+      isNull,
+    );
+  });
+
   test('formats a primary-only selection and omits stale terms', () {
     expect(
       publicDiscoveryFilterEmptyStateMessage(

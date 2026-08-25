@@ -388,7 +388,7 @@ class _HorizontalRevealRowState extends State<_HorizontalRevealRow> {
     final suppressThisUpdate = pendingSelection != null &&
         selectionChanged &&
         listEquals(pendingSelection, widget.selectedItemIds);
-    if (selectionChanged && pendingSelection != null) {
+    if (suppressThisUpdate) {
       _pendingSuppressionSelection = null;
     }
     if (oldWidget.anchorId != widget.anchorId &&

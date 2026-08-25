@@ -817,6 +817,72 @@ void main() {
   });
 
   testWidgets(
+      'intervening external selection does not consume pending interaction suppression',
+      (tester) async {
+    var selection = const DiscoveryFilterSelection(
+      primaryKeys: <String>{'events'},
+    );
+    DiscoveryFilterSelection? publishedSelection;
+    var horizontalNotifications = 0;
+    Widget build() => _NarrowHarness(
+          width: 180,
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (notification) {
+              if (notification.metrics.axis == Axis.horizontal) {
+                horizontalNotifications++;
+              }
+              return false;
+            },
+            child: DiscoveryFilterBar(
+              key: const ValueKey<String>('interleavedSelectionBar'),
+              catalog: _largeTaxonomyCatalog(),
+              selection: selection,
+              policy: const DiscoveryFilterPolicy(
+                taxonomyLayoutMode: DiscoveryFilterLayoutMode.row,
+              ),
+              onSelectionChanged: (next) => publishedSelection = next,
+            ),
+          ),
+        );
+
+    await tester.pumpWidget(build());
+    await tester.pumpAndSettle();
+    final row = find.byKey(
+      const ValueKey<String>('discoveryFilterTaxonomyList_music_styles'),
+    );
+    await tester.drag(row, const Offset(-12000, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Term 99'));
+    expect(publishedSelection, isNotNull);
+
+    selection = const DiscoveryFilterSelection(
+      primaryKeys: <String>{'events'},
+      taxonomyTermKeys: <String, Set<String>>{
+        'music_styles': <String>{'term_50'},
+      },
+    );
+    await tester.pumpWidget(build());
+    await tester.pumpAndSettle();
+    await tester.drag(row, const Offset(12000, 0));
+    await tester.pumpAndSettle();
+    horizontalNotifications = 0;
+
+    selection = publishedSelection!;
+    await tester.pumpWidget(build());
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(horizontalNotifications, 0);
+    expect(
+      tester
+          .getRect(find.byKey(const ValueKey<String>(
+            'discoveryFilterTaxonomyChip_music_styles_term_99',
+          )))
+          .left,
+      greaterThan(180),
+    );
+  });
+
+  testWidgets(
       'disposing before the reveal callback is inert (scroll operation is not observable)',
       (tester) async {
     await tester.pumpWidget(
