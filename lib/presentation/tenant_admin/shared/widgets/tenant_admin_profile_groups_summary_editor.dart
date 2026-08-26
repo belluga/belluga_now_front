@@ -1,8 +1,12 @@
 import 'dart:async';
 
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/models/tenant_admin_group_label_mutation_state.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_group_label_action_button.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
 import 'package:flutter/material.dart';
+import 'package:stream_value/core/stream_value.dart';
+import 'package:stream_value/core/stream_value_builder.dart';
 
 class TenantAdminProfileGroupsSummaryEditor extends StatelessWidget {
   const TenantAdminProfileGroupsSummaryEditor({
@@ -11,7 +15,10 @@ class TenantAdminProfileGroupsSummaryEditor extends StatelessWidget {
     required this.groups,
     required this.addButtonKey,
     required this.onAddGroup,
-    required this.onRenameGroup,
+    required this.groupLabelState,
+    required this.onBeginGroupLabelEdit,
+    required this.onChangeGroupLabelDraft,
+    required this.onSaveGroupLabel,
     required this.onMoveGroup,
     required this.onRemoveGroup,
     this.addBlockedReason,
@@ -28,7 +35,16 @@ class TenantAdminProfileGroupsSummaryEditor extends StatelessWidget {
   final List<TenantAdminNestedProfileGroup> groups;
   final Key addButtonKey;
   final Future<void> Function() onAddGroup;
-  final void Function(String groupId, String label) onRenameGroup;
+  final StreamValue<TenantAdminGroupLabelMutationState> Function(
+    TenantAdminNestedProfileGroup group,
+  )
+  groupLabelState;
+  final void Function(TenantAdminNestedProfileGroup group)
+  onBeginGroupLabelEdit;
+  final void Function(TenantAdminNestedProfileGroup group, String label)
+  onChangeGroupLabelDraft;
+  final Future<void> Function(TenantAdminNestedProfileGroup group)
+  onSaveGroupLabel;
   final void Function(String groupId, int delta) onMoveGroup;
   final Future<void> Function(String groupId) onRemoveGroup;
   final String? addBlockedReason;
@@ -63,7 +79,10 @@ class TenantAdminProfileGroupsSummaryEditor extends StatelessWidget {
               group: groups[index],
               index: index,
               total: groups.length,
-              onRenameGroup: onRenameGroup,
+              groupLabelState: groupLabelState,
+              onBeginGroupLabelEdit: onBeginGroupLabelEdit,
+              onChangeGroupLabelDraft: onChangeGroupLabelDraft,
+              onSaveGroupLabel: onSaveGroupLabel,
               onMoveGroup: onMoveGroup,
               onRemoveGroup: onRemoveGroup,
               groupsMutationBusy: groupsMutationBusy,
@@ -105,7 +124,10 @@ class _TenantAdminProfileGroupSummaryCard extends StatelessWidget {
     required this.group,
     required this.index,
     required this.total,
-    required this.onRenameGroup,
+    required this.groupLabelState,
+    required this.onBeginGroupLabelEdit,
+    required this.onChangeGroupLabelDraft,
+    required this.onSaveGroupLabel,
     required this.onMoveGroup,
     required this.onRemoveGroup,
     required this.groupsMutationBusy,
@@ -119,7 +141,16 @@ class _TenantAdminProfileGroupSummaryCard extends StatelessWidget {
   final TenantAdminNestedProfileGroup group;
   final int index;
   final int total;
-  final void Function(String groupId, String label) onRenameGroup;
+  final StreamValue<TenantAdminGroupLabelMutationState> Function(
+    TenantAdminNestedProfileGroup group,
+  )
+  groupLabelState;
+  final void Function(TenantAdminNestedProfileGroup group)
+  onBeginGroupLabelEdit;
+  final void Function(TenantAdminNestedProfileGroup group, String label)
+  onChangeGroupLabelDraft;
+  final Future<void> Function(TenantAdminNestedProfileGroup group)
+  onSaveGroupLabel;
   final void Function(String groupId, int delta) onMoveGroup;
   final Future<void> Function(String groupId) onRemoveGroup;
   final bool groupsMutationBusy;
@@ -149,29 +180,7 @@ class _TenantAdminProfileGroupSummaryCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Expanded(
-                child: enableLabelEditing
-                    ? TextFormField(
-                        key: Key('${keyPrefix}ProfileGroupLabel_${group.id}'),
-                        initialValue: group.label,
-                        decoration: const InputDecoration(
-                          labelText: 'Nome da aba',
-                        ),
-                        onChanged: (value) => onRenameGroup(group.id, value),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Nome da aba e obrigatorio.';
-                          }
-                          return null;
-                        },
-                      )
-                    : InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: 'Nome da aba',
-                        ),
-                        child: Text(group.label),
-                      ),
-              ),
+              Expanded(child: _buildLabelEditor()),
               IconButton(
                 tooltip: 'Mover para cima',
                 onPressed: !enableReorder || groupsMutationBusy || index == 0
@@ -229,6 +238,56 @@ class _TenantAdminProfileGroupSummaryCard extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildLabelEditor() {
+    if (!enableLabelEditing) {
+      return InputDecorator(
+        decoration: const InputDecoration(labelText: 'Nome da aba'),
+        child: Text(group.label),
+      );
+    }
+    final stateStreamValue = groupLabelState(group);
+    return StreamValueBuilder(
+      streamValue: stateStreamValue,
+      builder: (context, state) {
+        if (!state.isEditing) {
+          return InkWell(
+            key: Key('${keyPrefix}ProfileGroupLabel_${group.id}'),
+            onTap: () => onBeginGroupLabelEdit(group),
+            child: InputDecorator(
+              decoration: const InputDecoration(labelText: 'Nome da aba'),
+              child: Text(group.label),
+            ),
+          );
+        }
+        return TextFieldTapRegion(
+          child: Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  key: Key('${keyPrefix}ProfileGroupLabelInput_${group.id}'),
+                  initialValue: state.draft,
+                  enabled: !state.isLoading,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    labelText: 'Nome da aba',
+                    errorText: state.errorText,
+                  ),
+                  onChanged: (value) => onChangeGroupLabelDraft(group, value),
+                  onTapOutside: (_) => unawaited(onSaveGroupLabel(group)),
+                  onFieldSubmitted: (_) => unawaited(onSaveGroupLabel(group)),
+                ),
+              ),
+              TenantAdminGroupLabelActionButton(
+                stateStreamValue: stateStreamValue,
+                onPressed: () => onSaveGroupLabel(group),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

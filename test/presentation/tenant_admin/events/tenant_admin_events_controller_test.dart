@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:belluga_form_validation/belluga_form_validation.dart';
 import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
@@ -13,6 +14,8 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_buck
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_head_mutation_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_label_mutation_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_unknown_mutation_failure.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
@@ -27,6 +30,630 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 void main() {
+  test(
+    'occurrence group label trim no-op closes editing without rename request',
+    () async {
+      final repository = _TrackingEventsRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: repository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken('token'),
+      );
+      controller.beginOccurrenceGroupLabelEdit(
+        eventId: 'event-1',
+        occurrenceId: 'occurrence-1',
+        groupId: 'group-1',
+        label: 'Artists',
+      );
+      controller.changeOccurrenceGroupLabelDraft(
+        eventId: 'event-1',
+        occurrenceId: 'occurrence-1',
+        groupId: 'group-1',
+        label: ' Artists ',
+      );
+      await controller.saveOccurrenceGroupLabel(
+        eventId: 'event-1',
+        occurrenceId: 'occurrence-1',
+        occurrenceKey: 'occurrence-1',
+        groupId: 'group-1',
+        authoritativeLabel: 'Artists',
+      );
+      expect(
+        controller
+            .occurrenceGroupLabelState(
+              eventId: 'event-1',
+              occurrenceId: 'occurrence-1',
+              groupId: 'group-1',
+              label: 'Artists',
+            )
+            .value
+            .isEditing,
+        isFalse,
+      );
+      expect(repository.patchLabelCalls, 0);
+      controller.dispose();
+    },
+  );
+
+  test(
+    'occurrence group label rejects a 256-character draft before transport',
+    () async {
+      final repository = _TrackingEventsRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: repository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken('token'),
+      );
+      controller.beginOccurrenceGroupLabelEdit(
+        eventId: 'e',
+        occurrenceId: 'o',
+        groupId: 'g',
+        label: 'Old',
+      );
+      controller.changeOccurrenceGroupLabelDraft(
+        eventId: 'e',
+        occurrenceId: 'o',
+        groupId: 'g',
+        label: 'x' * 256,
+      );
+      await controller.saveOccurrenceGroupLabel(
+        eventId: 'e',
+        occurrenceId: 'o',
+        occurrenceKey: 'o',
+        groupId: 'g',
+        authoritativeLabel: 'Old',
+      );
+      expect(repository.patchLabelCalls, 0);
+      expect(
+        controller
+            .occurrenceGroupLabelState(
+              eventId: 'e',
+              occurrenceId: 'o',
+              groupId: 'g',
+              label: 'Old',
+            )
+            .value
+            .hasError,
+        isTrue,
+      );
+      controller.dispose();
+    },
+  );
+
+  test(
+    'occurrence group label retries remain explicit controller requests',
+    () async {
+      final repository = _TrackingEventsRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: repository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken('token'),
+      );
+      controller.beginOccurrenceGroupLabelEdit(
+        eventId: 'e',
+        occurrenceId: 'o',
+        groupId: 'g',
+        label: 'Old',
+      );
+      controller.changeOccurrenceGroupLabelDraft(
+        eventId: 'e',
+        occurrenceId: 'o',
+        groupId: 'g',
+        label: 'New',
+      );
+      repository.patchLabelError = const TenantAdminUnknownMutationFailure();
+      await controller.saveOccurrenceGroupLabel(
+        eventId: 'e',
+        occurrenceId: 'o',
+        occurrenceKey: 'o',
+        groupId: 'g',
+        authoritativeLabel: 'Old',
+      );
+      await controller.saveOccurrenceGroupLabel(
+        eventId: 'e',
+        occurrenceId: 'o',
+        occurrenceKey: 'o',
+        groupId: 'g',
+        authoritativeLabel: 'Old',
+      );
+      controller.changeOccurrenceGroupLabelDraft(
+        eventId: 'e',
+        occurrenceId: 'o',
+        groupId: 'g',
+        label: 'Changed after unknown',
+      );
+      await controller.saveOccurrenceGroupLabel(
+        eventId: 'e',
+        occurrenceId: 'o',
+        occurrenceKey: 'o',
+        groupId: 'g',
+        authoritativeLabel: 'Old',
+      );
+      repository.patchLabelError = StateError('422');
+      await controller.saveOccurrenceGroupLabel(
+        eventId: 'e',
+        occurrenceId: 'o',
+        occurrenceKey: 'o',
+        groupId: 'g',
+        authoritativeLabel: 'Old',
+      );
+      await controller.saveOccurrenceGroupLabel(
+        eventId: 'e',
+        occurrenceId: 'o',
+        occurrenceKey: 'o',
+        groupId: 'g',
+        authoritativeLabel: 'Old',
+      );
+      expect(repository.patchLabelCalls, 5);
+      controller.dispose();
+    },
+  );
+
+  test(
+    'occurrence group label state is isolated by event occurrence and group',
+    () {
+      final controller = TenantAdminEventsController(
+        eventsRepository: _TrackingEventsRepository(),
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken('token'),
+      );
+      controller.beginOccurrenceGroupLabelEdit(
+        eventId: 'event-a',
+        occurrenceId: 'occurrence-a',
+        groupId: 'group-a',
+        label: 'A',
+      );
+      controller.changeOccurrenceGroupLabelDraft(
+        eventId: 'event-a',
+        occurrenceId: 'occurrence-a',
+        groupId: 'group-a',
+        label: 'A draft',
+      );
+      controller.beginOccurrenceGroupLabelEdit(
+        eventId: 'event-a',
+        occurrenceId: 'occurrence-a',
+        groupId: 'group-b',
+        label: 'B',
+      );
+      controller.beginOccurrenceGroupLabelEdit(
+        eventId: 'event-b',
+        occurrenceId: 'occurrence-a',
+        groupId: 'group-a',
+        label: 'Other A',
+      );
+
+      expect(
+        controller
+            .occurrenceGroupLabelState(
+              eventId: 'event-a',
+              occurrenceId: 'occurrence-a',
+              groupId: 'group-a',
+              label: 'A',
+            )
+            .value
+            .draft,
+        'A draft',
+      );
+      expect(
+        controller
+            .occurrenceGroupLabelState(
+              eventId: 'event-a',
+              occurrenceId: 'occurrence-a',
+              groupId: 'group-b',
+              label: 'B',
+            )
+            .value
+            .draft,
+        'B',
+      );
+      expect(
+        controller
+            .occurrenceGroupLabelState(
+              eventId: 'event-b',
+              occurrenceId: 'occurrence-a',
+              groupId: 'group-a',
+              label: 'Other A',
+            )
+            .value
+            .draft,
+        'Other A',
+      );
+      controller.dispose();
+    },
+  );
+
+  test(
+    'occurrence group label save is single-flight and applies the authoritative group',
+    () async {
+      final repository = _TrackingEventsRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: repository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken('token'),
+      );
+      controller.initEventForm(existingEvent: _eventWithOccurrenceGroup());
+      final occurrenceKey = controller.occurrenceKeyAt(0)!;
+      final gate = Completer<TenantAdminNestedGroupLabelMutationResult>();
+      repository.patchLabelGate = gate;
+      controller.beginOccurrenceGroupLabelEdit(
+        eventId: 'event-1',
+        occurrenceId: 'occurrence-1',
+        groupId: 'group-1',
+        label: 'Artists',
+      );
+      controller.changeOccurrenceGroupLabelDraft(
+        eventId: 'event-1',
+        occurrenceId: 'occurrence-1',
+        groupId: 'group-1',
+        label: 'Authoritative label',
+      );
+
+      final first = controller.saveOccurrenceGroupLabel(
+        eventId: 'event-1',
+        occurrenceId: 'occurrence-1',
+        occurrenceKey: occurrenceKey,
+        groupId: 'group-1',
+        authoritativeLabel: 'Artists',
+      );
+      final duplicate = controller.saveOccurrenceGroupLabel(
+        eventId: 'event-1',
+        occurrenceId: 'occurrence-1',
+        occurrenceKey: occurrenceKey,
+        groupId: 'group-1',
+        authoritativeLabel: 'Artists',
+      );
+      expect(repository.patchLabelCalls, 1);
+      expect(
+        controller
+            .occurrenceGroupLabelState(
+              eventId: 'event-1',
+              occurrenceId: 'occurrence-1',
+              groupId: 'group-1',
+              label: 'Artists',
+            )
+            .value
+            .isLoading,
+        isTrue,
+      );
+
+      gate.complete(
+        TenantAdminNestedGroupLabelMutationResult(
+          idValue: TenantAdminNestedProfileGroupTextValue('group-1'),
+          labelValue: TenantAdminNestedProfileGroupTextValue('Server label'),
+        ),
+      );
+      await Future.wait(<Future<void>>[first, duplicate]);
+
+      final occurrence =
+          controller.eventFormStateStreamValue.value.occurrences.single;
+      expect(occurrence.profileGroups.single.label, 'Server label');
+      expect(occurrence.profileGroups.single.memberCount, 1);
+      expect(
+        controller
+            .occurrenceGroupLabelState(
+              eventId: 'event-1',
+              occurrenceId: 'occurrence-1',
+              groupId: 'group-1',
+              label: 'Artists',
+            )
+            .value
+            .isEditing,
+        isFalse,
+      );
+      controller.dispose();
+    },
+  );
+
+  test(
+    'occurrence group label success applies PATCH response without parent GET',
+    () async {
+      final repository = _TrackingEventsRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: repository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken('token'),
+      );
+      controller.initEventForm(existingEvent: _eventWithOccurrenceGroup());
+      repository.patchLabelResult = TenantAdminNestedGroupLabelMutationResult(
+        idValue: TenantAdminNestedProfileGroupTextValue('group-1'),
+        labelValue: TenantAdminNestedProfileGroupTextValue(
+          'PATCH response label',
+        ),
+      );
+      controller.beginOccurrenceGroupLabelEdit(
+        eventId: 'event-1',
+        occurrenceId: 'occurrence-1',
+        groupId: 'group-1',
+        label: 'Artists',
+      );
+      controller.changeOccurrenceGroupLabelDraft(
+        eventId: 'event-1',
+        occurrenceId: 'occurrence-1',
+        groupId: 'group-1',
+        label: 'Requested label',
+      );
+
+      await controller.saveOccurrenceGroupLabel(
+        eventId: 'event-1',
+        occurrenceId: 'occurrence-1',
+        occurrenceKey: controller.occurrenceKeyAt(0)!,
+        groupId: 'group-1',
+        authoritativeLabel: 'Artists',
+      );
+
+      expect(repository.fetchEventCalls, 0);
+      final group = controller
+          .eventFormStateStreamValue
+          .value
+          .occurrences
+          .single
+          .profileGroups
+          .single;
+      expect(group.label, 'PATCH response label');
+      expect(group.memberCount, 1);
+      controller.dispose();
+    },
+  );
+
+  test('occurrence group label response id mismatch fails closed', () async {
+    final repository = _TrackingEventsRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: repository,
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+      landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken('token'),
+    );
+    controller.initEventForm(existingEvent: _eventWithOccurrenceGroup());
+    repository.patchLabelResult = TenantAdminNestedGroupLabelMutationResult(
+      idValue: TenantAdminNestedProfileGroupTextValue('other-group'),
+      labelValue: TenantAdminNestedProfileGroupTextValue('Wrong target'),
+    );
+    controller.beginOccurrenceGroupLabelEdit(
+      eventId: 'event-1',
+      occurrenceId: 'occurrence-1',
+      groupId: 'group-1',
+      label: 'Artists',
+    );
+    controller.changeOccurrenceGroupLabelDraft(
+      eventId: 'event-1',
+      occurrenceId: 'occurrence-1',
+      groupId: 'group-1',
+      label: 'Requested label',
+    );
+
+    await controller.saveOccurrenceGroupLabel(
+      eventId: 'event-1',
+      occurrenceId: 'occurrence-1',
+      occurrenceKey: controller.occurrenceKeyAt(0)!,
+      groupId: 'group-1',
+      authoritativeLabel: 'Artists',
+    );
+
+    final group = controller
+        .eventFormStateStreamValue
+        .value
+        .occurrences
+        .single
+        .profileGroups
+        .single;
+    expect(group.label, 'Artists');
+    expect(group.memberCount, 1);
+    expect(
+      controller
+          .occurrenceGroupLabelState(
+            eventId: 'event-1',
+            occurrenceId: 'occurrence-1',
+            groupId: 'group-1',
+            label: 'Artists',
+          )
+          .value
+          .hasError,
+      isTrue,
+    );
+    controller.dispose();
+  });
+
+  test('occurrence group label ignores a completion after dispose', () async {
+    final repository = _TrackingEventsRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: repository,
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+      landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken('token'),
+    );
+    final gate = Completer<TenantAdminNestedGroupLabelMutationResult>();
+    repository.patchLabelGate = gate;
+    controller.beginOccurrenceGroupLabelEdit(
+      eventId: 'event-1',
+      occurrenceId: 'occurrence-1',
+      groupId: 'group-1',
+      label: 'Artists',
+    );
+    controller.changeOccurrenceGroupLabelDraft(
+      eventId: 'event-1',
+      occurrenceId: 'occurrence-1',
+      groupId: 'group-1',
+      label: 'New label',
+    );
+    final state = controller.occurrenceGroupLabelState(
+      eventId: 'event-1',
+      occurrenceId: 'occurrence-1',
+      groupId: 'group-1',
+      label: 'Artists',
+    );
+    final save = controller.saveOccurrenceGroupLabel(
+      eventId: 'event-1',
+      occurrenceId: 'occurrence-1',
+      occurrenceKey: 'occurrence-1',
+      groupId: 'group-1',
+      authoritativeLabel: 'Artists',
+    );
+    expect(state.value.isLoading, isTrue);
+    controller.dispose();
+    gate.complete(
+      TenantAdminNestedGroupLabelMutationResult(
+        idValue: TenantAdminNestedProfileGroupTextValue('group-1'),
+        labelValue: TenantAdminNestedProfileGroupTextValue('Late label'),
+      ),
+    );
+
+    await save;
+    expect(state.value.isLoading, isTrue);
+  });
+
+  test(
+    'occurrence group label exposes only safe structured validation errors',
+    () async {
+      final repository = _TrackingEventsRepository();
+      final controller = TenantAdminEventsController(
+        eventsRepository: repository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken('token'),
+      );
+      controller.beginOccurrenceGroupLabelEdit(
+        eventId: 'e',
+        occurrenceId: 'o',
+        groupId: 'g',
+        label: 'Old',
+      );
+      controller.changeOccurrenceGroupLabelDraft(
+        eventId: 'e',
+        occurrenceId: 'o',
+        groupId: 'g',
+        label: 'New',
+      );
+
+      repository.patchLabelError = FormValidationFailure(
+        statusCode: 422,
+        message: 'Validation failed.',
+        fieldErrors: <String, List<String>>{
+          'label': <String>['Nome da aba é inválido.'],
+        },
+      );
+      await controller.saveOccurrenceGroupLabel(
+        eventId: 'e',
+        occurrenceId: 'o',
+        occurrenceKey: 'o',
+        groupId: 'g',
+        authoritativeLabel: 'Old',
+      );
+      expect(
+        controller
+            .occurrenceGroupLabelState(
+              eventId: 'e',
+              occurrenceId: 'o',
+              groupId: 'g',
+              label: 'Old',
+            )
+            .value
+            .errorText,
+        'Nome da aba é inválido.',
+      );
+
+      for (final error in <Object>[
+        StateError('500 <html> https://internal.example/payload'),
+        const FormatException('decode https://internal.example/payload'),
+      ]) {
+        repository.patchLabelError = error;
+        await controller.saveOccurrenceGroupLabel(
+          eventId: 'e',
+          occurrenceId: 'o',
+          occurrenceKey: 'o',
+          groupId: 'g',
+          authoritativeLabel: 'Old',
+        );
+        expect(
+          controller
+              .occurrenceGroupLabelState(
+                eventId: 'e',
+                occurrenceId: 'o',
+                groupId: 'g',
+                label: 'Old',
+              )
+              .value
+              .errorText,
+          'Não foi possível salvar o grupo.',
+        );
+      }
+      repository.patchLabelError = const TenantAdminUnknownMutationFailure();
+      await controller.saveOccurrenceGroupLabel(
+        eventId: 'e',
+        occurrenceId: 'o',
+        occurrenceKey: 'o',
+        groupId: 'g',
+        authoritativeLabel: 'Old',
+      );
+      expect(
+        controller
+            .occurrenceGroupLabelState(
+              eventId: 'e',
+              occurrenceId: 'o',
+              groupId: 'g',
+              label: 'Old',
+            )
+            .value
+            .errorText,
+        'Não foi possível confirmar o salvamento. Tente novamente.',
+      );
+      controller.dispose();
+    },
+  );
+
+  test(
+    'occurrence group label ignores a late completion after tenant reset with equal ids',
+    () async {
+      final repository = _TrackingEventsRepository();
+      final tenantScope = _FakeTenantScope();
+      final controller = TenantAdminEventsController(
+        eventsRepository: repository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken('token'),
+        tenantScope: tenantScope,
+      );
+      final gate = Completer<TenantAdminNestedGroupLabelMutationResult>();
+      repository.patchLabelGate = gate;
+      controller.beginOccurrenceGroupLabelEdit(
+        eventId: 'event-1',
+        occurrenceId: 'occurrence-1',
+        groupId: 'group-1',
+        label: 'Tenant A',
+      );
+      controller.changeOccurrenceGroupLabelDraft(
+        eventId: 'event-1',
+        occurrenceId: 'occurrence-1',
+        groupId: 'group-1',
+        label: 'Tenant A draft',
+      );
+      final save = controller.saveOccurrenceGroupLabel(
+        eventId: 'event-1',
+        occurrenceId: 'occurrence-1',
+        occurrenceKey: 'occurrence-1',
+        groupId: 'group-1',
+        authoritativeLabel: 'Tenant A',
+      );
+
+      tenantScope.selectTenantDomain('tenant-b.localhost');
+      await Future<void>.delayed(Duration.zero);
+      final replacementState = controller.occurrenceGroupLabelState(
+        eventId: 'event-1',
+        occurrenceId: 'occurrence-1',
+        groupId: 'group-1',
+        label: 'Tenant B',
+      );
+      gate.complete(
+        TenantAdminNestedGroupLabelMutationResult(
+          idValue: TenantAdminNestedProfileGroupTextValue('group-1'),
+          labelValue: TenantAdminNestedProfileGroupTextValue(
+            'Late tenant A label',
+          ),
+        ),
+      );
+
+      await save;
+      expect(replacementState.value.draft, 'Tenant B');
+      expect(replacementState.value.isEditing, isFalse);
+      controller.dispose();
+    },
+  );
+
   test(
     'deleteEvent rethrows repository errors and updates error stream',
     () async {
@@ -2059,6 +2686,48 @@ TenantAdminEvent _buildEventDetailFixture({
   );
 }
 
+TenantAdminEvent _eventWithOccurrenceGroup({
+  String groupLabel = 'Artists',
+  int groupMemberCount = 1,
+}) {
+  return TenantAdminEvent(
+    eventIdValue: tenantAdminRequiredText('event-1'),
+    slugValue: tenantAdminRequiredText('event-1'),
+    titleValue: tenantAdminRequiredText('Event'),
+    contentValue: tenantAdminOptionalText('Content'),
+    type: TenantAdminEventType(
+      nameValue: tenantAdminRequiredText('Show'),
+      slugValue: tenantAdminRequiredText('show'),
+    ),
+    occurrences: <TenantAdminEventOccurrence>[
+      TenantAdminEventOccurrence(
+        occurrenceIdValue: tenantAdminOptionalText('occurrence-1'),
+        occurrenceSlugValue: tenantAdminOptionalText('occurrence-1'),
+        dateTimeStartValue: tenantAdminDateTime(DateTime.utc(2026, 6, 24, 18)),
+        profileGroups: <TenantAdminNestedProfileGroup>[
+          _nestedGroup('group-1', groupLabel, groupMemberCount),
+        ],
+      ),
+    ],
+    publication: TenantAdminEventPublication(
+      statusValue: tenantAdminRequiredText('draft'),
+    ),
+  );
+}
+
+TenantAdminNestedProfileGroup _nestedGroup(
+  String id,
+  String label,
+  int memberCount,
+) {
+  return TenantAdminNestedProfileGroup(
+    idValue: TenantAdminNestedProfileGroupTextValue(id),
+    labelValue: TenantAdminNestedProfileGroupTextValue(label),
+    orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+    memberCountValue: TenantAdminCountValue(memberCount),
+  );
+}
+
 TenantAdminEventDraft _buildDraft() {
   return TenantAdminEventDraft(
     titleValue: tenantAdminRequiredText('My event'),
@@ -2323,6 +2992,12 @@ class _TrackingEventsRepository extends TenantAdminEventsRepositoryContract
   String? lastLoadVenueProfileId;
   String? lastLoadRelatedAccountProfileId;
   Set<TenantAdminEventTemporalBucket>? lastTemporalBuckets;
+  int patchLabelCalls = 0;
+  int fetchEventCalls = 0;
+  Object? patchLabelError;
+  Completer<TenantAdminNestedGroupLabelMutationResult>? patchLabelGate;
+  TenantAdminNestedGroupLabelMutationResult? patchLabelResult;
+  TenantAdminEvent? fetchedEvent;
 
   @override
   Future<TenantAdminEvent> createEvent({
@@ -2346,7 +3021,27 @@ class _TrackingEventsRepository extends TenantAdminEventsRepositoryContract
   Future<TenantAdminEvent> fetchEvent(
     TenantAdminEventsRepoString eventIdOrSlug,
   ) async {
-    throw UnimplementedError();
+    fetchEventCalls += 1;
+    return fetchedEvent ?? (throw UnimplementedError());
+  }
+
+  @override
+  Future<TenantAdminNestedGroupLabelMutationResult>
+  patchOccurrenceProfileGroupLabel({
+    required TenantAdminEventsRepoString eventId,
+    required TenantAdminEventsRepoString occurrenceId,
+    required TenantAdminEventsRepoString groupId,
+    required TenantAdminEventsRepoString label,
+  }) async {
+    patchLabelCalls += 1;
+    final gate = patchLabelGate;
+    if (gate != null) return gate.future;
+    if (patchLabelError != null) throw patchLabelError!;
+    return patchLabelResult ??
+        TenantAdminNestedGroupLabelMutationResult(
+          idValue: TenantAdminNestedProfileGroupTextValue(groupId.value),
+          labelValue: TenantAdminNestedProfileGroupTextValue(label.value),
+        );
   }
 
   @override

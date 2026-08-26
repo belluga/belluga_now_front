@@ -21,7 +21,7 @@ import 'package:belluga_now/presentation/tenant_admin/events/models/tenant_admin
 import 'package:belluga_now/presentation/tenant_admin/events/widgets/tenant_admin_account_profile_location_picker_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/widgets/tenant_admin_event_occurrence_editor_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/screens/tenant_admin_event_occurrence_group_members_screen.dart';
-import 'package:belluga_now/presentation/tenant_admin/events/widgets/tenant_admin_event_profile_groups_summary_editor.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_profile_groups_summary_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/widgets/tenant_admin_programming_item_card.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
@@ -902,6 +902,15 @@ class _TenantAdminEventFormScreenState
     final groups = formState.occurrences.length == 1
         ? formState.occurrences.first.profileGroups
         : formState.profileGroups;
+    final eventId = widget.existingEvent?.eventId;
+    final occurrence = formState.occurrences.firstOrNull;
+    final occurrenceId = occurrence?.occurrenceId;
+    final occurrenceKey = _controller.primaryOccurrenceKey();
+    final canPersistGroupLabel =
+        formState.occurrences.length == 1 &&
+        eventId != null &&
+        occurrenceId != null &&
+        occurrenceKey != null;
     return FormValidationAnchor(
       anchors: _validationAnchors,
       targetId: TenantAdminEventFormValidationTargets.relatedProfiles,
@@ -912,13 +921,41 @@ class _TenantAdminEventFormScreenState
             streamValue:
                 _controller.occurrenceProfileGroupMutationBusyStreamValue,
             builder: (context, isBusy) {
-              return TenantAdminEventProfileGroupsSummaryEditor(
+              return TenantAdminProfileGroupsSummaryEditor(
                 keyPrefix: 'EventProfile',
                 title: 'Abas de perfis relacionados',
                 groups: groups,
                 addButtonKey: const Key('TenantAdminEventProfileGroupAdd'),
                 onAddGroup: () => _createPrimaryOccurrenceGroupHead(formState),
-                onRenameGroup: (_, _) {},
+                groupLabelState: (group) =>
+                    _controller.occurrenceGroupLabelState(
+                      eventId: eventId!,
+                      occurrenceId: occurrenceId!,
+                      groupId: group.id,
+                      label: group.label,
+                    ),
+                onBeginGroupLabelEdit: (group) =>
+                    _controller.beginOccurrenceGroupLabelEdit(
+                      eventId: eventId!,
+                      occurrenceId: occurrenceId!,
+                      groupId: group.id,
+                      label: group.label,
+                    ),
+                onChangeGroupLabelDraft: (group, label) =>
+                    _controller.changeOccurrenceGroupLabelDraft(
+                      eventId: eventId!,
+                      occurrenceId: occurrenceId!,
+                      groupId: group.id,
+                      label: label,
+                    ),
+                onSaveGroupLabel: (group) =>
+                    _controller.saveOccurrenceGroupLabel(
+                      eventId: eventId!,
+                      occurrenceId: occurrenceId!,
+                      occurrenceKey: occurrenceKey!,
+                      groupId: group.id,
+                      authoritativeLabel: group.label,
+                    ),
                 onMoveGroup: (_, _) {},
                 onRemoveGroup: (groupId) =>
                     _deletePrimaryOccurrenceGroupHead(formState, groupId),
@@ -926,7 +963,7 @@ class _TenantAdminEventFormScreenState
                   formState,
                 ),
                 groupsMutationBusy: isBusy,
-                enableLabelEditing: false,
+                enableLabelEditing: canPersistGroupLabel,
                 enableReorder: false,
                 onManageGroup: _openPrimaryOccurrenceGroupMembers,
                 manageBlockedReasonBuilder: (_) =>

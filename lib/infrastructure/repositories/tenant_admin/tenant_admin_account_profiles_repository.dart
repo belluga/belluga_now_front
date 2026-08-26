@@ -6,6 +6,8 @@ import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.d
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_head_mutation_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_label_mutation_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_unknown_mutation_failure.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_mutation_result.dart';
@@ -20,6 +22,7 @@ import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_med
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_account_profiles_response_decoder.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_pagination_utils.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/support/tenant_admin_validation_failure_resolver.dart';
+import 'package:belluga_now/infrastructure/repositories/tenant_admin/support/tenant_admin_request_correlation.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
@@ -479,6 +482,42 @@ class TenantAdminAccountProfilesRepository
       throw FormatException(
         'Failed to delete nested profile group [decode] ($uri): $error',
       );
+    }
+  }
+
+  @override
+  Future<TenantAdminNestedGroupLabelMutationResult>
+  patchNestedProfileGroupLabel({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminAccountProfilesRepoString label,
+  }) async {
+    final uri =
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}/nested_profile_groups/${groupId.value}';
+    final correlation = TenantAdminRequestCorrelation.create();
+    try {
+      final response = await _dio.patch(
+        uri,
+        data: _requestEncoder.encodePatchNestedProfileGroupLabel(
+          label: label.value,
+        ),
+        options: Options(
+          headers: {..._buildHeaders(), ...correlation.headers()},
+        ),
+      );
+      tenantAdminAssertSuccessfulMutationResponse(
+        response,
+        label: 'patch nested profile group label',
+        uri: uri,
+      );
+      return _responseDecoder.decodeNestedGroupLabelMutationResult(
+        response.data,
+      );
+    } on DioException catch (error) {
+      if (error.response == null) {
+        throw const TenantAdminUnknownMutationFailure();
+      }
+      throw _wrapError(error, 'patch nested profile group label');
     }
   }
 

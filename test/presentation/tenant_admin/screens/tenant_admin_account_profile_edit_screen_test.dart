@@ -22,6 +22,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gal
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_label_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_head_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_page.dart';
@@ -953,6 +954,23 @@ void main() {
     expect(find.text('Parceiros'), findsWidgets);
     expect(find.text('1 perfil vinculado'), findsOneWidget);
     expect(find.text('Gerenciar perfis'), findsOneWidget);
+    await tester.tap(
+      find.byKey(const Key('tenantAdminEditProfileGroupLabel_partners')),
+    );
+    await tester.pump();
+    expect(
+      find.byKey(const Key('tenantAdminEditProfileGroupLabelInput_partners')),
+      findsOneWidget,
+    );
+    await tester.enterText(
+      find.byKey(const Key('tenantAdminEditProfileGroupLabelInput_partners')),
+      'Parceiros do servidor',
+    );
+    await tester.tap(find.byIcon(Icons.check));
+    await tester.pumpAndSettle();
+    expect(profilesRepository.lastPatchNestedGroupProfileId, 'route-profile');
+    expect(profilesRepository.lastPatchNestedGroupId, 'partners');
+    expect(find.text('Parceiros autoritativos'), findsOneWidget);
   });
 
   testWidgets(
@@ -1783,6 +1801,8 @@ class _FakeAccountProfilesRepository
       <String, List<TenantAdminNestedGroupMemberPage>>{};
   int fetchAccountProfilesPageCalls = 0;
   int fetchAllNestedGroupMembersCalls = 0;
+  String? lastPatchNestedGroupProfileId;
+  String? lastPatchNestedGroupId;
 
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
@@ -2070,6 +2090,23 @@ class _FakeAccountProfilesRepository
     List<TenantAdminAccountProfilesRepoString> removeIds = const [],
   }) async {
     throw UnimplementedError();
+  }
+
+  @override
+  Future<TenantAdminNestedGroupLabelMutationResult>
+  patchNestedProfileGroupLabel({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminAccountProfilesRepoString label,
+  }) async {
+    lastPatchNestedGroupProfileId = accountProfileId.value;
+    lastPatchNestedGroupId = groupId.value;
+    return TenantAdminNestedGroupLabelMutationResult(
+      idValue: TenantAdminNestedProfileGroupTextValue(groupId.value),
+      labelValue: TenantAdminNestedProfileGroupTextValue(
+        'Parceiros autoritativos',
+      ),
+    );
   }
 
   @override

@@ -11,7 +11,7 @@ import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/screens/tenant_admin_event_occurrence_group_members_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/widgets/tenant_admin_account_profile_location_picker_sheet.dart';
-import 'package:belluga_now/presentation/tenant_admin/events/widgets/tenant_admin_event_profile_groups_summary_editor.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_profile_groups_summary_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/widgets/tenant_admin_programming_item_card.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_group_label_dialog.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
@@ -560,34 +560,70 @@ class _TenantAdminEventOccurrenceEditorSheetState
             ),
             _buildOccurrenceTaxonomySection(context),
             const Divider(height: 28),
-            StreamValueBuilder<bool>(
-              streamValue: widget
-                  .controller
-                  .occurrenceProfileGroupMutationBusyStreamValue,
-              builder: (context, isBusy) {
-                return TenantAdminEventProfileGroupsSummaryEditor(
-                  keyPrefix: 'OccurrenceProfile',
-                  title: 'Abas de perfis próprios da ocorrência',
-                  groups: widget.occurrence.profileGroups,
-                  addButtonKey: const Key(
-                    'TenantAdminOccurrenceProfileGroupAdd',
-                  ),
-                  onAddGroup: _createOccurrenceGroupHead,
-                  onRenameGroup: (_, _) {},
-                  onMoveGroup: (_, _) {},
-                  onRemoveGroup: _deleteOccurrenceGroupHead,
-                  addBlockedReason: widget.controller
-                      .occurrenceRelatedProfilesManageBlockedReason(
-                        widget.occurrence.occurrenceId,
+            Builder(
+              builder: (context) {
+                final eventId = widget.eventId;
+                final occurrenceId = widget.occurrence.occurrenceId;
+                final canPersistGroupLabel =
+                    eventId != null && occurrenceId != null;
+                return StreamValueBuilder<bool>(
+                  streamValue: widget
+                      .controller
+                      .occurrenceProfileGroupMutationBusyStreamValue,
+                  builder: (context, isBusy) {
+                    return TenantAdminProfileGroupsSummaryEditor(
+                      keyPrefix: 'OccurrenceProfile',
+                      title: 'Abas de perfis próprios da ocorrência',
+                      groups: widget.occurrence.profileGroups,
+                      addButtonKey: const Key(
+                        'TenantAdminOccurrenceProfileGroupAdd',
                       ),
-                  groupsMutationBusy: isBusy,
-                  enableLabelEditing: false,
-                  enableReorder: false,
-                  onManageGroup: _openOccurrenceGroupMembers,
-                  manageBlockedReasonBuilder: (_) => widget.controller
-                      .occurrenceRelatedProfilesManageBlockedReason(
-                        widget.occurrence.occurrenceId,
-                      ),
+                      onAddGroup: _createOccurrenceGroupHead,
+                      groupLabelState: (group) =>
+                          widget.controller.occurrenceGroupLabelState(
+                            eventId: eventId!,
+                            occurrenceId: occurrenceId!,
+                            groupId: group.id,
+                            label: group.label,
+                          ),
+                      onBeginGroupLabelEdit: (group) =>
+                          widget.controller.beginOccurrenceGroupLabelEdit(
+                            eventId: eventId!,
+                            occurrenceId: occurrenceId!,
+                            groupId: group.id,
+                            label: group.label,
+                          ),
+                      onChangeGroupLabelDraft: (group, label) =>
+                          widget.controller.changeOccurrenceGroupLabelDraft(
+                            eventId: eventId!,
+                            occurrenceId: occurrenceId!,
+                            groupId: group.id,
+                            label: label,
+                          ),
+                      onSaveGroupLabel: (group) =>
+                          widget.controller.saveOccurrenceGroupLabel(
+                            eventId: eventId!,
+                            occurrenceId: occurrenceId!,
+                            occurrenceKey: widget.occurrenceKey,
+                            groupId: group.id,
+                            authoritativeLabel: group.label,
+                          ),
+                      onMoveGroup: (_, _) {},
+                      onRemoveGroup: _deleteOccurrenceGroupHead,
+                      addBlockedReason: widget.controller
+                          .occurrenceRelatedProfilesManageBlockedReason(
+                            widget.occurrence.occurrenceId,
+                          ),
+                      groupsMutationBusy: isBusy,
+                      enableLabelEditing: canPersistGroupLabel,
+                      enableReorder: false,
+                      onManageGroup: _openOccurrenceGroupMembers,
+                      manageBlockedReasonBuilder: (_) => widget.controller
+                          .occurrenceRelatedProfilesManageBlockedReason(
+                            widget.occurrence.occurrenceId,
+                          ),
+                    );
+                  },
                 );
               },
             ),

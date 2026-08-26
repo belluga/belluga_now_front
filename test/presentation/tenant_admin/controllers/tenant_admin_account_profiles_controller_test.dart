@@ -2,6 +2,7 @@ import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'dart:async';
 import 'dart:io';
 
+import 'package:belluga_form_validation/belluga_form_validation.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
@@ -15,6 +16,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_head_mutation_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_label_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_page.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_accounts_result.dart';
@@ -27,8 +29,10 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_accou
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
+import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_unknown_mutation_failure.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stream_value/core/stream_value.dart';
 
@@ -298,6 +302,11 @@ class _FakeAccountProfilesRepository
   int updateProfileCalls = 0;
   Completer<void>? createProfileGate;
   Completer<void>? updateProfileGate;
+  int patchNestedGroupLabelCalls = 0;
+  Completer<TenantAdminNestedGroupLabelMutationResult>?
+  patchNestedGroupLabelGate;
+  Object? patchNestedGroupLabelError;
+  TenantAdminNestedGroupLabelMutationResult? patchNestedGroupLabelResult;
 
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
@@ -819,6 +828,25 @@ class _FakeAccountProfilesRepository
     accountProfileFetchOverrides[profileId] = updated;
   }
 
+  @override
+  Future<TenantAdminNestedGroupLabelMutationResult>
+  patchNestedProfileGroupLabel({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminAccountProfilesRepoString label,
+  }) async {
+    patchNestedGroupLabelCalls += 1;
+    final gate = patchNestedGroupLabelGate;
+    if (gate != null) return gate.future;
+    final error = patchNestedGroupLabelError;
+    if (error != null) throw error;
+    return patchNestedGroupLabelResult ??
+        TenantAdminNestedGroupLabelMutationResult(
+          idValue: TenantAdminNestedProfileGroupTextValue(groupId.value),
+          labelValue: TenantAdminNestedProfileGroupTextValue(label.value),
+        );
+  }
+
   String _slugifyGroupId(String label) {
     final normalized = label
         .trim()
@@ -966,6 +994,634 @@ class _FakeTaxonomiesRepository
 }
 
 void main() {
+  TenantAdminAccountProfilesController labelController(
+    _FakeAccountProfilesRepository repository, {
+    TenantAdminTenantScopeContract? tenantScope,
+  }) => TenantAdminAccountProfilesController(
+    profilesRepository: repository,
+    accountsRepository: _FakeAccountsRepository(),
+    taxonomiesRepository: _FakeTaxonomiesRepository(),
+    locationSelectionService: TenantAdminLocationSelectionService(),
+    tenantScope: tenantScope,
+  );
+
+  test(
+    'nested group label coordinator single-flights and applies authoritative success',
+    () async {
+      final repository = _FakeAccountProfilesRepository(
+        <TenantAdminAccountProfile>[],
+        const <TenantAdminProfileTypeDefinition>[],
+      );
+      final controller = labelController(repository);
+      final gate = Completer<TenantAdminNestedGroupLabelMutationResult>();
+      repository.patchNestedGroupLabelGate = gate;
+      controller.beginNestedGroupLabelEdit(
+        accountProfileId: 'p',
+        groupId: 'g',
+        label: 'Old',
+      );
+      controller.changeNestedGroupLabelDraft(
+        accountProfileId: 'p',
+        groupId: 'g',
+        label: 'New',
+      );
+      final first = controller.saveNestedGroupLabel(
+        accountProfileId: 'p',
+        groupId: 'g',
+        authoritativeLabel: 'Old',
+      );
+      final duplicate = controller.saveNestedGroupLabel(
+        accountProfileId: 'p',
+        groupId: 'g',
+        authoritativeLabel: 'Old',
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(repository.patchNestedGroupLabelCalls, 1);
+      gate.complete(
+        TenantAdminNestedGroupLabelMutationResult(
+          idValue: TenantAdminNestedProfileGroupTextValue('g'),
+          labelValue: TenantAdminNestedProfileGroupTextValue('Authoritative'),
+        ),
+      );
+      await Future.wait([first, duplicate]);
+      expect(
+        controller
+            .nestedGroupLabelState(
+              accountProfileId: 'p',
+              groupId: 'g',
+              label: 'Old',
+            )
+            .value
+            .draft,
+        'Authoritative',
+      );
+      controller.dispose();
+    },
+  );
+
+  test(
+    'nested group label retries remain explicit controller requests',
+    () async {
+      final repository = _FakeAccountProfilesRepository(
+        <TenantAdminAccountProfile>[],
+        const <TenantAdminProfileTypeDefinition>[],
+      );
+      final controller = labelController(repository);
+      controller.beginNestedGroupLabelEdit(
+        accountProfileId: 'p',
+        groupId: 'g',
+        label: 'Old',
+      );
+      controller.changeNestedGroupLabelDraft(
+        accountProfileId: 'p',
+        groupId: 'g',
+        label: 'New',
+      );
+      repository.patchNestedGroupLabelError =
+          const TenantAdminUnknownMutationFailure();
+      await controller.saveNestedGroupLabel(
+        accountProfileId: 'p',
+        groupId: 'g',
+        authoritativeLabel: 'Old',
+      );
+      await controller.saveNestedGroupLabel(
+        accountProfileId: 'p',
+        groupId: 'g',
+        authoritativeLabel: 'Old',
+      );
+      controller.changeNestedGroupLabelDraft(
+        accountProfileId: 'p',
+        groupId: 'g',
+        label: 'Changed after unknown',
+      );
+      await controller.saveNestedGroupLabel(
+        accountProfileId: 'p',
+        groupId: 'g',
+        authoritativeLabel: 'Old',
+      );
+      repository.patchNestedGroupLabelError = StateError('422');
+      await controller.saveNestedGroupLabel(
+        accountProfileId: 'p',
+        groupId: 'g',
+        authoritativeLabel: 'Old',
+      );
+      await controller.saveNestedGroupLabel(
+        accountProfileId: 'p',
+        groupId: 'g',
+        authoritativeLabel: 'Old',
+      );
+      expect(repository.patchNestedGroupLabelCalls, 5);
+      controller.dispose();
+    },
+  );
+
+  test(
+    'nested group label success preserves local state and invalidates revision without parent GET',
+    () async {
+      final group = TenantAdminNestedProfileGroup(
+        idValue: TenantAdminNestedProfileGroupTextValue('g'),
+        labelValue: TenantAdminNestedProfileGroupTextValue('Old'),
+        orderValue: TenantAdminNestedProfileGroupOrderValue(4),
+        memberCountValue: TenantAdminCountValue(2),
+        accountProfileIdValues: <TenantAdminNestedProfileGroupTextValue>[
+          TenantAdminNestedProfileGroupTextValue('member-a'),
+          TenantAdminNestedProfileGroupTextValue('member-b'),
+        ],
+      );
+      final sibling = TenantAdminNestedProfileGroup(
+        idValue: TenantAdminNestedProfileGroupTextValue('sibling'),
+        labelValue: TenantAdminNestedProfileGroupTextValue('Sibling'),
+        orderValue: TenantAdminNestedProfileGroupOrderValue(9),
+        memberCountValue: TenantAdminCountValue(1),
+      );
+      final profile = tenantAdminAccountProfileFromRaw(
+        id: 'p',
+        accountId: 'a',
+        profileType: 'venue',
+        displayName: 'Profile',
+        aggregateRevision: 7,
+        bio: 'Preserved bio',
+        nestedProfileGroups: [group, sibling],
+      );
+      final repository = _FakeAccountProfilesRepository([profile], const []);
+      repository.patchNestedGroupLabelResult =
+          TenantAdminNestedGroupLabelMutationResult(
+            idValue: TenantAdminNestedProfileGroupTextValue(group.id),
+            labelValue: TenantAdminNestedProfileGroupTextValue('Readback'),
+          );
+      final controller = labelController(repository);
+      await controller.loadEditProfile('p', prefetchedProfile: profile);
+      controller.beginNestedGroupLabelEdit(
+        accountProfileId: 'p',
+        groupId: 'g',
+        label: 'Old',
+      );
+      controller.changeNestedGroupLabelDraft(
+        accountProfileId: 'p',
+        groupId: 'g',
+        label: 'New',
+      );
+      await controller.saveNestedGroupLabel(
+        accountProfileId: 'p',
+        groupId: 'g',
+        authoritativeLabel: 'Old',
+      );
+      expect(repository.fetchAccountProfileCalls, 0);
+      final groups = controller.editStateStreamValue.value.nestedProfileGroups;
+      expect(groups.map((entry) => entry.id), <String>['g', 'sibling']);
+      expect(groups.first.label, 'Readback');
+      expect(groups.first.order, 4);
+      expect(groups.first.memberCount, 2);
+      expect(
+        groups.first.accountProfileIdValues.map((entry) => entry.value),
+        <String>['member-a', 'member-b'],
+      );
+      expect(groups[1].label, 'Sibling');
+      expect(groups[1].order, 9);
+      expect(groups[1].memberCount, 1);
+      expect(
+        controller.accountProfileStreamValue.value?.aggregateRevision,
+        isNull,
+      );
+      expect(controller.accountProfileStreamValue.value?.bio, 'Preserved bio');
+      expect(
+        controller
+            .nestedGroupLabelState(
+              accountProfileId: 'p',
+              groupId: 'g',
+              label: 'Old',
+            )
+            .value
+            .draft,
+        'Readback',
+      );
+      controller.dispose();
+    },
+  );
+
+  test('nested group label response id mismatch fails closed', () async {
+    final group = TenantAdminNestedProfileGroup(
+      idValue: TenantAdminNestedProfileGroupTextValue('g'),
+      labelValue: TenantAdminNestedProfileGroupTextValue('Old'),
+      orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+    );
+    final profile = tenantAdminAccountProfileFromRaw(
+      id: 'p',
+      accountId: 'a',
+      profileType: 'venue',
+      displayName: 'Profile',
+      aggregateRevision: 3,
+      nestedProfileGroups: [group],
+    );
+    final repository = _FakeAccountProfilesRepository([profile], const [])
+      ..patchNestedGroupLabelResult = TenantAdminNestedGroupLabelMutationResult(
+        idValue: TenantAdminNestedProfileGroupTextValue('other'),
+        labelValue: TenantAdminNestedProfileGroupTextValue('Wrong target'),
+      );
+    final controller = labelController(repository);
+    await controller.loadEditProfile('p', prefetchedProfile: profile);
+    controller.beginNestedGroupLabelEdit(
+      accountProfileId: 'p',
+      groupId: 'g',
+      label: 'Old',
+    );
+    controller.changeNestedGroupLabelDraft(
+      accountProfileId: 'p',
+      groupId: 'g',
+      label: 'New',
+    );
+
+    await controller.saveNestedGroupLabel(
+      accountProfileId: 'p',
+      groupId: 'g',
+      authoritativeLabel: 'Old',
+    );
+
+    expect(
+      controller.editStateStreamValue.value.nestedProfileGroups.single.label,
+      'Old',
+    );
+    expect(controller.accountProfileStreamValue.value?.aggregateRevision, 3);
+    expect(
+      controller
+          .nestedGroupLabelState(
+            accountProfileId: 'p',
+            groupId: 'g',
+            label: 'Old',
+          )
+          .value
+          .hasError,
+      isTrue,
+    );
+    controller.dispose();
+  });
+
+  test('nested group label ignores late completion after dispose', () async {
+    final repository = _FakeAccountProfilesRepository(
+      <TenantAdminAccountProfile>[],
+      const [],
+    );
+    final controller = labelController(repository);
+    final gate = Completer<TenantAdminNestedGroupLabelMutationResult>();
+    repository.patchNestedGroupLabelGate = gate;
+    controller.beginNestedGroupLabelEdit(
+      accountProfileId: 'p',
+      groupId: 'g',
+      label: 'Old',
+    );
+    controller.changeNestedGroupLabelDraft(
+      accountProfileId: 'p',
+      groupId: 'g',
+      label: 'New',
+    );
+    final future = controller.saveNestedGroupLabel(
+      accountProfileId: 'p',
+      groupId: 'g',
+      authoritativeLabel: 'Old',
+    );
+    controller.dispose();
+    gate.complete(
+      TenantAdminNestedGroupLabelMutationResult(
+        idValue: TenantAdminNestedProfileGroupTextValue('g'),
+        labelValue: TenantAdminNestedProfileGroupTextValue('Late'),
+      ),
+    );
+    await future;
+  });
+
+  test(
+    'nested group label exposes only safe structured validation errors',
+    () async {
+      final repository = _FakeAccountProfilesRepository(
+        <TenantAdminAccountProfile>[],
+        const <TenantAdminProfileTypeDefinition>[],
+      );
+      final controller = labelController(repository);
+      controller.beginNestedGroupLabelEdit(
+        accountProfileId: 'p',
+        groupId: 'g',
+        label: 'Old',
+      );
+      controller.changeNestedGroupLabelDraft(
+        accountProfileId: 'p',
+        groupId: 'g',
+        label: 'New',
+      );
+
+      repository.patchNestedGroupLabelError = FormValidationFailure(
+        statusCode: 422,
+        message: 'Validation failed.',
+        fieldErrors: <String, List<String>>{
+          'label': <String>['Nome da aba é inválido.'],
+        },
+      );
+      await controller.saveNestedGroupLabel(
+        accountProfileId: 'p',
+        groupId: 'g',
+        authoritativeLabel: 'Old',
+      );
+      expect(
+        controller
+            .nestedGroupLabelState(
+              accountProfileId: 'p',
+              groupId: 'g',
+              label: 'Old',
+            )
+            .value
+            .errorText,
+        'Nome da aba é inválido.',
+      );
+
+      for (final error in <Object>[
+        StateError('500 <html> https://internal.example/payload'),
+        const FormatException('decode https://internal.example/payload'),
+      ]) {
+        repository.patchNestedGroupLabelError = error;
+        await controller.saveNestedGroupLabel(
+          accountProfileId: 'p',
+          groupId: 'g',
+          authoritativeLabel: 'Old',
+        );
+        expect(
+          controller
+              .nestedGroupLabelState(
+                accountProfileId: 'p',
+                groupId: 'g',
+                label: 'Old',
+              )
+              .value
+              .errorText,
+          'Não foi possível salvar o grupo.',
+        );
+      }
+      repository.patchNestedGroupLabelError =
+          const TenantAdminUnknownMutationFailure();
+      await controller.saveNestedGroupLabel(
+        accountProfileId: 'p',
+        groupId: 'g',
+        authoritativeLabel: 'Old',
+      );
+      expect(
+        controller
+            .nestedGroupLabelState(
+              accountProfileId: 'p',
+              groupId: 'g',
+              label: 'Old',
+            )
+            .value
+            .errorText,
+        'Não foi possível confirmar o salvamento. Tente novamente.',
+      );
+      controller.dispose();
+    },
+  );
+
+  test(
+    'nested group label ignores a late completion after parent reload with equal ids',
+    () async {
+      final profile = tenantAdminAccountProfileFromRaw(
+        id: 'p',
+        accountId: 'a',
+        profileType: 'venue',
+        displayName: 'Profile',
+      );
+      final repository = _FakeAccountProfilesRepository([profile], const []);
+      final controller = labelController(repository);
+      final gate = Completer<TenantAdminNestedGroupLabelMutationResult>();
+      repository.patchNestedGroupLabelGate = gate;
+      controller.beginNestedGroupLabelEdit(
+        accountProfileId: 'p',
+        groupId: 'g',
+        label: 'Before reload',
+      );
+      controller.changeNestedGroupLabelDraft(
+        accountProfileId: 'p',
+        groupId: 'g',
+        label: 'Pending old parent',
+      );
+      final save = controller.saveNestedGroupLabel(
+        accountProfileId: 'p',
+        groupId: 'g',
+        authoritativeLabel: 'Before reload',
+      );
+
+      await controller.loadEditProfile('p', prefetchedProfile: profile);
+      final replacementState = controller.nestedGroupLabelState(
+        accountProfileId: 'p',
+        groupId: 'g',
+        label: 'Reloaded parent',
+      );
+      gate.complete(
+        TenantAdminNestedGroupLabelMutationResult(
+          idValue: TenantAdminNestedProfileGroupTextValue('g'),
+          labelValue: TenantAdminNestedProfileGroupTextValue('Late label'),
+        ),
+      );
+
+      await save;
+      expect(replacementState.value.draft, 'Reloaded parent');
+      expect(replacementState.value.isEditing, isFalse);
+      controller.dispose();
+    },
+  );
+
+  test(
+    'nested group label ignores late completion after tenant change with equal ids',
+    () async {
+      final repository = _FakeAccountProfilesRepository(
+        <TenantAdminAccountProfile>[],
+        const [],
+      );
+      final tenantScope = _FakeTenantScope();
+      tenantScope.selectTenantDomain('tenant-a.localhost');
+      final controller = labelController(repository, tenantScope: tenantScope);
+      final gate = Completer<TenantAdminNestedGroupLabelMutationResult>();
+      repository.patchNestedGroupLabelGate = gate;
+      controller.beginNestedGroupLabelEdit(
+        accountProfileId: 'p',
+        groupId: 'g',
+        label: 'Tenant A',
+      );
+      controller.changeNestedGroupLabelDraft(
+        accountProfileId: 'p',
+        groupId: 'g',
+        label: 'Pending',
+      );
+      final save = controller.saveNestedGroupLabel(
+        accountProfileId: 'p',
+        groupId: 'g',
+        authoritativeLabel: 'Tenant A',
+      );
+      tenantScope.selectTenantDomain('tenant-b.localhost');
+      await Future<void>.delayed(Duration.zero);
+      final replacement = controller.nestedGroupLabelState(
+        accountProfileId: 'p',
+        groupId: 'g',
+        label: 'Tenant B',
+      );
+      gate.complete(
+        TenantAdminNestedGroupLabelMutationResult(
+          idValue: TenantAdminNestedProfileGroupTextValue('g'),
+          labelValue: TenantAdminNestedProfileGroupTextValue('Late'),
+        ),
+      );
+      await save;
+      expect(replacement.value.draft, 'Tenant B');
+      controller.dispose();
+    },
+  );
+
+  test(
+    'nested group label state is isolated by profile and group identity',
+    () {
+      final repository = _FakeAccountProfilesRepository(
+        <TenantAdminAccountProfile>[],
+        const <TenantAdminProfileTypeDefinition>[],
+      );
+      final controller = labelController(repository);
+      controller.beginNestedGroupLabelEdit(
+        accountProfileId: 'profile-a',
+        groupId: 'group-a',
+        label: 'A',
+      );
+      controller.changeNestedGroupLabelDraft(
+        accountProfileId: 'profile-a',
+        groupId: 'group-a',
+        label: 'A draft',
+      );
+      controller.beginNestedGroupLabelEdit(
+        accountProfileId: 'profile-a',
+        groupId: 'group-b',
+        label: 'B',
+      );
+      controller.beginNestedGroupLabelEdit(
+        accountProfileId: 'profile-b',
+        groupId: 'group-a',
+        label: 'Other A',
+      );
+
+      expect(
+        controller
+            .nestedGroupLabelState(
+              accountProfileId: 'profile-a',
+              groupId: 'group-a',
+              label: 'A',
+            )
+            .value
+            .draft,
+        'A draft',
+      );
+      expect(
+        controller
+            .nestedGroupLabelState(
+              accountProfileId: 'profile-a',
+              groupId: 'group-b',
+              label: 'B',
+            )
+            .value
+            .draft,
+        'B',
+      );
+      expect(
+        controller
+            .nestedGroupLabelState(
+              accountProfileId: 'profile-b',
+              groupId: 'group-a',
+              label: 'Other A',
+            )
+            .value
+            .draft,
+        'Other A',
+      );
+      controller.dispose();
+    },
+  );
+
+  test(
+    'nested group label rejects a 256-character draft before transport',
+    () async {
+      final repository = _FakeAccountProfilesRepository(
+        <TenantAdminAccountProfile>[],
+        const <TenantAdminProfileTypeDefinition>[],
+      );
+      final controller = labelController(repository);
+      controller.beginNestedGroupLabelEdit(
+        accountProfileId: 'p',
+        groupId: 'g',
+        label: 'Old',
+      );
+      controller.changeNestedGroupLabelDraft(
+        accountProfileId: 'p',
+        groupId: 'g',
+        label: 'x' * 256,
+      );
+      await controller.saveNestedGroupLabel(
+        accountProfileId: 'p',
+        groupId: 'g',
+        authoritativeLabel: 'Old',
+      );
+      expect(repository.patchNestedGroupLabelCalls, 0);
+      expect(
+        controller
+            .nestedGroupLabelState(
+              accountProfileId: 'p',
+              groupId: 'g',
+              label: 'Old',
+            )
+            .value
+            .hasError,
+        isTrue,
+      );
+      controller.dispose();
+    },
+  );
+
+  test(
+    'nested group label trim no-op closes editing without repository mutation',
+    () async {
+      final repository = _FakeAccountProfilesRepository(
+        <TenantAdminAccountProfile>[],
+        const <TenantAdminProfileTypeDefinition>[],
+      );
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: repository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+      controller.beginNestedGroupLabelEdit(
+        accountProfileId: 'profile-1',
+        groupId: 'partners',
+        label: 'Partners',
+      );
+      controller.changeNestedGroupLabelDraft(
+        accountProfileId: 'profile-1',
+        groupId: 'partners',
+        label: ' Partners ',
+      );
+
+      await controller.saveNestedGroupLabel(
+        accountProfileId: 'profile-1',
+        groupId: 'partners',
+        authoritativeLabel: 'Partners',
+      );
+
+      expect(
+        controller
+            .nestedGroupLabelState(
+              accountProfileId: 'profile-1',
+              groupId: 'partners',
+              label: 'Partners',
+            )
+            .value
+            .isEditing,
+        isFalse,
+      );
+      expect(repository.patchNestedGroupLabelCalls, 0);
+      controller.dispose();
+    },
+  );
+
   test('loads profiles and profile types', () async {
     final profilesRepository = _FakeAccountProfilesRepository(
       [
@@ -3068,6 +3724,26 @@ void main() {
       );
     },
   );
+}
+
+class _FakeTenantScope implements TenantAdminTenantScopeContract {
+  @override
+  final StreamValue<String?> selectedTenantDomainStreamValue =
+      StreamValue<String?>(defaultValue: null);
+
+  @override
+  String? get selectedTenantDomain => selectedTenantDomainStreamValue.value;
+
+  @override
+  String get selectedTenantAdminBaseUrl => '';
+
+  @override
+  void clearSelectedTenantDomain() =>
+      selectedTenantDomainStreamValue.addValue(null);
+
+  @override
+  void selectTenantDomain(Object tenantDomain) =>
+      selectedTenantDomainStreamValue.addValue(tenantDomain as String);
 }
 
 TenantAdminAccountProfileGalleryGroup _galleryGroup() {

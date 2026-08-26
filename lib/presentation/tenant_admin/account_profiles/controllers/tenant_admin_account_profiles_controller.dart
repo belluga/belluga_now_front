@@ -5,6 +5,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
+import 'package:belluga_form_validation/belluga_form_validation.dart';
 import 'package:belluga_now/application/tenant_admin/tenant_admin_account_profile_candidate_discovery_page_loader.dart';
 import 'package:belluga_now/application/tenant_admin/tenant_admin_account_profile_candidates_page_loader.dart';
 import 'package:belluga_now/application/tenant_admin/tenant_admin_nested_group_members_page_loader.dart';
@@ -23,14 +24,17 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_unknown_mutation_failure.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
+import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profile_create_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profile_candidate_picker_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profile_edit_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_account_profile_gallery_operations.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_nested_profile_group_operations.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/models/tenant_admin_group_label_mutation_state.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:image_picker/image_picker.dart';
@@ -42,6 +46,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     TenantAdminAccountsRepositoryContract? accountsRepository,
     TenantAdminTaxonomiesRepositoryContract? taxonomiesRepository,
     TenantAdminLocationSelectionContract? locationSelectionService,
+    TenantAdminTenantScopeContract? tenantScope,
     TenantAdminImageIngestionService? imageIngestionService,
     TenantAdminAccountProfileCandidatesPageLoader?
     nestedProfileCandidatesPageLoader,
@@ -58,6 +63,11 @@ class TenantAdminAccountProfilesController implements Disposable {
        _locationSelectionService =
            locationSelectionService ??
            GetIt.I.get<TenantAdminLocationSelectionContract>(),
+       _tenantScope =
+           tenantScope ??
+           (GetIt.I.isRegistered<TenantAdminTenantScopeContract>()
+               ? GetIt.I.get<TenantAdminTenantScopeContract>()
+               : null),
        _imageIngestionService =
            imageIngestionService ??
            (GetIt.I.isRegistered<TenantAdminImageIngestionService>()
@@ -73,12 +83,14 @@ class TenantAdminAccountProfilesController implements Disposable {
         TenantAdminNestedGroupMembersPageLoader(
           profilesRepository: _profilesRepository,
         );
+    _bindTenantScope();
   }
 
   final TenantAdminAccountProfilesRepositoryContract _profilesRepository;
   final TenantAdminAccountsRepositoryContract _accountsRepository;
   final TenantAdminTaxonomiesRepositoryContract _taxonomiesRepository;
   final TenantAdminLocationSelectionContract _locationSelectionService;
+  final TenantAdminTenantScopeContract? _tenantScope;
   final TenantAdminImageIngestionService _imageIngestionService;
   late final TenantAdminAccountProfileCandidatesPageLoader
   _nestedProfileCandidatesPageLoader;
@@ -185,6 +197,197 @@ class TenantAdminAccountProfilesController implements Disposable {
   final TextEditingController longitudeController = TextEditingController();
 
   bool _isDisposed = false;
+  StreamSubscription<String?>? _tenantScopeSubscription;
+  String? _lastTenantDomain;
+  final Map<String, StreamValue<TenantAdminGroupLabelMutationState>>
+  _nestedGroupLabelStates = {};
+
+  String _nestedGroupLabelKey(String accountProfileId, String groupId) =>
+      'account_profile::${_lastTenantDomain ?? 'unscoped'}::$accountProfileId::$groupId';
+
+  void _bindTenantScope() {
+    final tenantScope = _tenantScope;
+    if (tenantScope == null) return;
+    _lastTenantDomain = tenantScope.selectedTenantDomain?.trim();
+    _tenantScopeSubscription = tenantScope
+        .selectedTenantDomainStreamValue
+        .stream
+        .listen((value) {
+          final normalized = value?.trim();
+          if (_isDisposed || normalized == _lastTenantDomain) return;
+          _lastTenantDomain = normalized;
+          _clearNestedGroupLabelStates();
+        });
+  }
+
+  StreamValue<TenantAdminGroupLabelMutationState> nestedGroupLabelState({
+    required String accountProfileId,
+    required String groupId,
+    required String label,
+  }) => _nestedGroupLabelStates.putIfAbsent(
+    _nestedGroupLabelKey(accountProfileId, groupId),
+    () => StreamValue<TenantAdminGroupLabelMutationState>(
+      defaultValue: TenantAdminGroupLabelMutationState(draft: label),
+    ),
+  );
+
+  void _clearNestedGroupLabelStates() {
+    for (final state in _nestedGroupLabelStates.values) {
+      state.dispose();
+    }
+    _nestedGroupLabelStates.clear();
+  }
+
+  void beginNestedGroupLabelEdit({
+    required String accountProfileId,
+    required String groupId,
+    required String label,
+  }) {
+    final state = nestedGroupLabelState(
+      accountProfileId: accountProfileId,
+      groupId: groupId,
+      label: label,
+    );
+    state.addValue(
+      TenantAdminGroupLabelMutationState(
+        draft: state.value.draft,
+        isEditing: true,
+      ),
+    );
+  }
+
+  void changeNestedGroupLabelDraft({
+    required String accountProfileId,
+    required String groupId,
+    required String label,
+  }) {
+    final state = nestedGroupLabelState(
+      accountProfileId: accountProfileId,
+      groupId: groupId,
+      label: label,
+    );
+    state.addValue(
+      TenantAdminGroupLabelMutationState(draft: label, isEditing: true),
+    );
+  }
+
+  Future<void> saveNestedGroupLabel({
+    required String accountProfileId,
+    required String groupId,
+    required String authoritativeLabel,
+  }) async {
+    final key = _nestedGroupLabelKey(accountProfileId, groupId);
+    final state = nestedGroupLabelState(
+      accountProfileId: accountProfileId,
+      groupId: groupId,
+      label: authoritativeLabel,
+    );
+    bool isCurrentState() => identical(_nestedGroupLabelStates[key], state);
+    if (state.value.isLoading) return;
+    final label = state.value.draft.trim();
+    if (label == authoritativeLabel.trim()) {
+      state.addValue(
+        TenantAdminGroupLabelMutationState(
+          draft: authoritativeLabel,
+          isEditing: false,
+        ),
+      );
+      return;
+    }
+    if (label.isEmpty) {
+      state.addValue(
+        TenantAdminGroupLabelMutationState(
+          draft: state.value.draft,
+          isEditing: true,
+          errorText: 'Nome da aba é obrigatório.',
+        ),
+      );
+      return;
+    }
+    if (label.length > TenantAdminGroupLabelMutationState.maxLabelLength) {
+      state.addValue(
+        TenantAdminGroupLabelMutationState(
+          draft: state.value.draft,
+          isEditing: true,
+          errorText: 'Nome da aba deve ter no máximo 255 caracteres.',
+        ),
+      );
+      return;
+    }
+    state.addValue(
+      TenantAdminGroupLabelMutationState(
+        draft: label,
+        isEditing: true,
+        isLoading: true,
+      ),
+    );
+    try {
+      final result = await _profilesRepository.patchNestedProfileGroupLabel(
+        accountProfileId: tenantAdminAccountProfilesRepoString(
+          accountProfileId,
+          defaultValue: '',
+          isRequired: true,
+        ),
+        groupId: tenantAdminAccountProfilesRepoString(
+          groupId,
+          defaultValue: '',
+          isRequired: true,
+        ),
+        label: tenantAdminAccountProfilesRepoString(
+          label,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
+      if (_isDisposed || !isCurrentState()) {
+        return;
+      }
+      if (result.id != groupId) {
+        throw const FormatException('Nested group label response id mismatch.');
+      }
+      final groups = editStateStreamValue.value.nestedProfileGroups
+          .map(
+            (entry) => entry.id == groupId
+                ? entry.copyWith(
+                    labelValue: TenantAdminNestedProfileGroupTextValue(
+                      result.label,
+                    ),
+                  )
+                : entry,
+          )
+          .toList(growable: false);
+      _applyEditNestedProfileGroupHeadMutation(
+        groups: groups,
+        invalidateAggregateRevision: true,
+      );
+      state.addValue(TenantAdminGroupLabelMutationState(draft: result.label));
+    } on TenantAdminUnknownMutationFailure {
+      if (!_isDisposed && isCurrentState()) {
+        state.addValue(
+          TenantAdminGroupLabelMutationState(
+            draft: label,
+            isEditing: true,
+            errorText:
+                'Não foi possível confirmar o salvamento. Tente novamente.',
+          ),
+        );
+      }
+    } catch (error) {
+      if (!_isDisposed && isCurrentState()) {
+        state.addValue(
+          TenantAdminGroupLabelMutationState(
+            draft: label,
+            isEditing: true,
+            errorText: _describeGroupLabelError(
+              error,
+              'Não foi possível salvar o grupo.',
+            ),
+          ),
+        );
+      }
+    }
+  }
+
   Timer? _nestedProfileSearchDebounce;
   Timer? _contactSourceSearchDebounce;
   StreamSubscription<TenantAdminLocation?>? _locationSelectionSubscription;
@@ -1120,6 +1323,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     editLoadingStreamValue.addValue(true);
     editLoadErrorStreamValue.addValue(null);
     _loadedEditProfileSnapshot = null;
+    _clearNestedGroupLabelStates();
     try {
       await loadProfileTypes();
       final normalizedAccountProfileId = accountProfileId.trim();
@@ -1736,6 +1940,7 @@ class TenantAdminAccountProfilesController implements Disposable {
 
   void _applyEditNestedProfileGroupHeadMutation({
     required List<TenantAdminNestedProfileGroup> groups,
+    bool invalidateAggregateRevision = false,
   }) {
     final mergedGroups = _mergeNestedProfileGroupMetadata(
       currentGroups: editStateStreamValue.value.nestedProfileGroups,
@@ -1747,6 +1952,7 @@ class TenantAdminAccountProfilesController implements Disposable {
         _copyAccountProfileWithNestedProfileGroups(
           currentProfile,
           nestedProfileGroups: mergedGroups,
+          invalidateAggregateRevision: invalidateAggregateRevision,
         ),
       );
     }
@@ -1778,13 +1984,16 @@ class TenantAdminAccountProfilesController implements Disposable {
   TenantAdminAccountProfile _copyAccountProfileWithNestedProfileGroups(
     TenantAdminAccountProfile profile, {
     required List<TenantAdminNestedProfileGroup> nestedProfileGroups,
+    bool invalidateAggregateRevision = false,
   }) {
     return TenantAdminAccountProfile(
       idValue: profile.idValue,
       accountIdValue: profile.accountIdValue,
       profileTypeValue: profile.profileTypeValue,
       displayNameValue: profile.displayNameValue,
-      aggregateRevisionValue: profile.aggregateRevisionValue,
+      aggregateRevisionValue: invalidateAggregateRevision
+          ? null
+          : profile.aggregateRevisionValue,
       slugValue: profile.slugValue,
       avatarUrlValue: profile.avatarUrlValue,
       coverUrlValue: profile.coverUrlValue,
@@ -1826,6 +2035,29 @@ class TenantAdminAccountProfilesController implements Disposable {
     }
     return message;
   }
+
+  String _describeGroupLabelError(Object error, String fallback) {
+    if (error is! FormValidationFailure) {
+      return fallback;
+    }
+
+    final messages = <String>[...?error.fieldErrors['label'], error.message];
+    for (final message in messages) {
+      final normalized = message.trim();
+      if (_isSafeGroupLabelValidationMessage(normalized)) {
+        return normalized;
+      }
+    }
+    return fallback;
+  }
+
+  bool _isSafeGroupLabelValidationMessage(String value) =>
+      value.isNotEmpty &&
+      value.length <= TenantAdminGroupLabelMutationState.maxLabelLength &&
+      !RegExp(
+        r'https?://|<[^>]*>|[\r\n]',
+        caseSensitive: false,
+      ).hasMatch(value);
 
   void updateAvatarPreloadUrl(String? url) {
     _updateEditState(
@@ -3320,6 +3552,7 @@ class TenantAdminAccountProfilesController implements Disposable {
 
   void dispose() {
     _isDisposed = true;
+    unawaited(_tenantScopeSubscription?.cancel());
     _nestedProfileSearchDebounce?.cancel();
     _contactSourceSearchDebounce?.cancel();
     _locationSelectionSubscription?.cancel();
@@ -3361,6 +3594,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     editSuccessMessageStreamValue.dispose();
     editErrorMessageStreamValue.dispose();
     editNestedGroupMutationBusyStreamValue.dispose();
+    _clearNestedGroupLabelStates();
     taxonomyAutosavingStreamValue.dispose();
     createSubmittingStreamValue.dispose();
     createSuccessMessageStreamValue.dispose();

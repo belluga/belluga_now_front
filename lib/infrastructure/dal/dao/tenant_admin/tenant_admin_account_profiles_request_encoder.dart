@@ -142,6 +142,10 @@ class TenantAdminAccountProfilesRequestEncoder {
     return const <String, dynamic>{};
   }
 
+  Map<String, dynamic> encodePatchNestedProfileGroupLabel({
+    required String label,
+  }) => <String, dynamic>{'label': label.trim()};
+
   Map<String, dynamic> encodeCreateAccountProfile({
     required String accountId,
     required String profileType,
