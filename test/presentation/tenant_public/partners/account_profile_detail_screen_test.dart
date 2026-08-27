@@ -1456,7 +1456,7 @@ void main() {
           router: _RecordingStackRouter(),
           child: AccountProfileDetailScreen(
             accountProfile: _buildArtistProfileWithManyTaxonomies().copyWith(
-              nameValue: TitleValue()
+              nameValue: AccountProfileNameValue()
                 ..parse('Pop Rock Nacional e Internacional na Orla'),
             ),
           ),
@@ -2163,7 +2163,7 @@ void main() {
           '/api/v1/account_profiles/ponta-da-fruta/nested_groups/parceiros/members';
       final nonNavigableMember = AccountProfileNestedGroupMember(
         idValue: MongoIDValue()..parse('507f1f77bcf86cd799439082'),
-        nameValue: TitleValue()..parse('Parceiro Sem Link'),
+        nameValue: AccountProfileNameValue()..parse('Parceiro Sem Link'),
         profileTypeValue: AccountProfileTypeValue('guest_public'),
         canOpenPublicDetailValue: DomainBooleanValue(
           defaultValue: false,
@@ -2240,12 +2240,13 @@ void main() {
       );
       GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
       final parentProfile = _buildVenueFullProfile().copyWith(
-        nameValue: TitleValue()..parse('Du Jorge'),
+        nameValue: AccountProfileNameValue()..parse('Du Jorge'),
         slugValue: SlugValue()..parse('du-jorge'),
         nestedProfileGroupValues: [_buildNestedAccountProfileGroup()],
       );
       final childProfile = _buildArtistProfile().copyWith(
-        nameValue: TitleValue()..parse('QA Discovery Tag Várias Tags'),
+        nameValue: AccountProfileNameValue()
+          ..parse('QA Discovery Tag Várias Tags'),
         slugValue: SlugValue()..parse('qa-discovery-tag-varias-tags'),
       );
 
@@ -2293,13 +2294,13 @@ void main() {
     'back from a nested linked profile restores the parent account detail',
     (tester) async {
       final parentProfile = _buildVenueFullProfile().copyWith(
-        nameValue: TitleValue()..parse('Du Jorge'),
+        nameValue: AccountProfileNameValue()..parse('Du Jorge'),
         slugValue: SlugValue()..parse('du-jorge'),
         nestedProfileGroupValues: [_buildNestedAccountProfileGroup()],
       );
       final childProfile = _buildArtistProfile().copyWith(
         idValue: MongoIDValue()..parse('507f1f77bcf86cd799439081'),
-        nameValue: TitleValue()..parse('Ananda Torres'),
+        nameValue: AccountProfileNameValue()..parse('Ananda Torres'),
         slugValue: SlugValue()..parse('ananda-torres'),
       );
       final repository = _FakeAccountProfilesRepository(
@@ -2418,13 +2419,13 @@ void main() {
     'nested linked profile routes keep isolated detail controller instances',
     (tester) async {
       final parentProfile = _buildVenueFullProfile().copyWith(
-        nameValue: TitleValue()..parse('Du Jorge'),
+        nameValue: AccountProfileNameValue()..parse('Du Jorge'),
         slugValue: SlugValue()..parse('du-jorge'),
         nestedProfileGroupValues: [_buildNestedAccountProfileGroup()],
       );
       final childProfile = _buildArtistProfile().copyWith(
         idValue: MongoIDValue()..parse('507f1f77bcf86cd799439081'),
-        nameValue: TitleValue()..parse('Ananda Torres'),
+        nameValue: AccountProfileNameValue()..parse('Ananda Torres'),
         slugValue: SlugValue()..parse('ananda-torres'),
       );
       final repository = _FakeAccountProfilesRepository(
@@ -3976,7 +3977,7 @@ AccountProfileNestedGroup _buildNestedAccountProfileGroup() {
     profiles: [
       AccountProfileNestedGroupMember(
         idValue: MongoIDValue()..parse('507f1f77bcf86cd799439081'),
-        nameValue: TitleValue()..parse('Ananda Torres'),
+        nameValue: AccountProfileNameValue()..parse('Ananda Torres'),
         slugValue: SlugValue()..parse('ananda-torres'),
         profileTypeValue: AccountProfileTypeValue('artist'),
         canOpenPublicDetailValue: DomainBooleanValue(
@@ -4004,7 +4005,7 @@ AccountProfileNestedGroup _buildSecondaryNestedAccountProfileGroup() {
     profiles: [
       AccountProfileNestedGroupMember(
         idValue: MongoIDValue()..parse('507f1f77bcf86cd799439082'),
-        nameValue: TitleValue()..parse('Public Partner B'),
+        nameValue: AccountProfileNameValue()..parse('Public Partner B'),
         slugValue: SlugValue()..parse('public-partner-b'),
         profileTypeValue: AccountProfileTypeValue('venue'),
         canOpenPublicDetailValue: DomainBooleanValue(

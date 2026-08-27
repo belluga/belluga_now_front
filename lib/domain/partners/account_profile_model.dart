@@ -14,12 +14,11 @@ import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
-import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 class AccountProfileModel {
   final MongoIDValue idValue;
-  final TitleValue nameValue;
+  final AccountProfileNameValue nameValue;
   final SlugValue slugValue;
   final AccountProfileTypeValue profileTypeValue;
   final ThumbUriValue? avatarValue;
@@ -184,7 +183,7 @@ class AccountProfileModel {
 
   AccountProfileModel copyWith({
     MongoIDValue? idValue,
-    TitleValue? nameValue,
+    AccountProfileNameValue? nameValue,
     SlugValue? slugValue,
     AccountProfileTypeValue? profileTypeValue,
     ThumbUriValue? avatarValue,

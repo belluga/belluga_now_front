@@ -632,7 +632,7 @@ void main() {
             'contact_channels': const [],
             'effective_contact_source': {
               'id': sourceId,
-              'display_name': 'Mirror Source',
+              'display_name': 'AGLA',
               'profile_type': 'artist',
               'slug': 'mirror-source',
             },
@@ -668,6 +668,7 @@ void main() {
 
       expect(profile, isNotNull);
       expect(profile?.contactMode.rawValue, 'mirrored_account_profile');
+      expect(profile?.effectiveContactSourceProfile?.displayName, 'AGLA');
       expect(profile?.contactChannels, isEmpty);
       expect(profile?.contactSourceAccountProfileId, sourceId);
       expect(profile?.effectiveContactSourceProfile?.id, sourceId);

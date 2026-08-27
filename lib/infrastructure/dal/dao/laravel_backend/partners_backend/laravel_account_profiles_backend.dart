@@ -37,7 +37,6 @@ import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_counterpart_count_value.dart';
 
 class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
-  static const int _publicVisibleNameMinLength = 3;
   static const String _publicUnavailableProfileLabel = 'Perfil indisponível';
 
   LaravelAccountProfilesBackend({
@@ -512,8 +511,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
         profiles.add(
           AccountProfileModel(
             idValue: MongoIDValue()..parse(id),
-            nameValue: TitleValue(minLenght: _publicVisibleNameMinLength)
-              ..parse(name),
+            nameValue: AccountProfileNameValue()..parse(name),
             slugValue: SlugValue()..parse(slug),
             profileTypeValue: AccountProfileTypeValue(trimmedType),
             avatarValue: avatarValue,
@@ -572,8 +570,10 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     String? routeSlugFallback,
     bool allowUnavailableSentinel = false,
   }) {
-    final normalizedDisplayName = displayName?.trim() ?? '';
-    if (normalizedDisplayName.length >= _publicVisibleNameMinLength) {
+    final normalizedDisplayName = AccountProfileNameValue().tryParse(
+      displayName,
+    );
+    if (normalizedDisplayName != null) {
       return normalizedDisplayName;
     }
 
@@ -608,7 +608,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     }
     return AccountProfileContactSourceSummary(
       idValue: AccountProfileContactSourceAccountProfileIdValue(id),
-      displayNameValue: TitleValue()..parse(displayName),
+      displayNameValue: AccountProfileNameValue()..parse(displayName),
       slugValue: switch (_parseNullableText(json['slug'])) {
         final String slug => SlugValue()..parse(slug),
         _ => null,
@@ -825,8 +825,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
         members.add(
           AccountProfileNestedGroupMember(
             idValue: MongoIDValue()..parse(id),
-            nameValue: TitleValue(minLenght: _publicVisibleNameMinLength)
-              ..parse(displayName),
+            nameValue: AccountProfileNameValue()..parse(displayName),
             slugValue: slugValue,
             profileTypeValue: AccountProfileTypeValue(profileType),
             avatarValue: avatarValue,

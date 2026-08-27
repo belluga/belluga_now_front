@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/shared/account_profile_contact_source_summary.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_name_value.dart';
 import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_channel_id_value.dart';
 import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_source_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_aggregate_revision_value.dart';
@@ -63,7 +64,7 @@ class TenantAdminAccountProfile {
   final TenantAdminRequiredTextValue idValue;
   final TenantAdminRequiredTextValue accountIdValue;
   final TenantAdminRequiredTextValue profileTypeValue;
-  final TenantAdminRequiredTextValue displayNameValue;
+  final AccountProfileNameValue displayNameValue;
   final TenantAdminAccountProfileAggregateRevisionValue? aggregateRevisionValue;
   final TenantAdminOptionalTextValue slugValue;
   final TenantAdminOptionalUrlValue avatarUrlValue;

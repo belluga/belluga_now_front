@@ -31,7 +31,6 @@ import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
-import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_agenda_presentation.dart';
 import 'package:belluga_now/infrastructure/services/telemetry/telemetry_properties_codec.dart';
@@ -506,7 +505,7 @@ void main() {
           idValue: AccountProfileContactSourceAccountProfileIdValue(
             '507f1f77bcf86cd799439099',
           ),
-          displayNameValue: TitleValue()..parse('Perfil Origem'),
+          displayNameValue: AccountProfileNameValue()..parse('Perfil Origem'),
           profileTypeValue: AccountProfileTypeValue('artist'),
         ),
       );

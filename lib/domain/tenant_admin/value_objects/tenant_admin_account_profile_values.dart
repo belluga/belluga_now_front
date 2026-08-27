@@ -1,6 +1,7 @@
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_channel_id_value.dart';
 import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_source_account_profile_id_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_name_value.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_group.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
@@ -43,13 +44,10 @@ TenantAdminAccountProfile tenantAdminAccountProfileFromRaw({
     idValue: tenantAdminRequiredText(id),
     accountIdValue: tenantAdminRequiredText(accountId),
     profileTypeValue: tenantAdminRequiredText(profileType),
-    displayNameValue: tenantAdminRequiredText(displayName),
-    aggregateRevisionValue:
-        aggregateRevision == null
-            ? null
-            : TenantAdminAccountProfileAggregateRevisionValue(
-                aggregateRevision,
-              ),
+    displayNameValue: AccountProfileNameValue()..parse(displayName?.toString()),
+    aggregateRevisionValue: aggregateRevision == null
+        ? null
+        : TenantAdminAccountProfileAggregateRevisionValue(aggregateRevision),
     slugValue: tenantAdminOptionalText(slug),
     avatarUrlValue: tenantAdminOptionalUrl(avatarUrl),
     coverUrlValue: tenantAdminOptionalUrl(coverUrl),

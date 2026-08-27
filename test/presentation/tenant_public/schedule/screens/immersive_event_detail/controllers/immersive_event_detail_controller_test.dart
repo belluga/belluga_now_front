@@ -14,6 +14,7 @@ import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_tag_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_name_value.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
@@ -127,7 +128,7 @@ void main() {
             <AccountProfileNestedGroupMember>[
               AccountProfileNestedGroupMember(
                 idValue: MongoIDValue()..parse('507f1f77bcf86cd799439099'),
-                nameValue: TitleValue()..parse('Banda Azul'),
+                nameValue: AccountProfileNameValue()..parse('Banda Azul'),
                 slugValue: SlugValue()..parse('banda-azul'),
                 profileTypeValue: AccountProfileTypeValue('band'),
                 canOpenPublicDetailValue: DomainBooleanValue(
@@ -850,7 +851,10 @@ void main() {
       ]);
       expect(projected.tags.map((tag) => tag.value), ['Show']);
       expect(projected.heroCounterpartProfiles, hasLength(1));
-      expect(projected.heroCounterpartProfiles.first.displayName, 'Banda Central');
+      expect(
+        projected.heroCounterpartProfiles.first.displayName,
+        'Banda Central',
+      );
       expect(projected.counterpartCount, 3);
     },
   );

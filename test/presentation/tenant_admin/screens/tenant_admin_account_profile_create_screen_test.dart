@@ -95,6 +95,74 @@ void main() {
   );
 
   testWidgets(
+    'blocks submit when display name has fewer than three characters',
+    (tester) async {
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+
+      await _pumpScreen(
+        tester,
+        const TenantAdminAccountProfileCreateScreen(
+          accountSlug: 'route-account',
+        ),
+      );
+      await _selectProfileType(tester, 'Venue');
+
+      final controller = GetIt.I.get<TenantAdminAccountProfilesController>();
+      final nameField = find.byWidgetPredicate(
+        (widget) =>
+            widget is TextFormField &&
+            widget.controller == controller.displayNameController,
+      );
+      await tester.enterText(nameField, 'An');
+      await tester.scrollUntilVisible(
+        find.text('Salvar perfil'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.text('Salvar perfil'));
+      await tester.pump();
+
+      expect(
+        find.text('Nome de exibicao deve ter pelo menos 3 caracteres.'),
+        findsOneWidget,
+      );
+      expect(profilesRepository.createAccountProfileCalls, 0);
+    },
+  );
+
+  testWidgets('submits a three-character display name', (tester) async {
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+
+    await _pumpScreen(
+      tester,
+      const TenantAdminAccountProfileCreateScreen(accountSlug: 'route-account'),
+    );
+    await _selectProfileType(tester, 'Venue');
+
+    final controller = GetIt.I.get<TenantAdminAccountProfilesController>();
+    final nameField = find.byWidgetPredicate(
+      (widget) =>
+          widget is TextFormField &&
+          widget.controller == controller.displayNameController,
+    );
+    await tester.enterText(nameField, 'Ane');
+    await tester.scrollUntilVisible(
+      find.text('Salvar perfil'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Salvar perfil'));
+    await tester.pumpAndSettle();
+
+    expect(profilesRepository.createAccountProfileCalls, 1);
+    expect(profilesRepository.lastCreatedDisplayName, 'Ane');
+  });
+
+  testWidgets(
     'hides nested group editor when profile type disables capability',
     (tester) async {
       final profilesRepository =
@@ -380,6 +448,15 @@ Future<void> _pumpScreen(WidgetTester tester, Widget child) async {
   final router = RootStackRouter.build(
     routes: [
       NamedRouteDef(
+        name: TenantAdminAccountsListRoute.name,
+        path: '/admin/accounts',
+        meta: canonicalRouteMeta(
+          family: CanonicalRouteFamily.tenantAdminAccountsRoot,
+          chromeMode: RouteChromeMode.fullscreen,
+        ),
+        builder: (_, _) => const SizedBox.shrink(),
+      ),
+      NamedRouteDef(
         name: TenantAdminAccountProfileCreateRoute.name,
         path: '/',
         meta: canonicalRouteMeta(
@@ -507,6 +584,8 @@ class _FakeAccountProfilesRepository
     _profileType(hasNestedProfileGroups: true),
   ];
   int fetchAccountProfilesPageCalls = 0;
+  int createAccountProfileCalls = 0;
+  String? lastCreatedDisplayName;
 
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
@@ -605,8 +684,14 @@ class _FakeAccountProfilesRepository
         const <BellugaContactChannelDraft>[],
     BellugaContactBubbleSelectionMutation bubbleSelection =
         const BellugaContactBubbleSelectionMutation.omit(),
-  }) {
-    throw UnimplementedError();
+  }) async {
+    createAccountProfileCalls += 1;
+    lastCreatedDisplayName = displayName.value;
+    return _profile(
+      id: 'created-profile',
+      displayName: displayName.value,
+      profileType: profileType.value,
+    );
   }
 
   @override

@@ -1440,12 +1440,7 @@ class _TenantAdminAccountProfileEditScreenState
             controller: _controller.displayNameController,
             decoration: const InputDecoration(labelText: 'Nome de exibicao'),
             textInputAction: TextInputAction.next,
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Nome de exibicao e obrigatorio.';
-              }
-              return null;
-            },
+            validator: _controller.validateDisplayName,
           ),
         ],
       ),

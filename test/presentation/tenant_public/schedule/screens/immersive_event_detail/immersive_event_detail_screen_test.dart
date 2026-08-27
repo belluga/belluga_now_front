@@ -31,6 +31,7 @@ import 'package:belluga_now/domain/partners/account_profile_nested_group_member.
 import 'package:belluga_now/domain/partners/account_profile_nested_group_member_page.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_fields.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_name_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_tag_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
@@ -330,7 +331,7 @@ void main() {
             <AccountProfileNestedGroupMember>[
               AccountProfileNestedGroupMember(
                 idValue: MongoIDValue()..parse('507f1f77bcf86cd799439099'),
-                nameValue: TitleValue()..parse('Banda Azul'),
+                nameValue: AccountProfileNameValue()..parse('Banda Azul'),
                 slugValue: SlugValue()..parse('banda-azul'),
                 profileTypeValue: AccountProfileTypeValue('band'),
               ),
@@ -563,7 +564,7 @@ void main() {
             <AccountProfileNestedGroupMember>[
               AccountProfileNestedGroupMember(
                 idValue: MongoIDValue()..parse('507f1f77bcf86cd799439221'),
-                nameValue: TitleValue()..parse('Child Item #1'),
+                nameValue: AccountProfileNameValue()..parse('Child Item #1'),
                 slugValue: SlugValue()..parse('child-item-1'),
                 profileTypeValue: AccountProfileTypeValue('venue'),
               ),
@@ -572,7 +573,8 @@ void main() {
             <AccountProfileNestedGroupMember>[
               AccountProfileNestedGroupMember(
                 idValue: MongoIDValue()..parse('507f1f77bcf86cd799439222'),
-                nameValue: TitleValue()..parse('Readonly Fixture 2cc71741'),
+                nameValue: AccountProfileNameValue()
+                  ..parse('Readonly Fixture 2cc71741'),
                 slugValue: SlugValue()..parse('readonly-fixture-2cc71741'),
                 profileTypeValue: AccountProfileTypeValue('artist'),
               ),
@@ -4293,7 +4295,7 @@ void main() {
             <AccountProfileNestedGroupMember>[
               AccountProfileNestedGroupMember(
                 idValue: MongoIDValue()..parse('507f1f77bcf86cd799439091'),
-                nameValue: TitleValue()..parse('Du Jorge'),
+                nameValue: AccountProfileNameValue()..parse('Du Jorge'),
                 slugValue: SlugValue()..parse('du-jorge'),
                 profileTypeValue: AccountProfileTypeValue('band'),
               ),
@@ -4302,7 +4304,7 @@ void main() {
             <AccountProfileNestedGroupMember>[
               AccountProfileNestedGroupMember(
                 idValue: MongoIDValue()..parse('507f1f77bcf86cd799439092'),
-                nameValue: TitleValue()..parse('Agro Sul'),
+                nameValue: AccountProfileNameValue()..parse('Agro Sul'),
                 slugValue: SlugValue()..parse('agro-sul'),
                 profileTypeValue: AccountProfileTypeValue('producer'),
               ),
@@ -7308,7 +7310,7 @@ AccountProfileNestedGroupMember _buildNestedGroupMember({
   final resolvedId = _nestedGroupMemberId(id);
   return AccountProfileNestedGroupMember(
     idValue: MongoIDValue()..parse(resolvedId),
-    nameValue: TitleValue()..parse(name),
+    nameValue: AccountProfileNameValue()..parse(name),
     slugValue: slug == null ? null : (SlugValue()..parse(slug)),
     profileTypeValue: AccountProfileTypeValue(profileType),
     avatarValue: _thumbUriValueOrNull(avatarUrl),

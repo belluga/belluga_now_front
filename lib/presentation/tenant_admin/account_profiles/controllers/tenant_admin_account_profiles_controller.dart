@@ -12,6 +12,7 @@ import 'package:belluga_now/application/tenant_admin/tenant_admin_nested_group_m
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_name_value.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
@@ -39,6 +40,7 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'package:value_object_pattern/domain/exceptions/value_exceptions.dart';
 
 class TenantAdminAccountProfilesController implements Disposable {
   TenantAdminAccountProfilesController({
@@ -96,6 +98,21 @@ class TenantAdminAccountProfilesController implements Disposable {
   _nestedProfileCandidatesPageLoader;
   late final TenantAdminNestedGroupMembersPageLoader
   _nestedGroupMembersPageLoader;
+
+  String? validateDisplayName(String? value) {
+    try {
+      AccountProfileNameValue().validate(value);
+      return null;
+    } on RequiredValueException {
+      return 'Nome de exibicao e obrigatorio.';
+    } on TooShortValueException {
+      return 'Nome de exibicao deve ter pelo menos '
+          '${AccountProfileNameValue.minimumLength} caracteres.';
+    } on TooLongValueException {
+      return 'Nome de exibicao deve ter no maximo '
+          '${AccountProfileNameValue.maximumLength} caracteres.';
+    }
+  }
 
   final StreamValue<List<TenantAdminAccountProfile>> profilesStreamValue =
       StreamValue<List<TenantAdminAccountProfile>>(defaultValue: const []);
