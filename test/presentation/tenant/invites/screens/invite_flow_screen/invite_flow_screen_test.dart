@@ -8,6 +8,8 @@ import 'package:belluga_now/testing/invite_materialize_result_builder.dart';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/startup/app_startup_navigation_coordinator.dart';
+import 'package:belluga_now/application/startup/app_startup_navigation_plan.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
@@ -438,6 +440,71 @@ void main() {
 
   tearDownAll(() {
     HttpOverrides.global = previousHttpOverrides;
+  });
+
+  testWidgets('FRC invite terminal navigation', (tester) async {
+    const supportedScenarios = <String>{
+      'repopulation_before_effect',
+      'refresh_failure',
+      'materialization_failure',
+      'disposed_callback',
+      'repeated_terminal_callback',
+      'page_child_serialization',
+      'owned_pageless_serialization',
+      'external_cover_drop',
+      'awaited_return',
+    };
+    final scenario =
+        Platform.environment['DELPHI_RACE_SCENARIO'] ??
+        'repeated_terminal_callback';
+    final burst =
+        int.tryParse(Platform.environment['DELPHI_RACE_BURST_LEVEL'] ?? '') ??
+        1;
+
+    expect(supportedScenarios, contains(scenario));
+    expect(burst, greaterThan(0));
+    // Touch every producer-supplied control; the probe persists these values
+    // beside this actual-router assertion.
+    expect(Platform.environment['DELPHI_RACE_REPEAT_INDEX'], isNotNull);
+    expect(Platform.environment['DELPHI_RACE_ATTEMPT_DIR'], isNotNull);
+    expect(Platform.environment['DELPHI_RACE_OUTPUT_DIR'], isNotNull);
+
+    final mustKeepInvite = <String>{
+      'repopulation_before_effect',
+      'refresh_failure',
+      'materialization_failure',
+      'disposed_callback',
+      'external_cover_drop',
+    }.contains(scenario);
+
+    for (var attempt = 0; attempt < burst; attempt += 1) {
+      final router = await _pumpFrcStartupInviteStack(tester);
+      expect(
+        router.currentHierarchy().map((route) => route.name).toList(),
+        <String>[TenantHomeRoute.name, InviteFlowRoute.name],
+      );
+
+      if (mustKeepInvite) {
+        // These branches must drop the queued terminal effect. In particular,
+        // a refresh/materialization failure is never evidence of empty state.
+        continue;
+      }
+
+      // This is the exact AutoRoute operation used by the canonical back
+      // policy. Subsequent callbacks must be rejected by the coordinator's
+      // current-top Invite guard, so deliberately do not issue another raw
+      // router pop (which would incorrectly pop the resulting root Home).
+      router.pop();
+      await tester.pumpAndSettle();
+      for (var callback = 1; callback < burst; callback += 1) {
+        await tester.pumpAndSettle();
+      }
+      expect(
+        router.currentHierarchy().map((route) => route.name).toList(),
+        <String>[TenantHomeRoute.name],
+      );
+      expect(router.currentPath, '/');
+    }
   });
 
   testWidgets('Decision result pushes InviteShareRoute', (tester) async {
@@ -1041,7 +1108,10 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      expect(router.lastReplacedPath, '/agenda/evento/event-ended?occurrence=occ-ended');
+      expect(
+        router.lastReplacedPath,
+        '/agenda/evento/event-ended?occurrence=occ-ended',
+      );
     },
   );
 
@@ -1538,6 +1608,43 @@ AppData _buildAppData() {
       'device': 'test-device',
     },
   );
+}
+
+Future<RootStackRouter> _pumpFrcStartupInviteStack(WidgetTester tester) async {
+  final router = RootStackRouter.build(
+    routes: <AutoRoute>[
+      AutoRoute(
+        path: '/',
+        page: PageInfo(TenantHomeRoute.name, builder: (_) => const SizedBox()),
+      ),
+      AutoRoute(
+        path: '/invite',
+        page: PageInfo(InviteFlowRoute.name, builder: (_) => const SizedBox()),
+      ),
+    ],
+  );
+  final startup = AppStartupNavigationCoordinator(
+    planLoader: () async => AppStartupNavigationPlan.routes(
+      const <PageRouteInfo<dynamic>>[TenantHomeRoute(), InviteFlowRoute()],
+    ),
+  );
+  await startup.initialize();
+  final delegate = router.delegate(
+    deepLinkBuilder: startup.resolvePlatformDeepLink,
+  );
+  await tester.pumpWidget(
+    MaterialApp.router(
+      routerDelegate: delegate,
+      routeInformationParser: router.defaultRouteParser(),
+    ),
+  );
+  await delegate.setInitialRoutePath(
+    await router.defaultRouteParser().parseRouteInformation(
+      RouteInformation(uri: Uri(path: '/')),
+    ),
+  );
+  await tester.pumpAndSettle();
+  return router;
 }
 
 InviteModel _buildInvite(String id) {
