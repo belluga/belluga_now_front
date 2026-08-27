@@ -437,14 +437,20 @@ void main() {
       case 'repopulation_before_effect':
         for (var callback = 0; callback < burst; callback += 1) {
           harness.controller.removeInvite();
+          await _materializeTerminalBuild(tester, harness);
           harness.controller.addInvite(invite);
+          await _buildDirtyWidgetsWithoutPostFrame(tester);
+          expect(_coordinatorInvites(tester), [invite]);
         }
+        expect(harness.materializedTerminalBuilds, burst);
+        expect(harness.navigationObserver.popCount, 0);
         await _flushFrc(tester);
         expect(harness.names, <String>[
           TenantHomeRoute.name,
           InviteFlowRoute.name,
         ]);
         expect(harness.controller.displayInvitesStreamValue.value, [invite]);
+        expect(harness.navigationObserver.popCount, 0);
         break;
       case 'refresh_failure':
         harness.repository.failFetch = true;
@@ -479,23 +485,46 @@ void main() {
       case 'disposed_callback':
         for (var callback = 0; callback < burst; callback += 1) {
           harness.repository.setInviteFlowDisplayInvites(const <InviteModel>[]);
+          await _materializeTerminalBuild(tester, harness);
+          if (callback + 1 < burst) {
+            harness.repository.setInviteFlowDisplayInvites(<InviteModel>[
+              invite,
+            ]);
+            await _buildDirtyWidgetsWithoutPostFrame(tester);
+            expect(_coordinatorInvites(tester), [invite]);
+          }
         }
+        expect(harness.materializedTerminalBuilds, burst);
+        expect(harness.navigationObserver.popCount, 0);
         harness.router.replaceAll(const <PageRouteInfo<dynamic>>[
           TenantHomeRoute(),
         ]);
+        await tester.pumpWidget(
+          const SizedBox.shrink(),
+          phase: EnginePhase.build,
+        );
+        expect(find.byType(InviteFlowScreen), findsNothing);
         await _flushFrc(tester);
         expect(harness.names, <String>[TenantHomeRoute.name]);
+        expect(harness.navigationObserver.popCount, 0);
         break;
       case 'repeated_terminal_callback':
-        harness.repository.replaceInvites(const <InviteModel>[]);
-        await Future.wait<bool>(
-          List<Future<bool>>.generate(
-            burst,
-            (_) => harness.controller.fetchPendingInvites(),
-          ),
-        );
+        for (var callback = 0; callback < burst; callback += 1) {
+          harness.repository.setInviteFlowDisplayInvites(const <InviteModel>[]);
+          await _materializeTerminalBuild(tester, harness);
+          if (callback + 1 < burst) {
+            harness.repository.setInviteFlowDisplayInvites(<InviteModel>[
+              invite,
+            ]);
+            await _buildDirtyWidgetsWithoutPostFrame(tester);
+            expect(_coordinatorInvites(tester), [invite]);
+          }
+        }
+        expect(harness.materializedTerminalBuilds, burst);
+        expect(harness.navigationObserver.popCount, 0);
         await _flushFrc(tester);
         expect(harness.names, <String>[TenantHomeRoute.name]);
+        expect(harness.navigationObserver.popCount, 1);
         break;
       case 'page_child_serialization':
       case 'awaited_return':
@@ -1668,15 +1697,18 @@ AppData _buildAppData() {
 }
 
 class _SemanticFrcHarness {
-  const _SemanticFrcHarness({
+  _SemanticFrcHarness({
     required this.router,
     required this.repository,
     required this.controller,
+    required this.navigationObserver,
   });
 
   final RootStackRouter router;
   final _FakeInvitesRepository repository;
   final InviteFlowScreenController controller;
+  final _CountingNavigatorObserver navigationObserver;
+  int materializedTerminalBuilds = 0;
 
   List<String> get names =>
       router.currentHierarchy().map((route) => route.name).toList();
@@ -1728,7 +1760,14 @@ Future<_SemanticFrcHarness> _pumpSemanticFrcHarness(
       ),
     ],
   );
-  await tester.pumpWidget(MaterialApp.router(routerConfig: router.config()));
+  final navigationObserver = _CountingNavigatorObserver();
+  await tester.pumpWidget(
+    MaterialApp.router(
+      routerConfig: router.config(
+        navigatorObservers: () => <NavigatorObserver>[navigationObserver],
+      ),
+    ),
+  );
   router.replaceAll(const <PageRouteInfo<dynamic>>[
     TenantHomeRoute(),
     InviteFlowRoute(),
@@ -1738,7 +1777,42 @@ Future<_SemanticFrcHarness> _pumpSemanticFrcHarness(
     router: router,
     repository: repository,
     controller: controller,
+    navigationObserver: navigationObserver,
   );
+}
+
+class _CountingNavigatorObserver extends NavigatorObserver {
+  int popCount = 0;
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    popCount += 1;
+    super.didPop(route, previousRoute);
+  }
+}
+
+List<InviteModel> _coordinatorInvites(WidgetTester tester) {
+  return tester
+      .widget<InviteFlowCoordinator>(find.byType(InviteFlowCoordinator))
+      .invites;
+}
+
+Future<void> _materializeTerminalBuild(
+  WidgetTester tester,
+  _SemanticFrcHarness harness,
+) async {
+  await _buildDirtyWidgetsWithoutPostFrame(tester);
+  expect(_coordinatorInvites(tester), isEmpty);
+  expect(harness.names, <String>[TenantHomeRoute.name, InviteFlowRoute.name]);
+  harness.materializedTerminalBuilds += 1;
+}
+
+Future<void> _buildDirtyWidgetsWithoutPostFrame(WidgetTester tester) async {
+  await tester.idle();
+  final rootElement = tester.binding.rootElement;
+  expect(rootElement, isNotNull);
+  tester.binding.buildOwner!.buildScope(rootElement!);
+  tester.binding.buildOwner!.finalizeTree();
 }
 
 Future<void> _flushFrc(WidgetTester tester) async {

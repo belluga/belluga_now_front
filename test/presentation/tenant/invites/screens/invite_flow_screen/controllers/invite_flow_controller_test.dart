@@ -117,7 +117,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   final InviteModel? previewInvite;
   final String? materializedInviteId;
   final String? materializeStatus;
-  final bool throwOnRefresh;
+  bool throwOnRefresh;
   final bool throwOnMaterialize;
   final List<String> materializedShareCodes = <String>[];
   final List<String> previewedShareCodes = <String>[];
@@ -381,6 +381,22 @@ InviteModel _buildInvite(String id) {
   );
 }
 
+InviteModel _buildInviteWithoutTargetId(String id) {
+  return buildInviteModelFromPrimitives(
+    id: id,
+    eventId: 'event-$id',
+    eventSlug: 'event-$id',
+    eventName: 'Event $id',
+    eventDateTime: DateTime(2025, 1, 1, 18),
+    eventImageUrl: 'https://example.com/$id.jpg',
+    location: 'Guarapari',
+    hostName: 'Host $id',
+    message: 'Invite $id',
+    tags: const ['music'],
+    occurrenceId: 'occurrence-$id',
+  );
+}
+
 void main() {
   test(
     'resolveFallbackNavigationPath is null when session context is absent',
@@ -397,38 +413,75 @@ void main() {
     },
   );
 
-  test('refresh failure remains uninitialized and preserves no empty projection', () async {
-    final controller = InviteFlowScreenController(
-      repository: _FakeInvitesRepository(
-        initialInvites: [_buildInvite('pending')],
-        throwOnRefresh: true,
-      ),
-      userEventsRepository: _FakeUserEventsRepository(),
-      telemetryRepository: _FakeTelemetryRepository(),
+  test(
+    'refresh failure remains uninitialized and preserves no empty projection',
+    () async {
+      final controller = InviteFlowScreenController(
+        repository: _FakeInvitesRepository(
+          initialInvites: [_buildInvite('pending')],
+          throwOnRefresh: true,
+        ),
+        userEventsRepository: _FakeUserEventsRepository(),
+        telemetryRepository: _FakeTelemetryRepository(),
+      );
+
+      await controller.init();
+
+      expect(controller.initializedStreamValue.value, isFalse);
+      expect(controller.displayInvitesStreamValue.value, isEmpty);
+    },
+  );
+
+  test(
+    'materialization failure remains uninitialized without terminal projection',
+    () async {
+      final controller = InviteFlowScreenController(
+        repository: _FakeInvitesRepository(
+          initialInvites: [_buildInvite('pending')],
+          throwOnMaterialize: true,
+        ),
+        userEventsRepository: _FakeUserEventsRepository(),
+        telemetryRepository: _FakeTelemetryRepository(),
+      );
+
+      await controller.init(shareCode: 'SHARE-ABC');
+
+      expect(controller.initializedStreamValue.value, isFalse);
+      expect(controller.displayInvitesStreamValue.value, isEmpty);
+      expect(controller.resolveFallbackNavigationPath(), isNull);
+    },
+  );
+
+  for (final decision in <InviteDecision>[
+    InviteDecision.accepted,
+    InviteDecision.declined,
+  ]) {
+    test(
+      '${decision.name} decision aborts without mutation when target refresh fails',
+      () async {
+        final repository = _FakeInvitesRepository(
+          initialInvites: [_buildInviteWithoutTargetId('missing-target')],
+        );
+        final controller = InviteFlowScreenController(
+          repository: repository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          telemetryRepository: _FakeTelemetryRepository(),
+        );
+
+        await controller.init();
+        repository.throwOnRefresh = true;
+
+        await controller.requestDecision(decision);
+
+        expect(controller.decisionResultStreamValue.value, isNull);
+        expect(repository.acceptedInviteIds, isEmpty);
+        expect(repository.acceptedShareCodes, isEmpty);
+        expect(repository.declinedInviteIds, isEmpty);
+        expect(controller.displayInvitesStreamValue.value, hasLength(1));
+        await controller.onDispose();
+      },
     );
-
-    await controller.init();
-
-    expect(controller.initializedStreamValue.value, isFalse);
-    expect(controller.displayInvitesStreamValue.value, isEmpty);
-  });
-
-  test('materialization failure remains uninitialized without terminal projection', () async {
-    final controller = InviteFlowScreenController(
-      repository: _FakeInvitesRepository(
-        initialInvites: [_buildInvite('pending')],
-        throwOnMaterialize: true,
-      ),
-      userEventsRepository: _FakeUserEventsRepository(),
-      telemetryRepository: _FakeTelemetryRepository(),
-    );
-
-    await controller.init(shareCode: 'SHARE-ABC');
-
-    expect(controller.initializedStreamValue.value, isFalse);
-    expect(controller.displayInvitesStreamValue.value, isEmpty);
-    expect(controller.resolveFallbackNavigationPath(), isNull);
-  });
+  }
 
   test('invite_opened fires when the top invite changes', () async {
     final telemetry = _FakeTelemetryRepository();
