@@ -271,42 +271,42 @@ void main() {
     },
   );
 
-  testWidgets(
-    'invite fallback navigation reaches tenant home without framework exceptions',
-    (tester) async {
-      _takeAllExceptions(tester);
-      _registerTenantBootstrapDependencies(
-        invitesRepository: _FakeInvitesRepository(false, previewInvite: null),
-        authRepository: _FakeAuthRepository(authorized: false),
-      );
+  testWidgets('canonical InviteEntry root falls back to one tenant home', (
+    tester,
+  ) async {
+    _takeAllExceptions(tester);
+    _registerTenantBootstrapDependencies(
+      invitesRepository: _FakeInvitesRepository(false, previewInvite: null),
+      authRepository: _FakeAuthRepository(authorized: false),
+    );
 
-      final homeModule = HomeModule();
-      final invitesModule = InvitesModule();
-      GetIt.I.registerSingleton<HomeModule>(homeModule);
-      GetIt.I.registerSingleton<InvitesModule>(invitesModule);
-      final router = AppRouter()..setChildModules([homeModule, invitesModule]);
+    final homeModule = HomeModule();
+    final invitesModule = InvitesModule();
+    GetIt.I.registerSingleton<HomeModule>(homeModule);
+    GetIt.I.registerSingleton<InvitesModule>(invitesModule);
+    final router = AppRouter()..setChildModules([homeModule, invitesModule]);
 
-      await tester.pumpWidget(
-        MaterialApp.router(routerConfig: router.config()),
-      );
-      await tester.pump();
-      await _pumpFrames(tester);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router.config()));
+    await tester.pump();
+    await _pumpFrames(tester);
 
-      unawaited(router.pushPath('/invite?code=INVALID'));
-      await tester.pump();
-      await _pumpFrames(tester, count: 40);
+    unawaited(router.replacePath('/invite?code=INVALID'));
+    await tester.pump();
+    await _pumpFrames(tester, count: 40);
 
-      final asyncExceptions = _takeAllExceptions(tester);
+    final asyncExceptions = _takeAllExceptions(tester);
 
-      expect(
-        asyncExceptions,
-        isEmpty,
-        reason: _formatAsyncExceptions(asyncExceptions),
-      );
-      expect(router.current.name, TenantHomeRoute.name);
-      expect(find.text('Seus Favoritos'), findsOneWidget);
-    },
-  );
+    expect(
+      asyncExceptions,
+      isEmpty,
+      reason: _formatAsyncExceptions(asyncExceptions),
+    );
+    expect(router.current.name, TenantHomeRoute.name);
+    expect(router.stackData.map((route) => route.name), <String>[
+      TenantHomeRoute.name,
+    ]);
+    expect(find.text('Seus Favoritos'), findsOneWidget);
+  });
 }
 
 Future<void> _pumpFrames(WidgetTester tester, {int count = 20}) async {
@@ -422,9 +422,9 @@ void _registerTenantBootstrapDependencies({
       ),
     ),
   );
-  when(
-    mockController.myEventsFilteredStreamValue,
-  ).thenReturn(StreamValue<List<UpcomingOcurrenceResume>>(defaultValue: const []));
+  when(mockController.myEventsFilteredStreamValue).thenReturn(
+    StreamValue<List<UpcomingOcurrenceResume>>(defaultValue: const []),
+  );
   when(mockController.scrollController).thenReturn(testScrollController);
 
   when(

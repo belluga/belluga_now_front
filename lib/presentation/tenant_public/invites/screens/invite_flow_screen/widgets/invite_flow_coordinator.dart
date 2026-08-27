@@ -23,6 +23,11 @@ import 'package:get_it/get_it.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
+const _inviteFlowSurfaceRouteNames = <String>{
+  InviteFlowRoute.name,
+  InviteEntryRoute.name,
+};
+
 class InviteFlowCoordinator extends StatefulWidget {
   const InviteFlowCoordinator({
     super.key,
@@ -331,7 +336,7 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
       return false;
     }
     final router = context.router;
-    return router.topRoute.name == InviteFlowRoute.name &&
+    return _inviteFlowSurfaceRouteNames.contains(router.topRoute.name) &&
         !router.hasPagelessTopRoute;
   }
 
