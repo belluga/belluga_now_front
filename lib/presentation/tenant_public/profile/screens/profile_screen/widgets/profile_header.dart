@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 class ProfileHeader extends StatelessWidget {
   const ProfileHeader({
     super.key,
-    this.avatarImage,
+    this.avatar,
     required this.displayName,
     required this.onChangeAvatar,
     required this.invitesSentCount,
@@ -13,9 +13,9 @@ class ProfileHeader extends StatelessWidget {
     required this.hasPendingChanges,
   });
 
-  final ImageProvider? avatarImage;
+  final Widget? avatar;
   final String displayName;
-  final VoidCallback onChangeAvatar;
+  final VoidCallback? onChangeAvatar;
   final int invitesSentCount;
   final int invitesAcceptedCount;
   final bool hasPendingChanges;
@@ -42,13 +42,21 @@ class ProfileHeader extends StatelessWidget {
           Stack(
             clipBehavior: Clip.none,
             children: [
-              CircleAvatar(
-                radius: 34,
-                backgroundColor: colorScheme.primary.withValues(alpha: 0.15),
-                backgroundImage: avatarImage,
-                child: avatarImage == null
-                    ? Icon(Icons.person, color: colorScheme.primary, size: 32)
-                    : null,
+              SizedBox(
+                width: 68,
+                height: 68,
+                child: ClipOval(
+                  child:
+                      avatar ??
+                      ColoredBox(
+                        color: colorScheme.primary.withValues(alpha: 0.15),
+                        child: Icon(
+                          Icons.person,
+                          color: colorScheme.primary,
+                          size: 32,
+                        ),
+                      ),
+                ),
               ),
               Positioned(
                 right: -4,
@@ -110,15 +118,17 @@ class ProfileHeader extends StatelessWidget {
                       value: invitesSentCount,
                       icon: BooraIcons.inviteOutlined,
                       iconColor: colorScheme.secondary,
-                      backgroundColor:
-                          colorScheme.secondary.withValues(alpha: 0.14),
+                      backgroundColor: colorScheme.secondary.withValues(
+                        alpha: 0.14,
+                      ),
                     ),
                     ProfileMetricPill(
                       value: invitesAcceptedCount,
                       icon: BooraIcons.inviteSolid,
                       iconColor: colorScheme.primary,
-                      backgroundColor:
-                          colorScheme.primary.withValues(alpha: 0.14),
+                      backgroundColor: colorScheme.primary.withValues(
+                        alpha: 0.14,
+                      ),
                     ),
                   ],
                 ),

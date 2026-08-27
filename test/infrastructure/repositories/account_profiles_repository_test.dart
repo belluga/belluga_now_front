@@ -31,7 +31,6 @@ import 'package:get_it/get_it.dart';
 import 'package:belluga_now/testing/account_profile_model_factory.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
-import 'package:belluga_now/domain/value_objects/title_value.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

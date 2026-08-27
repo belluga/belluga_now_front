@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
@@ -11,6 +11,7 @@ import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_s
 import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/widgets/profile_header.dart';
 import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/widgets/profile_section_card.dart';
 import 'package:belluga_now/presentation/shared/widgets/route_back_scope.dart';
+import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:get_it/get_it.dart';
@@ -127,15 +128,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (context, _) {
         final hasPendingChanges = _controller.hasPendingChanges;
 
-        return StreamValueBuilder<String?>(
-          streamValue: _controller.localAvatarPathStreamValue,
-          builder: (context, localPath) {
-            final avatarImage = _resolveAvatarImage(
-              localPath: localPath,
-              remoteUrl:
-                  _controller.currentAvatarUrl ??
-                  user?.profile.pictureUrlValue?.value?.toString(),
-            );
+        return StreamValueBuilder<Uint8List?>(
+          streamValue: _controller.pendingAvatarBytesStreamValue,
+          builder: (context, pendingAvatarBytes) {
+            final avatar = _buildAvatar(pendingAvatarBytes);
 
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
@@ -147,9 +143,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       streamValue: _controller.invitesAcceptedCountStreamValue,
                       builder: (context, invitesAcceptedCount) {
                         return ProfileHeader(
-                          avatarImage: avatarImage,
+                          avatar: avatar,
                           displayName: _controller.nameController.text,
-                          onChangeAvatar: _onChangeAvatar,
+                          onChangeAvatar: _controller.isProfileMutationBlocked
+                              ? null
+                              : _onChangeAvatar,
                           invitesSentCount: invitesSentCount,
                           invitesAcceptedCount: invitesAcceptedCount,
                           hasPendingChanges: hasPendingChanges,
@@ -166,24 +164,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       label: 'Nome',
                       value: _controller.nameController.text,
                       icon: Icons.person_outline,
-                      onTap: () => _openEditField(
-                        context,
-                        label: 'Nome',
-                        controller: _controller.nameController,
-                        keyboardType: TextInputType.name,
-                      ),
+                      onTap: _controller.isProfileMutationBlocked
+                          ? null
+                          : () => _openEditField(
+                              context,
+                              label: 'Nome',
+                              controller: _controller.nameController,
+                              keyboardType: TextInputType.name,
+                            ),
                     ),
                     ProfileEditableTile(
                       label: 'Descrição',
                       value: _controller.descriptionController.text,
                       icon: Icons.short_text,
-                      onTap: () => _openEditField(
-                        context,
-                        label: 'Descrição',
-                        controller: _controller.descriptionController,
-                        keyboardType: TextInputType.multiline,
-                        maxLines: 3,
-                      ),
+                      onTap: _controller.isProfileMutationBlocked
+                          ? null
+                          : () => _openEditField(
+                              context,
+                              label: 'Descrição',
+                              controller: _controller.descriptionController,
+                              keyboardType: TextInputType.multiline,
+                              maxLines: 3,
+                            ),
                     ),
                     ProfileEditableTile(
                       label: 'Telefone',
@@ -926,21 +928,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  ImageProvider? _resolveAvatarImage({
-    required String? localPath,
-    required String? remoteUrl,
-  }) {
-    final local = localPath?.trim();
-    if (local != null && local.isNotEmpty) {
-      final file = File(local);
-      if (file.existsSync()) {
-        return FileImage(file);
-      }
+  Widget? _buildAvatar(Uint8List? pendingAvatarBytes) {
+    if (pendingAvatarBytes != null) {
+      return Image.memory(pendingAvatarBytes, fit: BoxFit.cover);
     }
-    if (remoteUrl != null && remoteUrl.trim().isNotEmpty) {
-      return NetworkImage(remoteUrl);
+    final remoteUrl = _controller.currentAvatarUrl?.trim();
+    if (remoteUrl == null || remoteUrl.isEmpty) {
+      return null;
     }
-    return null;
+    return BellugaNetworkImage(
+      remoteUrl,
+      width: 68,
+      height: 68,
+      fit: BoxFit.cover,
+      cacheWidth: 136,
+      cacheHeight: 136,
+    );
   }
 }
 
