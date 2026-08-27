@@ -43,11 +43,6 @@ class InviteFlowScreenController with Disposable {
            (GetIt.I.isRegistered<AuthRepositoryContract>()
                ? GetIt.I.get<AuthRepositoryContract>()
                : null),
-       _scheduleRepository =
-           scheduleRepository ??
-           (GetIt.I.isRegistered<ScheduleRepositoryContract>()
-               ? GetIt.I.get<ScheduleRepositoryContract>()
-               : null),
        swiperController =
            cardStackSwiperController ?? CardStackSwiperController();
 
@@ -55,7 +50,6 @@ class InviteFlowScreenController with Disposable {
   final InvitesRepositoryContract _repository;
   final TelemetryRepositoryContract _telemetryRepository;
   final AuthRepositoryContract? _authRepository;
-  final ScheduleRepositoryContract? _scheduleRepository;
 
   final CardStackSwiperController swiperController;
 
@@ -144,6 +138,7 @@ class InviteFlowScreenController with Disposable {
       return;
     }
 
+    var initialized = false;
     try {
       authRequiredForDecisionStreamValue.addValue(false);
       _ensureInviteTrackingSubscription();
@@ -155,7 +150,7 @@ class InviteFlowScreenController with Disposable {
             materialized.isPending &&
             materializedInviteId.isNotEmpty) {
           _activeMaterializedInviteId = materializedInviteId;
-          await fetchPendingInvites();
+          if (!await fetchPendingInvites()) return;
           _prioritizeInvite(materializedInviteId);
           _seedShareCodeSessionContext(
             normalizedShareCode,
@@ -181,14 +176,19 @@ class InviteFlowScreenController with Disposable {
           _ensureTopIndexBounds(0);
         }
       } else {
-        await fetchPendingInvites();
+        if (!await fetchPendingInvites()) return;
         if (prioritizeInviteId != null && prioritizeInviteId.isNotEmpty) {
           _prioritizeInvite(prioritizeInviteId);
         }
         _syncDisplayInvitesWithPending();
       }
+      initialized = true;
+    } catch (_) {
+      // A failed authenticated materialization/refresh is not terminal absence.
     } finally {
-      initializedStreamValue.addValue(true);
+      if (initialized) {
+        initializedStreamValue.addValue(true);
+      }
     }
   }
 
@@ -209,16 +209,12 @@ class InviteFlowScreenController with Disposable {
     );
   }
 
-  Future<InviteMaterializeResult?> _materializeShareCode(
+  Future<InviteMaterializeResult> _materializeShareCode(
     String shareCode,
   ) async {
-    try {
-      return await _repository.materializeShareCode(
-        invitesRepoString(shareCode, defaultValue: '', isRequired: true),
-      );
-    } catch (_) {
-      return null;
-    }
+    return _repository.materializeShareCode(
+      invitesRepoString(shareCode, defaultValue: '', isRequired: true),
+    );
   }
 
   void _setRedirectPath(String? redirectPath) {
@@ -262,7 +258,7 @@ class InviteFlowScreenController with Disposable {
     }
   }
 
-  Future<void> fetchPendingInvites() async {
+  Future<bool> fetchPendingInvites() async {
     try {
       await _repository.refreshPendingInvites();
       final invites = List<InviteModel>.from(
@@ -271,48 +267,14 @@ class InviteFlowScreenController with Disposable {
       _setPendingInvites(invites);
       _syncDisplayInvitesWithPending();
       _ensureTopIndexBounds(invites.length);
+      return true;
     } catch (_) {
-      _setPendingInvites(const <InviteModel>[]);
-      _syncDisplayInvitesWithPending();
-      _ensureTopIndexBounds(0);
+      return false;
     }
   }
 
-  Future<String?> resolveFallbackNavigationPath() async {
-    final fallbackPath = _buildSessionFallbackPath();
-    if (fallbackPath == null || fallbackPath.isEmpty) {
-      return '/';
-    }
-
-    final eventFallback = _parseEventFallbackPath(fallbackPath);
-    if (eventFallback == null) {
-      return '/';
-    }
-
-    final scheduleRepository = _scheduleRepository;
-    if (scheduleRepository == null) {
-      return '/';
-    }
-
-    try {
-      final event = await scheduleRepository.getEventBySlug(
-        ScheduleRepoString.fromRaw(
-          eventFallback.slug,
-          defaultValue: eventFallback.slug,
-          isRequired: true,
-        ),
-        occurrenceId: eventFallback.occurrenceId == null
-            ? null
-            : ScheduleRepoString.fromRaw(
-                eventFallback.occurrenceId!,
-                defaultValue: eventFallback.occurrenceId!,
-                isRequired: true,
-              ),
-      );
-      return event == null ? '/' : fallbackPath;
-    } catch (_) {
-      return '/';
-    }
+  String? resolveFallbackNavigationPath() {
+    return _buildSessionFallbackPath();
   }
 
   void _syncDisplayInvitesWithPending() {
@@ -333,31 +295,6 @@ class InviteFlowScreenController with Disposable {
     );
   }
 
-  _InviteFlowFallbackPath? _parseEventFallbackPath(String path) {
-    final uri = Uri.tryParse(path);
-    if (uri == null) {
-      return null;
-    }
-    final segments = uri.pathSegments;
-    if (segments.length < 3 ||
-        segments[0] != 'agenda' ||
-        segments[1] != 'evento') {
-      return null;
-    }
-
-    final slug = segments[2].trim();
-    if (slug.isEmpty) {
-      return null;
-    }
-
-    final occurrenceId = uri.queryParameters['occurrence']?.trim();
-    return _InviteFlowFallbackPath(
-      slug: slug,
-      occurrenceId: occurrenceId == null || occurrenceId.isEmpty
-          ? null
-          : occurrenceId,
-    );
-  }
 
   void _prioritizeInvite(String inviteId) {
     final inviteIdValue = _inviteIdValue(inviteId);
@@ -532,7 +469,9 @@ class InviteFlowScreenController with Disposable {
       return fromCurrent;
     }
 
-    await fetchPendingInvites();
+    if (!await fetchPendingInvites()) {
+      return null;
+    }
     return _findInviteIdForTarget(
       reference: reference,
       invites: pendingInvitesStreamValue.value,
@@ -844,14 +783,4 @@ class InviteFlowScreenController with Disposable {
       }),
     );
   }
-}
-
-class _InviteFlowFallbackPath {
-  const _InviteFlowFallbackPath({
-    required this.slug,
-    required this.occurrenceId,
-  });
-
-  final String slug;
-  final String? occurrenceId;
 }

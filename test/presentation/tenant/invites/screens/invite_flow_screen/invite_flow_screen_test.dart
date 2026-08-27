@@ -290,9 +290,16 @@ class _RecordingStackRouter extends Mock implements StackRouter {
   List<PageRouteInfo>? lastReplaced;
   String? lastReplacedPath;
   bool popCalled = false;
+  RouteData? activeRoute;
 
   @override
   RootStackRouter get root => _FakeRootStackRouter('/convites');
+
+  @override
+  RouteData get topRoute => activeRoute!;
+
+  @override
+  bool get hasPagelessTopRoute => false;
 
   @override
   bool canPop({
@@ -546,7 +553,7 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(router.lastReplacedPath, '/');
+    expect(router.lastReplacedPath, isNull);
   });
 
   testWidgets('Invite flow ignores legacy public fallback query input', (
@@ -584,7 +591,7 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(router.lastReplacedPath, '/');
+    expect(router.lastReplacedPath, isNull);
   });
 
   testWidgets('Ver detalhes opens public event route using invite slug', (
@@ -828,7 +835,7 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(router.lastReplacedPath, '/');
+    expect(router.replaceAllCalled, isTrue);
   });
 
   testWidgets(
@@ -842,7 +849,7 @@ void main() {
       );
       GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
 
-      final router = _RecordingStackRouter(canPopValue: false);
+      final router = _RecordingStackRouter(canPopValue: true);
       final routeData = _buildRouteData(router, queryParams: const {});
 
       await tester.pumpWidget(
@@ -881,7 +888,7 @@ void main() {
       );
       GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
 
-      final router = _RecordingStackRouter(canPopValue: false);
+      final router = _RecordingStackRouter(canPopValue: true);
 
       await tester.pumpWidget(
         StackRouterScope(
@@ -904,7 +911,8 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      expect(router.lastReplacedPath, '/');
+      expect(router.popCalled, isTrue);
+      expect(router.lastReplacedPath, isNull);
     },
   );
 
@@ -1033,7 +1041,7 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      expect(router.lastReplacedPath, '/');
+      expect(router.lastReplacedPath, '/agenda/evento/event-ended?occurrence=occ-ended');
     },
   );
 
@@ -1679,13 +1687,17 @@ RouteData _buildRouteData(
     key: ValueKey(path),
     queryParams: Parameters(queryParams),
   );
-  return RouteData(
+  final routeData = RouteData(
     route: match,
     router: router,
     stackKey: const ValueKey('stack'),
     pendingChildren: const [],
     type: const RouteType.material(),
   );
+  if (router is _RecordingStackRouter) {
+    router.activeRoute = routeData;
+  }
+  return routeData;
 }
 
 class _TestHttpOverrides extends HttpOverrides {

@@ -109,12 +109,16 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     this.previewInvite,
     this.materializedInviteId,
     this.materializeStatus,
+    this.throwOnRefresh = false,
+    this.throwOnMaterialize = false,
   }) : _invites = List<InviteModel>.from(initialInvites);
 
   final List<InviteModel> _invites;
   final InviteModel? previewInvite;
   final String? materializedInviteId;
   final String? materializeStatus;
+  final bool throwOnRefresh;
+  final bool throwOnMaterialize;
   final List<String> materializedShareCodes = <String>[];
   final List<String> previewedShareCodes = <String>[];
   final List<String> acceptedInviteIds = <String>[];
@@ -125,7 +129,10 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   Future<List<InviteModel>> fetchInvites({
     InvitesRepositoryContractPrimInt? page,
     InvitesRepositoryContractPrimInt? pageSize,
-  }) async => List<InviteModel>.from(_invites);
+  }) async {
+    if (throwOnRefresh) throw StateError('refresh failed');
+    return List<InviteModel>.from(_invites);
+  }
 
   @override
   Future<InviteRuntimeSettings> fetchSettings() async =>
@@ -193,6 +200,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     InvitesRepositoryContractPrimString code,
   ) async {
     materializedShareCodes.add(code.value);
+    if (throwOnMaterialize) throw StateError('materialize failed');
     return buildInviteMaterializeResult(
       inviteId: materializedInviteId ?? '',
       status:
@@ -375,19 +383,52 @@ InviteModel _buildInvite(String id) {
 
 void main() {
   test(
-    'resolveFallbackNavigationPath defaults to home when session context is absent',
-    () async {
+    'resolveFallbackNavigationPath is null when session context is absent',
+    () {
       final controller = InviteFlowScreenController(
         repository: _FakeInvitesRepository(initialInvites: const []),
         userEventsRepository: _FakeUserEventsRepository(),
         telemetryRepository: _FakeTelemetryRepository(),
       );
 
-      final path = await controller.resolveFallbackNavigationPath();
+      final path = controller.resolveFallbackNavigationPath();
 
-      expect(path, '/');
+      expect(path, isNull);
     },
   );
+
+  test('refresh failure remains uninitialized and preserves no empty projection', () async {
+    final controller = InviteFlowScreenController(
+      repository: _FakeInvitesRepository(
+        initialInvites: [_buildInvite('pending')],
+        throwOnRefresh: true,
+      ),
+      userEventsRepository: _FakeUserEventsRepository(),
+      telemetryRepository: _FakeTelemetryRepository(),
+    );
+
+    await controller.init();
+
+    expect(controller.initializedStreamValue.value, isFalse);
+    expect(controller.displayInvitesStreamValue.value, isEmpty);
+  });
+
+  test('materialization failure remains uninitialized without terminal projection', () async {
+    final controller = InviteFlowScreenController(
+      repository: _FakeInvitesRepository(
+        initialInvites: [_buildInvite('pending')],
+        throwOnMaterialize: true,
+      ),
+      userEventsRepository: _FakeUserEventsRepository(),
+      telemetryRepository: _FakeTelemetryRepository(),
+    );
+
+    await controller.init(shareCode: 'SHARE-ABC');
+
+    expect(controller.initializedStreamValue.value, isFalse);
+    expect(controller.displayInvitesStreamValue.value, isEmpty);
+    expect(controller.resolveFallbackNavigationPath(), isNull);
+  });
 
   test('invite_opened fires when the top invite changes', () async {
     final telemetry = _FakeTelemetryRepository();

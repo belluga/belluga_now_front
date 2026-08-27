@@ -48,7 +48,6 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
       .get<InviteFlowScreenController>();
   int _precacheToken = 0;
   String? _lastPrecacheKey;
-  bool _exitHandled = false;
   InviteDecisionResult? _lastDecisionResult;
 
   @override
@@ -120,14 +119,8 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
     if (!widget.isInitialized) {
       return;
     }
-    if (invites.isNotEmpty) {
-      _exitHandled = false;
-      return;
-    }
-    if (_exitHandled) return;
-    _exitHandled = true;
     _scheduleEffect(() {
-      unawaited(_exitInviteFlowOrFallback());
+      _exitInviteFlowOrFallback();
     });
   }
 
@@ -308,11 +301,11 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
     _buildBackPolicy(context).handleBack();
   }
 
-  Future<void> _exitInviteFlowOrFallback() async {
-    final fallbackPath = await _resolveFallbackNavigationPath();
-    if (!mounted) {
+  void _exitInviteFlowOrFallback() {
+    if (!_canExitInviteFlow()) {
       return;
     }
+    final fallbackPath = _controller.resolveFallbackNavigationPath();
     if (fallbackPath != null && fallbackPath.isNotEmpty) {
       context.router.replacePath(fallbackPath);
       return;
@@ -320,8 +313,13 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
     _exitInviteFlow();
   }
 
-  Future<String?> _resolveFallbackNavigationPath() async {
-    return _controller.resolveFallbackNavigationPath();
+  bool _canExitInviteFlow() {
+    if (!mounted || !widget.isInitialized || widget.invites.isNotEmpty) {
+      return false;
+    }
+    final router = context.router;
+    return router.topRoute.name == InviteFlowRoute.name &&
+        !router.hasPagelessTopRoute;
   }
 
   void _showOfflineAcceptToast(InviteModel? invite) {
