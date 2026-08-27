@@ -1,3 +1,6 @@
+// ApplicationContract intentionally owns mutable application-lifecycle fields.
+// ignore_for_file: must_be_immutable
+
 import 'dart:async';
 import 'dart:io';
 
@@ -280,10 +283,11 @@ class _RegressionRoutes extends ModuleContract {
   ];
   @override
   Future<void> registerDependencies() async {
-    if (!GetIt.I.isRegistered<InviteFlowScreenController>())
+    if (!GetIt.I.isRegistered<InviteFlowScreenController>()) {
       GetIt.I.registerSingleton<InviteFlowScreenController>(
         InviteFlowScreenController(),
       );
+    }
   }
 
   @override

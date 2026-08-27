@@ -8,10 +8,9 @@ import 'package:belluga_now/testing/invite_materialize_result_builder.dart';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/application/startup/app_startup_navigation_coordinator.dart';
-import 'package:belluga_now/application/startup/app_startup_navigation_plan.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
+import 'package:belluga_now/application/router/support/route_instance_scope.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
@@ -32,12 +31,10 @@ import 'package:belluga_now/domain/repositories/value_objects/telemetry_reposito
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
-import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_profile_group.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_profile_group_order_value.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_type_id_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
 import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
@@ -52,17 +49,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:mockito/mockito.dart';
 import 'package:stream_value/core/stream_value.dart';
 import 'package:belluga_now/testing/invite_model_factory.dart';
-import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
-import 'package:value_object_pattern/domain/value_objects/html_content_value.dart';
-import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
-import 'package:belluga_now/domain/schedule/event_type_model.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
-import 'package:belluga_now/domain/value_objects/description_value.dart';
-import 'package:belluga_now/domain/value_objects/color_value.dart';
-import 'package:belluga_now/domain/value_objects/slug_value.dart';
-import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_dto.dart';
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
@@ -76,6 +63,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   final List<String> previewedShareCodes = <String>[];
   final String? materializedInviteId;
   final String? materializeStatus;
+  bool failFetch = false;
+  bool failMaterialization = false;
   final List<String> materializedShareCodes = <String>[];
   final List<String> acceptedInviteIds = <String>[];
   final List<String> acceptedShareCodes = <String>[];
@@ -85,7 +74,18 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   Future<List<InviteModel>> fetchInvites({
     InvitesRepositoryContractPrimInt? page,
     InvitesRepositoryContractPrimInt? pageSize,
-  }) async => List<InviteModel>.from(_invites);
+  }) async {
+    if (failFetch) {
+      throw StateError('invite refresh failed');
+    }
+    return List<InviteModel>.from(_invites);
+  }
+
+  void replaceInvites(List<InviteModel> invites) {
+    _invites
+      ..clear()
+      ..addAll(invites);
+  }
 
   @override
   Future<InviteRuntimeSettings> fetchSettings() async =>
@@ -147,6 +147,9 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     InvitesRepositoryContractPrimString code,
   ) async {
     materializedShareCodes.add(code.value);
+    if (failMaterialization) {
+      throw StateError('share-code materialization failed');
+    }
     return buildInviteMaterializeResult(
       inviteId: materializedInviteId ?? '',
       status:
@@ -424,41 +427,150 @@ void main() {
       expect(outputDir, isNotNull);
     }
 
-    final mustKeepInvite = <String>{
-      'repopulation_before_effect',
-      'refresh_failure',
-      'materialization_failure',
-      'disposed_callback',
-      'external_cover_drop',
-    }.contains(scenario);
+    final invite = scenario == 'owned_pageless_serialization'
+        ? _buildInviteWithSelectableCandidates('frc')
+        : _buildInvite('frc');
+    final harness = await _pumpSemanticFrcHarness(tester, invite: invite);
+    expect(harness.names, <String>[TenantHomeRoute.name, InviteFlowRoute.name]);
 
-    for (var attempt = 0; attempt < burst; attempt += 1) {
-      final router = await _pumpFrcStartupInviteStack(tester);
-      expect(
-        router.currentHierarchy().map((route) => route.name).toList(),
-        <String>[TenantHomeRoute.name, InviteFlowRoute.name],
-      );
-
-      if (mustKeepInvite) {
-        // These branches must drop the queued terminal effect. In particular,
-        // a refresh/materialization failure is never evidence of empty state.
-        continue;
-      }
-
-      // This is the exact AutoRoute operation used by the canonical back
-      // policy. Subsequent callbacks must be rejected by the coordinator's
-      // current-top Invite guard, so deliberately do not issue another raw
-      // router pop (which would incorrectly pop the resulting root Home).
-      router.pop();
-      await tester.pumpAndSettle();
-      for (var callback = 1; callback < burst; callback += 1) {
-        await tester.pumpAndSettle();
-      }
-      expect(
-        router.currentHierarchy().map((route) => route.name).toList(),
-        <String>[TenantHomeRoute.name],
-      );
-      expect(router.currentPath, '/');
+    switch (scenario) {
+      case 'repopulation_before_effect':
+        for (var callback = 0; callback < burst; callback += 1) {
+          harness.controller.removeInvite();
+          harness.controller.addInvite(invite);
+        }
+        await _flushFrc(tester);
+        expect(harness.names, <String>[
+          TenantHomeRoute.name,
+          InviteFlowRoute.name,
+        ]);
+        expect(harness.controller.displayInvitesStreamValue.value, [invite]);
+        break;
+      case 'refresh_failure':
+        harness.repository.failFetch = true;
+        await Future.wait<bool>(
+          List<Future<bool>>.generate(
+            burst,
+            (_) => harness.controller.fetchPendingInvites(),
+          ),
+        );
+        await _flushFrc(tester);
+        expect(harness.names, <String>[
+          TenantHomeRoute.name,
+          InviteFlowRoute.name,
+        ]);
+        expect(harness.controller.displayInvitesStreamValue.value, [invite]);
+        break;
+      case 'materialization_failure':
+        harness.repository.failMaterialization = true;
+        await Future.wait<void>(
+          List<Future<void>>.generate(
+            burst,
+            (_) => harness.controller.init(shareCode: 'FRC-CODE'),
+          ),
+        );
+        await _flushFrc(tester);
+        expect(harness.names, <String>[
+          TenantHomeRoute.name,
+          InviteFlowRoute.name,
+        ]);
+        expect(harness.controller.initializedStreamValue.value, isFalse);
+        break;
+      case 'disposed_callback':
+        for (var callback = 0; callback < burst; callback += 1) {
+          harness.repository.setInviteFlowDisplayInvites(const <InviteModel>[]);
+        }
+        harness.router.replaceAll(const <PageRouteInfo<dynamic>>[
+          TenantHomeRoute(),
+        ]);
+        await _flushFrc(tester);
+        expect(harness.names, <String>[TenantHomeRoute.name]);
+        break;
+      case 'repeated_terminal_callback':
+        harness.repository.replaceInvites(const <InviteModel>[]);
+        await Future.wait<bool>(
+          List<Future<bool>>.generate(
+            burst,
+            (_) => harness.controller.fetchPendingInvites(),
+          ),
+        );
+        await _flushFrc(tester);
+        expect(harness.names, <String>[TenantHomeRoute.name]);
+        break;
+      case 'page_child_serialization':
+      case 'awaited_return':
+        harness.controller.markImageLoaded(invite.eventImageUrl);
+        await _flushFrc(tester);
+        await tester.tap(find.text('Ver detalhes'));
+        await _flushFrc(tester);
+        expect(harness.names.last, ImmersiveEventDetailRoute.name);
+        harness.repository.replaceInvites(const <InviteModel>[]);
+        await Future.wait<bool>(
+          List<Future<bool>>.generate(
+            burst,
+            (_) => harness.controller.fetchPendingInvites(),
+          ),
+        );
+        await _flushFrc(tester);
+        expect(harness.names, <String>[
+          TenantHomeRoute.name,
+          InviteFlowRoute.name,
+          ImmersiveEventDetailRoute.name,
+        ]);
+        await tester.binding.handlePopRoute();
+        await _flushFrc(tester);
+        expect(harness.names, <String>[TenantHomeRoute.name]);
+        break;
+      case 'owned_pageless_serialization':
+        harness.controller.markImageLoaded(invite.eventImageUrl);
+        await _flushFrc(tester);
+        await tester.tap(find.text('Aceitar'));
+        await _flushFrc(tester);
+        expect(find.text('Aceitar com quem te convidou'), findsOneWidget);
+        harness.repository.replaceInvites(const <InviteModel>[]);
+        await Future.wait<bool>(
+          List<Future<bool>>.generate(
+            burst,
+            (_) => harness.controller.fetchPendingInvites(),
+          ),
+        );
+        await _flushFrc(tester);
+        expect(harness.names, <String>[
+          TenantHomeRoute.name,
+          InviteFlowRoute.name,
+        ]);
+        await tester.binding.handlePopRoute();
+        await _flushFrc(tester);
+        expect(harness.names, <String>[TenantHomeRoute.name]);
+        break;
+      case 'external_cover_drop':
+        final inviteContext = tester.element(find.byType(InviteFlowScreen));
+        final dialog = showDialog<void>(
+          context: inviteContext,
+          builder: (_) => const AlertDialog(title: Text('external-cover')),
+        );
+        await _flushFrc(tester);
+        expect(find.text('external-cover'), findsOneWidget);
+        harness.repository.replaceInvites(const <InviteModel>[]);
+        await Future.wait<bool>(
+          List<Future<bool>>.generate(
+            burst,
+            (_) => harness.controller.fetchPendingInvites(),
+          ),
+        );
+        await _flushFrc(tester);
+        expect(harness.names, <String>[
+          TenantHomeRoute.name,
+          InviteFlowRoute.name,
+        ]);
+        await tester.binding.handlePopRoute();
+        await dialog;
+        await _flushFrc(tester);
+        expect(harness.names, <String>[
+          TenantHomeRoute.name,
+          InviteFlowRoute.name,
+        ]);
+        break;
     }
   });
 
@@ -1555,41 +1667,84 @@ AppData _buildAppData() {
   );
 }
 
-Future<RootStackRouter> _pumpFrcStartupInviteStack(WidgetTester tester) async {
+class _SemanticFrcHarness {
+  const _SemanticFrcHarness({
+    required this.router,
+    required this.repository,
+    required this.controller,
+  });
+
+  final RootStackRouter router;
+  final _FakeInvitesRepository repository;
+  final InviteFlowScreenController controller;
+
+  List<String> get names =>
+      router.currentHierarchy().map((route) => route.name).toList();
+}
+
+Future<_SemanticFrcHarness> _pumpSemanticFrcHarness(
+  WidgetTester tester, {
+  required InviteModel invite,
+}) async {
+  final repository = _FakeInvitesRepository(
+    initialInvites: <InviteModel>[invite],
+  );
+  final controller = InviteFlowScreenController(
+    appData: GetIt.I.get<AppData>(),
+    repository: repository,
+    userEventsRepository: _FakeUserEventsRepository(),
+    telemetryRepository: _FakeTelemetryRepository(),
+    authRepository: _FakeAuthRepository(authorized: true),
+  );
+  GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
   final router = RootStackRouter.build(
     routes: <AutoRoute>[
       AutoRoute(
         path: '/',
-        page: PageInfo(TenantHomeRoute.name, builder: (_) => const SizedBox()),
+        page: PageInfo.builder(
+          TenantHomeRoute.name,
+          builder: (_, _) => const Scaffold(body: Text('frc-home')),
+        ),
+        meta: canonicalRouteMeta(family: CanonicalRouteFamily.tenantHome),
       ),
       AutoRoute(
-        path: '/invite',
-        page: PageInfo(InviteFlowRoute.name, builder: (_) => const SizedBox()),
+        path: '/convites',
+        page: PageInfo.builder(
+          InviteFlowRoute.name,
+          builder: (_, _) =>
+              const RouteInstanceScope(child: InviteFlowScreen()),
+        ),
+        meta: canonicalRouteMeta(family: CanonicalRouteFamily.inviteFlow),
+      ),
+      AutoRoute(
+        path: '/agenda/evento/:slug',
+        page: PageInfo.builder(
+          ImmersiveEventDetailRoute.name,
+          builder: (_, _) => const Scaffold(body: Text('frc-event-child')),
+        ),
+        meta: canonicalRouteMeta(
+          family: CanonicalRouteFamily.immersiveEventDetail,
+        ),
       ),
     ],
   );
-  final startup = AppStartupNavigationCoordinator(
-    planLoader: () async => AppStartupNavigationPlan.routes(
-      const <PageRouteInfo<dynamic>>[TenantHomeRoute(), InviteFlowRoute()],
-    ),
+  await tester.pumpWidget(MaterialApp.router(routerConfig: router.config()));
+  router.replaceAll(const <PageRouteInfo<dynamic>>[
+    TenantHomeRoute(),
+    InviteFlowRoute(),
+  ]);
+  await _flushFrc(tester);
+  return _SemanticFrcHarness(
+    router: router,
+    repository: repository,
+    controller: controller,
   );
-  await startup.initialize();
-  final delegate = router.delegate(
-    deepLinkBuilder: startup.resolvePlatformDeepLink,
-  );
-  await tester.pumpWidget(
-    MaterialApp.router(
-      routerDelegate: delegate,
-      routeInformationParser: router.defaultRouteParser(),
-    ),
-  );
-  await delegate.setInitialRoutePath(
-    await router.defaultRouteParser().parseRouteInformation(
-      RouteInformation(uri: Uri(path: '/')),
-    ),
-  );
-  await tester.pumpAndSettle();
-  return router;
+}
+
+Future<void> _flushFrc(WidgetTester tester) async {
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 50));
+  await tester.pump();
 }
 
 InviteModel _buildInvite(String id) {
@@ -1696,6 +1851,32 @@ InviteModel _buildInviteWithEmptyCandidateIds(String id) {
           defaultValue: '',
           isRequired: false,
         ),
+        type: InviteInviterType.user,
+        nameValue: InviteInviterNameValue()..parse('Convidador B'),
+      ),
+    ],
+  );
+}
+
+InviteModel _buildInviteWithSelectableCandidates(String id) {
+  return buildInviteModelFromPrimitives(
+    id: id,
+    eventId: 'event-$id',
+    eventName: 'Event $id',
+    eventDateTime: DateTime(2026, 1, 1, 18),
+    eventImageUrl: 'https://example.com/$id.jpg',
+    location: 'Guarapari',
+    hostName: 'Host $id',
+    message: 'Invite $id',
+    tags: const ['music'],
+    inviters: [
+      InviteInviter(
+        inviteIdValue: InviteInviterIdValue()..parse('$id-a'),
+        type: InviteInviterType.user,
+        nameValue: InviteInviterNameValue()..parse('Convidador A'),
+      ),
+      InviteInviter(
+        inviteIdValue: InviteInviterIdValue()..parse('$id-b'),
         type: InviteInviterType.user,
         nameValue: InviteInviterNameValue()..parse('Convidador B'),
       ),

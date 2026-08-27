@@ -18,21 +18,11 @@ import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
-import 'package:belluga_now/domain/schedule/event_model.dart';
-import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_type_id_value.dart';
-import 'package:belluga_now/domain/value_objects/color_value.dart';
-import 'package:belluga_now/domain/value_objects/description_value.dart';
-import 'package:belluga_now/domain/value_objects/slug_value.dart';
-import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/invite_flow_screen.dart';
@@ -45,9 +35,6 @@ import 'package:integration_test/integration_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:mockito/mockito.dart';
 import 'package:stream_value/core/stream_value.dart';
-import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
-import 'package:value_object_pattern/domain/value_objects/html_content_value.dart';
-import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 import 'support/integration_test_bootstrap.dart';
 import 'package:belluga_now/testing/invite_model_factory.dart';
@@ -362,11 +349,6 @@ void main() {
   testWidgets(
     'invite session continuity replaces stale invite with event route when event resolves',
     (tester) async {
-      final scheduleRepository = _FakeScheduleRepository(
-        eventsBySlug: <String, EventModel?>{
-          'event-live': _buildResolvedEvent('event-live'),
-        },
-      );
       final repository = _RecordingInvitesRepository(initialInvites: const []);
       repository.setShareCodeSessionContext(
         code: invitesRepoString(
@@ -392,7 +374,6 @@ void main() {
         repository: repository,
         userEventsRepository: _FakeUserEventsRepository(),
         telemetryRepository: _FakeTelemetryRepository(),
-        scheduleRepository: scheduleRepository,
       );
       GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
       final router = _RecordingStackRouter(canPopValue: false);
@@ -403,7 +384,11 @@ void main() {
           stateHash: 0,
           child: MaterialApp(
             home: RouteDataScope(
-              routeData: _buildRouteData(router, queryParams: const {}),
+              routeData: _buildRouteData(
+                router,
+                queryParams: const {},
+                isFlowRoute: true,
+              ),
               child: InviteFlowCoordinator(
                 invites: const [],
                 decisionResult: null,
@@ -428,15 +413,6 @@ void main() {
   testWidgets(
     'invite session continuity keeps event route even when the resolved event is already ended',
     (tester) async {
-      final scheduleRepository = _FakeScheduleRepository(
-        eventsBySlug: <String, EventModel?>{
-          'event-ended': _buildResolvedEvent(
-            'event-ended',
-            startAt: DateTime.utc(2026, 3, 15, 20),
-            endAt: DateTime.utc(2026, 3, 15, 22),
-          ),
-        },
-      );
       final repository = _RecordingInvitesRepository(initialInvites: const []);
       repository.setShareCodeSessionContext(
         code: invitesRepoString(
@@ -462,7 +438,6 @@ void main() {
         repository: repository,
         userEventsRepository: _FakeUserEventsRepository(),
         telemetryRepository: _FakeTelemetryRepository(),
-        scheduleRepository: scheduleRepository,
       );
       GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
       final router = _RecordingStackRouter(canPopValue: false);
@@ -473,7 +448,11 @@ void main() {
           stateHash: 0,
           child: MaterialApp(
             home: RouteDataScope(
-              routeData: _buildRouteData(router, queryParams: const {}),
+              routeData: _buildRouteData(
+                router,
+                queryParams: const {},
+                isFlowRoute: true,
+              ),
               child: InviteFlowCoordinator(
                 invites: const [],
                 decisionResult: null,
@@ -496,11 +475,8 @@ void main() {
   );
 
   testWidgets(
-    'invite session continuity routes home when the session event no longer resolves',
+    'invite session continuity uses the canonical session event without revalidation',
     (tester) async {
-      final scheduleRepository = _FakeScheduleRepository(
-        eventsBySlug: const <String, EventModel?>{'event-missing': null},
-      );
       final repository = _RecordingInvitesRepository(initialInvites: const []);
       repository.setShareCodeSessionContext(
         code: invitesRepoString(
@@ -526,7 +502,6 @@ void main() {
         repository: repository,
         userEventsRepository: _FakeUserEventsRepository(),
         telemetryRepository: _FakeTelemetryRepository(),
-        scheduleRepository: scheduleRepository,
       );
       GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
       final router = _RecordingStackRouter(canPopValue: false);
@@ -537,7 +512,11 @@ void main() {
           stateHash: 0,
           child: MaterialApp(
             home: RouteDataScope(
-              routeData: _buildRouteData(router, queryParams: const {}),
+              routeData: _buildRouteData(
+                router,
+                queryParams: const {},
+                isFlowRoute: true,
+              ),
               child: InviteFlowCoordinator(
                 invites: const [],
                 decisionResult: null,
@@ -552,7 +531,10 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      expect(router.lastReplacedPath, '/');
+      expect(
+        router.lastReplacedPath,
+        '/agenda/evento/event-missing?occurrence=occ-missing',
+      );
     },
   );
 }
@@ -822,21 +804,6 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   ) => userEventsRepoBool(false, defaultValue: false, isRequired: true);
 }
 
-class _FakeScheduleRepository extends Fake
-    implements ScheduleRepositoryContract {
-  _FakeScheduleRepository({this.eventsBySlug = const <String, EventModel?>{}});
-
-  final Map<String, EventModel?> eventsBySlug;
-
-  @override
-  Future<EventModel?> getEventBySlug(
-    ScheduleRepoString slug, {
-    ScheduleRepoString? occurrenceId,
-  }) async {
-    return eventsBySlug[slug.value];
-  }
-}
-
 class _RecordingStackRouter extends Mock implements StackRouter {
   _RecordingStackRouter({required this.canPopValue});
 
@@ -845,6 +812,13 @@ class _RecordingStackRouter extends Mock implements StackRouter {
   String? lastReplacedPath;
   bool replaceAllCalled = false;
   List<PageRouteInfo>? lastReplaced;
+  RouteData? activeRoute;
+
+  @override
+  RouteData get topRoute => activeRoute!;
+
+  @override
+  bool get hasPagelessTopRoute => false;
 
   @override
   bool canPop({
@@ -889,63 +863,34 @@ class _RecordingStackRouter extends Mock implements StackRouter {
 RouteData _buildRouteData(
   StackRouter router, {
   required Map<String, dynamic> queryParams,
+  bool isFlowRoute = false,
 }) {
   final match = RouteMatch(
     config: AutoRoute(
-      page: InviteEntryRoute.page,
-      path: '/invite',
-      meta: canonicalRouteMeta(family: CanonicalRouteFamily.inviteEntry),
+      page: isFlowRoute ? InviteFlowRoute.page : InviteEntryRoute.page,
+      path: isFlowRoute ? '/convites' : '/invite',
+      meta: canonicalRouteMeta(
+        family: isFlowRoute
+            ? CanonicalRouteFamily.inviteFlow
+            : CanonicalRouteFamily.inviteEntry,
+      ),
     ),
-    segments: const ['invite'],
-    stringMatch: '/invite',
-    key: const ValueKey('invite'),
+    segments: <String>[isFlowRoute ? 'convites' : 'invite'],
+    stringMatch: isFlowRoute ? '/convites' : '/invite',
+    key: ValueKey(isFlowRoute ? 'convites' : 'invite'),
     queryParams: Parameters(queryParams),
   );
-  return RouteData(
+  final routeData = RouteData(
     route: match,
     router: router,
     stackKey: const ValueKey('stack'),
     pendingChildren: const [],
     type: const RouteType.material(),
   );
-}
-
-EventModel _buildResolvedEvent(
-  String slug, {
-  DateTime? startAt,
-  DateTime? endAt,
-}) {
-  const normalizedId = '507f1f77bcf86cd799439011';
-  final resolvedStart = startAt ?? DateTime.utc(2026, 5, 24, 20);
-  final resolvedEnd = endAt ?? resolvedStart.add(const Duration(hours: 2));
-
-  return eventModelFromRaw(
-    id: MongoIDValue(defaultValue: normalizedId, isRequired: true)
-      ..parse(normalizedId),
-    slugValue: SlugValue()..parse(slug),
-    type: EventTypeModel(
-      id: EventTypeIdValue()..parse('show'),
-      name: TitleValue()..parse('Show tipo'),
-      slug: SlugValue()..parse('show'),
-      description: DescriptionValue()..parse('Descricao longa do tipo.'),
-      icon: SlugValue()..parse('music'),
-      color: ColorValue(defaultValue: const Color(0xFF3366FF))
-        ..parse('#3366FF'),
-    ),
-    title: TitleValue()..parse('Resolved Event $slug title'),
-    content: HTMLContentValue()
-      ..parse('<p>Descricao longa do evento para teste.</p>'),
-    location: DescriptionValue()..parse('Local muito legal para teste.'),
-    thumb: null,
-    dateTimeStart: DateTimeValue(isRequired: true)
-      ..parse(resolvedStart.toIso8601String()),
-    dateTimeEnd: DateTimeValue(isRequired: true)
-      ..parse(resolvedEnd.toIso8601String()),
-    coordinate: null,
-    tags: const <String>['show'],
-    isConfirmedValue: EventIsConfirmedValue()..parse('false'),
-    totalConfirmedValue: EventTotalConfirmedValue()..parse('0'),
-  );
+  if (router is _RecordingStackRouter) {
+    router.activeRoute = routeData;
+  }
+  return routeData;
 }
 
 class _TestHttpOverrides extends HttpOverrides {

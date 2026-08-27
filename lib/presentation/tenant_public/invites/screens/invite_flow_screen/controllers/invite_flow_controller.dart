@@ -143,10 +143,8 @@ class InviteFlowScreenController with Disposable {
       if (normalizedShareCode.isNotEmpty) {
         final materialized = await _materializeShareCode(normalizedShareCode);
         materializedShareResultStreamValue.addValue(materialized);
-        final materializedInviteId = materialized?.inviteId.trim() ?? '';
-        if (materialized != null &&
-            materialized.isPending &&
-            materializedInviteId.isNotEmpty) {
+        final materializedInviteId = materialized.inviteId.trim();
+        if (materialized.isPending && materializedInviteId.isNotEmpty) {
           _activeMaterializedInviteId = materializedInviteId;
           if (!await fetchPendingInvites()) return;
           _prioritizeInvite(materializedInviteId);
@@ -154,7 +152,7 @@ class InviteFlowScreenController with Disposable {
             normalizedShareCode,
             inviteId: materializedInviteId,
           );
-        } else if (materialized != null && materialized.isSelfIssuerPreview) {
+        } else if (materialized.isSelfIssuerPreview) {
           final preview = await _fetchAnonymousPreviewInvites(
             normalizedShareCode,
           );

@@ -136,7 +136,7 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
     });
   }
 
-  Future<void> _handleDecisionResultEffect(InviteDecisionResult result) async {
+  Future<void> _handleDecisionResultEffect(InviteDecisionResult result) {
     final router = context.router;
     if (result.invite != null) {
       if (result.nextStep == InviteNextStep.reservationRequired ||
@@ -144,21 +144,24 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
           result.nextStep == InviteNextStep.openAppToContinue) {
         _showUnsupportedNextStepToast(result.invite!, result.nextStep);
         _controller.clearDecisionResult();
-        return;
+        return Future<void>.value();
       }
       if (result.queued == true) {
         _showOfflineAcceptToast(result.invite);
       }
       _controller.clearDecisionResult();
-      await router.push(InviteShareRoute(invite: result.invite!));
-      _exitInviteFlowOrFallback();
-      return;
+      return router.push(InviteShareRoute(invite: result.invite!)).then<void>((
+        _,
+      ) {
+        _exitInviteFlowOrFallback();
+      });
     }
 
     _controller.clearDecisionResult();
+    return Future<void>.value();
   }
 
-  Future<void> _openEventDetails(InviteModel invite) async {
+  Future<void> _openEventDetails(InviteModel invite) {
     final eventSlug = invite.eventSlug.trim();
     if (eventSlug.isEmpty) {
       ScaffoldMessenger.maybeOf(context)?.showSnackBar(
@@ -168,15 +171,18 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
           ),
         ),
       );
-      return;
+      return Future<void>.value();
     }
-    await context.router.push(
-      ImmersiveEventDetailRoute(
-        eventSlug: eventSlug,
-        occurrenceId: invite.occurrenceId,
-      ),
-    );
-    _exitInviteFlowOrFallback();
+    return context.router
+        .push(
+          ImmersiveEventDetailRoute(
+            eventSlug: eventSlug,
+            occurrenceId: invite.occurrenceId,
+          ),
+        )
+        .then<void>((_) {
+          _exitInviteFlowOrFallback();
+        });
   }
 
   Future<void> _handleDecision(
