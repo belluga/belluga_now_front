@@ -27,7 +27,6 @@ import 'package:belluga_now/domain/invites/value_objects/invite_inviter_id_value
 import 'package:belluga_now/domain/invites/value_objects/invite_inviter_name_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
@@ -371,55 +370,6 @@ class _FakeRootStackRouter extends Fake implements RootStackRouter {
   RootStackRouter get root => this;
 }
 
-EventModel _buildResolvedEvent(String id) {
-  const normalizedId = '507f1f77bcf86cd799439011';
-  final start = DateTimeValue(isRequired: true)
-    ..parse(DateTime.utc(2026, 5, 20, 20).toIso8601String());
-  final end = DateTimeValue(isRequired: true)
-    ..parse(DateTime.utc(2026, 5, 20, 22).toIso8601String());
-
-  return eventModelFromRaw(
-    id: MongoIDValue(defaultValue: normalizedId, isRequired: true)
-      ..parse(normalizedId),
-    slugValue: SlugValue()..parse(id),
-    type: EventTypeModel(
-      id: EventTypeIdValue()..parse('show'),
-      name: TitleValue()..parse('Show tipo'),
-      slug: SlugValue()..parse('show'),
-      description: DescriptionValue()..parse('Descricao longa do tipo.'),
-      icon: SlugValue()..parse('music'),
-      color: ColorValue(defaultValue: const Color(0xFF000000))
-        ..parse('#000000'),
-    ),
-    title: TitleValue()..parse('Resolved Event $id title'),
-    content: HTMLContentValue()
-      ..parse('<p>Descricao longa do evento para teste.</p>'),
-    location: DescriptionValue()..parse('Local muito legal para teste.'),
-    thumb: null,
-    dateTimeStart: start,
-    dateTimeEnd: end,
-    coordinate: null,
-    tags: const [],
-    isConfirmedValue: EventIsConfirmedValue(),
-    totalConfirmedValue: EventTotalConfirmedValue(),
-  );
-}
-
-class _FakeScheduleRepository extends Fake
-    implements ScheduleRepositoryContract {
-  _FakeScheduleRepository({this._eventsBySlug = const <String, EventModel?>{}});
-
-  final Map<String, EventModel?> _eventsBySlug;
-
-  @override
-  Future<EventModel?> getEventBySlug(
-    ScheduleRepoString slug, {
-    ScheduleRepoString? occurrenceId,
-  }) async {
-    return _eventsBySlug[slug.value];
-  }
-}
-
 void main() {
   HttpOverrides? previousHttpOverrides;
 
@@ -463,11 +413,16 @@ void main() {
 
     expect(supportedScenarios, contains(scenario));
     expect(burst, greaterThan(0));
-    // Touch every producer-supplied control; the probe persists these values
-    // beside this actual-router assertion.
-    expect(Platform.environment['DELPHI_RACE_REPEAT_INDEX'], isNotNull);
-    expect(Platform.environment['DELPHI_RACE_ATTEMPT_DIR'], isNotNull);
-    expect(Platform.environment['DELPHI_RACE_OUTPUT_DIR'], isNotNull);
+    // Probe metadata is optional so this focused test remains runnable through
+    // the ordinary Flutter suite as well as the FRC wrapper.
+    final repeatIndex = Platform.environment['DELPHI_RACE_REPEAT_INDEX'];
+    final attemptDir = Platform.environment['DELPHI_RACE_ATTEMPT_DIR'];
+    final outputDir = Platform.environment['DELPHI_RACE_OUTPUT_DIR'];
+    if (repeatIndex != null || attemptDir != null || outputDir != null) {
+      expect(repeatIndex, isNotNull);
+      expect(attemptDir, isNotNull);
+      expect(outputDir, isNotNull);
+    }
 
     final mustKeepInvite = <String>{
       'repopulation_before_effect',
@@ -986,11 +941,6 @@ void main() {
   testWidgets(
     'Invite flow falls back to event when invite is empty and session continuity still resolves',
     (tester) async {
-      final scheduleRepository = _FakeScheduleRepository(
-        eventsBySlug: <String, EventModel?>{
-          'event-1': _buildResolvedEvent('event-1'),
-        },
-      );
       final repository = _FakeInvitesRepository(initialInvites: const []);
       repository.setShareCodeSessionContext(
         code: invitesRepoString(
@@ -1016,7 +966,6 @@ void main() {
         repository: repository,
         userEventsRepository: _FakeUserEventsRepository(),
         telemetryRepository: _FakeTelemetryRepository(),
-        scheduleRepository: scheduleRepository,
       );
       GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
 
@@ -1051,11 +1000,8 @@ void main() {
   );
 
   testWidgets(
-    'Invite flow falls back home when invite is empty and session continuity no longer resolves',
+    'Invite flow preserves the synchronous event continuation without revalidation',
     (tester) async {
-      final scheduleRepository = _FakeScheduleRepository(
-        eventsBySlug: const <String, EventModel?>{'event-ended': null},
-      );
       final repository = _FakeInvitesRepository(initialInvites: const []);
       repository.setShareCodeSessionContext(
         code: invitesRepoString(
@@ -1081,7 +1027,6 @@ void main() {
         repository: repository,
         userEventsRepository: _FakeUserEventsRepository(),
         telemetryRepository: _FakeTelemetryRepository(),
-        scheduleRepository: scheduleRepository,
       );
       GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
 

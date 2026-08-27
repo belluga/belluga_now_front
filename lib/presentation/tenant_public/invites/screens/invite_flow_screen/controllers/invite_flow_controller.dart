@@ -12,7 +12,6 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
@@ -31,7 +30,6 @@ class InviteFlowScreenController with Disposable {
     TelemetryRepositoryContract? telemetryRepository,
     CardStackSwiperController? cardStackSwiperController,
     AuthRepositoryContract? authRepository,
-    ScheduleRepositoryContract? scheduleRepository,
   }) : _appData =
            appData ??
            (GetIt.I.isRegistered<AppData>() ? GetIt.I.get<AppData>() : null),
@@ -294,7 +292,6 @@ class InviteFlowScreenController with Disposable {
       occurrenceId: context.occurrenceId,
     );
   }
-
 
   void _prioritizeInvite(String inviteId) {
     final inviteIdValue = _inviteIdValue(inviteId);

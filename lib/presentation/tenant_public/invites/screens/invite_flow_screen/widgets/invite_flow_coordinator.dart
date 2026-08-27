@@ -116,7 +116,7 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
   }
 
   void _handlePendingInvites(List<InviteModel> invites) {
-    if (!widget.isInitialized) {
+    if (!widget.isInitialized || invites.isNotEmpty) {
       return;
     }
     _scheduleEffect(() {
@@ -132,29 +132,33 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
     if (identical(result, _lastDecisionResult)) return;
     _lastDecisionResult = result;
     _scheduleEffect(() {
-      final router = context.router;
-
-      if (result.invite != null) {
-        if (result.nextStep == InviteNextStep.reservationRequired ||
-            result.nextStep == InviteNextStep.commitmentChoiceRequired ||
-            result.nextStep == InviteNextStep.openAppToContinue) {
-          _showUnsupportedNextStepToast(result.invite!, result.nextStep);
-          _controller.clearDecisionResult();
-          return;
-        }
-        if (result.queued == true) {
-          _showOfflineAcceptToast(result.invite);
-        }
-        router.push(InviteShareRoute(invite: result.invite!));
-        _controller.clearDecisionResult();
-        return;
-      }
-
-      _controller.clearDecisionResult();
+      unawaited(_handleDecisionResultEffect(result));
     });
   }
 
-  void _openEventDetails(InviteModel invite) {
+  Future<void> _handleDecisionResultEffect(InviteDecisionResult result) async {
+    final router = context.router;
+    if (result.invite != null) {
+      if (result.nextStep == InviteNextStep.reservationRequired ||
+          result.nextStep == InviteNextStep.commitmentChoiceRequired ||
+          result.nextStep == InviteNextStep.openAppToContinue) {
+        _showUnsupportedNextStepToast(result.invite!, result.nextStep);
+        _controller.clearDecisionResult();
+        return;
+      }
+      if (result.queued == true) {
+        _showOfflineAcceptToast(result.invite);
+      }
+      _controller.clearDecisionResult();
+      await router.push(InviteShareRoute(invite: result.invite!));
+      _exitInviteFlowOrFallback();
+      return;
+    }
+
+    _controller.clearDecisionResult();
+  }
+
+  Future<void> _openEventDetails(InviteModel invite) async {
     final eventSlug = invite.eventSlug.trim();
     if (eventSlug.isEmpty) {
       ScaffoldMessenger.maybeOf(context)?.showSnackBar(
@@ -166,12 +170,13 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
       );
       return;
     }
-    context.router.push(
+    await context.router.push(
       ImmersiveEventDetailRoute(
         eventSlug: eventSlug,
         occurrenceId: invite.occurrenceId,
       ),
     );
+    _exitInviteFlowOrFallback();
   }
 
   Future<void> _handleDecision(
@@ -200,6 +205,7 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
       invite: invite,
       actionLabel: decision == InviteDecision.accepted ? 'Aceitar' : 'Recusar',
     );
+    _exitInviteFlowOrFallback();
     if (inviteId == null) {
       if (!invite.hasMultipleInviters) {
         await _controller.requestDecision(decision);
@@ -250,17 +256,16 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
     );
   }
 
-  void _openAuthForInviteDecision(InviteModel invite) {
+  Future<void> _openAuthForInviteDecision(InviteModel invite) async {
     if (widget.isWebRuntime && !_controller.isAuthorized) {
-      unawaited(
-        AppPromotionModal.show(
-          context,
-          redirectPath: _inviteOccurrenceRedirectPath(invite),
-          title: 'Aceite convites pelo app',
-          supportingText:
-              'Use o app para confirmar presença, enviar convites e acompanhar seus eventos.',
-        ),
+      await AppPromotionModal.show(
+        context,
+        redirectPath: _inviteOccurrenceRedirectPath(invite),
+        title: 'Aceite convites pelo app',
+        supportingText:
+            'Use o app para confirmar presença, enviar convites e acompanhar seus eventos.',
       );
+      _exitInviteFlowOrFallback();
       return;
     }
     final pendingPath = _controller.redirectPath?.trim();
@@ -268,7 +273,8 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
         ? '/invite'
         : pendingPath;
     final encodedRedirect = Uri.encodeQueryComponent(normalizedPath);
-    context.router.pushPath('/auth/login?redirect=$encodedRedirect');
+    await context.router.pushPath('/auth/login?redirect=$encodedRedirect');
+    _exitInviteFlowOrFallback();
   }
 
   Future<void> _showWebInviteDecisionPromotion({
@@ -291,6 +297,7 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
           ? 'Use o app para confirmar presença, enviar convites e acompanhar seus eventos.'
           : 'Use o app para aceitar ou recusar convites e acompanhar seus eventos.',
     );
+    _exitInviteFlowOrFallback();
   }
 
   RouteBackPolicy _buildBackPolicy(BuildContext context) {
