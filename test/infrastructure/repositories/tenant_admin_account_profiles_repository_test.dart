@@ -1,5 +1,6 @@
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:belluga_form_validation/belluga_form_validation.dart';
@@ -10,12 +11,14 @@ import 'package:belluga_now/domain/repositories/landlord_auth_repository_contrac
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_label_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_account_profiles_repository.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_unknown_mutation_failure.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_base_url_resolver.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -26,6 +29,26 @@ import 'support/tenant_admin_paged_stream_contract.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  Future<TenantAdminNestedGroupLabelMutationResult> patchLabel(
+    TenantAdminAccountProfilesRepository repository,
+  ) => repository.patchNestedProfileGroupLabel(
+    accountProfileId: tenantAdminAccountProfilesRepoString(
+      'profile-1',
+      defaultValue: '',
+      isRequired: true,
+    ),
+    groupId: tenantAdminAccountProfilesRepoString(
+      'artists',
+      defaultValue: '',
+      isRequired: true,
+    ),
+    label: tenantAdminAccountProfilesRepoString(
+      'Artists',
+      defaultValue: '',
+      isRequired: true,
+    ),
+  );
 
   setUp(() async {
     await GetIt.I.reset();
@@ -77,6 +100,114 @@ void main() {
     expect(formData.files.any((entry) => entry.key == 'avatar'), isTrue);
     expect(adapter.lastRequest?.contentType, contains('multipart/form-data'));
   });
+
+  test(
+    'patchNestedProfileGroupLabel sends one scoped PATCH with correlation only',
+    () async {
+      final adapter = _CaptureAdapter(
+        responseBody: {
+          'data': {
+            'group': {'id': 'artists', 'label': 'Artists'},
+          },
+        },
+      );
+      final repository = TenantAdminAccountProfilesRepository(
+        dio: Dio()..httpClientAdapter = adapter,
+      );
+      final result = await repository.patchNestedProfileGroupLabel(
+        accountProfileId: tenantAdminAccountProfilesRepoString(
+          'profile-1',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        groupId: tenantAdminAccountProfilesRepoString(
+          'artists',
+          defaultValue: '',
+          isRequired: true,
+        ),
+        label: tenantAdminAccountProfilesRepoString(
+          'Artists',
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
+      final request = adapter.lastRequest!;
+      expect(request.method, 'PATCH');
+      expect(
+        request.path,
+        endsWith(
+          '/v1/account_profiles/profile-1/nested_profile_groups/artists',
+        ),
+      );
+      expect(request.data, {'label': 'Artists'});
+      expect(request.headers['X-Request-Id'], isNotEmpty);
+      expect(request.headers, isNot(contains('Idempotency-Key')));
+      expect(adapter.requests, hasLength(1));
+      expect(result.id, 'artists');
+      expect(result.label, 'Artists');
+    },
+  );
+
+  test('patchNestedProfileGroupLabel preserves structured 422', () async {
+    final adapter = _CaptureAdapter(
+      statusCode: 422,
+      responseBody: const {
+        'message': 'The given data was invalid.',
+        'errors': {
+          'label': ['Invalid label.'],
+        },
+      },
+    );
+    final repository = TenantAdminAccountProfilesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+    );
+
+    await expectLater(
+      patchLabel(repository),
+      throwsA(
+        isA<FormValidationFailure>().having(
+          (error) => error.fieldErrors['label'],
+          'label',
+          ['Invalid label.'],
+        ),
+      ),
+    );
+  });
+
+  test('patchNestedProfileGroupLabel keeps 5xx definitive', () async {
+    final adapter = _CaptureAdapter(
+      statusCode: 500,
+      responseBody: const {'message': 'Internal failure.'},
+    );
+    final repository = TenantAdminAccountProfilesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+    );
+
+    await expectLater(
+      patchLabel(repository),
+      throwsA(
+        isA<Exception>().having(
+          (error) => error is TenantAdminUnknownMutationFailure,
+          'is unknown mutation failure',
+          isFalse,
+        ),
+      ),
+    );
+  });
+
+  test(
+    'patchNestedProfileGroupLabel classifies connection loss as unknown',
+    () async {
+      final repository = TenantAdminAccountProfilesRepository(
+        dio: Dio()..httpClientAdapter = _ConnectionFailureAdapter(),
+      );
+
+      await expectLater(
+        patchLabel(repository),
+        throwsA(isA<TenantAdminUnknownMutationFailure>()),
+      );
+    },
+  );
 
   test(
     'createAccountProfile sends both avatar and cover files in multipart',
@@ -1569,12 +1700,12 @@ class _StubTenantScope implements TenantAdminTenantScopeContract {
 }
 
 class _CaptureAdapter implements HttpClientAdapter {
-  _CaptureAdapter({this.responseBody});
+  _CaptureAdapter({this.responseBody, this.statusCode = 200});
 
   RequestOptions? lastRequest;
   final List<RequestOptions> requests = <RequestOptions>[];
   final Object? responseBody;
-  final int statusCode = 200;
+  final int statusCode;
 
   @override
   void close({bool force = false}) {}
@@ -1657,6 +1788,22 @@ class _CaptureAdapter implements HttpClientAdapter {
       },
     );
   }
+}
+
+class _ConnectionFailureAdapter implements HttpClientAdapter {
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) => throw DioException(
+    requestOptions: options,
+    type: DioExceptionType.connectionError,
+    error: const SocketException('connection lost'),
+  );
 }
 
 class _ProfileTypesRoutingAdapter implements HttpClientAdapter {

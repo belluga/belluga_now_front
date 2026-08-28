@@ -14,6 +14,7 @@ import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_tag_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_name_value.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
@@ -40,13 +41,13 @@ import 'package:belluga_now/domain/thumb/thumb_model.dart';
 import 'package:belluga_now/domain/value_objects/color_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
-import 'package:belluga_now/domain/venue_event/value_objects/venue_event_tag_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_tag_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_optional_date_time_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_type_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/controllers/immersive_event_detail_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -127,7 +128,7 @@ void main() {
             <AccountProfileNestedGroupMember>[
               AccountProfileNestedGroupMember(
                 idValue: MongoIDValue()..parse('507f1f77bcf86cd799439099'),
-                nameValue: TitleValue()..parse('Banda Azul'),
+                nameValue: AccountProfileNameValue()..parse('Banda Azul'),
                 slugValue: SlugValue()..parse('banda-azul'),
                 profileTypeValue: AccountProfileTypeValue('band'),
                 canOpenPublicDetailValue: DomainBooleanValue(
@@ -850,7 +851,10 @@ void main() {
       ]);
       expect(projected.tags.map((tag) => tag.value), ['Show']);
       expect(projected.heroCounterpartProfiles, hasLength(1));
-      expect(projected.heroCounterpartProfiles.first.displayName, 'Banda Central');
+      expect(
+        projected.heroCounterpartProfiles.first.displayName,
+        'Banda Central',
+      );
       expect(projected.counterpartCount, 3);
     },
   );
@@ -954,10 +958,10 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   }
 
   @override
-  Future<List<VenueEventResume>> fetchFeaturedEvents() async => const [];
+  Future<List<UpcomingOcurrenceResume>> fetchFeaturedEvents() async => const [];
 
   @override
-  Future<List<VenueEventResume>> fetchMyEvents() async => const [];
+  Future<List<UpcomingOcurrenceResume>> fetchMyEvents() async => const [];
 
   @override
   UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
@@ -1447,7 +1451,7 @@ EventOccurrenceOption _buildOccurrence({
       ..parse(programmingItems.length.toString()),
     programmingItems: programmingItems,
     profileGroups: profileGroups,
-    tags: tags.map(VenueEventTagValue.new).toList(growable: false),
+    tags: tags.map(EventTagValue.new).toList(growable: false),
   );
 }
 

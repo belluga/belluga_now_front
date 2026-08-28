@@ -43,7 +43,7 @@ import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
@@ -2787,9 +2787,7 @@ void main() {
       expect(backend.requestedPages, [1]);
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(body: HomeAgendaBody(controller: controller)),
-        ),
+        MaterialApp(home: Scaffold(body: _homeAgendaBody(controller))),
       );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
@@ -2829,10 +2827,7 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
-              body: SizedBox(
-                height: 520,
-                child: HomeAgendaBody(controller: controller),
-              ),
+              body: SizedBox(height: 520, child: _homeAgendaBody(controller)),
             ),
           ),
         );
@@ -2897,10 +2892,7 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
-              body: SizedBox(
-                height: 520,
-                child: HomeAgendaBody(controller: controller),
-              ),
+              body: SizedBox(height: 520, child: _homeAgendaBody(controller)),
             ),
           ),
         );
@@ -2970,10 +2962,7 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
-              body: SizedBox(
-                height: 520,
-                child: HomeAgendaBody(controller: controller),
-              ),
+              body: SizedBox(height: 520, child: _homeAgendaBody(controller)),
             ),
           ),
         );
@@ -3061,10 +3050,7 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
-              body: SizedBox(
-                height: 520,
-                child: HomeAgendaBody(controller: controller),
-              ),
+              body: SizedBox(height: 520, child: _homeAgendaBody(controller)),
             ),
           ),
         );
@@ -3139,9 +3125,7 @@ void main() {
         await controller.init();
 
         await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(body: HomeAgendaBody(controller: controller)),
-          ),
+          MaterialApp(home: Scaffold(body: _homeAgendaBody(controller))),
         );
         await tester.pumpAndSettle();
 
@@ -3191,9 +3175,7 @@ void main() {
         await controller.init();
 
         await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(body: HomeAgendaBody(controller: controller)),
-          ),
+          MaterialApp(home: Scaffold(body: _homeAgendaBody(controller))),
         );
         await tester.pumpAndSettle();
 
@@ -3912,9 +3894,7 @@ void main() {
       );
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(body: HomeAgendaBody(controller: controller)),
-        ),
+        MaterialApp(home: Scaffold(body: _homeAgendaBody(controller))),
       );
       await tester.pump();
 
@@ -6566,10 +6546,10 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   }) async {}
 
   @override
-  Future<List<VenueEventResume>> fetchFeaturedEvents() async => const [];
+  Future<List<UpcomingOcurrenceResume>> fetchFeaturedEvents() async => const [];
 
   @override
-  Future<List<VenueEventResume>> fetchMyEvents() async => const [];
+  Future<List<UpcomingOcurrenceResume>> fetchMyEvents() async => const [];
 
   @override
   UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
@@ -6680,4 +6660,12 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
 
   @override
   Future<void> stopTracking() async {}
+}
+
+HomeAgendaBody _homeAgendaBody(TenantHomeAgendaController controller) {
+  return HomeAgendaBody(
+    controller: controller,
+    catalog: controller.discoveryFilterCatalogStreamValue.value,
+    selection: controller.discoveryFilterSelectionStreamValue.value,
+  );
 }

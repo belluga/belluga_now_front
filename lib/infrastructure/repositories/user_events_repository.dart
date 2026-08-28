@@ -5,7 +5,7 @@ import 'package:belluga_now/domain/repositories/user_events_repository_contract.
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/user_events_backend/laravel_user_events_backend.dart';
 import 'package:belluga_now/infrastructure/services/user_events_backend_contract.dart';
 import 'package:get_it/get_it.dart';
@@ -140,10 +140,10 @@ class UserEventsRepository implements UserEventsRepositoryContract {
   }
 
   @override
-  Future<List<VenueEventResume>> fetchMyEvents() async {
+  Future<List<UpcomingOcurrenceResume>> fetchMyEvents() async {
     final authRepository = _resolvedAuthRepository;
     if (authRepository != null && !authRepository.isAuthorized) {
-      return const <VenueEventResume>[];
+      return const <UpcomingOcurrenceResume>[];
     }
 
     final fallbackImage = _resolveDefaultEventImage();
@@ -151,15 +151,15 @@ class UserEventsRepository implements UserEventsRepositoryContract {
       showPastOnly: ScheduleRepoBool.fromRaw(false, defaultValue: false),
       confirmedOnly: ScheduleRepoBool.fromRaw(true, defaultValue: true),
     );
-    return List<VenueEventResume>.unmodifiable(
+    return List<UpcomingOcurrenceResume>.unmodifiable(
       events.map(
-        (event) => VenueEventResume.fromScheduleEvent(event, fallbackImage),
+        (event) => UpcomingOcurrenceResume.fromScheduleEvent(event, fallbackImage),
       ),
     );
   }
 
   @override
-  Future<List<VenueEventResume>> fetchFeaturedEvents() async {
+  Future<List<UpcomingOcurrenceResume>> fetchFeaturedEvents() async {
     return [];
   }
 

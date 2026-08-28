@@ -24,7 +24,6 @@ import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
-import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/support/public_media_url_normalizer.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/shared/tenant_public_auth_headers.dart';
@@ -34,9 +33,9 @@ import 'package:get_it/get_it.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_counterpart_count_value.dart';
 
 class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
-  static const int _publicVisibleNameMinLength = 3;
   static const String _publicUnavailableProfileLabel = 'Perfil indisponível';
 
   LaravelAccountProfilesBackend({
@@ -511,8 +510,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
         profiles.add(
           AccountProfileModel(
             idValue: MongoIDValue()..parse(id),
-            nameValue: TitleValue(minLenght: _publicVisibleNameMinLength)
-              ..parse(name),
+            nameValue: AccountProfileNameValue()..parse(name),
             slugValue: SlugValue()..parse(slug),
             profileTypeValue: AccountProfileTypeValue(trimmedType),
             avatarValue: avatarValue,
@@ -571,8 +569,10 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     String? routeSlugFallback,
     bool allowUnavailableSentinel = false,
   }) {
-    final normalizedDisplayName = displayName?.trim() ?? '';
-    if (normalizedDisplayName.length >= _publicVisibleNameMinLength) {
+    final normalizedDisplayName = AccountProfileNameValue().tryParse(
+      displayName,
+    );
+    if (normalizedDisplayName != null) {
       return normalizedDisplayName;
     }
 
@@ -607,7 +607,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     }
     return AccountProfileContactSourceSummary(
       idValue: AccountProfileContactSourceAccountProfileIdValue(id),
-      displayNameValue: TitleValue()..parse(displayName),
+      displayNameValue: AccountProfileNameValue()..parse(displayName),
       slugValue: switch (_parseNullableText(json['slug'])) {
         final String slug => SlugValue()..parse(slug),
         _ => null,
@@ -824,8 +824,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
         members.add(
           AccountProfileNestedGroupMember(
             idValue: MongoIDValue()..parse(id),
-            nameValue: TitleValue(minLenght: _publicVisibleNameMinLength)
-              ..parse(displayName),
+            nameValue: AccountProfileNameValue()..parse(displayName),
             slugValue: slugValue,
             profileTypeValue: AccountProfileTypeValue(profileType),
             avatarValue: avatarValue,
@@ -1002,6 +1001,9 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
               ? null
               : partnerProjectionOptionalText(venueTitle),
           imageUriValue: imageUriValue,
+          counterpartCountValue: json['counterpart_count'] == null
+              ? null
+              : EventCounterpartCountValue(json['counterpart_count']),
           linkedAccountProfiles: linkedAccountProfiles,
         ),
       );
@@ -1027,6 +1029,8 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       }
 
       final thumb = json['avatar_url']?.toString().trim();
+      final profileType = json['profile_type']?.toString().trim();
+      final partyType = json['party_type']?.toString().trim();
       linkedAccountProfiles.add(
         PartnerSupportedEntityView(
           idValue: (() {
@@ -1040,6 +1044,12 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           thumbValue: thumb == null || thumb.isEmpty
               ? null
               : partnerProjectionOptionalText(thumb),
+          profileTypeValue: profileType == null || profileType.isEmpty
+              ? null
+              : partnerProjectionOptionalText(profileType),
+          partyTypeValue: partyType == null || partyType.isEmpty
+              ? null
+              : partnerProjectionOptionalText(partyType),
         ),
       );
     }

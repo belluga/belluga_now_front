@@ -27,9 +27,9 @@ void main() {
       () {
     final backend = ProductionBackend();
 
-    expect(backend.venueEvents, isA<LiveOnlyUnsupportedVenueEventBackend>());
+    expect(backend.events, isA<LiveOnlyUnsupportedEventBackend>());
     expect(
-      () => backend.venueEvents.fetchUpcomingEvents(),
+      () => backend.events.fetchUpcomingEvents(),
       throwsA(isA<UnsupportedError>()),
     );
   });

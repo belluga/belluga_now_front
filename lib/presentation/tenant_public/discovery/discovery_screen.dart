@@ -9,6 +9,7 @@ import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/presentation/shared/favorites/account_profile_favorite_auth_gate.dart';
+import 'package:belluga_now/presentation/shared/discovery_filters/public_discovery_filter_empty_state_message.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/controllers/discovery_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_filter_header_delegate.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_live_now_section.dart';
@@ -24,10 +25,7 @@ import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class DiscoveryScreen extends StatefulWidget {
-  const DiscoveryScreen({
-    super.key,
-    this.isWebRuntime = kIsWeb,
-  });
+  const DiscoveryScreen({super.key, this.isWebRuntime = kIsWeb});
 
   final bool isWebRuntime;
 
@@ -39,8 +37,8 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
   static const double _headerCollapsedExtent = 72;
   static const double _defaultFilterPanelExtent = 60;
 
-  final DiscoveryScreenController _controller =
-      GetIt.I.get<DiscoveryScreenController>();
+  final DiscoveryScreenController _controller = GetIt.I
+      .get<DiscoveryScreenController>();
   double _filterPanelExtent = _defaultFilterPanelExtent;
 
   @override
@@ -144,7 +142,8 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                   _controller.discoveryFilterCatalogStreamValue,
                               builder: (context, catalog) {
                                 return StreamValueBuilder<
-                                    DiscoveryFilterSelection>(
+                                  DiscoveryFilterSelection
+                                >(
                                   streamValue: _controller
                                       .discoveryFilterSelectionStreamValue,
                                   builder: (context, filterSelection) {
@@ -154,12 +153,16 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                         !isSearching && hasLoaded;
                                     final showFilterPanel =
                                         showDiscoveryHeader &&
-                                            hasCanonicalFilters;
+                                        hasCanonicalFilters;
                                     final showDefaultSections =
                                         showSections && filterSelection.isEmpty;
                                     final emptyLabel = showDefaultSections
                                         ? 'Nenhum perfil disponível no momento.'
-                                        : 'Nenhum resultado para os filtros.';
+                                        : publicDiscoveryFilterEmptyStateMessage(
+                                                catalog: catalog,
+                                                selection: filterSelection,
+                                              ) ??
+                                              'Nenhum resultado para os filtros.';
                                     return CustomScrollView(
                                       controller: _controller.scrollController,
                                       physics:
@@ -174,87 +177,95 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                                     _updateFilterPanelExtent,
                                                 child:
                                                     _buildCanonicalDiscoveryFilters(
-                                                  context,
-                                                  catalog: catalog,
-                                                  selection: filterSelection,
-                                                ),
+                                                      context,
+                                                      catalog: catalog,
+                                                      selection:
+                                                          filterSelection,
+                                                      autoRevealSelectedChips:
+                                                          false,
+                                                    ),
                                               ),
                                             ),
                                           ),
                                         if (showDefaultSections)
                                           SliverToBoxAdapter(
-                                            child: StreamValueBuilder<
-                                                List<EventModel>?>(
+                                            child: StreamValueBuilder<List<EventModel>?>(
                                               streamValue: _controller
                                                   .liveNowEventsStreamValue,
                                               builder: (context, liveNow) {
                                                 return DiscoveryLiveNowSection(
-                                                  items: liveNow ??
+                                                  items:
+                                                      liveNow ??
                                                       const <EventModel>[],
                                                   onTap: (event) =>
                                                       context.router.push(
-                                                    ImmersiveEventDetailRoute(
-                                                      eventSlug: event.slug,
-                                                      occurrenceId: event
-                                                          .selectedOccurrenceId,
-                                                    ),
-                                                  ),
+                                                        ImmersiveEventDetailRoute(
+                                                          eventSlug: event.slug,
+                                                          occurrenceId: event
+                                                              .selectedOccurrenceId,
+                                                        ),
+                                                      ),
                                                 );
                                               },
                                             ),
                                           ),
                                         if (showDefaultSections)
                                           SliverToBoxAdapter(
-                                            child: StreamValueBuilder<
-                                                List<AccountProfileModel>>(
-                                              streamValue:
-                                                  _controller.nearbyStreamValue,
-                                              builder: (context, nearby) {
-                                                return DiscoveryNearbyRow(
-                                                  items: nearby,
-                                                  onTap: (partner) {
-                                                    if (!partner
-                                                        .canOpenPublicDetail) {
-                                                      return;
-                                                    }
-                                                    _openPartnerDetail(
-                                                      context,
-                                                      partner,
+                                            child:
+                                                StreamValueBuilder<
+                                                  List<AccountProfileModel>
+                                                >(
+                                                  streamValue: _controller
+                                                      .nearbyStreamValue,
+                                                  builder: (context, nearby) {
+                                                    return DiscoveryNearbyRow(
+                                                      items: nearby,
+                                                      onTap: (partner) {
+                                                        if (!partner
+                                                            .canOpenPublicDetail) {
+                                                          return;
+                                                        }
+                                                        _openPartnerDetail(
+                                                          context,
+                                                          partner,
+                                                        );
+                                                      },
+                                                      resolvedVisualForItem:
+                                                          _controller
+                                                              .resolvedVisualForAccountProfile,
                                                     );
                                                   },
-                                                  resolvedVisualForItem: _controller
-                                                      .resolvedVisualForAccountProfile,
-                                                );
-                                              },
-                                            ),
+                                                ),
                                           ),
                                         if (showDiscoveryHeader)
                                           SliverPersistentHeader(
                                             pinned: true,
                                             delegate:
                                                 DiscoveryFilterHeaderDelegate(
-                                              extent: _headerCollapsedExtent,
-                                              title: 'Descubra',
-                                              action: IconButton(
-                                                tooltip: 'Buscar perfis',
-                                                icon: const Icon(Icons.search),
-                                                onPressed:
-                                                    _controller.toggleSearch,
-                                              ),
-                                            ),
+                                                  extent:
+                                                      _headerCollapsedExtent,
+                                                  title: 'Descubra',
+                                                  action: IconButton(
+                                                    tooltip: 'Buscar perfis',
+                                                    icon: const Icon(
+                                                      Icons.search,
+                                                    ),
+                                                    onPressed: _controller
+                                                        .toggleSearch,
+                                                  ),
+                                                ),
                                           ),
                                         if (showFilterPanel)
                                           SliverPersistentHeader(
                                             pinned: true,
-                                            delegate:
-                                                _DiscoveryStickyPanelDelegate(
+                                            delegate: _DiscoveryStickyPanelDelegate(
                                               extent: _filterPanelExtent,
                                               child:
                                                   _buildCanonicalDiscoveryFilters(
-                                                context,
-                                                catalog: catalog,
-                                                selection: filterSelection,
-                                              ),
+                                                    context,
+                                                    catalog: catalog,
+                                                    selection: filterSelection,
+                                                  ),
                                             ),
                                           ),
                                         SliverToBoxAdapter(
@@ -282,8 +293,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                               builder: (context) {
                                                 if (!hasLoaded) {
                                                   return const Padding(
-                                                    padding:
-                                                        EdgeInsets.all(24.0),
+                                                    padding: EdgeInsets.all(
+                                                      24.0,
+                                                    ),
                                                     child: Center(
                                                       child:
                                                           CircularProgressIndicator(),
@@ -298,7 +310,8 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                                 }
                                                 return Padding(
                                                   padding: const EdgeInsets.all(
-                                                      24.0),
+                                                    24.0,
+                                                  ),
                                                   child: Center(
                                                     child: Text(emptyLabel),
                                                   ),
@@ -309,7 +322,11 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                         else
                                           SliverPadding(
                                             padding: const EdgeInsets.fromLTRB(
-                                                16, 8, 16, 32),
+                                              16,
+                                              8,
+                                              16,
+                                              32,
+                                            ),
                                             sliver: DiscoveryPartnerGrid(
                                               partners: partners,
                                               favorites: favorites,
@@ -319,12 +336,13 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                                 if (partners.isEmpty) {
                                                   return;
                                                 }
-                                                final partner =
-                                                    partners.firstWhere(
-                                                  (item) =>
-                                                      item.id == partnerId,
-                                                  orElse: () => partners.first,
-                                                );
+                                                final partner = partners
+                                                    .firstWhere(
+                                                      (item) =>
+                                                          item.id == partnerId,
+                                                      orElse: () =>
+                                                          partners.first,
+                                                    );
                                                 if (_controller.isFavoritable(
                                                   partner,
                                                 )) {
@@ -333,11 +351,11 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                               },
                                               onPartnerTap: (partner) =>
                                                   partner.canOpenPublicDetail
-                                                      ? _openPartnerDetail(
-                                                          context,
-                                                          partner,
-                                                        )
-                                                      : null,
+                                                  ? _openPartnerDetail(
+                                                      context,
+                                                      partner,
+                                                    )
+                                                  : null,
                                               resolvedVisualForPartner: _controller
                                                   .resolvedVisualForAccountProfile,
                                             ),
@@ -395,8 +413,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     if (widget.isWebRuntime) {
       return;
     }
-    final redirectPath =
-        buildRedirectPathFromRouteMatch(context.routeData.route);
+    final redirectPath = buildRedirectPathFromRouteMatch(
+      context.routeData.route,
+    );
     final action = AuthWallTelemetry.consumePendingAction(redirectPath);
     if (action != null && action.actionType == AuthWallActionType.favorite) {
       final partnerId = action.payload?['partnerId'] as String?;
@@ -451,17 +470,14 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     if (appData == null) {
       return const Text('Descobrir');
     }
-    return MainLogo(
-      appData: appData,
-      width: 128,
-      height: 34,
-    );
+    return MainLogo(appData: appData, width: 128, height: 34);
   }
 
   Widget _buildCanonicalDiscoveryFilters(
     BuildContext context, {
     required DiscoveryFilterCatalog catalog,
     required DiscoveryFilterSelection selection,
+    bool autoRevealSelectedChips = true,
   }) {
     return StreamValueBuilder<bool>(
       streamValue: _controller.isRefreshingStreamValue,
@@ -479,6 +495,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                   selection: selection,
                   policy: _controller.discoveryFilterPolicy,
                   isLoading: isRefreshing || isCatalogLoading,
+                  autoRevealSelectedChips: autoRevealSelectedChips,
                   iconBuilder: buildDiscoveryFilterVisualIcon,
                   onSelectionChanged: _controller.setDiscoveryFilterSelection,
                 ),
@@ -491,8 +508,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
   }
 
   void _updateFilterPanelExtent(Size size) {
-    final nextExtent =
-        size.height <= 0 ? _defaultFilterPanelExtent : size.height;
+    final nextExtent = size.height <= 0
+        ? _defaultFilterPanelExtent
+        : size.height;
     if ((nextExtent - _filterPanelExtent).abs() < 0.5 || !mounted) {
       return;
     }
@@ -503,10 +521,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
 }
 
 class _DiscoveryStickyPanelDelegate extends SliverPersistentHeaderDelegate {
-  _DiscoveryStickyPanelDelegate({
-    required this.extent,
-    required this.child,
-  });
+  _DiscoveryStickyPanelDelegate({required this.extent, required this.child});
 
   final double extent;
   final Widget child;
@@ -543,9 +558,7 @@ class _DiscoveryStickyPanelDelegate extends SliverPersistentHeaderDelegate {
 }
 
 class _DiscoverySearchEmptyState extends StatelessWidget {
-  const _DiscoverySearchEmptyState({
-    required this.hasQuery,
-  });
+  const _DiscoverySearchEmptyState({required this.hasQuery});
 
   final bool hasQuery;
 
@@ -554,8 +567,9 @@ class _DiscoverySearchEmptyState extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    final title =
-        hasQuery ? 'Nada encontrado ainda' : 'Nada para mostrar ainda';
+    final title = hasQuery
+        ? 'Nada encontrado ainda'
+        : 'Nada para mostrar ainda';
     final description = hasQuery
         ? 'Não encontramos resultados para sua busca. Tente termos mais simples ou diferentes.'
         : 'Sem filtros ativos, essa busca deve listar todos os perfis disponíveis.';

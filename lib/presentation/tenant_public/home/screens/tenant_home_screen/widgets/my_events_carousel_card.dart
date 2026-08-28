@@ -1,6 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/carousel_card.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/event_info_row.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/invite_status_icon.dart';
@@ -15,7 +15,7 @@ class MyEventsCarouselCard extends StatelessWidget {
     this.distanceLabel,
   });
 
-  final VenueEventResume event;
+  final UpcomingOcurrenceResume event;
   final bool isConfirmed;
   final int pendingInvitesCount;
   final String? distanceLabel;

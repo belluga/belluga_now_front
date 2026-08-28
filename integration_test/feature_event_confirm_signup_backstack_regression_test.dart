@@ -56,7 +56,7 @@ import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_type_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/auth_login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -615,10 +615,10 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   }
 
   @override
-  Future<List<VenueEventResume>> fetchFeaturedEvents() async => const [];
+  Future<List<UpcomingOcurrenceResume>> fetchFeaturedEvents() async => const [];
 
   @override
-  Future<List<VenueEventResume>> fetchMyEvents() async => const [];
+  Future<List<UpcomingOcurrenceResume>> fetchMyEvents() async => const [];
 
   @override
   UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(

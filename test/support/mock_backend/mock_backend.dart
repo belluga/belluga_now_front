@@ -9,10 +9,10 @@ import 'mock_favorite_backend.dart';
 import 'mock_account_profiles_backend.dart';
 import 'mock_schedule_backend.dart';
 import 'mock_tenant_backend.dart';
-import 'mock_venue_event_backend.dart';
+import 'mock_event_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart';
-import 'package:belluga_now/infrastructure/dal/dao/venue_event_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/event_backend_contract.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 
 class MockBackend extends BackendContract {
@@ -43,7 +43,7 @@ class MockBackend extends BackendContract {
   final FavoriteBackendContract favorites = MockFavoriteBackend();
 
   @override
-  final VenueEventBackendContract venueEvents = MockVenueEventBackend();
+  final EventBackendContract events = MockEventBackend();
 
   @override
   final ScheduleBackendContract schedule = MockScheduleBackend();

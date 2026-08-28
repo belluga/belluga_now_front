@@ -53,7 +53,7 @@ import 'package:belluga_now/domain/repositories/user_location_repository_contrac
 import 'package:belluga_now/domain/repositories/value_objects/telemetry_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/static_assets/public_static_asset_model.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_duration_value.dart';
 import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
@@ -1824,7 +1824,7 @@ class MapScreenController implements Disposable {
   }
 
   String? _resolveEventCoverImageUrl(EventModel event) {
-    final eventImageUri = VenueEventResume.resolvePreferredImageUri(event);
+    final eventImageUri = UpcomingOcurrenceResume.resolvePreferredImageUri(event);
     final canonicalEventImageUrl = _normalizeExternalImageUrl(
       eventImageUri.toString(),
     );

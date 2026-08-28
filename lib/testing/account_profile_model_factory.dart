@@ -16,7 +16,6 @@ import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
-import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 AccountProfileModel buildAccountProfileModelFromPrimitives({
@@ -97,7 +96,7 @@ AccountProfileModel buildAccountProfileModelFromPrimitives({
 
   return AccountProfileModel(
     idValue: MongoIDValue()..parse(id),
-    nameValue: TitleValue()..parse(name),
+    nameValue: AccountProfileNameValue()..parse(name),
     slugValue: SlugValue()..parse(slug),
     profileTypeValue: AccountProfileTypeValue(type),
     avatarValue: avatarValue,

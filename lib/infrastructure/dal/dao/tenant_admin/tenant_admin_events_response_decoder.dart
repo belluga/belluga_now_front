@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_head_mutation_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_label_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
@@ -114,6 +115,35 @@ class TenantAdminEventsResponseDecoder {
       occurrenceIdValue: tenantAdminOptionalText(item['occurrence_id']),
       deletedGroupIdValue: tenantAdminOptionalText(item['deleted_group_id']),
       groups: _decodeProfileGroups(rawGroups),
+    );
+  }
+
+  TenantAdminNestedGroupLabelMutationResult
+  decodeOccurrenceGroupLabelMutationResult(Object? rawResponse) {
+    final item = _envelopeDecoder.decodeItemMap(
+      rawResponse,
+      label: 'occurrence group label mutation result',
+    );
+    final rawGroup = item['group'];
+    if (rawGroup is! Map) {
+      throw const FormatException(
+        'Invalid occurrence group label mutation response.',
+      );
+    }
+    final group = Map<String, dynamic>.from(rawGroup);
+    final id = _asString(group['id']);
+    final label = _asString(group['label']);
+    if (id == null ||
+        label == null ||
+        id.trim().isEmpty ||
+        label.trim().isEmpty) {
+      throw const FormatException(
+        'Invalid occurrence group label mutation response.',
+      );
+    }
+    return TenantAdminNestedGroupLabelMutationResult(
+      idValue: TenantAdminNestedProfileGroupTextValue(id),
+      labelValue: TenantAdminNestedProfileGroupTextValue(label),
     );
   }
 

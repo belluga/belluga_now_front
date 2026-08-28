@@ -15,7 +15,7 @@ import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_p
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 
 final class InviteFromEventFactory {
   InviteFromEventFactory._();
@@ -36,7 +36,7 @@ final class InviteFromEventFactory {
       defaultValue: fallbackImageUri,
       isRequired: true,
     )..parse(fallbackImageUri.toString());
-    final imageUrl = VenueEventResume.resolvePreferredImageUri(
+    final imageUrl = UpcomingOcurrenceResume.resolvePreferredImageUri(
       event,
       settingsDefaultImageValue: fallbackImageValue,
     ).toString();

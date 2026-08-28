@@ -31,6 +31,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_unknown_mutation_failure.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
@@ -41,6 +42,7 @@ import 'package:belluga_now/presentation/tenant_admin/events/models/tenant_admin
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_type_form_state.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_nested_profile_group_operations.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/models/tenant_admin_group_label_mutation_state.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:image_picker/image_picker.dart';
@@ -355,6 +357,185 @@ class TenantAdminEventsController implements Disposable {
       StreamValue<List<String>>(defaultValue: const []);
 
   bool _isDisposed = false;
+  final Map<String, StreamValue<TenantAdminGroupLabelMutationState>>
+  _occurrenceGroupLabelStates = {};
+
+  String _occurrenceGroupLabelKey(
+    String eventId,
+    String occurrenceId,
+    String groupId,
+  ) {
+    final tenantScope = _lastTenantDomain ?? 'unscoped';
+    return 'event_occurrence::$tenantScope::$eventId::$occurrenceId::$groupId';
+  }
+
+  StreamValue<TenantAdminGroupLabelMutationState> occurrenceGroupLabelState({
+    required String eventId,
+    required String occurrenceId,
+    required String groupId,
+    required String label,
+  }) => _occurrenceGroupLabelStates.putIfAbsent(
+    _occurrenceGroupLabelKey(eventId, occurrenceId, groupId),
+    () => StreamValue<TenantAdminGroupLabelMutationState>(
+      defaultValue: TenantAdminGroupLabelMutationState(draft: label),
+    ),
+  );
+
+  void _clearOccurrenceGroupLabelStates() {
+    for (final state in _occurrenceGroupLabelStates.values) {
+      state.dispose();
+    }
+    _occurrenceGroupLabelStates.clear();
+  }
+
+  void beginOccurrenceGroupLabelEdit({
+    required String eventId,
+    required String occurrenceId,
+    required String groupId,
+    required String label,
+  }) {
+    final state = occurrenceGroupLabelState(
+      eventId: eventId,
+      occurrenceId: occurrenceId,
+      groupId: groupId,
+      label: label,
+    );
+    state.addValue(
+      TenantAdminGroupLabelMutationState(
+        draft: state.value.draft,
+        isEditing: true,
+      ),
+    );
+  }
+
+  void changeOccurrenceGroupLabelDraft({
+    required String eventId,
+    required String occurrenceId,
+    required String groupId,
+    required String label,
+  }) {
+    final state = occurrenceGroupLabelState(
+      eventId: eventId,
+      occurrenceId: occurrenceId,
+      groupId: groupId,
+      label: label,
+    );
+    state.addValue(
+      TenantAdminGroupLabelMutationState(draft: label, isEditing: true),
+    );
+  }
+
+  Future<void> saveOccurrenceGroupLabel({
+    required String eventId,
+    required String occurrenceId,
+    required String occurrenceKey,
+    required String groupId,
+    required String authoritativeLabel,
+  }) async {
+    final key = _occurrenceGroupLabelKey(eventId, occurrenceId, groupId);
+    final state = occurrenceGroupLabelState(
+      eventId: eventId,
+      occurrenceId: occurrenceId,
+      groupId: groupId,
+      label: authoritativeLabel,
+    );
+    bool isCurrentState() => identical(_occurrenceGroupLabelStates[key], state);
+    if (state.value.isLoading) return;
+    final label = state.value.draft.trim();
+    if (label == authoritativeLabel.trim()) {
+      state.addValue(
+        TenantAdminGroupLabelMutationState(draft: authoritativeLabel),
+      );
+      return;
+    }
+    if (label.isEmpty) {
+      state.addValue(
+        TenantAdminGroupLabelMutationState(
+          draft: state.value.draft,
+          isEditing: true,
+          errorText: 'Nome da aba é obrigatório.',
+        ),
+      );
+      return;
+    }
+    if (label.length > TenantAdminGroupLabelMutationState.maxLabelLength) {
+      state.addValue(
+        TenantAdminGroupLabelMutationState(
+          draft: state.value.draft,
+          isEditing: true,
+          errorText: 'Nome da aba deve ter no máximo 255 caracteres.',
+        ),
+      );
+      return;
+    }
+    state.addValue(
+      TenantAdminGroupLabelMutationState(
+        draft: label,
+        isEditing: true,
+        isLoading: true,
+      ),
+    );
+    try {
+      final result = await _eventsRepository.patchOccurrenceProfileGroupLabel(
+        eventId: _toEventsText(eventId),
+        occurrenceId: _toEventsText(occurrenceId),
+        groupId: _toEventsText(groupId),
+        label: _toEventsText(label),
+      );
+      if (_isDisposed || !isCurrentState()) {
+        return;
+      }
+      if (result.id != groupId) {
+        throw const FormatException(
+          'Occurrence group label response id mismatch.',
+        );
+      }
+      _replaceOccurrenceByKey(
+        occurrenceKey,
+        (occurrence) => _copyOccurrence(
+          occurrence,
+          profileGroups: occurrence.profileGroups
+              .map(
+                (entry) => entry.id == groupId
+                    ? entry.copyWith(
+                        labelValue: TenantAdminNestedProfileGroupTextValue(
+                          result.label,
+                        ),
+                      )
+                    : entry,
+              )
+              .toList(growable: false),
+        ),
+        sort: false,
+      );
+      state.addValue(TenantAdminGroupLabelMutationState(draft: result.label));
+    } on TenantAdminUnknownMutationFailure {
+      if (!_isDisposed && isCurrentState()) {
+        state.addValue(
+          TenantAdminGroupLabelMutationState(
+            draft: label,
+            isEditing: true,
+            errorText:
+                'Não foi possível confirmar o salvamento. Tente novamente.',
+          ),
+        );
+      }
+    } catch (error) {
+      if (!_isDisposed && isCurrentState()) {
+        state.addValue(
+          TenantAdminGroupLabelMutationState(
+            draft: label,
+            isEditing: true,
+            errorText: _describeGroupLabelError(
+              error,
+              'Não foi possível salvar o grupo.',
+            ),
+          ),
+        );
+      }
+    }
+  }
+
   bool _eventValidationListenersBound = false;
   bool _submitInFlight = false;
   bool _isFetchingAccountProfilePickerPage = false;
@@ -720,6 +901,7 @@ class TenantAdminEventsController implements Disposable {
     eventTitleController.text = existingEvent?.title ?? '';
     eventContentController.text = SafeRichHtml.canonicalize(
       existingEvent?.content ?? '',
+      allowExplicitHttpsLinks: true,
     );
     eventOnlineUrlController.text = existingEvent?.location?.online?.url ?? '';
     eventOnlinePlatformController.text =
@@ -3516,6 +3698,29 @@ class TenantAdminEventsController implements Disposable {
     return message;
   }
 
+  String _describeGroupLabelError(Object error, String fallback) {
+    if (error is! FormValidationFailure) {
+      return fallback;
+    }
+
+    final messages = <String>[...?error.fieldErrors['label'], error.message];
+    for (final message in messages) {
+      final normalized = message.trim();
+      if (_isSafeGroupLabelValidationMessage(normalized)) {
+        return normalized;
+      }
+    }
+    return fallback;
+  }
+
+  bool _isSafeGroupLabelValidationMessage(String value) =>
+      value.isNotEmpty &&
+      value.length <= TenantAdminGroupLabelMutationState.maxLabelLength &&
+      !RegExp(
+        r'https?://|<[^>]*>|[\r\n]',
+        caseSensitive: false,
+      ).hasMatch(value);
+
   void clearEventValidation() {
     eventValidationController.clearAll();
   }
@@ -3697,6 +3902,7 @@ class TenantAdminEventsController implements Disposable {
     eventCoverRemoveStreamValue.addValue(false);
     _eventFormInitialFingerprint = null;
     occurrenceProfileGroupMutationBusyStreamValue.addValue(false);
+    _clearOccurrenceGroupLabelStates();
     clearSubmitMessages();
   }
 
@@ -4104,7 +4310,10 @@ class TenantAdminEventsController implements Disposable {
   String _eventFormFingerprint() {
     return jsonEncode(<String, Object?>{
       'title': eventTitleController.text,
-      'content': SafeRichHtml.canonicalize(eventContentController.text),
+      'content': SafeRichHtml.canonicalize(
+        eventContentController.text,
+        allowExplicitHttpsLinks: true,
+      ),
       'startText': eventStartController.text,
       'endText': eventEndController.text,
       'publishText': eventPublishAtController.text,
@@ -4556,6 +4765,7 @@ class TenantAdminEventsController implements Disposable {
     temporalFilterStreamValue.dispose();
     submitLoadingStreamValue.dispose();
     occurrenceProfileGroupMutationBusyStreamValue.dispose();
+    _clearOccurrenceGroupLabelStates();
     submitErrorMessageStreamValue.dispose();
     submitSuccessMessageStreamValue.dispose();
     eventTypeCatalogStreamValue.dispose();

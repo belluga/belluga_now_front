@@ -11,6 +11,8 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_buck
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_head_mutation_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_label_mutation_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_unknown_mutation_failure.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_page.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
@@ -23,6 +25,7 @@ import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_eve
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_events_response_decoder.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_pagination_utils.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/support/tenant_admin_validation_failure_resolver.dart';
+import 'package:belluga_now/infrastructure/repositories/tenant_admin/support/tenant_admin_request_correlation.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
@@ -435,6 +438,43 @@ class TenantAdminEventsRepository
         context: 'delete occurrence profile group',
         uri: uri,
       );
+    }
+  }
+
+  @override
+  Future<TenantAdminNestedGroupLabelMutationResult>
+  patchOccurrenceProfileGroupLabel({
+    required TenantAdminEventsRepoString eventId,
+    required TenantAdminEventsRepoString occurrenceId,
+    required TenantAdminEventsRepoString groupId,
+    required TenantAdminEventsRepoString label,
+  }) async {
+    final uri =
+        '$_apiBaseUrl/v1/events/${eventId.value}/occurrences/${occurrenceId.value}/profile_groups/${groupId.value}';
+    final correlation = TenantAdminRequestCorrelation.create();
+    try {
+      final response = await _dio.patch(
+        uri,
+        data: _requestEncoder.encodePatchOccurrenceProfileGroupLabel(
+          label: label.value,
+        ),
+        options: Options(
+          headers: {..._buildLandlordHeaders(), ...correlation.headers()},
+        ),
+      );
+      tenantAdminAssertSuccessfulMutationResponse(
+        response,
+        label: 'patch occurrence profile group label',
+        uri: uri,
+      );
+      return _responseDecoder.decodeOccurrenceGroupLabelMutationResult(
+        response.data,
+      );
+    } on DioException catch (error) {
+      if (error.response == null) {
+        throw const TenantAdminUnknownMutationFailure();
+      }
+      throw _wrapMutationError(error, 'patch occurrence profile group label');
     }
   }
 

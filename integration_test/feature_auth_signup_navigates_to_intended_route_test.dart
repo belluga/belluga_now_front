@@ -21,7 +21,7 @@ import 'package:belluga_now/domain/repositories/value_objects/user_events_reposi
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_bool_value.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/app_data_backend/app_data_backend_stub.dart';
 import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_source.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
@@ -370,10 +370,10 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
           defaultValue: const {});
 
   @override
-  Future<List<VenueEventResume>> fetchMyEvents() async => const [];
+  Future<List<UpcomingOcurrenceResume>> fetchMyEvents() async => const [];
 
   @override
-  Future<List<VenueEventResume>> fetchFeaturedEvents() async => const [];
+  Future<List<UpcomingOcurrenceResume>> fetchFeaturedEvents() async => const [];
 
   @override
   Future<void> confirmEventAttendance(

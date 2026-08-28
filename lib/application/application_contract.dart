@@ -42,6 +42,7 @@ import 'package:belluga_now/presentation/shared/widgets/tenant_public_web_deskto
 import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_quill/flutter_quill.dart';
 import 'package:phone_form_field/phone_form_field.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
@@ -1231,6 +1232,7 @@ class _ApplicationContractState extends State<ApplicationContract>
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
+            ...FlutterQuillLocalizations.localizationsDelegates,
             ...PhoneFieldLocalization.delegates,
           ],
           themeMode: resolvedThemeMode,

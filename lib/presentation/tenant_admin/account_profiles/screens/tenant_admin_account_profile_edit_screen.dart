@@ -962,7 +962,42 @@ class _TenantAdminAccountProfileEditScreenState
                                                   ),
                                                   onAddGroup:
                                                       _createNestedGroupHead,
-                                                  onRenameGroup: (_, _) {},
+                                                  groupLabelState: (group) =>
+                                                      _controller
+                                                          .nestedGroupLabelState(
+                                                            accountProfileId:
+                                                                _currentAccountProfileIdForRequests(),
+                                                            groupId: group.id,
+                                                            label: group.label,
+                                                          ),
+                                                  onBeginGroupLabelEdit:
+                                                      (group) => _controller
+                                                          .beginNestedGroupLabelEdit(
+                                                            accountProfileId:
+                                                                _currentAccountProfileIdForRequests(),
+                                                            groupId: group.id,
+                                                            label: group.label,
+                                                          ),
+                                                  onChangeGroupLabelDraft:
+                                                      (
+                                                        group,
+                                                        label,
+                                                      ) => _controller
+                                                          .changeNestedGroupLabelDraft(
+                                                            accountProfileId:
+                                                                _currentAccountProfileIdForRequests(),
+                                                            groupId: group.id,
+                                                            label: label,
+                                                          ),
+                                                  onSaveGroupLabel: (group) =>
+                                                      _controller
+                                                          .saveNestedGroupLabel(
+                                                            accountProfileId:
+                                                                _currentAccountProfileIdForRequests(),
+                                                            groupId: group.id,
+                                                            authoritativeLabel:
+                                                                group.label,
+                                                          ),
                                                   onMoveGroup: (_, _) {},
                                                   onRemoveGroup:
                                                       _deleteNestedGroupHead,
@@ -974,7 +1009,11 @@ class _TenantAdminAccountProfileEditScreenState
                                                           null
                                                       ? 'Aguarde o carregamento do perfil.'
                                                       : '',
-                                                  enableLabelEditing: false,
+                                                  enableLabelEditing:
+                                                      _controller
+                                                          .accountProfileStreamValue
+                                                          .value !=
+                                                      null,
                                                   enableReorder: false,
                                                   onManageGroup: (group) async {
                                                     _controller
@@ -1401,12 +1440,7 @@ class _TenantAdminAccountProfileEditScreenState
             controller: _controller.displayNameController,
             decoration: const InputDecoration(labelText: 'Nome de exibicao'),
             textInputAction: TextInputAction.next,
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Nome de exibicao e obrigatorio.';
-              }
-              return null;
-            },
+            validator: _controller.validateDisplayName,
           ),
         ],
       ),
@@ -1435,6 +1469,7 @@ class _TenantAdminAccountProfileEditScreenState
               minHeight: 160,
               maxContentBytes: accountProfileRichTextMaxBytes,
               warningThreshold: accountProfileRichTextWarningThreshold,
+              allowExplicitHttpsLinks: true,
             ),
           ],
           if (hasContent) ...[
@@ -1446,6 +1481,7 @@ class _TenantAdminAccountProfileEditScreenState
               minHeight: 220,
               maxContentBytes: accountProfileRichTextMaxBytes,
               warningThreshold: accountProfileRichTextWarningThreshold,
+              allowExplicitHttpsLinks: true,
             ),
           ],
           if (_hasTaxonomies(state.selectedProfileType)) ...[

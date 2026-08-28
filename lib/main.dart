@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_quill/flutter_quill.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:belluga_now/application/application_contract.dart';
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
@@ -126,6 +127,7 @@ class _StartupBootstrapErrorAppState extends State<_StartupBootstrapErrorApp> {
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
+        ...FlutterQuillLocalizations.localizationsDelegates,
         ...PhoneFieldLocalization.delegates,
       ],
       home: Scaffold(

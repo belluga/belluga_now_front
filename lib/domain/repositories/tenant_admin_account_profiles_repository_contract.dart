@@ -6,6 +6,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dar
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_update.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_head_mutation_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_label_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
@@ -183,6 +184,17 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     throw UnimplementedError(
       'deleteNestedProfileGroup must be implemented by tenant-admin '
       'account-profile repositories.',
+    );
+  }
+
+  Future<TenantAdminNestedGroupLabelMutationResult>
+  patchNestedProfileGroupLabel({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminAccountProfilesRepoString label,
+  }) async {
+    throw UnimplementedError(
+      'patchNestedProfileGroupLabel must be implemented by tenant-admin account-profile repositories.',
     );
   }
 

@@ -44,7 +44,7 @@ import 'package:belluga_now/domain/user/friend.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:belluga_now/presentation/shared/init/screens/init_screen/controllers/init_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart';
@@ -271,42 +271,42 @@ void main() {
     },
   );
 
-  testWidgets(
-    'invite fallback navigation reaches tenant home without framework exceptions',
-    (tester) async {
-      _takeAllExceptions(tester);
-      _registerTenantBootstrapDependencies(
-        invitesRepository: _FakeInvitesRepository(false, previewInvite: null),
-        authRepository: _FakeAuthRepository(authorized: false),
-      );
+  testWidgets('canonical InviteEntry root falls back to one tenant home', (
+    tester,
+  ) async {
+    _takeAllExceptions(tester);
+    _registerTenantBootstrapDependencies(
+      invitesRepository: _FakeInvitesRepository(false, previewInvite: null),
+      authRepository: _FakeAuthRepository(authorized: false),
+    );
 
-      final homeModule = HomeModule();
-      final invitesModule = InvitesModule();
-      GetIt.I.registerSingleton<HomeModule>(homeModule);
-      GetIt.I.registerSingleton<InvitesModule>(invitesModule);
-      final router = AppRouter()..setChildModules([homeModule, invitesModule]);
+    final homeModule = HomeModule();
+    final invitesModule = InvitesModule();
+    GetIt.I.registerSingleton<HomeModule>(homeModule);
+    GetIt.I.registerSingleton<InvitesModule>(invitesModule);
+    final router = AppRouter()..setChildModules([homeModule, invitesModule]);
 
-      await tester.pumpWidget(
-        MaterialApp.router(routerConfig: router.config()),
-      );
-      await tester.pump();
-      await _pumpFrames(tester);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router.config()));
+    await tester.pump();
+    await _pumpFrames(tester);
 
-      unawaited(router.pushPath('/invite?code=INVALID'));
-      await tester.pump();
-      await _pumpFrames(tester, count: 40);
+    unawaited(router.replacePath('/invite?code=INVALID'));
+    await tester.pump();
+    await _pumpFrames(tester, count: 40);
 
-      final asyncExceptions = _takeAllExceptions(tester);
+    final asyncExceptions = _takeAllExceptions(tester);
 
-      expect(
-        asyncExceptions,
-        isEmpty,
-        reason: _formatAsyncExceptions(asyncExceptions),
-      );
-      expect(router.current.name, TenantHomeRoute.name);
-      expect(find.text('Seus Favoritos'), findsOneWidget);
-    },
-  );
+    expect(
+      asyncExceptions,
+      isEmpty,
+      reason: _formatAsyncExceptions(asyncExceptions),
+    );
+    expect(router.current.name, TenantHomeRoute.name);
+    expect(router.stackData.map((route) => route.name), <String>[
+      TenantHomeRoute.name,
+    ]);
+    expect(find.text('Seus Favoritos'), findsOneWidget);
+  });
 }
 
 Future<void> _pumpFrames(WidgetTester tester, {int count = 20}) async {
@@ -422,9 +422,9 @@ void _registerTenantBootstrapDependencies({
       ),
     ),
   );
-  when(
-    mockController.myEventsFilteredStreamValue,
-  ).thenReturn(StreamValue<List<VenueEventResume>>(defaultValue: const []));
+  when(mockController.myEventsFilteredStreamValue).thenReturn(
+    StreamValue<List<UpcomingOcurrenceResume>>(defaultValue: const []),
+  );
   when(mockController.scrollController).thenReturn(testScrollController);
 
   when(
@@ -629,10 +629,10 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   }) async {}
 
   @override
-  Future<List<VenueEventResume>> fetchFeaturedEvents() async => const [];
+  Future<List<UpcomingOcurrenceResume>> fetchFeaturedEvents() async => const [];
 
   @override
-  Future<List<VenueEventResume>> fetchMyEvents() async => const [];
+  Future<List<UpcomingOcurrenceResume>> fetchMyEvents() async => const [];
 
   @override
   UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(

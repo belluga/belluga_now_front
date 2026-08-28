@@ -8,7 +8,7 @@ import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/presentation/shared/location_permission/location_origin_message_resolver.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/models/home_location_status_state.dart';
@@ -45,8 +45,8 @@ class TenantHomeController implements Disposable {
 
   final StreamValue<HomeLocationStatusState?> homeLocationStatusStreamValue =
       StreamValue<HomeLocationStatusState?>(defaultValue: null);
-  final StreamValue<List<VenueEventResume>> myEventsFilteredStreamValue =
-      StreamValue<List<VenueEventResume>>(defaultValue: const []);
+  final StreamValue<List<UpcomingOcurrenceResume>> myEventsFilteredStreamValue =
+      StreamValue<List<UpcomingOcurrenceResume>>(defaultValue: const []);
 
   ScrollController get scrollController => _scrollController;
 
@@ -73,7 +73,7 @@ class TenantHomeController implements Disposable {
   Future<void> loadMyEvents() async {
     if (_authRepository != null && !_authRepository.isAuthorized) {
       if (_isDisposed) return;
-      myEventsFilteredStreamValue.addValue(const <VenueEventResume>[]);
+      myEventsFilteredStreamValue.addValue(const <UpcomingOcurrenceResume>[]);
       return;
     }
 
@@ -107,7 +107,7 @@ class TenantHomeController implements Disposable {
     });
   }
 
-  void _updateMyEvents(List<VenueEventResume> events) {
+  void _updateMyEvents(List<UpcomingOcurrenceResume> events) {
     if (_isDisposed) return;
     myEventsFilteredStreamValue.addValue(_filterConfirmedUpcoming(events));
   }
@@ -120,8 +120,8 @@ class TenantHomeController implements Disposable {
         .listen(_publishHomeLocationStatus);
   }
 
-  List<VenueEventResume> _filterConfirmedUpcoming(
-    List<VenueEventResume> events,
+  List<UpcomingOcurrenceResume> _filterConfirmedUpcoming(
+    List<UpcomingOcurrenceResume> events,
   ) {
     final now = DateTime.now();
     return events.where((event) {
@@ -140,7 +140,7 @@ class TenantHomeController implements Disposable {
     return events.first.slug;
   }
 
-  String? distanceLabelForMyEvent(VenueEventResume event) {
+  String? distanceLabelForMyEvent(UpcomingOcurrenceResume event) {
     if (_isDisposed) return null;
     final userCoordinate = _resolveHomeDistanceReferenceCoordinate();
     final eventCoordinate = event.coordinate;

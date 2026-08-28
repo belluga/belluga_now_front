@@ -5,6 +5,7 @@ import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_nes
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_nested_group_member_page_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_profile_type_dto.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_head_mutation_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_label_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
@@ -90,6 +91,35 @@ class TenantAdminAccountProfilesResponseDecoder {
     );
   }
 
+  TenantAdminNestedGroupLabelMutationResult
+  decodeNestedGroupLabelMutationResult(Object? rawResponse) {
+    final item = _envelopeDecoder.decodeItemMap(
+      rawResponse,
+      label: 'nested group label mutation result',
+    );
+    final rawGroup = item['group'];
+    if (rawGroup is! Map) {
+      throw const FormatException(
+        'Invalid nested group label mutation response.',
+      );
+    }
+    final group = Map<String, dynamic>.from(rawGroup);
+    final id = _asString(group['id']);
+    final label = _asString(group['label']);
+    if (id == null ||
+        label == null ||
+        id.trim().isEmpty ||
+        label.trim().isEmpty) {
+      throw const FormatException(
+        'Invalid nested group label mutation response.',
+      );
+    }
+    return TenantAdminNestedGroupLabelMutationResult(
+      idValue: TenantAdminNestedProfileGroupTextValue(id),
+      labelValue: TenantAdminNestedProfileGroupTextValue(label),
+    );
+  }
+
   TenantAdminProfileTypeDTO decodeProfileTypeItem(Object? rawResponse) {
     return TenantAdminProfileTypeDTO.fromJson(
       _envelopeDecoder.decodeItemMap(rawResponse, label: 'profile type'),
@@ -116,24 +146,38 @@ class TenantAdminAccountProfilesResponseDecoder {
   }
 
   TenantAdminNestedProfileGroup? _decodeNestedProfileGroup(
-    Map<String, dynamic> row,
-  ) {
+    Map<String, dynamic> row, {
+    bool requireCompleteNumbers = false,
+  }) {
     final id = _asString(row['id']);
     final label = _asString(row['label']);
     if (id == null || label == null) {
       return null;
     }
 
+    final order = requireCompleteNumbers
+        ? _strictNonNegativeInt(row['order'])
+        : _asInt(row['order']);
+    final memberCount = requireCompleteNumbers
+        ? _strictNonNegativeInt(row['member_count'])
+        : _asInt(row['member_count']);
+    if (order == null || memberCount == null) {
+      return null;
+    }
+
     return TenantAdminNestedProfileGroup(
       idValue: TenantAdminNestedProfileGroupTextValue(id),
       labelValue: TenantAdminNestedProfileGroupTextValue(label),
-      orderValue: TenantAdminNestedProfileGroupOrderValue(_asInt(row['order'])),
-      memberCountValue: TenantAdminCountValue(_asInt(row['member_count'])),
+      orderValue: TenantAdminNestedProfileGroupOrderValue(order),
+      memberCountValue: TenantAdminCountValue(memberCount),
     );
   }
 
   String? _asString(Object? raw) {
-    final normalized = raw?.toString().trim() ?? '';
+    if (raw is! String) {
+      return null;
+    }
+    final normalized = raw.trim();
     if (normalized.isEmpty) {
       return null;
     }
@@ -145,5 +189,13 @@ class TenantAdminAccountProfilesResponseDecoder {
       return raw.toInt();
     }
     return int.tryParse(raw?.toString() ?? '') ?? 0;
+  }
+
+  int? _strictNonNegativeInt(Object? raw) {
+    if (raw is! num || !raw.isFinite || raw != raw.truncateToDouble()) {
+      return null;
+    }
+    final value = raw.toInt();
+    return value < 0 ? null : value;
   }
 }

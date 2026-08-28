@@ -13,80 +13,81 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:value_object_pattern/domain/value_objects/generic_string_value.dart';
 
 void main() {
-  test('fetchCurrentProfile stores the canonical self profile in stream',
-      () async {
-    final backend = _FakeSelfProfileBackend(
-      fetchResult: const SelfProfileDto(
-        userId: '507f1f77bcf86cd799439011',
-        accountProfileId: '507f1f77bcf86cd799439012',
-        displayName: 'Perfil Atual',
-        bio: 'Bio atual',
-        phone: '+55 27 99876-1234',
-        avatarUrl: 'https://tenant.test/avatar.png',
-        pendingInvitesCount: 2,
-        confirmedEventsCount: 5,
-        timezone: 'America/Sao_Paulo',
-      ),
-    );
-    final repository = SelfProfileRepository(backend: backend);
+  test(
+    'fetchCurrentProfile maps the canonical self profile without publishing',
+    () async {
+      final backend = _FakeSelfProfileBackend(
+        fetchResult: const SelfProfileDto(
+          userId: '507f1f77bcf86cd799439011',
+          accountProfileId: '507f1f77bcf86cd799439012',
+          displayName: 'Perfil Atual',
+          bio: 'Bio atual',
+          phone: '+55 27 99876-1234',
+          avatarUrl: 'https://tenant.test/avatar.png',
+          pendingInvitesCount: 2,
+          confirmedEventsCount: 5,
+          timezone: 'America/Sao_Paulo',
+        ),
+      );
+      final repository = SelfProfileRepository(backend: backend);
 
-    final profile = await repository.fetchCurrentProfile();
+      final profile = await repository.fetchCurrentProfile();
 
-    expect(profile.displayName, 'Perfil Atual');
-    expect(repository.currentProfileStreamValue.value?.displayName,
-        'Perfil Atual');
-    expect(repository.currentProfileStreamValue.value?.pendingInvitesCount, 2);
-  });
-
-  test('updateCurrentProfile refreshes and exposes the latest backend profile',
-      () async {
-    final backend = _FakeSelfProfileBackend(
-      fetchResult: const SelfProfileDto(
-        userId: '507f1f77bcf86cd799439011',
-        accountProfileId: '507f1f77bcf86cd799439012',
-        displayName: 'Perfil Atualizado',
-        bio: 'Nova bio',
-        phone: '+55 27 99876-1234',
-        avatarUrl: null,
-        pendingInvitesCount: 1,
-        confirmedEventsCount: 9,
-        timezone: 'America/Sao_Paulo',
-      ),
-    );
-    final repository = SelfProfileRepository(backend: backend);
-    final displayNameValue =
-        UserDisplayNameValue(isRequired: false, minLenght: null)
-          ..parse('Perfil Atualizado');
-    final bioValue = DescriptionValue(defaultValue: '', minLenght: null)
-      ..parse('Nova bio');
-    final timezoneValue = UserTimezoneValue()..parse('America/Sao_Paulo');
-    final removeAvatarValue = DomainBooleanValue(defaultValue: false)
-      ..parse('true');
-
-    final updated = await repository.updateCurrentProfile(
-      displayNameValue: displayNameValue,
-      bioValue: bioValue,
-      timezoneValue: timezoneValue,
-      removeAvatarValue: removeAvatarValue,
-    );
-
-    expect(backend.updateCalls, 2);
-    expect(backend.updateSnapshots[0].displayName, 'Perfil Atualizado');
-    expect(backend.updateSnapshots[0].bio, 'Nova bio');
-    expect(backend.updateSnapshots[0].timezone, 'America/Sao_Paulo');
-    expect(backend.updateSnapshots[0].removeAvatar, isNull);
-    expect(backend.updateSnapshots[1].displayName, isNull);
-    expect(backend.updateSnapshots[1].bio, isNull);
-    expect(backend.updateSnapshots[1].timezone, isNull);
-    expect(backend.updateSnapshots[1].removeAvatar, isTrue);
-    expect(updated.displayName, 'Perfil Atualizado');
-    expect(updated.confirmedEventsCount, 9);
-    expect(repository.currentProfileStreamValue.value?.displayName,
-        'Perfil Atualizado');
-  });
+      expect(profile.displayName, 'Perfil Atual');
+      expect(repository.currentProfileStreamValue.value, isNull);
+    },
+  );
 
   test(
-    'mixed text and avatar updates split backend mutations and refresh once',
+    'updateCurrentProfile refreshes and exposes the latest backend profile',
+    () async {
+      final backend = _FakeSelfProfileBackend(
+        fetchResult: const SelfProfileDto(
+          userId: '507f1f77bcf86cd799439011',
+          accountProfileId: '507f1f77bcf86cd799439012',
+          displayName: 'Perfil Atualizado',
+          bio: 'Nova bio',
+          phone: '+55 27 99876-1234',
+          avatarUrl: null,
+          pendingInvitesCount: 1,
+          confirmedEventsCount: 9,
+          timezone: 'America/Sao_Paulo',
+        ),
+      );
+      final repository = SelfProfileRepository(backend: backend);
+      final displayNameValue = UserDisplayNameValue(
+        isRequired: false,
+        minLenght: null,
+      )..parse('Perfil Atualizado');
+      final bioValue = DescriptionValue(defaultValue: '', minLenght: null)
+        ..parse('Nova bio');
+      final timezoneValue = UserTimezoneValue()..parse('America/Sao_Paulo');
+      final removeAvatarValue = DomainBooleanValue(defaultValue: false)
+        ..parse('true');
+
+      final updated = await repository.updateCurrentProfile(
+        displayNameValue: displayNameValue,
+        bioValue: bioValue,
+        timezoneValue: timezoneValue,
+        removeAvatarValue: removeAvatarValue,
+      );
+
+      expect(backend.updateCalls, 1);
+      expect(backend.updateSnapshots[0].displayName, 'Perfil Atualizado');
+      expect(backend.updateSnapshots[0].bio, 'Nova bio');
+      expect(backend.updateSnapshots[0].timezone, 'America/Sao_Paulo');
+      expect(backend.updateSnapshots[0].removeAvatar, isTrue);
+      expect(updated.displayName, 'Perfil Atualizado');
+      expect(updated.confirmedEventsCount, 9);
+      expect(
+        repository.currentProfileStreamValue.value?.displayName,
+        'Perfil Atualizado',
+      );
+    },
+  );
+
+  test(
+    'mixed text and avatar updates use one mutation then one refresh publication',
     () async {
       final backend = _FakeSelfProfileBackend(
         fetchResult: const SelfProfileDto(
@@ -102,9 +103,10 @@ void main() {
         ),
       );
       final repository = SelfProfileRepository(backend: backend);
-      final displayNameValue =
-          UserDisplayNameValue(isRequired: false, minLenght: null)
-            ..parse('Perfil Atualizado');
+      final displayNameValue = UserDisplayNameValue(
+        isRequired: false,
+        minLenght: null,
+      )..parse('Perfil Atualizado');
       final avatarUpload = UserProfileMediaUpload(
         bytesValue: UserProfileMediaBytesValue()
           ..set(Uint8List.fromList([1, 2, 3])),
@@ -119,11 +121,9 @@ void main() {
         avatarUpload: avatarUpload,
       );
 
-      expect(backend.updateCalls, 2);
+      expect(backend.updateCalls, 1);
       expect(backend.updateSnapshots[0].displayName, 'Perfil Atualizado');
-      expect(backend.updateSnapshots[0].avatarUpload, isNull);
-      expect(backend.updateSnapshots[1].displayName, isNull);
-      expect(backend.updateSnapshots[1].avatarUpload, isNotNull);
+      expect(backend.updateSnapshots[0].avatarUpload, isNotNull);
       expect(backend.fetchCalls, 1);
     },
   );

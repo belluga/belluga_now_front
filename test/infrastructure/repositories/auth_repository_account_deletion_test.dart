@@ -11,14 +11,12 @@ import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/contacts/contacts_local_cache_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/favorite_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart';
-import 'package:belluga_now/infrastructure/dal/dao/venue_event_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/event_backend_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/auth_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/contacts_repository.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 import 'package:belluga_now/infrastructure/user/dtos/user_dto.dart';
 import 'package:belluga_now/infrastructure/user/dtos/user_profile_dto.dart';
-import 'package:belluga_now/domain/user/profile_avatar_storage_contract.dart';
-import 'package:belluga_now/domain/user/value_objects/profile_avatar_path_value.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -150,33 +148,29 @@ void main() {
   );
 
   test(
-    'local teardown failure remains unknown and blocks anonymous continuation',
+    'account deletion completes without obsolete avatar-preview teardown',
     () async {
       final auth = _FakeAuthBackend(
         deletionResult: const CurrentAccountDeletionSucceeded(),
         identityValidationResult:
             const CurrentIdentityValidationTerminalAbsent(),
       );
-      GetIt.I
-        ..registerSingleton<BackendContract>(_FakeBackend(auth))
-        ..registerSingleton<ProfileAvatarStorageContract>(
-          _ThrowingProfileAvatarStorage(),
-        );
+      GetIt.I.registerSingleton<BackendContract>(_FakeBackend(auth));
       final repository = AuthRepository();
       repository.userTokenUpdate('registered-token');
 
       final outcome = await repository.deleteCurrentAccount();
       await repository.ensureTenantPublicIdentityReady();
 
-      expect(outcome, AccountDeletionDispatchOutcome.unknown);
+      expect(outcome, AccountDeletionDispatchOutcome.confirmed);
       expect(
         repository.accountDeletionJourneyState.phase,
-        AccountDeletionJourneyPhase.unknown,
+        AccountDeletionJourneyPhase.confirmed,
       );
       expect(auth.issueAnonymousIdentityCount, 0);
       expect(
         await repository.continueAnonymouslyAfterConfirmedAccountDeletion(),
-        AccountDeletionContinuationOutcome.unavailable,
+        AccountDeletionContinuationOutcome.continued,
       );
     },
   );
@@ -394,19 +388,6 @@ class _FakeAuthBackend extends AuthBackendContract {
   }) => throw UnimplementedError();
 }
 
-class _ThrowingProfileAvatarStorage extends ProfileAvatarStorageContract {
-  @override
-  Future<void> clearAvatarPath() => Future<void>.error(StateError('disk full'));
-
-  @override
-  Future<ProfileAvatarPathValue?> readAvatarPath() =>
-      throw UnimplementedError();
-
-  @override
-  Future<void> writeAvatarPath(ProfileAvatarPathValue path) =>
-      throw UnimplementedError();
-}
-
 class _ThrowingDeleteStorage extends FlutterSecureStorage {
   @override
   Future<void> delete({
@@ -461,7 +442,7 @@ class _FakeBackend extends BackendContract {
   FavoriteBackendContract get favorites => throw UnimplementedError();
 
   @override
-  VenueEventBackendContract get venueEvents => throw UnimplementedError();
+  EventBackendContract get events => throw UnimplementedError();
 
   @override
   ScheduleBackendContract get schedule => throw UnimplementedError();

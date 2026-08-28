@@ -16,7 +16,7 @@ import 'package:belluga_now/domain/repositories/value_objects/telemetry_reposito
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_resolution_request_factory.dart';
@@ -75,7 +75,7 @@ class EventSearchScreenController
   late FocusNode focusNode;
   late ScrollController scrollController;
 
-  late StreamValue<List<VenueEventResume>> displayedEventsStreamValue;
+  late StreamValue<List<UpcomingOcurrenceResume>> displayedEventsStreamValue;
   late StreamValue<bool> isInitialLoadingStreamValue;
   late StreamValue<bool> isPageLoadingStreamValue;
   late StreamValue<bool> hasMoreStreamValue;
@@ -156,8 +156,8 @@ class EventSearchScreenController
     searchController = TextEditingController();
     focusNode = FocusNode();
     scrollController = ScrollController();
-    displayedEventsStreamValue = StreamValue<List<VenueEventResume>>(
-      defaultValue: const <VenueEventResume>[],
+    displayedEventsStreamValue = StreamValue<List<UpcomingOcurrenceResume>>(
+      defaultValue: const <UpcomingOcurrenceResume>[],
     );
     isInitialLoadingStreamValue = StreamValue<bool>(defaultValue: true);
     isPageLoadingStreamValue = StreamValue<bool>(defaultValue: false);
@@ -261,7 +261,7 @@ class EventSearchScreenController
     _ifAlive(() => hasMoreStreamValue.addValue(true));
     _fetchedEvents.clear();
     _ifAlive(
-      () => displayedEventsStreamValue.addValue(const <VenueEventResume>[]),
+      () => displayedEventsStreamValue.addValue(const <UpcomingOcurrenceResume>[]),
     );
     _ifAlive(() => isInitialLoadingStreamValue.addValue(true));
     try {
@@ -270,7 +270,7 @@ class EventSearchScreenController
         _hasMore = false;
         _ifAlive(() => hasMoreStreamValue.addValue(false));
         _ifAlive(
-          () => displayedEventsStreamValue.addValue(const <VenueEventResume>[]),
+          () => displayedEventsStreamValue.addValue(const <UpcomingOcurrenceResume>[]),
         );
         return;
       }
@@ -279,7 +279,7 @@ class EventSearchScreenController
         _hasMore = false;
         _ifAlive(() => hasMoreStreamValue.addValue(false));
         _ifAlive(
-          () => displayedEventsStreamValue.addValue(const <VenueEventResume>[]),
+          () => displayedEventsStreamValue.addValue(const <UpcomingOcurrenceResume>[]),
         );
         return;
       }
@@ -519,7 +519,7 @@ class EventSearchScreenController
     if (_isDisposed) return;
     final inviteFiltered = _applyInviteFilter(_fetchedEvents);
     displayedEventsStreamValue.addValue(
-      inviteFiltered.map(_toVenueEventResume).toList(growable: false),
+      inviteFiltered.map(_toUpcomingOcurrenceResume).toList(growable: false),
     );
     _maybeAutoPage(inviteFiltered);
   }
@@ -607,8 +607,8 @@ class EventSearchScreenController
     return ids.toList(growable: false)..sort();
   }
 
-  VenueEventResume _toVenueEventResume(EventModel event) {
-    return VenueEventResume.fromScheduleEvent(
+  UpcomingOcurrenceResume _toUpcomingOcurrenceResume(EventModel event) {
+    return UpcomingOcurrenceResume.fromScheduleEvent(
       event,
       ThumbUriValue(
         defaultValue: defaultEventImageUri,
@@ -617,7 +617,7 @@ class EventSearchScreenController
     );
   }
 
-  String? distanceLabelFor(VenueEventResume event) {
+  String? distanceLabelFor(UpcomingOcurrenceResume event) {
     final userCoordinate = _currentEffectiveOriginCoordinate();
     final eventCoordinate = event.coordinate;
     if (userCoordinate == null || eventCoordinate == null) {

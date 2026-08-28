@@ -632,7 +632,7 @@ void main() {
             'contact_channels': const [],
             'effective_contact_source': {
               'id': sourceId,
-              'display_name': 'Mirror Source',
+              'display_name': 'AGLA',
               'profile_type': 'artist',
               'slug': 'mirror-source',
             },
@@ -668,6 +668,7 @@ void main() {
 
       expect(profile, isNotNull);
       expect(profile?.contactMode.rawValue, 'mirrored_account_profile');
+      expect(profile?.effectiveContactSourceProfile?.displayName, 'AGLA');
       expect(profile?.contactChannels, isEmpty);
       expect(profile?.contactSourceAccountProfileId, sourceId);
       expect(profile?.effectiveContactSourceProfile?.id, sourceId);
@@ -907,11 +908,14 @@ void main() {
                   'display_name': 'Casa Marracini',
                   'hero_image_url': 'https://example.com/casa.jpg',
                 },
+                'counterpart_count': 5,
                 'counterpart_preview': [
                   {
                     'id': '507f1f77bcf86cd799439099',
                     'display_name': 'Marco Aurélio',
                     'avatar_url': 'https://example.com/marco.jpg',
+                    'profile_type': 'artist',
+                    'party_type': 'artist',
                   },
                 ],
               },
@@ -928,10 +932,13 @@ void main() {
                   'id': '507f1f77bcf86cd799439011',
                   'display_name': 'Casa Marracini',
                 },
+                'counterpart_count': 5,
                 'counterpart_preview': [
                   {
                     'id': '507f1f77bcf86cd799439099',
                     'display_name': 'Marco Aurélio',
+                    'profile_type': 'artist',
+                    'party_type': 'artist',
                   },
                 ],
               },
@@ -967,6 +974,15 @@ void main() {
       expect(
         profile?.agendaEvents.first.primaryCounterpart?.title,
         'Marco Aurélio',
+      );
+      expect(profile?.agendaEvents.first.counterpartCount, 5);
+      expect(
+        profile?.agendaEvents.first.primaryCounterpart?.profileType,
+        'artist',
+      );
+      expect(
+        profile?.agendaEvents.first.primaryCounterpart?.partyType,
+        'artist',
       );
       expect(profile?.agendaEvents.first.venueId, '507f1f77bcf86cd799439011');
       expect(profile?.agendaEvents.first.venueTitle, 'Casa Marracini');

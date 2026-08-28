@@ -28,7 +28,7 @@ import 'package:belluga_now/domain/repositories/value_objects/user_location_repo
 import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
 import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_source.dart';
 import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_dto.dart';
@@ -255,7 +255,7 @@ void _expectOnlyInviteFiltered(
 String _eventId(Object event) {
   return switch (event) {
     EventModel() => event.id.value,
-    VenueEventResume() => event.id,
+    UpcomingOcurrenceResume() => event.id,
     _ => throw StateError('Unsupported event type: ${event.runtimeType}'),
   };
 }
@@ -399,10 +399,10 @@ class _TestUserEventsRepository implements UserEventsRepositoryContract {
   }
 
   @override
-  Future<List<VenueEventResume>> fetchFeaturedEvents() async => const [];
+  Future<List<UpcomingOcurrenceResume>> fetchFeaturedEvents() async => const [];
 
   @override
-  Future<List<VenueEventResume>> fetchMyEvents() async => const [];
+  Future<List<UpcomingOcurrenceResume>> fetchMyEvents() async => const [];
 
   @override
   UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
@@ -1018,7 +1018,7 @@ Future<void> _pumpFor(
 
 Future<void> _waitForDisplayedEvents(
   WidgetTester tester,
-  StreamValue<List<VenueEventResume>> eventsStreamValue, {
+  StreamValue<List<UpcomingOcurrenceResume>> eventsStreamValue, {
   Duration timeout = const Duration(seconds: 5),
 }) async {
   final deadline = DateTime.now().add(timeout);

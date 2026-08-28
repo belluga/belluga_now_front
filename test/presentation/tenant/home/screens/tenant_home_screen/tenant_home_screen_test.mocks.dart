@@ -54,7 +54,7 @@ import 'package:belluga_now/domain/tenant/value_objects/tenant_id_value.dart'
     as _i18;
 import 'package:belluga_now/domain/theme_data_settings/theme_data_settings.dart'
     as _i17;
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart'
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart'
     as _i28;
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart'
     as _i40;
@@ -551,19 +551,19 @@ class MockTenantHomeController extends _i1.Mock
           ) as _i2.StreamValue<_i43.HomeLocationStatusState?>);
 
   @override
-  _i2.StreamValue<List<_i28.VenueEventResume>>
+  _i2.StreamValue<List<_i28.UpcomingOcurrenceResume>>
       get myEventsFilteredStreamValue => (super.noSuchMethod(
             Invocation.getter(#myEventsFilteredStreamValue),
-            returnValue: _FakeStreamValue_0<List<_i28.VenueEventResume>>(
+            returnValue: _FakeStreamValue_0<List<_i28.UpcomingOcurrenceResume>>(
               this,
               Invocation.getter(#myEventsFilteredStreamValue),
             ),
             returnValueForMissingStub:
-                _FakeStreamValue_0<List<_i28.VenueEventResume>>(
+                _FakeStreamValue_0<List<_i28.UpcomingOcurrenceResume>>(
               this,
               Invocation.getter(#myEventsFilteredStreamValue),
             ),
-          ) as _i2.StreamValue<List<_i28.VenueEventResume>>);
+          ) as _i2.StreamValue<List<_i28.UpcomingOcurrenceResume>>);
 
   @override
   _i3.ScrollController get scrollController => (super.noSuchMethod(
@@ -629,7 +629,7 @@ class MockTenantHomeController extends _i1.Mock
       ) as _i30.Future<void>);
 
   @override
-  String? distanceLabelForMyEvent(_i28.VenueEventResume? event) =>
+  String? distanceLabelForMyEvent(_i28.UpcomingOcurrenceResume? event) =>
       (super.noSuchMethod(
         Invocation.method(
           #distanceLabelForMyEvent,
@@ -949,7 +949,7 @@ class MockTenantHomeAgendaController extends _i1.Mock
       ) as int);
 
   @override
-  String? distanceLabelFor(_i28.VenueEventResume? event) => (super.noSuchMethod(
+  String? distanceLabelFor(_i28.UpcomingOcurrenceResume? event) => (super.noSuchMethod(
         Invocation.method(
           #distanceLabelFor,
           [event],
