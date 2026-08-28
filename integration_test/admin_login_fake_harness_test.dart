@@ -40,10 +40,7 @@ void main() {
     );
   }
 
-  Future<void> _pumpFor(
-    WidgetTester tester,
-    Duration duration,
-  ) async {
+  Future<void> _pumpFor(WidgetTester tester, Duration duration) async {
     final end = DateTime.now().add(duration);
     while (DateTime.now().isBefore(end)) {
       await tester.pump(const Duration(milliseconds: 100));
@@ -74,8 +71,22 @@ void main() {
     });
   }
 
+  Finder _landlordLoginCtaFinder() {
+    return find.widgetWithText(TextButton, 'Entrar');
+  }
+
   Future<void> _resetContainer() async {
     await GetIt.I.reset(dispose: true);
+  }
+
+  Future<void> _unmountApplication(WidgetTester tester) async {
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+  }
+
+  Future<void> _resetHarness(WidgetTester tester) async {
+    await _unmountApplication(tester);
+    await _resetContainer();
   }
 
   void _registerFakeLandlordAuth() {
@@ -97,9 +108,13 @@ void main() {
     );
   }
 
-  testWidgets('Admin login fake-harness flow opens admin shell',
-      (tester) async {
-    await _resetContainer();
+  testWidgets('Admin login fake-harness flow opens admin shell', (
+    tester,
+  ) async {
+    await _resetHarness(tester);
+    addTearDown(() async {
+      await _resetHarness(tester);
+    });
 
     GetIt.I.registerSingleton<AppDataRepositoryContract>(
       AppDataRepository(
@@ -124,8 +139,10 @@ void main() {
     app.appRouter.replaceAll([AuthLoginRoute()]);
     await _pumpFor(tester, const Duration(seconds: 1));
 
-    await _waitForFinder(tester, find.text('Entrar como Admin'));
-    await tester.tap(find.text('Entrar como Admin'));
+    final loginCta = _landlordLoginCtaFinder();
+    await _waitForFinder(tester, loginCta);
+    expect(loginCta, findsOneWidget);
+    await tester.tap(loginCta);
     await _pumpFor(tester, const Duration(seconds: 1));
 
     final adminSheetTitle = find.text('Entrar como Admin');
@@ -136,16 +153,12 @@ void main() {
     );
     final emailField = find.descendant(
       of: adminSheet,
-      matching: find.byWidgetPredicate(
-        (widget) =>
-            widget is TextField && widget.decoration?.labelText == 'E-mail',
-      ),
+      matching: find.byKey(const ValueKey('landlord_login_sheet_email_field')),
     );
     final passwordField = find.descendant(
       of: adminSheet,
-      matching: find.byWidgetPredicate(
-        (widget) =>
-            widget is TextField && widget.decoration?.labelText == 'Senha',
+      matching: find.byKey(
+        const ValueKey('landlord_login_sheet_password_field'),
       ),
     );
     await _waitForFinder(tester, emailField);
@@ -165,7 +178,10 @@ void main() {
   testWidgets(
     'Landlord home login opens admin shell without disposed-controller errors',
     (tester) async {
-      await _resetContainer();
+      await _resetHarness(tester);
+      addTearDown(() async {
+        await _resetHarness(tester);
+      });
 
       GetIt.I.registerSingleton<AppDataRepositoryContract>(
         AppDataRepository(
@@ -190,8 +206,9 @@ void main() {
       app.appRouter.replaceAll([const LandlordHomeRoute()]);
       await _pumpFor(tester, const Duration(seconds: 1));
 
-      final loginCta = find.text('Entrar como Admin');
+      final loginCta = _landlordLoginCtaFinder();
       await _waitForFinder(tester, loginCta);
+      expect(loginCta, findsOneWidget);
       await tester.tap(loginCta);
       await _pumpFor(tester, const Duration(seconds: 1));
 
@@ -203,16 +220,14 @@ void main() {
       );
       final emailField = find.descendant(
         of: adminSheet,
-        matching: find.byWidgetPredicate(
-          (widget) =>
-              widget is TextField && widget.decoration?.labelText == 'E-mail',
+        matching: find.byKey(
+          const ValueKey('landlord_login_sheet_email_field'),
         ),
       );
       final passwordField = find.descendant(
         of: adminSheet,
-        matching: find.byWidgetPredicate(
-          (widget) =>
-              widget is TextField && widget.decoration?.labelText == 'Senha',
+        matching: find.byKey(
+          const ValueKey('landlord_login_sheet_password_field'),
         ),
       );
       await _waitForFinder(tester, emailField);
@@ -232,8 +247,9 @@ void main() {
 }
 
 class _InMemoryAdminModeRepository implements AdminModeRepositoryContract {
-  final StreamValue<AdminMode> _modeStreamValue =
-      StreamValue<AdminMode>(defaultValue: AdminMode.user);
+  final StreamValue<AdminMode> _modeStreamValue = StreamValue<AdminMode>(
+    defaultValue: AdminMode.user,
+  );
 
   @override
   StreamValue<AdminMode> get modeStreamValue => _modeStreamValue;
@@ -274,8 +290,9 @@ class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
 
   @override
   Future<void> loginWithEmailPassword(
-      LandlordAuthRepositoryContractPrimString email,
-      LandlordAuthRepositoryContractPrimString password) async {
+    LandlordAuthRepositoryContractPrimString email,
+    LandlordAuthRepositoryContractPrimString password,
+  ) async {
     _hasValidSession = true;
   }
 
