@@ -33,7 +33,7 @@ import 'package:belluga_now/domain/schedule/sent_invite_summary.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
-import 'package:belluga_now/domain/venue_event/value_objects/venue_event_tag_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_tag_value.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -586,7 +586,7 @@ class ImmersiveEventDetailController implements Disposable {
   String _tagSignature(Iterable<dynamic> tags) {
     return tags
         .map(
-          (tag) => tag is VenueEventTagValue
+          (tag) => tag is EventTagValue
               ? tag.value.trim()
               : tag.toString().trim(),
         )

@@ -9,18 +9,15 @@ import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/self_profile_
 import 'package:belluga_now/infrastructure/dal/dao/self_profile_backend_contract.dart';
 
 class SelfProfileRepository extends SelfProfileRepositoryContract {
-  SelfProfileRepository({
-    SelfProfileBackendContract? backend,
-  }) : _backend = backend ?? LaravelSelfProfileBackend();
+  SelfProfileRepository({SelfProfileBackendContract? backend})
+    : _backend = backend ?? LaravelSelfProfileBackend();
 
   final SelfProfileBackendContract _backend;
 
   @override
   Future<SelfProfile> fetchCurrentProfile() async {
     final dto = await _backend.fetchCurrentProfile();
-    final profile = dto.toDomain();
-    currentProfileStreamValue.addValue(profile);
-    return profile;
+    return dto.toDomain();
   }
 
   @override
@@ -31,25 +28,13 @@ class SelfProfileRepository extends SelfProfileRepositoryContract {
     UserProfileMediaUpload? avatarUpload,
     DomainBooleanValue? removeAvatarValue,
   }) async {
-    final hasTextMutation =
-        displayNameValue != null || bioValue != null || timezoneValue != null;
-    final hasMediaMutation =
-        avatarUpload != null || removeAvatarValue?.value == true;
-
-    if (hasTextMutation) {
-      await _backend.updateCurrentProfile(
-        displayNameValue: displayNameValue,
-        bioValue: bioValue,
-        timezoneValue: timezoneValue,
-      );
-    }
-
-    if (hasMediaMutation) {
-      await _backend.updateCurrentProfile(
-        avatarUpload: avatarUpload,
-        removeAvatarValue: removeAvatarValue,
-      );
-    }
+    await _backend.updateCurrentProfile(
+      displayNameValue: displayNameValue,
+      bioValue: bioValue,
+      timezoneValue: timezoneValue,
+      avatarUpload: avatarUpload,
+      removeAvatarValue: removeAvatarValue,
+    );
 
     final profile = await refreshCurrentProfile();
     return profile;

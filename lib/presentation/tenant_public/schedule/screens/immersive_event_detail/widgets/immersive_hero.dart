@@ -1,7 +1,7 @@
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/presentation/shared/icons/map_marker_visual_resolver.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
@@ -25,7 +25,7 @@ class ImmersiveHero extends StatelessWidget {
       defaultValue: fallbackImageUri,
       isRequired: true,
     )..parse(fallbackImageUri.toString());
-    final resume = VenueEventResume.fromScheduleEvent(
+    final resume = UpcomingOcurrenceResume.fromScheduleEvent(
       event,
       fallbackImageValue,
     );
@@ -181,7 +181,7 @@ class ImmersiveHero extends StatelessWidget {
     return linked;
   }
 
-  String? _venueLine(VenueEventResume resume) {
+  String? _venueLine(UpcomingOcurrenceResume resume) {
     final venueTitle = resume.venueTitle?.trim();
     final address = resume.location.trim();
     if ((venueTitle == null || venueTitle.isEmpty) && address.isEmpty) {

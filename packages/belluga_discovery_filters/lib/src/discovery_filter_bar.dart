@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'discovery_filter_catalog.dart';
@@ -23,6 +24,7 @@ class DiscoveryFilterBar extends StatelessWidget {
     required this.onSelectionChanged,
     this.isLoading = false,
     this.iconBuilder,
+    this.autoRevealSelectedChips = true,
   });
 
   final DiscoveryFilterCatalog catalog;
@@ -30,7 +32,13 @@ class DiscoveryFilterBar extends StatelessWidget {
   final DiscoveryFilterPolicy policy;
   final ValueChanged<DiscoveryFilterSelection> onSelectionChanged;
   final bool isLoading;
+
+  /// Custom builders should keep geometry stable while the item's label and
+  /// visual fields (`iconKey`, `colorHex`, and `imageUri`) are unchanged.
   final DiscoveryFilterIconBuilder? iconBuilder;
+
+  /// Measurement-only copies of the bar opt out of post-frame reveal work.
+  final bool autoRevealSelectedChips;
 
   @override
   Widget build(BuildContext context) {
@@ -38,9 +46,7 @@ class DiscoveryFilterBar extends StatelessWidget {
           growable: false,
         );
     final taxonomyGroups = _resolveTaxonomyGroups(filters);
-    final taxonomyAreaKey = ValueKey<String>(
-      'discoveryFilterTaxonomyArea_${_taxonomySelectionKey()}',
-    );
+    const taxonomyAreaKey = ValueKey<String>('discoveryFilterTaxonomyArea');
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -66,10 +72,14 @@ class DiscoveryFilterBar extends StatelessWidget {
                 const SizedBox(height: 10),
                 for (final group in taxonomyGroups) ...[
                   _TaxonomyGroupBlock(
+                    key: ValueKey<String>(
+                      'discoveryFilterTaxonomyGroup_${group.option.key}',
+                    ),
                     group: group,
                     selection: selection,
                     fallbackPolicy: policy,
                     isLoading: isLoading,
+                    autoRevealSelectedChips: autoRevealSelectedChips,
                     onToggle: _toggleTaxonomyTerm,
                   ),
                   if (group != taxonomyGroups.last) const SizedBox(height: 12),
@@ -107,17 +117,27 @@ class DiscoveryFilterBar extends StatelessWidget {
 
     return SizedBox(
       height: 48,
-      child: ListView.separated(
+      child: _HorizontalRevealRow(
         key: const ValueKey<String>('discoveryFilterPrimaryList'),
-        scrollDirection: Axis.horizontal,
-        itemCount: filters.length,
-        separatorBuilder: (context, index) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final item = filters[index];
+        anchorId:
+            autoRevealSelectedChips ? _firstSelectedPrimaryKey(filters) : null,
+        selectedItemIds: filters
+            .where((item) => selection.primaryKeys.contains(item.key))
+            .map((item) => item.key)
+            .toList(growable: false),
+        selectionMode: policy.primarySelectionMode,
+        children: filters.map((item) {
           final isActive = selection.primaryKeys.contains(item.key);
-          return _AutoRevealSelectedChip(
-            selected: isActive,
+          return _HorizontalRevealRowItem(
+            identity: item.key,
+            layoutFingerprint: (
+              item.label,
+              item.iconKey,
+              item.colorHex,
+              item.imageUri,
+            ),
             child: _PrimaryFilterChip(
+              key: ValueKey<String>('discoveryFilterPrimaryItem_${item.key}'),
               item: item,
               isActive: isActive,
               isLoading: isLoading && isActive,
@@ -125,7 +145,7 @@ class DiscoveryFilterBar extends StatelessWidget {
               onToggle: _togglePrimary,
             ),
           );
-        },
+        }).toList(growable: false),
       ),
     );
   }
@@ -134,6 +154,15 @@ class DiscoveryFilterBar extends StatelessWidget {
     onSelectionChanged(
       selection.togglePrimary(item.key, mode: policy.primarySelectionMode),
     );
+  }
+
+  String? _firstSelectedPrimaryKey(List<DiscoveryFilterCatalogItem> filters) {
+    for (final item in filters) {
+      if (selection.primaryKeys.contains(item.key)) {
+        return item.key;
+      }
+    }
+    return null;
   }
 
   void _toggleTaxonomyTerm(
@@ -199,21 +228,11 @@ class DiscoveryFilterBar extends StatelessWidget {
 
     return groups;
   }
-
-  String _taxonomySelectionKey() {
-    final primary = selection.primaryKeys.toList(growable: false)..sort();
-    final taxonomy = selection.taxonomyTermKeys.entries.toList(growable: false)
-      ..sort((left, right) => left.key.compareTo(right.key));
-    final taxonomySegments = taxonomy.map((entry) {
-      final values = entry.value.toList(growable: false)..sort();
-      return '${entry.key}:${values.join(",")}';
-    }).join('|');
-    return '${primary.join(",")}__$taxonomySegments';
-  }
 }
 
 class _PrimaryFilterChip extends StatelessWidget {
   const _PrimaryFilterChip({
+    super.key,
     required this.item,
     required this.isActive,
     required this.isLoading,
@@ -230,12 +249,8 @@ class _PrimaryFilterChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = _ChipPalette.resolve(context, item.colorHex, isActive);
-    final semanticsKey = isActive
-        ? 'discoveryFilterSelectedPrimarySemantics_${item.key}'
-        : 'discoveryFilterPrimarySemantics_${item.key}';
-    final chipKey = isActive
-        ? 'discoveryFilterSelectedPrimary_${item.key}'
-        : 'discoveryFilterPrimary_${item.key}';
+    final semanticsKey = 'discoveryFilterPrimarySemantics_${item.key}';
+    final chipKey = 'discoveryFilterPrimary_${item.key}';
 
     return Semantics(
       key: ValueKey<String>(semanticsKey),
@@ -245,7 +260,7 @@ class _PrimaryFilterChip extends StatelessWidget {
       label: item.label,
       selected: isActive,
       toggled: isActive,
-      onTap: isLoading ? null : () => onToggle(item),
+      onTap: isLoading ? null : () => _toggleFromRow(context),
       child: ExcludeSemantics(
         child: Tooltip(
           message: item.label,
@@ -258,7 +273,7 @@ class _PrimaryFilterChip extends StatelessWidget {
             child: Material(
               color: Colors.transparent,
               child: InkWell(
-                onTap: isLoading ? null : () => onToggle(item),
+                onTap: isLoading ? null : () => _toggleFromRow(context),
                 borderRadius: BorderRadius.circular(999),
                 child: Padding(
                   padding:
@@ -315,7 +330,7 @@ class _PrimaryFilterChip extends StatelessWidget {
                             ),
                             palette: palette,
                             tooltip: 'Remover filtro',
-                            onTap: () => onToggle(item),
+                            onTap: () => _toggleFromRow(context),
                           ),
                       ],
                     ],
@@ -328,55 +343,195 @@ class _PrimaryFilterChip extends StatelessWidget {
       ),
     );
   }
+
+  void _toggleFromRow(BuildContext context) {
+    _RowInteractionScope.maybeOf(context)?.markUserInteraction(item.key);
+    onToggle(item);
+  }
 }
 
-class _AutoRevealSelectedChip extends StatefulWidget {
-  const _AutoRevealSelectedChip({
-    required this.selected,
-    required this.child,
+class _HorizontalRevealRow extends StatefulWidget {
+  const _HorizontalRevealRow({
+    super.key,
+    required this.anchorId,
+    required this.selectedItemIds,
+    required this.selectionMode,
+    required this.children,
   });
 
-  final bool selected;
-  final Widget child;
+  final String? anchorId;
+  final List<String> selectedItemIds;
+  final DiscoveryFilterSelectionMode selectionMode;
+  final List<_HorizontalRevealRowItem> children;
 
   @override
-  State<_AutoRevealSelectedChip> createState() =>
-      _AutoRevealSelectedChipState();
+  State<_HorizontalRevealRow> createState() => _HorizontalRevealRowState();
 }
 
-class _AutoRevealSelectedChipState extends State<_AutoRevealSelectedChip> {
-  bool _isRevealScheduled = false;
+class _HorizontalRevealRowState extends State<_HorizontalRevealRow> {
+  final _anchorKey = GlobalKey();
+  bool _revealScheduled = false;
+  bool _disposed = false;
+  List<String>? _pendingSuppressionSelection;
 
   @override
   void initState() {
     super.initState();
-    _scheduleRevealIfSelected();
+    _scheduleReveal(widget.anchorId);
   }
 
   @override
-  void didUpdateWidget(covariant _AutoRevealSelectedChip oldWidget) {
+  void didUpdateWidget(covariant _HorizontalRevealRow oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.selected && !oldWidget.selected) {
-      _scheduleRevealIfSelected();
+    // A new anchor can come from persisted selection hydration.  Already
+    // mounted anchors are intentionally not replayed after equivalent builds.
+    final anchorWasAddedToCatalog = widget.anchorId != null &&
+        !oldWidget.children.any((item) => item.identity == widget.anchorId);
+    final catalogLayoutChanged = _childLayoutChanged(
+      oldWidget.children,
+      widget.children,
+    );
+    // Consume a row interaction only when its expected selection publication
+    // arrives. Loading/catalog rebuilds can happen before that publication.
+    final pendingSelection = catalogLayoutChanged
+        ? null
+        : _pendingSuppressionSelection;
+    if (catalogLayoutChanged) {
+      _pendingSuppressionSelection = null;
+    }
+    final selectionChanged = !listEquals(
+      oldWidget.selectedItemIds,
+      widget.selectedItemIds,
+    );
+    final suppressThisUpdate = pendingSelection != null &&
+        selectionChanged &&
+        listEquals(pendingSelection, widget.selectedItemIds);
+    if (suppressThisUpdate) {
+      _pendingSuppressionSelection = null;
+    }
+    if (oldWidget.anchorId != widget.anchorId &&
+        (suppressThisUpdate && !anchorWasAddedToCatalog)) {
+      return;
+    }
+    if (oldWidget.anchorId != widget.anchorId) {
+      _scheduleReveal(widget.anchorId);
+    } else if (catalogLayoutChanged) {
+      _scheduleReveal(widget.anchorId);
     }
   }
 
-  void _scheduleRevealIfSelected() {
-    if (!widget.selected || _isRevealScheduled) {
+  bool _childLayoutChanged(
+    List<_HorizontalRevealRowItem> previous,
+    List<_HorizontalRevealRowItem> current,
+  ) {
+    if (previous.length != current.length) {
+      return true;
+    }
+    for (var index = 0; index < current.length; index++) {
+      if (previous[index].identity != current[index].identity ||
+          previous[index].layoutFingerprint !=
+              current[index].layoutFingerprint) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void _scheduleReveal(String? anchorId) {
+    if (anchorId == null || _revealScheduled) {
       return;
     }
-    _isRevealScheduled = true;
+    _revealScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _isRevealScheduled = false;
-      if (!mounted || !widget.selected) {
+      _revealScheduled = false;
+      if (_disposed) {
         return;
       }
-      _revealHorizontallyIfNeeded(context);
+      if (widget.anchorId != anchorId) {
+        _scheduleReveal(widget.anchorId);
+        return;
+      }
+      final targetContext = _anchorKey.currentContext;
+      if (targetContext == null) {
+        return;
+      }
+      _revealHorizontallyIfNeeded(targetContext);
     });
   }
 
   @override
-  Widget build(BuildContext context) => widget.child;
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: _RowInteractionScope(
+        markUserInteraction: _markUserInteraction,
+        child: Row(
+          children: [
+            for (var index = 0; index < widget.children.length; index++) ...[
+              if (index > 0) const SizedBox(width: 8),
+              KeyedSubtree(
+                key: widget.anchorId != null &&
+                        widget.children[index].identity == widget.anchorId
+                    ? _anchorKey
+                    : null,
+                child: widget.children[index].child,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _markUserInteraction(String toggledIdentity) {
+    final selected = widget.selectedItemIds.toSet();
+    if (!selected.remove(toggledIdentity)) {
+      if (widget.selectionMode == DiscoveryFilterSelectionMode.single) {
+        selected
+          ..clear()
+          ..add(toggledIdentity);
+      } else {
+        selected.add(toggledIdentity);
+      }
+    }
+    _pendingSuppressionSelection = <String>[
+      for (final item in widget.children)
+        if (selected.contains(item.identity)) item.identity,
+    ];
+  }
+}
+
+class _HorizontalRevealRowItem {
+  const _HorizontalRevealRowItem({
+    required this.identity,
+    required this.layoutFingerprint,
+    required this.child,
+  });
+
+  final String identity;
+  final Object layoutFingerprint;
+  final Widget child;
+}
+
+class _RowInteractionScope extends InheritedWidget {
+  const _RowInteractionScope({
+    required this.markUserInteraction,
+    required super.child,
+  });
+
+  final ValueChanged<String> markUserInteraction;
+
+  static _RowInteractionScope? maybeOf(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<_RowInteractionScope>();
+
+  @override
+  bool updateShouldNotify(covariant _RowInteractionScope oldWidget) => false;
 }
 
 void _revealHorizontallyIfNeeded(BuildContext context) {
@@ -427,10 +582,12 @@ void _revealHorizontallyIfNeeded(BuildContext context) {
 
 class _TaxonomyGroupBlock extends StatelessWidget {
   const _TaxonomyGroupBlock({
+    super.key,
     required this.group,
     required this.selection,
     required this.fallbackPolicy,
     required this.isLoading,
+    required this.autoRevealSelectedChips,
     required this.onToggle,
   });
 
@@ -438,6 +595,7 @@ class _TaxonomyGroupBlock extends StatelessWidget {
   final DiscoveryFilterSelection selection;
   final DiscoveryFilterPolicy fallbackPolicy;
   final bool isLoading;
+  final bool autoRevealSelectedChips;
   final void Function(
     _ResolvedTaxonomyGroup group,
     DiscoveryFilterTaxonomyTermOption term,
@@ -468,23 +626,36 @@ class _TaxonomyGroupBlock extends StatelessWidget {
         else
           SizedBox(
             height: 40,
-            child: ListView.separated(
+            child: _HorizontalRevealRow(
               key: ValueKey<String>(
                 'discoveryFilterTaxonomyList_${group.option.key}',
               ),
-              scrollDirection: Axis.horizontal,
-              itemCount: group.option.terms.length,
-              separatorBuilder: (context, index) => const SizedBox(width: 8),
-              itemBuilder: (context, index) {
-                final term = group.option.terms[index];
+              anchorId:
+                  autoRevealSelectedChips ? _firstSelectedTermIdentity() : null,
+              selectedItemIds: group.option.terms
+                  .where(
+                    (term) =>
+                        selection.taxonomyTermKeys[group.option.key]?.contains(
+                          term.value,
+                        ) ??
+                        false,
+                  )
+                  .map((term) => '${group.option.key}_${term.value}')
+                  .toList(growable: false),
+              selectionMode: group.config.selectionMode,
+              children: group.option.terms.map((term) {
                 final isSelected =
                     selection.taxonomyTermKeys[group.option.key]?.contains(
                           term.value,
                         ) ??
                         false;
-                return _AutoRevealSelectedChip(
-                  selected: isSelected,
+                return _HorizontalRevealRowItem(
+                  identity: '${group.option.key}_${term.value}',
+                  layoutFingerprint: term.label,
                   child: _TaxonomyTermChip(
+                    key: ValueKey<String>(
+                      'discoveryFilterTaxonomyItem_${group.option.key}_${term.value}',
+                    ),
                     group: group,
                     term: term,
                     isSelected: isSelected,
@@ -492,7 +663,7 @@ class _TaxonomyGroupBlock extends StatelessWidget {
                     onToggle: onToggle,
                   ),
                 );
-              },
+              }).toList(growable: false),
             ),
           ),
       ],
@@ -520,10 +691,24 @@ class _TaxonomyGroupBlock extends StatelessWidget {
           .toList(growable: false),
     );
   }
+
+  String? _firstSelectedTermIdentity() {
+    final selected = selection.taxonomyTermKeys[group.option.key];
+    if (selected == null) {
+      return null;
+    }
+    for (final term in group.option.terms) {
+      if (selected.contains(term.value)) {
+        return '${group.option.key}_${term.value}';
+      }
+    }
+    return null;
+  }
 }
 
 class _TaxonomyTermChip extends StatelessWidget {
   const _TaxonomyTermChip({
+    super.key,
     required this.group,
     required this.term,
     required this.isSelected,
@@ -552,9 +737,7 @@ class _TaxonomyTermChip extends StatelessWidget {
           ? scheme.onPrimaryContainer.withValues(alpha: 0.12)
           : scheme.onSurfaceVariant.withValues(alpha: 0.08),
     );
-    final keyPrefix = isSelected
-        ? 'discoveryFilterSelectedTaxonomy'
-        : 'discoveryFilterTaxonomyChip';
+    const keyPrefix = 'discoveryFilterTaxonomyChip';
 
     return Semantics(
       key: ValueKey<String>(
@@ -566,7 +749,7 @@ class _TaxonomyTermChip extends StatelessWidget {
       selected: isSelected,
       toggled: isSelected,
       label: term.label,
-      onTap: isLoading ? null : () => onToggle(group, term),
+      onTap: isLoading ? null : () => _toggleFromRow(context),
       child: ExcludeSemantics(
         child: DecoratedBox(
           key: ValueKey<String>(
@@ -579,7 +762,7 @@ class _TaxonomyTermChip extends StatelessWidget {
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: isLoading ? null : () => onToggle(group, term),
+              onTap: isLoading ? null : () => _toggleFromRow(context),
               borderRadius: BorderRadius.circular(999),
               child: Padding(
                 padding:
@@ -626,6 +809,13 @@ class _TaxonomyTermChip extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  void _toggleFromRow(BuildContext context) {
+    _RowInteractionScope.maybeOf(context)?.markUserInteraction(
+      '${group.option.key}_${term.value}',
+    );
+    onToggle(group, term);
   }
 }
 

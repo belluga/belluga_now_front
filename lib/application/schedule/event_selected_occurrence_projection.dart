@@ -5,7 +5,7 @@ import 'package:belluga_now/domain/schedule/event_profile_group.dart';
 import 'package:belluga_now/domain/schedule/event_programming_item.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_linked_account_profile_text_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_occurrence_values.dart';
-import 'package:belluga_now/domain/venue_event/value_objects/venue_event_tag_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_tag_value.dart';
 import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 
 class EventSelectedOccurrenceProjection {
@@ -480,7 +480,7 @@ class EventSelectedOccurrenceProjection {
   static String _tagSignature(Iterable<dynamic> tags) {
     return tags
         .map(
-          (tag) => tag is VenueEventTagValue
+          (tag) => tag is EventTagValue
               ? tag.value.trim()
               : tag.toString().trim(),
         )

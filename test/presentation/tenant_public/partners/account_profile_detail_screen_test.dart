@@ -17,7 +17,6 @@ import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
-import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_fields.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
@@ -28,14 +27,14 @@ import 'package:belluga_now/domain/repositories/static_assets_repository_contrac
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
-import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/static_assets/public_static_asset_model.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/account_profile_detail_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_state.dart';
 import 'package:belluga_now/presentation/shared/widgets/account_profile_overlapping_identity_card.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
-import 'package:belluga_now/presentation/tenant_public/widgets/upcoming_event_card.dart';
+import 'package:belluga_now/presentation/shared/widgets/public_rich_text_html.dart';
+import 'package:belluga_now/presentation/tenant_public/widgets/upcoming_ocurrence_card.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_screen_controller.dart';
 import 'package:belluga_now/presentation/shared/promotion/screens/app_promotion_screen/controllers/app_promotion_store_platform.dart';
@@ -1456,7 +1455,7 @@ void main() {
           router: _RecordingStackRouter(),
           child: AccountProfileDetailScreen(
             accountProfile: _buildArtistProfileWithManyTaxonomies().copyWith(
-              nameValue: TitleValue()
+              nameValue: AccountProfileNameValue()
                 ..parse('Pop Rock Nacional e Internacional na Orla'),
             ),
           ),
@@ -1554,14 +1553,14 @@ void main() {
       _buildRoutedTestApp(
         router: router,
         child: AccountProfileDetailScreen(
-          accountProfile: _buildArtistProfileWithPaddedUpcomingOccurrence(),
+          accountProfile: _buildArtistProfileWithPaddedUpcomingOcurrence(),
         ),
       ),
     );
     await tester.pumpAndSettle();
 
     final futureCard = tester
-        .widgetList<UpcomingEventCard>(find.byType(UpcomingEventCard))
+        .widgetList<UpcomingOcurrenceCard>(find.byType(UpcomingOcurrenceCard))
         .last;
     futureCard.onTap?.call();
     await tester.pump();
@@ -1714,6 +1713,59 @@ void main() {
     expect(find.text('Acontecendo Agora'), findsNothing);
     expect(find.text('Próximos Eventos'), findsOneWidget);
   });
+
+  testWidgets(
+    'Account Profile Agenda renders a visible local-date header for each upcoming date',
+    (tester) async {
+      final repository = _FakeAccountProfilesRepository();
+      final controller = AccountProfileDetailController(
+        accountProfilesRepository: repository,
+      );
+      GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+      final profile = _buildArtistWithTwoUpcomingDates();
+      final firstDate = profile.agendaEvents.first.startDateTime;
+      final secondDate = profile.agendaEvents[1].startDateTime;
+
+      await tester.pumpWidget(
+        _buildRoutedTestApp(
+          router: _RecordingStackRouter(),
+          child: AccountProfileDetailScreen(accountProfile: profile),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Próximos Eventos'), findsOneWidget);
+      expect(
+        find.text(DateFormat.MMMMEEEEd().format(firstDate).toUpperCase()),
+        findsOneWidget,
+      );
+      final firstDateHeader = tester.widget<Text>(
+        find.text(DateFormat.MMMMEEEEd().format(firstDate).toUpperCase()),
+      );
+      expect(firstDateHeader.maxLines, 1);
+      expect(firstDateHeader.softWrap, isFalse);
+      expect(
+        find.text(DateFormat.MMMMEEEEd().format(secondDate).toUpperCase()),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(
+          const Key(
+            'accountProfileAgendaCardHeadline_507f1f77bcf86cd799439231',
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(
+          const Key(
+            'accountProfileAgendaCardHeadline_507f1f77bcf86cd799439232',
+          ),
+        ),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets(
     'live-only agenda renders the occurrence only in Acontecendo Agora',
@@ -2110,7 +2162,7 @@ void main() {
           '/api/v1/account_profiles/ponta-da-fruta/nested_groups/parceiros/members';
       final nonNavigableMember = AccountProfileNestedGroupMember(
         idValue: MongoIDValue()..parse('507f1f77bcf86cd799439082'),
-        nameValue: TitleValue()..parse('Parceiro Sem Link'),
+        nameValue: AccountProfileNameValue()..parse('Parceiro Sem Link'),
         profileTypeValue: AccountProfileTypeValue('guest_public'),
         canOpenPublicDetailValue: DomainBooleanValue(
           defaultValue: false,
@@ -2187,12 +2239,13 @@ void main() {
       );
       GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
       final parentProfile = _buildVenueFullProfile().copyWith(
-        nameValue: TitleValue()..parse('Du Jorge'),
+        nameValue: AccountProfileNameValue()..parse('Du Jorge'),
         slugValue: SlugValue()..parse('du-jorge'),
         nestedProfileGroupValues: [_buildNestedAccountProfileGroup()],
       );
       final childProfile = _buildArtistProfile().copyWith(
-        nameValue: TitleValue()..parse('QA Discovery Tag Várias Tags'),
+        nameValue: AccountProfileNameValue()
+          ..parse('QA Discovery Tag Várias Tags'),
         slugValue: SlugValue()..parse('qa-discovery-tag-varias-tags'),
       );
 
@@ -2240,13 +2293,13 @@ void main() {
     'back from a nested linked profile restores the parent account detail',
     (tester) async {
       final parentProfile = _buildVenueFullProfile().copyWith(
-        nameValue: TitleValue()..parse('Du Jorge'),
+        nameValue: AccountProfileNameValue()..parse('Du Jorge'),
         slugValue: SlugValue()..parse('du-jorge'),
         nestedProfileGroupValues: [_buildNestedAccountProfileGroup()],
       );
       final childProfile = _buildArtistProfile().copyWith(
         idValue: MongoIDValue()..parse('507f1f77bcf86cd799439081'),
-        nameValue: TitleValue()..parse('Ananda Torres'),
+        nameValue: AccountProfileNameValue()..parse('Ananda Torres'),
         slugValue: SlugValue()..parse('ananda-torres'),
       );
       final repository = _FakeAccountProfilesRepository(
@@ -2365,13 +2418,13 @@ void main() {
     'nested linked profile routes keep isolated detail controller instances',
     (tester) async {
       final parentProfile = _buildVenueFullProfile().copyWith(
-        nameValue: TitleValue()..parse('Du Jorge'),
+        nameValue: AccountProfileNameValue()..parse('Du Jorge'),
         slugValue: SlugValue()..parse('du-jorge'),
         nestedProfileGroupValues: [_buildNestedAccountProfileGroup()],
       );
       final childProfile = _buildArtistProfile().copyWith(
         idValue: MongoIDValue()..parse('507f1f77bcf86cd799439081'),
-        nameValue: TitleValue()..parse('Ananda Torres'),
+        nameValue: AccountProfileNameValue()..parse('Ananda Torres'),
         slugValue: SlugValue()..parse('ananda-torres'),
       );
       final repository = _FakeAccountProfilesRepository(
@@ -2942,6 +2995,21 @@ void main() {
       expect(find.text('Resumo da casa'), findsOneWidget);
       expect(find.text('Programação curatorial'), findsOneWidget);
       expect(find.text('Conteúdo principal do perfil 😄'), findsOneWidget);
+      final richTextBlocks = tester
+          .widgetList<PublicRichTextHtml>(find.byType(PublicRichTextHtml))
+          .toList();
+      expect(richTextBlocks, hasLength(2));
+      expect(
+        richTextBlocks.first.html,
+        contains('<a href="https://example.com/bio">Bio HTTPS link</a>'),
+      );
+      expect(
+        richTextBlocks.last.html,
+        contains(
+          '<a href="https://example.com/content">Content HTTPS link</a>',
+        ),
+      );
+      expect(richTextBlocks.last.html, isNot(contains('href="http://')));
     },
   );
 
@@ -2969,7 +3037,9 @@ void main() {
     expect(find.text('Conteúdo institucional sem bio'), findsOneWidget);
   });
 
-  testWidgets('renders legacy plain text newlines faithfully', (tester) async {
+  testWidgets('projects legacy plain text newlines to canonical html once', (
+    tester,
+  ) async {
     final repository = _FakeAccountProfilesRepository();
     final controller = AccountProfileDetailController(
       accountProfilesRepository: repository,
@@ -2986,9 +3056,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Primeira linha'), findsOneWidget);
-    expect(find.text('Segunda linha'), findsOneWidget);
-    expect(find.text('Novo parágrafo'), findsOneWidget);
+    final rendered = tester.widget<PublicRichTextHtml>(
+      find.byType(PublicRichTextHtml),
+    );
+    expect(
+      rendered.html,
+      '<p>Primeira linha<br />Segunda linha</p><p>Novo parágrafo</p>',
+    );
   });
 
   testWidgets(
@@ -3728,6 +3802,47 @@ AccountProfileModel _buildArtistRecurringOccurrenceProfile() {
   );
 }
 
+AccountProfileModel _buildArtistWithTwoUpcomingDates() {
+  final firstDate = DateTime.utc(2030, 5, 15, 18);
+  final secondDate = DateTime.utc(2030, 5, 16, 18);
+  return buildAccountProfileModelFromPrimitives(
+    id: '507f1f77bcf86cd799439011',
+    name: 'Cafe de la Musique',
+    slug: 'cafe-de-la-musique',
+    type: 'artist',
+    agendaEvents: [
+      buildPartnerEventView(
+        eventId: '507f1f77bcf86cd799439031',
+        occurrenceId: '507f1f77bcf86cd799439231',
+        slug: 'agenda-em-dois-dias',
+        title: 'Agenda em Dois Dias',
+        eventTypeLabel: 'Show',
+        location: 'Deck Principal',
+        venueTitle: 'Cafe de la Musique',
+        venueId: '507f1f77bcf86cd799439011',
+        startDateTime: firstDate,
+        artistNames: const ['Marco Aurélio'],
+        artistIds: const ['507f1f77bcf86cd799439099'],
+        imageUri: Uri.parse('https://example.com/agenda-em-dois-dias.jpg'),
+      ),
+      buildPartnerEventView(
+        eventId: '507f1f77bcf86cd799439031',
+        occurrenceId: '507f1f77bcf86cd799439232',
+        slug: 'agenda-em-dois-dias',
+        title: 'Agenda em Dois Dias',
+        eventTypeLabel: 'Show',
+        location: 'Deck Principal',
+        venueTitle: 'Cafe de la Musique',
+        venueId: '507f1f77bcf86cd799439011',
+        startDateTime: secondDate,
+        artistNames: const ['Marco Aurélio'],
+        artistIds: const ['507f1f77bcf86cd799439099'],
+        imageUri: Uri.parse('https://example.com/agenda-em-dois-dias.jpg'),
+      ),
+    ],
+  );
+}
+
 AccountProfileModel _buildRestaurantProfile() {
   return buildAccountProfileModelFromPrimitives(
     id: '507f1f77bcf86cd799439012',
@@ -3801,9 +3916,13 @@ AccountProfileModel _buildVenueWithBioAndContentProfile() {
     name: 'Casa de Cultura',
     slug: 'casa-de-cultura',
     type: 'venue',
-    bio: '<p><strong>Resumo da casa</strong></p>',
+    bio:
+        '<p><strong>Resumo da casa</strong></p>'
+        '<p><a href="https://example.com/bio">Bio HTTPS link</a></p>',
     content:
-        '<h2>Programação curatorial</h2><p>Conteúdo principal do perfil 😄</p>',
+        '<h2>Programação curatorial</h2><p>Conteúdo principal do perfil 😄</p>'
+        '<p><a href="https://example.com/content">Content HTTPS link</a></p>'
+        '<p><a href="http://example.com/unsafe">Unsafe profile link</a></p>',
   );
 }
 
@@ -3857,7 +3976,7 @@ AccountProfileNestedGroup _buildNestedAccountProfileGroup() {
     profiles: [
       AccountProfileNestedGroupMember(
         idValue: MongoIDValue()..parse('507f1f77bcf86cd799439081'),
-        nameValue: TitleValue()..parse('Ananda Torres'),
+        nameValue: AccountProfileNameValue()..parse('Ananda Torres'),
         slugValue: SlugValue()..parse('ananda-torres'),
         profileTypeValue: AccountProfileTypeValue('artist'),
         canOpenPublicDetailValue: DomainBooleanValue(
@@ -3885,7 +4004,7 @@ AccountProfileNestedGroup _buildSecondaryNestedAccountProfileGroup() {
     profiles: [
       AccountProfileNestedGroupMember(
         idValue: MongoIDValue()..parse('507f1f77bcf86cd799439082'),
-        nameValue: TitleValue()..parse('Public Partner B'),
+        nameValue: AccountProfileNameValue()..parse('Public Partner B'),
         slugValue: SlugValue()..parse('public-partner-b'),
         profileTypeValue: AccountProfileTypeValue('venue'),
         canOpenPublicDetailValue: DomainBooleanValue(
@@ -3979,7 +4098,7 @@ AccountProfileModel _buildArtistProfileWithContact({
   );
 }
 
-AccountProfileModel _buildArtistProfileWithPaddedUpcomingOccurrence() {
+AccountProfileModel _buildArtistProfileWithPaddedUpcomingOcurrence() {
   final now = DateTime.now().toUtc();
   return buildAccountProfileModelFromPrimitives(
     id: '507f1f77bcf86cd799439011',

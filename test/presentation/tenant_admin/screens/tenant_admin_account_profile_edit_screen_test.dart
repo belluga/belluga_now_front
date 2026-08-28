@@ -22,6 +22,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gal
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_label_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_head_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_page.dart';
@@ -34,6 +35,7 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
+import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_account_profile_dto.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/screens/tenant_admin_account_profile_edit_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/screens/tenant_admin_account_profile_group_members_screen.dart';
@@ -123,6 +125,76 @@ void main() {
   );
 
   testWidgets(
+    'blocks update when display name has fewer than three characters',
+    (tester) async {
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+
+      await _pumpScreen(
+        tester,
+        TenantAdminAccountProfileEditScreen(
+          accountSlug: 'route-account',
+          accountProfileId: 'route-profile',
+        ),
+      );
+
+      final controller = GetIt.I.get<TenantAdminAccountProfilesController>();
+      final nameField = find.byWidgetPredicate(
+        (widget) =>
+            widget is TextFormField &&
+            widget.controller == controller.displayNameController,
+      );
+      await tester.enterText(nameField, 'An');
+      await tester.scrollUntilVisible(
+        find.text('Salvar alteracoes'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.text('Salvar alteracoes'));
+      await tester.pump();
+
+      expect(
+        find.text('Nome de exibicao deve ter pelo menos 3 caracteres.'),
+        findsOneWidget,
+      );
+      expect(profilesRepository.updateAccountProfileCalls, 0);
+    },
+  );
+
+  testWidgets('submits a three-character display name update', (tester) async {
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+
+    await _pumpScreen(
+      tester,
+      TenantAdminAccountProfileEditScreen(
+        accountSlug: 'route-account',
+        accountProfileId: 'route-profile',
+      ),
+    );
+
+    final controller = GetIt.I.get<TenantAdminAccountProfilesController>();
+    final nameField = find.byWidgetPredicate(
+      (widget) =>
+          widget is TextFormField &&
+          widget.controller == controller.displayNameController,
+    );
+    await tester.enterText(nameField, 'Ane');
+    await tester.scrollUntilVisible(
+      find.text('Salvar alteracoes'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Salvar alteracoes'));
+    await tester.pumpAndSettle();
+
+    expect(profilesRepository.updateAccountProfileCalls, 1);
+    expect(profilesRepository.lastUpdatedDisplayName, 'Ane');
+  });
+
+  testWidgets(
     'hydrates from the route-resolved profile without a duplicate fetch',
     (tester) async {
       final profilesRepository =
@@ -146,6 +218,41 @@ void main() {
       expect(find.text('Perfil resolvido'), findsOneWidget);
     },
   );
+
+  testWidgets('renders the production-shaped AGLA payload in the edit route', (
+    tester,
+  ) async {
+    final profile = TenantAdminAccountProfileDTO.fromJson({
+      'id': '6a6bc34e512136a0050eabaa',
+      'account_id': '6a6bc34e512136a0050eaba8',
+      'profile_type': 'associacao',
+      'display_name': 'AGLA',
+      'slug': 'agla',
+      'aggregate_revision': 1,
+      'contact_mode': 'own',
+      'contact_channels': const [],
+      'effective_contact_channels': const [],
+      'effective_contact_source': {
+        'id': '6a6bc34e512136a0050eabaa',
+        'display_name': 'AGLA',
+        'profile_type': 'associacao',
+        'slug': 'agla',
+      },
+    }).toDomain();
+
+    await _pumpScreen(
+      tester,
+      TenantAdminAccountProfileEditScreen(
+        accountSlug: 'agla',
+        accountProfileId: profile.id,
+        initialProfile: profile,
+      ),
+    );
+
+    final controller = GetIt.I.get<TenantAdminAccountProfilesController>();
+    expect(controller.displayNameController.text, 'AGLA');
+    expect(find.text('Salvar alteracoes'), findsOneWidget);
+  });
 
   testWidgets(
     'renders persisted avatar and cover URLs as network images in edit form',
@@ -953,6 +1060,23 @@ void main() {
     expect(find.text('Parceiros'), findsWidgets);
     expect(find.text('1 perfil vinculado'), findsOneWidget);
     expect(find.text('Gerenciar perfis'), findsOneWidget);
+    await tester.tap(
+      find.byKey(const Key('tenantAdminEditProfileGroupLabel_partners')),
+    );
+    await tester.pump();
+    expect(
+      find.byKey(const Key('tenantAdminEditProfileGroupLabelInput_partners')),
+      findsOneWidget,
+    );
+    await tester.enterText(
+      find.byKey(const Key('tenantAdminEditProfileGroupLabelInput_partners')),
+      'Parceiros do servidor',
+    );
+    await tester.tap(find.byIcon(Icons.check));
+    await tester.pumpAndSettle();
+    expect(profilesRepository.lastPatchNestedGroupProfileId, 'route-profile');
+    expect(profilesRepository.lastPatchNestedGroupId, 'partners');
+    expect(find.text('Parceiros autoritativos'), findsOneWidget);
   });
 
   testWidgets(
@@ -1756,6 +1880,8 @@ class _FakeAccountsRepository extends TenantAdminAccountsRepositoryContract {
 class _FakeAccountProfilesRepository
     extends TenantAdminAccountProfilesRepositoryContract {
   int fetchAccountProfileCalls = 0;
+  int updateAccountProfileCalls = 0;
+  String? lastUpdatedDisplayName;
   String? lastFetchedProfileId;
   int createNestedProfileGroupCalls = 0;
   String? lastCreateNestedProfileGroupProfileId;
@@ -1783,6 +1909,8 @@ class _FakeAccountProfilesRepository
       <String, List<TenantAdminNestedGroupMemberPage>>{};
   int fetchAccountProfilesPageCalls = 0;
   int fetchAllNestedGroupMembersCalls = 0;
+  String? lastPatchNestedGroupProfileId;
+  String? lastPatchNestedGroupId;
 
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
@@ -1931,6 +2059,8 @@ class _FakeAccountProfilesRepository
     BellugaContactBubbleSelectionMutation bubbleSelection =
         const BellugaContactBubbleSelectionMutation.omit(),
   }) async {
+    updateAccountProfileCalls += 1;
+    lastUpdatedDisplayName = displayName?.value;
     lastRemoveAvatar = removeAvatar?.value;
     lastRemoveCover = removeCover?.value;
     lastNestedProfileGroups = nestedProfileGroups;
@@ -2070,6 +2200,23 @@ class _FakeAccountProfilesRepository
     List<TenantAdminAccountProfilesRepoString> removeIds = const [],
   }) async {
     throw UnimplementedError();
+  }
+
+  @override
+  Future<TenantAdminNestedGroupLabelMutationResult>
+  patchNestedProfileGroupLabel({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminAccountProfilesRepoString label,
+  }) async {
+    lastPatchNestedGroupProfileId = accountProfileId.value;
+    lastPatchNestedGroupId = groupId.value;
+    return TenantAdminNestedGroupLabelMutationResult(
+      idValue: TenantAdminNestedProfileGroupTextValue(groupId.value),
+      labelValue: TenantAdminNestedProfileGroupTextValue(
+        'Parceiros autoritativos',
+      ),
+    );
   }
 
   @override

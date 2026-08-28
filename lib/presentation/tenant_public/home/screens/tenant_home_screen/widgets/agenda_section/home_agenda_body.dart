@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
+import 'package:belluga_now/presentation/shared/discovery_filters/public_discovery_filter_empty_state_message.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/models/tenant_home_agenda_display_state.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/date_grouped_event_list.dart';
@@ -16,9 +18,13 @@ class HomeAgendaBody extends StatefulWidget {
   const HomeAgendaBody({
     super.key,
     required this.controller,
+    required this.catalog,
+    required this.selection,
   });
 
   final TenantHomeAgendaController controller;
+  final DiscoveryFilterCatalog catalog;
+  final DiscoveryFilterSelection selection;
 
   @override
   State<HomeAgendaBody> createState() => _HomeAgendaBodyState();
@@ -57,14 +63,14 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
   }
 
   void _attachLoadingListeners(TenantHomeAgendaController controller) {
-    _initialLoadingSubscription =
-        controller.isInitialLoadingStreamValue.stream.listen((_) {
-      _replayPendingBottomScrollIfReady(controller);
-    });
-    _pageLoadingSubscription =
-        controller.isPageLoadingStreamValue.stream.listen((_) {
-      _replayPendingBottomScrollIfReady(controller);
-    });
+    _initialLoadingSubscription = controller.isInitialLoadingStreamValue.stream
+        .listen((_) {
+          _replayPendingBottomScrollIfReady(controller);
+        });
+    _pageLoadingSubscription = controller.isPageLoadingStreamValue.stream
+        .listen((_) {
+          _replayPendingBottomScrollIfReady(controller);
+        });
   }
 
   void _detachLoadingListeners() {
@@ -79,14 +85,16 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final controller = widget.controller;
+    final catalog = widget.catalog;
+    final selection = widget.selection;
 
     return StreamValueBuilder<bool>(
       streamValue: controller.isInitialLoadingStreamValue,
       builder: (context, isInitialLoading) {
         final hasActiveFilters =
             controller.inviteFilterStreamValue.value != InviteFilter.none ||
-                controller.showHistoryStreamValue.value ||
-                controller.discoveryFilterSelectionStreamValue.value.isNotEmpty;
+            controller.showHistoryStreamValue.value ||
+            selection.isNotEmpty;
         return StreamValueBuilder<TenantHomeAgendaDisplayState?>(
           streamValue: controller.displayStateStreamValue,
           onNullWidget: _buildFirstFetchLoading(
@@ -97,7 +105,7 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
           builder: (context, displayState) {
             final resumes = displayState!.events
                 .map(
-                  (event) => VenueEventResume.fromScheduleEvent(
+                  (event) => UpcomingOcurrenceResume.fromScheduleEvent(
                     event,
                     ThumbUriValue(
                       defaultValue: controller.defaultEventImageUri,
@@ -156,7 +164,11 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
                   }
 
                   final emptyLabel = hasActiveFilters
-                      ? 'Nenhum resultado encontrado'
+                      ? publicDiscoveryFilterEmptyStateMessage(
+                              catalog: catalog,
+                              selection: selection,
+                            ) ??
+                            'Nenhum resultado encontrado'
                       : 'Nenhum evento disponível no momento';
                   return Center(
                     child: Column(
@@ -165,8 +177,9 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
                         Icon(
                           Icons.search_off,
                           size: 64,
-                          color: colorScheme.onSurfaceVariant
-                              .withAlpha((0.5 * 255).floor()),
+                          color: colorScheme.onSurfaceVariant.withAlpha(
+                            (0.5 * 255).floor(),
+                          ),
                         ),
                         const SizedBox(height: 16),
                         Text(
@@ -193,12 +206,12 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
                           events: resumes,
                           isConfirmed: (event) =>
                               controller.isOccurrenceConfirmed(
-                            event.selectedOccurrenceId ?? '',
-                          ),
+                                event.selectedOccurrenceId ?? '',
+                              ),
                           pendingInvitesCount: (event) =>
                               controller.pendingInviteCount(
-                            event.selectedOccurrenceId ?? '',
-                          ),
+                                event.selectedOccurrenceId ?? '',
+                              ),
                           distanceLabel: controller.distanceLabelFor,
                           statusIconSize: 22,
                           highlightNowEvents: true,
@@ -265,7 +278,8 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
       extentAfter: notification.metrics.extentAfter,
     );
 
-    final isLoading = controller.isPageLoadingStreamValue.value ||
+    final isLoading =
+        controller.isPageLoadingStreamValue.value ||
         controller.isInitialLoadingStreamValue.value;
     final hasMore = controller.hasMoreStreamValue.value;
     if (isLoading || !hasMore) return false;
@@ -345,10 +359,7 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
     );
   }
 
-  bool _isNearBottom({
-    required double pixels,
-    required double extentAfter,
-  }) {
+  bool _isNearBottom({required double pixels, required double extentAfter}) {
     return pixels > 0 && extentAfter < _paginationThreshold;
   }
 

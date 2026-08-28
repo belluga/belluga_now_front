@@ -23,6 +23,11 @@ import 'package:get_it/get_it.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
+const _inviteFlowSurfaceRouteNames = <String>{
+  InviteFlowRoute.name,
+  InviteEntryRoute.name,
+};
+
 class InviteFlowCoordinator extends StatefulWidget {
   const InviteFlowCoordinator({
     super.key,
@@ -48,7 +53,6 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
       .get<InviteFlowScreenController>();
   int _precacheToken = 0;
   String? _lastPrecacheKey;
-  bool _exitHandled = false;
   InviteDecisionResult? _lastDecisionResult;
 
   @override
@@ -117,17 +121,11 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
   }
 
   void _handlePendingInvites(List<InviteModel> invites) {
-    if (!widget.isInitialized) {
+    if (!widget.isInitialized || invites.isNotEmpty) {
       return;
     }
-    if (invites.isNotEmpty) {
-      _exitHandled = false;
-      return;
-    }
-    if (_exitHandled) return;
-    _exitHandled = true;
     _scheduleEffect(() {
-      unawaited(_exitInviteFlowOrFallback());
+      _exitInviteFlowOrFallback();
     });
   }
 
@@ -139,29 +137,36 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
     if (identical(result, _lastDecisionResult)) return;
     _lastDecisionResult = result;
     _scheduleEffect(() {
-      final router = context.router;
-
-      if (result.invite != null) {
-        if (result.nextStep == InviteNextStep.reservationRequired ||
-            result.nextStep == InviteNextStep.commitmentChoiceRequired ||
-            result.nextStep == InviteNextStep.openAppToContinue) {
-          _showUnsupportedNextStepToast(result.invite!, result.nextStep);
-          _controller.clearDecisionResult();
-          return;
-        }
-        if (result.queued == true) {
-          _showOfflineAcceptToast(result.invite);
-        }
-        router.push(InviteShareRoute(invite: result.invite!));
-        _controller.clearDecisionResult();
-        return;
-      }
-
-      _controller.clearDecisionResult();
+      unawaited(_handleDecisionResultEffect(result));
     });
   }
 
-  void _openEventDetails(InviteModel invite) {
+  Future<void> _handleDecisionResultEffect(InviteDecisionResult result) {
+    final router = context.router;
+    if (result.invite != null) {
+      if (result.nextStep == InviteNextStep.reservationRequired ||
+          result.nextStep == InviteNextStep.commitmentChoiceRequired ||
+          result.nextStep == InviteNextStep.openAppToContinue) {
+        _showUnsupportedNextStepToast(result.invite!, result.nextStep);
+        _controller.clearDecisionResult();
+        return Future<void>.value();
+      }
+      if (result.queued == true) {
+        _showOfflineAcceptToast(result.invite);
+      }
+      _controller.clearDecisionResult();
+      return router.push(InviteShareRoute(invite: result.invite!)).then<void>((
+        _,
+      ) {
+        _exitInviteFlowOrFallback();
+      });
+    }
+
+    _controller.clearDecisionResult();
+    return Future<void>.value();
+  }
+
+  Future<void> _openEventDetails(InviteModel invite) {
     final eventSlug = invite.eventSlug.trim();
     if (eventSlug.isEmpty) {
       ScaffoldMessenger.maybeOf(context)?.showSnackBar(
@@ -171,14 +176,18 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
           ),
         ),
       );
-      return;
+      return Future<void>.value();
     }
-    context.router.push(
-      ImmersiveEventDetailRoute(
-        eventSlug: eventSlug,
-        occurrenceId: invite.occurrenceId,
-      ),
-    );
+    return context.router
+        .push(
+          ImmersiveEventDetailRoute(
+            eventSlug: eventSlug,
+            occurrenceId: invite.occurrenceId,
+          ),
+        )
+        .then<void>((_) {
+          _exitInviteFlowOrFallback();
+        });
   }
 
   Future<void> _handleDecision(
@@ -207,6 +216,7 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
       invite: invite,
       actionLabel: decision == InviteDecision.accepted ? 'Aceitar' : 'Recusar',
     );
+    _exitInviteFlowOrFallback();
     if (inviteId == null) {
       if (!invite.hasMultipleInviters) {
         await _controller.requestDecision(decision);
@@ -257,17 +267,16 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
     );
   }
 
-  void _openAuthForInviteDecision(InviteModel invite) {
+  Future<void> _openAuthForInviteDecision(InviteModel invite) async {
     if (widget.isWebRuntime && !_controller.isAuthorized) {
-      unawaited(
-        AppPromotionModal.show(
-          context,
-          redirectPath: _inviteOccurrenceRedirectPath(invite),
-          title: 'Aceite convites pelo app',
-          supportingText:
-              'Use o app para confirmar presença, enviar convites e acompanhar seus eventos.',
-        ),
+      await AppPromotionModal.show(
+        context,
+        redirectPath: _inviteOccurrenceRedirectPath(invite),
+        title: 'Aceite convites pelo app',
+        supportingText:
+            'Use o app para confirmar presença, enviar convites e acompanhar seus eventos.',
       );
+      _exitInviteFlowOrFallback();
       return;
     }
     final pendingPath = _controller.redirectPath?.trim();
@@ -275,7 +284,8 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
         ? '/invite'
         : pendingPath;
     final encodedRedirect = Uri.encodeQueryComponent(normalizedPath);
-    context.router.pushPath('/auth/login?redirect=$encodedRedirect');
+    await context.router.pushPath('/auth/login?redirect=$encodedRedirect');
+    _exitInviteFlowOrFallback();
   }
 
   Future<void> _showWebInviteDecisionPromotion({
@@ -298,6 +308,7 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
           ? 'Use o app para confirmar presença, enviar convites e acompanhar seus eventos.'
           : 'Use o app para aceitar ou recusar convites e acompanhar seus eventos.',
     );
+    _exitInviteFlowOrFallback();
   }
 
   RouteBackPolicy _buildBackPolicy(BuildContext context) {
@@ -308,11 +319,11 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
     _buildBackPolicy(context).handleBack();
   }
 
-  Future<void> _exitInviteFlowOrFallback() async {
-    final fallbackPath = await _resolveFallbackNavigationPath();
-    if (!mounted) {
+  void _exitInviteFlowOrFallback() {
+    if (!_canExitInviteFlow()) {
       return;
     }
+    final fallbackPath = _controller.resolveFallbackNavigationPath();
     if (fallbackPath != null && fallbackPath.isNotEmpty) {
       context.router.replacePath(fallbackPath);
       return;
@@ -320,8 +331,13 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
     _exitInviteFlow();
   }
 
-  Future<String?> _resolveFallbackNavigationPath() async {
-    return _controller.resolveFallbackNavigationPath();
+  bool _canExitInviteFlow() {
+    if (!mounted || !widget.isInitialized || widget.invites.isNotEmpty) {
+      return false;
+    }
+    final router = context.router;
+    return _inviteFlowSurfaceRouteNames.contains(router.topRoute.name) &&
+        !router.hasPagelessTopRoute;
   }
 
   void _showOfflineAcceptToast(InviteModel? invite) {

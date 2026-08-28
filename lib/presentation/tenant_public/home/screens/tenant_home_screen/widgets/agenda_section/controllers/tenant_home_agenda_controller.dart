@@ -21,7 +21,7 @@ import 'package:belluga_now/domain/repositories/app_data_repository_contract.dar
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
@@ -936,7 +936,7 @@ class TenantHomeAgendaController extends Object
   String _eventOccurrenceIdentity(EventModel event) =>
       event.selectedOccurrenceId?.trim() ?? '';
 
-  String? distanceLabelFor(VenueEventResume event) {
+  String? distanceLabelFor(UpcomingOcurrenceResume event) {
     final userCoordinate = _currentCacheReferenceOrigin();
     final eventCoordinate = event.coordinate;
     if (userCoordinate == null || eventCoordinate == null) {

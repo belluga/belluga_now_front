@@ -23,7 +23,7 @@ import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/favorite_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart';
-import 'package:belluga_now/infrastructure/dal/dao/venue_event_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/event_backend_contract.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 import 'support/fake_landlord_app_data_backend.dart';
 import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_source.dart';
@@ -680,7 +680,7 @@ class _NoopBackend extends BackendContract {
   FavoriteBackendContract get favorites => throw UnimplementedError();
 
   @override
-  VenueEventBackendContract get venueEvents => throw UnimplementedError();
+  EventBackendContract get events => throw UnimplementedError();
 
   @override
   ScheduleBackendContract get schedule => throw UnimplementedError();

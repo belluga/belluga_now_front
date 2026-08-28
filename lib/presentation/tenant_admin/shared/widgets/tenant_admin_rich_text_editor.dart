@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' show SemanticsInputType;
 
 import 'package:belluga_now/application/observability/sentry_error_reporter.dart';
 import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
@@ -19,6 +20,7 @@ class TenantAdminRichTextEditor extends StatefulWidget {
     this.errorText,
     this.maxContentBytes,
     this.warningThreshold = 0.90,
+    this.allowExplicitHttpsLinks = false,
   });
 
   final TextEditingController controller;
@@ -28,6 +30,7 @@ class TenantAdminRichTextEditor extends StatefulWidget {
   final String? errorText;
   final int? maxContentBytes;
   final double warningThreshold;
+  final bool allowExplicitHttpsLinks;
 
   @override
   State<TenantAdminRichTextEditor> createState() =>
@@ -46,12 +49,11 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
   void initState() {
     super.initState();
     _quillController = _buildQuillController(widget.controller.text);
+    _focusNode.addListener(_requestRebuild);
     widget.controller.addListener(_handleExternalHtmlChange);
     _bindDocumentChanges();
     if (_syncHtmlControllerFromDocument()) {
-      _replaceQuillController(
-        _buildQuillController(widget.controller.text),
-      );
+      _replaceQuillController(_buildQuillController(widget.controller.text));
     }
   }
 
@@ -63,13 +65,9 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
     }
     oldWidget.controller.removeListener(_handleExternalHtmlChange);
     widget.controller.addListener(_handleExternalHtmlChange);
-    _replaceQuillController(
-      _buildQuillController(widget.controller.text),
-    );
+    _replaceQuillController(_buildQuillController(widget.controller.text));
     if (_syncHtmlControllerFromDocument()) {
-      _replaceQuillController(
-        _buildQuillController(widget.controller.text),
-      );
+      _replaceQuillController(_buildQuillController(widget.controller.text));
     }
   }
 
@@ -77,6 +75,7 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
   void dispose() {
     _documentChangesSubscription?.cancel();
     widget.controller.removeListener(_handleExternalHtmlChange);
+    _focusNode.removeListener(_requestRebuild);
     _focusNode.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -175,7 +174,10 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
     }
     try {
       final delta = HtmlToDelta().convert(
-        SafeRichHtml.sanitizeMarkupFragment(trimmed),
+        SafeRichHtml.sanitizeMarkupFragment(
+          trimmed,
+          allowExplicitHttpsLinks: widget.allowExplicitHttpsLinks,
+        ),
       );
       if (delta.isEmpty) {
         return Document()..insert(0, '\n');
@@ -205,15 +207,20 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
       return '';
     }
     final canonicalDelta = _canonicalizeDelta(controller.document.toDelta());
+    final converterOptions = ConverterOptions.forEmail();
+    converterOptions.converterOptions.linkTarget = '';
     final converter = QuillDeltaToHtmlConverter(
       canonicalDelta.toJson(),
-      ConverterOptions.forEmail(),
+      converterOptions,
     );
     final html = converter.convert().trim();
     if (SafeRichHtml.isEffectivelyEmpty(html)) {
       return '';
     }
-    return SafeRichHtml.sanitizeMarkupFragment(html);
+    return SafeRichHtml.sanitizeMarkupFragment(
+      html,
+      allowExplicitHttpsLinks: widget.allowExplicitHttpsLinks,
+    );
   }
 
   void _rebuildCanonicalDocument({int? selectionOffset}) {
@@ -243,20 +250,33 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
 
   void _replaceWithPlainText(String text) {
     final normalized = text.replaceAll('\r\n', '\n');
-    final document = Document();
-    document.insert(0, normalized.isEmpty ? '\n' : '$normalized\n');
-    _replaceQuillController(
-      QuillController(
-        document: document,
-        selection: TextSelection.collapsed(
-          offset: _clampSelectionOffset(
-            normalized.length,
-            maxOffset: document.length - 1,
-          ),
-        ),
-      ),
+    _quillController.replaceText(
+      0,
+      _quillController.document.length - 1,
+      normalized,
+      TextSelection.collapsed(offset: normalized.length),
     );
     _syncHtmlControllerFromDocument();
+    _requestRebuild();
+  }
+
+  void _updateSelectionFromSemantics(TextSelection selection) {
+    final maxOffset = _quillController.document.length - 1;
+    final safeSelection = TextSelection(
+      baseOffset: _clampSelectionOffset(
+        selection.baseOffset,
+        maxOffset: maxOffset,
+      ),
+      extentOffset: _clampSelectionOffset(
+        selection.extentOffset,
+        maxOffset: maxOffset,
+      ),
+      affinity: selection.affinity,
+      isDirectional: selection.isDirectional,
+    );
+    _quillController.updateSelection(safeSelection, ChangeSource.local);
+    _focusNode.requestFocus();
+    _requestRebuild();
   }
 
   Delta _canonicalizeDelta(Delta delta) {
@@ -314,6 +334,12 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
     if (attributes['strike'] == true) {
       canonical['strike'] = true;
     }
+    if (widget.allowExplicitHttpsLinks && attributes['link'] is String) {
+      final href = SafeRichHtml.canonicalExplicitHttpsHref(
+        attributes['link'] as String,
+      );
+      if (href != null) canonical['link'] = href;
+    }
 
     return canonical.isEmpty ? null : canonical;
   }
@@ -326,10 +352,7 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
     return parsed;
   }
 
-  int _clampSelectionOffset(
-    int value, {
-    required int maxOffset,
-  }) {
+  int _clampSelectionOffset(int value, {required int maxOffset}) {
     if (maxOffset <= 0) {
       return 0;
     }
@@ -388,10 +411,7 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            widget.label,
-            style: Theme.of(context).textTheme.labelLarge,
-          ),
+          Text(widget.label, style: Theme.of(context).textTheme.labelLarge),
           const SizedBox(height: 8),
           Container(
             decoration: BoxDecoration(
@@ -400,49 +420,64 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
             ),
             child: Column(
               children: [
-                QuillSimpleToolbar(
-                  controller: _quillController,
-                  config: QuillSimpleToolbarConfig(
-                    decoration: BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(color: borderColor),
+                Semantics(
+                  container: true,
+                  explicitChildNodes: true,
+                  label: '${widget.label} toolbar',
+                  child: QuillSimpleToolbar(
+                    controller: _quillController,
+                    config: QuillSimpleToolbarConfig(
+                      buttonOptions: QuillSimpleToolbarButtonOptions(
+                        linkStyle: QuillToolbarLinkStyleButtonOptions(
+                          validateLink: SafeRichHtml.isAllowedExplicitHttpsHref,
+                          tooltip: '${widget.label}: Inserir URL',
+                        ),
                       ),
+                      decoration: BoxDecoration(
+                        border: Border(bottom: BorderSide(color: borderColor)),
+                      ),
+                      showFontFamily: false,
+                      showFontSize: false,
+                      showSmallButton: false,
+                      showUnderLineButton: false,
+                      showStrikeThrough: true,
+                      showInlineCode: false,
+                      showColorButton: false,
+                      showBackgroundColorButton: false,
+                      showClearFormat: true,
+                      showAlignmentButtons: false,
+                      showHeaderStyle: true,
+                      showListNumbers: true,
+                      showListBullets: true,
+                      showListCheck: false,
+                      showCodeBlock: false,
+                      showQuote: true,
+                      showIndent: false,
+                      showLink: widget.allowExplicitHttpsLinks,
+                      showSearchButton: false,
+                      showSubscript: false,
+                      showSuperscript: false,
+                      showDirection: false,
                     ),
-                    showFontFamily: false,
-                    showFontSize: false,
-                    showSmallButton: false,
-                    showUnderLineButton: false,
-                    showStrikeThrough: true,
-                    showInlineCode: false,
-                    showColorButton: false,
-                    showBackgroundColorButton: false,
-                    showClearFormat: true,
-                    showAlignmentButtons: false,
-                    showHeaderStyle: true,
-                    showListNumbers: true,
-                    showListBullets: true,
-                    showListCheck: false,
-                    showCodeBlock: false,
-                    showQuote: true,
-                    showIndent: false,
-                    showLink: false,
-                    showSearchButton: false,
-                    showSubscript: false,
-                    showSuperscript: false,
-                    showDirection: false,
                   ),
                 ),
                 SizedBox(
                   height: widget.minHeight,
                   child: Semantics(
                     container: true,
+                    enabled: true,
                     textField: true,
+                    readOnly: false,
                     multiline: true,
                     focusable: true,
+                    focused: _focusNode.hasFocus,
+                    inputType: SemanticsInputType.text,
                     label: widget.label,
                     value: _quillController.document.toPlainText().trim(),
                     onTap: _focusNode.requestFocus,
+                    onFocus: _focusNode.requestFocus,
                     onSetText: _replaceWithPlainText,
+                    onSetSelection: _updateSelectionFromSemantics,
                     child: ExcludeSemantics(
                       child: QuillEditor.basic(
                         controller: _quillController,
@@ -463,9 +498,9 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
             const SizedBox(height: 8),
             Text(
               widget.errorText!,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colorScheme.error,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: colorScheme.error),
             ),
           ],
           if (maxContentBytes != null && maxContentBytes > 0) ...[
@@ -474,19 +509,19 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
               'Limite: ${_formatByteCount(maxContentBytes)} por campo. '
               'O backend valida o envio final.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
+                color: colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
               '${_formatByteCount(_currentContentBytes)} / '
               '${_formatByteCount(maxContentBytes)}',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: _shouldShowLimitWarning
-                        ? colorScheme.error
-                        : colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w700,
-                  ),
+                color: _shouldShowLimitWarning
+                    ? colorScheme.error
+                    : colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+              ),
             ),
             if (_shouldShowLimitWarning) ...[
               const SizedBox(height: 4),
@@ -495,9 +530,9 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
                 '${_formatPercentage(widget.warningThreshold)} do limite de '
                 '${_formatByteCount(maxContentBytes)}.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colorScheme.error,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  color: colorScheme.error,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ],

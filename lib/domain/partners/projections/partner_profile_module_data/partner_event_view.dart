@@ -13,6 +13,7 @@ class PartnerEventView {
     this.venueIdValue,
     this.venueTitleValue,
     this.imageUriValue,
+    this.counterpartCountValue,
     required this.linkedAccountProfiles,
   });
 
@@ -27,6 +28,7 @@ class PartnerEventView {
   final MongoIDValue? venueIdValue;
   final PartnerProjectionOptionalTextValue? venueTitleValue;
   final ThumbUriValue? imageUriValue;
+  final EventCounterpartCountValue? counterpartCountValue;
   final List<PartnerSupportedEntityView> linkedAccountProfiles;
 
   String get eventId => eventIdValue.value;
@@ -59,9 +61,9 @@ class PartnerEventView {
   }
 
   EventScheduleDisplay get scheduleDisplay => EventScheduleDisplay(
-        startValue: startDateTimeValue,
-        endValue: endDateTimeValue,
-      );
+    startValue: startDateTimeValue,
+    endValue: endDateTimeValue,
+  );
 
   String get detailScheduleLabel => scheduleDisplay.detailLabel;
   String get agendaScheduleLabel => scheduleDisplay.agendaLabel;
@@ -87,6 +89,7 @@ class PartnerEventView {
   }
 
   Uri? get imageUri => imageUriValue?.value;
+  int get counterpartCount => counterpartCountValue?.value ?? 0;
   List<PartnerSupportedEntityView> get counterpartProfiles =>
       List<PartnerSupportedEntityView>.unmodifiable(
         linkedAccountProfiles.where(

@@ -4,7 +4,7 @@ import 'package:belluga_now/application/router/modular_app/modules/schedule_modu
 import 'package:belluga_now/application/router/support/route_scoped_resolver_route.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/presentation/shared/widgets/image_palette_theme.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/immersive_event_detail_screen.dart';
 import 'package:flutter/material.dart';
@@ -41,7 +41,7 @@ class ImmersiveEventDetailRoutePage
       defaultValue: Uri.parse('asset://event-placeholder'),
       isRequired: true,
     )..parse('asset://event-placeholder');
-    final preferredImageUri = VenueEventResume.resolvePreferredImageUri(
+    final preferredImageUri = UpcomingOcurrenceResume.resolvePreferredImageUri(
       selectedModel,
       settingsDefaultImageValue: fallbackImageValue,
     );

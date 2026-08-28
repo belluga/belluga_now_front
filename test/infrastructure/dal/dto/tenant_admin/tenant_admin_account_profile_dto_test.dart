@@ -2,6 +2,47 @@ import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_acc
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('decodes the production-shaped AGLA edit payload', () {
+    final profile = TenantAdminAccountProfileDTO.fromJson({
+      'id': '6a6bc34e512136a0050eabaa',
+      'account_id': '6a6bc34e512136a0050eaba8',
+      'profile_type': 'associacao',
+      'display_name': 'AGLA',
+      'slug': 'agla',
+      'aggregate_revision': 1,
+      'contact_mode': 'own',
+      'contact_source_account_profile_id': null,
+      'contact_channels': const [],
+      'contact_bubble_channel_id': null,
+      'effective_contact_channels': const [],
+      'effective_contact_source': {
+        'id': '6a6bc34e512136a0050eabaa',
+        'display_name': 'AGLA',
+        'profile_type': 'associacao',
+        'slug': 'agla',
+      },
+    }).toDomain();
+
+    expect(profile.displayName, 'AGLA');
+    expect(profile.effectiveContactSourceProfile?.displayName, 'AGLA');
+    expect(profile.effectiveContactSourceProfile?.profileType, 'associacao');
+  });
+
+  test('keeps the longer production-shaped Pousada edit payload valid', () {
+    final profile = TenantAdminAccountProfileDTO.fromJson({
+      'id': '6a8f2e97ae182af90009406c',
+      'account_id': '6a8f2e97ae182af90009406a',
+      'profile_type': 'hoteis-pousadas',
+      'display_name': 'Pousada Camping Porto Grande',
+      'slug': 'pousada-camping-porto-grande',
+      'aggregate_revision': 4,
+      'contact_mode': 'own',
+      'contact_channels': const [],
+    }).toDomain();
+
+    expect(profile.displayName, 'Pousada Camping Porto Grande');
+  });
+
   test('preserves linked profile ids and contact source summary', () {
     final profile = TenantAdminAccountProfileDTO.fromJson({
       'id': 'profile-parent',

@@ -12,6 +12,7 @@ import 'package:belluga_now/domain/partners/account_profile_nested_group_member.
 import 'package:belluga_now/domain/partners/account_profile_nested_group_member_page.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_name_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
@@ -30,7 +31,6 @@ import 'package:get_it/get_it.dart';
 import 'package:belluga_now/testing/account_profile_model_factory.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
-import 'package:belluga_now/domain/value_objects/title_value.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -1418,7 +1418,7 @@ AccountProfileNestedGroupMember _nestedGroupMember({
 }) {
   return AccountProfileNestedGroupMember(
     idValue: MongoIDValue()..parse(id),
-    nameValue: TitleValue()..parse(name),
+    nameValue: AccountProfileNameValue()..parse(name),
     slugValue: SlugValue()..parse(slug),
     profileTypeValue: AccountProfileTypeValue('artist'),
   );

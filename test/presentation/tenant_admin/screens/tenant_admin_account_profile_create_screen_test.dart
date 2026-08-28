@@ -24,6 +24,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_defin
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/screens/tenant_admin_account_profile_create_screen.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -94,6 +95,74 @@ void main() {
   );
 
   testWidgets(
+    'blocks submit when display name has fewer than three characters',
+    (tester) async {
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+
+      await _pumpScreen(
+        tester,
+        const TenantAdminAccountProfileCreateScreen(
+          accountSlug: 'route-account',
+        ),
+      );
+      await _selectProfileType(tester, 'Venue');
+
+      final controller = GetIt.I.get<TenantAdminAccountProfilesController>();
+      final nameField = find.byWidgetPredicate(
+        (widget) =>
+            widget is TextFormField &&
+            widget.controller == controller.displayNameController,
+      );
+      await tester.enterText(nameField, 'An');
+      await tester.scrollUntilVisible(
+        find.text('Salvar perfil'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.text('Salvar perfil'));
+      await tester.pump();
+
+      expect(
+        find.text('Nome de exibicao deve ter pelo menos 3 caracteres.'),
+        findsOneWidget,
+      );
+      expect(profilesRepository.createAccountProfileCalls, 0);
+    },
+  );
+
+  testWidgets('submits a three-character display name', (tester) async {
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+
+    await _pumpScreen(
+      tester,
+      const TenantAdminAccountProfileCreateScreen(accountSlug: 'route-account'),
+    );
+    await _selectProfileType(tester, 'Venue');
+
+    final controller = GetIt.I.get<TenantAdminAccountProfilesController>();
+    final nameField = find.byWidgetPredicate(
+      (widget) =>
+          widget is TextFormField &&
+          widget.controller == controller.displayNameController,
+    );
+    await tester.enterText(nameField, 'Ane');
+    await tester.scrollUntilVisible(
+      find.text('Salvar perfil'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Salvar perfil'));
+    await tester.pumpAndSettle();
+
+    expect(profilesRepository.createAccountProfileCalls, 1);
+    expect(profilesRepository.lastCreatedDisplayName, 'Ane');
+  });
+
+  testWidgets(
     'hides nested group editor when profile type disables capability',
     (tester) async {
       final profilesRepository =
@@ -117,6 +186,37 @@ void main() {
       );
     },
   );
+
+  testWidgets('enables explicit HTTPS links only for profile bio and content', (
+    tester,
+  ) async {
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+    profilesRepository.profileTypesToReturn = [
+      _profileType(
+        hasNestedProfileGroups: false,
+        hasBio: true,
+        hasContent: true,
+      ),
+    ];
+
+    await _pumpScreen(
+      tester,
+      const TenantAdminAccountProfileCreateScreen(accountSlug: 'route-account'),
+    );
+    await _selectProfileType(tester, 'Venue');
+
+    final editors = tester.widgetList<TenantAdminRichTextEditor>(
+      find.byType(TenantAdminRichTextEditor),
+    );
+    expect(editors, hasLength(2));
+    expect(
+      editors.map((editor) => editor.label),
+      containsAll(<String>['Bio', 'Conteudo']),
+    );
+    expect(editors.every((editor) => editor.allowExplicitHttpsLinks), isTrue);
+  });
 
   testWidgets('shows save-first guidance for nested groups on create', (
     tester,
@@ -348,6 +448,15 @@ Future<void> _pumpScreen(WidgetTester tester, Widget child) async {
   final router = RootStackRouter.build(
     routes: [
       NamedRouteDef(
+        name: TenantAdminAccountsListRoute.name,
+        path: '/admin/accounts',
+        meta: canonicalRouteMeta(
+          family: CanonicalRouteFamily.tenantAdminAccountsRoot,
+          chromeMode: RouteChromeMode.fullscreen,
+        ),
+        builder: (_, _) => const SizedBox.shrink(),
+      ),
+      NamedRouteDef(
         name: TenantAdminAccountProfileCreateRoute.name,
         path: '/',
         meta: canonicalRouteMeta(
@@ -475,6 +584,8 @@ class _FakeAccountProfilesRepository
     _profileType(hasNestedProfileGroups: true),
   ];
   int fetchAccountProfilesPageCalls = 0;
+  int createAccountProfileCalls = 0;
+  String? lastCreatedDisplayName;
 
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
@@ -573,8 +684,14 @@ class _FakeAccountProfilesRepository
         const <BellugaContactChannelDraft>[],
     BellugaContactBubbleSelectionMutation bubbleSelection =
         const BellugaContactBubbleSelectionMutation.omit(),
-  }) {
-    throw UnimplementedError();
+  }) async {
+    createAccountProfileCalls += 1;
+    lastCreatedDisplayName = displayName.value;
+    return _profile(
+      id: 'created-profile',
+      displayName: displayName.value,
+      profileType: profileType.value,
+    );
   }
 
   @override
@@ -789,6 +906,8 @@ TenantAdminAccountProfile _profile({
 TenantAdminProfileTypeDefinition _profileType({
   required bool hasNestedProfileGroups,
   bool hasContactChannels = false,
+  bool hasBio = false,
+  bool hasContent = false,
   String type = 'venue',
   String label = 'Venue',
 }) {
@@ -799,8 +918,8 @@ TenantAdminProfileTypeDefinition _profileType({
     capabilities: TenantAdminProfileTypeCapabilities(
       isFavoritable: TenantAdminFlagValue(false),
       isPoiEnabled: TenantAdminFlagValue(false),
-      hasBio: TenantAdminFlagValue(false),
-      hasContent: TenantAdminFlagValue(false),
+      hasBio: TenantAdminFlagValue(hasBio),
+      hasContent: TenantAdminFlagValue(hasContent),
       hasTaxonomies: TenantAdminFlagValue(false),
       hasAvatar: TenantAdminFlagValue(false),
       hasCover: TenantAdminFlagValue(false),

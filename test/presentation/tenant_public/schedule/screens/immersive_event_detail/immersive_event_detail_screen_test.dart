@@ -9,6 +9,7 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/application/router/support/route_instance_scope.dart';
+import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
@@ -30,6 +31,7 @@ import 'package:belluga_now/domain/partners/account_profile_nested_group_member.
 import 'package:belluga_now/domain/partners/account_profile_nested_group_member_page.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_fields.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_name_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_tag_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
@@ -75,7 +77,7 @@ import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_type_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/presentation/shared/icons/map_marker_visual_resolver.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/routes/immersive_event_detail_route.dart';
@@ -329,7 +331,7 @@ void main() {
             <AccountProfileNestedGroupMember>[
               AccountProfileNestedGroupMember(
                 idValue: MongoIDValue()..parse('507f1f77bcf86cd799439099'),
-                nameValue: TitleValue()..parse('Banda Azul'),
+                nameValue: AccountProfileNameValue()..parse('Banda Azul'),
                 slugValue: SlugValue()..parse('banda-azul'),
                 profileTypeValue: AccountProfileTypeValue('band'),
               ),
@@ -562,7 +564,7 @@ void main() {
             <AccountProfileNestedGroupMember>[
               AccountProfileNestedGroupMember(
                 idValue: MongoIDValue()..parse('507f1f77bcf86cd799439221'),
-                nameValue: TitleValue()..parse('Child Item #1'),
+                nameValue: AccountProfileNameValue()..parse('Child Item #1'),
                 slugValue: SlugValue()..parse('child-item-1'),
                 profileTypeValue: AccountProfileTypeValue('venue'),
               ),
@@ -571,7 +573,8 @@ void main() {
             <AccountProfileNestedGroupMember>[
               AccountProfileNestedGroupMember(
                 idValue: MongoIDValue()..parse('507f1f77bcf86cd799439222'),
-                nameValue: TitleValue()..parse('Readonly Fixture 2cc71741'),
+                nameValue: AccountProfileNameValue()
+                  ..parse('Readonly Fixture 2cc71741'),
                 slugValue: SlugValue()..parse('readonly-fixture-2cc71741'),
                 profileTypeValue: AccountProfileTypeValue('artist'),
               ),
@@ -3765,8 +3768,10 @@ void main() {
                       avatarUrl: 'https://example.com/ananda.png',
                     ),
                   ],
-                  contentHtml:
-                      '<p><strong>Evento 🎉</strong> <u>aleatório</u> <a href="https://example.com">longe</a> <s>riscado</s></p>',
+                  contentHtml: SafeRichHtml.canonicalize(
+                    '<p><strong>Evento 🎉</strong> <u>aleatório</u> <a href="https://example.com">longe</a> <s>riscado</s></p>',
+                    allowExplicitHttpsLinks: true,
+                  ),
                 ),
               ),
             ),
@@ -3798,7 +3803,10 @@ void main() {
       final htmlWidget = tester.widget<Html>(find.byType(Html));
       expect(htmlWidget.data, contains('<s>riscado</s>'));
       expect(htmlWidget.data, isNot(contains('<u>')));
-      expect(htmlWidget.data, isNot(contains('<a')));
+      expect(
+        htmlWidget.data,
+        contains('<a href="https://example.com">longe</a>'),
+      );
       expect(htmlWidget.data, contains('🎉'));
 
       await _tapImmersiveTabByLabel(tester, 'O Local');
@@ -4287,7 +4295,7 @@ void main() {
             <AccountProfileNestedGroupMember>[
               AccountProfileNestedGroupMember(
                 idValue: MongoIDValue()..parse('507f1f77bcf86cd799439091'),
-                nameValue: TitleValue()..parse('Du Jorge'),
+                nameValue: AccountProfileNameValue()..parse('Du Jorge'),
                 slugValue: SlugValue()..parse('du-jorge'),
                 profileTypeValue: AccountProfileTypeValue('band'),
               ),
@@ -4296,7 +4304,7 @@ void main() {
             <AccountProfileNestedGroupMember>[
               AccountProfileNestedGroupMember(
                 idValue: MongoIDValue()..parse('507f1f77bcf86cd799439092'),
-                nameValue: TitleValue()..parse('Agro Sul'),
+                nameValue: AccountProfileNameValue()..parse('Agro Sul'),
                 slugValue: SlugValue()..parse('agro-sul'),
                 profileTypeValue: AccountProfileTypeValue('producer'),
               ),
@@ -6825,10 +6833,10 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   }
 
   @override
-  Future<List<VenueEventResume>> fetchFeaturedEvents() async => const [];
+  Future<List<UpcomingOcurrenceResume>> fetchFeaturedEvents() async => const [];
 
   @override
-  Future<List<VenueEventResume>> fetchMyEvents() async => const [];
+  Future<List<UpcomingOcurrenceResume>> fetchMyEvents() async => const [];
 
   @override
   UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(
@@ -7302,7 +7310,7 @@ AccountProfileNestedGroupMember _buildNestedGroupMember({
   final resolvedId = _nestedGroupMemberId(id);
   return AccountProfileNestedGroupMember(
     idValue: MongoIDValue()..parse(resolvedId),
-    nameValue: TitleValue()..parse(name),
+    nameValue: AccountProfileNameValue()..parse(name),
     slugValue: slug == null ? null : (SlugValue()..parse(slug)),
     profileTypeValue: AccountProfileTypeValue(profileType),
     avatarValue: _thumbUriValueOrNull(avatarUrl),

@@ -17,7 +17,7 @@ import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_optional_date_time_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
-import 'package:belluga_now/domain/venue_event/value_objects/venue_event_tag_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_tag_value.dart';
 import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 import 'package:value_object_pattern/domain/value_objects/html_content_value.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
@@ -77,24 +77,24 @@ EventModel eventModelFromRaw({
   );
 }
 
-List<VenueEventTagValue> _parseTags(Object raw) {
-  if (raw is List<VenueEventTagValue>) {
-    return List<VenueEventTagValue>.unmodifiable(raw);
+List<EventTagValue> _parseTags(Object raw) {
+  if (raw is List<EventTagValue>) {
+    return List<EventTagValue>.unmodifiable(raw);
   }
 
   if (raw is Iterable) {
-    return List<VenueEventTagValue>.unmodifiable(
+    return List<EventTagValue>.unmodifiable(
       raw.map((item) {
-        if (item is VenueEventTagValue) {
+        if (item is EventTagValue) {
           return item;
         }
-        return VenueEventTagValue(item.toString());
+        return EventTagValue(item.toString());
       }),
     );
   }
 
-  return List<VenueEventTagValue>.unmodifiable(<VenueEventTagValue>[
-    VenueEventTagValue(raw.toString()),
+  return List<EventTagValue>.unmodifiable(<EventTagValue>[
+    EventTagValue(raw.toString()),
   ]);
 }
 

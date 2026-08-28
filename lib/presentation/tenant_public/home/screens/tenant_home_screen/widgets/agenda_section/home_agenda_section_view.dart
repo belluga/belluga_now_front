@@ -18,7 +18,7 @@ class HomeAgendaSectionView extends StatefulWidget {
 
   final TenantHomeAgendaController controller;
   final Widget Function(BuildContext context, HomeAgendaSectionSlots slots)
-      builder;
+  builder;
   final ScrollController? scrollController;
 
   @override
@@ -157,6 +157,7 @@ class _HomeAgendaSectionViewState extends State<HomeAgendaSectionView> {
                                 controller: widget.controller,
                                 catalog: catalog,
                                 selection: selection,
+                                autoRevealSelectedChips: false,
                               ),
                             ),
                           ),
@@ -188,7 +189,11 @@ class _HomeAgendaSectionViewState extends State<HomeAgendaSectionView> {
                           ),
                         ),
                     ],
-                    body: HomeAgendaBody(controller: widget.controller),
+                    body: HomeAgendaBody(
+                      controller: widget.controller,
+                      catalog: catalog,
+                      selection: selection,
+                    ),
                   ),
                 );
               },
@@ -200,8 +205,9 @@ class _HomeAgendaSectionViewState extends State<HomeAgendaSectionView> {
   }
 
   void _updateFilterPanelExtent(Size size) {
-    final nextExtent =
-        size.height <= 0 ? _defaultFilterPanelExtent : size.height;
+    final nextExtent = size.height <= 0
+        ? _defaultFilterPanelExtent
+        : size.height;
     if ((nextExtent - _filterPanelExtent).abs() < 0.5 || !mounted) {
       return;
     }
@@ -216,11 +222,13 @@ class _HomeAgendaFilterPanel extends StatelessWidget {
     required this.controller,
     required this.catalog,
     required this.selection,
+    this.autoRevealSelectedChips = true,
   });
 
   final TenantHomeAgendaController controller;
   final DiscoveryFilterCatalog catalog;
   final DiscoveryFilterSelection selection;
+  final bool autoRevealSelectedChips;
 
   @override
   Widget build(BuildContext context) {
@@ -242,6 +250,7 @@ class _HomeAgendaFilterPanel extends StatelessWidget {
                     selection: selection,
                     policy: controller.discoveryFilterPolicy,
                     isLoading: isInitialLoading || isPageLoading,
+                    autoRevealSelectedChips: autoRevealSelectedChips,
                     iconBuilder: buildDiscoveryFilterVisualIcon,
                     onSelectionChanged: controller.setDiscoveryFilterSelection,
                   ),

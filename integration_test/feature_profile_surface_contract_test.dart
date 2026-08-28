@@ -13,12 +13,10 @@ import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/inviteables_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/proximity_preferences_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/self_profile_repository_contract.dart';
-import 'package:belluga_now/domain/user/profile_avatar_storage_contract.dart';
 import 'package:belluga_now/domain/user/self_profile.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/user/user_profile_contract.dart';
 import 'package:belluga_now/domain/user/user_profile_media_upload.dart';
-import 'package:belluga_now/domain/user/value_objects/profile_avatar_path_value.dart';
 import 'package:belluga_now/domain/user/value_objects/self_profile_confirmed_events_count_value.dart';
 import 'package:belluga_now/domain/user/value_objects/self_profile_pending_invites_count_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
@@ -82,8 +80,10 @@ void main() {
       expect(find.text('Alterado'), findsNothing);
       expect(find.text('Telefone'), findsOneWidget);
       expect(find.byIcon(Icons.lock_outline), findsOneWidget);
-      expect(find.byKey(const ValueKey<String>('profile-radius-expanded')),
-          findsOneWidget);
+      expect(
+        find.byKey(const ValueKey<String>('profile-radius-expanded')),
+        findsOneWidget,
+      );
 
       await tester.tap(
         find.byKey(const ValueKey<String>('profile-radius-expanded')),
@@ -108,11 +108,12 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Selecionar no mapa'), findsOneWidget);
-      expect(find.byKey(const Key('profileSaveOriginPreferenceButton')),
-          findsOneWidget);
+      expect(
+        find.byKey(const Key('profileSaveOriginPreferenceButton')),
+        findsOneWidget,
+      );
       await tester.tap(
-        find.widgetWithText(FilledButton, 'Salvar origem').last,
-        warnIfMissed: false,
+        find.byKey(const Key('profileSaveOriginPreferenceButton')),
       );
       await tester.pumpAndSettle();
 
@@ -181,9 +182,8 @@ void main() {
   );
 
   testWidgets(
-    'profile runtime keeps successful save when avatar cleanup fails locally',
+    'profile runtime keeps successful save without durable avatar cleanup',
     (tester) async {
-      final avatarStorage = _FakeProfileAvatarStorage(throwOnClear: true);
       final profileRepository = _FakeSelfProfileRepository(
         initialProfile: _buildSelfProfile(
           userId: 'user-1',
@@ -196,7 +196,6 @@ void main() {
 
       final controller = _buildController(
         selfProfileRepository: profileRepository,
-        avatarStorage: avatarStorage,
       );
       await _pumpProfileScreen(tester, controller: controller);
       await tester.pumpAndSettle();
@@ -212,9 +211,7 @@ void main() {
 }
 
 class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
-  _FakeAuthRepository({
-    UserContract? initialUser,
-  }) {
+  _FakeAuthRepository({UserContract? initialUser}) {
     userStreamValue.addValue(initialUser);
   }
 
@@ -288,16 +285,17 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
   _FakeAppDataRepository({
     ThemeMode? initialThemeMode,
     double initialMaxRadiusMeters = 5000,
-  })  : _themeMode = initialThemeMode ?? ThemeMode.light,
-        _maxRadiusMeters = initialMaxRadiusMeters,
-        themeModeStreamValue =
-            StreamValue<ThemeMode?>(defaultValue: initialThemeMode),
-        maxRadiusMetersStreamValue = StreamValue<DistanceInMetersValue>(
-          defaultValue: DistanceInMetersValue.fromRaw(
-            initialMaxRadiusMeters,
-            defaultValue: initialMaxRadiusMeters,
-          ),
-        );
+  }) : _themeMode = initialThemeMode ?? ThemeMode.light,
+       _maxRadiusMeters = initialMaxRadiusMeters,
+       themeModeStreamValue = StreamValue<ThemeMode?>(
+         defaultValue: initialThemeMode,
+       ),
+       maxRadiusMetersStreamValue = StreamValue<DistanceInMetersValue>(
+         defaultValue: DistanceInMetersValue.fromRaw(
+           initialMaxRadiusMeters,
+           defaultValue: initialMaxRadiusMeters,
+         ),
+       );
 
   ThemeMode _themeMode;
   double _maxRadiusMeters;
@@ -317,9 +315,9 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
 
   @override
   DistanceInMetersValue get maxRadiusMeters => DistanceInMetersValue.fromRaw(
-        _maxRadiusMeters,
-        defaultValue: _maxRadiusMeters,
-      );
+    _maxRadiusMeters,
+    defaultValue: _maxRadiusMeters,
+  );
 
   @override
   bool get hasPersistedMaxRadiusPreference => false;
@@ -342,36 +340,9 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
 
 class _FakeAppData extends Fake implements AppData {}
 
-class _FakeProfileAvatarStorage implements ProfileAvatarStorageContract {
-  _FakeProfileAvatarStorage({
-    this.throwOnClear = false,
-  });
-
-  String? _path;
-  bool throwOnClear;
-
-  @override
-  Future<ProfileAvatarPathValue?> readAvatarPath() async =>
-      _path == null ? null : ProfileAvatarPathValue.fromRaw(_path);
-
-  @override
-  Future<void> writeAvatarPath(ProfileAvatarPathValue path) async {
-    _path = path.value;
-  }
-
-  @override
-  Future<void> clearAvatarPath() async {
-    if (throwOnClear) {
-      throw StateError('secure storage delete failed');
-    }
-    _path = null;
-  }
-}
-
 class _FakeSelfProfileRepository extends SelfProfileRepositoryContract {
-  _FakeSelfProfileRepository({
-    required SelfProfile initialProfile,
-  }) : _profile = initialProfile {
+  _FakeSelfProfileRepository({required SelfProfile initialProfile})
+    : _profile = initialProfile {
     currentProfileStreamValue.addValue(initialProfile);
   }
 
@@ -388,10 +359,8 @@ class _FakeSelfProfileRepository extends SelfProfileRepositoryContract {
     if (fetchCompleter != null) {
       final profile = await fetchCompleter!.future;
       _profile = profile;
-      currentProfileStreamValue.addValue(profile);
       return profile;
     }
-    currentProfileStreamValue.addValue(_profile);
     return _profile;
   }
 
@@ -420,8 +389,7 @@ class _FakeSelfProfileRepository extends SelfProfileRepositoryContract {
       confirmedEventsCount: _profile.confirmedEventsCount,
       timezone: timezoneValue?.value ?? _profile.timezone,
     );
-    currentProfileStreamValue.addValue(_profile);
-    return _profile;
+    return refreshCurrentProfile();
   }
 }
 
@@ -429,10 +397,7 @@ class _FakeProximityPreferencesRepository
     extends ProximityPreferencesRepositoryContract {}
 
 class _FakeUser implements UserContract {
-  _FakeUser({
-    required this.uuidValue,
-    required this.profile,
-  });
+  _FakeUser({required this.uuidValue, required this.profile});
 
   @override
   final MongoIDValue uuidValue;
@@ -458,8 +423,7 @@ class _RecordingStackRouter extends Mock implements StackRouter {
     bool ignoreChildRoutes = false,
     bool ignoreParentRoutes = false,
     bool ignorePagelessRoutes = false,
-  }) =>
-      false;
+  }) => false;
 
   @override
   void pop<T extends Object?>([T? result]) {}
@@ -519,9 +483,7 @@ Future<void> _pumpProfileScreen(
     route: _FakeRouteMatch(
       name: ProfileRoute.name,
       fullPath: '/profile',
-      meta: canonicalRouteMeta(
-        family: CanonicalRouteFamily.profileRoot,
-      ),
+      meta: canonicalRouteMeta(family: CanonicalRouteFamily.profileRoot),
     ),
     router: router,
     stackKey: const ValueKey<String>('profile-stack'),
@@ -545,14 +507,10 @@ Future<void> _pumpProfileScreen(
 
 ProfileScreenController _buildController({
   required _FakeSelfProfileRepository selfProfileRepository,
-  ProfileAvatarStorageContract? avatarStorage,
 }) {
   return ProfileScreenController(
-    authRepository: _FakeAuthRepository(
-      initialUser: _buildUser(),
-    ),
+    authRepository: _FakeAuthRepository(initialUser: _buildUser()),
     appDataRepository: _FakeAppDataRepository(),
-    avatarStorage: avatarStorage ?? _FakeProfileAvatarStorage(),
     selfProfileRepository: selfProfileRepository,
     inviteablesRepository: _StubInviteablesRepository(),
     proximityPreferencesRepository: _FakeProximityPreferencesRepository(),
@@ -604,9 +562,10 @@ SelfProfile _buildSelfProfile({
   if (accountProfileId.isNotEmpty) {
     accountProfileIdValue.parse(accountProfileId);
   }
-  final displayNameValue =
-      UserDisplayNameValue(isRequired: false, minLenght: null)
-        ..parse(displayName);
+  final displayNameValue = UserDisplayNameValue(
+    isRequired: false,
+    minLenght: null,
+  )..parse(displayName);
   final bioValue = DescriptionValue(defaultValue: '', minLenght: null)
     ..parse(bio);
   final phoneValue = AuthPhoneOtpPhoneValue(isRequired: false, minLenght: null)

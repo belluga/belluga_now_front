@@ -13,6 +13,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profi
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_label_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_head_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_page.dart';
@@ -6407,6 +6408,33 @@ void main() {
       );
 
       expect(find.text('Artistas'), findsOneWidget);
+      await tester.ensureVisible(
+        find.byKey(const Key('EventProfileProfileGroupLabel_artists')),
+      );
+      await tester.tap(
+        find.byKey(const Key('EventProfileProfileGroupLabel_artists')),
+      );
+      await tester.pump();
+      expect(
+        find.byKey(const Key('EventProfileProfileGroupLabelInput_artists')),
+        findsOneWidget,
+      );
+      await tester.enterText(
+        find.byKey(const Key('EventProfileProfileGroupLabelInput_artists')),
+        'Artistas do servidor',
+      );
+      await tester.tap(find.byIcon(Icons.check));
+      await tester.pumpAndSettle();
+      expect(
+        eventsRepository.lastPatchOccurrenceGroupEventId,
+        'evt-single-occurrence-canonical',
+      );
+      expect(
+        eventsRepository.lastPatchOccurrenceGroupOccurrenceId,
+        'occurrence-1',
+      );
+      expect(eventsRepository.lastPatchOccurrenceGroupId, 'artists');
+      expect(find.text('Artistas autoritativos'), findsOneWidget);
     },
   );
 
@@ -6535,6 +6563,14 @@ void main() {
         scrollable: find.byType(Scrollable).last,
       );
       await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('OccurrenceProfileProfileGroupLabel_bandas')),
+      );
+      await tester.pump();
+      expect(
+        find.byKey(const Key('OccurrenceProfileProfileGroupLabelInput_bandas')),
+        findsOneWidget,
+      );
       await tester.tap(find.byTooltip('Remover grupo'));
       await tester.pumpAndSettle();
 
@@ -7044,10 +7080,13 @@ void main() {
       await tester.pumpAndSettle();
 
       final expected =
-          '<p><strong>Olá 🎉</strong> mundo link <s>riscado</s></p>';
+          '<p><strong>Olá 🎉</strong> mundo <a href="https://example.com">link</a> <s>riscado</s></p>';
       expect(controller.eventContentController.text, expected);
       expect(controller.eventContentController.text, isNot(contains('<u>')));
-      expect(controller.eventContentController.text, isNot(contains('<a')));
+      expect(
+        controller.eventContentController.text,
+        contains('<a href="https://example.com">link</a>'),
+      );
       expect(controller.eventContentController.text, contains('🎉'));
 
       final quillEditor = tester.widget<QuillEditor>(find.byType(QuillEditor));
@@ -7058,7 +7097,12 @@ void main() {
             'insert': 'Olá 🎉',
             'attributes': {'bold': true},
           },
-          {'insert': ' mundo link '},
+          {'insert': ' mundo '},
+          {
+            'insert': 'link',
+            'attributes': {'link': 'https://example.com'},
+          },
+          {'insert': ' '},
           {
             'insert': 'riscado',
             'attributes': {'strike': true},
@@ -7711,6 +7755,9 @@ class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
   String? lastDeleteOccurrenceProfileGroupEventId;
   String? lastDeleteOccurrenceProfileGroupOccurrenceId;
   String? lastDeleteOccurrenceProfileGroupGroupId;
+  String? lastPatchOccurrenceGroupEventId;
+  String? lastPatchOccurrenceGroupOccurrenceId;
+  String? lastPatchOccurrenceGroupId;
   final Map<String, List<TenantAdminAccountProfileSelectionSummary>>
   _occurrenceGroupMembersByScope =
       <String, List<TenantAdminAccountProfileSelectionSummary>>{};
@@ -7718,6 +7765,25 @@ class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
   _occurrenceGroupHeadsByScope =
       <String, List<TenantAdminNestedProfileGroup>>{};
   int _aggregateRevision = 1;
+
+  @override
+  Future<TenantAdminNestedGroupLabelMutationResult>
+  patchOccurrenceProfileGroupLabel({
+    required TenantAdminEventsRepoString eventId,
+    required TenantAdminEventsRepoString occurrenceId,
+    required TenantAdminEventsRepoString groupId,
+    required TenantAdminEventsRepoString label,
+  }) async {
+    lastPatchOccurrenceGroupEventId = eventId.value;
+    lastPatchOccurrenceGroupOccurrenceId = occurrenceId.value;
+    lastPatchOccurrenceGroupId = groupId.value;
+    return TenantAdminNestedGroupLabelMutationResult(
+      idValue: TenantAdminNestedProfileGroupTextValue(groupId.value),
+      labelValue: TenantAdminNestedProfileGroupTextValue(
+        'Artistas autoritativos',
+      ),
+    );
+  }
 
   String _occurrenceGroupScopeKey({
     required String eventId,
