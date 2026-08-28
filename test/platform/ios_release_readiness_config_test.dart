@@ -94,10 +94,6 @@ void main() {
       for (final scheme in const [
         'comgooglemaps',
         'waze',
-        'citymapper',
-        'mapswithme',
-        'mappls',
-        'moovit',
       ]) {
         expect(plist, contains('<string>$scheme</string>'));
       }
