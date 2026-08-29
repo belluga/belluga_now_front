@@ -31,6 +31,10 @@ class TenantAdminEventsRequestEncoder {
     return <String, dynamic>{'label': label.trim()};
   }
 
+  Map<String, dynamic> encodePatchOccurrenceProfileGroupLabel({
+    required String label,
+  }) => <String, dynamic>{'label': label.trim()};
+
   Map<String, dynamic> encodeEventTypePatch({
     String? name,
     String? slug,

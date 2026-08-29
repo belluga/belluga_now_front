@@ -3,7 +3,6 @@ import 'package:belluga_now/domain/partners/value_objects/account_profile_nested
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
-import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 class AccountProfileNestedGroupMember {
@@ -17,16 +16,16 @@ class AccountProfileNestedGroupMember {
     DomainBooleanValue? canOpenPublicDetailValue,
     this.publicDetailPathValue,
     List<AccountProfileTagValue>? tagValues,
-  })  : canOpenPublicDetailValue = DomainBooleanValue(
-          defaultValue: false,
-          isRequired: false,
-        )..parse((canOpenPublicDetailValue?.value ?? false).toString()),
-        tagValues = List<AccountProfileTagValue>.unmodifiable(
-          tagValues ?? const <AccountProfileTagValue>[],
-        );
+  }) : canOpenPublicDetailValue = DomainBooleanValue(
+         defaultValue: false,
+         isRequired: false,
+       )..parse((canOpenPublicDetailValue?.value ?? false).toString()),
+       tagValues = List<AccountProfileTagValue>.unmodifiable(
+         tagValues ?? const <AccountProfileTagValue>[],
+       );
 
   final MongoIDValue idValue;
-  final TitleValue nameValue;
+  final AccountProfileNameValue nameValue;
   final SlugValue? slugValue;
   final AccountProfileTypeValue profileTypeValue;
   final ThumbUriValue? avatarValue;
@@ -46,8 +45,8 @@ class AccountProfileNestedGroupMember {
   bool get canOpenPublicDetail => canOpenPublicDetailValue.value;
   String? get publicDetailPath =>
       publicDetailPathValue?.value.trim().isEmpty == true
-          ? null
-          : publicDetailPathValue?.value.trim();
+      ? null
+      : publicDetailPathValue?.value.trim();
   List<AccountProfileTagValue> get tags =>
       List<AccountProfileTagValue>.unmodifiable(tagValues);
 }

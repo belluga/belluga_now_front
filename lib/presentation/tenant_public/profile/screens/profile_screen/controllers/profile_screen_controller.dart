@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:belluga_now/domain/invites/inviteable_recipient.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
@@ -15,17 +15,14 @@ import 'package:belluga_now/domain/repositories/self_profile_repository_contract
 import 'package:belluga_now/domain/auth/account_deletion_journey_state.dart';
 import 'package:belluga_now/domain/user/value_objects/user_display_name_value.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
-import 'package:belluga_now/domain/user/profile_avatar_storage_contract.dart';
 import 'package:belluga_now/domain/user/self_profile.dart';
 import 'package:belluga_now/domain/user/user_profile_media_upload.dart';
 import 'package:belluga_now/domain/user/value_objects/user_profile_media_bytes_value.dart';
-import 'package:belluga_now/domain/user/value_objects/profile_avatar_path_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/controllers/profile_account_deletion_ui_phase.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:stream_value/core/stream_value.dart';
 import 'package:value_object_pattern/domain/value_objects/generic_string_value.dart';
 
@@ -34,7 +31,6 @@ class ProfileScreenController implements Disposable {
     AuthRepositoryContract? authRepository,
     AppDataRepositoryContract? appDataRepository,
     ProximityPreferencesRepositoryContract? proximityPreferencesRepository,
-    ProfileAvatarStorageContract? avatarStorage,
     SelfProfileRepositoryContract? selfProfileRepository,
     InviteablesRepositoryContract? inviteablesRepository,
   }) : _authRepository =
@@ -46,8 +42,6 @@ class ProfileScreenController implements Disposable {
            (GetIt.I.isRegistered<ProximityPreferencesRepositoryContract>()
                ? GetIt.I.get<ProximityPreferencesRepositoryContract>()
                : null),
-       _avatarStorage =
-           avatarStorage ?? GetIt.I.get<ProfileAvatarStorageContract>(),
        _selfProfileRepository =
            selfProfileRepository ??
            GetIt.I.get<SelfProfileRepositoryContract>(),
@@ -63,7 +57,6 @@ class ProfileScreenController implements Disposable {
   final AuthRepositoryContract _authRepository;
   final AppDataRepositoryContract _appDataRepository;
   final ProximityPreferencesRepositoryContract? _proximityPreferencesRepository;
-  final ProfileAvatarStorageContract _avatarStorage;
   final SelfProfileRepositoryContract _selfProfileRepository;
   final InviteablesRepositoryContract _inviteablesRepository;
   StreamSubscription<UserContract?>? _userSubscription;
@@ -82,8 +75,8 @@ class ProfileScreenController implements Disposable {
       TextEditingController();
   final TextEditingController fixedOriginLabelController =
       TextEditingController();
-  final StreamValue<String?> localAvatarPathStreamValue =
-      StreamValue<String?>();
+  final StreamValue<Uint8List?> pendingAvatarBytesStreamValue =
+      StreamValue<Uint8List?>();
   final StreamValue<int> formVersionStreamValue = StreamValue<int>(
     defaultValue: 0,
   );
@@ -133,7 +126,11 @@ class ProfileScreenController implements Disposable {
   String _initialDescription = '';
   SelfProfile? _currentProfile;
   UserProfileMediaUpload? _pendingAvatarUpload;
+  Future<void>? _profileRefreshAction;
+  Future<void>? _profileSaveAction;
+  Future<void>? _avatarPickAction;
   bool _didInit = false;
+  bool _isDisposed = false;
   Future<void>? _accountDeletionAction;
 
   StreamValue<UserContract?> get userStreamValue =>
@@ -147,6 +144,11 @@ class ProfileScreenController implements Disposable {
   Future<void> setThemeMode(ThemeMode mode) =>
       _appDataRepository.setThemeMode(AppThemeModeValue.fromRaw(mode));
   String? get currentAvatarUrl => _currentProfile?.avatarUrl;
+  bool get isProfileSaving => _profileSaveAction != null;
+  bool get isProfileMutationBlocked =>
+      _profileRefreshAction != null ||
+      _profileSaveAction != null ||
+      _avatarPickAction != null;
 
   bool syncFromUser(UserContract? user) {
     if (user == null) return false;
@@ -158,7 +160,6 @@ class ProfileScreenController implements Disposable {
 
   Future<void> init() async {
     _didInit = true;
-    await loadAvatarPath();
     final hasCachedProfile =
         currentProfileStreamValue.value != null || _currentProfile != null;
     if (hasCachedProfile) {
@@ -217,24 +218,6 @@ class ProfileScreenController implements Disposable {
         .listen((value) {
           maxRadiusMetersStreamValue.addValue(value.value);
         });
-  }
-
-  Future<void> loadAvatarPath() async {
-    final stored = await _avatarStorage.readAvatarPath();
-    final storedPath = stored?.value.trim();
-    if (storedPath == null || storedPath.isEmpty) {
-      localAvatarPathStreamValue.addValue(null);
-      return;
-    }
-    final file = File(storedPath);
-    if (!await file.exists()) {
-      await _clearStoredAvatarPathBestEffort(
-        context: 'load-avatar-path missing-file cleanup',
-        clearLocalPreview: true,
-      );
-      return;
-    }
-    localAvatarPathStreamValue.addValue(storedPath);
   }
 
   bool get hasPendingChanges {
@@ -403,14 +386,39 @@ class ProfileScreenController implements Disposable {
     debugPrint('[Profile] Avatar update requested');
   }
 
-  Future<void> refreshProfile({bool silent = false}) async {
+  Future<void> refreshProfile({bool silent = false}) {
+    if (_isDisposed) {
+      return Future<void>.value();
+    }
+    final inFlight = _profileRefreshAction;
+    if (inFlight != null) {
+      return inFlight;
+    }
+
+    late final Future<void> action;
+    action = _refreshProfileOnce(silent: silent).whenComplete(() {
+      if (identical(_profileRefreshAction, action)) {
+        _profileRefreshAction = null;
+        if (!_isDisposed) {
+          bumpFormVersion();
+        }
+      }
+    });
+    _profileRefreshAction = action;
+    bumpFormVersion();
+    return action;
+  }
+
+  Future<void> _refreshProfileOnce({required bool silent}) async {
     if (!silent) {
       isProfileLoadingStreamValue.addValue(true);
     }
     try {
       await _selfProfileRepository.refreshCurrentProfile();
     } finally {
-      isProfileLoadingStreamValue.addValue(false);
+      if (!_isDisposed) {
+        isProfileLoadingStreamValue.addValue(false);
+      }
     }
   }
 
@@ -469,71 +477,94 @@ class ProfileScreenController implements Disposable {
     bumpFormVersion();
   }
 
-  Future<void> pickAvatar(ImageSource source) async {
+  Future<void> pickAvatar(ImageSource source) {
+    if (_isDisposed) {
+      return Future<void>.value();
+    }
+    final inFlight = _avatarPickAction ?? _profileSaveAction;
+    if (inFlight != null) {
+      return inFlight;
+    }
+
+    late final Future<void> action;
+    action = _pickAvatarOnce(source).whenComplete(() {
+      if (identical(_avatarPickAction, action)) {
+        _avatarPickAction = null;
+        if (!_isDisposed) {
+          bumpFormVersion();
+        }
+      }
+    });
+    _avatarPickAction = action;
+    bumpFormVersion();
+    return action;
+  }
+
+  Future<void> _pickAvatarOnce(ImageSource source) async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: source, imageQuality: 85);
     if (picked == null) return;
 
-    final directory = await getApplicationDocumentsDirectory();
-    final extension = picked.path.split('.').last;
-    final fileName =
-        'avatar_${DateTime.now().millisecondsSinceEpoch}.$extension';
-    final targetPath = '${directory.path}/$fileName';
-    final saved = await File(picked.path).copy(targetPath);
-    final previousPath = localAvatarPathStreamValue.value;
-    final previousPendingAvatarUpload = _pendingAvatarUpload;
-    await _avatarStorage.writeAvatarPath(_profileAvatarPathValue(saved.path));
-    localAvatarPathStreamValue.addValue(saved.path);
+    final bytes = await picked.readAsBytes();
+    if (_isDisposed) return;
     _pendingAvatarUpload = UserProfileMediaUpload(
-      bytesValue: UserProfileMediaBytesValue()..set(await saved.readAsBytes()),
+      bytesValue: UserProfileMediaBytesValue()..set(bytes),
       fileNameValue: GenericStringValue(defaultValue: '', isRequired: true)
-        ..parse(_fileNameFromPath(saved.path)),
+        ..parse(_fileNameFromPath(picked.path)),
       mimeTypeValue: GenericStringValue(defaultValue: '', isRequired: false)
-        ..parse(_inferImageMimeType(saved.path) ?? ''),
+        ..parse(_inferImageMimeType(picked.path) ?? ''),
     );
+    pendingAvatarBytesStreamValue.addValue(bytes);
     bumpFormVersion();
-    try {
-      await saveProfile();
-      if (previousPath != null &&
-          previousPath.isNotEmpty &&
-          previousPath != saved.path) {
-        await _deleteFileBestEffort(
-          File(previousPath),
-          context: 'avatar-update previous-file cleanup',
-        );
-      }
-      await _deleteFileBestEffort(
-        saved,
-        context: 'avatar-update staged-file cleanup',
-      );
-    } catch (error) {
-      _pendingAvatarUpload = previousPendingAvatarUpload;
-      if (previousPath != null && previousPath.isNotEmpty) {
-        await _avatarStorage.writeAvatarPath(
-          _profileAvatarPathValue(previousPath),
-        );
-        localAvatarPathStreamValue.addValue(previousPath);
-      } else {
-        await _clearStoredAvatarPathBestEffort(
-          context: 'avatar-update rollback cleanup',
-          clearLocalPreview: true,
-        );
-      }
-      await _deleteFileBestEffort(
-        saved,
-        context: 'avatar-update rollback staged-file cleanup',
-      );
-      rethrow;
-    }
+    await saveProfile();
   }
 
-  Future<void> saveProfile() async {
-    final trimmedName = nameController.text.trim();
-    final trimmedDescription = descriptionController.text.trim();
-    final hasNameChange = trimmedName != _initialName.trim();
-    final hasDescriptionChange =
-        trimmedDescription != _initialDescription.trim();
-    final hasAvatarChange = _pendingAvatarUpload != null;
+  Future<void> saveProfile() {
+    if (_isDisposed) {
+      return Future<void>.value();
+    }
+    final inFlight = _profileSaveAction;
+    if (inFlight != null) {
+      return inFlight;
+    }
+
+    final draftName = nameController.text.trim();
+    final draftDescription = descriptionController.text.trim();
+    final draftAvatarUpload = _pendingAvatarUpload;
+
+    late final Future<void> action;
+    action =
+        _saveProfileAfterRefresh(
+          draftName: draftName,
+          draftDescription: draftDescription,
+          draftAvatarUpload: draftAvatarUpload,
+        ).whenComplete(() {
+          if (identical(_profileSaveAction, action)) {
+            _profileSaveAction = null;
+            if (!_isDisposed) {
+              bumpFormVersion();
+            }
+          }
+        });
+    _profileSaveAction = action;
+    bumpFormVersion();
+    return action;
+  }
+
+  Future<void> _saveProfileAfterRefresh({
+    required String draftName,
+    required String draftDescription,
+    required UserProfileMediaUpload? draftAvatarUpload,
+  }) async {
+    final refresh = _profileRefreshAction;
+    if (refresh != null) {
+      await refresh;
+    }
+    if (_isDisposed) return;
+
+    final hasNameChange = draftName != _initialName.trim();
+    final hasDescriptionChange = draftDescription != _initialDescription.trim();
+    final hasAvatarChange = draftAvatarUpload != null;
 
     if (!hasNameChange && !hasDescriptionChange && !hasAvatarChange) {
       return;
@@ -542,22 +573,23 @@ class ProfileScreenController implements Disposable {
       final updated = await _selfProfileRepository.updateCurrentProfile(
         displayNameValue: hasNameChange
             ? (UserDisplayNameValue(isRequired: false, minLenght: null)
-                ..parse(trimmedName))
+                ..parse(draftName))
             : null,
         bioValue: hasDescriptionChange
             ? (DescriptionValue(defaultValue: '', minLenght: null)
-                ..parse(trimmedDescription))
+                ..parse(draftDescription))
             : null,
-        avatarUpload: _pendingAvatarUpload,
+        avatarUpload: draftAvatarUpload,
       );
-      _pendingAvatarUpload = null;
+      if (_isDisposed) return;
+      if (identical(_pendingAvatarUpload, draftAvatarUpload)) {
+        _pendingAvatarUpload = null;
+        pendingAvatarBytesStreamValue.addValue(null);
+      }
+      _applySelfProfile(updated);
       if (updated.userId.trim().isNotEmpty) {
         _syncedUserId = updated.userId;
       }
-      await _clearStoredAvatarPathBestEffort(
-        context: 'profile-save post-success cleanup',
-        clearLocalPreview: true,
-      );
     } catch (error, stackTrace) {
       debugPrint('ProfileScreenController.saveProfile failed');
       debugPrintStack(stackTrace: stackTrace);
@@ -611,12 +643,6 @@ class ProfileScreenController implements Disposable {
     return value;
   }
 
-  ProfileAvatarPathValue _profileAvatarPathValue(String raw) {
-    final value = ProfileAvatarPathValue();
-    value.parse(raw);
-    return value;
-  }
-
   void setFixedOriginCoordinate({
     required double latitude,
     required double longitude,
@@ -647,38 +673,6 @@ class ProfileScreenController implements Disposable {
     return null;
   }
 
-  Future<void> _clearStoredAvatarPathBestEffort({
-    required String context,
-    bool clearLocalPreview = false,
-  }) async {
-    try {
-      await _avatarStorage.clearAvatarPath();
-    } catch (error) {
-      debugPrint(
-        '[Profile] Ignoring avatar storage cleanup failure during $context: $error',
-      );
-    } finally {
-      if (clearLocalPreview) {
-        localAvatarPathStreamValue.addValue(null);
-      }
-    }
-  }
-
-  Future<void> _deleteFileBestEffort(
-    File file, {
-    required String context,
-  }) async {
-    try {
-      if (await file.exists()) {
-        await file.delete();
-      }
-    } catch (error) {
-      debugPrint(
-        '[Profile] Ignoring temporary file cleanup failure during $context: $error',
-      );
-    }
-  }
-
   String _resolveEditableDisplayName(SelfProfile profile) {
     final candidate = profile.displayName.trim();
     if (candidate.isEmpty) {
@@ -699,6 +693,7 @@ class ProfileScreenController implements Disposable {
 
   @override
   void onDispose() {
+    _isDisposed = true;
     _userSubscription?.cancel();
     _selfProfileSubscription?.cancel();
     _maxRadiusSubscription?.cancel();
@@ -711,7 +706,7 @@ class ProfileScreenController implements Disposable {
     fixedOriginLatitudeController.dispose();
     fixedOriginLongitudeController.dispose();
     fixedOriginLabelController.dispose();
-    localAvatarPathStreamValue.dispose();
+    pendingAvatarBytesStreamValue.dispose();
     formVersionStreamValue.dispose();
     isProfileLoadingStreamValue.dispose();
     isMatchedPeopleLoadingStreamValue.dispose();

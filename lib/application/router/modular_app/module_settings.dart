@@ -51,7 +51,6 @@ import 'package:belluga_now/domain/repositories/user_location_repository_contrac
 import 'package:belluga_now/domain/push/push_presentation_gate_contract.dart';
 import 'package:belluga_now/domain/services/location_origin_service_contract.dart';
 import 'package:belluga_now/domain/services/timezone_service_contract.dart';
-import 'package:belluga_now/domain/user/profile_avatar_storage_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/admin_mode_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/auth_repository.dart';
@@ -97,7 +96,6 @@ import 'package:belluga_now/infrastructure/services/push/push_answer_resolver.da
 import 'package:belluga_now/infrastructure/services/push/push_presentation_gate.dart';
 import 'package:belluga_now/infrastructure/services/timezone/timezone_service.dart';
 import 'package:belluga_now/presentation/shared/push/controllers/push_options_resolver.dart';
-import 'package:belluga_now/infrastructure/services/user/profile_avatar_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
@@ -373,9 +371,6 @@ class ModuleSettings extends ModuleSettingsContract {
       ),
     );
     _registerIfAbsent<PoiRepositoryContract>(() => PoiRepository());
-    _registerIfAbsent<ProfileAvatarStorageContract>(
-      () => ProfileAvatarStorage(),
-    );
     _registerIfAbsent<SelfProfileRepositoryContract>(
       () => SelfProfileRepository(),
     );

@@ -1,3 +1,4 @@
+import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
 import 'package:belluga_now/domain/invites/invite_partner_type.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
@@ -38,7 +39,7 @@ import 'package:belluga_now/domain/value_objects/domain_optional_date_time_value
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
-import 'package:belluga_now/domain/venue_event/value_objects/venue_event_tag_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_tag_value.dart';
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_public_profile_payload_decoder.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_type_dto.dart';
@@ -280,9 +281,13 @@ class EventDTO {
   }
 
   static HTMLContentValue _htmlContentValue(String rawContent) {
+    final canonicalContent = SafeRichHtml.canonicalize(
+      rawContent,
+      allowExplicitHttpsLinks: true,
+    );
     final value = HTMLContentValue(minLenght: 0);
-    value.validate(rawContent);
-    value.set(rawContent);
+    value.validate(canonicalContent);
+    value.set(canonicalContent);
     return value;
   }
 
@@ -415,7 +420,7 @@ class EventDTO {
           ),
           tags: _resolveCanonicalTaxonomyLabels(
             occurrenceTaxonomyTerms,
-          ).map(VenueEventTagValue.new).toList(growable: false),
+          ).map(EventTagValue.new).toList(growable: false),
         ),
       );
     }

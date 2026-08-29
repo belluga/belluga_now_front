@@ -1,4 +1,4 @@
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/my_events_carousel_card.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/see_more_my_events_card.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/carousel_section.dart';
@@ -11,13 +11,13 @@ class HomeMyEventsCarousel extends StatelessWidget {
     required this.distanceLabelProvider,
   });
 
-  final List<VenueEventResume> events;
+  final List<UpcomingOcurrenceResume> events;
   final VoidCallback onSeeAll;
-  final String? Function(VenueEventResume) distanceLabelProvider;
+  final String? Function(UpcomingOcurrenceResume) distanceLabelProvider;
 
   @override
   Widget build(BuildContext context) {
-    return CarouselSection<VenueEventResume>(
+    return CarouselSection<UpcomingOcurrenceResume>(
       title: 'Meus Eventos',
       items: events,
       maxItems: 5,

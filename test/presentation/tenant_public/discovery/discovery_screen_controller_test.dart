@@ -1055,6 +1055,95 @@ void main() {
   );
 
   testWidgets(
+    'DiscoveryScreen renders contextual copy for a persisted filtered empty result',
+    (tester) async {
+      final catalog =
+          _accountProfileDiscoveryFilterCatalogWithTwoTaxonomyGroups();
+      final primary = catalog.filters.single;
+      final group = catalog.taxonomyOptionsByKey.values.first;
+      final term = group.terms.single;
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(
+        _FakeAppDataRepository(
+          appData: _buildAppData(),
+          maxRadiusMeters: _buildAppData().mapRadiusDefaultMeters,
+          discoveryFilterSelections:
+              <String, AppDataDiscoveryFilterSelectionSnapshot>{
+                'discovery.account_profiles': _appDataSelectionSnapshot(
+                  DiscoveryFilterSelection(
+                    primaryKeys: <String>{primary.key},
+                    taxonomyTermKeys: <String, Set<String>>{
+                      group.key: <String>{term.value},
+                    },
+                  ),
+                  catalog: catalog,
+                ),
+              },
+        ),
+      );
+      final repository = _FakeAccountProfilesRepository(
+        pages: <int, PagedAccountProfilesResult>{
+          1: pagedAccountProfilesResultFromRaw(
+            profiles: const <AccountProfileModel>[],
+            hasMore: false,
+            discoveryFilterCatalog: catalog,
+          ),
+        },
+      );
+      final controller = _buildDiscoveryController(
+        accountProfilesRepository: repository,
+      );
+      GetIt.I.registerSingleton<DiscoveryScreenController>(controller);
+      final router = _RecordingStackRouter();
+      await tester.pumpWidget(
+        StackRouterScope(
+          controller: router,
+          stateHash: 0,
+          child: MaterialApp(
+            home: RouteDataScope(
+              routeData: RouteData(
+                route: _FakeRouteMatch(fullPath: '/descobrir'),
+                router: router,
+                stackKey: const ValueKey('stack'),
+                pendingChildren: const [],
+                type: const RouteType.material(),
+              ),
+              child: const DiscoveryScreen(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          'Nenhum resultado para os filtros selecionados: ${primary.label} · ${group.label}: ${term.label}.',
+        ),
+        findsOneWidget,
+      );
+      final bars = find.byType(DiscoveryFilterBar, skipOffstage: false);
+      expect(bars, findsNWidgets(2));
+      Finder? hiddenBar;
+      Finder? visibleBar;
+      for (var index = 0; index < bars.evaluate().length; index++) {
+        final bar = tester.widget<DiscoveryFilterBar>(bars.at(index));
+        if (bar.autoRevealSelectedChips) {
+          visibleBar = bars.at(index);
+        } else {
+          hiddenBar = bars.at(index);
+        }
+      }
+      expect(hiddenBar, isNotNull);
+      expect(visibleBar, isNotNull);
+      final hiddenAncestors = find.ancestor(
+        of: hiddenBar!,
+        matching: find.byType(Offstage, skipOffstage: false),
+      );
+      expect(hiddenAncestors, findsWidgets);
+      expect(tester.widget<Offstage>(hiddenAncestors.first).offstage, isTrue);
+    },
+  );
+
+  testWidgets(
     'DiscoveryScreen renders canonical filters by default without a toggle button',
     (tester) async {
       final profiles = List<AccountProfileModel>.generate(
@@ -1177,13 +1266,7 @@ void main() {
       final repository = _FakeAccountProfilesRepository(
         pages: {
           1: pagedAccountProfilesResultFromRaw(
-            profiles: [
-              _profile(
-                id: _mongoId('search-mode-filter-1'),
-                type: 'venue',
-                name: 'Perfil Busca',
-              ),
-            ],
+            profiles: const <AccountProfileModel>[],
             hasMore: false,
           ),
         },
@@ -1230,6 +1313,20 @@ void main() {
       expect(find.byKey(_primaryFilterKey(primaryFilter)), findsNothing);
       expect(
         find.bySemanticsLabel('Painel de filtros de perfis'),
+        findsNothing,
+      );
+      await tester.enterText(find.byType(TextField), 'sem resultado');
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+      expect(find.text('Nada encontrado ainda'), findsOneWidget);
+      expect(
+        find.text(
+          'Não encontramos resultados para sua busca. Tente termos mais simples ou diferentes.',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('Nenhum resultado para os filtros selecionados:'),
         findsNothing,
       );
 
@@ -2290,7 +2387,10 @@ void main() {
 
       expect(repository.pageRequests, hasLength(1));
       expect(repository.pageRequests.first.typeFilters, <String>['musician']);
-      expect(controller.discoveryFilterSelectionStreamValue.value.isEmpty, isTrue);
+      expect(
+        controller.discoveryFilterSelectionStreamValue.value.isEmpty,
+        isTrue,
+      );
       expect(controller.filteredPartnersStreamValue.value, hasLength(2));
       expect(controller.hasLoadedStreamValue.value, isTrue);
       expect(controller.isLoadingStreamValue.value, isFalse);
@@ -2483,7 +2583,7 @@ ValueKey<String> _primaryFilterKey(DiscoveryFilterCatalogItem filter) {
 }
 
 ValueKey<String> _selectedPrimaryFilterKey(DiscoveryFilterCatalogItem filter) {
-  return ValueKey<String>('discoveryFilterSelectedPrimary_${filter.key}');
+  return ValueKey<String>('discoveryFilterPrimary_${filter.key}');
 }
 
 ValueKey<String> _taxonomyChipKey(

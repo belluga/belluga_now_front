@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_choice.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser.dart';
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/directions_app_chooser_contract.dart';
@@ -11,6 +13,27 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:map_launcher/map_launcher.dart';
 
 void main() {
+  test('native map discovery has the exact approved provider allowlist', () {
+    final source = File(
+      'lib/presentation/shared/widgets/directions_app_chooser/'
+      'directions_app_chooser.dart',
+    ).readAsStringSync();
+
+    final allowlist = RegExp(
+      r'const List<MapApp> _approvedMapApps = <MapApp>\[(.*?)\];',
+      dotAll: true,
+    ).firstMatch(source);
+
+    expect(allowlist, isNotNull);
+    final providerIds = RegExp(r'MapApp\.(\w+)')
+        .allMatches(allowlist!.group(1)!)
+        .map((match) => match.group(1))
+        .toList(growable: false);
+    expect(providerIds, <String>['apple', 'google', 'waze']);
+    expect(source, contains('MapLauncher.getAvailableMaps(_approvedMapApps)'));
+    expect(source, isNot(contains('MapLauncher.getAvailableMaps(MapApp.all)')));
+  });
+
   test(
     'native chooser keeps options dynamic from installed maps and providers',
     () async {

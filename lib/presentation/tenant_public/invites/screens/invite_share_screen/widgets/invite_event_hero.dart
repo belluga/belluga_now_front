@@ -1,7 +1,7 @@
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
-import 'package:belluga_now/domain/venue_event/value_objects/venue_event_tag_value.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_tag_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/carousel_card.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/event_details.dart';
@@ -20,13 +20,13 @@ class InviteEventHero extends StatelessWidget {
     final idValue = MongoIDValue(defaultValue: _coerceMongoId(invite.eventId))
       ..parse(_coerceMongoId(invite.eventId));
     final tagValues = invite.tags
-        .map((tag) => VenueEventTagValue(tag.value))
+        .map((tag) => EventTagValue(tag.value))
         .toList(growable: false);
 
     return CarouselCard(
       imageUri: invite.eventImageValue.value,
       contentOverlay: EventDetails(
-          event: VenueEventResume(
+          event: UpcomingOcurrenceResume(
         idValue: idValue,
         slugValue: slugValue,
         titleValue: invite.eventNameValue,

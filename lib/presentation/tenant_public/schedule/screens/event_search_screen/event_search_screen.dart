@@ -1,7 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/controllers/event_search_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/widgets/agenda_app_bar.dart';
@@ -73,7 +73,7 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
           child: StreamValueBuilder<bool>(
             streamValue: _controller.isInitialLoadingStreamValue,
             builder: (context, isInitialLoading) {
-              return StreamValueBuilder<List<VenueEventResume>>(
+              return StreamValueBuilder<List<UpcomingOcurrenceResume>>(
                 streamValue: _controller.displayedEventsStreamValue,
                 builder: (context, events) {
                   return StreamValueBuilder<bool>(

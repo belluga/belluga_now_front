@@ -12,6 +12,12 @@ typedef DirectionsCanLaunchUrl = Future<bool> Function(Uri uri);
 typedef DirectionsLaunchUrl = Future<bool> Function(Uri uri, LaunchMode mode);
 
 class DirectionsAppChooser implements DirectionsAppChooserContract {
+  static const List<MapApp> _approvedMapApps = <MapApp>[
+    MapApp.apple,
+    MapApp.google,
+    MapApp.waze,
+  ];
+
   DirectionsAppChooser({
     DirectionsAvailableMapsLoader? availableMapsLoader,
     DirectionsCanLaunchUrl? canLaunchUrl,
@@ -31,7 +37,7 @@ class DirectionsAppChooser implements DirectionsAppChooserContract {
   final TargetPlatform Function() _platformProvider;
 
   static Future<List<SupportedMap>> _defaultAvailableMaps() =>
-      MapLauncher.getAvailableMaps(MapApp.all);
+      MapLauncher.getAvailableMaps(_approvedMapApps);
 
   static Future<bool> _defaultCanLaunchUrl(Uri uri) => canLaunchUrl(uri);
 

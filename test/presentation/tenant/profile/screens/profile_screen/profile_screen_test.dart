@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
@@ -15,10 +17,12 @@ import 'package:belluga_now/domain/repositories/proximity_preferences_repository
 import 'package:belluga_now/domain/repositories/self_profile_repository_contract.dart';
 import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/controllers/profile_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/profile_screen.dart';
+import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/widgets/profile_header.dart';
+import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/widgets/profile_editable_tile.dart';
+import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/user/self_profile.dart';
-import 'package:belluga_now/domain/user/profile_avatar_storage_contract.dart';
 import 'package:belluga_now/domain/user/user_profile_contract.dart';
 import 'package:belluga_now/domain/user/user_profile_media_upload.dart';
 import 'package:belluga_now/domain/user/value_objects/self_profile_confirmed_events_count_value.dart';
@@ -31,7 +35,6 @@ import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_timezone_value.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
-import 'package:belluga_now/domain/user/value_objects/profile_avatar_path_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
@@ -43,6 +46,7 @@ import 'package:stream_value/core/stream_value.dart';
 import 'package:value_object_pattern/domain/value_objects/email_address_value.dart';
 import 'package:value_object_pattern/domain/value_objects/full_name_value.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
+import 'package:value_object_pattern/domain/value_objects/uri_value.dart';
 
 const _defaultAccountDeletionDuplicateBurst = 2;
 const _dartDefineAccountDeletionDuplicateBurst = String.fromEnvironment(
@@ -234,30 +238,6 @@ class _FakeAppDataRepository extends AppDataRepositoryContract {
   }
 }
 
-class _FakeProfileAvatarStorage implements ProfileAvatarStorageContract {
-  _FakeProfileAvatarStorage({this.throwOnClear = false});
-
-  String? _path;
-  bool throwOnClear;
-
-  @override
-  Future<ProfileAvatarPathValue?> readAvatarPath() async =>
-      _path == null ? null : ProfileAvatarPathValue.fromRaw(_path);
-
-  @override
-  Future<void> writeAvatarPath(ProfileAvatarPathValue path) async {
-    _path = path.value;
-  }
-
-  @override
-  Future<void> clearAvatarPath() async {
-    if (throwOnClear) {
-      throw StateError('secure storage delete failed');
-    }
-    _path = null;
-  }
-}
-
 class _FakeProximityPreferencesRepository
     extends ProximityPreferencesRepositoryContract {}
 
@@ -276,18 +256,23 @@ class _FakeSelfProfileRepository extends SelfProfileRepositoryContract {
   UserDisplayNameValue? lastDisplayNameValue;
   DescriptionValue? lastBioValue;
   Object? updateError;
+  int updateCalls = 0;
 
   Completer<SelfProfile>? fetchCompleter;
+  Completer<SelfProfile>? updateCompleter;
+  SelfProfile? updateResult;
 
   @override
   Future<SelfProfile> fetchCurrentProfile() async {
-    if (fetchCompleter != null) {
-      final profile = await fetchCompleter!.future;
+    final completer = fetchCompleter;
+    if (completer != null) {
+      final profile = await completer.future;
+      if (identical(fetchCompleter, completer)) {
+        fetchCompleter = null;
+      }
       _profile = profile;
-      currentProfileStreamValue.addValue(profile);
       return profile;
     }
-    currentProfileStreamValue.addValue(_profile);
     return _profile;
   }
 
@@ -299,11 +284,20 @@ class _FakeSelfProfileRepository extends SelfProfileRepositoryContract {
     UserProfileMediaUpload? avatarUpload,
     DomainBooleanValue? removeAvatarValue,
   }) async {
+    updateCalls++;
     if (updateError != null) {
       throw updateError!;
     }
     lastDisplayNameValue = displayNameValue;
     lastBioValue = bioValue;
+    if (updateCompleter != null) {
+      _profile = await updateCompleter!.future;
+      return refreshCurrentProfile();
+    }
+    if (updateResult != null) {
+      _profile = updateResult!;
+      return refreshCurrentProfile();
+    }
     _profile = _buildSelfProfile(
       userId: _profile.userId,
       accountProfileId: _profile.accountProfileId,
@@ -315,8 +309,7 @@ class _FakeSelfProfileRepository extends SelfProfileRepositoryContract {
       confirmedEventsCount: _profile.confirmedEventsCount,
       timezone: timezoneValue?.value ?? _profile.timezone,
     );
-    currentProfileStreamValue.addValue(_profile);
-    return _profile;
+    return refreshCurrentProfile();
   }
 }
 
@@ -418,7 +411,6 @@ void main() {
   test('ProfileScreenController resolves with only profile dependencies', () {
     final authRepository = _FakeAuthRepository(backend: _FakeBackendContract());
     final appDataRepository = _FakeAppDataRepository();
-    final avatarStorage = _FakeProfileAvatarStorage();
     final selfProfileRepository = _FakeSelfProfileRepository(
       initialProfile: _buildSelfProfile(
         userId: 'user-1',
@@ -429,7 +421,6 @@ void main() {
 
     GetIt.I.registerSingleton<AuthRepositoryContract>(authRepository);
     GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
-    GetIt.I.registerSingleton<ProfileAvatarStorageContract>(avatarStorage);
     GetIt.I.registerSingleton<SelfProfileRepositoryContract>(
       selfProfileRepository,
     );
@@ -743,7 +734,6 @@ void main() {
   testWidgets('Profile updates when user stream changes', (tester) async {
     final authRepository = _FakeAuthRepository(backend: _FakeBackendContract());
     final appDataRepository = _FakeAppDataRepository();
-    final avatarStorage = _FakeProfileAvatarStorage();
     final selfProfileRepository = _FakeSelfProfileRepository(
       initialProfile: _buildSelfProfile(
         userId: '507f1f77bcf86cd799439011',
@@ -754,7 +744,6 @@ void main() {
     final controller = ProfileScreenController(
       authRepository: authRepository,
       appDataRepository: appDataRepository,
-      avatarStorage: avatarStorage,
       selfProfileRepository: selfProfileRepository,
       inviteablesRepository: _FakeInviteablesRepository(),
       proximityPreferencesRepository: _FakeProximityPreferencesRepository(),
@@ -845,6 +834,288 @@ void main() {
     },
   );
 
+  testWidgets(
+    'profile screen renders the current self-profile avatar through BellugaNetworkImage',
+    (tester) async {
+      const avatarUrl =
+          'https://tenant.test/api/v1/media/account-profiles/profile-self/avatar?v=7';
+      final controller = _buildController(
+        authorized: true,
+        initialUser: _buildUser(),
+        selfProfileRepository: _FakeSelfProfileRepository(
+          initialProfile: _buildSelfProfile(
+            userId: 'user-1',
+            accountProfileId: 'profile-self',
+            avatarUrl: avatarUrl,
+          ),
+        ),
+      );
+
+      await _pumpProfileScreen(
+        tester,
+        controller: controller,
+        router: mockRouter,
+      );
+      await tester.pumpAndSettle();
+
+      final avatar = tester.widget<BellugaNetworkImage>(
+        find.descendant(
+          of: find.byType(ProfileHeader),
+          matching: find.byType(BellugaNetworkImage),
+        ),
+      );
+      expect(avatar.url, avatarUrl);
+    },
+  );
+
+  testWidgets(
+    'staged pending avatar bytes render from memory before save then yield to refreshed remote avatar',
+    (tester) async {
+      const refreshedAvatarUrl =
+          'https://tenant.test/api/v1/media/account-profiles/profile-self/avatar?v=8';
+      final repository =
+          _FakeSelfProfileRepository(
+              initialProfile: _buildSelfProfile(
+                userId: 'user-1',
+                accountProfileId: 'profile-self',
+                avatarUrl:
+                    'https://tenant.test/api/v1/media/account-profiles/profile-self/avatar?v=7',
+              ),
+            )
+            ..updateResult = _buildSelfProfile(
+              userId: 'user-1',
+              accountProfileId: 'profile-self',
+              avatarUrl: refreshedAvatarUrl,
+            );
+      final controller = _buildController(
+        authorized: true,
+        initialUser: _buildUser(),
+        selfProfileRepository: repository,
+      );
+      final avatarBytes = Uint8List.fromList(
+        base64Decode(
+          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAF/QL+Hf9i3wAAAABJRU5ErkJggg==',
+        ),
+      );
+
+      await _pumpProfileScreen(
+        tester,
+        controller: controller,
+        router: mockRouter,
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      controller.pendingAvatarBytesStreamValue.addValue(avatarBytes);
+      await tester.pump();
+
+      expect(find.byType(BellugaNetworkImage), findsNothing);
+      final preview = tester.widget<Image>(
+        find.descendant(
+          of: find.byType(ProfileHeader),
+          matching: find.byType(Image),
+        ),
+      );
+      expect(preview.image, isA<MemoryImage>());
+      expect(controller.pendingAvatarBytesStreamValue.value, avatarBytes);
+
+      controller.nameController.text = 'Alice Saved';
+      await controller.saveProfile();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(controller.pendingAvatarBytesStreamValue.value, isNull);
+      expect(repository.lastDisplayNameValue?.value, 'Alice Saved');
+      final refreshedAvatar = tester.widget<BellugaNetworkImage>(
+        find.descendant(
+          of: find.byType(ProfileHeader),
+          matching: find.byType(BellugaNetworkImage),
+        ),
+      );
+      expect(refreshedAvatar.url, refreshedAvatarUrl);
+    },
+  );
+
+  testWidgets(
+    'profile screen does not use the auth user picture when self-profile avatar is null',
+    (tester) async {
+      final controller = _buildController(
+        authorized: true,
+        initialUser: _buildUser(
+          pictureUrl: 'https://auth.example/user-picture.png',
+        ),
+        selfProfileRepository: _FakeSelfProfileRepository(
+          initialProfile: _buildSelfProfile(
+            userId: 'user-1',
+            accountProfileId: 'profile-self',
+          ),
+        ),
+      );
+
+      await _pumpProfileScreen(
+        tester,
+        controller: controller,
+        router: mockRouter,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(BellugaNetworkImage), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byType(ProfileHeader),
+          matching: find.byType(Image),
+        ),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets(
+    'profile race coalesces repeated saves and disables profile mutations until completion',
+    (tester) async {
+      final burstLevel =
+          int.tryParse(Platform.environment['DELPHI_RACE_BURST_LEVEL'] ?? '') ??
+          2;
+      final updateCompleter = Completer<SelfProfile>();
+      final repository = _FakeSelfProfileRepository(
+        initialProfile: _buildSelfProfile(
+          userId: 'user-1',
+          accountProfileId: 'profile-self',
+        ),
+      )..updateCompleter = updateCompleter;
+      final controller = _buildController(
+        authorized: true,
+        initialUser: _buildUser(),
+        selfProfileRepository: repository,
+      );
+
+      await _pumpProfileScreen(
+        tester,
+        controller: controller,
+        router: mockRouter,
+      );
+      await tester.pumpAndSettle();
+
+      controller.nameController.text = 'Alice Serialized';
+      final saves = List<Future<void>>.generate(
+        burstLevel,
+        (_) => controller.saveProfile(),
+      );
+      final firstSave = saves.first;
+      await tester.pump();
+      await tester.pump();
+
+      expect(saves.every((save) => identical(save, firstSave)), isTrue);
+      expect(repository.updateCalls, 1);
+      expect(controller.isProfileSaving, isTrue);
+      expect(
+        tester.widget<ProfileHeader>(find.byType(ProfileHeader)).onChangeAvatar,
+        isNull,
+      );
+      final busyEditableTiles = tester.widgetList<ProfileEditableTile>(
+        find.byType(ProfileEditableTile),
+      );
+      expect(
+        busyEditableTiles.take(2).every((tile) => tile.onTap == null),
+        isTrue,
+      );
+
+      updateCompleter.complete(
+        _buildSelfProfile(
+          userId: 'user-1',
+          accountProfileId: 'profile-self',
+          displayName: 'Alice Serialized',
+        ),
+      );
+      await Future.wait(saves);
+      await tester.pump();
+      await tester.pump();
+
+      expect(controller.isProfileSaving, isFalse);
+      expect(
+        tester.widget<ProfileHeader>(find.byType(ProfileHeader)).onChangeAvatar,
+        isNotNull,
+      );
+      final idleEditableTiles = tester.widgetList<ProfileEditableTile>(
+        find.byType(ProfileEditableTile),
+      );
+      expect(
+        idleEditableTiles.take(2).every((tile) => tile.onTap != null),
+        isTrue,
+      );
+    },
+  );
+
+  test('profile race ignores a late save completion after disposal', () async {
+    final updateCompleter = Completer<SelfProfile>();
+    final repository = _FakeSelfProfileRepository(
+      initialProfile: _buildSelfProfile(
+        userId: 'user-1',
+        accountProfileId: 'profile-self',
+      ),
+    )..updateCompleter = updateCompleter;
+    final controller = _buildController(
+      authorized: true,
+      initialUser: _buildUser(),
+      selfProfileRepository: repository,
+    );
+    controller.nameController.text = 'Alice Late';
+
+    final save = controller.saveProfile();
+    controller.onDispose();
+    updateCompleter.complete(
+      _buildSelfProfile(
+        userId: 'user-1',
+        accountProfileId: 'profile-self',
+        displayName: 'Alice Late',
+      ),
+    );
+
+    await expectLater(save, completes);
+    expect(repository.updateCalls, 1);
+    expect(controller.isProfileSaving, isFalse);
+  });
+
+  test(
+    'profile race waits for an older refresh before saving the captured newer draft',
+    () async {
+      final refreshCompleter = Completer<SelfProfile>();
+      final repository = _FakeSelfProfileRepository(
+        initialProfile: _buildSelfProfile(
+          userId: 'user-1',
+          accountProfileId: 'profile-self',
+          displayName: 'Alice Cached',
+        ),
+      )..fetchCompleter = refreshCompleter;
+      final controller = _buildController(
+        authorized: true,
+        initialUser: _buildUser(),
+        selfProfileRepository: repository,
+      );
+
+      final refresh = controller.refreshProfile(silent: true);
+      controller.nameController.text = 'Alice Newer';
+      final save = controller.saveProfile();
+
+      expect(controller.isProfileMutationBlocked, isTrue);
+      expect(repository.updateCalls, 0);
+
+      refreshCompleter.complete(
+        _buildSelfProfile(
+          userId: 'user-1',
+          accountProfileId: 'profile-self',
+          displayName: 'Alice Stale Refresh',
+        ),
+      );
+      await refresh;
+      await save;
+
+      expect(repository.updateCalls, 1);
+      expect(repository.lastDisplayNameValue?.value, 'Alice Newer');
+      expect(controller.nameController.text, 'Alice Newer');
+      expect(controller.isProfileMutationBlocked, isFalse);
+    },
+  );
+
   test(
     'Profile controller persists editable fields and rehydrates values',
     () async {
@@ -911,9 +1182,8 @@ void main() {
   );
 
   test(
-    'Profile controller treats avatar cleanup failure as non-fatal after backend save',
+    'Profile controller clears only its in-memory avatar preview after backend save',
     () async {
-      final avatarStorage = _FakeProfileAvatarStorage(throwOnClear: true);
       final selfProfileRepository = _FakeSelfProfileRepository(
         initialProfile: _buildSelfProfile(
           userId: 'user-1',
@@ -926,7 +1196,6 @@ void main() {
       final controller = _buildController(
         authorized: true,
         initialUser: _buildUser(),
-        avatarStorage: avatarStorage,
         selfProfileRepository: selfProfileRepository,
       );
 
@@ -941,7 +1210,7 @@ void main() {
       );
       expect(controller.nameController.text, 'Alice Persistida');
       expect(controller.hasPendingChanges, isFalse);
-      expect(controller.localAvatarPathStreamValue.value, isNull);
+      expect(controller.pendingAvatarBytesStreamValue.value, isNull);
     },
   );
 
@@ -1027,7 +1296,6 @@ ProfileScreenController _buildController({
   bool authorized = false,
   UserContract? initialUser,
   AuthRepositoryContract<UserContract>? authRepository,
-  ProfileAvatarStorageContract? avatarStorage,
   SelfProfileRepositoryContract? selfProfileRepository,
   InviteablesRepositoryContract? inviteablesRepository,
 }) {
@@ -1039,7 +1307,6 @@ ProfileScreenController _buildController({
         initialUser: initialUser,
       );
   final appDataRepository = _FakeAppDataRepository();
-  final resolvedAvatarStorage = avatarStorage ?? _FakeProfileAvatarStorage();
   final profileRepository =
       selfProfileRepository ??
       _FakeSelfProfileRepository(
@@ -1055,7 +1322,6 @@ ProfileScreenController _buildController({
   return ProfileScreenController(
     authRepository: resolvedAuthRepository,
     appDataRepository: appDataRepository,
-    avatarStorage: resolvedAvatarStorage,
     selfProfileRepository: profileRepository,
     inviteablesRepository:
         inviteablesRepository ?? _FakeInviteablesRepository(),
@@ -1086,12 +1352,15 @@ Widget _buildRoutedTestApp({required _RecordingStackRouter router}) {
   );
 }
 
-UserContract _buildUser({String name = 'Alice Smith'}) {
+UserContract _buildUser({String name = 'Alice Smith', String? pictureUrl}) {
   return _FakeUser(
     uuidValue: MongoIDValue()..parse('507f1f77bcf86cd799439011'),
     profile: UserProfileContract(
       nameValue: FullNameValue()..parse(name),
       emailValue: EmailAddressValue()..parse('alice@example.com'),
+      pictureUrlValue: pictureUrl == null
+          ? null
+          : (URIValue()..parse(pictureUrl)),
     ),
   );
 }

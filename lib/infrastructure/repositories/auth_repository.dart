@@ -19,7 +19,6 @@ import 'package:belluga_now/domain/repositories/self_profile_repository_contract
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/auth_repository_contract_values.dart';
 import 'package:belluga_now/domain/user/user_belluga.dart';
-import 'package:belluga_now/domain/user/profile_avatar_storage_contract.dart';
 import 'dart:convert';
 
 import 'package:belluga_now/infrastructure/user/dtos/user_dto.dart';
@@ -647,9 +646,6 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
       _deleteUserIdOnLocalStorage(),
       _runRequiredCurrentIdentityCleanup<SelfProfileRepositoryContract>(
         (repository) => repository.clearCurrentIdentityState(),
-      ),
-      _runRequiredCurrentIdentityCleanup<ProfileAvatarStorageContract>(
-        (storage) => storage.clearAvatarPath(),
       ),
       _runRequiredCurrentIdentityCleanup<FavoriteRepositoryContract>(
         (repository) => repository.clearCurrentIdentityState(),

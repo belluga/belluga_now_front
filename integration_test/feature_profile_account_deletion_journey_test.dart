@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/modular_app/modules/profile_module.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
@@ -11,12 +12,10 @@ import 'package:belluga_now/domain/repositories/app_data_repository_contract.dar
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/inviteables_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/self_profile_repository_contract.dart';
-import 'package:belluga_now/domain/user/profile_avatar_storage_contract.dart';
 import 'package:belluga_now/domain/user/self_profile.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/user/user_profile_contract.dart';
 import 'package:belluga_now/domain/user/user_profile_media_upload.dart';
-import 'package:belluga_now/domain/user/value_objects/profile_avatar_path_value.dart';
 import 'package:belluga_now/domain/user/value_objects/self_profile_confirmed_events_count_value.dart';
 import 'package:belluga_now/domain/user/value_objects/self_profile_pending_invites_count_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
@@ -69,7 +68,6 @@ void main() {
         final controller = ProfileScreenController(
           authRepository: authRepository,
           appDataRepository: _JourneyAppDataRepository(),
-          avatarStorage: _JourneyAvatarStorage(),
           selfProfileRepository: _JourneySelfProfileRepository(
             initialProfile: _buildSelfProfile(),
           ),
@@ -77,6 +75,7 @@ void main() {
         );
         GetIt.I.registerSingleton<AuthRepositoryContract>(authRepository);
         GetIt.I.registerSingleton<ProfileScreenController>(controller);
+        GetIt.I.registerSingleton<ProfileModule>(ProfileModule());
 
         final router = RootStackRouter.build(
           routes: <AutoRoute>[
@@ -107,7 +106,15 @@ void main() {
         await tester.pumpAndSettle();
 
         final entry = find.byKey(const Key('profileDeleteAccountEntry'));
-        await tester.ensureVisible(entry);
+        final profileScrollable = find
+            .ancestor(of: entry, matching: find.byType(Scrollable))
+            .first;
+        await tester.scrollUntilVisible(
+          entry,
+          300,
+          scrollable: profileScrollable,
+        );
+        await tester.pumpAndSettle();
         await tester.tap(entry);
         await tester.pumpAndSettle();
         await tester.tap(
@@ -262,17 +269,6 @@ class _JourneyAppDataRepository extends AppDataRepositoryContract {
 }
 
 class _JourneyAppData extends Fake implements AppData {}
-
-class _JourneyAvatarStorage implements ProfileAvatarStorageContract {
-  @override
-  Future<void> clearAvatarPath() async {}
-
-  @override
-  Future<ProfileAvatarPathValue?> readAvatarPath() async => null;
-
-  @override
-  Future<void> writeAvatarPath(ProfileAvatarPathValue path) async {}
-}
 
 class _JourneySelfProfileRepository extends SelfProfileRepositoryContract {
   _JourneySelfProfileRepository({required this.initialProfile}) {

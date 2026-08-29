@@ -13,7 +13,7 @@ import 'package:belluga_now/domain/repositories/app_data_repository_contract.dar
 import 'package:belluga_now/domain/repositories/value_objects/user_events_repository_contract_values.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_bool_value.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
@@ -58,7 +58,7 @@ void main() {
     final now = DateTime.now();
     const upcomingId = '507f1f77bcf86cd799439011';
     const pastId = '507f1f77bcf86cd799439012';
-    final upcomingEvent = buildVenueEventResume(
+    final upcomingEvent = buildUpcomingOcurrenceResume(
       id: upcomingId,
       slug: 'slug-1',
       title: 'Upcoming Event Title Long Enough',
@@ -66,7 +66,7 @@ void main() {
       startDateTime: now.add(const Duration(hours: 1)),
       location: 'Valid Location Name Long Enough',
     );
-    final pastEvent = buildVenueEventResume(
+    final pastEvent = buildUpcomingOcurrenceResume(
       id: pastId,
       slug: 'slug-2',
       title: 'Past Event Title Long Enough',
@@ -93,7 +93,7 @@ void main() {
     () async {
       final now = DateTime.now();
       const ongoingId = '507f1f77bcf86cd799439013';
-      final ongoingLongEvent = buildVenueEventResume(
+      final ongoingLongEvent = buildUpcomingOcurrenceResume(
         id: ongoingId,
         slug: 'ongoing-long-event',
         title: 'Ongoing Long Event Title',
@@ -234,7 +234,7 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   @override
   void clearCurrentIdentityState() {}
 
-  _FakeUserEventsRepository({List<VenueEventResume>? events})
+  _FakeUserEventsRepository({List<UpcomingOcurrenceResume>? events})
     : _events = events ?? [];
 
   @override
@@ -243,22 +243,22 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
       StreamValue<Set<UserEventsRepositoryContractPrimString>>(
         defaultValue: {},
       );
-  List<VenueEventResume> _events;
+  List<UpcomingOcurrenceResume> _events;
   int fetchMyEventsCallCount = 0;
   bool throwOnRefreshConfirmedIds = false;
 
-  void setEvents(List<VenueEventResume> events) {
+  void setEvents(List<UpcomingOcurrenceResume> events) {
     _events = events;
   }
 
   @override
-  Future<List<VenueEventResume>> fetchMyEvents() async {
+  Future<List<UpcomingOcurrenceResume>> fetchMyEvents() async {
     fetchMyEventsCallCount += 1;
     return _events;
   }
 
   @override
-  Future<List<VenueEventResume>> fetchFeaturedEvents() async => const [];
+  Future<List<UpcomingOcurrenceResume>> fetchFeaturedEvents() async => const [];
 
   @override
   Future<void> confirmEventAttendance(

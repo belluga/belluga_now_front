@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:belluga_form_validation/belluga_form_validation.dart';
@@ -13,6 +14,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profi
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_label_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
@@ -20,6 +22,7 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_events_repository.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_unknown_mutation_failure.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -38,6 +41,15 @@ void main() {
   TenantAdminEventsRepoBool _repoBool(bool value) {
     return TenantAdminEventsRepoBool.fromRaw(value, defaultValue: value);
   }
+
+  Future<TenantAdminNestedGroupLabelMutationResult> patchLabel(
+    TenantAdminEventsRepository repository,
+  ) => repository.patchOccurrenceProfileGroupLabel(
+    eventId: _repoText('event-1'),
+    occurrenceId: _repoText('occ-1'),
+    groupId: _repoText('artists'),
+    label: _repoText('Artists'),
+  );
 
   Future<void> registerAuth({
     required String landlordToken,
@@ -115,6 +127,102 @@ void main() {
       contains('music_genre'),
     );
   });
+
+  test(
+    'patchOccurrenceProfileGroupLabel sends one scoped PATCH with correlation only',
+    () async {
+      final adapter = _EventsRoutingAdapter();
+      final repository = TenantAdminEventsRepository(
+        dio: Dio()..httpClientAdapter = adapter,
+        tenantScope: _MutableTenantScope('https://tenant-a.test/admin/api'),
+      );
+      final result = await repository.patchOccurrenceProfileGroupLabel(
+        eventId: _repoText('event-1'),
+        occurrenceId: _repoText('occ-1'),
+        groupId: _repoText('artists'),
+        label: _repoText('Artists'),
+      );
+      final request = adapter.requests.single;
+      expect(request.method, 'PATCH');
+      expect(
+        request.path,
+        endsWith('/v1/events/event-1/occurrences/occ-1/profile_groups/artists'),
+      );
+      expect(request.data, {'label': 'Artists'});
+      expect(request.headers['X-Request-Id'], isNotEmpty);
+      expect(request.headers, isNot(contains('Idempotency-Key')));
+      expect(adapter.requests, hasLength(1));
+      expect(result.id, 'artists');
+      expect(result.label, 'Artists');
+    },
+  );
+
+  test('patchOccurrenceProfileGroupLabel preserves structured 422', () async {
+    final adapter = _ConfiguredEventLabelAdapter(
+      statusCode: 422,
+      responseBody: const {
+        'message': 'The given data was invalid.',
+        'errors': {
+          'label': ['Invalid label.'],
+        },
+      },
+    );
+    final repository = TenantAdminEventsRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      tenantScope: _MutableTenantScope('https://tenant-a.test/admin/api'),
+    );
+
+    await expectLater(
+      patchLabel(repository),
+      throwsA(
+        isA<FormValidationFailure>().having(
+          (error) => error.fieldErrors['label'],
+          'label',
+          ['Invalid label.'],
+        ),
+      ),
+    );
+  });
+
+  test('patchOccurrenceProfileGroupLabel keeps 5xx definitive', () async {
+    final adapter = _ConfiguredEventLabelAdapter(
+      statusCode: 500,
+      responseBody: const {'message': 'Internal failure.'},
+    );
+    final repository = TenantAdminEventsRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+      tenantScope: _MutableTenantScope('https://tenant-a.test/admin/api'),
+    );
+
+    await expectLater(
+      patchLabel(repository),
+      throwsA(
+        isA<Exception>().having(
+          (error) => error is TenantAdminUnknownMutationFailure,
+          'is unknown mutation failure',
+          isFalse,
+        ),
+      ),
+    );
+  });
+
+  test(
+    'patchOccurrenceProfileGroupLabel classifies connection loss as unknown',
+    () async {
+      final repository = TenantAdminEventsRepository(
+        dio: Dio()
+          ..httpClientAdapter = _ConfiguredEventLabelAdapter(
+            connectionFailure: true,
+          ),
+        tenantScope: _MutableTenantScope('https://tenant-a.test/admin/api'),
+      );
+
+      await expectLater(
+        patchLabel(repository),
+        throwsA(isA<TenantAdminUnknownMutationFailure>()),
+      );
+    },
+  );
 
   test(
     'createEvent omits geo payload for online mode even when coordinates exist',
@@ -1774,6 +1882,18 @@ class _EventsRoutingAdapter implements HttpClientAdapter {
 
     if (options.path.contains('/occurrences/') &&
         options.path.contains('/profile_groups/') &&
+        options.method == 'PATCH') {
+      final groupId = options.path.split('/').last;
+      final payload = options.data as Map<String, dynamic>;
+      return _jsonResponse({
+        'data': {
+          'group': {'id': groupId, 'label': payload['label']},
+        },
+      });
+    }
+
+    if (options.path.contains('/occurrences/') &&
+        options.path.contains('/profile_groups/') &&
         options.method == 'DELETE') {
       final deletedGroupId = options.path.split('/').last;
       return _jsonResponse({
@@ -1845,6 +1965,51 @@ class _EventsRoutingAdapter implements HttpClientAdapter {
     );
   }
 }
+
+class _ConfiguredEventLabelAdapter implements HttpClientAdapter {
+  _ConfiguredEventLabelAdapter({
+    this.statusCode = 200,
+    this.responseBody = _eventLabelResponseBody,
+    this.connectionFailure = false,
+  });
+
+  final int statusCode;
+  final Object responseBody;
+  final bool connectionFailure;
+  final List<RequestOptions> requests = <RequestOptions>[];
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requests.add(options);
+    if (connectionFailure) {
+      throw DioException(
+        requestOptions: options,
+        type: DioExceptionType.connectionError,
+        error: const SocketException('connection lost'),
+      );
+    }
+    return ResponseBody.fromString(
+      jsonEncode(responseBody),
+      statusCode,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+}
+
+const Map<String, Object?> _eventLabelResponseBody = {
+  'data': {
+    'group': {'id': 'artists', 'label': 'Artists'},
+  },
+};
 
 class _EventsCreateValidationAdapter implements HttpClientAdapter {
   @override

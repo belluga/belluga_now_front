@@ -37,13 +37,13 @@ import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/dao/favorite_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart';
-import 'package:belluga_now/infrastructure/dal/dao/venue_event_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/event_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/app_data_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/favorite/favorite_preview_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/venue_event/venue_event_preview_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/event/event_preview_dto.dart';
 import 'package:belluga_now/infrastructure/services/push/invite_push_tap_source.dart';
 import 'package:belluga_now/presentation/shared/push/controllers/push_options_resolver.dart';
 import 'package:belluga_now/infrastructure/services/push/push_transport_configurator.dart';
@@ -1040,7 +1040,7 @@ class _NoopBackend extends BackendContract {
   FavoriteBackendContract get favorites => _NoopFavoriteBackend();
 
   @override
-  VenueEventBackendContract get venueEvents => _NoopVenueEventBackend();
+  EventBackendContract get events => _NoopEventBackend();
 
   @override
   ScheduleBackendContract get schedule => _NoopScheduleBackend();
@@ -1150,13 +1150,13 @@ class _NoopFavoriteBackend extends FavoriteBackendContract {
       throw UnimplementedError();
 }
 
-class _NoopVenueEventBackend extends VenueEventBackendContract {
+class _NoopEventBackend extends EventBackendContract {
   @override
-  Future<List<VenueEventPreviewDTO>> fetchFeaturedEvents() =>
+  Future<List<EventPreviewDTO>> fetchFeaturedEvents() =>
       throw UnimplementedError();
 
   @override
-  Future<List<VenueEventPreviewDTO>> fetchUpcomingEvents() =>
+  Future<List<EventPreviewDTO>> fetchUpcomingEvents() =>
       throw UnimplementedError();
 }
 

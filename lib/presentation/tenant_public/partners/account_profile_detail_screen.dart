@@ -5,7 +5,6 @@ import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/application/extensions/compute_on_color.dart';
 import 'package:belluga_now/application/sharing/account_profile_public_share_payload.dart';
 import 'package:belluga_now/application/rich_text/account_profile_rich_text_block.dart';
-import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/canonical_route_governance.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
@@ -20,6 +19,9 @@ import 'package:belluga_now/domain/repositories/account_profiles_repository_cont
 import 'package:belluga_now/presentation/shared/favorites/account_profile_favorite_auth_gate.dart';
 import 'package:belluga_now/presentation/shared/sharing/public_share_launcher.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_agenda_presentation.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
+import 'package:belluga_now/presentation/tenant_public/widgets/date_grouped_event_list.dart';
 import 'package:belluga_now/presentation/shared/visuals/resolved_profile_type_visual.dart';
 import 'package:belluga_now/presentation/shared/widgets/account_profile_overlapping_identity_card.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
@@ -32,12 +34,12 @@ import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_hero_action.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_directions_section.dart';
+import 'package:belluga_now/presentation/shared/widgets/public_rich_text_html.dart';
 import 'package:belluga_now/presentation/shared/widgets/nested_accounts_load_more_indicator.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/invite_status_icon.dart';
-import 'package:belluga_now/presentation/tenant_public/widgets/upcoming_event_card.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart' hide Marker;
@@ -826,16 +828,13 @@ class _AccountProfileDetailScreenState
     PartnerProfileConfig config,
     Map<ProfileModuleId, Object?> moduleData,
   ) {
-    final agendaEvents = _agendaEventsFromModuleData(moduleData);
+    final agenda = _agendaPresentationFromModuleData(moduleData);
     final locationView = _locationFromModuleData(moduleData);
 
     final tabs = config.tabs
         .where(
-          (tab) => _shouldRenderTab(
-            tab,
-            agendaEvents: agendaEvents,
-            location: locationView,
-          ),
+          (tab) =>
+              _shouldRenderTab(tab, agenda: agenda, location: locationView),
         )
         .map((tab) => _buildConfiguredTab(tab, moduleData))
         .toList();
@@ -911,7 +910,7 @@ class _AccountProfileDetailScreenState
 
   bool _shouldRenderTab(
     ProfileTabConfig tab, {
-    required List<PartnerEventView> agendaEvents,
+    required AccountProfileAgendaPresentation? agenda,
     required PartnerLocationView? location,
   }) {
     final lowerTitle = tab.title.toLowerCase();
@@ -919,7 +918,7 @@ class _AccountProfileDetailScreenState
       return _canRenderLocationSection(location);
     }
     if (lowerTitle.contains('evento') || lowerTitle.contains('agenda')) {
-      return agendaEvents.isNotEmpty;
+      return agenda != null && !agenda.isEmpty;
     }
     return true;
   }
@@ -1474,14 +1473,14 @@ class _AccountProfileDetailScreenState
     context.router.push(route);
   }
 
-  List<PartnerEventView> _agendaEventsFromModuleData(
+  AccountProfileAgendaPresentation? _agendaPresentationFromModuleData(
     Map<ProfileModuleId, Object?> moduleData,
   ) {
     final raw = moduleData[ProfileModuleId.agendaList];
-    if (raw is List<PartnerEventView>) {
+    if (raw is AccountProfileAgendaPresentation) {
       return raw;
     }
-    return const <PartnerEventView>[];
+    return null;
   }
 
   PartnerLocationView? _locationFromModuleData(
@@ -1489,22 +1488,6 @@ class _AccountProfileDetailScreenState
   ) {
     final raw = moduleData[ProfileModuleId.locationInfo];
     return raw is PartnerLocationView ? raw : null;
-  }
-
-  PartnerEventView? _resolveLiveEvent(List<PartnerEventView> events) {
-    for (final event in events) {
-      if (_isHappeningNow(event)) {
-        return event;
-      }
-    }
-    return null;
-  }
-
-  bool _isHappeningNow(PartnerEventView event) {
-    final now = DateTime.now();
-    final start = event.startDateTime;
-    final end = event.endDateTime ?? start.add(const Duration(hours: 3));
-    return !now.isBefore(start) && !now.isAfter(end);
   }
 
   Widget? _buildFavoriteFooterIfAvailable(
@@ -1650,10 +1633,9 @@ class _AccountProfileDetailScreenState
 
   Widget _agendaList(
     AccountProfileModel accountProfile,
-    List<PartnerEventView>? events,
+    AccountProfileAgendaPresentation? presentation,
   ) {
-    final agenda = events ?? const <PartnerEventView>[];
-    if (agenda.isEmpty) {
+    if (presentation == null || presentation.isEmpty) {
       return Padding(
         padding: const EdgeInsets.all(16),
         child: Text(
@@ -1663,20 +1645,12 @@ class _AccountProfileDetailScreenState
       );
     }
 
-    final featuredEvent = _resolveLiveEvent(agenda);
-    final upcomingEvents = agenda
-        .where(
-          (event) =>
-              featuredEvent == null || event.uniqueId != featuredEvent.uniqueId,
-        )
-        .toList(growable: false);
-
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (featuredEvent != null) ...[
+          if (presentation.liveOccurrences.isNotEmpty) ...[
             Text(
               'Acontecendo Agora',
               style: Theme.of(
@@ -1684,10 +1658,15 @@ class _AccountProfileDetailScreenState
               ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 14),
-            _buildAgendaLiveHighlightCard(accountProfile, featuredEvent),
+            ...presentation.liveOccurrences.map(
+              (event) => Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: _buildAgendaLiveHighlightCard(accountProfile, event),
+              ),
+            ),
             const SizedBox(height: 28),
           ],
-          if (upcomingEvents.isNotEmpty) ...[
+          if (presentation.upcomingOccurrences.isNotEmpty) ...[
             Text(
               'Próximos Eventos',
               style: Theme.of(
@@ -1695,14 +1674,40 @@ class _AccountProfileDetailScreenState
               ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 14),
-            ...upcomingEvents.map(
-              (event) => Padding(
-                padding: const EdgeInsets.only(bottom: 14),
-                child: _buildAgendaEventCard(accountProfile, event),
+            DateGroupedEventList(
+              events: presentation.upcomingOccurrences,
+              onEventSelected: _openUpcomingAgendaOccurrence,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              primary: false,
+              highlightNowEvents: false,
+              keyNamespace: 'accountProfileAgendaCard',
+              padding: EdgeInsets.zero,
+              showVenueAddress: false,
+              scaleDateHeaderToFit: true,
+              isConfirmed: (event) => _controller.isOccurrenceConfirmed(
+                event.selectedOccurrenceId ?? '',
               ),
+              pendingInvitesCount: (event) => _controller.pendingInviteCount(
+                event.selectedOccurrenceId ?? '',
+              ),
+              distanceLabel: (event) =>
+                  _controller.distanceLabelFor(accountProfile, event),
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  void _openUpcomingAgendaOccurrence(UpcomingOcurrenceResume event) {
+    final occurrenceId = event.selectedOccurrenceId?.trim();
+    _safeRouterPush(
+      ImmersiveEventDetailRoute(
+        eventSlug: event.slug,
+        occurrenceId: occurrenceId == null || occurrenceId.isEmpty
+            ? null
+            : occurrenceId,
       ),
     );
   }
@@ -2148,46 +2153,6 @@ class _AccountProfileDetailScreenState
     );
   }
 
-  Widget _buildAgendaEventCard(
-    AccountProfileModel accountProfile,
-    PartnerEventView event,
-  ) {
-    return UpcomingEventCard(
-      data: UpcomingEventCardData(
-        imageUri: event.imageUri,
-        headline: _agendaPrimaryLabel(accountProfile, event),
-        metaLabel: event.agendaScheduleLabel,
-        counterparts: _agendaCounterparts(accountProfile, event)
-            .map(
-              (counterpart) => (
-                label: counterpart.label,
-                thumbUrl: counterpart.thumbUrl,
-                fallbackIcon: Icons.music_note,
-              ),
-            )
-            .toList(growable: false),
-        venueName: _agendaVenueName(event),
-        venueDistanceLabel: _controller.distanceLabelFor(accountProfile, event),
-        venueAddress: _agendaVenueAddress(event),
-      ),
-      onTap: () => _safeRouterPush(
-        // Keep upcoming and live agenda cards aligned on occurrence trimming.
-        ImmersiveEventDetailRoute(
-          eventSlug: event.slug,
-          occurrenceId: () {
-            final occurrenceId = event.occurrenceId.trim();
-            return occurrenceId.isEmpty ? null : occurrenceId;
-          }(),
-        ),
-      ),
-      isConfirmed: _controller.isOccurrenceConfirmed(event.occurrenceId),
-      pendingInvitesCount: _controller.pendingInviteCount(event.occurrenceId),
-      statusIconSize: 24,
-      keyNamespace: 'accountProfileAgendaCard',
-      cardId: event.uniqueId,
-    );
-  }
-
   Widget _buildAgendaImage(PartnerEventView event) {
     final colorScheme = Theme.of(context).colorScheme;
     final imageUri = event.imageUri;
@@ -2397,7 +2362,10 @@ class _AccountProfileDetailScreenState
     if (venueName == null) {
       return null;
     }
-    final distanceLabel = _controller.distanceLabelFor(accountProfile, event);
+    final distanceLabel = _controller.distanceLabelForLiveOccurrence(
+      accountProfile,
+      event,
+    );
     final address = _agendaVenueAddress(event);
     final buffer = StringBuffer(venueName);
     if (distanceLabel != null && distanceLabel.trim().isNotEmpty) {
@@ -3092,8 +3060,7 @@ class _AccountProfileDetailScreenState
         .map(
           (block) => _VisibleRichTextBlock(
             title: block.title,
-            raw: block.html.trim(),
-            html: SafeRichHtml.canonicalize(block.html),
+            html: block.html.trim(),
           ),
         )
         .where((block) => block.html.isNotEmpty)
@@ -3120,65 +3087,29 @@ class _AccountProfileDetailScreenState
               ),
               const SizedBox(height: 8),
             ],
-            if (SafeRichHtml.looksLikeHtml(visibleBlocks[index].raw))
-              Html(
-                data: visibleBlocks[index].html,
-                style: {
-                  'body': Style(
-                    margin: Margins.zero,
-                    padding: HtmlPaddings.zero,
-                    color: colorScheme.onSurfaceVariant,
-                    fontSize: FontSize(
-                      Theme.of(context).textTheme.bodyLarge?.fontSize ?? 16,
-                    ),
-                    lineHeight: const LineHeight(1.45),
+            PublicRichTextHtml(
+              html: visibleBlocks[index].html,
+              style: {
+                'body': Style(
+                  margin: Margins.zero,
+                  padding: HtmlPaddings.zero,
+                  color: colorScheme.onSurfaceVariant,
+                  fontSize: FontSize(
+                    Theme.of(context).textTheme.bodyLarge?.fontSize ?? 16,
                   ),
-                  'p': Style(margin: Margins.only(bottom: 12)),
-                  'strong': Style(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.w800,
-                  ),
-                  'br': Style(display: Display.block),
-                },
-              )
-            else
-              _plainRichTextBody(visibleBlocks[index].raw, colorScheme),
+                  lineHeight: const LineHeight(1.45),
+                ),
+                'p': Style(margin: Margins.only(bottom: 12)),
+                'strong': Style(
+                  color: colorScheme.onSurface,
+                  fontWeight: FontWeight.w800,
+                ),
+                'br': Style(display: Display.block),
+              },
+            ),
           ],
         ],
       ),
-    );
-  }
-
-  Widget _plainRichTextBody(String body, ColorScheme colorScheme) {
-    final normalized = body
-        .replaceAll('\r\n', '\n')
-        .replaceAll('\r', '\n')
-        .trim();
-    final paragraphs = normalized
-        .split(RegExp(r'\n\s*\n+'))
-        .where((paragraph) => paragraph.trim().isNotEmpty)
-        .toList(growable: false);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (
-          var paragraphIndex = 0;
-          paragraphIndex < paragraphs.length;
-          paragraphIndex++
-        ) ...[
-          if (paragraphIndex > 0) const SizedBox(height: 12),
-          for (final line in paragraphs[paragraphIndex].split('\n'))
-            if (line.trim().isNotEmpty)
-              Text(
-                line.trimRight(),
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                  height: 1.45,
-                ),
-              ),
-        ],
-      ],
     );
   }
 
@@ -3201,7 +3132,7 @@ class _AccountProfileDetailScreenState
       case ProfileModuleId.agendaList:
         return _agendaList(
           widget.accountProfile,
-          data is List<PartnerEventView> ? data : null,
+          data is AccountProfileAgendaPresentation ? data : null,
         );
       case ProfileModuleId.musicPlayer:
         return _musicPlayer(data is List<PartnerMediaView> ? data : null);
@@ -3353,13 +3284,8 @@ class _AgendaCounterpart {
 }
 
 class _VisibleRichTextBlock {
-  const _VisibleRichTextBlock({
-    required this.raw,
-    required this.html,
-    this.title,
-  });
+  const _VisibleRichTextBlock({required this.html, this.title});
 
-  final String raw;
   final String html;
   final String? title;
 }

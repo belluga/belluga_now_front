@@ -31,14 +31,14 @@ import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
-import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_agenda_presentation.dart';
 import 'package:belluga_now/infrastructure/services/telemetry/telemetry_properties_codec.dart';
 import 'package:belluga_now/testing/account_profile_model_factory.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:belluga_now/testing/invite_model_factory.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/upcoming_ocurrence/projections/upcoming_ocurrence_resume.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -46,7 +46,7 @@ import 'package:stream_value/core/stream_value.dart';
 
 void main() {
   test(
-    'loadResolvedAccountProfile exposes occurrence-first agenda module directly from profile payload',
+    'loadResolvedAccountProfile exposes the typed agenda presentation',
     () async {
       final accountProfileRepository = _FakeAccountProfilesRepository();
       final controller = AccountProfileDetailController(
@@ -89,12 +89,91 @@ void main() {
           controller.moduleDataStreamValue.value[ProfileModuleId.agendaList];
 
       expect(config?.tabs.any((tab) => tab.title.contains('Agenda')), isTrue);
-      expect(agendaData, isA<List<PartnerEventView>>());
-      final events = agendaData! as List<PartnerEventView>;
-      expect(events, hasLength(2));
-      expect(events.first.slug, 'jazz-na-orla');
-      expect(events.first.primaryCounterpart?.title, 'Marco Aurélio');
-      expect(events.first.uniqueId, isNot(equals(events.last.uniqueId)));
+      expect(agendaData, isA<AccountProfileAgendaPresentation>());
+      final agenda = agendaData! as AccountProfileAgendaPresentation;
+      expect(agenda.liveOccurrences, hasLength(1));
+      expect(agenda.upcomingOccurrences, hasLength(1));
+      expect(agenda.liveOccurrences.first.slug, 'jazz-na-orla');
+      expect(
+        agenda.liveOccurrences.first.primaryCounterpart?.title,
+        'Marco Aurélio',
+      );
+      expect(
+        agenda.liveOccurrences.first.uniqueId,
+        isNot(equals(agenda.upcomingOccurrences.first.selectedOccurrenceId)),
+      );
+    },
+  );
+
+  test(
+    'buildAgendaPresentation partitions and sorts occurrences at a fixed now',
+    () {
+      final controller = AccountProfileDetailController(
+        accountProfilesRepository: _FakeAccountProfilesRepository(),
+      );
+      final profile = buildAccountProfileModelFromPrimitives(
+        id: '507f1f77bcf86cd799439011',
+        name: 'Casa Marracini',
+        slug: 'casa-marracini',
+        type: 'venue',
+      );
+      final now = DateTime.utc(2026, 8, 24, 15);
+      final occurrences = [
+        buildPartnerEventView(
+          eventId: '507f1f77bcf86cd799439021',
+          occurrenceId: '507f1f77bcf86cd799439123',
+          slug: 'same-event',
+          title: 'Same Event',
+          location: 'Main Hall',
+          startDateTime: DateTime.utc(2026, 8, 24, 14, 30),
+          endDateTime: DateTime.utc(2026, 8, 24, 16),
+        ),
+        buildPartnerEventView(
+          eventId: '507f1f77bcf86cd799439021',
+          occurrenceId: '507f1f77bcf86cd799439122',
+          slug: 'same-event',
+          title: 'Same Event',
+          location: 'Main Hall',
+          startDateTime: DateTime.utc(2026, 8, 24, 14),
+          endDateTime: DateTime.utc(2026, 8, 24, 15, 30),
+        ),
+        buildPartnerEventView(
+          eventId: '507f1f77bcf86cd799439022',
+          occurrenceId: '507f1f77bcf86cd799439124',
+          slug: 'tomorrow-event',
+          title: 'Tomorrow Event',
+          location: 'Main Hall',
+          startDateTime: DateTime.utc(2026, 8, 25, 2, 30),
+        ),
+      ];
+
+      final presentation = controller.buildAgendaPresentation(
+        profile,
+        occurrences,
+        now: now,
+      );
+
+      expect(presentation.liveOccurrences.map((event) => event.occurrenceId), [
+        '507f1f77bcf86cd799439122',
+        '507f1f77bcf86cd799439123',
+      ]);
+      expect(
+        presentation.upcomingOccurrences.map(
+          (event) => event.selectedOccurrenceId,
+        ),
+        ['507f1f77bcf86cd799439124'],
+      );
+      expect(
+        presentation.liveOccurrences
+            .map((event) => event.occurrenceId)
+            .toSet()
+            .intersection(
+              presentation.upcomingOccurrences
+                  .map((event) => event.selectedOccurrenceId!)
+                  .toSet(),
+            ),
+        isEmpty,
+      );
     },
   );
 
@@ -338,7 +417,9 @@ void main() {
 
       expect(profile.contactChannels, isEmpty);
       expect(controller.hasContactChannels(profile), isTrue);
-      expect(controller.availableContactChannelsFor(profile), [whatsappChannel]);
+      expect(controller.availableContactChannelsFor(profile), [
+        whatsappChannel,
+      ]);
       expect(controller.shouldRenderContactTab(profile), isTrue);
       expect(
         controller.resolvedBubbleChannelFor(profile)?.id,
@@ -424,7 +505,7 @@ void main() {
           idValue: AccountProfileContactSourceAccountProfileIdValue(
             '507f1f77bcf86cd799439099',
           ),
-          displayNameValue: TitleValue()..parse('Perfil Origem'),
+          displayNameValue: AccountProfileNameValue()..parse('Perfil Origem'),
           profileTypeValue: AccountProfileTypeValue('artist'),
         ),
       );
@@ -570,7 +651,10 @@ void main() {
 
       expect(controller.isOccurrenceConfirmed(event.occurrenceId), isTrue);
       expect(controller.pendingInviteCount(event.occurrenceId), 1);
-      expect(controller.distanceLabelFor(profile, event), '752 m');
+      expect(
+        controller.distanceLabelForLiveOccurrence(profile, event),
+        '752 m',
+      );
     },
   );
 
@@ -1058,10 +1142,10 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   }) async {}
 
   @override
-  Future<List<VenueEventResume>> fetchFeaturedEvents() async => const [];
+  Future<List<UpcomingOcurrenceResume>> fetchFeaturedEvents() async => const [];
 
   @override
-  Future<List<VenueEventResume>> fetchMyEvents() async => const [];
+  Future<List<UpcomingOcurrenceResume>> fetchMyEvents() async => const [];
 
   @override
   UserEventsRepositoryContractPrimBool isOccurrenceConfirmed(

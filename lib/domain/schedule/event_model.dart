@@ -15,7 +15,7 @@ import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/value_objects/domain_optional_date_time_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
-import 'package:belluga_now/domain/venue_event/value_objects/venue_event_tag_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_tag_value.dart';
 import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 import 'package:value_object_pattern/domain/value_objects/html_content_value.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
@@ -49,7 +49,7 @@ class EventModel {
   final List<EventOccurrenceOption> occurrences;
   final List<EventProgrammingItem> programmingItems;
   final CityCoordinate? coordinate;
-  final List<VenueEventTagValue> tagValues;
+  final List<EventTagValue> tagValues;
 
   // Confirmation state
   final EventIsConfirmedValue isConfirmedValue;
@@ -69,8 +69,8 @@ class EventModel {
   EventModelPrimInt get totalConfirmed => totalConfirmedValue.value;
   EventModelPrimString get slug => slugValue.value;
   DateTime? get confirmedAt => confirmedAtValue.value;
-  List<VenueEventTagValue> get tags =>
-      List<VenueEventTagValue>.unmodifiable(tagValues);
+  List<EventTagValue> get tags =>
+      List<EventTagValue>.unmodifiable(tagValues);
   EventOccurrenceOption? get selectedOccurrence {
     for (final occurrence in occurrences) {
       if (occurrence.isSelected) {
@@ -148,13 +148,13 @@ class EventModel {
       .where((name) => name.isNotEmpty)
       .join(', ');
 
-  List<VenueEventTagValue> get taxonomyTags {
+  List<EventTagValue> get taxonomyTags {
     final cleaned = tags
         .map((tag) => tag.value.trim())
         .where((t) => t.isNotEmpty)
         .toSet();
-    return List<VenueEventTagValue>.unmodifiable(
-      cleaned.map(VenueEventTagValue.new),
+    return List<EventTagValue>.unmodifiable(
+      cleaned.map(EventTagValue.new),
     );
   }
 
@@ -177,7 +177,7 @@ class EventModel {
     List<EventOccurrenceOption> occurrences = const [],
     List<EventProgrammingItem> programmingItems = const [],
     required this.coordinate,
-    required List<VenueEventTagValue> tags,
+    required List<EventTagValue> tags,
     required this.isConfirmedValue,
     DomainOptionalDateTimeValue? confirmedAtValue,
     this.receivedInvites,
@@ -196,6 +196,6 @@ class EventModel {
        programmingItems = List<EventProgrammingItem>.unmodifiable(
          programmingItems,
        ),
-       tagValues = List<VenueEventTagValue>.unmodifiable(tags),
+       tagValues = List<EventTagValue>.unmodifiable(tags),
        confirmedAtValue = confirmedAtValue ?? DomainOptionalDateTimeValue();
 }

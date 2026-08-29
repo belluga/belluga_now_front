@@ -12,7 +12,7 @@ import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/schedule_back
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/static_assets_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart';
-import 'package:belluga_now/infrastructure/dal/dao/venue_event_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/event_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/production_backend/live_only_unsupported_backends.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 
@@ -47,8 +47,8 @@ class LaravelBackend extends BackendContract {
   final FavoriteBackendContract favorites = LaravelFavoriteBackend();
 
   @override
-  final VenueEventBackendContract venueEvents =
-      const LiveOnlyUnsupportedVenueEventBackend();
+  final EventBackendContract events =
+      const LiveOnlyUnsupportedEventBackend();
 
   @override
   final ScheduleBackendContract schedule = LaravelScheduleBackend();

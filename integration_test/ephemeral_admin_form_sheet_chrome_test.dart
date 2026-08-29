@@ -45,8 +45,31 @@ void main() {
     }
   }
 
+  Finder _tenantAdminShellRouterFinder() {
+    return find.byWidgetPredicate((widget) {
+      final key = widget.key;
+      if (key is! ValueKey<String>) {
+        return false;
+      }
+      return key.value.startsWith('tenant-admin-shell-router-');
+    });
+  }
+
+  Future<void> _waitForResolvedTenantShell(WidgetTester tester) async {
+    try {
+      await _waitForFinder(tester, _tenantAdminShellRouterFinder());
+    } on TestFailure {
+      throw TestFailure(
+        'Tenant admin shell did not resolve before opening AccountCreate. '
+        'loadingGate=${find.text('Preparando tenant').evaluate().isNotEmpty}, '
+        'selectionGate=${find.text('Selecionar tenant').evaluate().isNotEmpty}, '
+        'emptyTenantGate=${find.text('Nenhum tenant disponível no bootstrap atual.').evaluate().isNotEmpty}.',
+      );
+    }
+  }
+
   testWidgets(
-    'Admin form route hides shell header and bottom nav when pushed from root stack',
+    'Admin form route hides shell header and bottom nav through the shell root boundary',
     (tester) async {
       if (GetIt.I.isRegistered<ApplicationContract>()) {
         GetIt.I.unregister<ApplicationContract>();
@@ -93,12 +116,20 @@ void main() {
       });
 
       app.appRouter.replaceAll([
-        const TenantAdminShellRoute(children: [TenantAdminSettingsRoute()]),
+        const TenantAdminShellRoute(
+          children: [TenantAdminAccountsListRoute()],
+        ),
       ]);
-      await _pumpFor(tester, const Duration(seconds: 1));
+      await _pumpFor(tester, const Duration(seconds: 2));
 
-      app.appRouter.push(const TenantAdminAccountCreateRoute());
-      await _pumpFor(tester, const Duration(seconds: 1));
+      await _waitForResolvedTenantShell(tester);
+      app.appRouter.navigate(
+        const TenantAdminShellRoute(
+          children: [TenantAdminAccountCreateRoute()],
+        ),
+      );
+      await _pumpFor(tester, const Duration(seconds: 2));
+
       await _waitForFinder(
         tester,
         find.byKey(const ValueKey('tenant_admin_account_create_save')),
