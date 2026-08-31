@@ -54,7 +54,7 @@ final class GalleryViewerController extends ChangeNotifier
     isActivating = true;
     playbackFailed = false;
     notifyListeners();
-    await closePlayer(reason: 'replacement');
+    await closePlayer(reason: 'item_changed');
     if (_disposed || selectedItem != item) {
       return;
     }
@@ -105,7 +105,7 @@ final class GalleryViewerController extends ChangeNotifier
     if (value.hasError) {
       playbackFailed = true;
       notifyListeners();
-      await closePlayer(reason: 'player_error_${value.error.code}');
+      await closePlayer(reason: 'player_error');
       return;
     }
     switch (value.playerState) {

@@ -58,7 +58,7 @@ final class GalleryPlaybackSessionController {
     if (_finished) {
       return;
     }
-    await finish(reason: 'ended', endPositionSeconds: endPositionSeconds);
+    await finish(reason: 'finished', endPositionSeconds: endPositionSeconds);
     _finished = true;
     await GalleryPlaybackTracker.finished(item, watchedSeconds: watchedSeconds);
   }

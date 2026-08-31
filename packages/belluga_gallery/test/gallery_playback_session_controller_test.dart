@@ -60,6 +60,7 @@ void main() {
         EventTrackerEvents.videoWatchedTime,
         EventTrackerEvents.videoFinished,
       ]);
+      expect(tracker.events[1].data?.customData?['reason'], 'finished');
     },
   );
 }
