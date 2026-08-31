@@ -10,6 +10,7 @@ environment:
 # architecture plugin resolve together. This gives the Dart Analysis Server one
 # workspace context instead of a separate high-memory context per package.
 workspace:
+  - packages/belluga_gallery
   - packages/belluga_contact_channels
   - packages/belluga_discovery_filters
   - packages/belluga_form_validation
@@ -80,6 +81,8 @@ dependencies:
     path: packages/belluga_contact_channels
   belluga_form_validation:
     path: packages/belluga_form_validation
+  belluga_gallery:
+    path: packages/belluga_gallery
   
 dev_dependencies:
   flutter_test:
