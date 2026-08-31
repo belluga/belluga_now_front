@@ -63,6 +63,45 @@ void main() {
       expect(tracker.events[1].data?.customData?['reason'], 'finished');
     },
   );
+
+  test('tracking remains fail-open when no repository is registered', () async {
+    GetIt.I.unregister<EventTrackerRepositoryContract>();
+    final controller = GalleryPlaybackSessionController(
+      item: const GalleryYoutubePlayer(
+        itemId: 'video-1',
+        youtubeVideoId: 'dQw4w9WgXcQ',
+      ),
+      now: () => now,
+    );
+
+    await controller.onPlaying();
+    now = now.add(const Duration(seconds: 2));
+
+    await expectLater(
+      controller.finish(reason: 'viewer_closed', endPositionSeconds: 3),
+      completes,
+    );
+  });
+
+  test('tracking remains fail-open when delivery throws', () async {
+    GetIt.I
+      ..unregister<EventTrackerRepositoryContract>()
+      ..registerSingleton<EventTrackerRepositoryContract>(_ThrowingTracker());
+    final controller = GalleryPlaybackSessionController(
+      item: const GalleryYoutubePlayer(
+        itemId: 'video-1',
+        youtubeVideoId: 'dQw4w9WgXcQ',
+      ),
+      now: () => now,
+    );
+
+    await expectLater(controller.onPlaying(), completes);
+    now = now.add(const Duration(seconds: 2));
+    await expectLater(
+      controller.finish(reason: 'viewer_closed', endPositionSeconds: 3),
+      completes,
+    );
+  });
 }
 
 final class _RecordingTracker extends EventTrackerRepositoryContract {
@@ -87,4 +126,23 @@ final class _RecordingTracker extends EventTrackerRepositoryContract {
     events.add((type: type, data: data));
     return const <EventTrackerDeliveryOutcome>[];
   }
+}
+
+final class _ThrowingTracker extends EventTrackerRepositoryContract {
+  @override
+  EventTrackerHandler get handler => throw UnimplementedError();
+
+  @override
+  Future<EventTrackerUserData> getUserData() async =>
+      EventTrackerUserData(uuid: 'test-user');
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<List<EventTrackerDeliveryOutcome>> logEvent({
+    required EventTrackerEvents type,
+    EventTrackerUserData? userDataCustom,
+    EventTrackerData? data,
+  }) => throw StateError('delivery failed');
 }
