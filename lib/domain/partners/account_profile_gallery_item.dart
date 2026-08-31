@@ -1,6 +1,9 @@
 import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_fields.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
+import 'package:belluga_gallery/belluga_gallery.dart';
+
+enum AccountProfileGalleryItemType { photo, youtube }
 
 class AccountProfileGalleryItem {
   AccountProfileGalleryItem({
@@ -11,7 +14,10 @@ class AccountProfileGalleryItem {
     required this.thumbUrlValue,
     required this.cardUrlValue,
     required this.modalUrlValue,
-  });
+    this.type = AccountProfileGalleryItemType.photo,
+    AccountProfileNestedGroupMemberTextValue? youtubeVideoIdValue,
+  }) : youtubeVideoIdValue =
+           youtubeVideoIdValue ?? AccountProfileNestedGroupMemberTextValue();
 
   final AccountProfileNestedGroupIdValue itemIdValue;
   final AccountProfileNestedGroupMemberTextValue descriptionValue;
@@ -20,6 +26,8 @@ class AccountProfileGalleryItem {
   final ThumbUriValue thumbUrlValue;
   final ThumbUriValue cardUrlValue;
   final ThumbUriValue modalUrlValue;
+  final AccountProfileGalleryItemType type;
+  final AccountProfileNestedGroupMemberTextValue youtubeVideoIdValue;
 
   String get itemId => itemIdValue.value;
   String? get description {
@@ -35,8 +43,31 @@ class AccountProfileGalleryItem {
   String get thumbUrl => thumbUrlValue.value.toString();
   String get cardUrl => cardUrlValue.value.toString();
   String get modalUrl => modalUrlValue.value.toString();
+  String? get youtubeVideoId {
+    final normalized = youtubeVideoIdValue.value.trim();
+    return normalized.isEmpty ? null : normalized;
+  }
+
+  GalleryItem toGalleryItem() => switch (type) {
+    AccountProfileGalleryItemType.photo => GalleryPhoto(
+      itemId: itemId,
+      description: description,
+      imageUrl: imageUrl,
+      thumbUrl: thumbUrl,
+      cardUrl: cardUrl,
+      modalUrl: modalUrl,
+    ),
+    AccountProfileGalleryItemType.youtube => GalleryYoutubePlayer(
+      itemId: itemId,
+      description: description,
+      youtubeVideoId: youtubeVideoId ?? '',
+    ),
+  };
 
   String get previewUrl {
+    if (type == AccountProfileGalleryItemType.youtube) {
+      return (toGalleryItem() as GalleryYoutubePlayer).thumbnailUrl;
+    }
     final image = imageUrl.trim();
     if (image.isNotEmpty) {
       return image;

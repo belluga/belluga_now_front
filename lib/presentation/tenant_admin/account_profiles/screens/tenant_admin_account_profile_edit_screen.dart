@@ -9,18 +9,16 @@ import 'package:belluga_now/application/router/support/tenant_admin_safe_back.da
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_update.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_item.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/screens/tenant_admin_account_profile_group_members_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
-import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_account_profile_gallery_operations.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_account_profile_gallery_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_account_profile_picker.dart';
@@ -677,87 +675,100 @@ class _TenantAdminAccountProfileEditScreenState
     }
   }
 
+  Future<void> _addGalleryGroup() async {
+    final subtitle = await showTenantAdminGroupLabelDialog(
+      context: context,
+      title: 'Nova galeria',
+      confirmLabel: 'Criar galeria',
+    );
+    if (subtitle != null) await _controller.addEditGalleryGroup(subtitle);
+  }
+
+  Future<String?> _promptYoutubeUrl({String initialValue = ''}) async {
+    final result = await showTenantAdminFieldEditSheet(
+      context: context,
+      title: 'Vídeo do YouTube',
+      label: 'URL do YouTube',
+      initialValue: initialValue,
+      helperText: 'Cole uma URL válida do YouTube.',
+      keyboardType: TextInputType.url,
+      textCapitalization: TextCapitalization.none,
+      autocorrect: false,
+      enableSuggestions: false,
+      validator: (value) =>
+          (value?.trim().isEmpty ?? true) ? 'URL obrigatória.' : null,
+    );
+    return result?.value.trim();
+  }
+
   Future<void> _addGalleryItem(String groupId) async {
-    final file = await _pickGalleryImage();
-    if (!mounted || file == null) {
+    final type = await showDialog<TenantAdminAccountProfileGalleryItemType>(
+      context: context,
+      builder: (dialogContext) => SimpleDialog(
+        title: const Text('Adicionar item'),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => dialogContext.router.maybePop(
+              TenantAdminAccountProfileGalleryItemType.photo,
+            ),
+            child: const ListTile(
+              leading: Icon(Icons.photo_outlined),
+              title: Text('Foto'),
+            ),
+          ),
+          SimpleDialogOption(
+            onPressed: () => dialogContext.router.maybePop(
+              TenantAdminAccountProfileGalleryItemType.youtube,
+            ),
+            child: const ListTile(
+              leading: Icon(Icons.play_circle_outline),
+              title: Text('YouTube'),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || type == null) return;
+    if (type == TenantAdminAccountProfileGalleryItemType.youtube) {
+      final url = await _promptYoutubeUrl();
+      if (url != null) {
+        await _controller.addEditGalleryYoutube(
+          groupId: groupId,
+          youtubeUrl: url,
+        );
+      }
       return;
     }
-    _controller.addEditGalleryItem(groupId: groupId, uploadFile: file);
+    final file = await _pickGalleryImage();
+    if (!mounted || file == null) return;
+    await _controller.addEditGalleryPhoto(groupId: groupId, uploadFile: file);
   }
 
   Future<void> _replaceGalleryItem(String groupId, String itemId) async {
+    final item = _controller.editStateStreamValue.value.galleryGroups
+        .firstWhere((group) => group.groupId == groupId)
+        .items
+        .firstWhere((candidate) => candidate.itemId == itemId);
+    if (item.type == TenantAdminAccountProfileGalleryItemType.youtube) {
+      final url = await _promptYoutubeUrl();
+      if (url != null) {
+        await _controller.replaceEditGalleryYoutube(
+          groupId: groupId,
+          itemId: itemId,
+          youtubeUrl: url,
+        );
+      }
+      return;
+    }
     final file = await _pickGalleryImage();
     if (!mounted || file == null) {
       return;
     }
-    _controller.replaceEditGalleryItemUpload(
+    await _controller.replaceEditGalleryItemUpload(
       groupId: groupId,
       itemId: itemId,
       uploadFile: file,
     );
-  }
-
-  String? _validateGalleryState(TenantAdminAccountProfileEditDraft state) {
-    final groups = state.galleryGroups;
-    if (groups.length > TenantAdminAccountProfileGalleryOperations.maxGroups) {
-      return 'Limite de grupos da galeria atingido.';
-    }
-    final totalItems =
-        TenantAdminAccountProfileGalleryOperations.totalItemCount(groups);
-    if (totalItems > TenantAdminAccountProfileGalleryOperations.maxItems) {
-      return 'Limite total de fotos da galeria atingido.';
-    }
-    for (final group in groups) {
-      if (group.subtitle.trim().isEmpty) {
-        return 'Todos os grupos da galeria precisam de subtítulo.';
-      }
-      if (group.items.isEmpty) {
-        return 'Cada grupo da galeria precisa ter ao menos uma foto.';
-      }
-    }
-    return null;
-  }
-
-  Future<List<TenantAdminAccountProfileGalleryUpdateGroup>>
-  _buildGalleryUpdateGroups(TenantAdminAccountProfileEditDraft state) async {
-    final groups = <TenantAdminAccountProfileGalleryUpdateGroup>[];
-    final orderedGroups = [...state.galleryGroups]
-      ..sort((left, right) => left.order.compareTo(right.order));
-    for (final group in orderedGroups) {
-      final items = <TenantAdminAccountProfileGalleryUpdateItem>[];
-      final orderedItems = [...group.items]
-        ..sort((left, right) => left.order.compareTo(right.order));
-      for (final item in orderedItems) {
-        final upload = await _controller.buildImageUpload(
-          item.uploadFile,
-          slot: TenantAdminImageSlot.accountProfileGallery,
-        );
-        items.add(
-          TenantAdminAccountProfileGalleryUpdateItem(
-            itemIdValue: TenantAdminNestedProfileGroupTextValue(item.itemId),
-            descriptionValue: TenantAdminOptionalTextValue()
-              ..parse(
-                item.description?.trim().isEmpty == true
-                    ? null
-                    : item.description?.trim(),
-              ),
-            orderValue: TenantAdminNestedProfileGroupOrderValue(item.order),
-            upload: upload,
-          ),
-        );
-      }
-      groups.add(
-        TenantAdminAccountProfileGalleryUpdateGroup(
-          groupIdValue: TenantAdminNestedProfileGroupTextValue(group.groupId),
-          subtitleValue: TenantAdminNestedProfileGroupTextValue(
-            group.subtitle.trim(),
-          ),
-          orderValue: TenantAdminNestedProfileGroupOrderValue(group.order),
-          items: items,
-        ),
-      );
-    }
-    return groups;
   }
 
   void _preloadRemoteImage({required String url, required bool isAvatar}) {
@@ -1157,26 +1168,6 @@ class _TenantAdminAccountProfileEditScreenState
                                                                         .cover,
                                                               )
                                                         : null;
-                                                    final galleryValidationError =
-                                                        hasGallery
-                                                        ? _validateGalleryState(
-                                                            state,
-                                                          )
-                                                        : null;
-                                                    if (galleryValidationError !=
-                                                        null) {
-                                                      _controller
-                                                          .reportEditErrorMessage(
-                                                            galleryValidationError,
-                                                          );
-                                                      return;
-                                                    }
-                                                    final galleryGroups =
-                                                        hasGallery
-                                                        ? await _buildGalleryUpdateGroups(
-                                                            state,
-                                                          )
-                                                        : null;
                                                     final accountProfileId =
                                                         _currentAccountProfileIdForRequests();
                                                     final submitState =
@@ -1232,8 +1223,6 @@ class _TenantAdminAccountProfileEditScreenState
                                                       coverUpload: coverUpload,
                                                       avatarUrl: null,
                                                       coverUrl: null,
-                                                      galleryGroups:
-                                                          galleryGroups,
                                                       nestedProfileGroups:
                                                           _hasNestedProfileGroups(
                                                             selectedType,
@@ -2104,34 +2093,39 @@ class _TenantAdminAccountProfileEditScreenState
   }
 
   Widget _buildGallerySection(TenantAdminAccountProfileEditDraft state) {
-    return TenantAdminAccountProfileGalleryEditor(
-      groups: state.galleryGroups,
-      totalItemCount: _controller.editGalleryItemCount(),
-      maxGroups: TenantAdminAccountProfileGalleryOperations.maxGroups,
-      maxItems: TenantAdminAccountProfileGalleryOperations.maxItems,
-      onAddGroup: _controller.addEditGalleryGroup,
-      onRenameGroup: _controller.renameEditGalleryGroup,
-      onMoveGroup: _controller.moveEditGalleryGroup,
-      onRemoveGroup: _controller.removeEditGalleryGroup,
-      onAddItemRequested: _addGalleryItem,
-      onReplaceItemRequested: _replaceGalleryItem,
-      onMoveItem: (groupId, itemId, delta) {
-        _controller.moveEditGalleryItem(
-          groupId: groupId,
-          itemId: itemId,
-          delta: delta,
-        );
-      },
-      onRemoveItem: (groupId, itemId) {
-        _controller.removeEditGalleryItem(groupId: groupId, itemId: itemId);
-      },
-      onDescriptionChanged: (groupId, itemId, description) {
-        _controller.updateEditGalleryItemDescription(
-          groupId: groupId,
-          itemId: itemId,
-          description: description,
-        );
-      },
+    return StreamValueBuilder<bool>(
+      streamValue: _controller.editGalleryMutationBusyStreamValue,
+      builder: (context, busy) => StreamValueBuilder<Map<String, String>>(
+        streamValue: _controller.editGalleryFieldErrorsStreamValue,
+        builder: (context, fieldErrors) =>
+            TenantAdminAccountProfileGalleryEditor(
+              groups: state.galleryGroups,
+              maxGroups: state.galleryCapabilities.maxGalleries,
+              maxItemsPerGallery: state.galleryCapabilities.maxItemsPerGallery,
+              busy: busy,
+              fieldErrors: fieldErrors,
+              onAddGroup: _addGalleryGroup,
+              onRenameGroup: _controller.renameEditGalleryGroup,
+              onMoveGroup: _controller.moveEditGalleryGroup,
+              onRemoveGroup: _controller.removeEditGalleryGroup,
+              onAddItemRequested: _addGalleryItem,
+              onReplaceItemRequested: _replaceGalleryItem,
+              onMoveItem: (groupId, itemId, delta) =>
+                  _controller.moveEditGalleryItem(
+                    groupId: groupId,
+                    itemId: itemId,
+                    delta: delta,
+                  ),
+              onRemoveItem: (groupId, itemId) => _controller
+                  .removeEditGalleryItem(groupId: groupId, itemId: itemId),
+              onDescriptionChanged: (groupId, itemId, description) =>
+                  _controller.updateEditGalleryItemDescription(
+                    groupId: groupId,
+                    itemId: itemId,
+                    description: description,
+                  ),
+            ),
+      ),
     );
   }
 

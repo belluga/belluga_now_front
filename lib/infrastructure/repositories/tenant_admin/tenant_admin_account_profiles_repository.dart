@@ -4,6 +4,8 @@ import 'package:belluga_now/domain/repositories/landlord_auth_repository_contrac
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_item.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_snapshot.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_head_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_label_mutation_result.dart';
@@ -548,6 +550,209 @@ class TenantAdminAccountProfilesRepository
       return dto.toDomain();
     } on DioException catch (error) {
       throw _wrapError(error, 'update account profile gallery');
+    }
+  }
+
+  @override
+  Future<TenantAdminAccountProfileGallerySnapshot> createGalleryGroup({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString subtitle,
+  }) async {
+    final uri =
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}/gallery/groups';
+    try {
+      final response = await _dio.post(
+        uri,
+        data: _requestEncoder.encodeCreateGalleryGroup(
+          subtitle: subtitle.value,
+        ),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodeGallerySnapshot(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'create gallery group');
+    }
+  }
+
+  @override
+  Future<TenantAdminAccountProfileGallerySnapshot> renameGalleryGroup({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminAccountProfilesRepoString subtitle,
+  }) async {
+    final uri =
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}/gallery/groups/${groupId.value}';
+    try {
+      final response = await _dio.patch(
+        uri,
+        data: _requestEncoder.encodeRenameGalleryGroup(
+          subtitle: subtitle.value,
+        ),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodeGallerySnapshot(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'rename gallery group');
+    }
+  }
+
+  @override
+  Future<TenantAdminAccountProfileGallerySnapshot> deleteGalleryGroup({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+  }) async {
+    final uri =
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}/gallery/groups/${groupId.value}';
+    try {
+      final response = await _dio.delete(
+        uri,
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodeGallerySnapshot(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'delete gallery group');
+    }
+  }
+
+  @override
+  Future<TenantAdminAccountProfileGallerySnapshot> reorderGalleryGroups({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required List<TenantAdminAccountProfilesRepoString> groupIds,
+  }) async {
+    final uri =
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}/gallery/groups/reorder';
+    try {
+      final response = await _dio.patch(
+        uri,
+        data: _requestEncoder.encodeGalleryGroupOrder(
+          groupIds.map((value) => value.value).toList(growable: false),
+        ),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodeGallerySnapshot(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'reorder gallery groups');
+    }
+  }
+
+  @override
+  Future<TenantAdminAccountProfileGallerySnapshot> createGalleryItem({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminAccountProfileGalleryItemType type,
+    TenantAdminOptionalTextValue? description,
+    TenantAdminMediaUpload? image,
+    TenantAdminAccountProfilesRepoString? youtubeUrl,
+  }) async {
+    final uri =
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}/gallery/groups/${groupId.value}/items';
+    try {
+      final Object data;
+      if (type == TenantAdminAccountProfileGalleryItemType.photo) {
+        final upload = image;
+        if (upload == null) {
+          throw const FormatException('A gallery photo upload is required.');
+        }
+        data = _mediaFormDataBuilder.buildGalleryPhotoItemPayload(
+          image: upload,
+          description: description?.nullableValue,
+          includeDescription: description != null,
+        );
+      } else {
+        data = _requestEncoder.encodeCreateYoutubeGalleryItem(
+          youtubeUrl: youtubeUrl?.value ?? '',
+          description: description?.nullableValue,
+        );
+      }
+      final response = await _dio.post(
+        uri,
+        data: data,
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodeGallerySnapshot(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'create gallery item');
+    }
+  }
+
+  @override
+  Future<TenantAdminAccountProfileGallerySnapshot> updateGalleryItem({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminAccountProfilesRepoString itemId,
+    TenantAdminAccountProfileGalleryItemType? type,
+    TenantAdminOptionalTextValue? description,
+    TenantAdminMediaUpload? image,
+    TenantAdminAccountProfilesRepoString? youtubeUrl,
+  }) async {
+    final uri =
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}/gallery/groups/${groupId.value}/items/${itemId.value}';
+    try {
+      final response = image != null
+          ? await _dio.post(
+              uri,
+              data: _mediaFormDataBuilder.buildGalleryPhotoItemPayload(
+                image: image,
+                description: description?.nullableValue,
+                includeDescription: description != null,
+                patch: true,
+              ),
+              options: Options(headers: _buildHeaders()),
+            )
+          : await _dio.patch(
+              uri,
+              data: _requestEncoder.encodePatchGalleryItem(
+                type: type?.name,
+                description: description?.nullableValue,
+                includeDescription: description != null,
+                youtubeUrl: youtubeUrl?.value,
+              ),
+              options: Options(headers: _buildHeaders()),
+            );
+      return _responseDecoder.decodeGallerySnapshot(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'update gallery item');
+    }
+  }
+
+  @override
+  Future<TenantAdminAccountProfileGallerySnapshot> deleteGalleryItem({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminAccountProfilesRepoString itemId,
+  }) async {
+    final uri =
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}/gallery/groups/${groupId.value}/items/${itemId.value}';
+    try {
+      final response = await _dio.delete(
+        uri,
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodeGallerySnapshot(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'delete gallery item');
+    }
+  }
+
+  @override
+  Future<TenantAdminAccountProfileGallerySnapshot> reorderGalleryItems({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required List<TenantAdminAccountProfilesRepoString> itemIds,
+  }) async {
+    final uri =
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}/gallery/groups/${groupId.value}/items/reorder';
+    try {
+      final response = await _dio.patch(
+        uri,
+        data: _requestEncoder.encodeGalleryItemOrder(
+          itemIds.map((value) => value.value).toList(growable: false),
+        ),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodeGallerySnapshot(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'reorder gallery items');
     }
   }
 

@@ -3,6 +3,7 @@ import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_
 import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_source_account_profile_id_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_name_value.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_group.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_capabilities.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
@@ -28,6 +29,7 @@ TenantAdminAccountProfile tenantAdminAccountProfileFromRaw({
       const TenantAdminTaxonomyTerms.empty(),
   List<TenantAdminAccountProfileGalleryGroup> galleryGroups =
       const <TenantAdminAccountProfileGalleryGroup>[],
+  TenantAdminAccountProfileGalleryCapabilities? galleryCapabilities,
   List<TenantAdminNestedProfileGroup> nestedProfileGroups =
       const <TenantAdminNestedProfileGroup>[],
   TenantAdminOwnershipState? ownershipState,
@@ -56,6 +58,9 @@ TenantAdminAccountProfile tenantAdminAccountProfileFromRaw({
     location: location,
     taxonomyTerms: taxonomyTerms,
     galleryGroups: galleryGroups,
+    galleryCapabilities:
+        galleryCapabilities ??
+        TenantAdminAccountProfileGalleryCapabilities.empty(),
     nestedProfileGroups: nestedProfileGroups,
     ownershipState: ownershipState,
     contactModeValue: contactMode,

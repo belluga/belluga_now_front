@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
+import 'package:belluga_gallery/belluga_gallery.dart';
 import 'package:belluga_now/application/extensions/compute_on_color.dart';
 import 'package:belluga_now/application/sharing/account_profile_public_share_payload.dart';
 import 'package:belluga_now/application/rich_text/account_profile_rich_text_block.dart';
@@ -2601,7 +2602,12 @@ class _AccountProfileDetailScreenState
   }
 
   Widget _groupedPhotoGallery(List<AccountProfileGalleryGroup>? groups) {
-    if (groups == null || groups.isEmpty) {
+    final visibleGroups =
+        groups
+            ?.where((group) => group.items.isNotEmpty)
+            .toList(growable: false) ??
+        const <AccountProfileGalleryGroup>[];
+    if (visibleGroups.isEmpty) {
       return const SizedBox.shrink();
     }
 
@@ -2613,62 +2619,25 @@ class _AccountProfileDetailScreenState
         children: [
           for (
             var groupIndex = 0;
-            groupIndex < groups.length;
+            groupIndex < visibleGroups.length;
             groupIndex++
           ) ...[
             if (groupIndex > 0) const SizedBox(height: 24),
             Text(
-              groups[groupIndex].subtitle,
+              visibleGroups[groupIndex].subtitle,
               style: Theme.of(
                 context,
               ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 12),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-                childAspectRatio: 1.1,
+            BellugaGalleryPreviewRow(
+              items: visibleGroups[groupIndex].items
+                  .map((item) => item.toGalleryItem())
+                  .toList(growable: false),
+              onItemSelected: (itemIndex) => _openGalleryViewer(
+                group: visibleGroups[groupIndex],
+                initialIndex: itemIndex,
               ),
-              itemCount: groups[groupIndex].items.length,
-              itemBuilder: (context, itemIndex) {
-                final item = groups[groupIndex].items[itemIndex];
-                return Material(
-                  color: Colors.transparent,
-                  child: Semantics(
-                    container: true,
-                    button: true,
-                    label: _galleryItemSemanticLabel(
-                      group: groups[groupIndex],
-                      item: item,
-                    ),
-                    child: InkWell(
-                      key: Key('accountProfileGalleryItem_${item.itemId}'),
-                      borderRadius: BorderRadius.circular(14),
-                      onTap: () => _openGalleryItemModal(
-                        group: groups[groupIndex],
-                        item: item,
-                      ),
-                      child: Ink(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(14),
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerHighest,
-                        ),
-                        child: BellugaNetworkImage(
-                          item.previewUrl,
-                          fit: BoxFit.cover,
-                          clipBorderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
             ),
           ],
         ],
@@ -2676,100 +2645,24 @@ class _AccountProfileDetailScreenState
     );
   }
 
-  Future<void> _openGalleryItemModal({
+  Future<void> _openGalleryViewer({
     required AccountProfileGalleryGroup group,
-    required AccountProfileGalleryItem item,
+    required int initialIndex,
   }) async {
+    final items = group.items
+        .map((item) => item.toGalleryItem())
+        .toList(growable: false);
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) {
-        final viewport = MediaQuery.sizeOf(dialogContext);
-        return Dialog(
-          key: Key('accountProfileGalleryModal_${item.itemId}'),
-          insetPadding: const EdgeInsets.all(16),
-          clipBehavior: Clip.antiAlias,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: 720,
-              maxHeight: viewport.height - 32,
-            ),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Stack(
-                    children: [
-                      AspectRatio(
-                        aspectRatio: 1,
-                        child: InteractiveViewer(
-                          child: BellugaNetworkImage(
-                            item.modalUrl,
-                            fit: BoxFit.contain,
-                            placeholder: Container(
-                              color: Theme.of(
-                                dialogContext,
-                              ).colorScheme.surfaceContainerHighest,
-                              child: const Center(
-                                child: CircularProgressIndicator(),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: IconButton.filledTonal(
-                          onPressed: () => dialogContext.router.maybePop(),
-                          tooltip: 'Fechar galeria',
-                          icon: const Icon(Icons.close),
-                        ),
-                      ),
-                    ],
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          group.subtitle,
-                          style: Theme.of(dialogContext).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w800),
-                        ),
-                        if (item.description?.trim().isNotEmpty == true) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            item.description!.trim(),
-                            key: Key(
-                              'accountProfileGalleryModalDescription_${item.itemId}',
-                            ),
-                            style: Theme.of(dialogContext).textTheme.bodyLarge,
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
+      builder: (dialogContext) => Dialog.fullscreen(
+        key: Key('accountProfileGalleryViewer_${group.groupId}'),
+        child: BellugaGalleryViewer(
+          items: items,
+          initialIndex: initialIndex,
+          onClose: () => dialogContext.router.maybePop(),
+        ),
+      ),
     );
-  }
-
-  String _galleryItemSemanticLabel({
-    required AccountProfileGalleryGroup group,
-    required AccountProfileGalleryItem item,
-  }) {
-    final description = item.description?.trim();
-    if (description != null && description.isNotEmpty) {
-      return 'Abrir foto da galeria ${group.subtitle}: $description';
-    }
-    return 'Abrir foto da galeria ${group.subtitle}';
   }
 
   Widget _affinityCarousel(List<PartnerRecommendationView>? recommendations) {

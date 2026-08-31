@@ -932,12 +932,12 @@ void main() {
 
     final scrollable = find.byType(Scrollable).first;
     await tester.scrollUntilVisible(
-      find.text('Galerias de fotos'),
+      find.text('Galerias'),
       200,
       scrollable: scrollable,
     );
 
-    expect(find.text('Galerias de fotos'), findsOneWidget);
+    expect(find.text('Galerias'), findsOneWidget);
     expect(
       find.byKey(const Key('tenantAdminGalleryGroup_group-1')),
       findsOneWidget,

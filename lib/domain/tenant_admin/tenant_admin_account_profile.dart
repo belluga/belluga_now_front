@@ -1,5 +1,6 @@
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_group.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_capabilities.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
@@ -29,6 +30,7 @@ class TenantAdminAccountProfile {
     this.location,
     TenantAdminTaxonomyTerms? taxonomyTerms,
     List<TenantAdminAccountProfileGalleryGroup>? galleryGroups,
+    TenantAdminAccountProfileGalleryCapabilities? galleryCapabilities,
     List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
     this.ownershipState,
     BellugaContactSourceMode? contactModeValue,
@@ -48,6 +50,9 @@ class TenantAdminAccountProfile {
        galleryGroups = List<TenantAdminAccountProfileGalleryGroup>.unmodifiable(
          galleryGroups ?? const <TenantAdminAccountProfileGalleryGroup>[],
        ),
+       galleryCapabilities =
+           galleryCapabilities ??
+           TenantAdminAccountProfileGalleryCapabilities.empty(),
        nestedProfileGroups = List<TenantAdminNestedProfileGroup>.unmodifiable(
          nestedProfileGroups ?? const <TenantAdminNestedProfileGroup>[],
        ),
@@ -74,6 +79,7 @@ class TenantAdminAccountProfile {
   final TenantAdminLocation? location;
   final TenantAdminTaxonomyTerms taxonomyTerms;
   final List<TenantAdminAccountProfileGalleryGroup> galleryGroups;
+  final TenantAdminAccountProfileGalleryCapabilities galleryCapabilities;
   final List<TenantAdminNestedProfileGroup> nestedProfileGroups;
   final TenantAdminOwnershipState? ownershipState;
   final BellugaContactSourceMode contactModeValue;

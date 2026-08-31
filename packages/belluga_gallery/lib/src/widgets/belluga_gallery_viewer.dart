@@ -52,6 +52,7 @@ final class _BellugaGalleryViewerState extends State<BellugaGalleryViewer> {
     if (widget.items.isEmpty) {
       return const SizedBox.shrink();
     }
+    final selectedItem = _controller.selectedItem!;
     return Material(
       color: Colors.black,
       child: SafeArea(
@@ -85,6 +86,20 @@ final class _BellugaGalleryViewerState extends State<BellugaGalleryViewer> {
                 style: const TextStyle(color: Colors.white),
               ),
             ),
+            if (selectedItem.description?.trim().isNotEmpty == true)
+              Positioned(
+                left: 72,
+                right: 16,
+                bottom: 16,
+                child: Text(
+                  selectedItem.description!.trim(),
+                  key: const Key('bellugaGalleryViewerDescription'),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.end,
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
           ],
         ),
       ),

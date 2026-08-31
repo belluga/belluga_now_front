@@ -11,6 +11,7 @@ import 'package:belluga_now/domain/repositories/landlord_auth_repository_contrac
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_item.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_label_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
@@ -817,145 +818,158 @@ void main() {
   );
 
   test(
-    'updateAccountProfileGallery sends multipart patch tunnel with encoded groups and uploads',
+    'gallery repository uses all eight independent mutation routes',
     () async {
-      final adapter = _CaptureAdapter();
-      final dio = Dio()..httpClientAdapter = adapter;
-      final repository = TenantAdminAccountProfilesRepository(dio: dio);
+      final adapter = _CaptureAdapter(
+        responseBody: const {
+          'data': {
+            'gallery_groups': [],
+            'gallery_capabilities': {
+              'max_galleries': 6,
+              'max_items_per_gallery': 12,
+            },
+          },
+        },
+      );
+      final repository = TenantAdminAccountProfilesRepository(
+        dio: Dio()..httpClientAdapter = adapter,
+      );
+      final profileId = tenantAdminAccountProfilesRepoString(
+        'profile-1',
+        defaultValue: '',
+        isRequired: true,
+      );
+      final groupId = tenantAdminAccountProfilesRepoString(
+        'group-1',
+        defaultValue: '',
+        isRequired: true,
+      );
+      final itemId = tenantAdminAccountProfilesRepoString(
+        'item-1',
+        defaultValue: '',
+        isRequired: true,
+      );
+      final subtitle = tenantAdminAccountProfilesRepoString(
+        'Ambiente',
+        defaultValue: '',
+        isRequired: true,
+      );
 
-      await repository.updateAccountProfileGallery(
-        accountProfileId: tenantAdminAccountProfilesRepoString(
-          'profile-1',
+      await repository.createGalleryGroup(
+        accountProfileId: profileId,
+        subtitle: subtitle,
+      );
+      await repository.renameGalleryGroup(
+        accountProfileId: profileId,
+        groupId: groupId,
+        subtitle: subtitle,
+      );
+      await repository.reorderGalleryGroups(
+        accountProfileId: profileId,
+        groupIds: <TenantAdminAccountProfilesRepoString>[groupId],
+      );
+      await repository.createGalleryItem(
+        accountProfileId: profileId,
+        groupId: groupId,
+        type: TenantAdminAccountProfileGalleryItemType.youtube,
+        youtubeUrl: tenantAdminAccountProfilesRepoString(
+          'https://youtu.be/dQw4w9WgXcQ',
           defaultValue: '',
           isRequired: true,
         ),
-        galleryGroups: <TenantAdminAccountProfileGalleryUpdateGroup>[
-          TenantAdminAccountProfileGalleryUpdateGroup(
-            groupIdValue: TenantAdminNestedProfileGroupTextValue('group/1'),
-            subtitleValue: TenantAdminNestedProfileGroupTextValue(
-              'Ambiente principal',
-            ),
-            orderValue: TenantAdminNestedProfileGroupOrderValue(0),
-            items: <TenantAdminAccountProfileGalleryUpdateItem>[
-              TenantAdminAccountProfileGalleryUpdateItem(
-                itemIdValue: TenantAdminNestedProfileGroupTextValue(
-                  'item 1/novo',
-                ),
-                descriptionValue: TenantAdminOptionalTextValue()
-                  ..parse('Vista para o palco'),
-                orderValue: TenantAdminNestedProfileGroupOrderValue(0),
-                upload: tenantAdminMediaUploadFromRaw(
-                  bytes: Uint8List.fromList([7, 8, 9]),
-                  fileName: 'gallery.png',
-                ),
-              ),
-              TenantAdminAccountProfileGalleryUpdateItem(
-                itemIdValue: TenantAdminNestedProfileGroupTextValue(
-                  'existing-item',
-                ),
-                descriptionValue: TenantAdminOptionalTextValue(),
-                orderValue: TenantAdminNestedProfileGroupOrderValue(1),
-              ),
-            ],
-          ),
+      );
+      await repository.updateGalleryItem(
+        accountProfileId: profileId,
+        groupId: groupId,
+        itemId: itemId,
+        description: TenantAdminOptionalTextValue()..parse(null),
+      );
+      await repository.reorderGalleryItems(
+        accountProfileId: profileId,
+        groupId: groupId,
+        itemIds: <TenantAdminAccountProfilesRepoString>[itemId],
+      );
+      await repository.deleteGalleryItem(
+        accountProfileId: profileId,
+        groupId: groupId,
+        itemId: itemId,
+      );
+      final result = await repository.deleteGalleryGroup(
+        accountProfileId: profileId,
+        groupId: groupId,
+      );
+
+      expect(adapter.requests.map((request) => request.method), <String>[
+        'POST',
+        'PATCH',
+        'PATCH',
+        'POST',
+        'PATCH',
+        'PATCH',
+        'DELETE',
+        'DELETE',
+      ]);
+      expect(
+        adapter.requests.map((request) => request.path.split('/gallery/').last),
+        <String>[
+          'groups',
+          'groups/group-1',
+          'groups/reorder',
+          'groups/group-1/items',
+          'groups/group-1/items/item-1',
+          'groups/group-1/items/reorder',
+          'groups/group-1/items/item-1',
+          'groups/group-1',
         ],
       );
-
-      expect(adapter.lastRequest?.method, 'POST');
-      expect(
-        adapter.lastRequest?.path,
-        contains(
-          'https://tenant.test/admin/api/v1/account_profiles/profile-1/gallery',
-        ),
-      );
-      expect(adapter.lastRequest?.contentType, contains('multipart/form-data'));
-
-      final data = adapter.lastRequest?.data;
-      expect(data, isA<FormData>());
-      final formData = data as FormData;
-      expect(
-        formData.fields.any(
-          (entry) => entry.key == '_method' && entry.value == 'PATCH',
-        ),
-        isTrue,
-      );
-
-      final encodedGalleryGroups =
-          jsonDecode(
-                formData.fields
-                    .firstWhere((entry) => entry.key == 'gallery_groups')
-                    .value,
-              )
-              as List<dynamic>;
-      expect(encodedGalleryGroups, hasLength(1));
-
-      final group = encodedGalleryGroups.single as Map<String, dynamic>;
-      expect(group['group_id'], 'group/1');
-      expect(group['subtitle'], 'Ambiente principal');
-      expect(group['order'], 0);
-
-      final items = group['items'] as List<dynamic>;
-      expect(items, hasLength(2));
-
-      final uploadedItem = items.first as Map<String, dynamic>;
-      expect(uploadedItem['item_id'], 'item 1/novo');
-      expect(uploadedItem['description'], 'Vista para o palco');
-      expect(uploadedItem['order'], 0);
-      expect(uploadedItem['upload'], 'upload_group_1_item_1_novo');
-
-      final existingItem = items.last as Map<String, dynamic>;
-      expect(existingItem['item_id'], 'existing-item');
-      expect(existingItem['description'], isNull);
-      expect(existingItem['order'], 1);
-      expect(existingItem.containsKey('upload'), isFalse);
-
-      expect(
-        formData.files.map((entry) => entry.key),
-        contains('upload_group_1_item_1_novo'),
-      );
-      final uploadEntry = formData.files.singleWhere(
-        (entry) => entry.key == 'upload_group_1_item_1_novo',
-      );
-      expect(uploadEntry.value.filename, 'gallery.png');
+      expect(adapter.requests[4].data, containsPair('description', null));
+      expect(result.capabilities.maxGalleries, 6);
+      expect(result.capabilities.maxItemsPerGallery, 12);
     },
   );
 
-  test(
-    'updateAccountProfileGallery sends explicit empty gallery_groups array for clear-all',
-    () async {
-      final adapter = _CaptureAdapter();
-      final dio = Dio()..httpClientAdapter = adapter;
-      final repository = TenantAdminAccountProfilesRepository(dio: dio);
+  test('gallery photo create uses multipart only for that item', () async {
+    final adapter = _CaptureAdapter(
+      responseBody: const {
+        'data': {
+          'gallery_groups': [],
+          'gallery_capabilities': {
+            'max_galleries': 6,
+            'max_items_per_gallery': 12,
+          },
+        },
+      },
+    );
+    final repository = TenantAdminAccountProfilesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+    );
 
-      await repository.updateAccountProfileGallery(
-        accountProfileId: tenantAdminAccountProfilesRepoString(
-          'profile-1',
-          defaultValue: '',
-          isRequired: true,
-        ),
-        galleryGroups: const <TenantAdminAccountProfileGalleryUpdateGroup>[],
-      );
+    await repository.createGalleryItem(
+      accountProfileId: tenantAdminAccountProfilesRepoString(
+        'profile-1',
+        defaultValue: '',
+        isRequired: true,
+      ),
+      groupId: tenantAdminAccountProfilesRepoString(
+        'group-1',
+        defaultValue: '',
+        isRequired: true,
+      ),
+      type: TenantAdminAccountProfileGalleryItemType.photo,
+      image: tenantAdminMediaUploadFromRaw(
+        bytes: Uint8List.fromList(<int>[7, 8, 9]),
+        fileName: 'gallery.png',
+      ),
+    );
 
-      final data = adapter.lastRequest?.data;
-      expect(data, isA<FormData>());
-
-      final formData = data as FormData;
-      expect(
-        formData.fields.any(
-          (entry) => entry.key == '_method' && entry.value == 'PATCH',
-        ),
-        isTrue,
-      );
-      expect(
-        jsonDecode(
-          formData.fields
-              .firstWhere((entry) => entry.key == 'gallery_groups')
-              .value,
-        ),
-        isEmpty,
-      );
-    },
-  );
+    final data = adapter.lastRequest?.data;
+    expect(data, isA<FormData>());
+    expect((data as FormData).files.single.key, 'image');
+    expect(
+      adapter.lastRequest?.path,
+      endsWith('/gallery/groups/group-1/items'),
+    );
+  });
 
   test(
     'fetchAccountProfiles sends queryable selector filters when requested',

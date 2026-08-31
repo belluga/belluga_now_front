@@ -5,6 +5,9 @@ import 'package:belluga_now/domain/repositories/value_objects/tenant_admin_accou
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_update.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_item.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_snapshot.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_head_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_label_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
@@ -125,6 +128,60 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     BellugaContactBubbleSelectionMutation bubbleSelection =
         const BellugaContactBubbleSelectionMutation.omit(),
   });
+
+  Future<TenantAdminAccountProfileGallerySnapshot> createGalleryGroup({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString subtitle,
+  }) => throw UnimplementedError();
+
+  Future<TenantAdminAccountProfileGallerySnapshot> renameGalleryGroup({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminAccountProfilesRepoString subtitle,
+  }) => throw UnimplementedError();
+
+  Future<TenantAdminAccountProfileGallerySnapshot> deleteGalleryGroup({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+  }) => throw UnimplementedError();
+
+  Future<TenantAdminAccountProfileGallerySnapshot> reorderGalleryGroups({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required List<TenantAdminAccountProfilesRepoString> groupIds,
+  }) => throw UnimplementedError();
+
+  Future<TenantAdminAccountProfileGallerySnapshot> createGalleryItem({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminAccountProfileGalleryItemType type,
+    TenantAdminOptionalTextValue? description,
+    TenantAdminMediaUpload? image,
+    TenantAdminAccountProfilesRepoString? youtubeUrl,
+  }) => throw UnimplementedError();
+
+  Future<TenantAdminAccountProfileGallerySnapshot> updateGalleryItem({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminAccountProfilesRepoString itemId,
+    TenantAdminAccountProfileGalleryItemType? type,
+    TenantAdminOptionalTextValue? description,
+    TenantAdminMediaUpload? image,
+    TenantAdminAccountProfilesRepoString? youtubeUrl,
+  }) => throw UnimplementedError();
+
+  Future<TenantAdminAccountProfileGallerySnapshot> deleteGalleryItem({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminAccountProfilesRepoString itemId,
+  }) => throw UnimplementedError();
+
+  Future<TenantAdminAccountProfileGallerySnapshot> reorderGalleryItems({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required List<TenantAdminAccountProfilesRepoString> itemIds,
+  }) => throw UnimplementedError();
+
+  @Deprecated('Use the independent gallery mutation methods.')
   Future<TenantAdminAccountProfile> updateAccountProfileGallery({
     required TenantAdminAccountProfilesRepoString accountProfileId,
     List<TenantAdminAccountProfileGalleryUpdateGroup> galleryGroups =

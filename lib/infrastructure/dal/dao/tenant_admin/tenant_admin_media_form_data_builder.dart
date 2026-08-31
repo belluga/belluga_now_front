@@ -141,6 +141,30 @@ class TenantAdminMediaFormDataBuilder {
     return formData;
   }
 
+  FormData buildGalleryPhotoItemPayload({
+    required TenantAdminMediaUpload image,
+    String? description,
+    bool includeDescription = false,
+    bool patch = false,
+  }) {
+    final formData = FormData.fromMap(<String, dynamic>{
+      if (patch) '_method': 'PATCH',
+      'type': 'photo',
+      if (includeDescription) 'description': description ?? '',
+    });
+    formData.files.add(
+      MapEntry(
+        'image',
+        MultipartFile.fromBytes(
+          image.bytes,
+          filename: image.fileName,
+          contentType: _resolveMediaType(image),
+        ),
+      ),
+    );
+    return formData;
+  }
+
   MediaType _resolveMediaType(TenantAdminMediaUpload upload) {
     final mimeType = upload.mimeType ?? _inferMimeType(upload.fileName);
     if (mimeType == null) {

@@ -17,6 +17,7 @@ import 'package:belluga_now/domain/repositories/value_objects/auth_repository_co
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_duration_value.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_text_value.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
+import 'package:belluga_gallery/belluga_gallery.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/partners_backend/laravel_account_profiles_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
@@ -124,6 +125,69 @@ void main() {
       expect(page.profiles, hasLength(1));
       expect(page.profiles.first.name, 'Ane');
       expect(page.profiles.first.slug, 'ane');
+    },
+  );
+
+  test(
+    'fetchAccountProfiles parses mixed photo and YouTube galleries',
+    () async {
+      final adapter = _RecordingAdapter(
+        response: {
+          'data': [
+            {
+              'id': _generateMongoId(),
+              'display_name': 'Galeria Mista',
+              'slug': 'galeria-mista',
+              'profile_type': 'venue',
+              'taxonomy_terms': const [],
+              'gallery_groups': [
+                {
+                  'group_id': 'group-1',
+                  'subtitle': 'Destaques',
+                  'order': 0,
+                  'items': [
+                    {
+                      'item_id': 'photo-1',
+                      'type': 'photo',
+                      'order': 0,
+                      'image_url': 'https://tenant.test/image.jpg',
+                      'thumb_url': 'https://tenant.test/thumb.jpg',
+                      'card_url': 'https://tenant.test/card.jpg',
+                      'modal_url': 'https://tenant.test/modal.jpg',
+                    },
+                    {
+                      'item_id': 'video-1',
+                      'type': 'youtube',
+                      'order': 1,
+                      'youtube_video_id': 'abc123',
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      );
+      final backend = LaravelAccountProfilesBackend(
+        dio: Dio()..httpClientAdapter = adapter,
+        locationOriginService: LocationOriginService(
+          appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+        ),
+      );
+
+      final page = await backend.fetchAccountProfilesPage(
+        page: 1,
+        pageSize: 30,
+      );
+      final items = page.profiles.single.galleryGroups.single.items;
+
+      expect(items, hasLength(2));
+      expect(items.first.toGalleryItem(), isA<GalleryPhoto>());
+      expect(items.last.toGalleryItem(), isA<GalleryYoutubePlayer>());
+      expect(
+        (items.last.toGalleryItem() as GalleryYoutubePlayer).youtubeVideoId,
+        'abc123',
+      );
     },
   );
 

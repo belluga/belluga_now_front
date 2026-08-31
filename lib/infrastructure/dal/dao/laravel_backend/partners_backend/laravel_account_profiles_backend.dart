@@ -700,15 +700,24 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       if (entry is! Map) continue;
       final json = Map<String, dynamic>.from(entry);
       final itemId = json['item_id']?.toString().trim() ?? '';
+      final type = json['type']?.toString().trim().toLowerCase() == 'youtube'
+          ? AccountProfileGalleryItemType.youtube
+          : AccountProfileGalleryItemType.photo;
+      final youtubeVideoId = json['youtube_video_id']?.toString().trim() ?? '';
       final imageUrl = json['image_url']?.toString().trim() ?? '';
       final thumbUrl = json['thumb_url']?.toString().trim() ?? '';
       final cardUrl = json['card_url']?.toString().trim() ?? '';
       final modalUrl = json['modal_url']?.toString().trim() ?? '';
-      if (itemId.isEmpty ||
-          imageUrl.isEmpty ||
-          thumbUrl.isEmpty ||
-          cardUrl.isEmpty ||
-          modalUrl.isEmpty) {
+      final invalidPhoto =
+          type == AccountProfileGalleryItemType.photo &&
+          (imageUrl.isEmpty ||
+              thumbUrl.isEmpty ||
+              cardUrl.isEmpty ||
+              modalUrl.isEmpty);
+      final invalidYoutube =
+          type == AccountProfileGalleryItemType.youtube &&
+          youtubeVideoId.isEmpty;
+      if (itemId.isEmpty || invalidPhoto || invalidYoutube) {
         continue;
       }
 
@@ -722,20 +731,26 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           orderValue: AccountProfileNestedGroupOrderValue(
             _parsePageValue(json['order']) ?? items.length,
           ),
-          imageUrlValue: ThumbUriValue(defaultValue: Uri.parse(imageUrl))
-            ..parse(imageUrl),
-          thumbUrlValue: ThumbUriValue(defaultValue: Uri.parse(thumbUrl))
-            ..parse(thumbUrl),
-          cardUrlValue: ThumbUriValue(defaultValue: Uri.parse(cardUrl))
-            ..parse(cardUrl),
-          modalUrlValue: ThumbUriValue(defaultValue: Uri.parse(modalUrl))
-            ..parse(modalUrl),
+          imageUrlValue: _galleryUri(imageUrl),
+          thumbUrlValue: _galleryUri(thumbUrl),
+          cardUrlValue: _galleryUri(cardUrl),
+          modalUrlValue: _galleryUri(modalUrl),
+          type: type,
+          youtubeVideoIdValue: AccountProfileNestedGroupMemberTextValue(
+            youtubeVideoId,
+          ),
         ),
       );
     }
 
     items.sort((left, right) => left.order.compareTo(right.order));
     return List<AccountProfileGalleryItem>.unmodifiable(items);
+  }
+
+  ThumbUriValue _galleryUri(String raw) {
+    final value = ThumbUriValue(defaultValue: Uri());
+    if (raw.isNotEmpty) value.parse(raw);
+    return value;
   }
 
   List<AccountProfileNestedGroup> _extractNestedProfileGroups(dynamic raw) {

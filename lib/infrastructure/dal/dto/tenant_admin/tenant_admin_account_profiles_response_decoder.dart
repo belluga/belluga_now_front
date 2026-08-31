@@ -5,6 +5,7 @@ import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_nes
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_nested_group_member_page_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_profile_type_dto.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_head_mutation_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_snapshot.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_label_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
@@ -20,6 +21,14 @@ class TenantAdminAccountProfilesResponseDecoder {
   TenantAdminAccountProfileDTO decodeAccountProfileItem(Object? rawResponse) {
     return TenantAdminAccountProfileDTO.fromJson(
       _envelopeDecoder.decodeItemMap(rawResponse, label: 'account profile'),
+    );
+  }
+
+  TenantAdminAccountProfileGallerySnapshot decodeGallerySnapshot(
+    Object? rawResponse,
+  ) {
+    return tenantAdminAccountProfileGallerySnapshotFromJson(
+      _envelopeDecoder.decodeItemMap(rawResponse, label: 'gallery mutation'),
     );
   }
 

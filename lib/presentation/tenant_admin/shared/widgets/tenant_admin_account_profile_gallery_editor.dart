@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profile_gallery_group_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profile_gallery_item_draft.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_capabilities.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_item.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_xfile_preview.dart';
 import 'package:flutter/material.dart';
@@ -11,9 +13,10 @@ class TenantAdminAccountProfileGalleryEditor extends StatelessWidget {
   const TenantAdminAccountProfileGalleryEditor({
     super.key,
     required this.groups,
-    required this.totalItemCount,
     required this.maxGroups,
-    required this.maxItems,
+    required this.maxItemsPerGallery,
+    required this.busy,
+    required this.fieldErrors,
     required this.onAddGroup,
     required this.onRenameGroup,
     required this.onMoveGroup,
@@ -26,43 +29,53 @@ class TenantAdminAccountProfileGalleryEditor extends StatelessWidget {
   });
 
   final List<TenantAdminAccountProfileGalleryGroupDraft> groups;
-  final int totalItemCount;
   final int maxGroups;
-  final int maxItems;
-  final VoidCallback onAddGroup;
-  final void Function(String groupId, String subtitle) onRenameGroup;
-  final void Function(String groupId, int delta) onMoveGroup;
-  final void Function(String groupId) onRemoveGroup;
+  final int maxItemsPerGallery;
+  final bool busy;
+  final Map<String, String> fieldErrors;
+  final Future<void> Function() onAddGroup;
+  final Future<void> Function(String groupId, String subtitle) onRenameGroup;
+  final Future<void> Function(String groupId, int delta) onMoveGroup;
+  final Future<void> Function(String groupId) onRemoveGroup;
   final Future<void> Function(String groupId) onAddItemRequested;
-  final Future<void> Function(String groupId, String itemId) onReplaceItemRequested;
-  final void Function(String groupId, String itemId, int delta) onMoveItem;
-  final void Function(String groupId, String itemId) onRemoveItem;
-  final void Function(String groupId, String itemId, String description)
-      onDescriptionChanged;
+  final Future<void> Function(String groupId, String itemId)
+  onReplaceItemRequested;
+  final Future<void> Function(String groupId, String itemId, int delta)
+  onMoveItem;
+  final Future<void> Function(String groupId, String itemId) onRemoveItem;
+  final Future<void> Function(String groupId, String itemId, String description)
+  onDescriptionChanged;
 
   @override
   Widget build(BuildContext context) {
-    final itemLabel = '$totalItemCount / $maxItems fotos';
+    final galleryState = _capacityState(groups.length, maxGroups);
 
     return TenantAdminFormSectionCard(
-      title: 'Galerias de fotos',
+      title: 'Galerias',
       description:
-          'Organize grupos públicos com subtítulo e descrição opcional por foto.',
+          'Organize fotos e vídeos do YouTube. Grupos vazios ficam disponíveis '
+          'para edição e não aparecem no perfil público.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            itemLabel,
-            style: Theme.of(context).textTheme.labelMedium,
+            '${groups.length} / $maxGroups galerias · ${_stateLabel(galleryState)}',
           ),
+          if (fieldErrors.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              fieldErrors.values.join('\n'),
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ],
           const SizedBox(height: 12),
           for (var index = 0; index < groups.length; index++) ...[
             _GalleryGroupCard(
               group: groups[index],
               index: index,
               totalGroups: groups.length,
-              totalItemCount: totalItemCount,
-              maxItems: maxItems,
+              maxItems: maxItemsPerGallery,
+              busy: busy,
               onRenameGroup: onRenameGroup,
               onMoveGroup: onMoveGroup,
               onRemoveGroup: onRemoveGroup,
@@ -76,14 +89,30 @@ class TenantAdminAccountProfileGalleryEditor extends StatelessWidget {
           ],
           OutlinedButton.icon(
             key: const Key('tenantAdminEditAddGalleryGroupButton'),
-            onPressed: groups.length >= maxGroups ? null : onAddGroup,
+            onPressed:
+                busy ||
+                    galleryState != TenantAdminGalleryCapacityState.available
+                ? null
+                : () => unawaited(onAddGroup()),
             icon: const Icon(Icons.add),
-            label: const Text('Adicionar grupo de fotos'),
+            label: const Text('Adicionar galeria'),
           ),
         ],
       ),
     );
   }
+
+  TenantAdminGalleryCapacityState _capacityState(int count, int maximum) {
+    if (count > maximum) return TenantAdminGalleryCapacityState.overLimit;
+    if (count == maximum) return TenantAdminGalleryCapacityState.atLimit;
+    return TenantAdminGalleryCapacityState.available;
+  }
+
+  String _stateLabel(TenantAdminGalleryCapacityState state) => switch (state) {
+    TenantAdminGalleryCapacityState.available => 'disponível',
+    TenantAdminGalleryCapacityState.atLimit => 'no limite do plano',
+    TenantAdminGalleryCapacityState.overLimit => 'acima do limite do plano',
+  };
 }
 
 class _GalleryGroupCard extends StatelessWidget {
@@ -91,8 +120,8 @@ class _GalleryGroupCard extends StatelessWidget {
     required this.group,
     required this.index,
     required this.totalGroups,
-    required this.totalItemCount,
     required this.maxItems,
+    required this.busy,
     required this.onRenameGroup,
     required this.onMoveGroup,
     required this.onRemoveGroup,
@@ -106,21 +135,28 @@ class _GalleryGroupCard extends StatelessWidget {
   final TenantAdminAccountProfileGalleryGroupDraft group;
   final int index;
   final int totalGroups;
-  final int totalItemCount;
   final int maxItems;
-  final void Function(String groupId, String subtitle) onRenameGroup;
-  final void Function(String groupId, int delta) onMoveGroup;
-  final void Function(String groupId) onRemoveGroup;
+  final bool busy;
+  final Future<void> Function(String groupId, String subtitle) onRenameGroup;
+  final Future<void> Function(String groupId, int delta) onMoveGroup;
+  final Future<void> Function(String groupId) onRemoveGroup;
   final Future<void> Function(String groupId) onAddItemRequested;
-  final Future<void> Function(String groupId, String itemId) onReplaceItemRequested;
-  final void Function(String groupId, String itemId, int delta) onMoveItem;
-  final void Function(String groupId, String itemId) onRemoveItem;
-  final void Function(String groupId, String itemId, String description)
-      onDescriptionChanged;
+  final Future<void> Function(String groupId, String itemId)
+  onReplaceItemRequested;
+  final Future<void> Function(String groupId, String itemId, int delta)
+  onMoveItem;
+  final Future<void> Function(String groupId, String itemId) onRemoveItem;
+  final Future<void> Function(String groupId, String itemId, String description)
+  onDescriptionChanged;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final itemState = group.items.length > maxItems
+        ? TenantAdminGalleryCapacityState.overLimit
+        : group.items.length == maxItems
+        ? TenantAdminGalleryCapacityState.atLimit
+        : TenantAdminGalleryCapacityState.available;
 
     return Container(
       key: Key('tenantAdminGalleryGroup_${group.groupId}'),
@@ -142,7 +178,8 @@ class _GalleryGroupCard extends StatelessWidget {
                   decoration: const InputDecoration(
                     labelText: 'Subtítulo do agrupamento',
                   ),
-                  onChanged: (value) => onRenameGroup(group.groupId, value),
+                  onFieldSubmitted: (value) =>
+                      unawaited(onRenameGroup(group.groupId, value)),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
                       return 'Subtítulo obrigatório.';
@@ -156,20 +193,23 @@ class _GalleryGroupCard extends StatelessWidget {
                 children: [
                   IconButton(
                     tooltip: 'Mover para cima',
-                    onPressed:
-                        index == 0 ? null : () => onMoveGroup(group.groupId, -1),
+                    onPressed: busy || index == 0
+                        ? null
+                        : () => unawaited(onMoveGroup(group.groupId, -1)),
                     icon: const Icon(Icons.arrow_upward),
                   ),
                   IconButton(
                     tooltip: 'Mover para baixo',
-                    onPressed: index >= totalGroups - 1
+                    onPressed: busy || index >= totalGroups - 1
                         ? null
-                        : () => onMoveGroup(group.groupId, 1),
+                        : () => unawaited(onMoveGroup(group.groupId, 1)),
                     icon: const Icon(Icons.arrow_downward),
                   ),
                   IconButton(
                     tooltip: 'Remover grupo',
-                    onPressed: () => onRemoveGroup(group.groupId),
+                    onPressed: busy
+                        ? null
+                        : () => unawaited(onRemoveGroup(group.groupId)),
                     icon: const Icon(Icons.delete_outline),
                   ),
                 ],
@@ -179,15 +219,19 @@ class _GalleryGroupCard extends StatelessWidget {
           const SizedBox(height: 8),
           if (group.items.isEmpty)
             Text(
-              'Adicione ao menos uma foto neste grupo.',
+              'Esta galeria está vazia e será ignorada no perfil público.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
+                color: colorScheme.onSurfaceVariant,
+              ),
             )
           else
             Column(
               children: [
-                for (var itemIndex = 0; itemIndex < group.items.length; itemIndex++) ...[
+                for (
+                  var itemIndex = 0;
+                  itemIndex < group.items.length;
+                  itemIndex++
+                ) ...[
                   _GalleryItemCard(
                     groupId: group.groupId,
                     item: group.items[itemIndex],
@@ -206,11 +250,15 @@ class _GalleryGroupCard extends StatelessWidget {
           const SizedBox(height: 12),
           OutlinedButton.icon(
             key: Key('tenantAdminGalleryGroupAddItem_${group.groupId}'),
-            onPressed: totalItemCount >= maxItems
+            onPressed:
+                busy || itemState != TenantAdminGalleryCapacityState.available
                 ? null
                 : () => unawaited(onAddItemRequested(group.groupId)),
-            icon: const Icon(Icons.add_photo_alternate_outlined),
-            label: const Text('Adicionar foto'),
+            icon: const Icon(Icons.add_to_photos_outlined),
+            label: Text(
+              'Adicionar item · ${group.items.length} / $maxItems '
+              '${itemState == TenantAdminGalleryCapacityState.overLimit ? '(acima do plano)' : ''}',
+            ),
           ),
         ],
       ),
@@ -234,11 +282,13 @@ class _GalleryItemCard extends StatelessWidget {
   final TenantAdminAccountProfileGalleryItemDraft item;
   final int index;
   final int totalItems;
-  final Future<void> Function(String groupId, String itemId) onReplaceItemRequested;
-  final void Function(String groupId, String itemId, int delta) onMoveItem;
-  final void Function(String groupId, String itemId) onRemoveItem;
-  final void Function(String groupId, String itemId, String description)
-      onDescriptionChanged;
+  final Future<void> Function(String groupId, String itemId)
+  onReplaceItemRequested;
+  final Future<void> Function(String groupId, String itemId, int delta)
+  onMoveItem;
+  final Future<void> Function(String groupId, String itemId) onRemoveItem;
+  final Future<void> Function(String groupId, String itemId, String description)
+  onDescriptionChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -263,11 +313,12 @@ class _GalleryItemCard extends StatelessWidget {
                   initialValue: item.description ?? '',
                   maxLines: 2,
                   decoration: const InputDecoration(
-                    labelText: 'Descrição da foto',
+                    labelText: 'Descrição do item',
                     hintText: 'Opcional',
                   ),
-                  onChanged: (value) =>
-                      onDescriptionChanged(groupId, item.itemId, value),
+                  onFieldSubmitted: (value) => unawaited(
+                    onDescriptionChanged(groupId, item.itemId, value),
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Wrap(
@@ -279,15 +330,27 @@ class _GalleryItemCard extends StatelessWidget {
                       onPressed: () => unawaited(
                         onReplaceItemRequested(groupId, item.itemId),
                       ),
-                      icon: const Icon(Icons.image_search_outlined),
-                      label: const Text('Trocar foto'),
+                      icon: Icon(
+                        item.type ==
+                                TenantAdminAccountProfileGalleryItemType.photo
+                            ? Icons.image_search_outlined
+                            : Icons.video_library_outlined,
+                      ),
+                      label: Text(
+                        item.type ==
+                                TenantAdminAccountProfileGalleryItemType.photo
+                            ? 'Trocar foto'
+                            : 'Trocar vídeo',
+                      ),
                     ),
                     if (totalItems > 1)
                       IconButton(
                         tooltip: 'Mover para cima',
                         onPressed: index == 0
                             ? null
-                            : () => onMoveItem(groupId, item.itemId, -1),
+                            : () => unawaited(
+                                onMoveItem(groupId, item.itemId, -1),
+                              ),
                         icon: const Icon(Icons.arrow_upward),
                       ),
                     if (totalItems > 1)
@@ -295,12 +358,15 @@ class _GalleryItemCard extends StatelessWidget {
                         tooltip: 'Mover para baixo',
                         onPressed: index >= totalItems - 1
                             ? null
-                            : () => onMoveItem(groupId, item.itemId, 1),
+                            : () => unawaited(
+                                onMoveItem(groupId, item.itemId, 1),
+                              ),
                         icon: const Icon(Icons.arrow_downward),
                       ),
                     IconButton(
                       tooltip: 'Remover foto',
-                      onPressed: () => onRemoveItem(groupId, item.itemId),
+                      onPressed: () =>
+                          unawaited(onRemoveItem(groupId, item.itemId)),
                       icon: const Icon(Icons.delete_outline),
                     ),
                   ],
@@ -353,7 +419,11 @@ class _GalleryItemPreview extends StatelessWidget {
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: borderRadius,
       ),
-      child: const Icon(Icons.image_outlined),
+      child: Icon(
+        item.type == TenantAdminAccountProfileGalleryItemType.photo
+            ? Icons.image_outlined
+            : Icons.play_circle_outline,
+      ),
     );
   }
 }

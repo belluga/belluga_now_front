@@ -57,7 +57,9 @@ import 'package:belluga_now/infrastructure/repositories/auth_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/city_map_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/contacts_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/deferred_link_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/event_tracker_repository_adapter.dart';
 import 'package:belluga_now/infrastructure/repositories/favorite_repository.dart';
+import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:belluga_now/infrastructure/repositories/friends_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/inviteables_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
@@ -375,6 +377,11 @@ class ModuleSettings extends ModuleSettingsContract {
       () => SelfProfileRepository(),
     );
     _registerIfAbsent<TelemetryRepositoryContract>(() => TelemetryRepository());
+    _registerIfAbsent<EventTrackerRepositoryContract>(
+      () => EventTrackerRepositoryAdapter(
+        GetIt.I.get<TelemetryRepositoryContract>(),
+      ),
+    );
     _registerIfAbsent<AccountProfilesRepositoryContract>(
       () => AccountProfilesRepository(),
     );

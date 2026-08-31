@@ -10,6 +10,38 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 class TenantAdminAccountProfilesRequestEncoder {
   const TenantAdminAccountProfilesRequestEncoder();
 
+  Map<String, dynamic> encodeCreateGalleryGroup({required String subtitle}) =>
+      <String, dynamic>{'subtitle': subtitle};
+
+  Map<String, dynamic> encodeRenameGalleryGroup({required String subtitle}) =>
+      <String, dynamic>{'subtitle': subtitle};
+
+  Map<String, dynamic> encodeGalleryGroupOrder(List<String> groupIds) =>
+      <String, dynamic>{'group_ids': groupIds};
+
+  Map<String, dynamic> encodeCreateYoutubeGalleryItem({
+    required String youtubeUrl,
+    String? description,
+  }) => <String, dynamic>{
+    'type': 'youtube',
+    'youtube_url': youtubeUrl,
+    'description': ?description,
+  };
+
+  Map<String, dynamic> encodePatchGalleryItem({
+    String? type,
+    Object? description,
+    bool includeDescription = false,
+    String? youtubeUrl,
+  }) => <String, dynamic>{
+    'type': ?type,
+    if (includeDescription) 'description': description,
+    'youtube_url': ?youtubeUrl,
+  };
+
+  Map<String, dynamic> encodeGalleryItemOrder(List<String> itemIds) =>
+      <String, dynamic>{'item_ids': itemIds};
+
   TenantAdminAccountProfileGalleryEncodedPayload
   encodeUpdateAccountProfileGallery(
     List<TenantAdminAccountProfileGalleryUpdateGroup> groups,

@@ -2,6 +2,48 @@ import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_acc
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('decodes empty groups, mixed items, and backend capabilities', () {
+    final profile = TenantAdminAccountProfileDTO.fromJson({
+      'id': 'profile-1',
+      'account_id': 'account-1',
+      'profile_type': 'venue',
+      'display_name': 'Venue',
+      'gallery_capabilities': {'max_galleries': 6, 'max_items_per_gallery': 12},
+      'gallery_groups': [
+        {'group_id': 'empty', 'subtitle': 'Empty', 'order': 0, 'items': []},
+        {
+          'group_id': 'mixed',
+          'subtitle': 'Mixed',
+          'order': 1,
+          'items': [
+            {
+              'item_id': 'photo',
+              'type': 'photo',
+              'order': 0,
+              'image_url': 'https://example.test/image.jpg',
+              'thumb_url': 'https://example.test/thumb.jpg',
+              'card_url': 'https://example.test/card.jpg',
+              'modal_url': 'https://example.test/modal.jpg',
+            },
+            {
+              'item_id': 'video',
+              'type': 'youtube',
+              'order': 1,
+              'youtube_video_id': 'dQw4w9WgXcQ',
+            },
+          ],
+        },
+      ],
+    }).toDomain();
+
+    expect(profile.galleryGroups, hasLength(2));
+    expect(profile.galleryGroups.first.items, isEmpty);
+    expect(profile.galleryGroups.last.items.last.type.name, 'youtube');
+    expect(profile.galleryGroups.last.items.last.youtubeVideoId, 'dQw4w9WgXcQ');
+    expect(profile.galleryCapabilities.maxGalleries, 6);
+    expect(profile.galleryCapabilities.maxItemsPerGallery, 12);
+  });
+
   test('decodes the production-shaped AGLA edit payload', () {
     final profile = TenantAdminAccountProfileDTO.fromJson({
       'id': '6a6bc34e512136a0050eabaa',

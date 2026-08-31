@@ -16,6 +16,8 @@ import 'package:belluga_now/domain/partners/value_objects/account_profile_name_v
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_item.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_snapshot.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate_scope.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate_selection_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
@@ -27,11 +29,13 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_unknown_mutation_failure.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profile_create_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profile_candidate_picker_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profile_edit_draft.dart';
+import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profile_gallery_group_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_account_profile_gallery_operations.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_nested_profile_group_operations.dart';
@@ -186,6 +190,10 @@ class TenantAdminAccountProfilesController implements Disposable {
       StreamValue<String?>();
   final StreamValue<String?> editErrorMessageStreamValue =
       StreamValue<String?>();
+  final StreamValue<bool> editGalleryMutationBusyStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<Map<String, String>> editGalleryFieldErrorsStreamValue =
+      StreamValue<Map<String, String>>(defaultValue: const {});
   final StreamValue<bool> editNestedGroupMutationBusyStreamValue =
       StreamValue<bool>(defaultValue: false);
   final StreamValue<bool> taxonomyAutosavingStreamValue = StreamValue<bool>(
@@ -1788,7 +1796,6 @@ class TenantAdminAccountProfilesController implements Disposable {
     String? coverUrl,
     bool? removeAvatar,
     bool? removeCover,
-    List<TenantAdminAccountProfileGalleryUpdateGroup>? galleryGroups,
     List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
     BellugaContactSourceMode? contactMode,
     String? contactSourceAccountProfileId,
@@ -1820,24 +1827,8 @@ class TenantAdminAccountProfilesController implements Disposable {
         contactChannelDrafts: contactChannelDrafts,
         bubbleSelection: bubbleSelection,
       );
-      final finalProfile =
-          _shouldSkipGalleryUpdate(
-            accountProfileId: accountProfileId,
-            galleryGroups: galleryGroups,
-          )
-          ? updated
-          : galleryGroups == null
-          ? updated
-          : await _profilesRepository.updateAccountProfileGallery(
-              accountProfileId: tenantAdminAccountProfilesRepoString(
-                accountProfileId,
-                defaultValue: '',
-                isRequired: true,
-              ),
-              galleryGroups: galleryGroups,
-            );
       if (_isDisposed) return;
-      updateEditProfile(finalProfile);
+      updateEditProfile(updated);
       editErrorMessageStreamValue.addValue(null);
       editSuccessMessageStreamValue.addValue('Perfil atualizado.');
     } catch (error) {
@@ -2347,144 +2338,254 @@ class TenantAdminAccountProfilesController implements Disposable {
     );
   }
 
-  void addEditGalleryGroup() {
-    final groups = editStateStreamValue.value.galleryGroups;
-    if (groups.length >= TenantAdminAccountProfileGalleryOperations.maxGroups) {
-      reportEditErrorMessage('Limite de grupos da galeria atingido.');
-      return;
-    }
-    _updateEditState(
-      editStateStreamValue.value.copyWith(
-        galleryGroups: TenantAdminAccountProfileGalleryOperations.appendGroup(
-          groups,
-        ),
+  Future<void> addEditGalleryGroup(String subtitle) => _runGalleryMutation(
+    () => _profilesRepository.createGalleryGroup(
+      accountProfileId: _editGalleryProfileId(),
+      subtitle: tenantAdminAccountProfilesRepoString(
+        subtitle,
+        defaultValue: '',
+        isRequired: true,
       ),
+    ),
+  );
+
+  Future<void> renameEditGalleryGroup(String groupId, String subtitle) =>
+      _runGalleryMutation(
+        () => _profilesRepository.renameGalleryGroup(
+          accountProfileId: _editGalleryProfileId(),
+          groupId: _galleryText(groupId),
+          subtitle: _galleryText(subtitle),
+        ),
+      );
+
+  Future<void> moveEditGalleryGroup(String groupId, int delta) async {
+    final previous = editStateStreamValue.value.galleryGroups;
+    final reordered = TenantAdminAccountProfileGalleryOperations.moveGroup(
+      previous,
+      groupId: groupId,
+      delta: delta,
+    );
+    _updateEditState(
+      editStateStreamValue.value.copyWith(galleryGroups: reordered),
+    );
+    await _runGalleryMutation(
+      () => _profilesRepository.reorderGalleryGroups(
+        accountProfileId: _editGalleryProfileId(),
+        groupIds: reordered
+            .map((group) => _galleryText(group.groupId))
+            .toList(),
+      ),
+      restoreGroupsOnError: previous,
     );
   }
 
-  void renameEditGalleryGroup(String groupId, String subtitle) {
-    _updateEditState(
-      editStateStreamValue.value.copyWith(
-        galleryGroups: TenantAdminAccountProfileGalleryOperations.renameGroup(
-          editStateStreamValue.value.galleryGroups,
-          groupId: groupId,
-          subtitle: subtitle,
-        ),
-      ),
-    );
-  }
+  Future<void> removeEditGalleryGroup(String groupId) => _runGalleryMutation(
+    () => _profilesRepository.deleteGalleryGroup(
+      accountProfileId: _editGalleryProfileId(),
+      groupId: _galleryText(groupId),
+    ),
+  );
 
-  void moveEditGalleryGroup(String groupId, int delta) {
-    _updateEditState(
-      editStateStreamValue.value.copyWith(
-        galleryGroups: TenantAdminAccountProfileGalleryOperations.moveGroup(
-          editStateStreamValue.value.galleryGroups,
-          groupId: groupId,
-          delta: delta,
-        ),
-      ),
-    );
-  }
-
-  void removeEditGalleryGroup(String groupId) {
-    _updateEditState(
-      editStateStreamValue.value.copyWith(
-        galleryGroups: TenantAdminAccountProfileGalleryOperations.removeGroup(
-          editStateStreamValue.value.galleryGroups,
-          groupId: groupId,
-        ),
-      ),
-    );
-  }
-
-  void addEditGalleryItem({
+  Future<void> addEditGalleryPhoto({
     required String groupId,
     required XFile uploadFile,
-  }) {
-    _updateEditState(
-      editStateStreamValue.value.copyWith(
-        galleryGroups: TenantAdminAccountProfileGalleryOperations.appendItem(
-          editStateStreamValue.value.galleryGroups,
-          groupId: groupId,
-          uploadFile: uploadFile,
-          onLimit: () =>
-              reportEditErrorMessage('Limite total de fotos atingido.'),
-        ),
+  }) async {
+    final upload = await buildImageUpload(
+      uploadFile,
+      slot: TenantAdminImageSlot.accountProfileGallery,
+    );
+    if (upload == null) return;
+    await _runGalleryMutation(
+      () => _profilesRepository.createGalleryItem(
+        accountProfileId: _editGalleryProfileId(),
+        groupId: _galleryText(groupId),
+        type: TenantAdminAccountProfileGalleryItemType.photo,
+        image: upload,
       ),
     );
   }
 
-  void replaceEditGalleryItemUpload({
+  Future<void> addEditGalleryYoutube({
+    required String groupId,
+    required String youtubeUrl,
+  }) => _runGalleryMutation(
+    () => _profilesRepository.createGalleryItem(
+      accountProfileId: _editGalleryProfileId(),
+      groupId: _galleryText(groupId),
+      type: TenantAdminAccountProfileGalleryItemType.youtube,
+      youtubeUrl: _galleryText(youtubeUrl),
+    ),
+  );
+
+  Future<void> replaceEditGalleryItemUpload({
     required String groupId,
     required String itemId,
     required XFile uploadFile,
-  }) {
-    _updateEditState(
-      editStateStreamValue.value.copyWith(
-        galleryGroups:
-            TenantAdminAccountProfileGalleryOperations.replaceItemUpload(
-              editStateStreamValue.value.galleryGroups,
-              groupId: groupId,
-              itemId: itemId,
-              uploadFile: uploadFile,
-            ),
+  }) async {
+    final upload = await buildImageUpload(
+      uploadFile,
+      slot: TenantAdminImageSlot.accountProfileGallery,
+    );
+    if (upload == null) return;
+    await _runGalleryMutation(
+      () => _profilesRepository.updateGalleryItem(
+        accountProfileId: _editGalleryProfileId(),
+        groupId: _galleryText(groupId),
+        itemId: _galleryText(itemId),
+        image: upload,
       ),
     );
   }
 
-  void updateEditGalleryItemDescription({
+  Future<void> replaceEditGalleryYoutube({
+    required String groupId,
+    required String itemId,
+    required String youtubeUrl,
+  }) => _runGalleryMutation(
+    () => _profilesRepository.updateGalleryItem(
+      accountProfileId: _editGalleryProfileId(),
+      groupId: _galleryText(groupId),
+      itemId: _galleryText(itemId),
+      youtubeUrl: _galleryText(youtubeUrl),
+    ),
+  );
+
+  Future<void> updateEditGalleryItemDescription({
     required String groupId,
     required String itemId,
     required String description,
-  }) {
-    _updateEditState(
-      editStateStreamValue.value.copyWith(
-        galleryGroups:
-            TenantAdminAccountProfileGalleryOperations.updateItemDescription(
-              editStateStreamValue.value.galleryGroups,
-              groupId: groupId,
-              itemId: itemId,
-              description: description,
-            ),
-      ),
-    );
-  }
+  }) => _runGalleryMutation(
+    () => _profilesRepository.updateGalleryItem(
+      accountProfileId: _editGalleryProfileId(),
+      groupId: _galleryText(groupId),
+      itemId: _galleryText(itemId),
+      description: TenantAdminOptionalTextValue(defaultValue: description),
+    ),
+  );
 
-  void moveEditGalleryItem({
+  Future<void> moveEditGalleryItem({
     required String groupId,
     required String itemId,
     required int delta,
-  }) {
+  }) async {
+    final previous = editStateStreamValue.value.galleryGroups;
+    final reordered = TenantAdminAccountProfileGalleryOperations.moveItem(
+      previous,
+      groupId: groupId,
+      itemId: itemId,
+      delta: delta,
+    );
     _updateEditState(
-      editStateStreamValue.value.copyWith(
-        galleryGroups: TenantAdminAccountProfileGalleryOperations.moveItem(
-          editStateStreamValue.value.galleryGroups,
-          groupId: groupId,
-          itemId: itemId,
-          delta: delta,
-        ),
+      editStateStreamValue.value.copyWith(galleryGroups: reordered),
+    );
+    final group = reordered.firstWhere((entry) => entry.groupId == groupId);
+    await _runGalleryMutation(
+      () => _profilesRepository.reorderGalleryItems(
+        accountProfileId: _editGalleryProfileId(),
+        groupId: _galleryText(groupId),
+        itemIds: group.items.map((item) => _galleryText(item.itemId)).toList(),
       ),
+      restoreGroupsOnError: previous,
     );
   }
 
-  void removeEditGalleryItem({
+  Future<void> removeEditGalleryItem({
     required String groupId,
     required String itemId,
-  }) {
-    _updateEditState(
-      editStateStreamValue.value.copyWith(
-        galleryGroups: TenantAdminAccountProfileGalleryOperations.removeItem(
-          editStateStreamValue.value.galleryGroups,
-          groupId: groupId,
-          itemId: itemId,
-        ),
-      ),
-    );
+  }) => _runGalleryMutation(
+    () => _profilesRepository.deleteGalleryItem(
+      accountProfileId: _editGalleryProfileId(),
+      groupId: _galleryText(groupId),
+      itemId: _galleryText(itemId),
+    ),
+  );
+
+  TenantAdminAccountProfilesRepoString _editGalleryProfileId() =>
+      _galleryText(_loadedEditProfileSnapshot?.id ?? '');
+
+  TenantAdminAccountProfilesRepoString _galleryText(String value) =>
+      tenantAdminAccountProfilesRepoString(
+        value,
+        defaultValue: '',
+        isRequired: true,
+      );
+
+  Future<void> _runGalleryMutation(
+    Future<TenantAdminAccountProfileGallerySnapshot> Function() mutation, {
+    List<TenantAdminAccountProfileGalleryGroupDraft>? restoreGroupsOnError,
+  }) async {
+    editGalleryMutationBusyStreamValue.addValue(true);
+    editGalleryFieldErrorsStreamValue.addValue(const {});
+    try {
+      final snapshot = await mutation();
+      if (_isDisposed) return;
+      _applyGallerySnapshot(snapshot);
+      editErrorMessageStreamValue.addValue(null);
+    } on FormValidationFailure catch (error) {
+      if (_isDisposed) return;
+      if (restoreGroupsOnError != null) {
+        _updateEditState(
+          editStateStreamValue.value.copyWith(
+            galleryGroups: restoreGroupsOnError,
+          ),
+        );
+      }
+      editGalleryFieldErrorsStreamValue.addValue({
+        for (final entry in error.fieldErrors.entries)
+          if (entry.value.isNotEmpty) entry.key: entry.value.first,
+      });
+      editErrorMessageStreamValue.addValue(error.message);
+      if (_isGalleryCapacityFailure(error)) {
+        try {
+          final refreshed = await fetchProfile(
+            _loadedEditProfileSnapshot?.id ?? '',
+          );
+          if (!_isDisposed) {
+            _applyGallerySnapshot(
+              TenantAdminAccountProfileGallerySnapshot(
+                groups: refreshed.galleryGroups,
+                capabilities: refreshed.galleryCapabilities,
+              ),
+            );
+          }
+        } catch (_) {
+          // Keep the original capacity error visible; the user may retry.
+        }
+      }
+    } catch (error) {
+      if (_isDisposed) return;
+      if (restoreGroupsOnError != null) {
+        _updateEditState(
+          editStateStreamValue.value.copyWith(
+            galleryGroups: restoreGroupsOnError,
+          ),
+        );
+      }
+      editErrorMessageStreamValue.addValue(error.toString());
+    } finally {
+      if (!_isDisposed) editGalleryMutationBusyStreamValue.addValue(false);
+    }
   }
 
-  int editGalleryItemCount() {
-    return TenantAdminAccountProfileGalleryOperations.totalItemCount(
-      editStateStreamValue.value.galleryGroups,
+  bool _isGalleryCapacityFailure(FormValidationFailure error) =>
+      error.statusCode == 422 &&
+      error.fieldErrors.keys.any(
+        (key) =>
+            key.contains('gallery_capabilities') ||
+            key.contains('max_galleries') ||
+            key.contains('max_items_per_gallery'),
+      );
+
+  void _applyGallerySnapshot(
+    TenantAdminAccountProfileGallerySnapshot snapshot,
+  ) {
+    _updateEditState(
+      editStateStreamValue.value.copyWith(
+        galleryGroups: snapshot.groups
+            .map(TenantAdminAccountProfileGalleryGroupDraft.fromRead)
+            .toList(growable: false),
+        galleryCapabilities: snapshot.capabilities,
+      ),
     );
   }
 
@@ -3044,26 +3145,6 @@ class TenantAdminAccountProfilesController implements Disposable {
     accountDeletedStreamValue.addValue(false);
   }
 
-  bool _shouldSkipGalleryUpdate({
-    required String accountProfileId,
-    required List<TenantAdminAccountProfileGalleryUpdateGroup>? galleryGroups,
-  }) {
-    if (galleryGroups == null || galleryGroups.isNotEmpty) {
-      return false;
-    }
-
-    final loadedSnapshot = _loadedEditProfileSnapshot;
-    if (loadedSnapshot == null) {
-      return false;
-    }
-
-    if (loadedSnapshot.id.trim() != accountProfileId.trim()) {
-      return false;
-    }
-
-    return loadedSnapshot.galleryGroups.isEmpty;
-  }
-
   void clearAccountDeletedFlag() {
     if (_isDisposed) {
       return;
@@ -3610,6 +3691,8 @@ class TenantAdminAccountProfilesController implements Disposable {
     editSubmittingStreamValue.dispose();
     editSuccessMessageStreamValue.dispose();
     editErrorMessageStreamValue.dispose();
+    editGalleryMutationBusyStreamValue.dispose();
+    editGalleryFieldErrorsStreamValue.dispose();
     editNestedGroupMutationBusyStreamValue.dispose();
     _clearNestedGroupLabelStates();
     taxonomyAutosavingStreamValue.dispose();

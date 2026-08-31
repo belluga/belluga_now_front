@@ -32,7 +32,6 @@ import 'package:belluga_now/presentation/tenant_public/partners/account_profile_
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_state.dart';
 import 'package:belluga_now/presentation/shared/widgets/account_profile_overlapping_identity_card.dart';
-import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/shared/widgets/public_rich_text_html.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/upcoming_ocurrence_card.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
@@ -133,7 +132,7 @@ void main() {
     expect(find.text('Falha ao preparar o perfil'), findsOneWidget);
   });
 
-  testWidgets('renders grouped gallery and opens modal with description', (
+  testWidgets('renders gallery row and opens viewer at selected item', (
     tester,
   ) async {
     final repository = _FakeAccountProfilesRepository();
@@ -180,16 +179,16 @@ void main() {
     expect(find.text('Ambiente'), findsOneWidget);
 
     final galleryItem = find.byKey(
-      const Key('accountProfileGalleryItem_gallery-item-1'),
+      const Key('bellugaGalleryPreview_gallery-item-1'),
     );
-    final galleryPreview = tester.widget<BellugaNetworkImage>(
-      find.descendant(
-        of: galleryItem,
-        matching: find.byType(BellugaNetworkImage),
-      ),
+    final galleryPreview = tester.widget<Image>(
+      find.descendant(of: galleryItem, matching: find.byType(Image)),
     );
 
-    expect(galleryPreview.url, 'https://tenant.test/gallery/image.jpg');
+    expect(
+      (galleryPreview.image as NetworkImage).url,
+      'https://tenant.test/gallery/thumb.jpg',
+    );
 
     await tester.drag(find.byType(NestedScrollView), const Offset(0, -320));
     await tester.pumpAndSettle();
@@ -204,16 +203,20 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.byKey(const Key('accountProfileGalleryModal_gallery-item-1')),
+      find.byKey(const Key('accountProfileGalleryViewer_group-1')),
       findsOneWidget,
     );
-    final modalPreview = tester.widget<BellugaNetworkImage>(
+    final modalPreview = tester.widget<Image>(
       find.descendant(
-        of: find.byKey(const Key('accountProfileGalleryModal_gallery-item-1')),
-        matching: find.byType(BellugaNetworkImage),
+        of: find.byKey(const Key('accountProfileGalleryViewer_group-1')),
+        matching: find.byType(Image),
       ),
     );
-    expect(modalPreview.url, 'https://tenant.test/gallery/modal.jpg');
+    expect(
+      (modalPreview.image as NetworkImage).url,
+      'https://tenant.test/gallery/modal.jpg',
+    );
+    expect(find.text('1/1'), findsOneWidget);
     expect(find.text('Vista para o palco'), findsOneWidget);
   });
 
