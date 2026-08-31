@@ -142,8 +142,7 @@ void main() {
     GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
 
     await tester.pumpWidget(
-      _buildRoutedTestApp(
-        router: _RecordingStackRouter(),
+      _buildAutoRouteTestApp(
         child: AccountProfileDetailScreen(
           accountProfile: buildAccountProfileModelFromPrimitives(
             id: '507f1f77bcf86cd799439011',

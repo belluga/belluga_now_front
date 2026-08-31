@@ -2668,14 +2668,15 @@ class _AccountProfileDetailScreenState
     final items = group.items
         .map((item) => item.toGalleryItem())
         .toList(growable: false);
-    await showDialog<void>(
+    await showRouteScopedDialog<void>(
       context: context,
+      useRootNavigator: false,
       builder: (dialogContext) => Dialog.fullscreen(
         key: Key('accountProfileGalleryViewer_${group.groupId}'),
         child: BellugaGalleryViewer(
           items: items,
           initialIndex: initialIndex,
-          onClose: () => Navigator.of(dialogContext).pop(),
+          onClose: () => dialogContext.router.maybePop(),
         ),
       ),
     );
