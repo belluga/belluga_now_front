@@ -3,6 +3,7 @@ import 'package:belluga_now/domain/partners/value_objects/account_profile_nested
 import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/testing/account_profile_model_factory.dart';
+import 'package:belluga_gallery/belluga_gallery.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -52,6 +53,23 @@ void main() {
         'https://example.com/gallery-item-1?variant=thumb',
       );
     });
+  });
+
+  test('maps canonical YouTube identity to the package item', () {
+    final item = AccountProfileGalleryItem(
+      itemIdValue: AccountProfileNestedGroupIdValue('video-1'),
+      descriptionValue: AccountProfileNestedGroupMemberTextValue('Ao vivo'),
+      orderValue: AccountProfileNestedGroupOrderValue(0),
+      imageUrlValue: _buildThumbUriValue(null),
+      thumbUrlValue: _buildThumbUriValue(null),
+      cardUrlValue: _buildThumbUriValue(null),
+      modalUrlValue: _buildThumbUriValue(null),
+      type: AccountProfileGalleryItemType.youtube,
+      youtubeVideoIdValue: AccountProfileNestedGroupMemberTextValue('abc123'),
+    );
+
+    expect(item.toGalleryItem(), isA<GalleryYoutubePlayer>());
+    expect(item.previewUrl, 'https://i.ytimg.com/vi/abc123/hqdefault.jpg');
   });
 }
 
