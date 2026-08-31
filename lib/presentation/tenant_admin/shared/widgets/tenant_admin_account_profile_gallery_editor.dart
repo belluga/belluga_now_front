@@ -61,6 +61,13 @@ class TenantAdminAccountProfileGalleryEditor extends StatelessWidget {
           Text(
             '${groups.length} / $maxGroups galerias · ${_stateLabel(galleryState)}',
           ),
+          if (galleryState == TenantAdminGalleryCapacityState.overLimit)
+            Text(
+              'Remova pelo menos ${groups.length - maxGroups} '
+              '${groups.length - maxGroups == 1 ? 'galeria' : 'galerias'} '
+              'para voltar ao limite do plano.',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
           if (fieldErrors.isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(
@@ -247,6 +254,15 @@ class _GalleryGroupCard extends StatelessWidget {
                 ],
               ],
             ),
+          if (itemState == TenantAdminGalleryCapacityState.overLimit) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Remova pelo menos ${group.items.length - maxItems} '
+              '${group.items.length - maxItems == 1 ? 'item' : 'itens'} '
+              'para voltar ao limite do plano.',
+              style: TextStyle(color: colorScheme.error),
+            ),
+          ],
           const SizedBox(height: 12),
           OutlinedButton.icon(
             key: Key('tenantAdminGalleryGroupAddItem_${group.groupId}'),

@@ -19,6 +19,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_onboarding_
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate_selection_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_group.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_capabilities.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
@@ -920,6 +921,10 @@ void main() {
     profilesRepository.profileToReturn = _profile(
       id: 'route-profile',
       galleryGroups: [_galleryGroup()],
+      galleryCapabilities: TenantAdminAccountProfileGalleryCapabilities(
+        maxGalleriesValue: TenantAdminCountValue(0),
+        maxItemsPerGalleryValue: TenantAdminCountValue(0),
+      ),
     );
 
     await _pumpScreen(
@@ -944,6 +949,8 @@ void main() {
     );
     expect(find.text('Ambiente'), findsOneWidget);
     expect(find.text('Vista para o palco'), findsOneWidget);
+    expect(find.textContaining('Remova pelo menos 1 galeria'), findsOneWidget);
+    expect(find.textContaining('Remova pelo menos 1 item'), findsOneWidget);
   });
 
   testWidgets(
@@ -2467,6 +2474,7 @@ TenantAdminAccountProfile _profile({
   String? coverUrl,
   List<TenantAdminAccountProfileGalleryGroup> galleryGroups =
       const <TenantAdminAccountProfileGalleryGroup>[],
+  TenantAdminAccountProfileGalleryCapabilities? galleryCapabilities,
   List<TenantAdminNestedProfileGroup> nestedProfileGroups =
       const <TenantAdminNestedProfileGroup>[],
   BellugaContactSourceMode contactMode = BellugaContactSourceMode.own,
@@ -2485,6 +2493,7 @@ TenantAdminAccountProfile _profile({
     avatarUrl: avatarUrl,
     coverUrl: coverUrl,
     galleryGroups: galleryGroups,
+    galleryCapabilities: galleryCapabilities,
     nestedProfileGroups: nestedProfileGroups,
     ownershipState: TenantAdminOwnershipState.tenantOwned,
     contactMode: contactMode,

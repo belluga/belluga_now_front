@@ -218,6 +218,27 @@ void main() {
     );
     expect(find.text('1/1'), findsOneWidget);
     expect(find.text('Vista para o palco'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('bellugaGalleryViewerClose')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('accountProfileGalleryViewer_group-1')),
+      findsNothing,
+    );
+
+    final openGroupButton = find.byKey(
+      const Key('accountProfileGalleryOpenGroup_group-1'),
+    );
+    await tester.ensureVisible(openGroupButton);
+    await tester.pumpAndSettle();
+    await tester.tap(openGroupButton);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('accountProfileGalleryViewer_group-1')),
+      findsOneWidget,
+    );
+    expect(find.text('1/1'), findsOneWidget);
   });
 
   testWidgets(

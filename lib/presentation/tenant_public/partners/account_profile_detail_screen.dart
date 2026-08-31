@@ -2623,11 +2623,27 @@ class _AccountProfileDetailScreenState
             groupIndex++
           ) ...[
             if (groupIndex > 0) const SizedBox(height: 24),
-            Text(
-              visibleGroups[groupIndex].subtitle,
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    visibleGroups[groupIndex].subtitle,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  key: Key(
+                    'accountProfileGalleryOpenGroup_${visibleGroups[groupIndex].groupId}',
+                  ),
+                  onPressed: () => _openGalleryViewer(
+                    group: visibleGroups[groupIndex],
+                    initialIndex: 0,
+                  ),
+                  child: const Text('Ver galeria'),
+                ),
+              ],
             ),
             const SizedBox(height: 12),
             BellugaGalleryPreviewRow(
@@ -2659,7 +2675,7 @@ class _AccountProfileDetailScreenState
         child: BellugaGalleryViewer(
           items: items,
           initialIndex: initialIndex,
-          onClose: () => dialogContext.router.maybePop(),
+          onClose: () => Navigator.of(dialogContext).pop(),
         ),
       ),
     );
