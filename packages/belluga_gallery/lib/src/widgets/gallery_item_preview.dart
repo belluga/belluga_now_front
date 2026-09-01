@@ -26,26 +26,63 @@ final class GalleryItemPreview extends StatelessWidget {
       label: item is GalleryYoutubePlayer ? 'Abrir vídeo' : 'Abrir foto',
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           child: Stack(
             fit: StackFit.expand,
             children: <Widget>[
               _NetworkGalleryImage(url: imageUrl),
               if (item is GalleryYoutubePlayer)
-                const ColoredBox(
-                  color: Color(0x33000000),
-                  child: Center(
-                    child: Icon(
-                      Icons.play_circle_fill,
-                      color: Colors.white,
-                      size: 46,
+                const Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ColoredBox(color: Color(0x26000000)),
+                    Center(
+                      child: Icon(
+                        Icons.play_circle_fill,
+                        color: Colors.white,
+                        size: 52,
+                      ),
                     ),
-                  ),
+                    Positioned(left: 10, top: 10, child: _VideoBadge()),
+                  ],
                 ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+final class _VideoBadge extends StatelessWidget {
+  const _VideoBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xCC111111),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.play_arrow_rounded, color: Colors.white, size: 15),
+            SizedBox(width: 3),
+            Text(
+              'VÍDEO',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.6,
+              ),
+            ),
+          ],
         ),
       ),
     );

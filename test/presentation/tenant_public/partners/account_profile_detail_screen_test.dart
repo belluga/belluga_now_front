@@ -175,7 +175,9 @@ void main() {
       find.byKey(const Key('accountProfileGroupedGallery')),
       findsOneWidget,
     );
+    expect(find.text('Galeria'), findsOneWidget);
     expect(find.text('Ambiente'), findsOneWidget);
+    expect(find.text('Ver tudo'), findsOneWidget);
 
     final galleryItem = find.byKey(
       const Key('bellugaGalleryPreview_gallery-item-1'),
@@ -216,7 +218,10 @@ void main() {
       'https://tenant.test/gallery/modal.jpg',
     );
     expect(find.text('1/1'), findsOneWidget);
+    expect(find.text('Ambiente'), findsWidgets);
     expect(find.text('Vista para o palco'), findsOneWidget);
+    expect(find.text('Anterior'), findsOneWidget);
+    expect(find.text('Próximo'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('bellugaGalleryViewerClose')));
     await tester.pumpAndSettle();

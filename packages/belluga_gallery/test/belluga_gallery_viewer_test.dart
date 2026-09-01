@@ -30,6 +30,9 @@ void main() {
       findsOneWidget,
     );
     expect(find.byTooltip('Fechar galeria'), findsOneWidget);
+    expect(find.text('Galeria'), findsOneWidget);
+    expect(find.text('Anterior'), findsOneWidget);
+    expect(find.text('Próximo'), findsOneWidget);
     expect(find.byType(YoutubePlayer), findsNothing);
     expect(find.byIcon(Icons.play_circle_fill), findsOneWidget);
   });

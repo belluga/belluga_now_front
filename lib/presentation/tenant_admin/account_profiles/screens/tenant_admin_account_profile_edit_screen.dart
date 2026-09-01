@@ -701,47 +701,16 @@ class _TenantAdminAccountProfileEditScreenState
     return result?.value.trim();
   }
 
-  Future<void> _addGalleryItem(String groupId) async {
-    final type = await showDialog<TenantAdminAccountProfileGalleryItemType>(
-      context: context,
-      builder: (dialogContext) => SimpleDialog(
-        title: const Text('Adicionar item'),
-        children: [
-          SimpleDialogOption(
-            onPressed: () => dialogContext.router.maybePop(
-              TenantAdminAccountProfileGalleryItemType.photo,
-            ),
-            child: const ListTile(
-              leading: Icon(Icons.photo_outlined),
-              title: Text('Foto'),
-            ),
-          ),
-          SimpleDialogOption(
-            onPressed: () => dialogContext.router.maybePop(
-              TenantAdminAccountProfileGalleryItemType.youtube,
-            ),
-            child: const ListTile(
-              leading: Icon(Icons.play_circle_outline),
-              title: Text('YouTube'),
-            ),
-          ),
-        ],
-      ),
-    );
-    if (!mounted || type == null) return;
-    if (type == TenantAdminAccountProfileGalleryItemType.youtube) {
-      final url = await _promptYoutubeUrl();
-      if (url != null) {
-        await _controller.addEditGalleryYoutube(
-          groupId: groupId,
-          youtubeUrl: url,
-        );
-      }
-      return;
-    }
+  Future<void> _addGalleryPhoto(String groupId) async {
     final file = await _pickGalleryImage();
     if (!mounted || file == null) return;
     await _controller.addEditGalleryPhoto(groupId: groupId, uploadFile: file);
+  }
+
+  Future<void> _addGalleryYoutube(String groupId) async {
+    final url = await _promptYoutubeUrl();
+    if (url == null) return;
+    await _controller.addEditGalleryYoutube(groupId: groupId, youtubeUrl: url);
   }
 
   Future<void> _replaceGalleryItem(String groupId, String itemId) async {
@@ -2108,7 +2077,8 @@ class _TenantAdminAccountProfileEditScreenState
               onRenameGroup: _controller.renameEditGalleryGroup,
               onMoveGroup: _controller.moveEditGalleryGroup,
               onRemoveGroup: _controller.removeEditGalleryGroup,
-              onAddItemRequested: _addGalleryItem,
+              onAddPhotoRequested: _addGalleryPhoto,
+              onAddYoutubeRequested: _addGalleryYoutube,
               onReplaceItemRequested: _replaceGalleryItem,
               onMoveItem: (groupId, itemId, delta) =>
                   _controller.moveEditGalleryItem(

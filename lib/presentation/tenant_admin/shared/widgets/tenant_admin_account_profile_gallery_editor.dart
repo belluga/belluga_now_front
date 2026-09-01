@@ -21,7 +21,8 @@ class TenantAdminAccountProfileGalleryEditor extends StatelessWidget {
     required this.onRenameGroup,
     required this.onMoveGroup,
     required this.onRemoveGroup,
-    required this.onAddItemRequested,
+    required this.onAddPhotoRequested,
+    required this.onAddYoutubeRequested,
     required this.onReplaceItemRequested,
     required this.onMoveItem,
     required this.onRemoveItem,
@@ -37,7 +38,8 @@ class TenantAdminAccountProfileGalleryEditor extends StatelessWidget {
   final Future<void> Function(String groupId, String subtitle) onRenameGroup;
   final Future<void> Function(String groupId, int delta) onMoveGroup;
   final Future<void> Function(String groupId) onRemoveGroup;
-  final Future<void> Function(String groupId) onAddItemRequested;
+  final Future<void> Function(String groupId) onAddPhotoRequested;
+  final Future<void> Function(String groupId) onAddYoutubeRequested;
   final Future<void> Function(String groupId, String itemId)
   onReplaceItemRequested;
   final Future<void> Function(String groupId, String itemId, int delta)
@@ -86,7 +88,8 @@ class TenantAdminAccountProfileGalleryEditor extends StatelessWidget {
               onRenameGroup: onRenameGroup,
               onMoveGroup: onMoveGroup,
               onRemoveGroup: onRemoveGroup,
-              onAddItemRequested: onAddItemRequested,
+              onAddPhotoRequested: onAddPhotoRequested,
+              onAddYoutubeRequested: onAddYoutubeRequested,
               onReplaceItemRequested: onReplaceItemRequested,
               onMoveItem: onMoveItem,
               onRemoveItem: onRemoveItem,
@@ -132,7 +135,8 @@ class _GalleryGroupCard extends StatelessWidget {
     required this.onRenameGroup,
     required this.onMoveGroup,
     required this.onRemoveGroup,
-    required this.onAddItemRequested,
+    required this.onAddPhotoRequested,
+    required this.onAddYoutubeRequested,
     required this.onReplaceItemRequested,
     required this.onMoveItem,
     required this.onRemoveItem,
@@ -147,7 +151,8 @@ class _GalleryGroupCard extends StatelessWidget {
   final Future<void> Function(String groupId, String subtitle) onRenameGroup;
   final Future<void> Function(String groupId, int delta) onMoveGroup;
   final Future<void> Function(String groupId) onRemoveGroup;
-  final Future<void> Function(String groupId) onAddItemRequested;
+  final Future<void> Function(String groupId) onAddPhotoRequested;
+  final Future<void> Function(String groupId) onAddYoutubeRequested;
   final Future<void> Function(String groupId, String itemId)
   onReplaceItemRequested;
   final Future<void> Function(String groupId, String itemId, int delta)
@@ -175,6 +180,14 @@ class _GalleryGroupCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(
+            'Galeria ${index + 1}',
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: colorScheme.primary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -183,7 +196,7 @@ class _GalleryGroupCard extends StatelessWidget {
                   key: Key('tenantAdminGalleryGroupSubtitle_${group.groupId}'),
                   initialValue: group.subtitle,
                   decoration: const InputDecoration(
-                    labelText: 'Subtítulo do agrupamento',
+                    labelText: 'Nome da galeria',
                   ),
                   onFieldSubmitted: (value) =>
                       unawaited(onRenameGroup(group.groupId, value)),
@@ -264,17 +277,47 @@ class _GalleryGroupCard extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 12),
-          OutlinedButton.icon(
-            key: Key('tenantAdminGalleryGroupAddItem_${group.groupId}'),
-            onPressed:
-                busy || itemState != TenantAdminGalleryCapacityState.available
-                ? null
-                : () => unawaited(onAddItemRequested(group.groupId)),
-            icon: const Icon(Icons.add_to_photos_outlined),
-            label: Text(
-              'Adicionar item · ${group.items.length} / $maxItems '
-              '${itemState == TenantAdminGalleryCapacityState.overLimit ? '(acima do plano)' : ''}',
+          Text(
+            '${group.items.length} / $maxItems itens · ${switch (itemState) {
+              TenantAdminGalleryCapacityState.available => 'disponível',
+              TenantAdminGalleryCapacityState.atLimit => 'no limite do plano',
+              TenantAdminGalleryCapacityState.overLimit => 'acima do limite do plano',
+            }}',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
             ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  key: Key('tenantAdminGalleryGroupAddPhoto_${group.groupId}'),
+                  onPressed:
+                      busy ||
+                          itemState != TenantAdminGalleryCapacityState.available
+                      ? null
+                      : () => unawaited(onAddPhotoRequested(group.groupId)),
+                  icon: const Icon(Icons.add_photo_alternate_outlined),
+                  label: const Text('Adicionar foto'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  key: Key(
+                    'tenantAdminGalleryGroupAddYoutube_${group.groupId}',
+                  ),
+                  onPressed:
+                      busy ||
+                          itemState != TenantAdminGalleryCapacityState.available
+                      ? null
+                      : () => unawaited(onAddYoutubeRequested(group.groupId)),
+                  icon: const Icon(Icons.video_library_outlined),
+                  label: const Text('Adicionar vídeo'),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -324,6 +367,15 @@ class _GalleryItemCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text(
+                  '${index + 1}. ${item.type == TenantAdminAccountProfileGalleryItemType.photo ? 'FOTO' : 'VÍDEO DO YOUTUBE'}',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+                const SizedBox(height: 6),
                 TextFormField(
                   key: Key('tenantAdminGalleryItemDescription_${item.itemId}'),
                   initialValue: item.description ?? '',
@@ -380,7 +432,11 @@ class _GalleryItemCard extends StatelessWidget {
                         icon: const Icon(Icons.arrow_downward),
                       ),
                     IconButton(
-                      tooltip: 'Remover foto',
+                      tooltip:
+                          item.type ==
+                              TenantAdminAccountProfileGalleryItemType.photo
+                          ? 'Remover foto'
+                          : 'Remover vídeo',
                       onPressed: () =>
                           unawaited(onRemoveItem(groupId, item.itemId)),
                       icon: const Icon(Icons.delete_outline),

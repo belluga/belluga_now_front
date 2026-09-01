@@ -12,12 +12,14 @@ import 'gallery_item_preview.dart';
 final class BellugaGalleryViewer extends StatefulWidget {
   const BellugaGalleryViewer({
     required this.items,
+    this.galleryTitle = 'Galeria',
     this.initialIndex = 0,
     this.onClose,
     super.key,
   });
 
   final List<GalleryItem> items;
+  final String galleryTitle;
   final int initialIndex;
   final VoidCallback? onClose;
 
@@ -53,66 +55,169 @@ final class _BellugaGalleryViewerState extends State<BellugaGalleryViewer> {
       return const SizedBox.shrink();
     }
     final selectedItem = _controller.selectedItem!;
+    final selectedIndex = _controller.selectedIndex;
     return Material(
-      color: Colors.black,
+      color: const Color(0xFF121212),
+      borderRadius: BorderRadius.circular(28),
+      clipBehavior: Clip.antiAlias,
       child: SafeArea(
-        child: Stack(
-          children: <Widget>[
-            PageView.builder(
-              controller: _controller.pageController,
-              itemCount: widget.items.length,
-              onPageChanged: (index) =>
-                  unawaited(_controller.selectIndex(index)),
-              itemBuilder: (context, index) => _viewerItem(widget.items[index]),
-            ),
-            Positioned(
-              top: 8,
-              right: 8,
-              child: IconButton.filledTonal(
-                key: const Key('bellugaGalleryViewerClose'),
-                tooltip: 'Fechar galeria',
-                onPressed: () {
-                  unawaited(_controller.closePlayer(reason: 'viewer_closed'));
-                  widget.onClose?.call();
-                },
-                icon: const Icon(Icons.close),
-              ),
-            ),
-            Positioned(
-              left: 16,
-              bottom: 16,
-              child: Semantics(
-                label:
-                    'Item ${_controller.selectedIndex + 1} de ${widget.items.length}',
-                child: ExcludeSemantics(
-                  child: Text(
-                    '${_controller.selectedIndex + 1}/${widget.items.length}',
-                    key: const Key('bellugaGalleryViewerPosition'),
-                    style: const TextStyle(color: Colors.white),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          child: Column(
+            children: <Widget>[
+              Row(
+                children: [
+                  IconButton(
+                    key: const Key('bellugaGalleryViewerClose'),
+                    tooltip: 'Fechar galeria',
+                    onPressed: () {
+                      unawaited(
+                        _controller.closePlayer(reason: 'viewer_closed'),
+                      );
+                      widget.onClose?.call();
+                    },
+                    style: IconButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      backgroundColor: const Color(0xFF2B2B2B),
+                    ),
+                    icon: const Icon(Icons.close_rounded),
                   ),
-                ),
-              ),
-            ),
-            if (selectedItem.description?.trim().isNotEmpty == true)
-              Positioned(
-                left: 72,
-                right: 16,
-                bottom: 16,
-                child: Semantics(
-                  label: 'Descrição: ${selectedItem.description!.trim()}',
-                  child: ExcludeSemantics(
+                  const SizedBox(width: 12),
+                  Expanded(
                     child: Text(
-                      selectedItem.description!.trim(),
-                      key: const Key('bellugaGalleryViewerDescription'),
-                      maxLines: 3,
+                      widget.galleryTitle,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.end,
-                      style: const TextStyle(color: Colors.white),
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  Semantics(
+                    label:
+                        'Item ${selectedIndex + 1} de ${widget.items.length}',
+                    child: ExcludeSemantics(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2B2B2B),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 7,
+                          ),
+                          child: Text(
+                            '${selectedIndex + 1}/${widget.items.length}',
+                            key: const Key('bellugaGalleryViewerPosition'),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: ColoredBox(
+                    color: Colors.black,
+                    child: PageView.builder(
+                      controller: _controller.pageController,
+                      itemCount: widget.items.length,
+                      onPageChanged: (index) =>
+                          unawaited(_controller.selectIndex(index)),
+                      itemBuilder: (context, index) =>
+                          _viewerItem(widget.items[index]),
                     ),
                   ),
                 ),
               ),
-          ],
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: selectedItem.description?.trim().isNotEmpty == true
+                    ? Semantics(
+                        label: 'Descrição: ${selectedItem.description!.trim()}',
+                        child: ExcludeSemantics(
+                          child: Text(
+                            selectedItem.description!.trim(),
+                            key: const Key('bellugaGalleryViewerDescription'),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Color(0xFFE6E6E6),
+                              fontSize: 16,
+                              height: 1.35,
+                            ),
+                          ),
+                        ),
+                      )
+                    : null,
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      key: const Key('bellugaGalleryViewerPrevious'),
+                      onPressed: selectedIndex == 0
+                          ? null
+                          : () => unawaited(
+                              _controller.pageController.previousPage(
+                                duration: const Duration(milliseconds: 240),
+                                curve: Curves.easeOutCubic,
+                              ),
+                            ),
+                      icon: const Icon(Icons.chevron_left_rounded),
+                      label: const Text('Anterior'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        disabledForegroundColor: Colors.white38,
+                        side: BorderSide(
+                          color: selectedIndex == 0
+                              ? Colors.white24
+                              : Colors.white54,
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton.icon(
+                      key: const Key('bellugaGalleryViewerNext'),
+                      onPressed: selectedIndex == widget.items.length - 1
+                          ? null
+                          : () => unawaited(
+                              _controller.pageController.nextPage(
+                                duration: const Duration(milliseconds: 240),
+                                curve: Curves.easeOutCubic,
+                              ),
+                            ),
+                      iconAlignment: IconAlignment.end,
+                      icon: const Icon(Icons.chevron_right_rounded),
+                      label: const Text('Próximo'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black,
+                        disabledBackgroundColor: Colors.white12,
+                        disabledForegroundColor: Colors.white38,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

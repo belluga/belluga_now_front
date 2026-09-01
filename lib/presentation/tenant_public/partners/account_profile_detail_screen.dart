@@ -2617,6 +2617,17 @@ class _AccountProfileDetailScreenState
         key: const Key('accountProfileGroupedGallery'),
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(
+            'Galeria',
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 8),
+          Divider(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.45),
+          ),
+          const SizedBox(height: 12),
           for (
             var groupIndex = 0;
             groupIndex < visibleGroups.length;
@@ -2641,7 +2652,14 @@ class _AccountProfileDetailScreenState
                     group: visibleGroups[groupIndex],
                     initialIndex: 0,
                   ),
-                  child: const Text('Ver galeria'),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('Ver tudo'),
+                      SizedBox(width: 2),
+                      Icon(Icons.chevron_right_rounded, size: 20),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -2671,12 +2689,19 @@ class _AccountProfileDetailScreenState
     await showRouteScopedDialog<void>(
       context: context,
       useRootNavigator: false,
-      builder: (dialogContext) => Dialog.fullscreen(
+      builder: (dialogContext) => Dialog(
         key: Key('accountProfileGalleryViewer_${group.groupId}'),
-        child: BellugaGalleryViewer(
-          items: items,
-          initialIndex: initialIndex,
-          onClose: () => dialogContext.router.maybePop(),
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 18),
+        child: SizedBox(
+          width: double.infinity,
+          height: MediaQuery.sizeOf(dialogContext).height * 0.92,
+          child: BellugaGalleryViewer(
+            items: items,
+            galleryTitle: group.subtitle,
+            initialIndex: initialIndex,
+            onClose: () => dialogContext.router.maybePop(),
+          ),
         ),
       ),
     );

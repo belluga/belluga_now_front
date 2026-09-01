@@ -31,6 +31,13 @@ void main() {
       Axis.horizontal,
     );
     expect(find.byType(YoutubePlayer), findsNothing);
+    final photoWidth = tester
+        .getSize(find.byKey(const Key('bellugaGalleryPreview_photo')))
+        .width;
+    final videoWidth = tester
+        .getSize(find.byKey(const Key('bellugaGalleryPreview_video')))
+        .width;
+    expect(videoWidth, photoWidth * 2 + 12);
 
     await tester.tap(find.byKey(const Key('bellugaGalleryPreview_video')));
     expect(selectedIndex, 1);
