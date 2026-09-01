@@ -15,6 +15,7 @@ void main() {
             GalleryPhoto(itemId: 'photo', imageUrl: ''),
             GalleryYoutubePlayer(
               itemId: 'video',
+              description: 'Vídeo selecionado',
               youtubeVideoId: 'dQw4w9WgXcQ',
             ),
           ],
@@ -23,6 +24,12 @@ void main() {
     );
 
     expect(find.text('2/2'), findsOneWidget);
+    expect(find.bySemanticsLabel('Item 2 de 2'), findsOneWidget);
+    expect(
+      find.bySemanticsLabel('Descrição: Vídeo selecionado'),
+      findsOneWidget,
+    );
+    expect(find.byTooltip('Fechar galeria'), findsOneWidget);
     expect(find.byType(YoutubePlayer), findsNothing);
     expect(find.byIcon(Icons.play_circle_fill), findsOneWidget);
   });

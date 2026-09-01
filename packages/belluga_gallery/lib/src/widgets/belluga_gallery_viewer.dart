@@ -70,6 +70,7 @@ final class _BellugaGalleryViewerState extends State<BellugaGalleryViewer> {
               right: 8,
               child: IconButton.filledTonal(
                 key: const Key('bellugaGalleryViewerClose'),
+                tooltip: 'Fechar galeria',
                 onPressed: () {
                   unawaited(_controller.closePlayer(reason: 'viewer_closed'));
                   widget.onClose?.call();
@@ -80,10 +81,16 @@ final class _BellugaGalleryViewerState extends State<BellugaGalleryViewer> {
             Positioned(
               left: 16,
               bottom: 16,
-              child: Text(
-                '${_controller.selectedIndex + 1}/${widget.items.length}',
-                key: const Key('bellugaGalleryViewerPosition'),
-                style: const TextStyle(color: Colors.white),
+              child: Semantics(
+                label:
+                    'Item ${_controller.selectedIndex + 1} de ${widget.items.length}',
+                child: ExcludeSemantics(
+                  child: Text(
+                    '${_controller.selectedIndex + 1}/${widget.items.length}',
+                    key: const Key('bellugaGalleryViewerPosition'),
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
               ),
             ),
             if (selectedItem.description?.trim().isNotEmpty == true)
@@ -91,13 +98,18 @@ final class _BellugaGalleryViewerState extends State<BellugaGalleryViewer> {
                 left: 72,
                 right: 16,
                 bottom: 16,
-                child: Text(
-                  selectedItem.description!.trim(),
-                  key: const Key('bellugaGalleryViewerDescription'),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.end,
-                  style: const TextStyle(color: Colors.white),
+                child: Semantics(
+                  label: 'Descrição: ${selectedItem.description!.trim()}',
+                  child: ExcludeSemantics(
+                    child: Text(
+                      selectedItem.description!.trim(),
+                      key: const Key('bellugaGalleryViewerDescription'),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.end,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
                 ),
               ),
           ],
