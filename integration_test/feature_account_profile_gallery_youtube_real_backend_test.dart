@@ -207,7 +207,7 @@ void main() {
           type: TenantAdminAccountProfileGalleryItemType.youtube,
           description: TenantAdminOptionalTextValue()..parse('Vídeo principal'),
           youtubeUrl: tenantAdminAccountProfilesRepoString(
-            'https://youtu.be/dQw4w9WgXcQ',
+            'https://www.youtube.com/shorts/69ePBThnsVg',
             isRequired: true,
           ),
         );
@@ -301,6 +301,7 @@ void main() {
           TenantAdminAccountProfileGalleryItemType.youtube,
         );
         expect(persistedItem.description, 'Vídeo atualizado');
+        expect(persistedItem.playerAspectRatio, lessThan(1));
 
         final youtubeItem = persistedItem.toGalleryItem();
         await tester.pumpWidget(
@@ -322,9 +323,15 @@ void main() {
 
         expect(find.text('2/2'), findsOneWidget);
         expect(find.byType(YoutubePlayer), findsNothing);
-        await tester.tap(find.byIcon(Icons.play_circle_fill));
+        await tester.tap(
+          find.byKey(
+            Key('bellugaGalleryViewerYoutubePreview_${youtubeItem.itemId}'),
+          ),
+        );
         await _pumpFor(tester, const Duration(seconds: 3));
         expect(find.byType(YoutubePlayer), findsOneWidget);
+        final playerSize = tester.getSize(find.byType(YoutubePlayer));
+        expect(playerSize.height, greaterThan(playerSize.width));
 
         final pageController = tester
             .widget<PageView>(find.byType(PageView))
@@ -336,7 +343,11 @@ void main() {
 
         pageController.jumpToPage(1);
         await _pumpFor(tester, const Duration(seconds: 2));
-        await tester.tap(find.byIcon(Icons.play_circle_fill));
+        await tester.tap(
+          find.byKey(
+            Key('bellugaGalleryViewerYoutubePreview_${youtubeItem.itemId}'),
+          ),
+        );
         await _pumpFor(tester, const Duration(seconds: 2));
         expect(find.byType(YoutubePlayer), findsOneWidget);
         tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
