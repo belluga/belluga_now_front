@@ -21,7 +21,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 
 import 'support/integration_test_bootstrap.dart';
 
@@ -314,23 +313,26 @@ void main() {
         );
         await tester.pumpAndSettle();
 
+        final youtubePlayer = find.byKey(
+          Key('bellugaGalleryYoutubePlayer_${youtubeItem.itemId}'),
+        );
         expect(find.byType(BellugaGalleryPreviewRow), findsOneWidget);
-        expect(find.byType(YoutubePlayer), findsNothing);
+        expect(youtubePlayer, findsNothing);
         await tester.tap(
           find.byKey(Key('bellugaGalleryPreview_${youtubeItem.itemId}')),
         );
         await tester.pumpAndSettle();
 
         expect(find.text('2/2'), findsOneWidget);
-        expect(find.byType(YoutubePlayer), findsNothing);
+        expect(youtubePlayer, findsNothing);
         await tester.tap(
           find.byKey(
             Key('bellugaGalleryViewerYoutubePreview_${youtubeItem.itemId}'),
           ),
         );
         await _pumpFor(tester, const Duration(seconds: 3));
-        expect(find.byType(YoutubePlayer), findsOneWidget);
-        final playerSize = tester.getSize(find.byType(YoutubePlayer));
+        expect(youtubePlayer, findsOneWidget);
+        final playerSize = tester.getSize(youtubePlayer);
         expect(playerSize.height, greaterThan(playerSize.width));
 
         final pageController = tester
@@ -339,7 +341,7 @@ void main() {
         pageController.jumpToPage(0);
         await _pumpFor(tester, const Duration(seconds: 2));
         expect(find.text('1/2'), findsOneWidget);
-        expect(find.byType(YoutubePlayer), findsNothing);
+        expect(youtubePlayer, findsNothing);
 
         pageController.jumpToPage(1);
         await _pumpFor(tester, const Duration(seconds: 2));
@@ -349,7 +351,7 @@ void main() {
           ),
         );
         await _pumpFor(tester, const Duration(seconds: 2));
-        expect(find.byType(YoutubePlayer), findsOneWidget);
+        expect(youtubePlayer, findsOneWidget);
         tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
         try {
           await tester.runAsync(
@@ -361,7 +363,7 @@ void main() {
           );
           await tester.pump();
         }
-        expect(find.byType(YoutubePlayer), findsNothing);
+        expect(youtubePlayer, findsNothing);
       } finally {
         if (accountSlug != null) {
           final slug = TenantAdminAccountsRepositoryContractPrimString.fromRaw(

@@ -65,8 +65,9 @@ void main() {
     expect(
       tester
           .getSemantics(find.bySemanticsLabel('Selecionar item 2 de 2'))
-          .hasFlag(ui.SemanticsFlag.isSelected),
-      isTrue,
+          .flagsCollection
+          .isSelected,
+      ui.Tristate.isTrue,
     );
   });
 }
