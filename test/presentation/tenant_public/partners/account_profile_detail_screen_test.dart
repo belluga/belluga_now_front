@@ -208,10 +208,7 @@ void main() {
       findsOneWidget,
     );
     final modalPreview = tester.widget<Image>(
-      find.descendant(
-        of: find.byKey(const Key('accountProfileGalleryViewer_group-1')),
-        matching: find.byType(Image),
-      ),
+      find.byKey(const Key('bellugaGalleryViewerPhoto_gallery-item-1')),
     );
     expect(
       (modalPreview.image as NetworkImage).url,
@@ -220,8 +217,12 @@ void main() {
     expect(find.text('1/1'), findsOneWidget);
     expect(find.text('Ambiente'), findsWidgets);
     expect(find.text('Vista para o palco'), findsOneWidget);
-    expect(find.text('Anterior'), findsOneWidget);
-    expect(find.text('Próximo'), findsOneWidget);
+    expect(
+      find.byKey(const Key('bellugaGalleryViewerSlideRow')),
+      findsOneWidget,
+    );
+    expect(find.text('Anterior'), findsNothing);
+    expect(find.text('Próximo'), findsNothing);
 
     await tester.tap(find.byKey(const Key('bellugaGalleryViewerClose')));
     await tester.pumpAndSettle();

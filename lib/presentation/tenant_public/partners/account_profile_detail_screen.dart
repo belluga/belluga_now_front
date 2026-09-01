@@ -2682,27 +2682,20 @@ class _AccountProfileDetailScreenState
   Future<void> _openGalleryViewer({
     required AccountProfileGalleryGroup group,
     required int initialIndex,
-  }) async {
+  }) {
     final items = group.items
         .map((item) => item.toGalleryItem())
         .toList(growable: false);
-    await showRouteScopedDialog<void>(
+    return showRouteScopedDialog<void>(
       context: context,
+      useSafeArea: false,
       useRootNavigator: false,
-      builder: (dialogContext) => Dialog(
+      builder: (dialogContext) => BellugaGalleryViewer(
         key: Key('accountProfileGalleryViewer_${group.groupId}'),
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 18),
-        child: SizedBox(
-          width: double.infinity,
-          height: MediaQuery.sizeOf(dialogContext).height * 0.92,
-          child: BellugaGalleryViewer(
-            items: items,
-            galleryTitle: group.subtitle,
-            initialIndex: initialIndex,
-            onClose: () => dialogContext.router.maybePop(),
-          ),
-        ),
+        items: items,
+        galleryTitle: group.subtitle,
+        initialIndex: initialIndex,
+        onClose: () => dialogContext.router.maybePop(),
       ),
     );
   }

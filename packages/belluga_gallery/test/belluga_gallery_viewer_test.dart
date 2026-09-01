@@ -31,9 +31,14 @@ void main() {
     );
     expect(find.byTooltip('Fechar galeria'), findsOneWidget);
     expect(find.text('Galeria'), findsOneWidget);
-    expect(find.text('Anterior'), findsOneWidget);
-    expect(find.text('Próximo'), findsOneWidget);
+    expect(
+      find.byKey(const Key('bellugaGalleryViewerSlideRow')),
+      findsOneWidget,
+    );
+    expect(find.bySemanticsLabel('Selecionar item 2 de 2'), findsOneWidget);
+    expect(find.text('Anterior'), findsNothing);
+    expect(find.text('Próximo'), findsNothing);
     expect(find.byType(YoutubePlayer), findsNothing);
-    expect(find.byIcon(Icons.play_circle_fill), findsOneWidget);
+    expect(find.byIcon(Icons.play_circle_fill), findsNWidgets(2));
   });
 }
