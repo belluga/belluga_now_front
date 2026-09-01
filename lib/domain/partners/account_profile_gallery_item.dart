@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_fields.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_gallery_player_aspect_ratio_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_gallery/belluga_gallery.dart';
@@ -16,8 +17,12 @@ class AccountProfileGalleryItem {
     required this.modalUrlValue,
     this.type = AccountProfileGalleryItemType.photo,
     AccountProfileNestedGroupMemberTextValue? youtubeVideoIdValue,
+    AccountProfileGalleryPlayerAspectRatioValue? playerAspectRatioValue,
   }) : youtubeVideoIdValue =
-           youtubeVideoIdValue ?? AccountProfileNestedGroupMemberTextValue();
+           youtubeVideoIdValue ?? AccountProfileNestedGroupMemberTextValue(),
+       playerAspectRatioValue =
+           playerAspectRatioValue ??
+           AccountProfileGalleryPlayerAspectRatioValue();
 
   final AccountProfileNestedGroupIdValue itemIdValue;
   final AccountProfileNestedGroupMemberTextValue descriptionValue;
@@ -28,6 +33,7 @@ class AccountProfileGalleryItem {
   final ThumbUriValue modalUrlValue;
   final AccountProfileGalleryItemType type;
   final AccountProfileNestedGroupMemberTextValue youtubeVideoIdValue;
+  final AccountProfileGalleryPlayerAspectRatioValue playerAspectRatioValue;
 
   String get itemId => itemIdValue.value;
   String? get description {
@@ -48,6 +54,8 @@ class AccountProfileGalleryItem {
     return normalized.isEmpty ? null : normalized;
   }
 
+  double get playerAspectRatio => playerAspectRatioValue.value;
+
   GalleryItem toGalleryItem() => switch (type) {
     AccountProfileGalleryItemType.photo => GalleryPhoto(
       itemId: itemId,
@@ -61,6 +69,7 @@ class AccountProfileGalleryItem {
       itemId: itemId,
       description: description,
       youtubeVideoId: youtubeVideoId ?? '',
+      playerAspectRatio: playerAspectRatio,
     ),
   };
 

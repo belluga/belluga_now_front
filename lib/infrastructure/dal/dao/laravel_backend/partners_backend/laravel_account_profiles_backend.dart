@@ -11,6 +11,7 @@ import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/partners/projections/value_objects/partner_projection_text_values.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_gallery_player_aspect_ratio_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_public_detail_path_value.dart';
 import 'package:belluga_now/domain/repositories/value_objects/account_profiles_repository_taxonomy_filter.dart';
@@ -704,6 +705,7 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           ? AccountProfileGalleryItemType.youtube
           : AccountProfileGalleryItemType.photo;
       final youtubeVideoId = json['youtube_video_id']?.toString().trim() ?? '';
+      final playerAspectRatio = json['player_aspect_ratio'];
       final imageUrl = json['image_url']?.toString().trim() ?? '';
       final thumbUrl = json['thumb_url']?.toString().trim() ?? '';
       final cardUrl = json['card_url']?.toString().trim() ?? '';
@@ -738,6 +740,9 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
           type: type,
           youtubeVideoIdValue: AccountProfileNestedGroupMemberTextValue(
             youtubeVideoId,
+          ),
+          playerAspectRatioValue: AccountProfileGalleryPlayerAspectRatioValue(
+            playerAspectRatio,
           ),
         ),
       );

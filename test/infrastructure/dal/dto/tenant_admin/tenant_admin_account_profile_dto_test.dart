@@ -30,6 +30,7 @@ void main() {
               'type': 'youtube',
               'order': 1,
               'youtube_video_id': 'dQw4w9WgXcQ',
+              'player_aspect_ratio': 0.565,
             },
           ],
         },
@@ -40,6 +41,7 @@ void main() {
     expect(profile.galleryGroups.first.items, isEmpty);
     expect(profile.galleryGroups.last.items.last.type.name, 'youtube');
     expect(profile.galleryGroups.last.items.last.youtubeVideoId, 'dQw4w9WgXcQ');
+    expect(profile.galleryGroups.last.items.last.playerAspectRatio, 0.565);
     expect(profile.galleryCapabilities.maxGalleries, 6);
     expect(profile.galleryCapabilities.maxItemsPerGallery, 12);
   });

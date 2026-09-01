@@ -25,4 +25,15 @@ void main() {
       'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
     );
   });
+
+  test('youtube player geometry is independent from its thumbnail', () {
+    const video = GalleryYoutubePlayer(
+      itemId: 'vertical-video',
+      youtubeVideoId: 'HKIZFC5HFtc',
+      playerAspectRatio: 9 / 16,
+    );
+
+    expect(video.thumbnailUrl, contains('hqdefault.jpg'));
+    expect(video.playerAspectRatio, 9 / 16);
+  });
 }

@@ -13,6 +13,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_gallery_player_aspect_ratio_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 
@@ -319,6 +320,7 @@ TenantAdminAccountProfileGalleryItem? _galleryItemFromRaw(
       ? TenantAdminAccountProfileGalleryItemType.youtube
       : TenantAdminAccountProfileGalleryItemType.photo;
   final youtubeVideoId = json['youtube_video_id']?.toString().trim() ?? '';
+  final playerAspectRatio = json['player_aspect_ratio'];
   final imageUrl = json['image_url']?.toString().trim() ?? '';
   final thumbUrl = json['thumb_url']?.toString().trim() ?? '';
   final cardUrl = json['card_url']?.toString().trim() ?? '';
@@ -354,6 +356,9 @@ TenantAdminAccountProfileGalleryItem? _galleryItemFromRaw(
       ..parse(modalUrl.isEmpty ? null : modalUrl),
     type: type,
     youtubeVideoIdValue: TenantAdminOptionalTextValue()..parse(youtubeVideoId),
+    playerAspectRatioValue: TenantAdminGalleryPlayerAspectRatioValue(
+      playerAspectRatio,
+    ),
   );
 }
 

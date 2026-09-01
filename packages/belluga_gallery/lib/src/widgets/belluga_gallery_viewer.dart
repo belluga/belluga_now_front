@@ -279,7 +279,13 @@ final class _BellugaGalleryViewerState extends State<BellugaGalleryViewer> {
   Widget _youtube(GalleryYoutubePlayer video) {
     final player = _controller.youtubeController;
     if (_controller.selectedItem == video && player != null) {
-      return Center(child: YoutubePlayer(controller: player));
+      return Center(
+        child: YoutubePlayer(
+          key: Key('bellugaGalleryYoutubePlayer_${video.itemId}'),
+          controller: player,
+          aspectRatio: video.playerAspectRatio,
+        ),
+      );
     }
     return Center(
       child: AspectRatio(
@@ -287,7 +293,11 @@ final class _BellugaGalleryViewerState extends State<BellugaGalleryViewer> {
         child: Stack(
           fit: StackFit.expand,
           children: <Widget>[
-            GalleryItemPreview(item: video, onTap: _controller.playSelected),
+            GalleryItemPreview(
+              key: Key('bellugaGalleryViewerYoutubePreview_${video.itemId}'),
+              item: video,
+              onTap: _controller.playSelected,
+            ),
             if (_controller.isActivating)
               const Center(child: CircularProgressIndicator())
             else if (_controller.playbackFailed)

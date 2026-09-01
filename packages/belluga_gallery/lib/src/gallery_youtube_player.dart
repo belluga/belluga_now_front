@@ -5,9 +5,11 @@ final class GalleryYoutubePlayer extends GalleryItem {
     required super.itemId,
     required this.youtubeVideoId,
     super.description,
-  });
+    this.playerAspectRatio = 16 / 9,
+  }) : assert(playerAspectRatio > 0);
 
   final String youtubeVideoId;
+  final double playerAspectRatio;
 
   String get thumbnailUrl =>
       'https://i.ytimg.com/vi/$youtubeVideoId/hqdefault.jpg';

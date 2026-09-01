@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_nested_profile_group_values.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_gallery_player_aspect_ratio_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_gallery/belluga_gallery.dart';
@@ -16,8 +17,11 @@ class TenantAdminAccountProfileGalleryItem {
     required this.modalUrlValue,
     this.type = TenantAdminAccountProfileGalleryItemType.photo,
     TenantAdminOptionalTextValue? youtubeVideoIdValue,
+    TenantAdminGalleryPlayerAspectRatioValue? playerAspectRatioValue,
   }) : youtubeVideoIdValue =
-           youtubeVideoIdValue ?? TenantAdminOptionalTextValue();
+           youtubeVideoIdValue ?? TenantAdminOptionalTextValue(),
+       playerAspectRatioValue =
+           playerAspectRatioValue ?? TenantAdminGalleryPlayerAspectRatioValue();
 
   final TenantAdminNestedProfileGroupTextValue itemIdValue;
   final TenantAdminOptionalTextValue descriptionValue;
@@ -28,6 +32,7 @@ class TenantAdminAccountProfileGalleryItem {
   final TenantAdminOptionalUrlValue modalUrlValue;
   final TenantAdminAccountProfileGalleryItemType type;
   final TenantAdminOptionalTextValue youtubeVideoIdValue;
+  final TenantAdminGalleryPlayerAspectRatioValue playerAspectRatioValue;
 
   String get itemId => itemIdValue.value;
   String? get description => descriptionValue.nullableValue;
@@ -37,6 +42,7 @@ class TenantAdminAccountProfileGalleryItem {
   String get cardUrl => cardUrlValue.nullableValue ?? '';
   String get modalUrl => modalUrlValue.nullableValue ?? '';
   String? get youtubeVideoId => youtubeVideoIdValue.nullableValue;
+  double get playerAspectRatio => playerAspectRatioValue.value;
 
   GalleryItem toGalleryItem() => switch (type) {
     TenantAdminAccountProfileGalleryItemType.photo => GalleryPhoto(
@@ -51,6 +57,7 @@ class TenantAdminAccountProfileGalleryItem {
       itemId: itemId,
       description: description,
       youtubeVideoId: youtubeVideoId ?? '',
+      playerAspectRatio: playerAspectRatio,
     ),
   };
 

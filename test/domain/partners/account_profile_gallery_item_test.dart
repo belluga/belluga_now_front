@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/partners/account_profile_gallery_item.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_gallery_player_aspect_ratio_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_fields.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
@@ -66,9 +67,14 @@ void main() {
       modalUrlValue: _buildThumbUriValue(null),
       type: AccountProfileGalleryItemType.youtube,
       youtubeVideoIdValue: AccountProfileNestedGroupMemberTextValue('abc123'),
+      playerAspectRatioValue: AccountProfileGalleryPlayerAspectRatioValue(
+        9 / 16,
+      ),
     );
 
-    expect(item.toGalleryItem(), isA<GalleryYoutubePlayer>());
+    final packageItem = item.toGalleryItem() as GalleryYoutubePlayer;
+    expect(packageItem, isA<GalleryYoutubePlayer>());
+    expect(packageItem.playerAspectRatio, 9 / 16);
     expect(item.previewUrl, 'https://i.ytimg.com/vi/abc123/hqdefault.jpg');
   });
 }
