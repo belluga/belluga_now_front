@@ -59,6 +59,7 @@ void main() {
   test('maps canonical YouTube identity to the package item', () {
     final item = AccountProfileGalleryItem(
       itemIdValue: AccountProfileNestedGroupIdValue('video-1'),
+      titleValue: AccountProfileNestedGroupMemberTextValue('Show ao vivo'),
       descriptionValue: AccountProfileNestedGroupMemberTextValue('Ao vivo'),
       orderValue: AccountProfileNestedGroupOrderValue(0),
       imageUrlValue: _buildThumbUriValue(null),
@@ -74,6 +75,7 @@ void main() {
 
     final packageItem = item.toGalleryItem() as GalleryYoutubePlayer;
     expect(packageItem, isA<GalleryYoutubePlayer>());
+    expect(packageItem.title, 'Show ao vivo');
     expect(packageItem.playerAspectRatio, 9 / 16);
     expect(item.previewUrl, 'https://i.ytimg.com/vi/abc123/hqdefault.jpg');
   });

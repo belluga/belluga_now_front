@@ -1012,15 +1012,6 @@ class _FakeAccountProfilesRepository
   }
 
   @override
-  Future<TenantAdminAccountProfile> updateAccountProfileGallery({
-    required TenantAdminAccountProfilesRepoString accountProfileId,
-    List<TenantAdminAccountProfileGalleryUpdateGroup> galleryGroups =
-        const <TenantAdminAccountProfileGalleryUpdateGroup>[],
-  }) async {
-    throw UnimplementedError();
-  }
-
-  @override
   Future<TenantAdminProfileTypeDefinition> updateProfileType({
     required TenantAdminAccountProfilesRepoString type,
     TenantAdminAccountProfilesRepoString? newType,

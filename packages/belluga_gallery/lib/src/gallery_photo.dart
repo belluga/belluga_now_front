@@ -4,6 +4,7 @@ final class GalleryPhoto extends GalleryItem {
   const GalleryPhoto({
     required super.itemId,
     required this.imageUrl,
+    super.title,
     super.description,
     this.thumbUrl = '',
     this.cardUrl = '',

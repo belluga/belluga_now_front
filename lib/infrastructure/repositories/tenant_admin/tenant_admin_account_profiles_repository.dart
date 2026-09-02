@@ -524,36 +524,6 @@ class TenantAdminAccountProfilesRepository
   }
 
   @override
-  Future<TenantAdminAccountProfile> updateAccountProfileGallery({
-    required TenantAdminAccountProfilesRepoString accountProfileId,
-    List<TenantAdminAccountProfileGalleryUpdateGroup> galleryGroups =
-        const <TenantAdminAccountProfileGalleryUpdateGroup>[],
-  }) async {
-    try {
-      final encoded = _requestEncoder.encodeUpdateAccountProfileGallery(
-        galleryGroups,
-      );
-      final formData = _mediaFormDataBuilder.buildGalleryPayload(
-        galleryGroups: encoded.galleryGroups,
-        uploads: encoded.uploads,
-      );
-
-      final response = await _dio.post(
-        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}/gallery',
-        data: formData,
-        options: Options(
-          headers: _buildHeaders(),
-          contentType: 'multipart/form-data',
-        ),
-      );
-      final dto = _responseDecoder.decodeAccountProfileItem(response.data);
-      return dto.toDomain();
-    } on DioException catch (error) {
-      throw _wrapError(error, 'update account profile gallery');
-    }
-  }
-
-  @override
   Future<TenantAdminAccountProfileGallerySnapshot> createGalleryGroup({
     required TenantAdminAccountProfilesRepoString accountProfileId,
     required TenantAdminAccountProfilesRepoString subtitle,
@@ -640,6 +610,7 @@ class TenantAdminAccountProfilesRepository
     required TenantAdminAccountProfilesRepoString accountProfileId,
     required TenantAdminAccountProfilesRepoString groupId,
     required TenantAdminAccountProfileGalleryItemType type,
+    TenantAdminOptionalTextValue? title,
     TenantAdminOptionalTextValue? description,
     TenantAdminMediaUpload? image,
     TenantAdminAccountProfilesRepoString? youtubeUrl,
@@ -655,12 +626,15 @@ class TenantAdminAccountProfilesRepository
         }
         data = _mediaFormDataBuilder.buildGalleryPhotoItemPayload(
           image: upload,
+          title: title?.nullableValue,
+          includeTitle: title != null,
           description: description?.nullableValue,
           includeDescription: description != null,
         );
       } else {
         data = _requestEncoder.encodeCreateYoutubeGalleryItem(
           youtubeUrl: youtubeUrl?.value ?? '',
+          title: title?.nullableValue,
           description: description?.nullableValue,
         );
       }
@@ -681,6 +655,7 @@ class TenantAdminAccountProfilesRepository
     required TenantAdminAccountProfilesRepoString groupId,
     required TenantAdminAccountProfilesRepoString itemId,
     TenantAdminAccountProfileGalleryItemType? type,
+    TenantAdminOptionalTextValue? title,
     TenantAdminOptionalTextValue? description,
     TenantAdminMediaUpload? image,
     TenantAdminAccountProfilesRepoString? youtubeUrl,
@@ -693,6 +668,8 @@ class TenantAdminAccountProfilesRepository
               uri,
               data: _mediaFormDataBuilder.buildGalleryPhotoItemPayload(
                 image: image,
+                title: title?.nullableValue,
+                includeTitle: title != null,
                 description: description?.nullableValue,
                 includeDescription: description != null,
                 patch: true,
@@ -703,6 +680,8 @@ class TenantAdminAccountProfilesRepository
               uri,
               data: _requestEncoder.encodePatchGalleryItem(
                 type: type?.name,
+                title: title?.nullableValue,
+                includeTitle: title != null,
                 description: description?.nullableValue,
                 includeDescription: description != null,
                 youtubeUrl: youtubeUrl?.value,

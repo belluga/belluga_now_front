@@ -526,15 +526,6 @@ class _FakeAccountProfilesRepository
     );
   }
 
-  @override
-  Future<TenantAdminAccountProfile> updateAccountProfileGallery({
-    required TenantAdminAccountProfilesRepoString accountProfileId,
-    List<TenantAdminAccountProfileGalleryUpdateGroup> galleryGroups =
-        const <TenantAdminAccountProfileGalleryUpdateGroup>[],
-  }) async {
-    return fetchAccountProfile(accountProfileId);
-  }
-
   List<TenantAdminAccountProfile> _filterProfiles({
     String? search,
     String? profileType,

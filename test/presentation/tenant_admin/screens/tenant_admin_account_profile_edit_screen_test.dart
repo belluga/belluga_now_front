@@ -20,6 +20,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dar
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate_selection_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_capabilities.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_snapshot.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
@@ -954,6 +955,129 @@ void main() {
   });
 
   testWidgets(
+    'gallery title failure keeps entered text and retries once from confirmed state',
+    (tester) async {
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+      profilesRepository.profileTypesToReturn = [
+        _profileType(hasGallery: true, hasNestedProfileGroups: false),
+      ];
+      profilesRepository.profileToReturn = _profile(
+        id: 'route-profile',
+        galleryGroups: [_galleryGroup(title: 'Título confirmado')],
+      );
+      profilesRepository.gallerySnapshotToReturn =
+          TenantAdminAccountProfileGallerySnapshot(
+            groups: [_galleryGroup(title: 'Título canônico')],
+            capabilities: TenantAdminAccountProfileGalleryCapabilities(
+              maxGalleriesValue: TenantAdminCountValue(6),
+              maxItemsPerGalleryValue: TenantAdminCountValue(12),
+            ),
+          );
+      profilesRepository.updateGalleryItemError = FormValidationFailure(
+        statusCode: 422,
+        message: 'Falha persistente ao atualizar o título.',
+        fieldErrors: const {
+          'global': ['O item mudou no servidor.'],
+        },
+      );
+
+      await _pumpScreen(
+        tester,
+        const TenantAdminAccountProfileEditScreen(
+          accountSlug: 'route-account',
+          accountProfileId: 'route-profile',
+        ),
+      );
+
+      final titleField = find.byKey(
+        const Key('tenantAdminGalleryItemTitle_item-1'),
+      );
+      await tester.scrollUntilVisible(
+        titleField,
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.enterText(titleField, 'Título corrigido');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+      await tester.pump();
+
+      expect(profilesRepository.updateGalleryItemCalls, 1);
+      expect(
+        tester
+            .widget<EditableText>(
+              find.descendant(
+                of: titleField,
+                matching: find.byType(EditableText),
+              ),
+            )
+            .controller
+            .text,
+        'Título corrigido',
+      );
+      expect(
+        GetIt.I
+            .get<TenantAdminAccountProfilesController>()
+            .editStateStreamValue
+            .value
+            .galleryGroups
+            .single
+            .items
+            .single
+            .title,
+        'Título confirmado',
+      );
+      expect(
+        find.textContaining('Falha persistente ao atualizar o título.'),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('tenantAdminGalleryOperationError')),
+        findsOneWidget,
+      );
+      expect(find.byType(SnackBar), findsNothing);
+
+      profilesRepository.updateGalleryItemError = null;
+      await tester.tap(titleField);
+      await tester.enterText(titleField, 'Título corrigido');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+      expect(profilesRepository.updateGalleryItemCalls, 2);
+      expect(
+        GetIt.I
+            .get<TenantAdminAccountProfilesController>()
+            .editStateStreamValue
+            .value
+            .galleryGroups
+            .single
+            .items
+            .single
+            .title,
+        'Título canônico',
+      );
+      expect(
+        tester
+            .widget<EditableText>(
+              find.descendant(
+                of: titleField,
+                matching: find.byType(EditableText),
+              ),
+            )
+            .controller
+            .text,
+        'Título canônico',
+      );
+      expect(
+        find.byKey(const Key('tenantAdminGalleryOperationError')),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets(
     'hides gallery editor and omits gallery payload when capability is disabled',
     (tester) async {
       final profilesRepository =
@@ -989,8 +1113,6 @@ void main() {
       );
       await tester.tap(find.text('Salvar alteracoes'));
       await tester.pumpAndSettle();
-
-      expect(profilesRepository.lastGalleryGroups, isNull);
     },
   );
 
@@ -1898,6 +2020,9 @@ class _FakeAccountProfilesRepository
   String? lastDeleteNestedProfileGroupProfileId;
   String? lastDeleteNestedProfileGroupGroupId;
   Object? deleteNestedProfileGroupError;
+  TenantAdminAccountProfileGallerySnapshot? gallerySnapshotToReturn;
+  Object? updateGalleryItemError;
+  int updateGalleryItemCalls = 0;
   TenantAdminAccountProfile profileToReturn = _profile(id: 'default-profile');
   bool? lastRemoveAvatar;
   bool? lastRemoveCover;
@@ -1909,7 +2034,6 @@ class _FakeAccountProfilesRepository
       const [];
   final Map<String, TenantAdminAccountProfile> accountProfileFetchOverrides =
       <String, TenantAdminAccountProfile>{};
-  List<TenantAdminAccountProfileGalleryUpdateGroup>? lastGalleryGroups;
   List<TenantAdminNestedProfileGroup>? lastNestedProfileGroups;
   final Map<String, List<TenantAdminNestedGroupMemberPage>>
   nestedGroupMemberPagesByGroupId =
@@ -2137,13 +2261,19 @@ class _FakeAccountProfilesRepository
   }
 
   @override
-  Future<TenantAdminAccountProfile> updateAccountProfileGallery({
+  Future<TenantAdminAccountProfileGallerySnapshot> updateGalleryItem({
     required TenantAdminAccountProfilesRepoString accountProfileId,
-    List<TenantAdminAccountProfileGalleryUpdateGroup> galleryGroups =
-        const <TenantAdminAccountProfileGalleryUpdateGroup>[],
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminAccountProfilesRepoString itemId,
+    TenantAdminAccountProfileGalleryItemType? type,
+    TenantAdminOptionalTextValue? title,
+    TenantAdminOptionalTextValue? description,
+    TenantAdminMediaUpload? image,
+    TenantAdminAccountProfilesRepoString? youtubeUrl,
   }) async {
-    lastGalleryGroups = galleryGroups;
-    return profileToReturn;
+    updateGalleryItemCalls += 1;
+    if (updateGalleryItemError != null) throw updateGalleryItemError!;
+    return gallerySnapshotToReturn!;
   }
 
   @override
@@ -2504,18 +2634,19 @@ TenantAdminAccountProfile _profile({
   );
 }
 
-TenantAdminAccountProfileGalleryGroup _galleryGroup() {
+TenantAdminAccountProfileGalleryGroup _galleryGroup({String? title}) {
   return TenantAdminAccountProfileGalleryGroup(
     groupIdValue: TenantAdminNestedProfileGroupTextValue('group-1'),
     subtitleValue: TenantAdminNestedProfileGroupTextValue('Ambiente'),
     orderValue: TenantAdminNestedProfileGroupOrderValue(0),
-    items: [_galleryItem()],
+    items: [_galleryItem(title: title)],
   );
 }
 
-TenantAdminAccountProfileGalleryItem _galleryItem() {
+TenantAdminAccountProfileGalleryItem _galleryItem({String? title}) {
   return TenantAdminAccountProfileGalleryItem(
     itemIdValue: TenantAdminNestedProfileGroupTextValue('item-1'),
+    titleValue: TenantAdminOptionalTextValue()..parse(title),
     descriptionValue: TenantAdminOptionalTextValue()
       ..parse('Vista para o palco'),
     orderValue: TenantAdminNestedProfileGroupOrderValue(0),

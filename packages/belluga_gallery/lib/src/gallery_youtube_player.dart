@@ -4,6 +4,7 @@ final class GalleryYoutubePlayer extends GalleryItem {
   const GalleryYoutubePlayer({
     required super.itemId,
     required this.youtubeVideoId,
+    super.title,
     super.description,
     this.playerAspectRatio = 16 / 9,
   }) : assert(playerAspectRatio > 0);

@@ -118,31 +118,10 @@ class TenantAdminMediaFormDataBuilder {
     return formData;
   }
 
-  FormData buildGalleryPayload({
-    required List<Map<String, dynamic>> galleryGroups,
-    required Map<String, TenantAdminMediaUpload> uploads,
-  }) {
-    final formData = FormData.fromMap(<String, dynamic>{
-      '_method': 'PATCH',
-      'gallery_groups': jsonEncode(galleryGroups),
-    }, ListFormat.multiCompatible);
-    for (final entry in uploads.entries) {
-      formData.files.add(
-        MapEntry(
-          entry.key,
-          MultipartFile.fromBytes(
-            entry.value.bytes,
-            filename: entry.value.fileName,
-            contentType: _resolveMediaType(entry.value),
-          ),
-        ),
-      );
-    }
-    return formData;
-  }
-
   FormData buildGalleryPhotoItemPayload({
     required TenantAdminMediaUpload image,
+    String? title,
+    bool includeTitle = false,
     String? description,
     bool includeDescription = false,
     bool patch = false,
@@ -150,6 +129,7 @@ class TenantAdminMediaFormDataBuilder {
     final formData = FormData.fromMap(<String, dynamic>{
       if (patch) '_method': 'PATCH',
       'type': 'photo',
+      if (includeTitle) 'title': title ?? '',
       if (includeDescription) 'description': description ?? '',
     });
     formData.files.add(

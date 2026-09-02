@@ -2066,35 +2066,48 @@ class _TenantAdminAccountProfileEditScreenState
       streamValue: _controller.editGalleryMutationBusyStreamValue,
       builder: (context, busy) => StreamValueBuilder<Map<String, String>>(
         streamValue: _controller.editGalleryFieldErrorsStreamValue,
-        builder: (context, fieldErrors) =>
-            TenantAdminAccountProfileGalleryEditor(
-              groups: state.galleryGroups,
-              maxGroups: state.galleryCapabilities.maxGalleries,
-              maxItemsPerGallery: state.galleryCapabilities.maxItemsPerGallery,
-              busy: busy,
-              fieldErrors: fieldErrors,
-              onAddGroup: _addGalleryGroup,
-              onRenameGroup: _controller.renameEditGalleryGroup,
-              onMoveGroup: _controller.moveEditGalleryGroup,
-              onRemoveGroup: _controller.removeEditGalleryGroup,
-              onAddPhotoRequested: _addGalleryPhoto,
-              onAddYoutubeRequested: _addGalleryYoutube,
-              onReplaceItemRequested: _replaceGalleryItem,
-              onMoveItem: (groupId, itemId, delta) =>
-                  _controller.moveEditGalleryItem(
-                    groupId: groupId,
-                    itemId: itemId,
-                    delta: delta,
-                  ),
-              onRemoveItem: (groupId, itemId) => _controller
-                  .removeEditGalleryItem(groupId: groupId, itemId: itemId),
-              onDescriptionChanged: (groupId, itemId, description) =>
-                  _controller.updateEditGalleryItemDescription(
-                    groupId: groupId,
-                    itemId: itemId,
-                    description: description,
-                  ),
-            ),
+        builder: (context, fieldErrors) => StreamValueBuilder<String?>(
+          streamValue: _controller.editGalleryOperationErrorStreamValue,
+          builder: (context, operationError) =>
+              TenantAdminAccountProfileGalleryEditor(
+                groups: state.galleryGroups,
+                maxGroups: state.galleryCapabilities.maxGalleries,
+                maxItemsPerGallery:
+                    state.galleryCapabilities.maxItemsPerGallery,
+                busy: busy,
+                fieldErrors: fieldErrors,
+                operationError: operationError,
+                resolveInputValue: _controller.editGalleryInputValue,
+                onInputChanged: _controller.updateEditGalleryInputValue,
+                onAddGroup: _addGalleryGroup,
+                onRenameGroup: _controller.renameEditGalleryGroup,
+                onMoveGroup: _controller.moveEditGalleryGroup,
+                onRemoveGroup: _controller.removeEditGalleryGroup,
+                onAddPhotoRequested: _addGalleryPhoto,
+                onAddYoutubeRequested: _addGalleryYoutube,
+                onReplaceItemRequested: _replaceGalleryItem,
+                onMoveItem: (groupId, itemId, delta) =>
+                    _controller.moveEditGalleryItem(
+                      groupId: groupId,
+                      itemId: itemId,
+                      delta: delta,
+                    ),
+                onRemoveItem: (groupId, itemId) => _controller
+                    .removeEditGalleryItem(groupId: groupId, itemId: itemId),
+                onTitleChanged: (groupId, itemId, title) =>
+                    _controller.updateEditGalleryItemTitle(
+                      groupId: groupId,
+                      itemId: itemId,
+                      title: title,
+                    ),
+                onDescriptionChanged: (groupId, itemId, description) =>
+                    _controller.updateEditGalleryItemDescription(
+                      groupId: groupId,
+                      itemId: itemId,
+                      description: description,
+                    ),
+              ),
+        ),
       ),
     );
   }

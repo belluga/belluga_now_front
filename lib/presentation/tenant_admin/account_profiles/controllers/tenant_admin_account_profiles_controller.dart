@@ -194,6 +194,8 @@ class TenantAdminAccountProfilesController implements Disposable {
       StreamValue<bool>(defaultValue: false);
   final StreamValue<Map<String, String>> editGalleryFieldErrorsStreamValue =
       StreamValue<Map<String, String>>(defaultValue: const {});
+  final StreamValue<String?> editGalleryOperationErrorStreamValue =
+      StreamValue<String?>();
   final StreamValue<bool> editNestedGroupMutationBusyStreamValue =
       StreamValue<bool>(defaultValue: false);
   final StreamValue<bool> taxonomyAutosavingStreamValue = StreamValue<bool>(
@@ -1348,6 +1350,9 @@ class TenantAdminAccountProfilesController implements Disposable {
     editLoadingStreamValue.addValue(true);
     editLoadErrorStreamValue.addValue(null);
     _loadedEditProfileSnapshot = null;
+    _editGalleryInputValues.clear();
+    editGalleryFieldErrorsStreamValue.addValue(const {});
+    editGalleryOperationErrorStreamValue.addValue(null);
     _clearNestedGroupLabelStates();
     try {
       await loadProfileTypes();
@@ -1563,11 +1568,26 @@ class TenantAdminAccountProfilesController implements Disposable {
     editLoadingStreamValue.addValue(isLoading);
   }
 
-  void updateEditProfile(TenantAdminAccountProfile profile) {
+  void updateEditProfile(
+    TenantAdminAccountProfile profile, {
+    bool preserveGalleryState = false,
+  }) {
+    if (!preserveGalleryState) _editGalleryInputValues.clear();
+    final currentGalleryGroups = editStateStreamValue.value.galleryGroups;
+    final currentGalleryCapabilities =
+        editStateStreamValue.value.galleryCapabilities;
     _loadedEditProfileSnapshot = profile;
     accountProfileStreamValue.addValue(profile);
+    final syncedState = editStateStreamValue.value.copyWith().syncRemoteState(
+      profile,
+    );
     _updateEditState(
-      editStateStreamValue.value.copyWith().syncRemoteState(profile),
+      preserveGalleryState
+          ? syncedState.copyWith(
+              galleryGroups: currentGalleryGroups,
+              galleryCapabilities: currentGalleryCapabilities,
+            )
+          : syncedState,
     );
     _syncContactSourceCandidatesForMode(
       profile.contactMode,
@@ -1828,7 +1848,7 @@ class TenantAdminAccountProfilesController implements Disposable {
         bubbleSelection: bubbleSelection,
       );
       if (_isDisposed) return;
-      updateEditProfile(updated);
+      updateEditProfile(updated, preserveGalleryState: true);
       editErrorMessageStreamValue.addValue(null);
       editSuccessMessageStreamValue.addValue('Perfil atualizado.');
     } catch (error) {
@@ -1870,7 +1890,7 @@ class TenantAdminAccountProfilesController implements Disposable {
         removeCover: removeCover,
       );
       if (_isDisposed) return;
-      updateEditProfile(updated);
+      updateEditProfile(updated, preserveGalleryState: true);
       editErrorMessageStreamValue.addValue(null);
       editSuccessMessageStreamValue.addValue('Imagem atualizada.');
     } catch (error) {
@@ -1919,7 +1939,7 @@ class TenantAdminAccountProfilesController implements Disposable {
         content: resolvedContent,
       );
       if (_isDisposed) return false;
-      updateEditProfile(updated);
+      updateEditProfile(updated, preserveGalleryState: true);
       editErrorMessageStreamValue.addValue(null);
       return true;
     } catch (error) {
@@ -2347,6 +2367,7 @@ class TenantAdminAccountProfilesController implements Disposable {
         isRequired: true,
       ),
     ),
+    fieldErrorScope: 'group.create',
   );
 
   Future<void> renameEditGalleryGroup(String groupId, String subtitle) =>
@@ -2356,6 +2377,7 @@ class TenantAdminAccountProfilesController implements Disposable {
           groupId: _galleryText(groupId),
           subtitle: _galleryText(subtitle),
         ),
+        fieldErrorScope: 'group.$groupId',
       );
 
   Future<void> moveEditGalleryGroup(String groupId, int delta) async {
@@ -2376,6 +2398,7 @@ class TenantAdminAccountProfilesController implements Disposable {
             .toList(),
       ),
       restoreGroupsOnError: previous,
+      fieldErrorScope: 'group.$groupId',
     );
   }
 
@@ -2384,6 +2407,7 @@ class TenantAdminAccountProfilesController implements Disposable {
       accountProfileId: _editGalleryProfileId(),
       groupId: _galleryText(groupId),
     ),
+    fieldErrorScope: 'group.$groupId',
   );
 
   Future<void> addEditGalleryPhoto({
@@ -2402,6 +2426,7 @@ class TenantAdminAccountProfilesController implements Disposable {
         type: TenantAdminAccountProfileGalleryItemType.photo,
         image: upload,
       ),
+      fieldErrorScope: 'group.$groupId.item.create',
     );
   }
 
@@ -2415,6 +2440,7 @@ class TenantAdminAccountProfilesController implements Disposable {
       type: TenantAdminAccountProfileGalleryItemType.youtube,
       youtubeUrl: _galleryText(youtubeUrl),
     ),
+    fieldErrorScope: 'group.$groupId.item.create',
   );
 
   Future<void> replaceEditGalleryItemUpload({
@@ -2434,6 +2460,7 @@ class TenantAdminAccountProfilesController implements Disposable {
         itemId: _galleryText(itemId),
         image: upload,
       ),
+      fieldErrorScope: 'group.$groupId.item.$itemId',
     );
   }
 
@@ -2448,6 +2475,7 @@ class TenantAdminAccountProfilesController implements Disposable {
       itemId: _galleryText(itemId),
       youtubeUrl: _galleryText(youtubeUrl),
     ),
+    fieldErrorScope: 'group.$groupId.item.$itemId',
   );
 
   Future<void> updateEditGalleryItemDescription({
@@ -2461,6 +2489,21 @@ class TenantAdminAccountProfilesController implements Disposable {
       itemId: _galleryText(itemId),
       description: TenantAdminOptionalTextValue(defaultValue: description),
     ),
+    fieldErrorScope: 'group.$groupId.item.$itemId',
+  );
+
+  Future<void> updateEditGalleryItemTitle({
+    required String groupId,
+    required String itemId,
+    required String title,
+  }) => _runGalleryMutation(
+    () => _profilesRepository.updateGalleryItem(
+      accountProfileId: _editGalleryProfileId(),
+      groupId: _galleryText(groupId),
+      itemId: _galleryText(itemId),
+      title: TenantAdminOptionalTextValue(defaultValue: title),
+    ),
+    fieldErrorScope: 'group.$groupId.item.$itemId',
   );
 
   Future<void> moveEditGalleryItem({
@@ -2486,6 +2529,7 @@ class TenantAdminAccountProfilesController implements Disposable {
         itemIds: group.items.map((item) => _galleryText(item.itemId)).toList(),
       ),
       restoreGroupsOnError: previous,
+      fieldErrorScope: 'group.$groupId',
     );
   }
 
@@ -2498,10 +2542,20 @@ class TenantAdminAccountProfilesController implements Disposable {
       groupId: _galleryText(groupId),
       itemId: _galleryText(itemId),
     ),
+    fieldErrorScope: 'group.$groupId.item.$itemId',
   );
 
   TenantAdminAccountProfilesRepoString _editGalleryProfileId() =>
       _galleryText(_loadedEditProfileSnapshot?.id ?? '');
+
+  final Map<String, String> _editGalleryInputValues = <String, String>{};
+
+  String editGalleryInputValue(String fieldPath, String authoritativeValue) =>
+      _editGalleryInputValues[fieldPath] ?? authoritativeValue;
+
+  void updateEditGalleryInputValue(String fieldPath, String value) {
+    _editGalleryInputValues[fieldPath] = value;
+  }
 
   TenantAdminAccountProfilesRepoString _galleryText(String value) =>
       tenantAdminAccountProfilesRepoString(
@@ -2513,14 +2567,15 @@ class TenantAdminAccountProfilesController implements Disposable {
   Future<void> _runGalleryMutation(
     Future<TenantAdminAccountProfileGallerySnapshot> Function() mutation, {
     List<TenantAdminAccountProfileGalleryGroupDraft>? restoreGroupsOnError,
+    String? fieldErrorScope,
   }) async {
     editGalleryMutationBusyStreamValue.addValue(true);
     editGalleryFieldErrorsStreamValue.addValue(const {});
+    editGalleryOperationErrorStreamValue.addValue(null);
     try {
       final snapshot = await mutation();
       if (_isDisposed) return;
       _applyGallerySnapshot(snapshot);
-      editErrorMessageStreamValue.addValue(null);
     } on FormValidationFailure catch (error) {
       if (_isDisposed) return;
       if (restoreGroupsOnError != null) {
@@ -2530,11 +2585,22 @@ class TenantAdminAccountProfilesController implements Disposable {
           ),
         );
       }
-      editGalleryFieldErrorsStreamValue.addValue({
+      final scopedFieldErrors = {
         for (final entry in error.fieldErrors.entries)
-          if (entry.value.isNotEmpty) entry.key: entry.value.first,
-      });
-      editErrorMessageStreamValue.addValue(error.message);
+          if (entry.value.isNotEmpty &&
+              _isGalleryRenderableFieldError(entry.key, fieldErrorScope))
+            _galleryFieldErrorKey(entry.key, fieldErrorScope):
+                entry.value.first,
+      };
+      editGalleryFieldErrorsStreamValue.addValue(scopedFieldErrors);
+      final hasOperationFieldError = error.fieldErrors.entries.any(
+        (entry) =>
+            entry.value.isNotEmpty &&
+            !_isGalleryRenderableFieldError(entry.key, fieldErrorScope),
+      );
+      if (scopedFieldErrors.isEmpty || hasOperationFieldError) {
+        editGalleryOperationErrorStreamValue.addValue(error.message);
+      }
       if (_isGalleryCapacityFailure(error)) {
         try {
           final refreshed = await fetchProfile(
@@ -2561,7 +2627,7 @@ class TenantAdminAccountProfilesController implements Disposable {
           ),
         );
       }
-      editErrorMessageStreamValue.addValue(error.toString());
+      editGalleryOperationErrorStreamValue.addValue(error.toString());
     } finally {
       if (!_isDisposed) editGalleryMutationBusyStreamValue.addValue(false);
     }
@@ -2576,9 +2642,39 @@ class TenantAdminAccountProfilesController implements Disposable {
             key.contains('max_items_per_gallery'),
       );
 
+  bool _isGalleryRenderableFieldError(String key, String? scope) {
+    if (key.contains('gallery_capabilities') ||
+        key.contains('max_galleries') ||
+        key.contains('max_items_per_gallery')) {
+      return true;
+    }
+    final parts = scope?.split('.') ?? const <String>[];
+    if (parts.length == 2 && parts.first == 'group') {
+      return key == 'subtitle';
+    }
+    if (parts.length == 4 && parts[0] == 'group' && parts[2] == 'item') {
+      if (parts.last == 'create') {
+        return key == 'image' || key == 'youtube_url';
+      }
+      return const {
+        'title',
+        'description',
+        'image',
+        'youtube_url',
+      }.contains(key);
+    }
+    return false;
+  }
+
+  String _galleryFieldErrorKey(String key, String? scope) {
+    if (scope == null || key.contains('gallery_capabilities')) return key;
+    return '$scope.$key';
+  }
+
   void _applyGallerySnapshot(
     TenantAdminAccountProfileGallerySnapshot snapshot,
   ) {
+    _editGalleryInputValues.clear();
     _updateEditState(
       editStateStreamValue.value.copyWith(
         galleryGroups: snapshot.groups
@@ -3693,6 +3789,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     editErrorMessageStreamValue.dispose();
     editGalleryMutationBusyStreamValue.dispose();
     editGalleryFieldErrorsStreamValue.dispose();
+    editGalleryOperationErrorStreamValue.dispose();
     editNestedGroupMutationBusyStreamValue.dispose();
     _clearNestedGroupLabelStates();
     taxonomyAutosavingStreamValue.dispose();

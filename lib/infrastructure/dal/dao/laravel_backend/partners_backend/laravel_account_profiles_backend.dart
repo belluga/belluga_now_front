@@ -723,10 +723,14 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
         continue;
       }
 
+      final title = json['title']?.toString().trim();
       final description = json['description']?.toString().trim();
       items.add(
         AccountProfileGalleryItem(
           itemIdValue: AccountProfileNestedGroupIdValue(itemId),
+          titleValue: AccountProfileNestedGroupMemberTextValue(
+            title == null || title.isEmpty ? '' : title,
+          ),
           descriptionValue: AccountProfileNestedGroupMemberTextValue(
             description == null || description.isEmpty ? '' : description,
           ),

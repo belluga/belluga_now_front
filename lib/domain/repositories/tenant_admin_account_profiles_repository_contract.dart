@@ -4,7 +4,6 @@ import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/domain/repositories/value_objects/tenant_admin_account_profiles_repository_contract_values.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_update.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_item.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_snapshot.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
@@ -23,7 +22,6 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_taxon
 import 'package:stream_value/core/stream_value.dart';
 
 export 'package:belluga_now/domain/repositories/value_objects/tenant_admin_account_profiles_repository_contract_values.dart';
-export 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_update.dart';
 export 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 export 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_taxonomy_terms_value.dart';
 
@@ -154,6 +152,7 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     required TenantAdminAccountProfilesRepoString accountProfileId,
     required TenantAdminAccountProfilesRepoString groupId,
     required TenantAdminAccountProfileGalleryItemType type,
+    TenantAdminOptionalTextValue? title,
     TenantAdminOptionalTextValue? description,
     TenantAdminMediaUpload? image,
     TenantAdminAccountProfilesRepoString? youtubeUrl,
@@ -164,6 +163,7 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     required TenantAdminAccountProfilesRepoString groupId,
     required TenantAdminAccountProfilesRepoString itemId,
     TenantAdminAccountProfileGalleryItemType? type,
+    TenantAdminOptionalTextValue? title,
     TenantAdminOptionalTextValue? description,
     TenantAdminMediaUpload? image,
     TenantAdminAccountProfilesRepoString? youtubeUrl,
@@ -180,15 +180,6 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     required TenantAdminAccountProfilesRepoString groupId,
     required List<TenantAdminAccountProfilesRepoString> itemIds,
   }) => throw UnimplementedError();
-
-  @Deprecated('Use the independent gallery mutation methods.')
-  Future<TenantAdminAccountProfile> updateAccountProfileGallery({
-    required TenantAdminAccountProfilesRepoString accountProfileId,
-    List<TenantAdminAccountProfileGalleryUpdateGroup> galleryGroups =
-        const <TenantAdminAccountProfileGalleryUpdateGroup>[],
-  }) async {
-    return fetchAccountProfile(accountProfileId);
-  }
 
   Future<TenantAdminNestedGroupMemberPage> fetchNestedGroupMembersPage({
     required TenantAdminAccountProfilesRepoString accountProfileId,

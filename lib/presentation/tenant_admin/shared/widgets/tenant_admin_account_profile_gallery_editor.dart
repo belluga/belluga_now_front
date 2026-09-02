@@ -17,6 +17,9 @@ class TenantAdminAccountProfileGalleryEditor extends StatelessWidget {
     required this.maxItemsPerGallery,
     required this.busy,
     required this.fieldErrors,
+    required this.operationError,
+    required this.resolveInputValue,
+    required this.onInputChanged,
     required this.onAddGroup,
     required this.onRenameGroup,
     required this.onMoveGroup,
@@ -26,6 +29,7 @@ class TenantAdminAccountProfileGalleryEditor extends StatelessWidget {
     required this.onReplaceItemRequested,
     required this.onMoveItem,
     required this.onRemoveItem,
+    required this.onTitleChanged,
     required this.onDescriptionChanged,
   });
 
@@ -34,6 +38,10 @@ class TenantAdminAccountProfileGalleryEditor extends StatelessWidget {
   final int maxItemsPerGallery;
   final bool busy;
   final Map<String, String> fieldErrors;
+  final String? operationError;
+  final String Function(String fieldPath, String authoritativeValue)
+  resolveInputValue;
+  final void Function(String fieldPath, String value) onInputChanged;
   final Future<void> Function() onAddGroup;
   final Future<void> Function(String groupId, String subtitle) onRenameGroup;
   final Future<void> Function(String groupId, int delta) onMoveGroup;
@@ -45,12 +53,19 @@ class TenantAdminAccountProfileGalleryEditor extends StatelessWidget {
   final Future<void> Function(String groupId, String itemId, int delta)
   onMoveItem;
   final Future<void> Function(String groupId, String itemId) onRemoveItem;
+  final Future<void> Function(String groupId, String itemId, String title)
+  onTitleChanged;
   final Future<void> Function(String groupId, String itemId, String description)
   onDescriptionChanged;
 
   @override
   Widget build(BuildContext context) {
     final galleryState = _capacityState(groups.length, maxGroups);
+    final createGroupError = fieldErrors['group.create.subtitle'];
+    final sectionErrors = fieldErrors.entries
+        .where((entry) => !entry.key.startsWith('group.'))
+        .map((entry) => entry.value)
+        .toList(growable: false);
 
     return TenantAdminFormSectionCard(
       title: 'Galerias',
@@ -70,11 +85,29 @@ class TenantAdminAccountProfileGalleryEditor extends StatelessWidget {
               'para voltar ao limite do plano.',
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
-          if (fieldErrors.isNotEmpty) ...[
+          if (sectionErrors.isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(
-              fieldErrors.values.join('\n'),
+              sectionErrors.join('\n'),
               style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ],
+          if (operationError case final message?) ...[
+            const SizedBox(height: 8),
+            Container(
+              key: const Key('tenantAdminGalleryOperationError'),
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.errorContainer,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                message,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onErrorContainer,
+                ),
+              ),
             ),
           ],
           const SizedBox(height: 12),
@@ -85,6 +118,9 @@ class TenantAdminAccountProfileGalleryEditor extends StatelessWidget {
               totalGroups: groups.length,
               maxItems: maxItemsPerGallery,
               busy: busy,
+              fieldErrors: fieldErrors,
+              resolveInputValue: resolveInputValue,
+              onInputChanged: onInputChanged,
               onRenameGroup: onRenameGroup,
               onMoveGroup: onMoveGroup,
               onRemoveGroup: onRemoveGroup,
@@ -93,6 +129,7 @@ class TenantAdminAccountProfileGalleryEditor extends StatelessWidget {
               onReplaceItemRequested: onReplaceItemRequested,
               onMoveItem: onMoveItem,
               onRemoveItem: onRemoveItem,
+              onTitleChanged: onTitleChanged,
               onDescriptionChanged: onDescriptionChanged,
             ),
             const SizedBox(height: 12),
@@ -107,6 +144,14 @@ class TenantAdminAccountProfileGalleryEditor extends StatelessWidget {
             icon: const Icon(Icons.add),
             label: const Text('Adicionar galeria'),
           ),
+          if (createGroupError != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              createGroupError,
+              key: const Key('tenantAdminGalleryCreateGroupError'),
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ],
         ],
       ),
     );
@@ -132,6 +177,9 @@ class _GalleryGroupCard extends StatelessWidget {
     required this.totalGroups,
     required this.maxItems,
     required this.busy,
+    required this.fieldErrors,
+    required this.resolveInputValue,
+    required this.onInputChanged,
     required this.onRenameGroup,
     required this.onMoveGroup,
     required this.onRemoveGroup,
@@ -140,6 +188,7 @@ class _GalleryGroupCard extends StatelessWidget {
     required this.onReplaceItemRequested,
     required this.onMoveItem,
     required this.onRemoveItem,
+    required this.onTitleChanged,
     required this.onDescriptionChanged,
   });
 
@@ -148,6 +197,10 @@ class _GalleryGroupCard extends StatelessWidget {
   final int totalGroups;
   final int maxItems;
   final bool busy;
+  final Map<String, String> fieldErrors;
+  final String Function(String fieldPath, String authoritativeValue)
+  resolveInputValue;
+  final void Function(String fieldPath, String value) onInputChanged;
   final Future<void> Function(String groupId, String subtitle) onRenameGroup;
   final Future<void> Function(String groupId, int delta) onMoveGroup;
   final Future<void> Function(String groupId) onRemoveGroup;
@@ -158,12 +211,17 @@ class _GalleryGroupCard extends StatelessWidget {
   final Future<void> Function(String groupId, String itemId, int delta)
   onMoveItem;
   final Future<void> Function(String groupId, String itemId) onRemoveItem;
+  final Future<void> Function(String groupId, String itemId, String title)
+  onTitleChanged;
   final Future<void> Function(String groupId, String itemId, String description)
   onDescriptionChanged;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final groupErrorPrefix = 'group.${group.groupId}';
+    final createItemErrorPrefix = '$groupErrorPrefix.item.create';
+    final groupSubtitleError = fieldErrors['$groupErrorPrefix.subtitle'];
     final itemState = group.items.length > maxItems
         ? TenantAdminGalleryCapacityState.overLimit
         : group.items.length == maxItems
@@ -192,20 +250,42 @@ class _GalleryGroupCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: TextFormField(
-                  key: Key('tenantAdminGalleryGroupSubtitle_${group.groupId}'),
-                  initialValue: group.subtitle,
-                  decoration: const InputDecoration(
-                    labelText: 'Nome da galeria',
-                  ),
-                  onFieldSubmitted: (value) =>
-                      unawaited(onRenameGroup(group.groupId, value)),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Subtítulo obrigatório.';
-                    }
-                    return null;
-                  },
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextFormField(
+                      key: Key(
+                        'tenantAdminGalleryGroupSubtitle_${group.groupId}',
+                      ),
+                      initialValue: resolveInputValue(
+                        '$groupErrorPrefix.subtitle',
+                        group.subtitle,
+                      ),
+                      decoration: const InputDecoration(
+                        labelText: 'Nome da galeria',
+                      ),
+                      onFieldSubmitted: (value) =>
+                          unawaited(onRenameGroup(group.groupId, value)),
+                      onChanged: (value) =>
+                          onInputChanged('$groupErrorPrefix.subtitle', value),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Subtítulo obrigatório.';
+                        }
+                        return null;
+                      },
+                    ),
+                    if (groupSubtitleError != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        groupSubtitleError,
+                        key: Key(
+                          'tenantAdminGalleryGroupSubtitleError_${group.groupId}',
+                        ),
+                        style: TextStyle(color: colorScheme.error),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               const SizedBox(width: 8),
@@ -257,9 +337,13 @@ class _GalleryGroupCard extends StatelessWidget {
                     item: group.items[itemIndex],
                     index: itemIndex,
                     totalItems: group.items.length,
+                    fieldErrors: fieldErrors,
+                    resolveInputValue: resolveInputValue,
+                    onInputChanged: onInputChanged,
                     onReplaceItemRequested: onReplaceItemRequested,
                     onMoveItem: onMoveItem,
                     onRemoveItem: onRemoveItem,
+                    onTitleChanged: onTitleChanged,
                     onDescriptionChanged: onDescriptionChanged,
                   ),
                   if (itemIndex < group.items.length - 1)
@@ -319,6 +403,34 @@ class _GalleryGroupCard extends StatelessWidget {
               ),
             ],
           ),
+          if (fieldErrors['$createItemErrorPrefix.image'] != null ||
+              fieldErrors['$createItemErrorPrefix.youtube_url'] != null) ...[
+            const SizedBox(height: 6),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    fieldErrors['$createItemErrorPrefix.image'] ?? '',
+                    key: Key(
+                      'tenantAdminGalleryGroupAddPhotoError_${group.groupId}',
+                    ),
+                    style: TextStyle(color: colorScheme.error),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    fieldErrors['$createItemErrorPrefix.youtube_url'] ?? '',
+                    key: Key(
+                      'tenantAdminGalleryGroupAddYoutubeError_${group.groupId}',
+                    ),
+                    style: TextStyle(color: colorScheme.error),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -331,9 +443,13 @@ class _GalleryItemCard extends StatelessWidget {
     required this.item,
     required this.index,
     required this.totalItems,
+    required this.fieldErrors,
+    required this.resolveInputValue,
+    required this.onInputChanged,
     required this.onReplaceItemRequested,
     required this.onMoveItem,
     required this.onRemoveItem,
+    required this.onTitleChanged,
     required this.onDescriptionChanged,
   });
 
@@ -341,16 +457,25 @@ class _GalleryItemCard extends StatelessWidget {
   final TenantAdminAccountProfileGalleryItemDraft item;
   final int index;
   final int totalItems;
+  final Map<String, String> fieldErrors;
+  final String Function(String fieldPath, String authoritativeValue)
+  resolveInputValue;
+  final void Function(String fieldPath, String value) onInputChanged;
   final Future<void> Function(String groupId, String itemId)
   onReplaceItemRequested;
   final Future<void> Function(String groupId, String itemId, int delta)
   onMoveItem;
   final Future<void> Function(String groupId, String itemId) onRemoveItem;
+  final Future<void> Function(String groupId, String itemId, String title)
+  onTitleChanged;
   final Future<void> Function(String groupId, String itemId, String description)
   onDescriptionChanged;
 
   @override
   Widget build(BuildContext context) {
+    final errorPrefix = 'group.$groupId.item.${item.itemId}';
+    final providerError =
+        fieldErrors['$errorPrefix.${item.type == TenantAdminAccountProfileGalleryItemType.photo ? 'image' : 'youtube_url'}'];
     return Container(
       key: Key('tenantAdminGalleryItem_${item.itemId}'),
       padding: const EdgeInsets.all(12),
@@ -376,17 +501,45 @@ class _GalleryItemCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-                TextFormField(
-                  key: Key('tenantAdminGalleryItemDescription_${item.itemId}'),
-                  initialValue: item.description ?? '',
-                  maxLines: 2,
-                  decoration: const InputDecoration(
-                    labelText: 'Descrição do item',
-                    hintText: 'Opcional',
+                _AuthoritativeGalleryTextField(
+                  fieldKey: Key('tenantAdminGalleryItemTitle_${item.itemId}'),
+                  authoritativeSnapshot: item,
+                  value: resolveInputValue(
+                    '$errorPrefix.title',
+                    item.title ?? '',
                   ),
-                  onFieldSubmitted: (value) => unawaited(
+                  maxLength: 255,
+                  labelText: 'Título do item',
+                  errorText: fieldErrors['$errorPrefix.title'],
+                  errorKey: Key(
+                    'tenantAdminGalleryItemTitleError_${item.itemId}',
+                  ),
+                  onSubmitted: (value) =>
+                      unawaited(onTitleChanged(groupId, item.itemId, value)),
+                  onChanged: (value) =>
+                      onInputChanged('$errorPrefix.title', value),
+                ),
+                const SizedBox(height: 6),
+                _AuthoritativeGalleryTextField(
+                  fieldKey: Key(
+                    'tenantAdminGalleryItemDescription_${item.itemId}',
+                  ),
+                  authoritativeSnapshot: item,
+                  value: resolveInputValue(
+                    '$errorPrefix.description',
+                    item.description ?? '',
+                  ),
+                  maxLines: 2,
+                  labelText: 'Descrição do item',
+                  errorText: fieldErrors['$errorPrefix.description'],
+                  errorKey: Key(
+                    'tenantAdminGalleryItemDescriptionError_${item.itemId}',
+                  ),
+                  onSubmitted: (value) => unawaited(
                     onDescriptionChanged(groupId, item.itemId, value),
                   ),
+                  onChanged: (value) =>
+                      onInputChanged('$errorPrefix.description', value),
                 ),
                 const SizedBox(height: 8),
                 Wrap(
@@ -443,11 +596,81 @@ class _GalleryItemCard extends StatelessWidget {
                     ),
                   ],
                 ),
+                if (providerError != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    providerError,
+                    key: Key(
+                      'tenantAdminGalleryItemProviderError_${item.itemId}',
+                    ),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _AuthoritativeGalleryTextField extends StatelessWidget {
+  const _AuthoritativeGalleryTextField({
+    required this.fieldKey,
+    required this.authoritativeSnapshot,
+    required this.value,
+    required this.labelText,
+    required this.onSubmitted,
+    required this.onChanged,
+    this.errorText,
+    this.errorKey,
+    this.maxLength,
+    this.maxLines = 1,
+  });
+
+  final Key fieldKey;
+  final Object authoritativeSnapshot;
+  final String value;
+  final String labelText;
+  final ValueChanged<String> onSubmitted;
+  final ValueChanged<String> onChanged;
+  final String? errorText;
+  final Key? errorKey;
+  final int? maxLength;
+  final int maxLines;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        KeyedSubtree(
+          key: ValueKey((authoritativeSnapshot, fieldKey)),
+          child: TextFormField(
+            key: fieldKey,
+            initialValue: value,
+            maxLength: maxLength,
+            maxLines: maxLines,
+            decoration: InputDecoration(
+              labelText: labelText,
+              hintText: 'Opcional',
+            ),
+            onFieldSubmitted: onSubmitted,
+            onChanged: onChanged,
+          ),
+        ),
+        if (errorText != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            errorText!,
+            key: errorKey,
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+        ],
+      ],
     );
   }
 }

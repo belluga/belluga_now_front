@@ -35,8 +35,22 @@ void main() {
       EventTrackerEvents.videoBegin,
       EventTrackerEvents.videoWatchedTime,
     ]);
-    expect(tracker.events.last.data?.customData?['watched_seconds'], 3);
-    expect(tracker.events.last.data?.customData?['reason'], 'viewer_closed');
+    expect(tracker.events.first.data?.eventName, 'gallery_youtube_video_begin');
+    expect(tracker.events.first.data?.customData, <String, dynamic>{
+      'gallery_item_id': 'video-1',
+      'youtube_video_id': 'dQw4w9WgXcQ',
+    });
+    expect(
+      tracker.events.last.data?.eventName,
+      'gallery_youtube_video_watched_time',
+    );
+    expect(tracker.events.last.data?.customData, <String, dynamic>{
+      'gallery_item_id': 'video-1',
+      'youtube_video_id': 'dQw4w9WgXcQ',
+      'watched_seconds': 3,
+      'end_position_seconds': 8.0,
+      'reason': 'viewer_closed',
+    });
   });
 
   test(
@@ -60,9 +74,48 @@ void main() {
         EventTrackerEvents.videoWatchedTime,
         EventTrackerEvents.videoFinished,
       ]);
-      expect(tracker.events[1].data?.customData?['reason'], 'finished');
+      expect(
+        tracker.events[1].data?.eventName,
+        'gallery_youtube_video_watched_time',
+      );
+      expect(tracker.events[1].data?.customData, <String, dynamic>{
+        'gallery_item_id': 'video-1',
+        'youtube_video_id': 'dQw4w9WgXcQ',
+        'watched_seconds': 2,
+        'end_position_seconds': 12.0,
+        'reason': 'finished',
+      });
+      expect(
+        tracker.events[2].data?.eventName,
+        'gallery_youtube_video_finished',
+      );
+      expect(tracker.events[2].data?.customData, <String, dynamic>{
+        'gallery_item_id': 'video-1',
+        'youtube_video_id': 'dQw4w9WgXcQ',
+        'watched_seconds': 2,
+      });
     },
   );
+
+  test('paused time is excluded and sub-second sessions stay silent', () async {
+    final controller = GalleryPlaybackSessionController(
+      item: const GalleryYoutubePlayer(
+        itemId: 'video-1',
+        youtubeVideoId: 'dQw4w9WgXcQ',
+      ),
+      now: () => now,
+    );
+
+    await controller.onPlaying();
+    now = now.add(const Duration(milliseconds: 900));
+    controller.onPaused();
+    now = now.add(const Duration(seconds: 30));
+    await controller.finish(reason: 'viewer_closed', endPositionSeconds: 1);
+
+    expect(tracker.events.map((entry) => entry.type), <EventTrackerEvents>[
+      EventTrackerEvents.videoBegin,
+    ]);
+  });
 
   test('tracking remains fail-open when no repository is registered', () async {
     GetIt.I.unregister<EventTrackerRepositoryContract>();

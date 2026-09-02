@@ -16,14 +16,17 @@ class TenantAdminAccountProfileGalleryItem {
     required this.cardUrlValue,
     required this.modalUrlValue,
     this.type = TenantAdminAccountProfileGalleryItemType.photo,
+    TenantAdminOptionalTextValue? titleValue,
     TenantAdminOptionalTextValue? youtubeVideoIdValue,
     TenantAdminGalleryPlayerAspectRatioValue? playerAspectRatioValue,
-  }) : youtubeVideoIdValue =
+  }) : titleValue = titleValue ?? TenantAdminOptionalTextValue(),
+       youtubeVideoIdValue =
            youtubeVideoIdValue ?? TenantAdminOptionalTextValue(),
        playerAspectRatioValue =
            playerAspectRatioValue ?? TenantAdminGalleryPlayerAspectRatioValue();
 
   final TenantAdminNestedProfileGroupTextValue itemIdValue;
+  final TenantAdminOptionalTextValue titleValue;
   final TenantAdminOptionalTextValue descriptionValue;
   final TenantAdminNestedProfileGroupOrderValue orderValue;
   final TenantAdminOptionalUrlValue imageUrlValue;
@@ -35,6 +38,7 @@ class TenantAdminAccountProfileGalleryItem {
   final TenantAdminGalleryPlayerAspectRatioValue playerAspectRatioValue;
 
   String get itemId => itemIdValue.value;
+  String? get title => titleValue.nullableValue;
   String? get description => descriptionValue.nullableValue;
   int get order => orderValue.value;
   String get imageUrl => imageUrlValue.nullableValue ?? '';
@@ -47,6 +51,7 @@ class TenantAdminAccountProfileGalleryItem {
   GalleryItem toGalleryItem() => switch (type) {
     TenantAdminAccountProfileGalleryItemType.photo => GalleryPhoto(
       itemId: itemId,
+      title: title,
       description: description,
       imageUrl: imageUrl,
       thumbUrl: thumbUrl,
@@ -55,6 +60,7 @@ class TenantAdminAccountProfileGalleryItem {
     ),
     TenantAdminAccountProfileGalleryItemType.youtube => GalleryYoutubePlayer(
       itemId: itemId,
+      title: title,
       description: description,
       youtubeVideoId: youtubeVideoId ?? '',
       playerAspectRatio: playerAspectRatio,

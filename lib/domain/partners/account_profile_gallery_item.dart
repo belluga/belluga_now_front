@@ -16,15 +16,18 @@ class AccountProfileGalleryItem {
     required this.cardUrlValue,
     required this.modalUrlValue,
     this.type = AccountProfileGalleryItemType.photo,
+    AccountProfileNestedGroupMemberTextValue? titleValue,
     AccountProfileNestedGroupMemberTextValue? youtubeVideoIdValue,
     AccountProfileGalleryPlayerAspectRatioValue? playerAspectRatioValue,
-  }) : youtubeVideoIdValue =
+  }) : titleValue = titleValue ?? AccountProfileNestedGroupMemberTextValue(),
+       youtubeVideoIdValue =
            youtubeVideoIdValue ?? AccountProfileNestedGroupMemberTextValue(),
        playerAspectRatioValue =
            playerAspectRatioValue ??
            AccountProfileGalleryPlayerAspectRatioValue();
 
   final AccountProfileNestedGroupIdValue itemIdValue;
+  final AccountProfileNestedGroupMemberTextValue titleValue;
   final AccountProfileNestedGroupMemberTextValue descriptionValue;
   final AccountProfileNestedGroupOrderValue orderValue;
   final ThumbUriValue imageUrlValue;
@@ -36,6 +39,11 @@ class AccountProfileGalleryItem {
   final AccountProfileGalleryPlayerAspectRatioValue playerAspectRatioValue;
 
   String get itemId => itemIdValue.value;
+  String? get title {
+    final normalized = titleValue.value.trim();
+    return normalized.isEmpty ? null : normalized;
+  }
+
   String? get description {
     final normalized = descriptionValue.value.trim();
     if (normalized.isEmpty) {
@@ -59,6 +67,7 @@ class AccountProfileGalleryItem {
   GalleryItem toGalleryItem() => switch (type) {
     AccountProfileGalleryItemType.photo => GalleryPhoto(
       itemId: itemId,
+      title: title,
       description: description,
       imageUrl: imageUrl,
       thumbUrl: thumbUrl,
@@ -67,6 +76,7 @@ class AccountProfileGalleryItem {
     ),
     AccountProfileGalleryItemType.youtube => GalleryYoutubePlayer(
       itemId: itemId,
+      title: title,
       description: description,
       youtubeVideoId: youtubeVideoId ?? '',
       playerAspectRatio: playerAspectRatio,

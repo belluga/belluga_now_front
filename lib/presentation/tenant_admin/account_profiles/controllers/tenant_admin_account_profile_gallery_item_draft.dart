@@ -6,6 +6,7 @@ class TenantAdminAccountProfileGalleryItemDraft {
   const TenantAdminAccountProfileGalleryItemDraft({
     required this.itemId,
     required this.order,
+    this.title,
     this.description,
     this.imageUrl,
     this.thumbUrl,
@@ -21,6 +22,7 @@ class TenantAdminAccountProfileGalleryItemDraft {
   ) {
     return TenantAdminAccountProfileGalleryItemDraft(
       itemId: item.itemId,
+      title: item.title,
       description: item.description,
       order: item.order,
       imageUrl: item.imageUrl,
@@ -33,6 +35,7 @@ class TenantAdminAccountProfileGalleryItemDraft {
   }
 
   final String itemId;
+  final String? title;
   final String? description;
   final int order;
   final String? imageUrl;
@@ -71,6 +74,7 @@ class TenantAdminAccountProfileGalleryItemDraft {
 
   TenantAdminAccountProfileGalleryItemDraft copyWith({
     String? itemId,
+    Object? title = _unset,
     Object? description = _unset,
     int? order,
     Object? imageUrl = _unset,
@@ -83,6 +87,7 @@ class TenantAdminAccountProfileGalleryItemDraft {
   }) {
     return TenantAdminAccountProfileGalleryItemDraft(
       itemId: itemId ?? this.itemId,
+      title: title == _unset ? this.title : title as String?,
       description: description == _unset
           ? this.description
           : description as String?,

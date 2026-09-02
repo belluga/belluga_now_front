@@ -440,15 +440,6 @@ class _FakeTenantAdminAccountProfilesRepository
   }
 
   @override
-  Future<TenantAdminAccountProfile> updateAccountProfileGallery({
-    required TenantAdminAccountProfilesRepoString accountProfileId,
-    List<TenantAdminAccountProfileGalleryUpdateGroup> galleryGroups =
-        const <TenantAdminAccountProfileGalleryUpdateGroup>[],
-  }) async {
-    return fetchAccountProfile(accountProfileId);
-  }
-
-  @override
   Future<void> deleteAccountProfile(
     TenantAdminAccountProfilesRepoString accountProfileId,
   ) async {}

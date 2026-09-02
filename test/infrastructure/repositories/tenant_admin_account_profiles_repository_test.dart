@@ -872,6 +872,7 @@ void main() {
         accountProfileId: profileId,
         groupId: groupId,
         type: TenantAdminAccountProfileGalleryItemType.youtube,
+        title: TenantAdminOptionalTextValue()..parse('Um minuto na praia'),
         youtubeUrl: tenantAdminAccountProfilesRepoString(
           'https://youtu.be/dQw4w9WgXcQ',
           defaultValue: '',
@@ -882,6 +883,7 @@ void main() {
         accountProfileId: profileId,
         groupId: groupId,
         itemId: itemId,
+        title: TenantAdminOptionalTextValue()..parse(null),
         description: TenantAdminOptionalTextValue()..parse(null),
       );
       await repository.reorderGalleryItems(
@@ -922,6 +924,11 @@ void main() {
           'groups/group-1',
         ],
       );
+      expect(
+        adapter.requests[3].data,
+        containsPair('title', 'Um minuto na praia'),
+      );
+      expect(adapter.requests[4].data, containsPair('title', null));
       expect(adapter.requests[4].data, containsPair('description', null));
       expect(result.capabilities.maxGalleries, 6);
       expect(result.capabilities.maxItemsPerGallery, 12);
@@ -956,6 +963,7 @@ void main() {
         isRequired: true,
       ),
       type: TenantAdminAccountProfileGalleryItemType.photo,
+      title: TenantAdminOptionalTextValue()..parse('Entrada principal'),
       image: tenantAdminMediaUploadFromRaw(
         bytes: Uint8List.fromList(<int>[7, 8, 9]),
         fileName: 'gallery.png',
@@ -965,6 +973,12 @@ void main() {
     final data = adapter.lastRequest?.data;
     expect(data, isA<FormData>());
     expect((data as FormData).files.single.key, 'image');
+    expect(
+      data.fields.any(
+        (field) => field.key == 'title' && field.value == 'Entrada principal',
+      ),
+      isTrue,
+    );
     expect(
       adapter.lastRequest?.path,
       endsWith('/gallery/groups/group-1/items'),

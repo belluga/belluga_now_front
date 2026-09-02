@@ -158,6 +158,8 @@ void main() {
                     {
                       'item_id': 'video-1',
                       'type': 'youtube',
+                      'title': 'Um minuto na praia',
+                      'description': 'O caminho da pousada até o mar.',
                       'order': 1,
                       'youtube_video_id': 'abc123',
                     },
@@ -184,6 +186,8 @@ void main() {
       expect(items, hasLength(2));
       expect(items.first.toGalleryItem(), isA<GalleryPhoto>());
       expect(items.last.toGalleryItem(), isA<GalleryYoutubePlayer>());
+      expect(items.last.title, 'Um minuto na praia');
+      expect(items.last.description, 'O caminho da pousada até o mar.');
       expect(
         (items.last.toGalleryItem() as GalleryYoutubePlayer).youtubeVideoId,
         'abc123',

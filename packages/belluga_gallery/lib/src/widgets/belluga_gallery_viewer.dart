@@ -88,16 +88,29 @@ final class _BellugaGalleryViewerState extends State<BellugaGalleryViewer> {
     if (widget.items.isEmpty) {
       return const SizedBox.shrink();
     }
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final surfaceBrightness = ThemeData.estimateBrightnessForColor(
+      colorScheme.surface,
+    );
+    final overlayStyle = surfaceBrightness == Brightness.dark
+        ? SystemUiOverlayStyle.light
+        : SystemUiOverlayStyle.dark;
     final selectedItem = _controller.selectedItem!;
     final selectedIndex = _controller.selectedIndex;
+    final itemTitle = selectedItem.title?.trim() ?? '';
+    final itemDescription = selectedItem.description?.trim() ?? '';
+    final hasMetadata = itemTitle.isNotEmpty || itemDescription.isNotEmpty;
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light.copyWith(
+      value: overlayStyle.copyWith(
         statusBarColor: Colors.transparent,
-        systemNavigationBarColor: Colors.black,
-        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarColor: colorScheme.surface,
+        systemNavigationBarIconBrightness: surfaceBrightness == Brightness.dark
+            ? Brightness.light
+            : Brightness.dark,
       ),
       child: Material(
-        color: const Color(0xFF0D0D0D),
+        color: colorScheme.surface,
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
@@ -115,8 +128,8 @@ final class _BellugaGalleryViewerState extends State<BellugaGalleryViewer> {
                         widget.onClose?.call();
                       },
                       style: IconButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        backgroundColor: const Color(0xFF2B2B2B),
+                        foregroundColor: colorScheme.onSurface,
+                        backgroundColor: colorScheme.surfaceContainerHighest,
                       ),
                       icon: const Icon(Icons.close_rounded),
                     ),
@@ -126,8 +139,8 @@ final class _BellugaGalleryViewerState extends State<BellugaGalleryViewer> {
                         widget.galleryTitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: Colors.white,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          color: colorScheme.onSurface,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
@@ -138,7 +151,7 @@ final class _BellugaGalleryViewerState extends State<BellugaGalleryViewer> {
                       child: ExcludeSemantics(
                         child: DecoratedBox(
                           decoration: BoxDecoration(
-                            color: const Color(0xFF2B2B2B),
+                            color: colorScheme.surfaceContainerHighest,
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Padding(
@@ -149,8 +162,8 @@ final class _BellugaGalleryViewerState extends State<BellugaGalleryViewer> {
                             child: Text(
                               '${selectedIndex + 1}/${widget.items.length}',
                               key: const Key('bellugaGalleryViewerPosition'),
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: colorScheme.onSurface,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -165,7 +178,7 @@ final class _BellugaGalleryViewerState extends State<BellugaGalleryViewer> {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(20),
                     child: ColoredBox(
-                      color: Colors.black,
+                      color: colorScheme.surfaceContainerLowest,
                       child: PageView.builder(
                         controller: _controller.pageController,
                         itemCount: widget.items.length,
@@ -177,31 +190,17 @@ final class _BellugaGalleryViewerState extends State<BellugaGalleryViewer> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  height: 44,
-                  child: selectedItem.description?.trim().isNotEmpty == true
-                      ? Semantics(
-                          label:
-                              'Descrição: ${selectedItem.description!.trim()}',
-                          child: ExcludeSemantics(
-                            child: Text(
-                              selectedItem.description!.trim(),
-                              key: const Key('bellugaGalleryViewerDescription'),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Color(0xFFE6E6E6),
-                                fontSize: 16,
-                                height: 1.35,
-                              ),
-                            ),
-                          ),
-                        )
-                      : null,
-                ),
-                const SizedBox(height: 10),
+                if (hasMetadata) ...[
+                  const SizedBox(height: 16),
+                  _itemMetadata(
+                    item: selectedItem,
+                    title: itemTitle,
+                    description: itemDescription,
+                    theme: theme,
+                  ),
+                  const SizedBox(height: 14),
+                ] else
+                  const SizedBox(height: 12),
                 SizedBox(
                   key: const Key('bellugaGalleryViewerSlideRow'),
                   height: 76,
@@ -225,7 +224,9 @@ final class _BellugaGalleryViewerState extends State<BellugaGalleryViewer> {
                           padding: const EdgeInsets.all(3),
                           decoration: BoxDecoration(
                             border: Border.all(
-                              color: isSelected ? Colors.white : Colors.white24,
+                              color: isSelected
+                                  ? colorScheme.primary
+                                  : colorScheme.outlineVariant,
                               width: isSelected ? 2 : 1,
                             ),
                             borderRadius: BorderRadius.circular(14),
@@ -264,11 +265,8 @@ final class _BellugaGalleryViewerState extends State<BellugaGalleryViewer> {
             item.viewerUrl,
             key: Key('bellugaGalleryViewerPhoto_${item.itemId}'),
             fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) => const Icon(
-              Icons.broken_image_outlined,
-              color: Colors.white,
-              size: 48,
-            ),
+            errorBuilder: (context, error, stackTrace) =>
+                const Icon(Icons.broken_image_outlined, size: 48),
           ),
         ),
       );
@@ -276,10 +274,82 @@ final class _BellugaGalleryViewerState extends State<BellugaGalleryViewer> {
     return _youtube(item as GalleryYoutubePlayer);
   }
 
+  Widget _itemMetadata({
+    required GalleryItem item,
+    required String title,
+    required String description,
+    required ThemeData theme,
+  }) {
+    final colorScheme = theme.colorScheme;
+    final isVideo = item is GalleryYoutubePlayer;
+    return SizedBox(
+      key: const Key('bellugaGalleryViewerMetadata'),
+      width: double.infinity,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(
+                isVideo ? Icons.videocam_outlined : Icons.photo_camera_outlined,
+                size: 18,
+                color: colorScheme.primary,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                isVideo ? 'VÍDEO' : 'FOTO',
+                key: const Key('bellugaGalleryViewerItemType'),
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: colorScheme.primary,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.4,
+                ),
+              ),
+            ],
+          ),
+          if (title.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              title,
+              key: const Key('bellugaGalleryViewerItemTitle'),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.titleLarge?.copyWith(
+                color: colorScheme.onSurface,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+          if (description.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Semantics(
+              label: 'Descrição: $description',
+              child: ExcludeSemantics(
+                child: Text(
+                  description,
+                  key: const Key('bellugaGalleryViewerDescription'),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    height: 1.35,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _youtube(GalleryYoutubePlayer video) {
     final player = _controller.youtubeController;
     if (_controller.selectedItem == video && player != null) {
-      return Center(
+      return _fittedMedia(
+        aspectRatio: video.playerAspectRatio,
         child: YoutubePlayer(
           key: Key('bellugaGalleryYoutubePlayer_${video.itemId}'),
           controller: player,
@@ -287,31 +357,50 @@ final class _BellugaGalleryViewerState extends State<BellugaGalleryViewer> {
         ),
       );
     }
-    return Center(
-      child: AspectRatio(
-        aspectRatio: 16 / 9,
-        child: Stack(
-          fit: StackFit.expand,
-          children: <Widget>[
-            GalleryItemPreview(
-              key: Key('bellugaGalleryViewerYoutubePreview_${video.itemId}'),
-              item: video,
-              onTap: _controller.playSelected,
-            ),
-            if (_controller.isActivating)
-              const Center(child: CircularProgressIndicator())
-            else if (_controller.playbackFailed)
-              Center(
-                child: FilledButton.icon(
-                  key: const Key('bellugaGalleryYoutubeRetry'),
-                  onPressed: _controller.playSelected,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Tentar novamente'),
-                ),
+    return _fittedMedia(
+      aspectRatio: video.playerAspectRatio,
+      child: Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          GalleryItemPreview(
+            key: Key('bellugaGalleryViewerYoutubePreview_${video.itemId}'),
+            item: video,
+            onTap: _controller.playSelected,
+          ),
+          if (_controller.isActivating)
+            const Center(child: CircularProgressIndicator())
+          else if (_controller.playbackFailed)
+            Center(
+              child: FilledButton.icon(
+                key: const Key('bellugaGalleryYoutubeRetry'),
+                onPressed: _controller.playSelected,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Tentar novamente'),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
+    );
+  }
+
+  Widget _fittedMedia({required double aspectRatio, required Widget child}) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (!constraints.hasBoundedWidth || !constraints.hasBoundedHeight) {
+          return Center(
+            child: AspectRatio(aspectRatio: aspectRatio, child: child),
+          );
+        }
+        final widthAtFullHeight = constraints.maxHeight * aspectRatio;
+        final usesFullHeight = widthAtFullHeight <= constraints.maxWidth;
+        final width = usesFullHeight ? widthAtFullHeight : constraints.maxWidth;
+        final height = usesFullHeight
+            ? constraints.maxHeight
+            : constraints.maxWidth / aspectRatio;
+        return Center(
+          child: SizedBox(width: width, height: height, child: child),
+        );
+      },
     );
   }
 }

@@ -28,6 +28,8 @@ void main() {
             {
               'item_id': 'video',
               'type': 'youtube',
+              'title': 'Um minuto na praia',
+              'description': 'O caminho da pousada até o mar.',
               'order': 1,
               'youtube_video_id': 'dQw4w9WgXcQ',
               'player_aspect_ratio': 0.565,
@@ -40,6 +42,11 @@ void main() {
     expect(profile.galleryGroups, hasLength(2));
     expect(profile.galleryGroups.first.items, isEmpty);
     expect(profile.galleryGroups.last.items.last.type.name, 'youtube');
+    expect(profile.galleryGroups.last.items.last.title, 'Um minuto na praia');
+    expect(
+      profile.galleryGroups.last.items.last.description,
+      'O caminho da pousada até o mar.',
+    );
     expect(profile.galleryGroups.last.items.last.youtubeVideoId, 'dQw4w9WgXcQ');
     expect(profile.galleryGroups.last.items.last.playerAspectRatio, 0.565);
     expect(profile.galleryCapabilities.maxGalleries, 6);

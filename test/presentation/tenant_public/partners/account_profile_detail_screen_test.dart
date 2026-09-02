@@ -156,6 +156,7 @@ void main() {
                 items: [
                   _buildGalleryItemWithOptionalPreviewVariants(
                     itemId: 'gallery-item-1',
+                    title: 'Palco principal',
                     description: 'Vista para o palco',
                     imageUrl: 'https://tenant.test/gallery/image.jpg',
                     cardUrl: 'https://tenant.test/gallery/card.jpg',
@@ -216,6 +217,8 @@ void main() {
     );
     expect(find.text('1/1'), findsOneWidget);
     expect(find.text('Ambiente'), findsWidgets);
+    expect(find.text('FOTO'), findsOneWidget);
+    expect(find.text('Palco principal'), findsOneWidget);
     expect(find.text('Vista para o palco'), findsOneWidget);
     expect(
       find.byKey(const Key('bellugaGalleryViewerSlideRow')),
@@ -4391,6 +4394,7 @@ AppData _buildAppData({
 
 AccountProfileGalleryItem _buildGalleryItemWithOptionalPreviewVariants({
   required String itemId,
+  String title = '',
   String description = '',
   String? imageUrl,
   String? thumbUrl,
@@ -4399,6 +4403,7 @@ AccountProfileGalleryItem _buildGalleryItemWithOptionalPreviewVariants({
 }) {
   return AccountProfileGalleryItem(
     itemIdValue: AccountProfileNestedGroupIdValue(itemId),
+    titleValue: AccountProfileNestedGroupMemberTextValue(title),
     descriptionValue: AccountProfileNestedGroupMemberTextValue(description),
     orderValue: AccountProfileNestedGroupOrderValue(0),
     imageUrlValue: _buildOptionalThumbUriValue(imageUrl),

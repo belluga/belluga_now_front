@@ -338,9 +338,12 @@ TenantAdminAccountProfileGalleryItem? _galleryItemFromRaw(
     return null;
   }
 
+  final title = json['title']?.toString().trim();
   final description = json['description']?.toString().trim();
   return TenantAdminAccountProfileGalleryItem(
     itemIdValue: TenantAdminNestedProfileGroupTextValue(itemId),
+    titleValue: TenantAdminOptionalTextValue()
+      ..parse(title == null || title.isEmpty ? null : title),
     descriptionValue: TenantAdminOptionalTextValue()
       ..parse(description == null || description.isEmpty ? null : description),
     orderValue: TenantAdminNestedProfileGroupOrderValue(

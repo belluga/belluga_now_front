@@ -274,12 +274,14 @@ class _FakeAccountProfilesRepository
       <int, TenantAdminPagedResult<TenantAdminAccountProfile>>{};
   List<TenantAdminNestedProfileGroup>? lastCreateNestedProfileGroups;
   List<TenantAdminNestedProfileGroup>? lastUpdateNestedProfileGroups;
-  List<TenantAdminAccountProfileGalleryUpdateGroup>? lastGalleryGroups;
   TenantAdminAccountProfileGallerySnapshot? gallerySnapshotToReturn;
   Object? createGalleryGroupError;
   Object? reorderGalleryGroupsError;
+  Object? reorderGalleryItemsError;
+  Object? updateGalleryItemError;
   int createGalleryGroupCalls = 0;
   int reorderGalleryGroupsCalls = 0;
+  final List<String> galleryMutationCalls = <String>[];
   Object? createAccountProfileError;
   int createNestedProfileGroupCalls = 0;
   String? lastCreateNestedProfileGroupProfileId;
@@ -530,16 +532,6 @@ class _FakeAccountProfilesRepository
   }
 
   @override
-  Future<TenantAdminAccountProfile> updateAccountProfileGallery({
-    required TenantAdminAccountProfilesRepoString accountProfileId,
-    List<TenantAdminAccountProfileGalleryUpdateGroup> galleryGroups =
-        const <TenantAdminAccountProfileGalleryUpdateGroup>[],
-  }) async {
-    lastGalleryGroups = galleryGroups;
-    return _profiles.first;
-  }
-
-  @override
   Future<TenantAdminAccountProfileGallerySnapshot> createGalleryGroup({
     required TenantAdminAccountProfilesRepoString accountProfileId,
     required TenantAdminAccountProfilesRepoString subtitle,
@@ -556,6 +548,88 @@ class _FakeAccountProfilesRepository
   }) async {
     reorderGalleryGroupsCalls += 1;
     if (reorderGalleryGroupsError != null) throw reorderGalleryGroupsError!;
+    return gallerySnapshotToReturn!;
+  }
+
+  @override
+  Future<TenantAdminAccountProfileGallerySnapshot> renameGalleryGroup({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminAccountProfilesRepoString subtitle,
+  }) async {
+    galleryMutationCalls.add(
+      'rename:${accountProfileId.value}:${groupId.value}:${subtitle.value}',
+    );
+    return gallerySnapshotToReturn!;
+  }
+
+  @override
+  Future<TenantAdminAccountProfileGallerySnapshot> deleteGalleryGroup({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+  }) async {
+    galleryMutationCalls.add(
+      'delete-group:${accountProfileId.value}:${groupId.value}',
+    );
+    return gallerySnapshotToReturn!;
+  }
+
+  @override
+  Future<TenantAdminAccountProfileGallerySnapshot> createGalleryItem({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminAccountProfileGalleryItemType type,
+    TenantAdminOptionalTextValue? title,
+    TenantAdminOptionalTextValue? description,
+    TenantAdminMediaUpload? image,
+    TenantAdminAccountProfilesRepoString? youtubeUrl,
+  }) async {
+    galleryMutationCalls.add(
+      'create-item:${accountProfileId.value}:${groupId.value}:${type.name}:${youtubeUrl?.value}',
+    );
+    return gallerySnapshotToReturn!;
+  }
+
+  @override
+  Future<TenantAdminAccountProfileGallerySnapshot> updateGalleryItem({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminAccountProfilesRepoString itemId,
+    TenantAdminAccountProfileGalleryItemType? type,
+    TenantAdminOptionalTextValue? title,
+    TenantAdminOptionalTextValue? description,
+    TenantAdminMediaUpload? image,
+    TenantAdminAccountProfilesRepoString? youtubeUrl,
+  }) async {
+    galleryMutationCalls.add(
+      'update-item:${accountProfileId.value}:${groupId.value}:${itemId.value}:${title?.nullableValue}:${description?.nullableValue}:${youtubeUrl?.value}',
+    );
+    if (updateGalleryItemError != null) throw updateGalleryItemError!;
+    return gallerySnapshotToReturn!;
+  }
+
+  @override
+  Future<TenantAdminAccountProfileGallerySnapshot> deleteGalleryItem({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminAccountProfilesRepoString itemId,
+  }) async {
+    galleryMutationCalls.add(
+      'delete-item:${accountProfileId.value}:${groupId.value}:${itemId.value}',
+    );
+    return gallerySnapshotToReturn!;
+  }
+
+  @override
+  Future<TenantAdminAccountProfileGallerySnapshot> reorderGalleryItems({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required List<TenantAdminAccountProfilesRepoString> itemIds,
+  }) async {
+    galleryMutationCalls.add(
+      'reorder-items:${accountProfileId.value}:${groupId.value}:${itemIds.map((item) => item.value).join(',')}',
+    );
+    if (reorderGalleryItemsError != null) throw reorderGalleryItemsError!;
     return gallerySnapshotToReturn!;
   }
 
@@ -2753,56 +2827,140 @@ void main() {
     },
   );
 
-  test('submitUpdateProfile never mutates gallery state', () async {
-    final profilesRepository = _FakeAccountProfilesRepository(
-      [
-        tenantAdminAccountProfileFromRaw(
-          id: 'profile-1',
-          accountId: 'acc-1',
-          profileType: 'venue',
-          displayName: 'Perfil',
+  test(
+    'submitUpdateProfile preserves independently loaded gallery state',
+    () async {
+      final loadedProfile = tenantAdminAccountProfileFromRaw(
+        id: 'profile-1',
+        accountId: 'acc-1',
+        profileType: 'venue',
+        displayName: 'Perfil',
+        galleryGroups: [_galleryGroup()],
+        galleryCapabilities: TenantAdminAccountProfileGalleryCapabilities(
+          maxGalleriesValue: TenantAdminCountValue(6),
+          maxItemsPerGalleryValue: TenantAdminCountValue(12),
         ),
-      ],
-      [
-        tenantAdminProfileTypeDefinitionFromRaw(
-          type: 'venue',
-          label: 'Venue',
-          allowedTaxonomies: [],
-          capabilities: TenantAdminProfileTypeCapabilities(
-            isFavoritable: TenantAdminFlagValue(true),
-            isPoiEnabled: TenantAdminFlagValue(true),
-            hasBio: TenantAdminFlagValue(false),
-            hasContent: TenantAdminFlagValue(false),
-            hasTaxonomies: TenantAdminFlagValue(false),
-            hasAvatar: TenantAdminFlagValue(false),
-            hasCover: TenantAdminFlagValue(false),
-            hasEvents: TenantAdminFlagValue(false),
-          ),
+      );
+      final profilesRepository =
+          _FakeAccountProfilesRepository(
+              [loadedProfile],
+              [
+                tenantAdminProfileTypeDefinitionFromRaw(
+                  type: 'venue',
+                  label: 'Venue',
+                  allowedTaxonomies: [],
+                  capabilities: TenantAdminProfileTypeCapabilities(
+                    isFavoritable: TenantAdminFlagValue(true),
+                    isPoiEnabled: TenantAdminFlagValue(true),
+                    hasBio: TenantAdminFlagValue(false),
+                    hasContent: TenantAdminFlagValue(false),
+                    hasTaxonomies: TenantAdminFlagValue(false),
+                    hasAvatar: TenantAdminFlagValue(false),
+                    hasCover: TenantAdminFlagValue(false),
+                    hasEvents: TenantAdminFlagValue(false),
+                  ),
+                ),
+              ],
+            )
+            ..updateAccountProfileOverride = tenantAdminAccountProfileFromRaw(
+              id: 'profile-1',
+              accountId: 'acc-1',
+              profileType: 'venue',
+              displayName: 'Perfil atualizado',
+            );
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+
+      await controller.loadEditProfile('profile-1');
+      await controller.submitUpdateProfile(
+        accountProfileId: 'profile-1',
+        profileType: 'venue',
+        displayName: 'Perfil atualizado',
+        contactMode: BellugaContactSourceMode.own,
+        location: null,
+        bio: null,
+        content: null,
+        taxonomyTerms: const TenantAdminTaxonomyTerms.empty(),
+        avatarUpload: null,
+        coverUpload: null,
+      );
+
+      expect(controller.editStateStreamValue.value.galleryGroups, hasLength(1));
+      expect(
+        controller.editStateStreamValue.value.galleryCapabilities.maxGalleries,
+        6,
+      );
+      expect(
+        controller
+            .editStateStreamValue
+            .value
+            .galleryCapabilities
+            .maxItemsPerGallery,
+        12,
+      );
+    },
+  );
+
+  test(
+    'submitAutoSaveImages preserves independently loaded gallery state',
+    () async {
+      final loadedProfile = tenantAdminAccountProfileFromRaw(
+        id: 'profile-1',
+        accountId: 'acc-1',
+        profileType: 'venue',
+        displayName: 'Perfil',
+        galleryGroups: [_galleryGroup()],
+        galleryCapabilities: TenantAdminAccountProfileGalleryCapabilities(
+          maxGalleriesValue: TenantAdminCountValue(7),
+          maxItemsPerGalleryValue: TenantAdminCountValue(13),
         ),
-      ],
-    );
-    final controller = TenantAdminAccountProfilesController(
-      profilesRepository: profilesRepository,
-      accountsRepository: _FakeAccountsRepository(),
-      taxonomiesRepository: _FakeTaxonomiesRepository(),
-      locationSelectionService: TenantAdminLocationSelectionService(),
-    );
+      );
+      final profilesRepository =
+          _FakeAccountProfilesRepository([loadedProfile], const [])
+            ..updateAccountProfileOverride = tenantAdminAccountProfileFromRaw(
+              id: 'profile-1',
+              accountId: 'acc-1',
+              profileType: 'venue',
+              displayName: 'Perfil',
+              avatarUrl: 'https://tenant.test/avatar.png',
+            );
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
 
-    await controller.submitUpdateProfile(
-      accountProfileId: 'profile-1',
-      profileType: 'venue',
-      displayName: 'Perfil atualizado',
-      contactMode: BellugaContactSourceMode.own,
-      location: null,
-      bio: null,
-      content: null,
-      taxonomyTerms: const TenantAdminTaxonomyTerms.empty(),
-      avatarUpload: null,
-      coverUpload: null,
-    );
+      await controller.loadEditProfile('profile-1');
+      await controller.submitAutoSaveImages(
+        accountProfileId: 'profile-1',
+        avatarUpload: null,
+        coverUpload: null,
+        avatarUrl: 'https://tenant.test/avatar.png',
+      );
 
-    expect(profilesRepository.lastGalleryGroups, isNull);
-  });
+      expect(
+        controller.editStateStreamValue.value.galleryGroups.single.groupId,
+        'group-1',
+      );
+      expect(
+        controller.editStateStreamValue.value.galleryCapabilities.maxGalleries,
+        7,
+      );
+      expect(
+        controller
+            .editStateStreamValue
+            .value
+            .galleryCapabilities
+            .maxItemsPerGallery,
+        13,
+      );
+    },
+  );
 
   test('gallery create applies the authoritative mutation snapshot', () async {
     final profilesRepository =
@@ -2839,21 +2997,97 @@ void main() {
     );
   });
 
+  test('gallery controller delegates independent CRUD mutations', () async {
+    final snapshot = TenantAdminAccountProfileGallerySnapshot(
+      groups: [_galleryGroup()],
+      capabilities: TenantAdminAccountProfileGalleryCapabilities(
+        maxGalleriesValue: TenantAdminCountValue(6),
+        maxItemsPerGalleryValue: TenantAdminCountValue(12),
+      ),
+    );
+    final profilesRepository = _FakeAccountProfilesRepository([
+      tenantAdminAccountProfileFromRaw(
+        id: 'profile-1',
+        accountId: 'acc-1',
+        profileType: 'venue',
+        displayName: 'Perfil',
+        galleryGroups: [_galleryGroup()],
+      ),
+    ], const [])..gallerySnapshotToReturn = snapshot;
+    final controller = TenantAdminAccountProfilesController(
+      profilesRepository: profilesRepository,
+      accountsRepository: _FakeAccountsRepository(),
+      taxonomiesRepository: _FakeTaxonomiesRepository(),
+      locationSelectionService: TenantAdminLocationSelectionService(),
+    );
+
+    await controller.loadEditProfile('profile-1');
+    await controller.renameEditGalleryGroup('group-1', 'Palco');
+    await controller.addEditGalleryYoutube(
+      groupId: 'group-1',
+      youtubeUrl: 'https://youtu.be/dQw4w9WgXcQ',
+    );
+    await controller.replaceEditGalleryYoutube(
+      groupId: 'group-1',
+      itemId: 'item-1',
+      youtubeUrl: 'https://youtube.com/shorts/69ePBThnsVg',
+    );
+    await controller.updateEditGalleryItemDescription(
+      groupId: 'group-1',
+      itemId: 'item-1',
+      description: 'Vista principal',
+    );
+    await controller.updateEditGalleryItemTitle(
+      groupId: 'group-1',
+      itemId: 'item-1',
+      title: 'Um minuto na praia',
+    );
+    await controller.removeEditGalleryItem(
+      groupId: 'group-1',
+      itemId: 'item-1',
+    );
+    await controller.removeEditGalleryGroup('group-1');
+
+    expect(profilesRepository.galleryMutationCalls, [
+      'rename:profile-1:group-1:Palco',
+      'create-item:profile-1:group-1:youtube:https://youtu.be/dQw4w9WgXcQ',
+      'update-item:profile-1:group-1:item-1:null:null:https://youtube.com/shorts/69ePBThnsVg',
+      'update-item:profile-1:group-1:item-1:null:Vista principal:null',
+      'update-item:profile-1:group-1:item-1:Um minuto na praia:null:null',
+      'delete-item:profile-1:group-1:item-1',
+      'delete-group:profile-1:group-1',
+    ]);
+    expect(controller.editStateStreamValue.value.galleryGroups, hasLength(1));
+  });
+
   test(
     'gallery reorder restores the prior row after a transport failure',
     () async {
-      final profilesRepository = _FakeAccountProfilesRepository([
-        tenantAdminAccountProfileFromRaw(
-          id: 'profile-1',
-          accountId: 'acc-1',
-          profileType: 'venue',
-          displayName: 'Perfil',
-          galleryGroups: [
-            _galleryGroup(),
-            _galleryGroup(groupId: 'group-2', subtitle: 'Palco', order: 1),
-          ],
-        ),
-      ], const [])..reorderGalleryGroupsError = StateError('offline');
+      final profilesRepository =
+          _FakeAccountProfilesRepository([
+              tenantAdminAccountProfileFromRaw(
+                id: 'profile-1',
+                accountId: 'acc-1',
+                profileType: 'venue',
+                displayName: 'Perfil',
+                galleryGroups: [
+                  _galleryGroup(),
+                  _galleryGroup(
+                    groupId: 'group-2',
+                    subtitle: 'Palco',
+                    order: 1,
+                  ),
+                ],
+              ),
+            ], const [])
+            ..reorderGalleryGroupsError = FormValidationFailure(
+              statusCode: 422,
+              message: 'A ordem mudou no servidor.',
+              fieldErrors: const {
+                'group_ids': ['A lista de grupos está desatualizada.'],
+                'title': ['Não existe campo de título neste reorder.'],
+              },
+            );
       final controller = TenantAdminAccountProfilesController(
         profilesRepository: profilesRepository,
         accountsRepository: _FakeAccountsRepository(),
@@ -2871,8 +3105,88 @@ void main() {
         ),
         ['group-1', 'group-2'],
       );
+      expect(controller.editGalleryFieldErrorsStreamValue.value, isEmpty);
+      expect(
+        controller.editGalleryOperationErrorStreamValue.value,
+        'A ordem mudou no servidor.',
+      );
+      expect(controller.editErrorMessageStreamValue.value, isNull);
     },
   );
+
+  test(
+    'capability-loss validation remains visible as an operation error',
+    () async {
+      final profilesRepository =
+          _FakeAccountProfilesRepository([
+              tenantAdminAccountProfileFromRaw(
+                id: 'profile-1',
+                accountId: 'acc-1',
+                profileType: 'venue',
+                displayName: 'Perfil',
+              ),
+            ], const [])
+            ..createGalleryGroupError = FormValidationFailure(
+              statusCode: 422,
+              message: 'Galerias não estão disponíveis para este perfil.',
+              fieldErrors: const {
+                'gallery_groups': ['A capability de galeria foi removida.'],
+              },
+            );
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+
+      await controller.loadEditProfile('profile-1');
+      await controller.addEditGalleryGroup('Ambiente');
+
+      expect(controller.editGalleryFieldErrorsStreamValue.value, isEmpty);
+      expect(
+        controller.editGalleryOperationErrorStreamValue.value,
+        'Galerias não estão disponíveis para este perfil.',
+      );
+      expect(controller.editErrorMessageStreamValue.value, isNull);
+    },
+  );
+
+  test('gallery item reorder restores the prior row after failure', () async {
+    final profilesRepository = _FakeAccountProfilesRepository([
+      tenantAdminAccountProfileFromRaw(
+        id: 'profile-1',
+        accountId: 'acc-1',
+        profileType: 'venue',
+        displayName: 'Perfil',
+        galleryGroups: [_galleryGroup(includeSecondItem: true)],
+      ),
+    ], const [])..reorderGalleryItemsError = StateError('offline');
+    final controller = TenantAdminAccountProfilesController(
+      profilesRepository: profilesRepository,
+      accountsRepository: _FakeAccountsRepository(),
+      taxonomiesRepository: _FakeTaxonomiesRepository(),
+      locationSelectionService: TenantAdminLocationSelectionService(),
+    );
+
+    await controller.loadEditProfile('profile-1');
+    await controller.moveEditGalleryItem(
+      groupId: 'group-1',
+      itemId: 'item-1',
+      delta: 1,
+    );
+
+    expect(
+      profilesRepository.galleryMutationCalls.single,
+      'reorder-items:profile-1:group-1:item-2,item-1',
+    );
+    expect(
+      controller.editStateStreamValue.value.galleryGroups.single.items.map(
+        (item) => item.itemId,
+      ),
+      ['item-1', 'item-2'],
+    );
+  });
 
   test(
     'capacity rejection refreshes once and never replays the mutation',
@@ -2914,6 +3228,96 @@ void main() {
         controller.editGalleryFieldErrorsStreamValue.value,
         contains('gallery_capabilities.max_galleries'),
       );
+      expect(controller.editGalleryOperationErrorStreamValue.value, isNull);
+    },
+  );
+
+  test('gallery item validation is scoped to the addressed control', () async {
+    final profilesRepository =
+        _FakeAccountProfilesRepository([
+            tenantAdminAccountProfileFromRaw(
+              id: 'profile-1',
+              accountId: 'acc-1',
+              profileType: 'venue',
+              displayName: 'Perfil',
+              galleryGroups: [_galleryGroup()],
+            ),
+          ], const [])
+          ..updateGalleryItemError = FormValidationFailure(
+            statusCode: 422,
+            message: 'Título inválido.',
+            fieldErrors: const {
+              'title': ['Use no máximo 255 caracteres.'],
+            },
+          );
+    final controller = TenantAdminAccountProfilesController(
+      profilesRepository: profilesRepository,
+      accountsRepository: _FakeAccountsRepository(),
+      taxonomiesRepository: _FakeTaxonomiesRepository(),
+      locationSelectionService: TenantAdminLocationSelectionService(),
+    );
+
+    await controller.loadEditProfile('profile-1');
+    await controller.updateEditGalleryItemTitle(
+      groupId: 'group-1',
+      itemId: 'item-1',
+      title: 'Título corrigível',
+    );
+
+    expect(controller.editGalleryFieldErrorsStreamValue.value, {
+      'group.group-1.item.item-1.title': 'Use no máximo 255 caracteres.',
+    });
+    expect(controller.editGalleryOperationErrorStreamValue.value, isNull);
+    expect(controller.editErrorMessageStreamValue.value, isNull);
+  });
+
+  test(
+    'gallery operation failure stays section-owned until the next mutation',
+    () async {
+      final profile = tenantAdminAccountProfileFromRaw(
+        id: 'profile-1',
+        accountId: 'acc-1',
+        profileType: 'venue',
+        displayName: 'Perfil',
+        galleryGroups: [_galleryGroup()],
+      );
+      final profilesRepository = _FakeAccountProfilesRepository([
+        profile,
+      ], const [])..updateGalleryItemError = Exception('Falha de rede');
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+
+      await controller.loadEditProfile('profile-1');
+      await controller.updateEditGalleryItemTitle(
+        groupId: 'group-1',
+        itemId: 'item-1',
+        title: 'Título corrigível',
+      );
+
+      expect(
+        controller.editGalleryOperationErrorStreamValue.value,
+        contains('Falha de rede'),
+      );
+      expect(controller.editGalleryFieldErrorsStreamValue.value, isEmpty);
+      expect(controller.editErrorMessageStreamValue.value, isNull);
+
+      profilesRepository
+        ..updateGalleryItemError = null
+        ..gallerySnapshotToReturn = TenantAdminAccountProfileGallerySnapshot(
+          groups: profile.galleryGroups,
+          capabilities: profile.galleryCapabilities,
+        );
+      await controller.updateEditGalleryItemTitle(
+        groupId: 'group-1',
+        itemId: 'item-1',
+        title: 'Título confirmado',
+      );
+
+      expect(controller.editGalleryOperationErrorStreamValue.value, isNull);
     },
   );
 
@@ -2968,8 +3372,6 @@ void main() {
         avatarUpload: null,
         coverUpload: null,
       );
-
-      expect(profilesRepository.lastGalleryGroups, isNull);
     },
   );
 
@@ -3024,8 +3426,6 @@ void main() {
       avatarUpload: null,
       coverUpload: null,
     );
-
-    expect(profilesRepository.lastGalleryGroups, isNull);
   });
 
   test(
@@ -3775,6 +4175,81 @@ void main() {
     },
   );
 
+  test(
+    'submitTaxonomySelectionUpdate preserves independently loaded gallery state',
+    () async {
+      final loadedProfile = tenantAdminAccountProfileFromRaw(
+        id: 'profile-1',
+        accountId: 'acc-1',
+        profileType: 'artist',
+        displayName: 'Perfil',
+        galleryGroups: [_galleryGroup()],
+        galleryCapabilities: TenantAdminAccountProfileGalleryCapabilities(
+          maxGalleriesValue: TenantAdminCountValue(8),
+          maxItemsPerGalleryValue: TenantAdminCountValue(14),
+        ),
+      );
+      final profilesRepository =
+          _FakeAccountProfilesRepository(
+              [loadedProfile],
+              [
+                tenantAdminProfileTypeDefinitionFromRaw(
+                  type: 'artist',
+                  label: 'Artist',
+                  allowedTaxonomies: ['music-style'],
+                  capabilities: TenantAdminProfileTypeCapabilities(
+                    isFavoritable: TenantAdminFlagValue(true),
+                    isPoiEnabled: TenantAdminFlagValue(false),
+                    hasBio: TenantAdminFlagValue(true),
+                    hasContent: TenantAdminFlagValue(true),
+                    hasTaxonomies: TenantAdminFlagValue(true),
+                    hasAvatar: TenantAdminFlagValue(true),
+                    hasCover: TenantAdminFlagValue(true),
+                    hasEvents: TenantAdminFlagValue(true),
+                  ),
+                ),
+              ],
+            )
+            ..updateAccountProfileOverride = tenantAdminAccountProfileFromRaw(
+              id: 'profile-1',
+              accountId: 'acc-1',
+              profileType: 'artist',
+              displayName: 'Perfil',
+            );
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+
+      await controller.loadEditProfile('profile-1');
+      final saved = await controller.submitTaxonomySelectionUpdate(
+        accountProfileId: 'profile-1',
+        profileType: 'artist',
+        taxonomyTerms: const TenantAdminTaxonomyTerms.empty(),
+      );
+
+      expect(saved, isTrue);
+      expect(
+        controller.editStateStreamValue.value.galleryGroups.single.groupId,
+        'group-1',
+      );
+      expect(
+        controller.editStateStreamValue.value.galleryCapabilities.maxGalleries,
+        8,
+      );
+      expect(
+        controller
+            .editStateStreamValue
+            .value
+            .galleryCapabilities
+            .maxItemsPerGallery,
+        14,
+      );
+    },
+  );
+
   test('loadAccountForCreate stores resolved account slug in stream', () async {
     final profilesRepository = _FakeAccountProfilesRepository([], []);
     final accountsRepository = _FakeAccountsRepository();
@@ -3860,6 +4335,7 @@ TenantAdminAccountProfileGalleryGroup _galleryGroup({
   String groupId = 'group-1',
   String subtitle = 'Ambiente',
   int order = 0,
+  bool includeSecondItem = false,
 }) {
   return TenantAdminAccountProfileGalleryGroup(
     groupIdValue: TenantAdminNestedProfileGroupTextValue(groupId),
@@ -3880,6 +4356,17 @@ TenantAdminAccountProfileGalleryGroup _galleryGroup({
         modalUrlValue: TenantAdminOptionalUrlValue()
           ..parse('https://tenant.test/gallery/modal.png'),
       ),
+      if (includeSecondItem)
+        TenantAdminAccountProfileGalleryItem(
+          itemIdValue: TenantAdminNestedProfileGroupTextValue('item-2'),
+          descriptionValue: TenantAdminOptionalTextValue(),
+          orderValue: TenantAdminNestedProfileGroupOrderValue(1),
+          imageUrlValue: TenantAdminOptionalUrlValue()
+            ..parse('https://tenant.test/gallery/image-2.png'),
+          thumbUrlValue: TenantAdminOptionalUrlValue(),
+          cardUrlValue: TenantAdminOptionalUrlValue(),
+          modalUrlValue: TenantAdminOptionalUrlValue(),
+        ),
     ],
   );
 }
