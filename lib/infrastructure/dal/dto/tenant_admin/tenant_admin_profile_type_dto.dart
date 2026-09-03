@@ -25,6 +25,7 @@ class TenantAdminProfileTypeDTO {
     required this.hasGallery,
     required this.hasNestedProfileGroups,
     required this.hasContactChannels,
+    required this.hasExternalLinks,
   });
 
   final String type;
@@ -48,6 +49,7 @@ class TenantAdminProfileTypeDTO {
   final bool hasGallery;
   final bool hasNestedProfileGroups;
   final bool hasContactChannels;
+  final bool hasExternalLinks;
 
   factory TenantAdminProfileTypeDTO.fromJson(Map<String, dynamic> json) {
     final allowed = <String>[];
@@ -81,8 +83,8 @@ class TenantAdminProfileTypeDTO {
       pluralLabel: pluralLabel != null && pluralLabel.isNotEmpty
           ? pluralLabel
           : singularLabel != null && singularLabel.isNotEmpty
-              ? singularLabel
-              : json['label']?.toString() ?? '',
+          ? singularLabel
+          : json['label']?.toString() ?? '',
       allowedTaxonomies: allowed,
       visual: tenantAdminPoiVisualFromRaw(visualRaw),
       isQueryable: capabilityMap['is_queryable'] == true,
@@ -103,6 +105,7 @@ class TenantAdminProfileTypeDTO {
       hasNestedProfileGroups:
           capabilityMap['has_nested_profile_groups'] == true,
       hasContactChannels: capabilityMap['has_contact_channels'] == true,
+      hasExternalLinks: capabilityMap['has_external_links'] == true,
     );
   }
 
@@ -132,6 +135,7 @@ class TenantAdminProfileTypeDTO {
         hasGallery: TenantAdminFlagValue(hasGallery),
         hasNestedProfileGroups: TenantAdminFlagValue(hasNestedProfileGroups),
         hasContactChannels: TenantAdminFlagValue(hasContactChannels),
+        hasExternalLinks: TenantAdminFlagValue(hasExternalLinks),
       ),
     );
   }

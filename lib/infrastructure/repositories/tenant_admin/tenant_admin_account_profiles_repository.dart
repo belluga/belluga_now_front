@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/repositories/landlord_auth_repository_contrac
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
+import 'package:belluga_now/domain/partners/account_profile_external_link.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_item.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_snapshot.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate.dart';
@@ -319,6 +320,96 @@ class TenantAdminAccountProfilesRepository
       return dto.toDomain();
     } on DioException catch (error) {
       throw _wrapError(error, 'update account profile');
+    }
+  }
+
+  @override
+  Future<TenantAdminAccountProfile> createExternalLink({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required AccountProfileExternalLinkType type,
+    required AccountProfileExternalLinkUrlValue url,
+    AccountProfileExternalLinkLabelValue? label,
+  }) async {
+    final uri =
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}/external_links';
+    final correlation = TenantAdminRequestCorrelation.create();
+    try {
+      final response = await _dio.post(
+        uri,
+        data: {
+          'type': type.wireValue,
+          'url': url.value.toString(),
+          'label': ?label?.value,
+        },
+        options: Options(
+          headers: {..._buildHeaders(), ...correlation.headers()},
+        ),
+      );
+      return _responseDecoder
+          .decodeAccountProfileItem(response.data)
+          .toDomain();
+    } on DioException catch (error) {
+      if (error.response == null) {
+        throw const TenantAdminUnknownMutationFailure();
+      }
+      throw _wrapError(error, 'create external link');
+    }
+  }
+
+  @override
+  Future<TenantAdminAccountProfile> updateExternalLink({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString externalLinkId,
+    required AccountProfileExternalLinkUrlValue url,
+    AccountProfileExternalLinkLabelValue? label,
+  }) async {
+    final uri =
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}'
+        '/external_links/${externalLinkId.value}';
+    final correlation = TenantAdminRequestCorrelation.create();
+    try {
+      final response = await _dio.patch(
+        uri,
+        data: {'url': url.value.toString(), 'label': ?label?.value},
+        options: Options(
+          headers: {..._buildHeaders(), ...correlation.headers()},
+        ),
+      );
+      return _responseDecoder
+          .decodeAccountProfileItem(response.data)
+          .toDomain();
+    } on DioException catch (error) {
+      if (error.response == null) {
+        throw const TenantAdminUnknownMutationFailure();
+      }
+      throw _wrapError(error, 'update external link');
+    }
+  }
+
+  @override
+  Future<TenantAdminAccountProfile> deleteExternalLink({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString externalLinkId,
+  }) async {
+    final uri =
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}'
+        '/external_links/${externalLinkId.value}';
+    final correlation = TenantAdminRequestCorrelation.create();
+    try {
+      final response = await _dio.delete(
+        uri,
+        options: Options(
+          headers: {..._buildHeaders(), ...correlation.headers()},
+        ),
+      );
+      return _responseDecoder
+          .decodeAccountProfileItem(response.data)
+          .toDomain();
+    } on DioException catch (error) {
+      if (error.response == null) {
+        throw const TenantAdminUnknownMutationFailure();
+      }
+      throw _wrapError(error, 'delete external link');
     }
   }
 

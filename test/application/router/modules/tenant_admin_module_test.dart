@@ -5,19 +5,39 @@ import 'package:belluga_now/application/router/support/canonical_route_meta.dart
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('/admin shell route is landlord-guarded and classified as dashboard root',
-      () {
-    final module = TenantAdminModule();
-    final adminRoute =
-        module.routes.firstWhere((route) => route.path == '/admin');
+  test(
+    '/admin shell route is landlord-guarded and classified as dashboard root',
+    () {
+      final module = TenantAdminModule();
+      final adminRoute = module.routes.firstWhere(
+        (route) => route.path == '/admin',
+      );
+
+      expect(adminRoute.guards.map((guard) => guard.runtimeType).toList(), [
+        LandlordRouteGuard,
+      ]);
+      expect(
+        resolveCanonicalRouteFamilyFromMeta(adminRoute.meta),
+        CanonicalRouteFamily.tenantAdminDashboard,
+      );
+    },
+  );
+
+  test('account profile external link child routes keep their frozen paths', () {
+    final adminShell = TenantAdminModule().routes.firstWhere(
+      (route) => route.path == '/admin',
+    );
+    final paths = adminShell.children?.map((route) => route.path).toSet();
 
     expect(
-      adminRoute.guards.map((guard) => guard.runtimeType).toList(),
-      [LandlordRouteGuard],
+      paths,
+      contains('accounts/:accountSlug/profiles/:accountProfileId/links/add'),
     );
     expect(
-      resolveCanonicalRouteFamilyFromMeta(adminRoute.meta),
-      CanonicalRouteFamily.tenantAdminDashboard,
+      paths,
+      contains(
+        'accounts/:accountSlug/profiles/:accountProfileId/links/:externalLinkId/edit',
+      ),
     );
   });
 }

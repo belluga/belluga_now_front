@@ -34,5 +34,13 @@ void main() {
     expect(bootstrap, contains('build.mainJsPath'));
     expect(bootstrap, contains('main.dart.js'));
     expect(bootstrap, contains('encodeURIComponent(__bellugaBuildSha)'));
+    expect(
+      bootstrap,
+      contains('assets/releases/\${encodeURIComponent(__bellugaBuildSha)}/'),
+    );
+    expect(
+      bootstrap,
+      contains('initializeEngine(__bellugaEngineConfig)'),
+    );
   });
 }

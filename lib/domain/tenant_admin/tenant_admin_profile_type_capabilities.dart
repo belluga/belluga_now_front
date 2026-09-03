@@ -22,6 +22,7 @@ class TenantAdminProfileTypeCapabilities {
     TenantAdminFlagValue? hasGallery,
     TenantAdminFlagValue? hasNestedProfileGroups,
     TenantAdminFlagValue? hasContactChannels,
+    TenantAdminFlagValue? hasExternalLinks,
   }) {
     final normalized = TenantAdminProfileTypeCapabilityStateValue({
       if (isQueryable != null)
@@ -59,6 +60,9 @@ class TenantAdminProfileTypeCapabilities {
       if (hasContactChannels != null)
         TenantAdminProfileTypeCapabilityKey.hasContactChannels.apiValue:
             hasContactChannels.value,
+      if (hasExternalLinks != null)
+        TenantAdminProfileTypeCapabilityKey.hasExternalLinks.apiValue:
+            hasExternalLinks.value,
     }).normalized();
 
     return TenantAdminProfileTypeCapabilities._(
@@ -83,9 +87,7 @@ class TenantAdminProfileTypeCapabilities {
       isReferenceLocationEnabled: normalized.flagValue(
         TenantAdminProfileTypeCapabilityKey.isReferenceLocationEnabled,
       ),
-      hasBio: normalized.flagValue(
-        TenantAdminProfileTypeCapabilityKey.hasBio,
-      ),
+      hasBio: normalized.flagValue(TenantAdminProfileTypeCapabilityKey.hasBio),
       hasContent: normalized.flagValue(
         TenantAdminProfileTypeCapabilityKey.hasContent,
       ),
@@ -110,6 +112,9 @@ class TenantAdminProfileTypeCapabilities {
       hasContactChannels: normalized.flagValue(
         TenantAdminProfileTypeCapabilityKey.hasContactChannels,
       ),
+      hasExternalLinks: normalized.flagValue(
+        TenantAdminProfileTypeCapabilityKey.hasExternalLinks,
+      ),
     );
   }
 
@@ -130,22 +135,24 @@ class TenantAdminProfileTypeCapabilities {
     required TenantAdminFlagValue hasGallery,
     required TenantAdminFlagValue hasNestedProfileGroups,
     required TenantAdminFlagValue hasContactChannels,
-  })  : isQueryableValue = isQueryable,
-        isPubliclyNavigableValue = isPubliclyNavigable,
-        isPubliclyDiscoverableValue = isPubliclyDiscoverable,
-        isInviteableValue = isInviteable,
-        isFavoritableValue = isFavoritable,
-        isPoiEnabledValue = isPoiEnabled,
-        isReferenceLocationEnabledValue = isReferenceLocationEnabled,
-        hasBioValue = hasBio,
-        hasContentValue = hasContent,
-        hasTaxonomiesValue = hasTaxonomies,
-        hasAvatarValue = hasAvatar,
-        hasCoverValue = hasCover,
-        hasEventsValue = hasEvents,
-        hasGalleryValue = hasGallery,
-        hasNestedProfileGroupsValue = hasNestedProfileGroups,
-        hasContactChannelsValue = hasContactChannels;
+    required TenantAdminFlagValue hasExternalLinks,
+  }) : isQueryableValue = isQueryable,
+       isPubliclyNavigableValue = isPubliclyNavigable,
+       isPubliclyDiscoverableValue = isPubliclyDiscoverable,
+       isInviteableValue = isInviteable,
+       isFavoritableValue = isFavoritable,
+       isPoiEnabledValue = isPoiEnabled,
+       isReferenceLocationEnabledValue = isReferenceLocationEnabled,
+       hasBioValue = hasBio,
+       hasContentValue = hasContent,
+       hasTaxonomiesValue = hasTaxonomies,
+       hasAvatarValue = hasAvatar,
+       hasCoverValue = hasCover,
+       hasEventsValue = hasEvents,
+       hasGalleryValue = hasGallery,
+       hasNestedProfileGroupsValue = hasNestedProfileGroups,
+       hasContactChannelsValue = hasContactChannels,
+       hasExternalLinksValue = hasExternalLinks;
 
   final TenantAdminFlagValue isQueryableValue;
   final TenantAdminFlagValue isPubliclyNavigableValue;
@@ -163,6 +170,7 @@ class TenantAdminProfileTypeCapabilities {
   final TenantAdminFlagValue hasGalleryValue;
   final TenantAdminFlagValue hasNestedProfileGroupsValue;
   final TenantAdminFlagValue hasContactChannelsValue;
+  final TenantAdminFlagValue hasExternalLinksValue;
 
   bool get isQueryable => isQueryableValue.value;
   bool get isPubliclyNavigable => isPubliclyNavigableValue.value;
@@ -180,6 +188,7 @@ class TenantAdminProfileTypeCapabilities {
   bool get hasGallery => hasGalleryValue.value;
   bool get hasNestedProfileGroups => hasNestedProfileGroupsValue.value;
   bool get hasContactChannels => hasContactChannelsValue.value;
+  bool get hasExternalLinks => hasExternalLinksValue.value;
 
   TenantAdminProfileTypeCapabilityStateValue toCapabilityMap() {
     return TenantAdminProfileTypeCapabilityStateValue({
@@ -214,6 +223,8 @@ class TenantAdminProfileTypeCapabilities {
           hasNestedProfileGroupsValue.value,
       TenantAdminProfileTypeCapabilityKey.hasContactChannels.apiValue:
           hasContactChannelsValue.value,
+      TenantAdminProfileTypeCapabilityKey.hasExternalLinks.apiValue:
+          hasExternalLinksValue.value,
     }).normalized();
   }
 }

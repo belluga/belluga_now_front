@@ -456,6 +456,9 @@ class AppDataDTO {
             hasContactChannelsValue: ProfileTypeFlagValue(
               capabilitiesMap['has_contact_channels'] == true,
             ),
+            hasExternalLinksValue: ProfileTypeFlagValue(
+              capabilitiesMap['has_external_links'] == true,
+            ),
           ),
         ),
       );

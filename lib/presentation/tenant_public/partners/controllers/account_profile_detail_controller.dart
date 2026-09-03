@@ -8,6 +8,7 @@ import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/proximity_preferences/proximity_preference.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
+import 'package:belluga_now/domain/partners/account_profile_external_link.dart';
 import 'package:belluga_now/domain/partners/profile_type_capabilities.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
@@ -338,6 +339,15 @@ class AccountProfileDetailController implements Disposable {
 
   bool hasContactChannels(AccountProfileModel accountProfile) {
     return _capabilitiesFor(accountProfile)?.hasContactChannels ?? false;
+  }
+
+  List<AccountProfileExternalLink> availableExternalLinksFor(
+    AccountProfileModel accountProfile,
+  ) {
+    if (_capabilitiesFor(accountProfile)?.hasExternalLinks != true) {
+      return const <AccountProfileExternalLink>[];
+    }
+    return accountProfile.externalLinks;
   }
 
   List<BellugaContactChannel> availableContactChannelsFor(

@@ -16,29 +16,32 @@ enum TenantAdminProfileTypeCapabilityKey {
   hasEvents,
   hasGallery,
   hasNestedProfileGroups,
-  hasContactChannels;
+  hasContactChannels,
+  hasExternalLinks;
 
   TenantAdminProfileTypeCapabilityKeyPrimString get apiValue => switch (this) {
-        TenantAdminProfileTypeCapabilityKey.isQueryable => 'is_queryable',
-        TenantAdminProfileTypeCapabilityKey.isPubliclyNavigable =>
-          'is_publicly_navigable',
-        TenantAdminProfileTypeCapabilityKey.isPubliclyDiscoverable =>
-          'is_publicly_discoverable',
-        TenantAdminProfileTypeCapabilityKey.isFavoritable => 'is_favoritable',
-        TenantAdminProfileTypeCapabilityKey.isInviteable => 'is_inviteable',
-        TenantAdminProfileTypeCapabilityKey.isPoiEnabled => 'is_poi_enabled',
-        TenantAdminProfileTypeCapabilityKey.isReferenceLocationEnabled =>
-          'is_reference_location_enabled',
-        TenantAdminProfileTypeCapabilityKey.hasBio => 'has_bio',
-        TenantAdminProfileTypeCapabilityKey.hasContent => 'has_content',
-        TenantAdminProfileTypeCapabilityKey.hasTaxonomies => 'has_taxonomies',
-        TenantAdminProfileTypeCapabilityKey.hasAvatar => 'has_avatar',
-        TenantAdminProfileTypeCapabilityKey.hasCover => 'has_cover',
-        TenantAdminProfileTypeCapabilityKey.hasEvents => 'has_events',
-        TenantAdminProfileTypeCapabilityKey.hasGallery => 'has_gallery',
-        TenantAdminProfileTypeCapabilityKey.hasNestedProfileGroups =>
-          'has_nested_profile_groups',
-        TenantAdminProfileTypeCapabilityKey.hasContactChannels =>
-          'has_contact_channels',
-      };
+    TenantAdminProfileTypeCapabilityKey.isQueryable => 'is_queryable',
+    TenantAdminProfileTypeCapabilityKey.isPubliclyNavigable =>
+      'is_publicly_navigable',
+    TenantAdminProfileTypeCapabilityKey.isPubliclyDiscoverable =>
+      'is_publicly_discoverable',
+    TenantAdminProfileTypeCapabilityKey.isFavoritable => 'is_favoritable',
+    TenantAdminProfileTypeCapabilityKey.isInviteable => 'is_inviteable',
+    TenantAdminProfileTypeCapabilityKey.isPoiEnabled => 'is_poi_enabled',
+    TenantAdminProfileTypeCapabilityKey.isReferenceLocationEnabled =>
+      'is_reference_location_enabled',
+    TenantAdminProfileTypeCapabilityKey.hasBio => 'has_bio',
+    TenantAdminProfileTypeCapabilityKey.hasContent => 'has_content',
+    TenantAdminProfileTypeCapabilityKey.hasTaxonomies => 'has_taxonomies',
+    TenantAdminProfileTypeCapabilityKey.hasAvatar => 'has_avatar',
+    TenantAdminProfileTypeCapabilityKey.hasCover => 'has_cover',
+    TenantAdminProfileTypeCapabilityKey.hasEvents => 'has_events',
+    TenantAdminProfileTypeCapabilityKey.hasGallery => 'has_gallery',
+    TenantAdminProfileTypeCapabilityKey.hasNestedProfileGroups =>
+      'has_nested_profile_groups',
+    TenantAdminProfileTypeCapabilityKey.hasContactChannels =>
+      'has_contact_channels',
+    TenantAdminProfileTypeCapabilityKey.hasExternalLinks =>
+      'has_external_links',
+  };
 }

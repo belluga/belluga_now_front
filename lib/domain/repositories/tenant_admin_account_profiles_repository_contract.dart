@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/domain/repositories/value_objects/tenant_admin_account_profiles_repository_contract_values.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
+import 'package:belluga_now/domain/partners/account_profile_external_link.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_item.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_snapshot.dart';
@@ -126,6 +127,25 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     BellugaContactBubbleSelectionMutation bubbleSelection =
         const BellugaContactBubbleSelectionMutation.omit(),
   });
+
+  Future<TenantAdminAccountProfile> createExternalLink({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required AccountProfileExternalLinkType type,
+    required AccountProfileExternalLinkUrlValue url,
+    AccountProfileExternalLinkLabelValue? label,
+  }) => throw UnimplementedError();
+
+  Future<TenantAdminAccountProfile> updateExternalLink({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString externalLinkId,
+    required AccountProfileExternalLinkUrlValue url,
+    AccountProfileExternalLinkLabelValue? label,
+  }) => throw UnimplementedError();
+
+  Future<TenantAdminAccountProfile> deleteExternalLink({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString externalLinkId,
+  }) => throw UnimplementedError();
 
   Future<TenantAdminAccountProfileGallerySnapshot> createGalleryGroup({
     required TenantAdminAccountProfilesRepoString accountProfileId,

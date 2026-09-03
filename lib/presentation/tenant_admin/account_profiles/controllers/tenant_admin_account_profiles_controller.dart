@@ -1,5 +1,6 @@
 export 'tenant_admin_account_profile_create_draft.dart';
 export 'tenant_admin_account_profile_edit_draft.dart';
+export 'tenant_admin_account_profile_external_link_draft.dart';
 
 import 'dart:async';
 import 'dart:typed_data';
@@ -13,6 +14,7 @@ import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_re
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_name_value.dart';
+import 'package:belluga_now/domain/partners/account_profile_external_link.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
@@ -35,6 +37,7 @@ import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.d
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profile_create_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profile_candidate_picker_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profile_edit_draft.dart';
+import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profile_external_link_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profile_gallery_group_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_account_profile_gallery_operations.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
@@ -222,6 +225,352 @@ class TenantAdminAccountProfilesController implements Disposable {
   final TextEditingController contentController = TextEditingController();
   final TextEditingController latitudeController = TextEditingController();
   final TextEditingController longitudeController = TextEditingController();
+  TenantAdminAccountProfileExternalLinkDraft? _externalLinkDraft;
+  int _externalLinkRouteGeneration = 0;
+
+  TenantAdminAccountProfileExternalLinkDraft beginExternalLinkDraft({
+    required String accountProfileId,
+    AccountProfileExternalLink? existingLink,
+  }) {
+    final previous = _externalLinkDraft;
+    _externalLinkRouteGeneration += 1;
+    final configuredTypes =
+        accountProfileStreamValue.value?.externalLinks
+            .map((link) => link.type)
+            .toSet() ??
+        const <AccountProfileExternalLinkType>{};
+    AccountProfileExternalLinkType? initialType = existingLink?.type;
+    if (initialType == null) {
+      for (final type in AccountProfileExternalLinkType.values) {
+        if (!configuredTypes.contains(type)) {
+          initialType = type;
+          break;
+        }
+      }
+    }
+    if (existingLink == null && initialType == null) {
+      throw StateError(
+        'No external-link type remains available for this account profile.',
+      );
+    }
+    final draft = TenantAdminAccountProfileExternalLinkDraft(
+      accountProfileId: accountProfileId.trim(),
+      routeGeneration: _externalLinkRouteGeneration,
+      existingLink: existingLink,
+      initialType: initialType,
+    );
+    _externalLinkDraft = draft;
+    previous?.dispose();
+    return draft;
+  }
+
+  void adoptExternalLinkRouteProfile(TenantAdminAccountProfile profile) {
+    if (_isDisposed || profile.externalLinksLimit == null) return;
+    _applyExternalLinkProfileSnapshot(profile);
+  }
+
+  void endExternalLinkDraft(TenantAdminAccountProfileExternalLinkDraft draft) {
+    if (identical(_externalLinkDraft, draft)) {
+      _externalLinkDraft = null;
+      _externalLinkRouteGeneration += 1;
+    }
+    draft.dispose();
+  }
+
+  bool _isCurrentExternalLinkDraft(
+    TenantAdminAccountProfileExternalLinkDraft draft,
+  ) =>
+      !_isDisposed &&
+      identical(_externalLinkDraft, draft) &&
+      draft.accountProfileId == accountProfileStreamValue.value?.id &&
+      draft.routeGeneration == _externalLinkRouteGeneration;
+
+  void selectExternalLinkType(
+    TenantAdminAccountProfileExternalLinkDraft draft,
+    AccountProfileExternalLinkType type,
+  ) {
+    if (!_isCurrentExternalLinkDraft(draft) || draft.isEditing) return;
+    draft.selectType(type);
+  }
+
+  String? validateExternalLinkUrl(
+    TenantAdminAccountProfileExternalLinkDraft draft,
+    String? value,
+  ) {
+    try {
+      _parseExternalLinkMutation(
+        id: draft.externalLinkId ?? 'new-link',
+        type: draft.selectedTypeStreamValue.value,
+        url: value ?? '',
+        label:
+            draft.selectedTypeStreamValue.value ==
+                AccountProfileExternalLinkType.website
+            ? draft.labelController.text
+            : null,
+      );
+      return null;
+    } on AccountProfileExternalLinkValidationException catch (error) {
+      return error.field == AccountProfileExternalLinkValidationField.url
+          ? error.message
+          : null;
+    } catch (_) {
+      return 'O link deve ser uma URL HTTPS válida, sem credenciais.';
+    }
+  }
+
+  String? validateExternalLinkLabel(
+    TenantAdminAccountProfileExternalLinkDraft draft,
+    String? value,
+  ) {
+    if (draft.selectedTypeStreamValue.value !=
+        AccountProfileExternalLinkType.website) {
+      return null;
+    }
+    final normalized = value?.trim() ?? '';
+    if (normalized.isEmpty) return 'Informe o nome do site.';
+    if (normalized.length > 255) return 'Use no máximo 255 caracteres.';
+    return null;
+  }
+
+  Future<TenantAdminExternalLinkMutationOutcome> saveExternalLinkDraft(
+    TenantAdminAccountProfileExternalLinkDraft draft,
+  ) async {
+    if (!_isCurrentExternalLinkDraft(draft) ||
+        draft.busyStreamValue.value ||
+        draft.requiresReloadStreamValue.value) {
+      return TenantAdminExternalLinkMutationOutcome.ignored;
+    }
+    if (draft.formKey.currentState case final formState?) {
+      if (!formState.validate()) {
+        return TenantAdminExternalLinkMutationOutcome.failed;
+      }
+    }
+
+    final parsed = _parseExternalLinkMutation(
+      id: draft.externalLinkId ?? 'new-link',
+      type: draft.selectedTypeStreamValue.value,
+      url: draft.urlController.text,
+      label:
+          draft.selectedTypeStreamValue.value ==
+              AccountProfileExternalLinkType.website
+          ? draft.labelController.text
+          : null,
+    );
+    draft.setBusy(true);
+    draft.setError(null);
+    try {
+      final profileId = tenantAdminAccountProfilesRepoString(
+        draft.accountProfileId,
+        defaultValue: '',
+        isRequired: true,
+      );
+      final updated = draft.isEditing
+          ? await _profilesRepository.updateExternalLink(
+              accountProfileId: profileId,
+              externalLinkId: tenantAdminAccountProfilesRepoString(
+                draft.externalLinkId!,
+                defaultValue: '',
+                isRequired: true,
+              ),
+              url: parsed.urlValue,
+              label: parsed.type == AccountProfileExternalLinkType.website
+                  ? parsed.labelValue
+                  : null,
+            )
+          : await _profilesRepository.createExternalLink(
+              accountProfileId: profileId,
+              type: parsed.type,
+              url: parsed.urlValue,
+              label: parsed.type == AccountProfileExternalLinkType.website
+                  ? parsed.labelValue
+                  : null,
+            );
+      if (!_isCurrentExternalLinkDraft(draft)) {
+        return TenantAdminExternalLinkMutationOutcome.ignored;
+      }
+      _applyExternalLinkProfileSnapshot(updated, cacheForParentRoute: true);
+      return TenantAdminExternalLinkMutationOutcome.saved;
+    } on FormValidationFailure catch (error) {
+      if (!_isCurrentExternalLinkDraft(draft)) {
+        return TenantAdminExternalLinkMutationOutcome.ignored;
+      }
+      if (error.errorCode ==
+          'account_profile_external_links_capability_disabled') {
+        await _refreshAfterExternalLinksCapabilityDisabled(draft);
+        _invalidateExternalLinkDraft(draft);
+        return TenantAdminExternalLinkMutationOutcome.capabilityDisabled;
+      }
+      final messages = error.fieldErrors.values
+          .expand((fieldMessages) => fieldMessages)
+          .toList(growable: false);
+      draft.setError(messages.isEmpty ? error.message : messages.first);
+      return TenantAdminExternalLinkMutationOutcome.failed;
+    } on TenantAdminUnknownMutationFailure {
+      if (_isCurrentExternalLinkDraft(draft)) {
+        draft.setRequiresReload(true);
+        draft.setError(
+          'Não foi possível confirmar a alteração. Recarregue antes de tentar novamente.',
+        );
+      }
+      return TenantAdminExternalLinkMutationOutcome.failed;
+    } catch (_) {
+      if (_isCurrentExternalLinkDraft(draft)) {
+        draft.setError('Não foi possível salvar o link externo.');
+      }
+      return TenantAdminExternalLinkMutationOutcome.failed;
+    } finally {
+      if (_isCurrentExternalLinkDraft(draft)) {
+        draft.setBusy(false);
+      }
+    }
+  }
+
+  Future<TenantAdminExternalLinkMutationOutcome> deleteExternalLinkDraft(
+    TenantAdminAccountProfileExternalLinkDraft draft,
+  ) async {
+    if (!_isCurrentExternalLinkDraft(draft) ||
+        !draft.isEditing ||
+        draft.busyStreamValue.value ||
+        draft.requiresReloadStreamValue.value) {
+      return TenantAdminExternalLinkMutationOutcome.ignored;
+    }
+    draft.setBusy(true);
+    draft.setError(null);
+    try {
+      final updated = await _profilesRepository.deleteExternalLink(
+        accountProfileId: tenantAdminAccountProfilesRepoString(
+          draft.accountProfileId,
+          defaultValue: '',
+          isRequired: true,
+        ),
+        externalLinkId: tenantAdminAccountProfilesRepoString(
+          draft.externalLinkId!,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
+      if (!_isCurrentExternalLinkDraft(draft)) {
+        return TenantAdminExternalLinkMutationOutcome.ignored;
+      }
+      _applyExternalLinkProfileSnapshot(updated, cacheForParentRoute: true);
+      return TenantAdminExternalLinkMutationOutcome.deleted;
+    } on FormValidationFailure catch (error) {
+      if (!_isCurrentExternalLinkDraft(draft)) {
+        return TenantAdminExternalLinkMutationOutcome.ignored;
+      }
+      if (error.errorCode ==
+          'account_profile_external_links_capability_disabled') {
+        await _refreshAfterExternalLinksCapabilityDisabled(draft);
+        _invalidateExternalLinkDraft(draft);
+        return TenantAdminExternalLinkMutationOutcome.capabilityDisabled;
+      }
+      draft.setError(error.message);
+      return TenantAdminExternalLinkMutationOutcome.failed;
+    } on TenantAdminUnknownMutationFailure {
+      if (_isCurrentExternalLinkDraft(draft)) {
+        draft.setRequiresReload(true);
+        draft.setError(
+          'Não foi possível confirmar a remoção. Recarregue antes de tentar novamente.',
+        );
+      }
+      return TenantAdminExternalLinkMutationOutcome.failed;
+    } catch (_) {
+      if (_isCurrentExternalLinkDraft(draft)) {
+        draft.setError('Não foi possível remover o link externo.');
+      }
+      return TenantAdminExternalLinkMutationOutcome.failed;
+    } finally {
+      if (_isCurrentExternalLinkDraft(draft)) {
+        draft.setBusy(false);
+      }
+    }
+  }
+
+  Future<bool> reloadExternalLinkBaseline(
+    TenantAdminAccountProfileExternalLinkDraft draft,
+  ) async {
+    if (!_isCurrentExternalLinkDraft(draft) || draft.busyStreamValue.value) {
+      return false;
+    }
+    draft.setBusy(true);
+    try {
+      await loadProfileTypes();
+      final profile = await fetchProfile(draft.accountProfileId);
+      if (!_isCurrentExternalLinkDraft(draft)) return false;
+      _applyExternalLinkProfileSnapshot(profile);
+      if (profile.externalLinksLimit == null) return false;
+      draft.setRequiresReload(false);
+      draft.setError(null);
+      return true;
+    } catch (_) {
+      if (_isCurrentExternalLinkDraft(draft)) {
+        draft.setError('Não foi possível recarregar o perfil.');
+      }
+      return false;
+    } finally {
+      if (_isCurrentExternalLinkDraft(draft)) {
+        draft.setBusy(false);
+      }
+    }
+  }
+
+  TenantAdminAccountProfile? takeExternalLinkMutationParentProfile(
+    String accountProfileId,
+  ) {
+    final cached = _externalLinkMutationParentProfile;
+    _externalLinkMutationParentProfile = null;
+    if (cached == null || cached.id.trim() != accountProfileId.trim()) {
+      return null;
+    }
+    return cached;
+  }
+
+  void _applyExternalLinkProfileSnapshot(
+    TenantAdminAccountProfile profile, {
+    bool cacheForParentRoute = false,
+  }) {
+    _loadedEditProfileSnapshot = profile;
+    accountProfileStreamValue.addValue(profile);
+    if (cacheForParentRoute) {
+      _externalLinkMutationParentProfile = profile;
+    }
+    // External-link mutations return an authoritative Profile snapshot, but
+    // the parent editor may contain unrelated unsaved contact/gallery edits.
+    // Refreshing the whole edit draft here would silently discard those edits;
+    // the external-link collection is projected from accountProfileStreamValue
+    // and needs no second copy in TenantAdminAccountProfileEditDraft.
+  }
+
+  AccountProfileExternalLink _parseExternalLinkMutation({
+    required String id,
+    required AccountProfileExternalLinkType type,
+    required String url,
+    String? label,
+  }) => AccountProfileExternalLinkRegistry.validateMutation(
+    id: AccountProfileExternalLinkIdValue(id),
+    type: type,
+    url: AccountProfileExternalLinkUrlValue(url),
+    label: label == null ? null : AccountProfileExternalLinkLabelValue(label),
+  );
+
+  void _invalidateExternalLinkDraft(
+    TenantAdminAccountProfileExternalLinkDraft draft,
+  ) {
+    if (identical(_externalLinkDraft, draft)) {
+      _externalLinkDraft = null;
+      _externalLinkRouteGeneration += 1;
+    }
+  }
+
+  Future<void> _refreshAfterExternalLinksCapabilityDisabled(
+    TenantAdminAccountProfileExternalLinkDraft draft,
+  ) async {
+    await loadProfileTypes();
+    final profile = await fetchProfile(draft.accountProfileId);
+    if (_isCurrentExternalLinkDraft(draft)) {
+      _applyExternalLinkProfileSnapshot(profile);
+    }
+  }
 
   bool _isDisposed = false;
   StreamSubscription<String?>? _tenantScopeSubscription;
@@ -421,6 +770,7 @@ class TenantAdminAccountProfilesController implements Disposable {
   StreamSubscription<TenantAdminAccount?>? _accountWatchSubscription;
   TenantAdminLoadedAccountWatch? _accountWatch;
   TenantAdminAccountProfile? _loadedEditProfileSnapshot;
+  TenantAdminAccountProfile? _externalLinkMutationParentProfile;
   String? _watchedAccountId;
   String? _watchedAccountSlug;
   bool _removeAvatarOnSubmit = false;
@@ -2039,6 +2389,8 @@ class TenantAdminAccountProfilesController implements Disposable {
       effectiveContactChannels: profile.effectiveContactChannelsValue,
       contactSourceProfile: profile.contactSourceProfile,
       effectiveContactSourceProfile: profile.effectiveContactSourceProfile,
+      externalLinks: profile.externalLinkValues,
+      externalLinksLimitValue: profile.externalLinksLimitValue,
     );
   }
 
@@ -2102,6 +2454,10 @@ class TenantAdminAccountProfilesController implements Disposable {
       return;
     }
     _loadedEditProfileSnapshot = null;
+    final externalLinkDraft = _externalLinkDraft;
+    if (externalLinkDraft != null) {
+      endExternalLinkDraft(externalLinkDraft);
+    }
     _resetNestedProfileCandidates();
     _updateEditState(TenantAdminAccountProfileEditDraft.initial());
     editLoadingStreamValue.addValue(false);
@@ -3746,6 +4102,9 @@ class TenantAdminAccountProfilesController implements Disposable {
 
   void dispose() {
     _isDisposed = true;
+    _externalLinkDraft?.dispose();
+    _externalLinkDraft = null;
+    _externalLinkMutationParentProfile = null;
     unawaited(_tenantScopeSubscription?.cancel());
     _nestedProfileSearchDebounce?.cancel();
     _contactSourceSearchDebounce?.cancel();

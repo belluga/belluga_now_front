@@ -616,6 +616,56 @@ void main() {
   );
 
   test(
+    'fetchAccountProfileBySlug decodes valid external links and omits malformed or ambiguous items',
+    () async {
+      final adapter = _RecordingAdapter(
+        response: {
+          'data': {
+            'id': _generateMongoId(),
+            'display_name': 'Profile Links',
+            'slug': 'profile-links',
+            'profile_type': 'custom',
+            'taxonomy_terms': const [],
+            'external_links': const [
+              {
+                'id': 'instagram-link',
+                'type': 'instagram',
+                'url': 'https://instagram.com/profilelinks',
+              },
+              {
+                'id': 'unsafe-facebook',
+                'type': 'facebook',
+                'url': 'http://facebook.com/profilelinks',
+              },
+              {
+                'id': 'youtube-one',
+                'type': 'youtube',
+                'url': 'https://youtube.com/@profilelinks',
+              },
+              {
+                'id': 'youtube-two',
+                'type': 'youtube',
+                'url': 'https://youtube.com/@profilelinks2',
+              },
+            ],
+          },
+        },
+      );
+      final backend = LaravelAccountProfilesBackend(
+        dio: Dio()..httpClientAdapter = adapter,
+        locationOriginService: LocationOriginService(
+          appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+        ),
+      );
+
+      final profile = await backend.fetchAccountProfileBySlug('profile-links');
+
+      expect(profile, isNotNull);
+      expect(profile?.externalLinks.map((link) => link.id), ['instagram-link']);
+    },
+  );
+
+  test(
     'fetchAccountProfileBySlug falls back to humanized slug when persisted display_name is invalid',
     () async {
       final validId = _generateMongoId();

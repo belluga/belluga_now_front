@@ -84,6 +84,7 @@ class TenantAdminProfileTypesController implements Disposable {
         hasGallery: TenantAdminFlagValue(false),
         hasNestedProfileGroups: TenantAdminFlagValue(false),
         hasContactChannels: TenantAdminFlagValue(false),
+        hasExternalLinks: TenantAdminFlagValue(false),
       );
   final StreamValue<String?> successMessageStreamValue = StreamValue<String?>();
   final StreamValue<String?> actionErrorMessageStreamValue =
@@ -243,6 +244,7 @@ class TenantAdminProfileTypesController implements Disposable {
         hasContactChannels: TenantAdminFlagValue(
           capabilities.hasContactChannels,
         ),
+        hasExternalLinks: TenantAdminFlagValue(capabilities.hasExternalLinks),
       ),
     );
     _initialAllowedTaxonomies = List<String>.unmodifiable(
@@ -449,6 +451,7 @@ class TenantAdminProfileTypesController implements Disposable {
     bool? hasGallery,
     bool? hasNestedProfileGroups,
     bool? hasContactChannels,
+    bool? hasExternalLinks,
   }) {
     final current = currentCapabilities;
     final next = Map<String, dynamic>.from(current.toCapabilityMap().toJson());
@@ -518,6 +521,10 @@ class TenantAdminProfileTypesController implements Disposable {
       next[TenantAdminProfileTypeCapabilityKey.hasContactChannels.apiValue] =
           hasContactChannels;
     }
+    if (hasExternalLinks != null) {
+      next[TenantAdminProfileTypeCapabilityKey.hasExternalLinks.apiValue] =
+          hasExternalLinks;
+    }
 
     final normalized = TenantAdminProfileTypeCapabilityStateValue(
       next,
@@ -571,6 +578,9 @@ class TenantAdminProfileTypesController implements Disposable {
         ),
         hasContactChannels: normalized.flagValue(
           TenantAdminProfileTypeCapabilityKey.hasContactChannels,
+        ),
+        hasExternalLinks: normalized.flagValue(
+          TenantAdminProfileTypeCapabilityKey.hasExternalLinks,
         ),
       ),
     );

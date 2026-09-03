@@ -2,6 +2,35 @@ import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_acc
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('decodes ordered external links and enabled collection limit', () {
+    final profile = TenantAdminAccountProfileDTO.fromJson({
+      'id': 'profile-1',
+      'account_id': 'account-1',
+      'profile_type': 'custom',
+      'display_name': 'Custom profile',
+      'external_links_limit': 3,
+      'external_links': [
+        {
+          'id': 'website',
+          'type': 'website',
+          'url': 'https://example.org',
+          'label': 'Official site',
+        },
+        {
+          'id': 'instagram',
+          'type': 'instagram',
+          'url': 'https://instagram.com/custom',
+        },
+      ],
+    }).toDomain();
+
+    expect(profile.externalLinksLimit, 3);
+    expect(profile.externalLinks.map((link) => link.id), [
+      'instagram',
+      'website',
+    ]);
+  });
+
   test('decodes empty groups, mixed items, and backend capabilities', () {
     final profile = TenantAdminAccountProfileDTO.fromJson({
       'id': 'profile-1',

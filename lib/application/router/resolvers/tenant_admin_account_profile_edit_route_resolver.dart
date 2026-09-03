@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
+import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:get_it/get_it.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 import 'package:meta/meta.dart';
@@ -9,10 +10,17 @@ class TenantAdminAccountProfileEditRouteResolver
   TenantAdminAccountProfileEditRouteResolver({
     @visibleForTesting
     TenantAdminAccountProfilesRepositoryContract? accountProfilesRepository,
-  }) : _accountProfilesRepository = accountProfilesRepository ??
-            GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>();
+    @visibleForTesting
+    TenantAdminAccountProfilesController? accountProfilesController,
+  }) : _accountProfilesRepository =
+           accountProfilesRepository ??
+           GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>(),
+       _accountProfilesController =
+           accountProfilesController ??
+           GetIt.I.get<TenantAdminAccountProfilesController>();
 
   final TenantAdminAccountProfilesRepositoryContract _accountProfilesRepository;
+  final TenantAdminAccountProfilesController _accountProfilesController;
 
   @override
   Future<TenantAdminAccountProfile> resolve(RouteResolverParams params) async {
@@ -31,6 +39,12 @@ class TenantAdminAccountProfileEditRouteResolver
         'accountProfileId',
         'Account profile id must be provided',
       );
+    }
+
+    final prefetched = _accountProfilesController
+        .takeExternalLinkMutationParentProfile(accountProfileId.trim());
+    if (prefetched != null) {
+      return prefetched;
     }
 
     return _accountProfilesRepository.fetchAccountProfile(

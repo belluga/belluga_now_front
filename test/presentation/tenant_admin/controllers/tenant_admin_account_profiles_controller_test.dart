@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:belluga_form_validation/belluga_form_validation.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
+import 'package:belluga_now/domain/partners/account_profile_external_link.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
@@ -34,6 +35,7 @@ import 'package:belluga_now/domain/services/tenant_admin_location_selection_cont
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
+import 'package:belluga_now/application/router/resolvers/tenant_admin_account_profile_edit_route_resolver.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_unknown_mutation_failure.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -316,6 +318,9 @@ class _FakeAccountProfilesRepository
   patchNestedGroupLabelGate;
   Object? patchNestedGroupLabelError;
   TenantAdminNestedGroupLabelMutationResult? patchNestedGroupLabelResult;
+  Object? externalLinkMutationError;
+  Completer<TenantAdminAccountProfile>? externalLinkMutationGate;
+  int externalLinkMutationCalls = 0;
 
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
@@ -530,6 +535,37 @@ class _FakeAccountProfilesRepository
     lastUpdateNestedProfileGroups = nestedProfileGroups;
     return updateAccountProfileOverride ?? _profiles.first;
   }
+
+  Future<TenantAdminAccountProfile> _externalLinkMutation() async {
+    externalLinkMutationCalls += 1;
+    final gate = externalLinkMutationGate;
+    if (gate != null) return gate.future;
+    final error = externalLinkMutationError;
+    if (error != null) throw error;
+    return _profiles.first;
+  }
+
+  @override
+  Future<TenantAdminAccountProfile> createExternalLink({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required AccountProfileExternalLinkType type,
+    required AccountProfileExternalLinkUrlValue url,
+    AccountProfileExternalLinkLabelValue? label,
+  }) => _externalLinkMutation();
+
+  @override
+  Future<TenantAdminAccountProfile> updateExternalLink({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString externalLinkId,
+    required AccountProfileExternalLinkUrlValue url,
+    AccountProfileExternalLinkLabelValue? label,
+  }) => _externalLinkMutation();
+
+  @override
+  Future<TenantAdminAccountProfile> deleteExternalLink({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString externalLinkId,
+  }) => _externalLinkMutation();
 
   @override
   Future<TenantAdminAccountProfileGallerySnapshot> createGalleryGroup({
@@ -1095,6 +1131,8 @@ class _FakeTaxonomiesRepository
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   TenantAdminAccountProfilesController labelController(
     _FakeAccountProfilesRepository repository, {
     TenantAdminTenantScopeContract? tenantScope,
@@ -1104,6 +1142,444 @@ void main() {
     taxonomiesRepository: _FakeTaxonomiesRepository(),
     locationSelectionService: TenantAdminLocationSelectionService(),
     tenantScope: tenantScope,
+  );
+
+  TenantAdminAccountProfile externalLinkProfile(
+    String id, {
+    int? limit = 3,
+    List<AccountProfileExternalLink>? externalLinks,
+  }) => tenantAdminAccountProfileFromRaw(
+    id: id,
+    accountId: 'account-$id',
+    profileType: 'custom',
+    displayName: 'Profile $id',
+        externalLinks: externalLinks ?? const <AccountProfileExternalLink>[],
+    externalLinksLimit: limit,
+  );
+
+  test(
+    'external link completion is ignored after route generation changes',
+    () async {
+      final firstProfile = externalLinkProfile('profile-1');
+      final secondProfile = externalLinkProfile('profile-2');
+      final repository = _FakeAccountProfilesRepository([
+        firstProfile,
+        secondProfile,
+      ], const []);
+      final controller = labelController(repository);
+      controller.adoptExternalLinkRouteProfile(firstProfile);
+      final firstDraft = controller.beginExternalLinkDraft(
+        accountProfileId: firstProfile.id,
+      );
+      firstDraft.urlController.text = 'https://instagram.com/first';
+      final gate = Completer<TenantAdminAccountProfile>();
+      repository.externalLinkMutationGate = gate;
+
+      final pending = controller.saveExternalLinkDraft(firstDraft);
+      controller.adoptExternalLinkRouteProfile(secondProfile);
+      final secondDraft = controller.beginExternalLinkDraft(
+        accountProfileId: secondProfile.id,
+      );
+      gate.complete(firstProfile);
+
+      expect(await pending, TenantAdminExternalLinkMutationOutcome.ignored);
+      expect(controller.accountProfileStreamValue.value?.id, 'profile-2');
+      controller.endExternalLinkDraft(firstDraft);
+      controller.endExternalLinkDraft(secondDraft);
+      controller.dispose();
+    },
+  );
+
+  test(
+    'external link draft tracks dirty and valid state from canonical input',
+    () {
+      final profile = externalLinkProfile('profile-dirty');
+      final controller = labelController(
+        _FakeAccountProfilesRepository([profile], const []),
+      );
+      controller.adoptExternalLinkRouteProfile(profile);
+      final existing = _parseExternalLink(
+        id: 'instagram-link',
+        type: AccountProfileExternalLinkType.instagram,
+        url: 'https://instagram.com/belluga',
+      );
+      final draft = controller.beginExternalLinkDraft(
+        accountProfileId: profile.id,
+        existingLink: existing,
+      );
+
+      expect(draft.dirtyStreamValue.value, isFalse);
+      expect(draft.canSubmitStreamValue.value, isTrue);
+
+      draft.urlController.text = 'not-a-url';
+      expect(draft.dirtyStreamValue.value, isTrue);
+      expect(draft.canSubmitStreamValue.value, isFalse);
+
+      draft.urlController.text = 'https://instagram.com/belluga';
+      expect(draft.dirtyStreamValue.value, isFalse);
+      expect(draft.canSubmitStreamValue.value, isTrue);
+
+      controller.endExternalLinkDraft(draft);
+      controller.dispose();
+    },
+  );
+
+  test(
+    'external link profile reconciliation preserves unrelated parent edits',
+    () {
+      final profile = externalLinkProfile('profile-parent-draft');
+      final updated = externalLinkProfile('profile-parent-draft');
+      final controller = labelController(
+        _FakeAccountProfilesRepository([profile, updated], const []),
+      );
+      controller.adoptExternalLinkRouteProfile(profile);
+      controller.editStateStreamValue.addValue(
+        controller.editStateStreamValue.value.copyWith(
+          contactSourceAccountProfileId: 'unsaved-contact-source',
+          nestedProfileGroups: const [],
+        ),
+      );
+
+      controller.adoptExternalLinkRouteProfile(updated);
+
+      expect(
+        controller.editStateStreamValue.value.contactSourceAccountProfileId,
+        'unsaved-contact-source',
+      );
+      controller.dispose();
+    },
+  );
+
+  test(
+    'successful external link mutation primes the parent resolver without a GET',
+    () async {
+      final profile = externalLinkProfile('profile-parent-prefetch');
+      final updatedLink = _parseExternalLink(
+        id: 'instagram-link',
+        type: AccountProfileExternalLinkType.instagram,
+        url: 'https://instagram.com/belluga',
+      );
+      final updated = tenantAdminAccountProfileFromRaw(
+        id: profile.id,
+        accountId: profile.accountId,
+        profileType: profile.profileType,
+        displayName: profile.displayName,
+        externalLinks: [updatedLink],
+        externalLinksLimit: 3,
+      );
+      final repository = _FakeAccountProfilesRepository([updated], const []);
+      final controller = labelController(repository);
+      controller.adoptExternalLinkRouteProfile(profile);
+      final draft = controller.beginExternalLinkDraft(
+        accountProfileId: profile.id,
+      );
+      draft.urlController.text = 'https://instagram.com/belluga';
+
+      expect(
+        await controller.saveExternalLinkDraft(draft),
+        TenantAdminExternalLinkMutationOutcome.saved,
+      );
+      expect(repository.fetchAccountProfileCalls, 0);
+
+      final resolver = TenantAdminAccountProfileEditRouteResolver(
+        accountProfilesRepository: repository,
+        accountProfilesController: controller,
+      );
+      final resolved = await resolver.resolve({
+        'accountSlug': 'account-one',
+        'accountProfileId': profile.id,
+      });
+
+      expect(resolved, same(updated));
+      expect(repository.fetchAccountProfileCalls, 0);
+      controller.endExternalLinkDraft(draft);
+      controller.dispose();
+    },
+  );
+
+  test(
+    'new external link draft becomes submittable only after valid input',
+    () {
+      final profile = externalLinkProfile('profile-new');
+      final controller = labelController(
+        _FakeAccountProfilesRepository([profile], const []),
+      );
+      controller.adoptExternalLinkRouteProfile(profile);
+      final draft = controller.beginExternalLinkDraft(
+        accountProfileId: profile.id,
+      );
+
+      expect(draft.dirtyStreamValue.value, isFalse);
+      expect(draft.canSubmitStreamValue.value, isFalse);
+
+      draft.urlController.text = 'https://instagram.com/belluga';
+      expect(draft.dirtyStreamValue.value, isTrue);
+      expect(draft.canSubmitStreamValue.value, isTrue);
+
+      controller.endExternalLinkDraft(draft);
+      controller.dispose();
+    },
+  );
+
+  test(
+    'new external link draft skips configured Instagram and starts at the first free type',
+    () {
+      final profile = externalLinkProfile(
+        'profile-available-type',
+        externalLinks: [
+          _parseExternalLink(
+            id: 'instagram-link',
+            type: AccountProfileExternalLinkType.instagram,
+            url: 'https://instagram.com/belluga',
+          ),
+        ],
+      );
+      final controller = labelController(
+        _FakeAccountProfilesRepository([profile], const []),
+      );
+      controller.adoptExternalLinkRouteProfile(profile);
+
+      final draft = controller.beginExternalLinkDraft(
+        accountProfileId: profile.id,
+      );
+
+      expect(
+        draft.selectedTypeStreamValue.value,
+        AccountProfileExternalLinkType.facebook,
+      );
+      controller.endExternalLinkDraft(draft);
+      controller.dispose();
+    },
+  );
+
+  test(
+    'new external link draft is rejected when every registry type is configured',
+    () {
+      final links = <AccountProfileExternalLink>[
+        _parseExternalLink(
+          id: 'instagram-link',
+          type: AccountProfileExternalLinkType.instagram,
+          url: 'https://instagram.com/belluga',
+        ),
+        _parseExternalLink(
+          id: 'facebook-link',
+          type: AccountProfileExternalLinkType.facebook,
+          url: 'https://facebook.com/belluga',
+        ),
+        _parseExternalLink(
+          id: 'youtube-link',
+          type: AccountProfileExternalLinkType.youtube,
+          url: 'https://youtu.be/dQw4w9WgXcQ',
+        ),
+        _parseExternalLink(
+          id: 'tiktok-link',
+          type: AccountProfileExternalLinkType.tiktok,
+          url: 'https://www.tiktok.com/@belluga',
+        ),
+        _parseExternalLink(
+          id: 'spotify-link',
+          type: AccountProfileExternalLinkType.spotify,
+          url: 'https://open.spotify.com/artist/belluga',
+        ),
+        _parseExternalLink(
+          id: 'website-link',
+          type: AccountProfileExternalLinkType.website,
+          url: 'https://belluga.example',
+          label: 'Belluga',
+        ),
+      ];
+      final profile = externalLinkProfile(
+        'profile-no-available-type',
+        limit: 8,
+        externalLinks: links,
+      );
+      final controller = labelController(
+        _FakeAccountProfilesRepository([profile], const []),
+      );
+      controller.adoptExternalLinkRouteProfile(profile);
+
+      expect(
+        () => controller.beginExternalLinkDraft(accountProfileId: profile.id),
+        throwsA(isA<StateError>()),
+      );
+      controller.dispose();
+    },
+  );
+
+  test(
+    'external link mutation single-flights ten triggers across three repetitions',
+    () async {
+      for (var repetition = 0; repetition < 3; repetition++) {
+        final profile = externalLinkProfile('profile-burst-$repetition');
+        final repository = _FakeAccountProfilesRepository([profile], const []);
+        final controller = labelController(repository);
+        controller.adoptExternalLinkRouteProfile(profile);
+        final draft = controller.beginExternalLinkDraft(
+          accountProfileId: profile.id,
+        );
+        draft.urlController.text = 'https://instagram.com/burst-$repetition';
+        final gate = Completer<TenantAdminAccountProfile>();
+        repository.externalLinkMutationGate = gate;
+
+        final outcomes = List.generate(
+          10,
+          (_) => controller.saveExternalLinkDraft(draft),
+        );
+        expect(repository.externalLinkMutationCalls, 1);
+        gate.complete(profile);
+
+        expect(
+          await outcomes.first,
+          TenantAdminExternalLinkMutationOutcome.saved,
+        );
+        expect(
+          await Future.wait(outcomes.skip(1)),
+          everyElement(TenantAdminExternalLinkMutationOutcome.ignored),
+        );
+        controller.endExternalLinkDraft(draft);
+        controller.dispose();
+      }
+    },
+  );
+
+  test(
+    'unknown external link outcome fences retries until explicit reload',
+    () async {
+      final profile = externalLinkProfile('profile-1');
+      final repository = _FakeAccountProfilesRepository([profile], const []);
+      repository.externalLinkMutationError =
+          const TenantAdminUnknownMutationFailure();
+      final controller = labelController(repository);
+      controller.adoptExternalLinkRouteProfile(profile);
+      final draft = controller.beginExternalLinkDraft(
+        accountProfileId: profile.id,
+      );
+      draft.urlController.text = 'https://instagram.com/profile';
+
+      expect(
+        await controller.saveExternalLinkDraft(draft),
+        TenantAdminExternalLinkMutationOutcome.failed,
+      );
+      expect(draft.requiresReloadStreamValue.value, isTrue);
+      expect(
+        await controller.saveExternalLinkDraft(draft),
+        TenantAdminExternalLinkMutationOutcome.ignored,
+      );
+      expect(repository.externalLinkMutationCalls, 1);
+
+      repository.externalLinkMutationError = null;
+      expect(await controller.reloadExternalLinkBaseline(draft), isTrue);
+      expect(draft.requiresReloadStreamValue.value, isFalse);
+      controller.endExternalLinkDraft(draft);
+      controller.dispose();
+    },
+  );
+
+  test(
+    'ordinary external link validation failure stays on the draft and remains retryable',
+    () async {
+      final profile = externalLinkProfile('profile-validation');
+      final repository = _FakeAccountProfilesRepository([profile], const []);
+      repository.externalLinkMutationError = FormValidationFailure(
+        statusCode: 422,
+        message: 'URL inválida.',
+        fieldErrors: const {
+          'url': ['URL inválida.'],
+        },
+      );
+      final controller = labelController(repository);
+      controller.adoptExternalLinkRouteProfile(profile);
+      final draft = controller.beginExternalLinkDraft(
+        accountProfileId: profile.id,
+      );
+      draft.urlController.text = 'https://instagram.com/profile';
+
+      expect(
+        await controller.saveExternalLinkDraft(draft),
+        TenantAdminExternalLinkMutationOutcome.failed,
+      );
+      expect(draft.errorStreamValue.value, 'URL inválida.');
+      expect(draft.requiresReloadStreamValue.value, isFalse);
+      expect(draft.busyStreamValue.value, isFalse);
+      expect(repository.externalLinkMutationCalls, 1);
+
+      repository.externalLinkMutationError = null;
+      expect(
+        await controller.saveExternalLinkDraft(draft),
+        TenantAdminExternalLinkMutationOutcome.saved,
+      );
+      expect(repository.externalLinkMutationCalls, 2);
+      controller.endExternalLinkDraft(draft);
+      controller.dispose();
+    },
+  );
+
+  test('late external link failure after route disposal is ignored', () async {
+    final profile = externalLinkProfile('profile-late-failure');
+    final repository = _FakeAccountProfilesRepository([profile], const []);
+    final controller = labelController(repository);
+    controller.adoptExternalLinkRouteProfile(profile);
+    final draft = controller.beginExternalLinkDraft(
+      accountProfileId: profile.id,
+    );
+    draft.urlController.text = 'https://instagram.com/profile';
+    final gate = Completer<TenantAdminAccountProfile>();
+    repository.externalLinkMutationGate = gate;
+
+    final pending = controller.saveExternalLinkDraft(draft);
+    controller.endExternalLinkDraft(draft);
+    gate.completeError(
+      FormValidationFailure(
+        statusCode: 422,
+        message: 'URL inválida.',
+        fieldErrors: const {
+          'url': ['URL inválida.'],
+        },
+      ),
+    );
+
+    expect(await pending, TenantAdminExternalLinkMutationOutcome.ignored);
+    expect(controller.accountProfileStreamValue.value?.id, profile.id);
+    controller.dispose();
+  });
+
+  test(
+    'capability-disabled mutation refreshes and invalidates matching draft',
+    () async {
+      final enabled = externalLinkProfile('profile-1');
+      final disabled = externalLinkProfile('profile-1', limit: null);
+      final repository = _FakeAccountProfilesRepository([enabled], const []);
+      repository.externalLinkMutationError = FormValidationFailure(
+        statusCode: 422,
+        message: 'Capability disabled.',
+        errorCode: 'account_profile_external_links_capability_disabled',
+        fieldErrors: const {
+          'external_links': ['Capability disabled.'],
+        },
+      );
+      repository.accountProfileFetchOverrides[enabled.id] = disabled;
+      final controller = labelController(repository);
+      controller.adoptExternalLinkRouteProfile(enabled);
+      final draft = controller.beginExternalLinkDraft(
+        accountProfileId: enabled.id,
+      );
+      draft.urlController.text = 'https://instagram.com/profile';
+
+      expect(
+        await controller.saveExternalLinkDraft(draft),
+        TenantAdminExternalLinkMutationOutcome.capabilityDisabled,
+      );
+      expect(
+        controller.accountProfileStreamValue.value?.externalLinksLimit,
+        isNull,
+      );
+      expect(
+        await controller.saveExternalLinkDraft(draft),
+        TenantAdminExternalLinkMutationOutcome.ignored,
+      );
+      draft.dispose();
+      controller.dispose();
+    },
   );
 
   test(
@@ -4330,6 +4806,18 @@ class _FakeTenantScope implements TenantAdminTenantScopeContract {
   void selectTenantDomain(Object tenantDomain) =>
       selectedTenantDomainStreamValue.addValue(tenantDomain as String);
 }
+
+AccountProfileExternalLink _parseExternalLink({
+  required String id,
+  required AccountProfileExternalLinkType type,
+  required String url,
+  String? label,
+}) => AccountProfileExternalLinkRegistry.validateMutation(
+  id: AccountProfileExternalLinkIdValue(id),
+  type: type,
+  url: AccountProfileExternalLinkUrlValue(url),
+  label: label == null ? null : AccountProfileExternalLinkLabelValue(label),
+);
 
 TenantAdminAccountProfileGalleryGroup _galleryGroup({
   String groupId = 'group-1',

@@ -15,13 +15,16 @@ class ProfileTypeCapabilities {
     ProfileTypeFlagValue? hasGalleryValue,
     ProfileTypeFlagValue? hasNestedProfileGroupsValue,
     ProfileTypeFlagValue? hasContactChannelsValue,
+    ProfileTypeFlagValue? hasExternalLinksValue,
   }) : isReferenceLocationEnabledValue =
            isReferenceLocationEnabledValue ?? ProfileTypeFlagValue(false),
        hasGalleryValue = hasGalleryValue ?? ProfileTypeFlagValue(false),
        hasNestedProfileGroupsValue =
            hasNestedProfileGroupsValue ?? ProfileTypeFlagValue(false),
        hasContactChannelsValue =
-           hasContactChannelsValue ?? ProfileTypeFlagValue(false);
+           hasContactChannelsValue ?? ProfileTypeFlagValue(false),
+       hasExternalLinksValue =
+           hasExternalLinksValue ?? ProfileTypeFlagValue(false);
 
   final ProfileTypeFlagValue isPubliclyDiscoverableValue;
   final ProfileTypeFlagValue isFavoritableValue;
@@ -36,6 +39,7 @@ class ProfileTypeCapabilities {
   final ProfileTypeFlagValue hasGalleryValue;
   final ProfileTypeFlagValue hasNestedProfileGroupsValue;
   final ProfileTypeFlagValue hasContactChannelsValue;
+  final ProfileTypeFlagValue hasExternalLinksValue;
 
   bool get isPubliclyDiscoverable => isPubliclyDiscoverableValue.value;
   bool get isFavoritable => isFavoritableValue.value;
@@ -51,4 +55,5 @@ class ProfileTypeCapabilities {
   bool get hasGallery => hasGalleryValue.value;
   bool get hasNestedProfileGroups => hasNestedProfileGroupsValue.value;
   bool get hasContactChannels => hasContactChannelsValue.value;
+  bool get hasExternalLinks => hasExternalLinksValue.value;
 }

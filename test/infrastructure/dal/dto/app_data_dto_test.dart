@@ -142,6 +142,40 @@ void main() {
       expect(venue, isNotNull);
       expect(venue!.capabilities.isReferenceLocationEnabled, isTrue);
     });
+
+    test('parses external links capability with strict bool semantics', () {
+      final appData = AppDataDTO.fromJson(
+        _basePayload(
+          profileTypes: [
+            {
+              'type': 'enabled',
+              'label': 'Enabled',
+              'capabilities': {'has_external_links': true},
+            },
+            {
+              'type': 'malformed',
+              'label': 'Malformed',
+              'capabilities': {'has_external_links': 'true'},
+            },
+          ],
+        ),
+      ).toDomain(localInfo: _localInfo());
+
+      expect(
+        appData.profileTypeRegistry
+            .byType(ProfileTypeKeyValue('enabled'))!
+            .capabilities
+            .hasExternalLinks,
+        isTrue,
+      );
+      expect(
+        appData.profileTypeRegistry
+            .byType(ProfileTypeKeyValue('malformed'))!
+            .capabilities
+            .hasExternalLinks,
+        isFalse,
+      );
+    });
   });
 
   group('AppDataDTO publication settings', () {

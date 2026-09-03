@@ -12,6 +12,7 @@ import 'package:belluga_now/application/router/support/route_redirect_path.dart'
 import 'package:belluga_now/application/router/support/route_instance_scope.dart';
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/partners/account_profile_gallery_group.dart';
+import 'package:belluga_now/domain/partners/account_profile_external_link.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
@@ -41,6 +42,7 @@ import 'package:belluga_now/domain/partners/projections/partner_profile_module_d
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/invite_status_icon.dart';
+import 'package:belluga_now/presentation/tenant_public/partners/widgets/account_profile_external_link_strip.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart' hide Marker;
@@ -207,7 +209,10 @@ class _AccountProfileDetailScreenState
                                               context,
                                             ),
                                         tabs: effectiveTabs,
-                                        betweenHeroAndTabs: null,
+                                        betweenHeroAndTabs:
+                                            _buildExternalLinkStrip(
+                                              resolvedAccountProfile,
+                                            ),
                                       );
                                     },
                                   );
@@ -1276,6 +1281,33 @@ class _AccountProfileDetailScreenState
 
   Future<bool> _launchExternalUrl(Uri uri, {required LaunchMode mode}) {
     return launchUrl(uri, mode: mode);
+  }
+
+  Widget? _buildExternalLinkStrip(AccountProfileModel accountProfile) {
+    final links = _controller.availableExternalLinksFor(accountProfile);
+    if (links.isEmpty) return null;
+
+    return AccountProfileExternalLinkStrip(
+      links: links,
+      onOpen: (link) => unawaited(_openExternalLink(link)),
+    );
+  }
+
+  Future<void> _openExternalLink(AccountProfileExternalLink link) async {
+    try {
+      final launcher = widget.externalUrlLauncher ?? _launchExternalUrl;
+      final launched = await launcher(
+        link.url,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched && mounted) {
+        _showStatusMessage('Não foi possível abrir ${link.label}.');
+      }
+    } catch (_) {
+      if (mounted) {
+        _showStatusMessage('Não foi possível abrir ${link.label}.');
+      }
+    }
   }
 
   Future<void> _shareAccountProfile(AccountProfileModel accountProfile) async {

@@ -2,6 +2,7 @@ import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_channel_id_value.dart';
 import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_source_account_profile_id_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_name_value.dart';
+import 'package:belluga_now/domain/partners/account_profile_external_link.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_capabilities.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
@@ -10,6 +11,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/shared/account_profile_contact_source_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_aggregate_revision_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_external_links_limit_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 
@@ -41,6 +43,9 @@ TenantAdminAccountProfile tenantAdminAccountProfileFromRaw({
       const <BellugaContactChannel>[],
   AccountProfileContactSourceSummary? contactSourceProfile,
   AccountProfileContactSourceSummary? effectiveContactSourceProfile,
+  List<AccountProfileExternalLink> externalLinks =
+      const <AccountProfileExternalLink>[],
+  int? externalLinksLimit,
 }) {
   return TenantAdminAccountProfile(
     idValue: tenantAdminRequiredText(id),
@@ -79,5 +84,9 @@ TenantAdminAccountProfile tenantAdminAccountProfileFromRaw({
     effectiveContactChannels: effectiveContactChannels,
     contactSourceProfile: contactSourceProfile,
     effectiveContactSourceProfile: effectiveContactSourceProfile,
+    externalLinks: externalLinks,
+    externalLinksLimitValue: externalLinksLimit == null
+        ? null
+        : TenantAdminAccountProfileExternalLinksLimitValue(externalLinksLimit),
   );
 }

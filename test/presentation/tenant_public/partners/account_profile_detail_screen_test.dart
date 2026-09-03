@@ -12,6 +12,7 @@ import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.da
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_gallery_item.dart';
+import 'package:belluga_now/infrastructure/dal/decoders/account_profile_external_link_decoder.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
@@ -983,6 +984,59 @@ void main() {
       expect(launchedUris, hasLength(1));
       expect(launchedUris.single.host, 'wa.me');
       expect(launchedUris.single.path, '/5527999999999');
+    },
+  );
+
+  testWidgets(
+    'external link strip is capability-gated and launches externally',
+    (tester) async {
+      final repository = _FakeAccountProfilesRepository();
+      final controller = AccountProfileDetailController(
+        accountProfilesRepository: repository,
+      );
+      final profile = _buildArtistProfile().copyWith(
+        externalLinkValues: AccountProfileExternalLinkDecoder.decodeList([
+          {
+            'id': 'instagram',
+            'type': 'instagram',
+            'url': 'https://instagram.com/profile',
+          },
+        ]),
+      );
+      final launched = <({Uri uri, LaunchMode mode})>[];
+      await GetIt.I.reset(dispose: false);
+      GetIt.I.registerSingleton<AppData>(
+        _buildAppData(artistExternalLinksEnabled: true),
+      );
+      GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+      await tester.pumpWidget(
+        _buildRoutedTestApp(
+          router: _RecordingStackRouter(),
+          child: AccountProfileDetailScreen(
+            accountProfile: profile,
+            externalUrlLauncher: (uri, {required mode}) async {
+              launched.add((uri: uri, mode: mode));
+              return true;
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final button = find.byKey(
+        const ValueKey('accountProfileExternalLink-instagram'),
+      );
+      expect(button, findsOneWidget);
+      final heroAppBar = tester.widget<SliverAppBar>(find.byType(SliverAppBar));
+      expect(heroAppBar.elevation, 0);
+      expect(heroAppBar.scrolledUnderElevation, 0);
+      expect(heroAppBar.shadowColor, Colors.transparent);
+      expect(heroAppBar.surfaceTintColor, Colors.transparent);
+      await tester.tap(button);
+      await tester.pump();
+      expect(launched.single.uri.host, 'instagram.com');
+      expect(launched.single.mode, LaunchMode.externalApplication);
     },
   );
 
@@ -4302,6 +4356,7 @@ AppData _buildAppData({
   bool artistHasBio = false,
   bool restaurantReferenceLocationEnabled = false,
   bool artistContactChannelsEnabled = false,
+  bool artistExternalLinksEnabled = false,
 }) {
   final remoteData = {
     'name': 'Tenant Test',
@@ -4325,6 +4380,7 @@ AppData _buildAppData({
           'has_bio': artistHasBio,
           'has_gallery': true,
           'has_contact_channels': artistContactChannelsEnabled,
+          'has_external_links': artistExternalLinksEnabled,
         },
       },
       {

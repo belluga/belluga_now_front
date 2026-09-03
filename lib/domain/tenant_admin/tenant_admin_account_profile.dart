@@ -6,9 +6,11 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/shared/account_profile_contact_source_summary.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_name_value.dart';
+import 'package:belluga_now/domain/partners/account_profile_external_link.dart';
 import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_channel_id_value.dart';
 import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_source_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_aggregate_revision_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_external_links_limit_value.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
@@ -41,6 +43,8 @@ class TenantAdminAccountProfile {
     List<BellugaContactChannel>? effectiveContactChannels,
     this.contactSourceProfile,
     this.effectiveContactSourceProfile,
+    List<AccountProfileExternalLink>? externalLinks,
+    this.externalLinksLimitValue,
   }) : slugValue = slugValue ?? TenantAdminOptionalTextValue(),
        avatarUrlValue = avatarUrlValue ?? TenantAdminOptionalUrlValue(),
        coverUrlValue = coverUrlValue ?? TenantAdminOptionalUrlValue(),
@@ -64,6 +68,9 @@ class TenantAdminAccountProfile {
        contactBubbleChannelIdValue = contactBubbleChannelId,
        effectiveContactChannelsValue = List<BellugaContactChannel>.unmodifiable(
          effectiveContactChannels ?? contactChannels ?? const [],
+       ),
+       externalLinkValues = List<AccountProfileExternalLink>.unmodifiable(
+         externalLinks ?? const <AccountProfileExternalLink>[],
        );
 
   final TenantAdminRequiredTextValue idValue;
@@ -90,6 +97,14 @@ class TenantAdminAccountProfile {
   final List<BellugaContactChannel> effectiveContactChannelsValue;
   final AccountProfileContactSourceSummary? contactSourceProfile;
   final AccountProfileContactSourceSummary? effectiveContactSourceProfile;
+  final List<AccountProfileExternalLink> externalLinkValues;
+  final TenantAdminAccountProfileExternalLinksLimitValue?
+  externalLinksLimitValue;
+
+  int? get externalLinksLimit => externalLinksLimitValue?.value;
+
+  List<AccountProfileExternalLink> get externalLinks =>
+      List<AccountProfileExternalLink>.unmodifiable(externalLinkValues);
 
   BellugaContactSourceMode get contactMode => contactModeValue;
 

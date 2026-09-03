@@ -11,6 +11,8 @@ import 'package:belluga_now/domain/shared/account_profile_contact_source_summary
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
+import 'package:belluga_now/domain/partners/account_profile_external_link.dart';
+import 'package:belluga_now/infrastructure/dal/decoders/account_profile_external_link_decoder.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_gallery_player_aspect_ratio_value.dart';
@@ -43,6 +45,8 @@ class TenantAdminAccountProfileDTO {
     this.effectiveContactChannels = const [],
     this.contactSourceProfile,
     this.effectiveContactSourceProfile,
+    this.externalLinks = const [],
+    this.externalLinksLimit,
   }) : galleryCapabilities =
            galleryCapabilities ??
            TenantAdminAccountProfileGalleryCapabilities.empty();
@@ -71,6 +75,8 @@ class TenantAdminAccountProfileDTO {
   final List<BellugaContactChannel> effectiveContactChannels;
   final AccountProfileContactSourceSummary? contactSourceProfile;
   final AccountProfileContactSourceSummary? effectiveContactSourceProfile;
+  final List<AccountProfileExternalLink> externalLinks;
+  final int? externalLinksLimit;
 
   factory TenantAdminAccountProfileDTO.fromJson(Map<String, dynamic> json) {
     final location = json['location'];
@@ -130,6 +136,7 @@ class TenantAdminAccountProfileDTO {
         );
       }
     }
+    final externalLinksLimit = _toInt(json['external_links_limit']);
     return TenantAdminAccountProfileDTO(
       id: json['id']?.toString() ?? '',
       accountId: json['account_id']?.toString() ?? '',
@@ -166,6 +173,11 @@ class TenantAdminAccountProfileDTO {
       effectiveContactSourceProfile: _contactSourceSummaryFromRaw(
         json['effective_contact_source'],
       ),
+      externalLinks: AccountProfileExternalLinkDecoder.decodeList(
+        json['external_links'],
+        limit: externalLinksLimit,
+      ),
+      externalLinksLimit: externalLinksLimit,
     );
   }
 
@@ -212,6 +224,8 @@ class TenantAdminAccountProfileDTO {
       effectiveContactChannels: effectiveContactChannels,
       contactSourceProfile: contactSourceProfile,
       effectiveContactSourceProfile: effectiveContactSourceProfile,
+      externalLinks: externalLinks,
+      externalLinksLimit: externalLinksLimit,
     );
   }
 }

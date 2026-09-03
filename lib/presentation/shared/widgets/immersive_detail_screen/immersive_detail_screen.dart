@@ -333,6 +333,10 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
                             toolbarHeight: widget.collapsedToolbarHeight,
                             pinned: true,
                             stretch: true,
+                            elevation: 0,
+                            scrolledUnderElevation: 0,
+                            shadowColor: Colors.transparent,
+                            surfaceTintColor: Colors.transparent,
                             backgroundColor: colorScheme.surface,
                             title: isHeroChromeCollapsed
                                 ? widget.collapsedTitle ??

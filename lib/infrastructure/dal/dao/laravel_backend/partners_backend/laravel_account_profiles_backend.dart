@@ -2,6 +2,7 @@ import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/partners/account_profile_gallery_group.dart';
+import 'package:belluga_now/infrastructure/dal/decoders/account_profile_external_link_decoder.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
@@ -554,6 +555,9 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
             ),
             effectiveContactSourceProfile: _parseContactSourceSummary(
               json['effective_contact_source'],
+            ),
+            externalLinkValues: AccountProfileExternalLinkDecoder.decodeList(
+              json['external_links'],
             ),
           ),
         );

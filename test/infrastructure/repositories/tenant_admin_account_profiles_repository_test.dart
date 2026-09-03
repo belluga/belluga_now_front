@@ -20,6 +20,7 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optio
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_account_profiles_repository.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_unknown_mutation_failure.dart';
+import 'package:belluga_now/domain/partners/account_profile_external_link.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_base_url_resolver.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -146,6 +147,103 @@ void main() {
       expect(adapter.requests, hasLength(1));
       expect(result.id, 'artists');
       expect(result.label, 'Artists');
+    },
+  );
+
+  test('external link CRUD uses scoped correlated granular requests', () async {
+    final adapter = _CaptureAdapter(
+      responseBody: {
+        'data': {
+          'id': 'profile-1',
+          'account_id': 'account-1',
+          'profile_type': 'custom',
+          'display_name': 'Profile',
+          'aggregate_revision': 2,
+          'external_links_limit': 3,
+          'external_links': [
+            {
+              'id': 'link-1',
+              'type': 'website',
+              'url': 'https://example.org',
+              'label': 'Official',
+            },
+          ],
+        },
+      },
+    );
+    final repository = TenantAdminAccountProfilesRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+    );
+    final profileId = tenantAdminAccountProfilesRepoString(
+      'profile-1',
+      defaultValue: '',
+      isRequired: true,
+    );
+    final linkId = tenantAdminAccountProfilesRepoString(
+      'link-1',
+      defaultValue: '',
+      isRequired: true,
+    );
+
+    await repository.createExternalLink(
+      accountProfileId: profileId,
+      type: AccountProfileExternalLinkType.website,
+      url: AccountProfileExternalLinkUrlValue('https://example.org'),
+      label: AccountProfileExternalLinkLabelValue('Official'),
+    );
+    await repository.updateExternalLink(
+      accountProfileId: profileId,
+      externalLinkId: linkId,
+      url: AccountProfileExternalLinkUrlValue('https://example.org/new'),
+      label: AccountProfileExternalLinkLabelValue('Official site'),
+    );
+    await repository.deleteExternalLink(
+      accountProfileId: profileId,
+      externalLinkId: linkId,
+    );
+
+    expect(adapter.requests.map((request) => request.method), [
+      'POST',
+      'PATCH',
+      'DELETE',
+    ]);
+    expect(adapter.requests[0].data, {
+      'type': 'website',
+      'url': 'https://example.org',
+      'label': 'Official',
+    });
+    expect(adapter.requests[1].data, {
+      'url': 'https://example.org/new',
+      'label': 'Official site',
+    });
+    expect(
+      adapter.requests.map((request) => request.headers['X-Request-Id']),
+      everyElement(isNotEmpty),
+    );
+    expect(adapter.requests, hasLength(3));
+  });
+
+  test(
+    'external link connection loss is an unknown mutation outcome',
+    () async {
+      final repository = TenantAdminAccountProfilesRepository(
+        dio: Dio()..httpClientAdapter = _ConnectionFailureAdapter(),
+      );
+
+      await expectLater(
+        repository.createExternalLink(
+          accountProfileId: tenantAdminAccountProfilesRepoString(
+            'profile-1',
+            defaultValue: '',
+            isRequired: true,
+          ),
+          type: AccountProfileExternalLinkType.instagram,
+          url: AccountProfileExternalLinkUrlValue(
+            'https://instagram.com/profile',
+          ),
+        ),
+        throwsA(isA<TenantAdminUnknownMutationFailure>()),
+      );
     },
   );
 

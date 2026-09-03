@@ -5,7 +5,9 @@ import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/application/rich_text/account_profile_rich_text_limits.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/icons/account_profile_external_link_icon_registry.dart';
 import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
+import 'package:belluga_now/domain/partners/account_profile_external_link.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
@@ -163,6 +165,11 @@ class _TenantAdminAccountProfileEditScreenState
   bool _hasContactChannels(String? selectedType) {
     final definition = _selectedProfileTypeDefinition(selectedType);
     return definition?.capabilities.hasContactChannels ?? false;
+  }
+
+  bool _hasExternalLinks(String? selectedType) {
+    final definition = _selectedProfileTypeDefinition(selectedType);
+    return definition?.capabilities.hasExternalLinks ?? false;
   }
 
   List<String> _allowedTaxonomies(String? selectedType) {
@@ -828,6 +835,9 @@ class _TenantAdminAccountProfileEditScreenState
                                 final hasGallery = _hasGallery(
                                   state.selectedProfileType,
                                 );
+                                final hasExternalLinks = _hasExternalLinks(
+                                  state.selectedProfileType,
+                                );
 
                                 if (loadError?.isNotEmpty ?? false) {
                                   return TenantAdminFormScaffold(
@@ -879,19 +889,24 @@ class _TenantAdminAccountProfileEditScreenState
                                           if (isLoading)
                                             const SizedBox(height: 12),
                                           StreamValueBuilder<
-                                            TenantAdminAccount?
+                                            TenantAdminAccount
                                           >(
                                             streamValue:
                                                 _controller.accountStreamValue,
+                                            onNullWidget: _buildProfileSection(
+                                              context,
+                                              state,
+                                              accountOwnership: null,
+                                            ),
                                             builder: (context, account) {
                                               _syncOwnershipSelection(
-                                                account?.ownershipState,
+                                                account.ownershipState,
                                               );
                                               return _buildProfileSection(
                                                 context,
                                                 state,
                                                 accountOwnership:
-                                                    account?.ownershipState,
+                                                    account.ownershipState,
                                               );
                                             },
                                           ),
@@ -902,6 +917,14 @@ class _TenantAdminAccountProfileEditScreenState
                                           if (hasGallery) ...[
                                             const SizedBox(height: 16),
                                             _buildGallerySection(state),
+                                          ],
+                                          if (hasExternalLinks &&
+                                              profile
+                                                  is TenantAdminAccountProfile &&
+                                              profile.externalLinksLimit !=
+                                                  null) ...[
+                                            const SizedBox(height: 16),
+                                            _buildExternalLinksSection(profile),
                                           ],
                                           if (hasContent) ...[
                                             _buildContentSection(
@@ -1264,6 +1287,79 @@ class _TenantAdminAccountProfileEditScreenState
       ).showSnackBar(SnackBar(content: Text(message)));
       _controller.clearEditErrorMessage();
     });
+  }
+
+  Widget _buildExternalLinksSection(TenantAdminAccountProfile profile) {
+    final links = profile.externalLinks;
+    final limit = profile.externalLinksLimit ?? 0;
+    final configuredTypes = links.map((link) => link.type).toSet();
+    final hasAvailableType = AccountProfileExternalLinkType.values.any(
+      (type) => !configuredTypes.contains(type),
+    );
+    final canAdd = links.length < limit && hasAvailableType;
+    return TenantAdminFormSectionCard(
+      title: 'Links externos',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final link in links)
+            ListTile(
+              key: ValueKey('tenantAdminExternalLink-${link.id}'),
+              contentPadding: EdgeInsets.zero,
+              leading: CircleAvatar(
+                child: Icon(
+                  AccountProfileExternalLinkIconRegistry.iconFor(link.type),
+                  size: 21,
+                ),
+              ),
+              title: Text(link.label),
+              subtitle: Text(
+                link.url.toString(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.router.push(
+                TenantAdminAccountProfileExternalLinkEditRoute(
+                  accountSlug: _currentAccountSlugForRequests(),
+                  accountProfileId: profile.id,
+                  externalLinkId: link.id,
+                ),
+              ),
+            ),
+          if (links.isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: Text('Nenhum link externo configurado.'),
+            ),
+          ListTile(
+            key: const Key('tenantAdminAddExternalLinkButton'),
+            enabled: canAdd,
+            contentPadding: EdgeInsets.zero,
+            onTap: !canAdd
+                ? null
+                : () => context.router.push(
+                    TenantAdminAccountProfileExternalLinkAddRoute(
+                      accountSlug: _currentAccountSlugForRequests(),
+                      accountProfileId: profile.id,
+                    ),
+                  ),
+            leading: const CircleAvatar(child: Icon(Icons.add)),
+            title: Text(
+              !hasAvailableType
+                  ? 'Todos os tipos de link já foram configurados'
+                  : links.length >= limit
+                  ? 'Limite de $limit links atingido'
+                  : 'Adicionar link',
+            ),
+            subtitle: !canAdd
+                ? null
+                : Text('${links.length} de $limit configurados'),
+            trailing: !canAdd ? null : const Icon(Icons.chevron_right),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildProfileSection(
