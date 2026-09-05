@@ -2,7 +2,7 @@ import 'package:belluga_now/domain/invites/value_objects/invite_account_profile_
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_hash_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_type_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_inviter_avatar_value.dart';
-import 'package:belluga_now/domain/invites/value_objects/invite_inviter_name_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_recipient_display_name_candidate_value.dart';
 import 'package:belluga_now/domain/invites/inviteable_reasons.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_profile_exposure_level_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
@@ -19,19 +19,19 @@ class InviteContactMatch {
     InviteProfileExposureLevelValue? profileExposureLevelValue,
     InviteableReasons? inviteableReasons,
     DomainBooleanValue? isInviteableValue,
-  })  : receiverAccountProfileIdValue =
-            receiverAccountProfileIdValue ?? InviteAccountProfileIdValue(),
-        avatarValue = avatarValue ?? InviteInviterAvatarValue(),
-        profileExposureLevelValue =
-            profileExposureLevelValue ?? InviteProfileExposureLevelValue(),
-        inviteableReasons = inviteableReasons ?? InviteableReasons(),
-        isInviteableValue = isInviteableValue ?? DomainBooleanValue();
+  }) : receiverAccountProfileIdValue =
+           receiverAccountProfileIdValue ?? InviteAccountProfileIdValue(),
+       avatarValue = avatarValue ?? InviteInviterAvatarValue(),
+       profileExposureLevelValue =
+           profileExposureLevelValue ?? InviteProfileExposureLevelValue(),
+       inviteableReasons = inviteableReasons ?? InviteableReasons(),
+       isInviteableValue = isInviteableValue ?? DomainBooleanValue();
 
   final InviteContactHashValue contactHashValue;
   final InviteContactTypeValue typeValue;
   final UserIdValue userIdValue;
   final InviteAccountProfileIdValue receiverAccountProfileIdValue;
-  final InviteInviterNameValue displayNameValue;
+  final InviteRecipientDisplayNameCandidateValue displayNameValue;
   final InviteInviterAvatarValue avatarValue;
   final InviteProfileExposureLevelValue profileExposureLevelValue;
   final InviteableReasons inviteableReasons;

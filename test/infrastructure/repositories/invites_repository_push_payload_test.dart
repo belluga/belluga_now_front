@@ -2,6 +2,7 @@ import 'package:belluga_now/infrastructure/dal/dao/invites/invites_backend_reque
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_realtime_delta_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
 import 'package:belluga_now/infrastructure/services/invites_backend_contract.dart';
+import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_account_profile_id_value.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
@@ -10,16 +11,25 @@ import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_display_name_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
+import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get_it/get_it.dart';
 import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  setUp(() async {
+    await GetIt.I.reset();
+    GetIt.I.registerSingleton<AppData>(_buildAppData());
+  });
+
+  tearDown(() async {
+    await GetIt.I.reset();
+  });
+
   test('applyInvitePushPayload upserts invite to the top', () async {
-    final repository = InvitesRepository(
-      backend: _FakeInvitesBackend(),
-    );
+    final repository = InvitesRepository(backend: _FakeInvitesBackend());
     final baseline = await repository.fetchInvites();
     repository.pendingInvitesStreamValue.addValue(baseline);
 
@@ -39,7 +49,7 @@ void main() {
           'inviter_name': 'Ana',
           'inviter_avatar_url': 'https://example.com/avatar.png',
           'additional_inviters': ['Bia'],
-        }
+        },
       ],
     };
 
@@ -49,6 +59,110 @@ void main() {
     expect(updated.first.id, 'invite-push-1');
     expect(updated.length, baseline.length + 1);
   });
+
+  test(
+    'applyInvitePushPayload retains empty and one-character senders',
+    () async {
+      final repository = InvitesRepository(backend: _FakeInvitesBackend());
+
+      repository.applyInvitePushPayload({
+        'invites': [
+          {
+            'id': 'invite-push-empty',
+            'event_id': 'event-123',
+            'occurrence_id': 'occurrence-123',
+            'event_name': 'Evento Destaque',
+            'event_date': DateTime.now().toIso8601String(),
+            'event_image_url': 'https://example.com/event.png',
+            'location': 'Centro',
+            'host_name': 'Host',
+            'message': 'Bora nessa?',
+            'tags': ['music'],
+            'inviter_name': '',
+            'inviter_avatar_url': '/storage/avatars/sender.png',
+            'additional_inviters': const <String>[],
+          },
+          {
+            'id': 'invite-push-one-char',
+            'event_id': 'event-124',
+            'occurrence_id': 'occurrence-124',
+            'event_name': 'Evento Destaque',
+            'event_date': DateTime.now().toIso8601String(),
+            'event_image_url': 'https://example.com/event.png',
+            'location': 'Centro',
+            'host_name': 'Host',
+            'message': 'Bora nessa?',
+            'tags': ['music'],
+            'inviter_name': 'A',
+            'inviter_avatar_url': 'http://[invalid',
+            'additional_inviters': ['B'],
+          },
+          {
+            'id': 'invite-push-legacy-fallback',
+            'event_id': 'event-125',
+            'occurrence_id': 'occurrence-125',
+            'event_name': 'Evento Destaque',
+            'event_date': DateTime.now().toIso8601String(),
+            'event_image_url': 'https://example.com/event.png',
+            'location': 'Centro',
+            'host_name': 'Host',
+            'message': 'Bora nessa?',
+            'tags': ['music'],
+            'inviter_name': 'Nome legado',
+            'inviter_candidates': [
+              {
+                'invite_id': 'invite-push-legacy-fallback',
+                'display_name': '',
+                'status': 'pending',
+              },
+            ],
+            'additional_inviters': const <String>[],
+          },
+        ],
+      });
+
+      final invites = repository.pendingInvitesStreamValue.value;
+      expect(invites, hasLength(3));
+      expect(
+        invites
+            .firstWhere((invite) => invite.id == 'invite-push-empty')
+            .inviterName,
+        'Alguém',
+      );
+      expect(
+        invites
+            .firstWhere((invite) => invite.id == 'invite-push-empty')
+            .inviterAvatarUrl,
+        'https://tenant.test/storage/avatars/sender.png',
+      );
+      expect(
+        invites
+            .firstWhere((invite) => invite.id == 'invite-push-one-char')
+            .inviterName,
+        'A',
+      );
+      expect(
+        invites
+            .firstWhere((invite) => invite.id == 'invite-push-one-char')
+            .inviterAvatarUrl,
+        isNull,
+      );
+      expect(
+        invites
+            .firstWhere((invite) => invite.id == 'invite-push-one-char')
+            .additionalInviters
+            .single
+            .value,
+        'B',
+      );
+      expect(
+        invites
+            .firstWhere((invite) => invite.id == 'invite-push-legacy-fallback')
+            .inviterName,
+        'Nome legado',
+      );
+    },
+  );
 
   test('applyInvitePushPayload marks matching sent invite accepted', () async {
     final repository = InvitesRepository(
@@ -94,7 +208,9 @@ void main() {
     expect(statuses.single.friend.accountProfileId, 'profile-1');
     expect(statuses.single.status, InviteStatus.accepted);
     expect(
-        statuses.single.sentAt.toIso8601String(), '2026-05-23T13:00:00.000Z');
+      statuses.single.sentAt.toIso8601String(),
+      '2026-05-23T13:00:00.000Z',
+    );
     expect(
       statuses.single.respondedAt?.toIso8601String(),
       '2026-05-23T14:00:00.000Z',
@@ -102,76 +218,83 @@ void main() {
   });
 
   test(
-      'applyInvitePushPayload ignores accepted push without account profile match',
-      () async {
-    final repository = InvitesRepository(
-      backend: _FakeInvitesBackend(),
-      now: () => DateTime.utc(2026, 5, 23, 14, 0),
-    );
-    repository.sentInvitesByOccurrenceStreamValue.addValue({
-      invitesRepoString('occurrence-123', defaultValue: '', isRequired: true): [
-        SentInviteStatus(
-          friend: _friend(
-            userId: 'legacy-user-id',
-            accountProfileId: 'profile-1',
-            displayName: 'Pessoa',
+    'applyInvitePushPayload ignores accepted push without account profile match',
+    () async {
+      final repository = InvitesRepository(
+        backend: _FakeInvitesBackend(),
+        now: () => DateTime.utc(2026, 5, 23, 14, 0),
+      );
+      repository.sentInvitesByOccurrenceStreamValue.addValue({
+        invitesRepoString(
+          'occurrence-123',
+          defaultValue: '',
+          isRequired: true,
+        ): [
+          SentInviteStatus(
+            friend: _friend(
+              userId: 'legacy-user-id',
+              accountProfileId: 'profile-1',
+              displayName: 'Pessoa',
+            ),
+            status: InviteStatus.pending,
+            sentAtValue: DateTimeValue()..parse('2026-05-23T13:00:00.000Z'),
           ),
-          status: InviteStatus.pending,
-          sentAtValue: DateTimeValue()..parse('2026-05-23T13:00:00.000Z'),
-        ),
-      ],
-    });
+        ],
+      });
 
-    repository.applyInvitePushPayload({
-      'push_type': 'invite_accepted',
-      'occurrence_id': 'occurrence-123',
-      'event_id': 'event-123',
-      'accepted_by_user_id': 'legacy-user-id',
-      'accepted_by_display_name': 'Pessoa Aceitou',
-    });
+      repository.applyInvitePushPayload({
+        'push_type': 'invite_accepted',
+        'occurrence_id': 'occurrence-123',
+        'event_id': 'event-123',
+        'accepted_by_user_id': 'legacy-user-id',
+        'accepted_by_display_name': 'Pessoa Aceitou',
+      });
 
-    final statuses = await repository.getSentInvitesForOccurrence(
-      invitesRepoString('occurrence-123', defaultValue: '', isRequired: true),
-    );
+      final statuses = await repository.getSentInvitesForOccurrence(
+        invitesRepoString('occurrence-123', defaultValue: '', isRequired: true),
+      );
 
-    expect(statuses, hasLength(1));
-    expect(statuses.single.friend.id, 'legacy-user-id');
-    expect(statuses.single.friend.accountProfileId, 'profile-1');
-    expect(statuses.single.status, InviteStatus.pending);
-    expect(statuses.single.respondedAt, isNull);
-    expect(
-      statuses.single.sentAt.toIso8601String(),
-      '2026-05-23T13:00:00.000Z',
-    );
-  });
+      expect(statuses, hasLength(1));
+      expect(statuses.single.friend.id, 'legacy-user-id');
+      expect(statuses.single.friend.accountProfileId, 'profile-1');
+      expect(statuses.single.status, InviteStatus.pending);
+      expect(statuses.single.respondedAt, isNull);
+      expect(
+        statuses.single.sentAt.toIso8601String(),
+        '2026-05-23T13:00:00.000Z',
+      );
+    },
+  );
 
-  test('applyInvitePushPayload upserts accepted status before list hydration',
-      () async {
-    final repository = InvitesRepository(
-      backend: _FakeInvitesBackend(),
-      now: () => DateTime.utc(2026, 5, 23, 14, 0),
-    );
+  test(
+    'applyInvitePushPayload upserts accepted status before list hydration',
+    () async {
+      final repository = InvitesRepository(
+        backend: _FakeInvitesBackend(),
+        now: () => DateTime.utc(2026, 5, 23, 14, 0),
+      );
 
-    repository.applyInvitePushPayload({
-      'push_type': 'invite_accepted',
-      'occurrence_id': 'occurrence-123',
-      'event_id': 'event-123',
-      'accepted_by_user_id': 'user-1',
-      'accepted_by_account_profile_id': 'profile-1',
-      'accepted_by_display_name': 'Pessoa Aceitou',
-      'accepted_by_avatar_url': 'https://example.com/avatar.png',
-    });
+      repository.applyInvitePushPayload({
+        'push_type': 'invite_accepted',
+        'occurrence_id': 'occurrence-123',
+        'event_id': 'event-123',
+        'accepted_by_user_id': 'user-1',
+        'accepted_by_account_profile_id': 'profile-1',
+        'accepted_by_display_name': 'Pessoa Aceitou',
+        'accepted_by_avatar_url': 'https://example.com/avatar.png',
+      });
 
-    final statuses = await repository.getSentInvitesForOccurrence(
-      invitesRepoString('occurrence-123', defaultValue: '', isRequired: true),
-    );
+      final statuses = await repository.getSentInvitesForOccurrence(
+        invitesRepoString('occurrence-123', defaultValue: '', isRequired: true),
+      );
 
-    expect(statuses, hasLength(1));
-    expect(statuses.single.friend.id, 'user-1');
-    expect(statuses.single.friend.accountProfileId, 'profile-1');
-    expect(statuses.single.friend.displayName, 'Pessoa Aceitou');
-    expect(statuses.single.status, InviteStatus.accepted);
-  });
+      expect(statuses, hasLength(1));
+      expect(statuses.single.friend.id, 'user-1');
+      expect(statuses.single.friend.accountProfileId, 'profile-1');
+      expect(statuses.single.friend.displayName, 'Pessoa Aceitou');
+      expect(statuses.single.status, InviteStatus.accepted);
+    },
+  );
 }
 
 EventFriendResume _friend({
@@ -188,26 +311,44 @@ EventFriendResume _friend({
   );
 }
 
+AppData _buildAppData() {
+  return buildAppDataFromInitialization(
+    remoteData: {
+      'name': 'Tenant Test',
+      'type': 'tenant',
+      'main_domain': 'https://tenant.test',
+      'profile_types': const <Map<String, dynamic>>[],
+      'theme_data_settings': const {
+        'primary_seed_color': '#FFFFFF',
+        'secondary_seed_color': '#3355FF',
+      },
+    },
+    localInfo: {
+      'platformType': 'mobile',
+      'hostname': 'tenant.test',
+      'href': 'https://tenant.test',
+      'device': 'test-device',
+    },
+  );
+}
+
 class _FakeInvitesBackend implements InvitesBackendContract {
   @override
-  Stream<InviteRealtimeDeltaDto> watchInvitesStream({
-    String? lastEventId,
-  }) =>
+  Stream<InviteRealtimeDeltaDto> watchInvitesStream({String? lastEventId}) =>
       const Stream<InviteRealtimeDeltaDto>.empty();
 
   @override
   Future<Map<String, dynamic>> fetchInvites({
     required int page,
     required int pageSize,
-  }) async =>
-      const {'invites': <Map<String, dynamic>>[]};
+  }) async => const {'invites': <Map<String, dynamic>>[]};
 
   @override
   Future<Map<String, dynamic>> fetchSettings() async => const {
-        'tenant_id': null,
-        'limits': <String, int>{},
-        'cooldowns': <String, int>{},
-      };
+    'tenant_id': null,
+    'limits': <String, int>{},
+    'cooldowns': <String, int>{},
+  };
 
   @override
   Future<Map<String, dynamic>> acceptInvite(String inviteId) async =>
@@ -223,29 +364,28 @@ class _FakeInvitesBackend implements InvitesBackendContract {
 
   @override
   Future<Map<String, dynamic>> fetchSentInviteStatuses(
-          InviteSentStatusesRequest request) async =>
-      throw UnimplementedError();
+    InviteSentStatusesRequest request,
+  ) async => throw UnimplementedError();
 
   @override
   Future<Map<String, dynamic>> fetchSentInviteSummary(
     InviteSentSummaryRequest request,
-  ) async =>
-      const <String, dynamic>{
-        'summary': <String, dynamic>{
-          'pending': 0,
-          'accepted': 0,
-          'declined': 0,
-          'terminal_hidden': 0,
-          'total_visible': 0,
-          'total_sent': 0,
-        },
-        'preview': <Map<String, dynamic>>[],
-      };
+  ) async => const <String, dynamic>{
+    'summary': <String, dynamic>{
+      'pending': 0,
+      'accepted': 0,
+      'declined': 0,
+      'terminal_hidden': 0,
+      'total_visible': 0,
+      'total_sent': 0,
+    },
+    'preview': <Map<String, dynamic>>[],
+  };
 
   @override
   Future<Map<String, dynamic>> createShareCode(
-          InviteShareCodeCreateRequest request) async =>
-      throw UnimplementedError();
+    InviteShareCodeCreateRequest request,
+  ) async => throw UnimplementedError();
 
   @override
   Future<Map<String, dynamic>> fetchShareCodePreview(String code) async =>
@@ -261,14 +401,13 @@ class _FakeInvitesBackend implements InvitesBackendContract {
 
   @override
   Future<Map<String, dynamic>> importContacts(
-          InviteContactImportRequest request) async =>
-      throw UnimplementedError();
+    InviteContactImportRequest request,
+  ) async => throw UnimplementedError();
 
   @override
   Future<Map<String, dynamic>> fetchInviteableContacts(
     InviteableContactsRequest request,
-  ) async =>
-      throw UnimplementedError();
+  ) async => throw UnimplementedError();
 
   @override
   Future<Map<String, dynamic>> fetchContactGroups() async =>
@@ -278,16 +417,14 @@ class _FakeInvitesBackend implements InvitesBackendContract {
   Future<Map<String, dynamic>> createContactGroup({
     required String name,
     required List<String> recipientAccountProfileIds,
-  }) async =>
-      throw UnimplementedError();
+  }) async => throw UnimplementedError();
 
   @override
   Future<Map<String, dynamic>> updateContactGroup({
     required String groupId,
     String? name,
     List<String>? recipientAccountProfileIds,
-  }) async =>
-      throw UnimplementedError();
+  }) async => throw UnimplementedError();
 
   @override
   Future<Map<String, dynamic>> deleteContactGroup(String groupId) async =>

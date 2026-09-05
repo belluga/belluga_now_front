@@ -6,32 +6,34 @@ import 'package:belluga_now/infrastructure/services/invites_backend_contract.dar
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('fetchInviteableRecipients decodes root items and stores cache',
-      () async {
-    final backend = _FakeInvitesBackend(
-      response: {
-        'items': [
-          _inviteablePayload(
-            userId: 'user-1',
-            accountProfileId: 'profile-1',
-            displayName: 'Ana',
-          ),
-        ],
-      },
-    );
-    final repository = InviteablesRepository(backend: backend);
+  test(
+    'fetchInviteableRecipients decodes root items and stores cache',
+    () async {
+      final backend = _FakeInvitesBackend(
+        response: {
+          'items': [
+            _inviteablePayload(
+              userId: 'user-1',
+              accountProfileId: 'profile-1',
+              displayName: 'Ana',
+            ),
+          ],
+        },
+      );
+      final repository = InviteablesRepository(backend: backend);
 
-    final recipients = await repository.fetchInviteableRecipients();
+      final recipients = await repository.fetchInviteableRecipients();
 
-    expect(backend.fetchInviteableContactsCalls, 1);
-    expect(backend.lastRequest?.page, 1);
-    expect(
-      backend.lastRequest?.pageSize,
-      InviteablesRepository.routeCriticalPageSize,
-    );
-    expect(recipients.single.receiverAccountProfileId, 'profile-1');
-    expect(repository.inviteableRecipientsStreamValue.value, recipients);
-  });
+      expect(backend.fetchInviteableContactsCalls, 1);
+      expect(backend.lastRequest?.page, 1);
+      expect(
+        backend.lastRequest?.pageSize,
+        InviteablesRepository.routeCriticalPageSize,
+      );
+      expect(recipients.single.receiverAccountProfileId, 'profile-1');
+      expect(repository.inviteableRecipientsStreamValue.value, recipients);
+    },
+  );
 
   test('fetchInviteableRecipients decodes data.items envelope', () async {
     final backend = _FakeInvitesBackend(
@@ -102,7 +104,7 @@ void main() {
   );
 
   test(
-    'fetchInviteableRecipients keeps valid recipients when one top-level payload is malformed',
+    'fetchInviteableRecipients keeps one-character display-name candidates',
     () async {
       final backend = _FakeInvitesBackend(
         response: {
@@ -126,8 +128,11 @@ void main() {
 
       final recipients = await repository.fetchInviteableRecipients();
 
-      expect(recipients, hasLength(1));
-      expect(recipients.single.receiverAccountProfileId, 'profile-5');
+      expect(recipients, hasLength(2));
+      expect(
+        recipients.map((recipient) => recipient.receiverAccountProfileId),
+        containsAll(<String>['profile-bad', 'profile-5']),
+      );
       expect(repository.inviteableRecipientsStreamValue.value, recipients);
     },
   );
@@ -165,22 +170,18 @@ Map<String, Object?> _inviteablePayload({
   required String userId,
   required String accountProfileId,
   required String displayName,
-}) =>
-    {
-      'user_id': userId,
-      'receiver_account_profile_id': accountProfileId,
-      'display_name': displayName,
-      'avatar_url': null,
-      'profile_exposure_level': 'full_profile',
-      'inviteable_reasons': ['contact_match'],
-      'is_inviteable': true,
-    };
+}) => {
+  'user_id': userId,
+  'receiver_account_profile_id': accountProfileId,
+  'display_name': displayName,
+  'avatar_url': null,
+  'profile_exposure_level': 'full_profile',
+  'inviteable_reasons': ['contact_match'],
+  'is_inviteable': true,
+};
 
 class _FakeInvitesBackend implements InvitesBackendContract {
-  _FakeInvitesBackend({
-    required this.response,
-    this.gate,
-  });
+  _FakeInvitesBackend({required this.response, this.gate});
 
   final Map<String, dynamic> response;
   final Completer<void>? gate;

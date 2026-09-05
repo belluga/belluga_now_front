@@ -1,13 +1,13 @@
 import 'package:belluga_now/domain/invites/invite_inviter.dart';
 import 'package:belluga_now/domain/invites/invite_inviter_principal.dart';
-import 'package:belluga_now/domain/invites/value_objects/invite_additional_inviter_name_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_additional_sender_display_name_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_attendance_policy_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_event_date_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_event_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_host_name_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_inviter_avatar_value.dart';
-import 'package:belluga_now/domain/invites/value_objects/invite_inviter_name_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_resolved_sender_display_name_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_location_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_message_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_occurrence_id_value.dart';
@@ -38,18 +38,19 @@ class InviteModel {
     this.inviterNameValue,
     this.inviterAvatarValue,
     this.inviterPrincipal,
-    List<InviteAdditionalInviterNameValue>? additionalInviterValues,
+    List<InviteAdditionalSenderDisplayNameValue>? additionalInviterValues,
     this.inviters = const [],
     List<EventLinkedAccountProfile> linkedAccountProfiles = const [],
     List<EventProfileGroup> profileGroups = const [],
     this.venueAccountProfileIdValue,
-  })  : tagValues = List.unmodifiable(tagValues),
-        additionalInviterValues =
-            List.unmodifiable(additionalInviterValues ?? const []),
-        linkedAccountProfiles = List<EventLinkedAccountProfile>.unmodifiable(
-          linkedAccountProfiles,
-        ),
-        profileGroups = List<EventProfileGroup>.unmodifiable(profileGroups);
+  }) : tagValues = List.unmodifiable(tagValues),
+       additionalInviterValues = List.unmodifiable(
+         additionalInviterValues ?? const [],
+       ),
+       linkedAccountProfiles = List<EventLinkedAccountProfile>.unmodifiable(
+         linkedAccountProfiles,
+       ),
+       profileGroups = List<EventProfileGroup>.unmodifiable(profileGroups);
 
   final InviteIdValue idValue;
   final InviteEventIdValue eventIdValue;
@@ -63,10 +64,10 @@ class InviteModel {
   final List<InviteTagValue> tagValues;
   final InviteOccurrenceIdValue occurrenceIdValue;
   final InviteAttendancePolicyValue attendancePolicyValue;
-  final InviteInviterNameValue? inviterNameValue;
+  final InviteResolvedSenderDisplayNameValue? inviterNameValue;
   final InviteInviterAvatarValue? inviterAvatarValue;
   final InviteInviterPrincipal? inviterPrincipal;
-  final List<InviteAdditionalInviterNameValue> additionalInviterValues;
+  final List<InviteAdditionalSenderDisplayNameValue> additionalInviterValues;
   final List<InviteInviter> inviters;
   final List<EventLinkedAccountProfile> linkedAccountProfiles;
   final List<EventProfileGroup> profileGroups;
@@ -85,9 +86,8 @@ class InviteModel {
     return date;
   }
 
-  EventScheduleDisplay get eventScheduleDisplay => EventScheduleDisplay(
-        startValue: eventDateValue,
-      );
+  EventScheduleDisplay get eventScheduleDisplay =>
+      EventScheduleDisplay(startValue: eventDateValue);
 
   String get eventDateDetailLabel => eventScheduleDisplay.detailLabel;
   String get eventDateFlyerLabel => eventScheduleDisplay.flyerLabel;
@@ -107,7 +107,12 @@ class InviteModel {
     return id;
   }
 
-  String? get inviterName => primaryInviter?.name ?? inviterNameValue?.value;
+  String? get inviterName {
+    final candidate = primaryInviter?.candidateName.trim();
+    if (candidate != null && candidate.isNotEmpty) return candidate;
+    return inviterNameValue?.value;
+  }
+
   Uri? get inviterAvatarUri {
     final primaryAvatarUrl = primaryInviter?.avatarUrl?.trim();
     if (primaryAvatarUrl != null && primaryAvatarUrl.isNotEmpty) {
@@ -118,8 +123,8 @@ class InviteModel {
 
   String? get inviterAvatarUrl => inviterAvatarUri?.toString();
   List<InviteTagValue> get tags => List<InviteTagValue>.unmodifiable(tagValues);
-  List<InviteAdditionalInviterNameValue> get additionalInviters =>
-      List<InviteAdditionalInviterNameValue>.unmodifiable(
+  List<InviteAdditionalSenderDisplayNameValue> get additionalInviters =>
+      List<InviteAdditionalSenderDisplayNameValue>.unmodifiable(
         additionalInviterValues,
       );
   InviteInviter? get primaryInviter => inviters.isEmpty ? null : inviters.first;
@@ -139,8 +144,9 @@ class InviteModel {
       return this;
     }
 
-    final index = inviters
-        .indexWhere((inviter) => inviter.inviteId == inviteIdValue.value);
+    final index = inviters.indexWhere(
+      (inviter) => inviter.inviteId == inviteIdValue.value,
+    );
     if (index <= 0) {
       return this;
     }

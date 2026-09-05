@@ -5,7 +5,7 @@ import 'package:belluga_now/domain/user/friend.dart';
 import 'package:belluga_now/domain/user/value_objects/friend_avatar_value.dart';
 import 'package:belluga_now/domain/user/value_objects/friend_id_value.dart';
 import 'package:belluga_now/domain/user/value_objects/friend_match_label_value.dart';
-import 'package:belluga_now/domain/value_objects/title_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_recipient_resolved_display_label_value.dart';
 
 /// Lightweight friend projection for invite sharing and friend selection
 class InviteFriendResume {
@@ -17,15 +17,15 @@ class InviteFriendResume {
     InviteAccountProfileIdValue? accountProfileIdValue,
     InviteableReasons? inviteableReasons,
     InviteProfileExposureLevelValue? profileExposureLevelValue,
-  })  : accountProfileIdValue =
-            accountProfileIdValue ?? InviteAccountProfileIdValue(),
-        inviteableReasons = inviteableReasons ?? InviteableReasons(),
-        profileExposureLevelValue =
-            profileExposureLevelValue ?? InviteProfileExposureLevelValue();
+  }) : accountProfileIdValue =
+           accountProfileIdValue ?? InviteAccountProfileIdValue(),
+       inviteableReasons = inviteableReasons ?? InviteableReasons(),
+       profileExposureLevelValue =
+           profileExposureLevelValue ?? InviteProfileExposureLevelValue();
 
   final FriendIdValue idValue;
   final InviteAccountProfileIdValue accountProfileIdValue;
-  final TitleValue nameValue;
+  final InviteRecipientResolvedDisplayLabelValue nameValue;
   final FriendAvatarValue avatarValue;
   final FriendMatchLabelValue matchLabelValue;
   final InviteableReasons inviteableReasons;
@@ -49,7 +49,7 @@ class InviteFriendResume {
   factory InviteFriendResume.fromFriend(Friend friend) {
     return InviteFriendResume(
       idValue: friend.idValue,
-      nameValue: friend.nameValue,
+      nameValue: InviteRecipientResolvedDisplayLabelValue()..parse(friend.name),
       avatarValue: friend.avatarValue,
       matchLabelValue: friend.matchLabelValue,
     );

@@ -4,7 +4,8 @@ import 'package:belluga_now/domain/invites/value_objects/invite_account_profile_
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_hash_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_type_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_inviter_avatar_value.dart';
-import 'package:belluga_now/domain/invites/value_objects/invite_inviter_name_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_recipient_display_name_candidate_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_recipient_resolved_display_label_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_profile_exposure_level_value.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/user/value_objects/friend_avatar_value.dart';
@@ -12,7 +13,6 @@ import 'package:belluga_now/domain/user/value_objects/friend_id_value.dart';
 import 'package:belluga_now/domain/user/value_objects/friend_match_label_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
-import 'package:belluga_now/domain/value_objects/title_value.dart';
 
 class InviteableRecipient {
   InviteableRecipient({
@@ -26,17 +26,17 @@ class InviteableRecipient {
     InviteContactHashValue? contactHashValue,
     InviteContactTypeValue? contactTypeValue,
     this.sentInviteStatus,
-  })  : avatarValue = avatarValue ?? InviteInviterAvatarValue(),
-        profileExposureLevelValue =
-            profileExposureLevelValue ?? InviteProfileExposureLevelValue(),
-        inviteableReasons = inviteableReasons ?? InviteableReasons(),
-        isInviteableValue = isInviteableValue ?? DomainBooleanValue(),
-        contactHashValue = contactHashValue ?? InviteContactHashValue(),
-        contactTypeValue = contactTypeValue ?? InviteContactTypeValue();
+  }) : avatarValue = avatarValue ?? InviteInviterAvatarValue(),
+       profileExposureLevelValue =
+           profileExposureLevelValue ?? InviteProfileExposureLevelValue(),
+       inviteableReasons = inviteableReasons ?? InviteableReasons(),
+       isInviteableValue = isInviteableValue ?? DomainBooleanValue(),
+       contactHashValue = contactHashValue ?? InviteContactHashValue(),
+       contactTypeValue = contactTypeValue ?? InviteContactTypeValue();
 
   final UserIdValue userIdValue;
   final InviteAccountProfileIdValue receiverAccountProfileIdValue;
-  final InviteInviterNameValue displayNameValue;
+  final InviteRecipientDisplayNameCandidateValue displayNameValue;
   final InviteInviterAvatarValue avatarValue;
   final InviteProfileExposureLevelValue profileExposureLevelValue;
   final InviteableReasons inviteableReasons;
@@ -65,7 +65,8 @@ class InviteableRecipient {
     return InviteFriendResume(
       idValue: FriendIdValue()..parse(userId),
       accountProfileIdValue: receiverAccountProfileIdValue,
-      nameValue: TitleValue()..parse(displayName),
+      nameValue: InviteRecipientResolvedDisplayLabelValue()
+        ..parse(_resolvedDisplayName),
       avatarValue: friendAvatarValue,
       matchLabelValue: FriendMatchLabelValue()..parse(matchLabel),
       inviteableReasons: inviteableReasons,
@@ -87,5 +88,10 @@ class InviteableRecipient {
       return 'Disponível para convidar';
     }
     return 'Disponível para convidar';
+  }
+
+  String get _resolvedDisplayName {
+    final candidate = displayName.trim();
+    return candidate.isEmpty ? 'Contato sem nome' : candidate;
   }
 }

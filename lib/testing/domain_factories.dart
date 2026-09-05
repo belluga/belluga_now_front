@@ -23,7 +23,7 @@ import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_group_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_group_name_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_inviter_avatar_value.dart';
-import 'package:belluga_now/domain/invites/value_objects/invite_inviter_name_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_recipient_display_name_candidate_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_message_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_occurrence_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_profile_exposure_level_value.dart';
@@ -143,7 +143,8 @@ InviteableRecipient buildInviteableRecipient({
     userIdValue: UserIdValue()..parse(userId),
     receiverAccountProfileIdValue: InviteAccountProfileIdValue()
       ..parse(accountProfileId),
-    displayNameValue: InviteInviterNameValue()..parse(displayName),
+    displayNameValue: InviteRecipientDisplayNameCandidateValue()
+      ..parse(displayName),
     avatarValue: InviteInviterAvatarValue(),
     inviteableReasons: buildInviteableReasons(inviteableReasons),
     profileExposureLevelValue: InviteProfileExposureLevelValue()

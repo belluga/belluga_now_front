@@ -16,7 +16,7 @@ import 'package:belluga_now/domain/invites/value_objects/invite_contact_group_na
 import 'package:belluga_now/domain/invites/value_objects/invite_credited_acceptance_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_inviter_avatar_value.dart';
-import 'package:belluga_now/domain/invites/value_objects/invite_inviter_name_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_recipient_display_name_candidate_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_next_step_raw_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_profile_exposure_level_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/inviteable_reason_value.dart';
@@ -30,12 +30,15 @@ import 'package:belluga_now/domain/user/value_objects/user_display_name_value.da
 import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/schedule/support/public_media_url_normalizer.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invite_share_code_target_ref.dart';
 import 'package:belluga_now/infrastructure/observability/invite_flow_debug_logger.dart';
 import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 
 class InvitesResponseDecoder {
-  const InvitesResponseDecoder();
+  const InvitesResponseDecoder({this.tenantOrigin});
+
+  final Uri? tenantOrigin;
 
   Object? itemsPayload(Object? rawResponse) {
     final response = _asMap(rawResponse);
@@ -73,9 +76,7 @@ class InvitesResponseDecoder {
       if (error is FormatException) {
         rethrow;
       }
-      throw FormatException(
-        'Malformed invite payload for $context: $error',
-      );
+      throw FormatException('Malformed invite payload for $context: $error');
     }
   }
 
@@ -131,15 +132,33 @@ class InvitesResponseDecoder {
     }
 
     final dedupedByUserId = <String, InviteContactMatch>{};
-    for (final item in rawMatches) {
+    for (var index = 0; index < rawMatches.length; index++) {
+      final item = rawMatches[index];
       if (item is! Map) {
         continue;
       }
-      final match = _mapInviteContactMatch(Map<String, dynamic>.from(item));
+      InviteContactMatch? match;
+      try {
+        match = _mapInviteContactMatch(Map<String, dynamic>.from(item));
+      } catch (error) {
+        final itemMap = Map<String, dynamic>.from(item);
+        InviteFlowDebugLogger.log(
+          'contacts.import.decoder.item_skipped',
+          fields: <String, Object?>{
+            'item_index': index,
+            'error_type': error.runtimeType.toString(),
+            'item_keys': itemMap.keys.toList(growable: false),
+            'has_avatar_url': _stringOrNull(itemMap['avatar_url']) != null,
+            'contact_type': _stringOrEmpty(itemMap['type']),
+          },
+        );
+        continue;
+      }
       if (match == null) {
         continue;
       }
-      dedupedByUserId.putIfAbsent(match.userId, () => match);
+      final resolvedMatch = match;
+      dedupedByUserId.putIfAbsent(resolvedMatch.userId, () => resolvedMatch);
     }
 
     return dedupedByUserId.values.toList(growable: false);
@@ -171,8 +190,9 @@ class InvitesResponseDecoder {
             'profile_exposure_level': _stringOrEmpty(
               itemMap['profile_exposure_level'],
             ),
-            'inviteable_reason_count':
-                _parseStringList(itemMap['inviteable_reasons']).length,
+            'inviteable_reason_count': _parseStringList(
+              itemMap['inviteable_reasons'],
+            ).length,
             'contact_type': _stringOrEmpty(
               itemMap['contact_type'] ?? itemMap['type'],
             ),
@@ -220,10 +240,12 @@ class InvitesResponseDecoder {
       pendingValue: _buildSentInviteSummaryCountValue(summary['pending']),
       acceptedValue: _buildSentInviteSummaryCountValue(summary['accepted']),
       declinedValue: _buildSentInviteSummaryCountValue(summary['declined']),
-      terminalHiddenValue:
-          _buildSentInviteSummaryCountValue(summary['terminal_hidden']),
-      totalVisibleValue:
-          _buildSentInviteSummaryCountValue(summary['total_visible']),
+      terminalHiddenValue: _buildSentInviteSummaryCountValue(
+        summary['terminal_hidden'],
+      ),
+      totalVisibleValue: _buildSentInviteSummaryCountValue(
+        summary['total_visible'],
+      ),
       totalSentValue: _buildSentInviteSummaryCountValue(summary['total_sent']),
       preview: decodeSentInviteStatuses(response['preview']),
     );
@@ -332,15 +354,11 @@ class InvitesResponseDecoder {
   InviteContactMatch? _mapInviteContactMatch(Map<String, dynamic> map) {
     final userId = _stringOrEmpty(map['user_id']);
     final displayName = _stringOrEmpty(map['display_name']);
-    if (userId.isEmpty || displayName.isEmpty) {
+    if (userId.isEmpty) {
       return null;
     }
 
-    final avatarValue = InviteInviterAvatarValue();
-    final normalizedAvatarUrl = _stringOrNull(map['avatar_url']);
-    if (normalizedAvatarUrl != null && normalizedAvatarUrl.isNotEmpty) {
-      avatarValue.parse(normalizedAvatarUrl);
-    }
+    final avatarValue = _optionalAvatarValue(map['avatar_url']);
 
     final contactHashValue = InviteContactHashValue();
     final contactHashRaw = _stringOrEmpty(map['contact_hash']);
@@ -368,7 +386,8 @@ class InvitesResponseDecoder {
       typeValue: contactTypeValue,
       userIdValue: UserIdValue()..parse(userId),
       receiverAccountProfileIdValue: accountProfileIdValue,
-      displayNameValue: InviteInviterNameValue()..parse(displayName),
+      displayNameValue: InviteRecipientDisplayNameCandidateValue()
+        ..parse(displayName),
       avatarValue: avatarValue,
       profileExposureLevelValue: InviteProfileExposureLevelValue()
         ..parse(_stringOrEmpty(map['profile_exposure_level'])),
@@ -386,15 +405,11 @@ class InvitesResponseDecoder {
     );
     final userId = _stringOrEmpty(map['user_id'] ?? accountProfileId);
     final displayName = _stringOrEmpty(map['display_name']);
-    if (userId.isEmpty || accountProfileId.isEmpty || displayName.isEmpty) {
+    if (userId.isEmpty || accountProfileId.isEmpty) {
       return null;
     }
 
-    final avatarValue = InviteInviterAvatarValue();
-    final normalizedAvatarUrl = _stringOrNull(map['avatar_url']);
-    if (normalizedAvatarUrl != null && normalizedAvatarUrl.isNotEmpty) {
-      avatarValue.parse(normalizedAvatarUrl);
-    }
+    final avatarValue = _optionalAvatarValue(map['avatar_url']);
 
     final contactHashValue = InviteContactHashValue();
     final contactHashRaw = _stringOrEmpty(map['contact_hash']);
@@ -412,7 +427,8 @@ class InvitesResponseDecoder {
       userIdValue: UserIdValue()..parse(userId),
       receiverAccountProfileIdValue: InviteAccountProfileIdValue()
         ..parse(accountProfileId),
-      displayNameValue: InviteInviterNameValue()..parse(displayName),
+      displayNameValue: InviteRecipientDisplayNameCandidateValue()
+        ..parse(displayName),
       avatarValue: avatarValue,
       profileExposureLevelValue: InviteProfileExposureLevelValue()
         ..parse(_stringOrEmpty(map['profile_exposure_level'])),
@@ -425,6 +441,19 @@ class InvitesResponseDecoder {
       contactTypeValue: contactTypeValue,
       sentInviteStatus: _mapSentInviteStatusPayload(map['sent_invite_status']),
     );
+  }
+
+  InviteInviterAvatarValue _optionalAvatarValue(Object? rawAvatarUrl) {
+    final normalized = normalizeTenantPublicMediaUrl(
+      _stringOrNull(rawAvatarUrl),
+      tenantOrigin: tenantOrigin,
+    );
+    final parsed = normalized == null ? null : Uri.tryParse(normalized);
+    if (parsed == null || !parsed.isAbsolute) {
+      return InviteInviterAvatarValue();
+    }
+
+    return InviteInviterAvatarValue()..parse(parsed.toString());
   }
 
   SentInviteStatus? _mapSentInviteStatusPayload(Object? raw) {
@@ -450,9 +479,7 @@ class InvitesResponseDecoder {
       idValue: InviteContactGroupIdValue()..parse(id),
       nameValue: InviteContactGroupNameValue()..parse(name),
       recipientAccountProfileIds: _buildInviteAccountProfileIds(
-        _parseStringList(
-          map['recipient_account_profile_ids'],
-        ),
+        _parseStringList(map['recipient_account_profile_ids']),
       ),
     );
   }
@@ -462,24 +489,27 @@ class InvitesResponseDecoder {
       map['receiver_account_profile_id'],
     ).trim();
     final receiverUserId = _stringOrEmpty(map['receiver_user_id']).trim();
-    final identity =
-        receiverUserId.isNotEmpty ? receiverUserId : accountProfileId;
+    final identity = receiverUserId.isNotEmpty
+        ? receiverUserId
+        : accountProfileId;
     if (identity.isEmpty || accountProfileId.isEmpty) {
       return null;
     }
 
     final accountProfileIdValue = InviteAccountProfileIdValue()
       ..parse(accountProfileId);
-    final displayNameValue =
-        UserDisplayNameValue(isRequired: false, minLenght: null)
-          ..parse(_stringOrEmpty(map['display_name']).trim());
+    final displayNameValue = UserDisplayNameValue(
+      isRequired: false,
+      minLenght: null,
+    )..parse(_stringOrEmpty(map['display_name']).trim());
     final avatarValue = UserAvatarValue();
     final avatarRaw = _stringOrNull(map['avatar_url']);
     if (avatarRaw != null) {
       avatarValue.parse(avatarRaw);
     }
 
-    final sentAtRaw = _stringOrNull(map['sent_at']) ??
+    final sentAtRaw =
+        _stringOrNull(map['sent_at']) ??
         DateTime.fromMillisecondsSinceEpoch(0, isUtc: true).toIso8601String();
     final respondedAtRaw = _stringOrNull(map['responded_at']);
 
@@ -606,10 +636,7 @@ class InvitesResponseDecoder {
         .toList(growable: false);
   }
 
-  void _assertRequiredInviteFields(
-    InviteDto dto, {
-    required String context,
-  }) {
+  void _assertRequiredInviteFields(InviteDto dto, {required String context}) {
     if (dto.id.trim().isEmpty) {
       throw FormatException(
         'Malformed invite payload for $context: missing id.',

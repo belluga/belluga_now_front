@@ -19,7 +19,7 @@ import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_account_profile_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_hash_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_type_value.dart';
-import 'package:belluga_now/domain/invites/value_objects/invite_inviter_name_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_recipient_display_name_candidate_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_profile_exposure_level_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/inviteable_reason_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
@@ -225,7 +225,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract
         userIdValue: UserIdValue()..parse('user-1'),
         receiverAccountProfileIdValue: InviteAccountProfileIdValue()
           ..parse('profile-1'),
-        displayNameValue: InviteInviterNameValue()..parse('Matched Contact'),
+        displayNameValue: InviteRecipientDisplayNameCandidateValue()
+          ..parse('Matched Contact'),
         profileExposureLevelValue: InviteProfileExposureLevelValue()
           ..parse('capped_profile'),
         inviteableReasons: InviteableReasons([
@@ -255,7 +256,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract
         userIdValue: UserIdValue()..parse(match.userId),
         receiverAccountProfileIdValue: InviteAccountProfileIdValue()
           ..parse(match.receiverAccountProfileId),
-        displayNameValue: InviteInviterNameValue()..parse(match.displayName),
+        displayNameValue: InviteRecipientDisplayNameCandidateValue()
+          ..parse(match.displayName),
         avatarValue: match.avatarValue,
         profileExposureLevelValue: InviteProfileExposureLevelValue()
           ..parse(match.profileExposureLevel),
@@ -1492,7 +1494,8 @@ void main() {
             userIdValue: UserIdValue()..parse('user-1'),
             receiverAccountProfileIdValue: InviteAccountProfileIdValue()
               ..parse('profile-1'),
-            displayNameValue: InviteInviterNameValue()..parse('Bruna'),
+            displayNameValue: InviteRecipientDisplayNameCandidateValue()
+              ..parse('Bruna'),
             profileExposureLevelValue: InviteProfileExposureLevelValue()
               ..parse('capped_profile'),
             inviteableReasons: InviteableReasons([
@@ -1999,7 +2002,7 @@ void main() {
             userIdValue: UserIdValue()..parse('user-1'),
             receiverAccountProfileIdValue: InviteAccountProfileIdValue()
               ..parse('profile-1'),
-            displayNameValue: InviteInviterNameValue()
+            displayNameValue: InviteRecipientDisplayNameCandidateValue()
               ..parse('Matched Backend'),
             profileExposureLevelValue: InviteProfileExposureLevelValue()
               ..parse('capped_profile'),
@@ -2058,7 +2061,7 @@ void main() {
           _buildContactMatchedInviteableRecipient(
             userId: 'user-1',
             accountProfileId: 'profile-1',
-            displayName: '+55 27 99886-9802',
+            displayName: '',
             contactHash: matchedHash,
           ),
         ];
@@ -2160,6 +2163,62 @@ void main() {
       expect(
         _friendSuggestions(controller).single.friend.name,
         '+55 27 99886-9802',
+      );
+
+      await controller.onDispose();
+    },
+  );
+
+  test('Pessoas accepts a one-character resolved account label', () async {
+    final invitesRepository = _FakeInvitesRepository()
+      ..importContactMatches = const <InviteContactMatch>[]
+      ..inviteableRecipients = <InviteableRecipient>[
+        buildInviteableRecipient(
+          userId: 'user-1',
+          accountProfileId: 'profile-1',
+          displayName: 'A',
+        ),
+      ];
+    final controller = InviteShareScreenController(
+      invitesRepository: invitesRepository,
+      contactsRepository: _FakeContactsRepository(),
+      appData: _buildAppData(),
+      isWebRuntime: false,
+    );
+
+    await controller.init(_buildInvite());
+    await controller.selectPane(InviteSharePane.app);
+
+    expect(_friendSuggestions(controller).single.friend.name, 'A');
+
+    await controller.onDispose();
+  });
+
+  test(
+    'Pessoas uses terminal label when no recipient display fallback exists',
+    () async {
+      final invitesRepository = _FakeInvitesRepository()
+        ..importContactMatches = const <InviteContactMatch>[]
+        ..inviteableRecipients = <InviteableRecipient>[
+          buildInviteableRecipient(
+            userId: 'user-1',
+            accountProfileId: 'profile-1',
+            displayName: '',
+          ),
+        ];
+      final controller = InviteShareScreenController(
+        invitesRepository: invitesRepository,
+        contactsRepository: _FakeContactsRepository(),
+        appData: _buildAppData(),
+        isWebRuntime: false,
+      );
+
+      await controller.init(_buildInvite());
+      await controller.selectPane(InviteSharePane.app);
+
+      expect(
+        _friendSuggestions(controller).single.friend.name,
+        'Contato sem nome',
       );
 
       await controller.onDispose();
@@ -2409,7 +2468,8 @@ InviteableRecipient _buildContactMatchedInviteableRecipient({
     userIdValue: UserIdValue()..parse(userId),
     receiverAccountProfileIdValue: InviteAccountProfileIdValue()
       ..parse(accountProfileId),
-    displayNameValue: InviteInviterNameValue()..parse(displayName),
+    displayNameValue: InviteRecipientDisplayNameCandidateValue()
+      ..parse(displayName),
     profileExposureLevelValue: InviteProfileExposureLevelValue()
       ..parse('capped_profile'),
     inviteableReasons: InviteableReasons([

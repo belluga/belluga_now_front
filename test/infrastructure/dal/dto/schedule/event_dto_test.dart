@@ -75,6 +75,55 @@ void main() {
     ]);
   });
 
+  test(
+    'maps embedded received invite with empty sender and relative avatar',
+    () {
+      final dto = EventDTO.fromJson({
+        'event_id': '507f1f77bcf86cd799439011',
+        'occurrence_id': 'occ-1',
+        'slug': 'rock-night-occ-1',
+        'title': 'Rock Night',
+        'content': 'Live concert',
+        'type': {'id': 'type-1', 'name': 'Show', 'slug': 'show'},
+        'location': 'Guarapari',
+        'date_time_start': '2026-03-03T20:00:00+00:00',
+        'received_invites': [
+          {
+            'id': 'invite-1',
+            'event_id': '507f1f77bcf86cd799439011',
+            'occurrence_id': 'occ-1',
+            'event_name': 'Rock Night',
+            'event_date': '2026-03-03T20:00:00+00:00',
+            'hero_image_url': 'https://example.com/event.png',
+            'location': 'Guarapari',
+            'host_name': 'Belluga',
+            'message': 'Bora?',
+            'attendance_policy': 'free_confirmation_only',
+            'inviter_candidates': [
+              {
+                'invite_id': 'invite-1',
+                'display_name': '',
+                'avatar_url': '/storage/avatars/sender.png',
+                'status': 'pending',
+              },
+            ],
+          },
+        ],
+      });
+
+      final event = dto.toDomain(
+        tenantOrigin: Uri.parse('https://guarapari.belluga.com'),
+      );
+      final invite = event.receivedInvites!.single;
+
+      expect(invite.inviterName, 'Alguém');
+      expect(
+        invite.inviterAvatarUrl,
+        'https://guarapari.belluga.com/storage/avatars/sender.png',
+      );
+    },
+  );
+
   test('uses occurrence_id as fallback id when event_id is missing', () {
     final dto = EventDTO.fromJson({
       'occurrence_id': 'occ-42',
@@ -1582,6 +1631,7 @@ void main() {
       expect(occurrence.tags.map((tag) => tag.value), ['Instrumental']);
     },
   );
+
 }
 
 AppData _buildAppData() {

@@ -54,7 +54,7 @@ class InviteHeroCard extends StatelessWidget {
         participantGroups.isEmpty &&
         host.trim().isNotEmpty &&
         host.trim().toLowerCase() != location.trim().toLowerCase();
-    final inviter = invite.inviterName ?? 'Um amigo';
+    final inviter = invite.inviterName ?? 'Alguém';
     final extraInviters = invite.additionalInviters.length;
     final scrim = Theme.of(context).colorScheme.scrim;
 

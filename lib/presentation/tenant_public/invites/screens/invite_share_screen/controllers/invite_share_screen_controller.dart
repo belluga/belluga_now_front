@@ -11,6 +11,7 @@ import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/invites/projections/friend_resume.dart';
 import 'package:belluga_now/domain/invites/projections/friend_resume_with_status.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_account_profile_id_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_recipient_resolved_display_label_value.dart';
 import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/inviteables_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
@@ -25,7 +26,6 @@ import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_display_name_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
-import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_external_contact_share_target.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
@@ -42,18 +42,19 @@ class InviteShareScreenController with Disposable {
     bool? isWebRuntime,
     String? contactRegionCode,
     Set<String> Function(ContactModel contact, {String? regionCode})?
-        localContactHashResolver,
-  })  : _inviteablesRepository = inviteablesRepository ??
-            _resolveInviteablesRepository(invitesRepository),
-        _invitesRepository =
-            invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
-        _contactsRepository =
-            contactsRepository ?? GetIt.I.get<ContactsRepositoryContract>(),
-        _appData = appData ?? GetIt.I.get<AppData>(),
-        _isWebRuntime = isWebRuntime ?? kIsWeb,
-        _contactRegionCodeValue = _buildRegionCodeValue(contactRegionCode),
-        _localContactHashResolver =
-            localContactHashResolver ?? InviteContactImportHashes.contactHashes;
+    localContactHashResolver,
+  }) : _inviteablesRepository =
+           inviteablesRepository ??
+           _resolveInviteablesRepository(invitesRepository),
+       _invitesRepository =
+           invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
+       _contactsRepository =
+           contactsRepository ?? GetIt.I.get<ContactsRepositoryContract>(),
+       _appData = appData ?? GetIt.I.get<AppData>(),
+       _isWebRuntime = isWebRuntime ?? kIsWeb,
+       _contactRegionCodeValue = _buildRegionCodeValue(contactRegionCode),
+       _localContactHashResolver =
+           localContactHashResolver ?? InviteContactImportHashes.contactHashes;
 
   final InviteablesRepositoryContract _inviteablesRepository;
   final InvitesRepositoryContract _invitesRepository;
@@ -61,7 +62,7 @@ class InviteShareScreenController with Disposable {
   final AppData _appData;
   final bool _isWebRuntime;
   final Set<String> Function(ContactModel contact, {String? regionCode})
-      _localContactHashResolver;
+  _localContactHashResolver;
   InviteContactRegionCodeValue? _contactRegionCodeValue;
 
   InviteModel? _currentInvite;
@@ -157,16 +158,12 @@ class InviteShareScreenController with Disposable {
     selectedInviteableReasonStreamValue.addValue(null);
     selectedPaneStreamValue.addValue(InviteSharePane.app);
     _hydrateInviteTargetsFromRepositoryCache();
-    unawaited(_primeCachedContactsForDisplay(
-      occurrenceId: expectedOccurrenceId,
-    ));
+    unawaited(
+      _primeCachedContactsForDisplay(occurrenceId: expectedOccurrenceId),
+    );
     await Future.wait([
-      _loadInviteTargetsWithStatusSafe(
-        occurrenceId: expectedOccurrenceId,
-      ),
-      _loadShareCodeSafe(
-        occurrenceId: expectedOccurrenceId,
-      ),
+      _loadInviteTargetsWithStatusSafe(occurrenceId: expectedOccurrenceId),
+      _loadShareCodeSafe(occurrenceId: expectedOccurrenceId),
     ]);
   }
 
@@ -176,9 +173,7 @@ class InviteShareScreenController with Disposable {
     _isPrimingCachedContactsForDisplay = true;
     try {
       await _loadCachedContactsForDisplay();
-      if (!_isCurrentInviteShareContext(
-        occurrenceId: occurrenceId,
-      )) {
+      if (!_isCurrentInviteShareContext(occurrenceId: occurrenceId)) {
         return;
       }
       _hydrateInviteTargetsFromRepositoryCache();
@@ -190,7 +185,8 @@ class InviteShareScreenController with Disposable {
       if (isCurrentContext) {
         _isPrimingCachedContactsForDisplay = false;
       }
-      final shouldFinalizeDeferredAppPaneHydration = isCurrentContext &&
+      final shouldFinalizeDeferredAppPaneHydration =
+          isCurrentContext &&
           friendsSuggestionsStreamValue.value == null &&
           _currentInviteableRecipientsFromRepository() != null;
       if (shouldFinalizeDeferredAppPaneHydration) {
@@ -198,7 +194,7 @@ class InviteShareScreenController with Disposable {
           sentInvites: sentInvitesStreamValue.value,
           publishPhonePane:
               selectedPaneStreamValue.value == InviteSharePane.phone &&
-                  _hasLoadedPhoneContacts,
+              _hasLoadedPhoneContacts,
         );
       }
     }
@@ -207,7 +203,8 @@ class InviteShareScreenController with Disposable {
   Future<void> loadContacts({bool forceDeviceReload = false}) async {
     try {
       final contactsBeforePermission = _contactsRepository
-          .contactsStreamValue.value
+          .contactsStreamValue
+          .value
           ?.where(_isShareableExternalContact)
           .toList(growable: false);
       final granted = await _contactsRepository.requestPermission();
@@ -218,7 +215,8 @@ class InviteShareScreenController with Disposable {
         return;
       }
 
-      final shouldReadDeviceContacts = forceDeviceReload ||
+      final shouldReadDeviceContacts =
+          forceDeviceReload ||
           (!_hasReadDeviceContactsForEmptyCache &&
               (contactsBeforePermission == null ||
                   contactsBeforePermission.isEmpty));
@@ -272,7 +270,8 @@ class InviteShareScreenController with Disposable {
     if (pane == InviteSharePane.phone && _hasLoadedPhoneContacts) {
       _publishPhonePaneFromRepositoryCacheIfAvailable();
     }
-    final shouldLoadPhoneContacts = pane == InviteSharePane.phone &&
+    final shouldLoadPhoneContacts =
+        pane == InviteSharePane.phone &&
         (!_hasLoadedPhoneContacts ||
             (_availableContactsFromRepository().isEmpty &&
                 !_hasReadDeviceContactsForEmptyCache));
@@ -281,13 +280,12 @@ class InviteShareScreenController with Disposable {
       try {
         await _loadInviteTargetsWithStatusSafe(
           loadPhoneContacts: true,
-          forceReloadContacts: _hasLoadedPhoneContacts &&
+          forceReloadContacts:
+              _hasLoadedPhoneContacts &&
               _availableContactsFromRepository().isEmpty,
         );
       } finally {
-        if (_isCurrentInviteShareContext(
-          occurrenceId: expectedOccurrenceId,
-        )) {
+        if (_isCurrentInviteShareContext(occurrenceId: expectedOccurrenceId)) {
           isPhonePaneInitialLoadingStreamValue.addValue(false);
         }
       }
@@ -302,10 +300,14 @@ class InviteShareScreenController with Disposable {
     if (selectedFriends.isEmpty) return;
     final occurrenceId = _currentOccurrenceIdValue();
     if (occurrenceId == null) return;
-    final eventId =
-        invitesRepoString(invite.eventId, defaultValue: '', isRequired: true);
-    final eligibleFriends =
-        selectedFriends.where(_canSendDirectInvite).toList(growable: false);
+    final eventId = invitesRepoString(
+      invite.eventId,
+      defaultValue: '',
+      isRequired: true,
+    );
+    final eligibleFriends = selectedFriends
+        .where(_canSendDirectInvite)
+        .toList(growable: false);
     if (eligibleFriends.isEmpty) {
       inviteSendFailedStreamValue.addValue(true);
       return;
@@ -364,8 +366,11 @@ class InviteShareScreenController with Disposable {
     if (invite == null) return;
     final occurrenceId = _currentOccurrenceIdValue();
     if (occurrenceId == null) return;
-    final eventId =
-        invitesRepoString(invite.eventId, defaultValue: '', isRequired: true);
+    final eventId = invitesRepoString(
+      invite.eventId,
+      defaultValue: '',
+      isRequired: true,
+    );
     if (!_canSendDirectInvite(friend)) {
       inviteSendFailedStreamValue.addValue(true);
       return;
@@ -421,16 +426,12 @@ class InviteShareScreenController with Disposable {
 
   bool _isCurrentInviteShareContext({
     required InvitesRepositoryContractPrimString? occurrenceId,
-  }) =>
-      !_isDisposed && _isStillCurrentOccurrence(occurrenceId);
+  }) => !_isDisposed && _isStillCurrentOccurrence(occurrenceId);
 
   Set<String> _markInviteSendsInFlight(Iterable<InviteFriendResume> friends) {
     final keys = friends.map(_scopedInviteSendKey).toSet();
     if (_isDisposed || keys.isEmpty) return keys;
-    final nextKeys = {
-      ...sendingInviteRecipientKeysStreamValue.value,
-      ...keys,
-    };
+    final nextKeys = {...sendingInviteRecipientKeysStreamValue.value, ...keys};
     sendingInviteRecipientKeysStreamValue.addValue(nextKeys);
     return keys;
   }
@@ -446,9 +447,7 @@ class InviteShareScreenController with Disposable {
 
   void _clearInviteSendKeysInFlight(Set<String> keys) {
     if (_isDisposed) return;
-    final nextKeys = {
-      ...sendingInviteRecipientKeysStreamValue.value,
-    };
+    final nextKeys = {...sendingInviteRecipientKeysStreamValue.value};
     for (final key in keys) {
       nextKeys.remove(key);
     }
@@ -463,7 +462,8 @@ class InviteShareScreenController with Disposable {
     final requestedKeys = friends.map(_inviteableIdentityKey).toSet();
     return sentInvites
         .where(
-            (invite) => requestedKeys.contains(_sentInviteIdentityKey(invite)))
+          (invite) => requestedKeys.contains(_sentInviteIdentityKey(invite)),
+        )
         .toList(growable: false);
   }
 
@@ -488,25 +488,19 @@ class InviteShareScreenController with Disposable {
     required InvitesRepositoryContractPrimString? eventId,
   }) async {
     try {
-      if (!_isCurrentInviteShareContext(
-        occurrenceId: occurrenceId,
-      )) {
+      if (!_isCurrentInviteShareContext(occurrenceId: occurrenceId)) {
         return;
       }
       await _refreshInviteableRecipientsForCurrentOccurrence(
         occurrenceId: occurrenceId,
         eventId: eventId,
       );
-      if (!_isCurrentInviteShareContext(
-        occurrenceId: occurrenceId,
-      )) {
+      if (!_isCurrentInviteShareContext(occurrenceId: occurrenceId)) {
         return;
       }
       await _applyInviteTargetsFromRepositoriesWithStatus();
     } catch (_) {
-      if (!_isCurrentInviteShareContext(
-        occurrenceId: occurrenceId,
-      )) {
+      if (!_isCurrentInviteShareContext(occurrenceId: occurrenceId)) {
         return;
       }
       _applyInviteTargetsFromRepositories(
@@ -523,22 +517,19 @@ class InviteShareScreenController with Disposable {
   }) async {
     final expectedOccurrenceId = occurrenceId;
 
-    final publishPhonePane = loadPhoneContacts ||
+    final publishPhonePane =
+        loadPhoneContacts ||
         selectedPaneStreamValue.value == InviteSharePane.phone;
 
     if (loadPhoneContacts) {
       await loadContacts(forceDeviceReload: forceReloadContacts);
-      if (!_isCurrentInviteShareContext(
-        occurrenceId: expectedOccurrenceId,
-      )) {
+      if (!_isCurrentInviteShareContext(occurrenceId: expectedOccurrenceId)) {
         return;
       }
       await _refreshImportedContactMatchesOpportunistically(
         suppressFailures: !forceReloadContacts,
       );
-      if (!_isCurrentInviteShareContext(
-        occurrenceId: expectedOccurrenceId,
-      )) {
+      if (!_isCurrentInviteShareContext(occurrenceId: expectedOccurrenceId)) {
         return;
       }
     }
@@ -547,17 +538,14 @@ class InviteShareScreenController with Disposable {
       occurrenceId: expectedOccurrenceId,
       eventId: eventId,
     );
-    if (!_isCurrentInviteShareContext(
-      occurrenceId: expectedOccurrenceId,
-    )) {
+    if (!_isCurrentInviteShareContext(occurrenceId: expectedOccurrenceId)) {
       return;
     }
 
     final shouldDeferInitialAppPanePublication =
         _isPrimingCachedContactsForDisplay &&
-            !(_currentInviteableRecipientsFromRepository()?.isNotEmpty ??
-                false) &&
-            friendsSuggestionsStreamValue.value == null;
+        !(_currentInviteableRecipientsFromRepository()?.isNotEmpty ?? false) &&
+        friendsSuggestionsStreamValue.value == null;
     await _applyInviteTargetsFromRepositoriesWithStatus(
       publishAppPane: !shouldDeferInitialAppPanePublication,
       publishPhonePane: publishPhonePane,
@@ -583,9 +571,7 @@ class InviteShareScreenController with Disposable {
       _phoneContactsRefreshOccurrenceKey = expectedOccurrenceKey;
     }
     if (exposeRefreshState) {
-      if (_isCurrentInviteShareContext(
-        occurrenceId: expectedOccurrenceId,
-      )) {
+      if (_isCurrentInviteShareContext(occurrenceId: expectedOccurrenceId)) {
         phoneContactsRefreshFailedStreamValue.addValue(false);
         isPhoneContactsRefreshingStreamValue.addValue(true);
       }
@@ -598,9 +584,7 @@ class InviteShareScreenController with Disposable {
         eventId: expectedEventId,
       );
     } catch (_) {
-      if (!_isCurrentInviteShareContext(
-        occurrenceId: expectedOccurrenceId,
-      )) {
+      if (!_isCurrentInviteShareContext(occurrenceId: expectedOccurrenceId)) {
         return;
       }
       if (exposeRefreshState) {
@@ -618,16 +602,15 @@ class InviteShareScreenController with Disposable {
         }
       }
     } finally {
-      final ownsPhoneRefreshState = loadPhoneContacts &&
+      final ownsPhoneRefreshState =
+          loadPhoneContacts &&
           _phoneContactsRefreshOccurrenceKey == expectedOccurrenceKey;
       if (ownsPhoneRefreshState) {
         _isPhoneContactsRefreshing = false;
         _phoneContactsRefreshOccurrenceKey = null;
       }
       if (exposeRefreshState) {
-        if (_isCurrentInviteShareContext(
-          occurrenceId: expectedOccurrenceId,
-        )) {
+        if (_isCurrentInviteShareContext(occurrenceId: expectedOccurrenceId)) {
           isPhoneContactsRefreshingStreamValue.addValue(false);
         }
       }
@@ -675,9 +658,7 @@ class InviteShareScreenController with Disposable {
       ),
       occurrenceId: expectedOccurrenceId,
     );
-    if (!_isCurrentInviteShareContext(
-      occurrenceId: expectedOccurrenceId,
-    )) {
+    if (!_isCurrentInviteShareContext(occurrenceId: expectedOccurrenceId)) {
       return;
     }
     shareCodeStreamValue.addValue(shareCode);
@@ -716,19 +697,13 @@ class InviteShareScreenController with Disposable {
     }
     _isShareCodeLoading = true;
     _shareCodeLoadingOccurrenceKey = expectedOccurrenceKey;
-    if (_isCurrentInviteShareContext(
-      occurrenceId: expectedOccurrenceId,
-    )) {
+    if (_isCurrentInviteShareContext(occurrenceId: expectedOccurrenceId)) {
       isShareCodeLoadingStreamValue.addValue(true);
     }
     try {
-      await _loadShareCode(
-        occurrenceId: expectedOccurrenceId,
-      );
+      await _loadShareCode(occurrenceId: expectedOccurrenceId);
     } catch (_) {
-      if (!_isCurrentInviteShareContext(
-        occurrenceId: expectedOccurrenceId,
-      )) {
+      if (!_isCurrentInviteShareContext(occurrenceId: expectedOccurrenceId)) {
         return;
       }
       shareCodeStreamValue.addValue(null);
@@ -740,9 +715,7 @@ class InviteShareScreenController with Disposable {
         _shareCodeLoadingOccurrenceKey = null;
       }
       if (ownsShareCodeLoading &&
-          _isCurrentInviteShareContext(
-            occurrenceId: expectedOccurrenceId,
-          )) {
+          _isCurrentInviteShareContext(occurrenceId: expectedOccurrenceId)) {
         isShareCodeLoadingStreamValue.addValue(false);
       }
     }
@@ -879,19 +852,20 @@ class InviteShareScreenController with Disposable {
 
     final shouldSuppressEmptyHydrationWhilePriming =
         _isPrimingCachedContactsForDisplay &&
-            friendsSuggestionsStreamValue.value == null &&
-            !(inviteableRecipients?.isNotEmpty ?? false) &&
-            (importedMatches == null || importedMatches.isEmpty);
+        friendsSuggestionsStreamValue.value == null &&
+        !(inviteableRecipients?.isNotEmpty ?? false) &&
+        (importedMatches == null || importedMatches.isEmpty);
 
     _applyInviteTargetsFromRepositories(
       sentInvites: sentInvitesStreamValue.value,
-      publishAppPane: !shouldSuppressEmptyHydrationWhilePriming &&
+      publishAppPane:
+          !shouldSuppressEmptyHydrationWhilePriming &&
           _canHydrateAppPaneFromRepositoryCache(
             inviteableRecipients: inviteableRecipients,
           ),
       publishPhonePane:
           selectedPaneStreamValue.value == InviteSharePane.phone &&
-              _hasLoadedPhoneContacts,
+          _hasLoadedPhoneContacts,
     );
   }
 
@@ -899,11 +873,12 @@ class InviteShareScreenController with Disposable {
     if (!_hasLoadedPhoneContacts) {
       return;
     }
-    final backendRecipients = _currentInviteableRecipientsFromRepository() ??
+    final backendRecipients =
+        _currentInviteableRecipientsFromRepository() ??
         const <InviteableRecipient>[];
     final importedMatches =
         _invitesRepository.importedContactMatchesStreamValue.value ??
-            const <InviteContactMatch>[];
+        const <InviteContactMatch>[];
 
     externalContactShareTargetsStreamValue.addValue(
       _buildExternalShareTargets(
@@ -941,7 +916,7 @@ class InviteShareScreenController with Disposable {
       sentInvites: _sentInvitesFromInviteableRecipients(),
       publishPhonePane:
           selectedPaneStreamValue.value == InviteSharePane.phone &&
-              _hasLoadedPhoneContacts,
+          _hasLoadedPhoneContacts,
     );
     return true;
   }
@@ -967,17 +942,13 @@ class InviteShareScreenController with Disposable {
     await _inviteablesRepository.refreshInviteableRecipients();
 
     if (occurrenceId == null) {
-      if (_isCurrentInviteShareContext(
-        occurrenceId: null,
-      )) {
+      if (_isCurrentInviteShareContext(occurrenceId: null)) {
         sentInviteSummaryStreamValue.addValue(SentInviteSummary.empty());
       }
       return;
     }
 
-    if (!_isCurrentInviteShareContext(
-      occurrenceId: occurrenceId,
-    )) {
+    if (!_isCurrentInviteShareContext(occurrenceId: occurrenceId)) {
       return;
     }
 
@@ -999,20 +970,16 @@ class InviteShareScreenController with Disposable {
       eventId: eventId,
       recipientAccountProfileIds: recipientAccountProfileIds,
     );
-    if (!_isCurrentInviteShareContext(
-      occurrenceId: occurrenceId,
-    )) {
+    if (!_isCurrentInviteShareContext(occurrenceId: occurrenceId)) {
       return;
     }
 
-    final summary =
-        await _invitesRepository.refreshSentInviteSummaryForOccurrence(
-      occurrenceId: occurrenceId,
-      eventId: eventId,
-    );
-    if (_isCurrentInviteShareContext(
-      occurrenceId: occurrenceId,
-    )) {
+    final summary = await _invitesRepository
+        .refreshSentInviteSummaryForOccurrence(
+          occurrenceId: occurrenceId,
+          eventId: eventId,
+        );
+    if (_isCurrentInviteShareContext(occurrenceId: occurrenceId)) {
       sentInviteSummaryStreamValue.addValue(summary);
     }
   }
@@ -1050,7 +1017,7 @@ class InviteShareScreenController with Disposable {
   }
 
   StreamValue<List<InviteableRecipient>?>
-      get _currentInviteableRecipientsStreamValue {
+  get _currentInviteableRecipientsStreamValue {
     return _inviteablesRepository.inviteableRecipientsStreamValue;
   }
 
@@ -1060,8 +1027,11 @@ class InviteShareScreenController with Disposable {
       return SentInviteSummary.empty();
     }
 
-    for (final entry in _invitesRepository
-        .sentInviteSummariesByOccurrenceStreamValue.value.entries) {
+    for (final entry
+        in _invitesRepository
+            .sentInviteSummariesByOccurrenceStreamValue
+            .value
+            .entries) {
       if (entry.key.value.trim() == occurrenceId) {
         return entry.value;
       }
@@ -1078,8 +1048,11 @@ class InviteShareScreenController with Disposable {
       return const <SentInviteStatus>[];
     }
 
-    for (final entry in _invitesRepository
-        .sentInvitesByOccurrenceStreamValue.value.entries) {
+    for (final entry
+        in _invitesRepository
+            .sentInvitesByOccurrenceStreamValue
+            .value
+            .entries) {
       if (entry.key.value.trim() == occurrenceId) {
         return entry.value;
       }
@@ -1093,11 +1066,12 @@ class InviteShareScreenController with Disposable {
     bool publishAppPane = true,
     bool publishPhonePane = true,
   }) {
-    final backendRecipients = _currentInviteableRecipientsFromRepository() ??
+    final backendRecipients =
+        _currentInviteableRecipientsFromRepository() ??
         const <InviteableRecipient>[];
     final importedMatches =
         _invitesRepository.importedContactMatchesStreamValue.value ??
-            const <InviteContactMatch>[];
+        const <InviteContactMatch>[];
     final availableContacts = _availableContactsFromRepository();
 
     if (publishPhonePane && _hasLoadedPhoneContacts) {
@@ -1120,19 +1094,17 @@ class InviteShareScreenController with Disposable {
         .toSet();
     final localContactDisplaysByHash = backendRecipients.isEmpty
         ? const <String, _LocalContactDisplay>{}
-        : _localContactDisplaysByHash(
-            availableContacts,
-            localContactHashes,
-          );
-    final recipients = backendRecipients
-        .map(
-          (recipient) => _toInviteFriendResumeFromRecipient(
-            recipient,
-            localContactDisplaysByHash,
-          ),
-        )
-        .toList(growable: false)
-      ..sort((left, right) => left.name.compareTo(right.name));
+        : _localContactDisplaysByHash(availableContacts, localContactHashes);
+    final recipients =
+        backendRecipients
+            .map(
+              (recipient) => _toInviteFriendResumeFromRecipient(
+                recipient,
+                localContactDisplaysByHash,
+              ),
+            )
+            .toList(growable: false)
+          ..sort((left, right) => left.name.compareTo(right.name));
 
     friendsSuggestionsStreamValue.addValue(
       _mergeFriendsWithStatus(recipients, sentInvites),
@@ -1218,7 +1190,7 @@ class InviteShareScreenController with Disposable {
     return InviteFriendResume(
       idValue: FriendIdValue()..parse(recipient.userId),
       accountProfileIdValue: recipient.receiverAccountProfileIdValue,
-      nameValue: TitleValue()..parse(displayName),
+      nameValue: InviteRecipientResolvedDisplayLabelValue()..parse(displayName),
       avatarValue: friendAvatarValue,
       matchLabelValue: FriendMatchLabelValue()..parse(recipient.matchLabel),
       inviteableReasons: recipient.inviteableReasons,
@@ -1361,10 +1333,7 @@ class InviteShareScreenController with Disposable {
 }
 
 class _LocalContactDisplay {
-  const _LocalContactDisplay({
-    required this.name,
-    required this.phone,
-  });
+  const _LocalContactDisplay({required this.name, required this.phone});
 
   final String? name;
   final String? phone;

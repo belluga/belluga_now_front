@@ -195,7 +195,7 @@ class EventDTO {
     );
   }
 
-  EventModel toDomain() {
+  EventModel toDomain({Uri? tenantOrigin}) {
     final thumbDomain = thumb?.toDomain();
     final coordinate = (latitude != null && longitude != null)
         ? CityCoordinate(
@@ -213,7 +213,9 @@ class EventDTO {
           if (selectedOccurrenceId != null && selectedOccurrenceId.isNotEmpty) {
             inviteMap.putIfAbsent('occurrence_id', () => selectedOccurrenceId);
           }
-          return InviteDto.fromJson(inviteMap).toDomain();
+          return InviteDto.fromJson(
+            inviteMap,
+          ).toDomain(tenantOrigin: tenantOrigin);
         })
         .toList(growable: false);
 
