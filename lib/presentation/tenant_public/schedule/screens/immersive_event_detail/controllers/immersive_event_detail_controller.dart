@@ -77,6 +77,7 @@ class ImmersiveEventDetailController implements Disposable {
   final AuthRepositoryContract? _authRepository;
   final AppDataRepositoryContract? _appDataRepository;
   final AccountProfilesRepositoryContract? _accountProfilesRepository;
+  final Set<String> _retainedNestedGroupMembersPaths = <String>{};
   final ProximityPreferencesRepositoryContract? _proximityPreferencesRepository;
   final _emptyRelatedProfileGroupMembersStreamValue =
       StreamValue<List<AccountProfileNestedGroupMember>>(
@@ -121,9 +122,28 @@ class ImmersiveEventDetailController implements Disposable {
     defaultValue: const <String>{},
   );
 
+  void _releaseRetainedNestedGroupMembersPaths() {
+    final repository = _accountProfilesRepository;
+    if (repository != null) {
+      for (final membersPath in _retainedNestedGroupMembersPaths) {
+        repository.releaseNestedGroupMembersByPath(
+          AccountProfilesRepositoryContractPrimString.fromRaw(
+            membersPath,
+            defaultValue: '',
+            isRequired: true,
+          ),
+        );
+      }
+    }
+    _retainedNestedGroupMembersPaths.clear();
+  }
+
   void init(EventModel event) {
     final resolvedEvent = EventSelectedOccurrenceProjection.align(event);
     final currentEvent = eventStreamValue.value;
+    if (currentEvent?.id.value != resolvedEvent.id.value) {
+      _releaseRetainedNestedGroupMembersPaths();
+    }
     final hasSameProjection = _hasSameSelectedOccurrenceProjection(
       currentEvent,
       resolvedEvent,
@@ -276,13 +296,16 @@ class ImmersiveEventDetailController implements Disposable {
       return;
     }
 
-    await repository.loadNestedGroupMembersByPath(
-      AccountProfilesRepositoryContractPrimString.fromRaw(
-        membersPath,
-        defaultValue: '',
-        isRequired: true,
-      ),
-    );
+    final membersPathValue =
+        AccountProfilesRepositoryContractPrimString.fromRaw(
+          membersPath,
+          defaultValue: '',
+          isRequired: true,
+        );
+    if (_retainedNestedGroupMembersPaths.add(membersPath)) {
+      repository.retainNestedGroupMembersByPath(membersPathValue);
+    }
+    await repository.loadNestedGroupMembersByPath(membersPathValue);
   }
 
   Future<void> loadMoreRelatedProfileGroupMembers(
@@ -348,6 +371,52 @@ class ImmersiveEventDetailController implements Disposable {
         defaultValue: '',
         isRequired: true,
       ),
+    );
+  }
+
+  StreamValue<AccountProfilesRepositoryContractPrimBool>
+  isRelatedProfileGroupMembersSearchAvailableStreamValue(
+    EventProfileGroup group,
+  ) {
+    final repository = _accountProfilesRepository;
+    if (repository == null) {
+      return _emptyHasMoreRelatedProfileGroupMembersStreamValue;
+    }
+
+    return repository.isNestedGroupMembersSearchAvailableStreamValue(
+      AccountProfilesRepositoryContractPrimString.fromRaw(
+        group.membersPath?.trim() ?? '',
+        defaultValue: '',
+        isRequired: true,
+      ),
+    );
+  }
+
+  Future<void> searchRelatedProfileGroupMembers(
+    EventProfileGroup group,
+    String rawSearch,
+  ) async {
+    final repository = _accountProfilesRepository;
+    final membersPath = group.membersPath?.trim();
+    final search = rawSearch.trim();
+    if (repository == null || membersPath == null || membersPath.isEmpty) {
+      return;
+    }
+    if (search.isNotEmpty && search.characters.length < 2) return;
+
+    await repository.searchNestedGroupMembersByPath(
+      AccountProfilesRepositoryContractPrimString.fromRaw(
+        membersPath,
+        defaultValue: '',
+        isRequired: true,
+      ),
+      search: search.isEmpty
+          ? null
+          : AccountProfilesRepositoryContractPrimString.fromRaw(
+              search,
+              defaultValue: '',
+              isRequired: true,
+            ),
     );
   }
 
@@ -586,9 +655,8 @@ class ImmersiveEventDetailController implements Disposable {
   String _tagSignature(Iterable<dynamic> tags) {
     return tags
         .map(
-          (tag) => tag is EventTagValue
-              ? tag.value.trim()
-              : tag.toString().trim(),
+          (tag) =>
+              tag is EventTagValue ? tag.value.trim() : tag.toString().trim(),
         )
         .where((tag) => tag.isNotEmpty)
         .join('|');
@@ -975,6 +1043,7 @@ class ImmersiveEventDetailController implements Disposable {
     _shareSessionContextSubscription?.cancel();
     _confirmedOccurrenceIdsSubscription?.cancel();
     _favoriteProfileIdsSubscription?.cancel();
+    _releaseRetainedNestedGroupMembersPaths();
     _invitesRepository.clearImmersiveDetailState();
     _emptyRelatedProfileGroupMembersStreamValue.dispose();
     _emptyHasMoreRelatedProfileGroupMembersStreamValue.dispose();

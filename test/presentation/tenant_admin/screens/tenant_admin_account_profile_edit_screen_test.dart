@@ -17,7 +17,7 @@ import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_onboarding_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate_selection_summary.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_capabilities.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_snapshot.dart';
@@ -36,6 +36,7 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_accou
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_account_profile_dto.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
@@ -266,7 +267,7 @@ void main() {
           GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
               as _FakeAccountProfilesRepository;
       profilesRepository.profileToReturn = _profile(
-        id: 'route-profile',
+        id: '507f1f77bcf86cd799439101',
         avatarUrl: avatarUrl,
         coverUrl: coverUrl,
       );
@@ -275,7 +276,7 @@ void main() {
         tester,
         TenantAdminAccountProfileEditScreen(
           accountSlug: 'route-account',
-          accountProfileId: 'route-profile',
+          accountProfileId: '507f1f77bcf86cd799439101',
         ),
       );
 
@@ -702,11 +703,16 @@ void main() {
 
       expect(find.text('Perfil de origem'), findsOneWidget);
       expect(
-        find.byKey(const Key('tenantAdminAccountProfilePickerList')),
+        find.byKey(const Key('tenantAdminAccountProfileCandidatePickerList')),
         findsOneWidget,
       );
       expect(find.text('Perfil Fonte Picker'), findsOneWidget);
-      expect(find.text('venue'), findsOneWidget);
+      expect(profilesRepository.fetchAccountProfilesPageCalls, 0);
+      expect(profilesRepository.fetchAccountProfileCandidatesPageCalls, 1);
+      expect(
+        profilesRepository.lastCandidateScope,
+        TenantAdminAccountProfileCandidateScope.contactCapable,
+      );
       expect(
         find.text('Nenhum perfil elegível para espelhar contatos.'),
         findsNothing,
@@ -740,7 +746,7 @@ void main() {
       ];
       profilesRepository.profilesToReturn = [sourceProfile];
       profilesRepository.profileToReturn = _profile(
-        id: 'route-profile',
+        id: '507f1f77bcf86cd799439102',
         contactMode: BellugaContactSourceMode.mirroredAccountProfile,
       );
 
@@ -748,7 +754,7 @@ void main() {
         tester,
         const TenantAdminAccountProfileEditScreen(
           accountSlug: 'route-account',
-          accountProfileId: 'route-profile',
+          accountProfileId: '507f1f77bcf86cd799439102',
         ),
       );
 
@@ -765,7 +771,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final searchField = find.byKey(
-        const Key('tenantAdminAccountProfilePickerSearchField'),
+        const Key('tenantAdminAccountProfileCandidatePickerSearchField'),
       );
       expect(searchField, findsOneWidget);
 
@@ -779,7 +785,7 @@ void main() {
 
       expect(searchField, findsOneWidget);
       expect(
-        find.byKey(const Key('tenantAdminAccountProfilePickerList')),
+        find.byKey(const Key('tenantAdminAccountProfileCandidatePickerList')),
         findsOneWidget,
       );
       expect(tester.takeException(), isNull);
@@ -823,7 +829,7 @@ void main() {
       profilesRepository.accountProfileFetchOverrides[sourceProfile.id] =
           sourceProfile;
       profilesRepository.profileToReturn = _profile(
-        id: 'route-profile',
+        id: '507f1f77bcf86cd799439103',
         contactMode: BellugaContactSourceMode.mirroredAccountProfile,
         contactSourceAccountProfileId: sourceProfile.id,
         contactBubbleChannelId: whatsappChannel.id,
@@ -1271,7 +1277,6 @@ void main() {
       await tester.tap(find.text('Salvar alteracoes'));
       await tester.pumpAndSettle();
 
-      expect(profilesRepository.fetchAllNestedGroupMembersCalls, 0);
       expect(profilesRepository.lastNestedProfileGroups, isNull);
     },
   );
@@ -1299,12 +1304,12 @@ void main() {
       profilesRepository.pagedProfilesToReturnByRequest = [
         [
           _profile(
-            id: 'route-profile',
+            id: '507f1f77bcf86cd799439103',
             displayName: 'Perfil atual',
             profileType: 'poi',
           ),
           _profile(
-            id: 'profile-partner',
+            id: '507f1f77bcf86cd799439104',
             displayName: 'Conta Parceira',
             profileType: 'poi',
           ),
@@ -1315,7 +1320,7 @@ void main() {
         tester,
         TenantAdminAccountProfileEditScreen(
           accountSlug: 'route-account',
-          accountProfileId: 'route-profile',
+          accountProfileId: '507f1f77bcf86cd799439103',
         ),
       );
 
@@ -1326,7 +1331,7 @@ void main() {
         scrollable: scrollable,
       );
       final baselineFetchCalls =
-          profilesRepository.fetchAccountProfilesPageCalls;
+          profilesRepository.fetchAccountProfileCandidatesPageCalls;
       await tester.tap(
         find.byKey(const Key('tenantAdminEditManageGroup_partners')),
       );
@@ -1337,8 +1342,13 @@ void main() {
       expect(find.text('Conta Parceira'), findsOneWidget);
       expect(find.text('Perfil atual'), findsNothing);
       expect(
-        profilesRepository.fetchAccountProfilesPageCalls,
+        profilesRepository.fetchAccountProfileCandidatesPageCalls,
         baselineFetchCalls + 1,
+      );
+      expect(profilesRepository.fetchAccountProfilesPageCalls, 0);
+      expect(
+        profilesRepository.lastCandidateExcludeAccountProfileId,
+        '507f1f77bcf86cd799439103',
       );
     },
   );
@@ -1356,7 +1366,7 @@ void main() {
       _profileType(hasGallery: false, hasNestedProfileGroups: true),
     ];
     profilesRepository.profileToReturn = _profile(
-      id: 'route-profile',
+      id: '507f1f77bcf86cd799439105',
       nestedProfileGroups: [_nestedGroupMetadataOnly(memberCount: 0)],
     );
     profilesRepository.nestedGroupMemberPagesByGroupId['partners'] =
@@ -1366,12 +1376,12 @@ void main() {
     profilesRepository.pagedProfilesToReturnByRequest = [
       [
         _profile(
-          id: 'route-profile',
+          id: '507f1f77bcf86cd799439105',
           displayName: 'Perfil atual',
           profileType: 'poi',
         ),
         _profile(
-          id: 'profile-partner',
+          id: '507f1f77bcf86cd799439106',
           displayName:
               'Conta Parceira com nome suficientemente grande para pressionar o layout do picker',
           profileType: 'poi',
@@ -1385,7 +1395,7 @@ void main() {
         data: MediaQueryData(textScaler: TextScaler.linear(1.4)),
         child: TenantAdminAccountProfileEditScreen(
           accountSlug: 'route-account',
-          accountProfileId: 'route-profile',
+          accountProfileId: '507f1f77bcf86cd799439105',
         ),
       ),
     );
@@ -1405,7 +1415,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.byKey(const Key('tenantAdminAccountProfilePickerSearchField')),
+      find.byKey(
+        const Key('tenantAdminAccountProfileCandidatePickerSearchField'),
+      ),
       findsOneWidget,
     );
     expect(find.textContaining('Conta Parceira com nome'), findsOneWidget);
@@ -2039,7 +2051,9 @@ class _FakeAccountProfilesRepository
   nestedGroupMemberPagesByGroupId =
       <String, List<TenantAdminNestedGroupMemberPage>>{};
   int fetchAccountProfilesPageCalls = 0;
-  int fetchAllNestedGroupMembersCalls = 0;
+  int fetchAccountProfileCandidatesPageCalls = 0;
+  TenantAdminAccountProfileCandidateScope? lastCandidateScope;
+  String? lastCandidateExcludeAccountProfileId;
   String? lastPatchNestedGroupProfileId;
   String? lastPatchNestedGroupId;
 
@@ -2096,6 +2110,50 @@ class _FakeAccountProfilesRepository
       hasMore: end < filtered.length,
       currentPage: page.value,
       pageSize: pageSize.value,
+    );
+  }
+
+  @override
+  Future<TenantAdminAccountProfileCandidatePage>
+  fetchAccountProfileCandidatesPage({
+    required TenantAdminAccountProfileCandidateScope scope,
+    required TenantAdminAccountProfilesRepoString search,
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
+  }) async {
+    fetchAccountProfileCandidatesPageCalls += 1;
+    lastCandidateScope = scope;
+    lastCandidateExcludeAccountProfileId = excludeAccountProfileId?.value;
+    final normalizedSearch = search.value.trim().toLowerCase();
+    final requestIndex = fetchAccountProfileCandidatesPageCalls - 1;
+    final sourceProfiles = pagedProfilesToReturnByRequest.isEmpty
+        ? profilesToReturn
+        : pagedProfilesToReturnByRequest[requestIndex <
+                  pagedProfilesToReturnByRequest.length
+              ? requestIndex
+              : pagedProfilesToReturnByRequest.length - 1];
+    final items = sourceProfiles
+        .where(
+          (profile) =>
+              profile.id != excludeAccountProfileId?.value &&
+              (normalizedSearch.isEmpty ||
+                  profile.displayName.toLowerCase().contains(normalizedSearch)),
+        )
+        .map(
+          (profile) => TenantAdminAccountProfileCandidate(
+            idValue: TenantAdminAccountProfileIdValue(profile.id),
+            displayNameValue: TenantAdminRequiredTextValue()
+              ..parse(profile.displayName),
+          ),
+        )
+        .toList(growable: false);
+    return TenantAdminAccountProfileCandidatePage(
+      items: items,
+      pageValue: TenantAdminCountValue(page.value),
+      perPageValue: TenantAdminCountValue(pageSize.value),
+      hasMoreValue: TenantAdminFlagValue(false),
+      browseLimitReachedValue: TenantAdminFlagValue(false),
     );
   }
 
@@ -2289,6 +2347,7 @@ class _FakeAccountProfilesRepository
     required TenantAdminAccountProfilesRepoString groupId,
     TenantAdminAccountProfilesRepoInt? perPage,
     TenantAdminAccountProfilesRepoString? cursor,
+    TenantAdminAccountProfilesRepoString? search,
   }) async {
     final pages =
         nestedGroupMemberPagesByGroupId[groupId.value] ??
@@ -2306,27 +2365,6 @@ class _FakeAccountProfilesRepository
       return pages.last;
     }
     return pages[index + 1];
-  }
-
-  @override
-  Future<TenantAdminNestedGroupMemberPage> fetchAllNestedGroupMembers({
-    required TenantAdminAccountProfilesRepoString accountProfileId,
-    required TenantAdminAccountProfilesRepoString groupId,
-  }) async {
-    fetchAllNestedGroupMembersCalls += 1;
-    final pages =
-        nestedGroupMemberPagesByGroupId[groupId.value] ??
-        <TenantAdminNestedGroupMemberPage>[
-          TenantAdminNestedGroupMemberPage(
-            items: const <TenantAdminAccountProfileSelectionSummary>[],
-            nextCursorValue: TenantAdminOptionalTextValue(),
-          ),
-        ];
-    final allItems = pages.expand((page) => page.items).toList(growable: false);
-    return TenantAdminNestedGroupMemberPage(
-      items: allItems,
-      nextCursorValue: TenantAdminOptionalTextValue(),
-    );
   }
 
   @override

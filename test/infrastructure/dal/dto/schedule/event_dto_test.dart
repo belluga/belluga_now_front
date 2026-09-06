@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
+import 'package:belluga_gallery/belluga_gallery.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 
@@ -271,15 +272,28 @@ void main() {
             'items': [
               {
                 'item_id': 'gallery-1',
+                'type': 'photo',
                 'image_url': 'https://tenant.test/gallery/image.jpg',
                 'thumb_url': 'https://tenant.test/gallery/thumb.jpg',
                 'card_url': 'https://tenant.test/gallery/card.jpg',
                 'modal_url': 'https://tenant.test/gallery/modal.jpg',
               },
               {
+                'item_id': 'gallery-youtube',
+                'type': 'youtube',
+                'title': 'Vista em video',
+                'youtube_video_id': 'dQw4w9WgXcQ',
+                'player_aspect_ratio': 1.5,
+              },
+              {
                 'item_id': 'gallery-2',
                 'thumb_url': 'https://tenant.test/gallery/thumb-2.jpg',
                 'modal_url': 'https://tenant.test/gallery/modal-2.jpg',
+              },
+              {
+                'item_id': 'gallery-unknown',
+                'type': 'unsupported',
+                'image_url': 'https://tenant.test/gallery/unknown.jpg',
               },
             ],
           },
@@ -298,7 +312,7 @@ void main() {
       ['Beach Club'],
     );
     expect(venue.galleryGroups, hasLength(1));
-    expect(venue.galleryGroups.first.items, hasLength(2));
+    expect(venue.galleryGroups.first.items, hasLength(3));
     expect(
       venue.galleryGroups.first.items.first.imageUrl,
       'https://tenant.test/gallery/image.jpg',
@@ -318,6 +332,14 @@ void main() {
     expect(
       venue.galleryGroups.first.items.first.previewUrl,
       'https://tenant.test/gallery/image.jpg',
+    );
+    final youtube = venue.galleryGroups.first.items[1].toGalleryItem();
+    expect(youtube, isA<GalleryYoutubePlayer>());
+    expect((youtube as GalleryYoutubePlayer).youtubeVideoId, 'dQw4w9WgXcQ');
+    expect(youtube.playerAspectRatio, 1.5);
+    expect(
+      venue.galleryGroups.first.items.last.toGalleryItem(),
+      isA<GalleryPhoto>(),
     );
     expect(venue.galleryGroups.first.items.last.imageUrl, '');
     expect(
@@ -1631,7 +1653,6 @@ void main() {
       expect(occurrence.tags.map((tag) => tag.value), ['Instrumental']);
     },
   );
-
 }
 
 AppData _buildAppData() {

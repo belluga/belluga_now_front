@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:belluga_now/application/tenant_admin/tenant_admin_account_profile_candidate_discovery_page_loader.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
@@ -11,13 +12,164 @@ import 'package:belluga_now/presentation/tenant_admin/account_profiles/controlle
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('allows an unlimited group selection session without a quota', () {
+    final controller = TenantAdminAccountProfileCandidatePickerController(
+      pageLoader: TenantAdminAccountProfileCandidateDiscoveryPageLoader(
+        repository: _CandidateRepository(),
+      ),
+      scope: TenantAdminAccountProfileCandidateScope.queryable,
+      maxSelections: null,
+      searchDebounce: Duration.zero,
+    );
+
+    for (var index = 0; index < 51; index += 1) {
+      expect(
+        controller.toggleSelection(
+          _candidate('profile-$index', 'Profile $index'),
+        ),
+        isTrue,
+      );
+    }
+    expect(controller.selectedSummaries, hasLength(51));
+    controller.dispose();
+  });
+
+  test('bounds one group-member mutation selection at 1000 ids', () {
+    final controller = TenantAdminAccountProfileCandidatePickerController(
+      pageLoader: TenantAdminAccountProfileCandidateDiscoveryPageLoader(
+        repository: _CandidateRepository(),
+      ),
+      scope: TenantAdminAccountProfileCandidateScope.queryable,
+      maxSelections: TenantAdminAccountProfileCandidatePickerController
+          .maxGroupMemberSelectionsPerOperation,
+      searchDebounce: Duration.zero,
+    );
+
+    for (var index = 0; index < 1000; index += 1) {
+      expect(
+        controller.toggleSelection(
+          _candidate('profile-$index', 'Profile $index'),
+        ),
+        isTrue,
+      );
+    }
+    expect(
+      controller.toggleSelection(_candidate('profile-1000', 'Profile 1000')),
+      isFalse,
+    );
+    expect(controller.selectedSummaries, hasLength(1000));
+    controller.dispose();
+  });
+
+  test('loads canonical browse on initialization', () async {
+    final repository = _CandidateRepository();
+    repository.responsesBySearch[''] = Future.value(
+      _candidatePage(items: [_candidate('profile-browse', 'Browse')]),
+    );
+    final controller = TenantAdminAccountProfileCandidatePickerController(
+      pageLoader: TenantAdminAccountProfileCandidateDiscoveryPageLoader(
+        repository: repository,
+      ),
+      scope: TenantAdminAccountProfileCandidateScope.queryable,
+      maxSelections: null,
+      searchDebounce: Duration.zero,
+    );
+
+    await controller.initialize();
+
+    expect(repository.searches, ['']);
+    expect(controller.candidatesStreamValue.value.single.displayName, 'Browse');
+    controller.dispose();
+  });
+
+  test('one-grapheme and cleared search restore retained browse', () async {
+    final repository = _CandidateRepository();
+    repository.responsesBySearch[''] = Future.value(
+      _candidatePage(items: [_candidate('profile-browse', 'Browse')]),
+    );
+    repository.responsesBySearch['xa'] = Future.value(
+      _candidatePage(items: [_candidate('profile-xapuri', 'Xapuri')]),
+    );
+    final controller = TenantAdminAccountProfileCandidatePickerController(
+      pageLoader: TenantAdminAccountProfileCandidateDiscoveryPageLoader(
+        repository: repository,
+      ),
+      scope: TenantAdminAccountProfileCandidateScope.queryable,
+      maxSelections: null,
+      searchDebounce: Duration.zero,
+    );
+
+    await controller.initialize();
+    controller.updateSearch('xa');
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+    expect(controller.candidatesStreamValue.value.single.displayName, 'Xapuri');
+
+    controller.updateSearch('x');
+    expect(controller.candidatesStreamValue.value.single.displayName, 'Browse');
+    controller.updateSearch('');
+    expect(controller.candidatesStreamValue.value.single.displayName, 'Browse');
+    expect(repository.searches, ['', 'xa']);
+    controller.dispose();
+  });
+
+  test(
+    'publishes the active browse-limit reason in browse and search modes',
+    () async {
+      final repository = _CandidateRepository();
+      repository.responsesBySearch[''] = Future.value(
+        _candidatePage(
+          items: [_candidate('profile-browse', 'Browse')],
+          browseLimitReached: true,
+        ),
+      );
+      repository.responsesBySearch['xa'] = Future.value(
+        _candidatePage(
+          items: [_candidate('profile-xapuri', 'Xapuri')],
+          browseLimitReached: true,
+        ),
+      );
+      final controller = TenantAdminAccountProfileCandidatePickerController(
+        pageLoader: TenantAdminAccountProfileCandidateDiscoveryPageLoader(
+          repository: repository,
+        ),
+        scope: TenantAdminAccountProfileCandidateScope.queryable,
+        maxSelections: null,
+        searchDebounce: Duration.zero,
+      );
+
+      await controller.initialize();
+      expect(controller.browseLimitReachedStreamValue.value, isTrue);
+
+      controller.updateSearch('xa');
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+      expect(controller.browseLimitReachedStreamValue.value, isTrue);
+
+      controller.updateSearch('');
+      expect(controller.browseLimitReachedStreamValue.value, isTrue);
+      controller.dispose();
+    },
+  );
+
   test(
     'does not search below two graphemes and supersedes stale requests',
     () async {
+      final burstLevel =
+          int.tryParse(Platform.environment['DELPHI_RACE_BURST_LEVEL'] ?? '') ??
+          2;
       final repository = _CandidateRepository();
-      final firstGate = Completer<TenantAdminAccountProfileCandidatePage>();
-      repository.responsesBySearch['xa'] = firstGate.future;
-      repository.responsesBySearch['xap'] = Future.value(
+      final staleGates = <Completer<TenantAdminAccountProfileCandidatePage>>[];
+      final queries = List<String>.generate(
+        burstLevel,
+        (index) => 'xa${index.toString().padLeft(2, '0')}',
+      );
+      for (final query in queries.take(queries.length - 1)) {
+        final gate = Completer<TenantAdminAccountProfileCandidatePage>();
+        staleGates.add(gate);
+        repository.responsesBySearch[query] = gate.future;
+      }
+      repository.responsesBySearch[queries.last] = Future.value(
         _candidatePage(items: [_candidate('profile-xapuri', 'Xapuri')]),
       );
       final controller = TenantAdminAccountProfileCandidatePickerController(
@@ -33,18 +185,21 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect(repository.searches, isEmpty);
 
-      controller.updateSearch('xa');
+      for (final query in queries) {
+        controller.updateSearch(query);
+        await Future<void>.delayed(Duration.zero);
+      }
+      for (final gate in staleGates.reversed) {
+        gate.complete(
+          _candidatePage(items: [_candidate('profile-old', 'Old')]),
+        );
+      }
       await Future<void>.delayed(Duration.zero);
-      expect(repository.searches, ['xa']);
 
-      controller.updateSearch('xap');
-      firstGate.complete(
-        _candidatePage(items: [_candidate('profile-old', 'Old')]),
-      );
-      await Future<void>.delayed(Duration.zero);
-      await Future<void>.delayed(Duration.zero);
-
-      expect(repository.searches, ['xa', 'xap']);
+      expect(repository.searches, [
+        queries.first,
+        queries.last,
+      ], reason: 'Repeated searches coalesce to the latest queued query.');
       expect(
         controller.candidatesStreamValue.value.single.displayName,
         'Xapuri',
@@ -236,12 +391,13 @@ TenantAdminAccountProfileCandidatePage _candidatePage({
   List<TenantAdminAccountProfileCandidate> items =
       const <TenantAdminAccountProfileCandidate>[],
   bool hasMore = false,
+  bool browseLimitReached = false,
 }) {
   return TenantAdminAccountProfileCandidatePage(
     items: items,
     pageValue: TenantAdminCountValue(1),
     perPageValue: TenantAdminCountValue(20),
     hasMoreValue: TenantAdminFlagValue(hasMore),
-    browseLimitReachedValue: TenantAdminFlagValue(false),
+    browseLimitReachedValue: TenantAdminFlagValue(browseLimitReached),
   );
 }

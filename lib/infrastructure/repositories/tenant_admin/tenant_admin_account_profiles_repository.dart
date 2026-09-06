@@ -9,6 +9,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gal
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_snapshot.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_head_mutation_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_group_order_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_label_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_unknown_mutation_failure.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
@@ -70,14 +71,10 @@ class TenantAdminAccountProfilesRepository
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
     TenantAdminAccountProfilesRepoString? accountId,
-    TenantAdminAccountProfilesRepoBool? queryableOnly,
-    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async {
     try {
       final queryParameters = _requestEncoder.encodeFetchAccountProfilesQuery(
         accountId: accountId?.value,
-        queryableOnly: queryableOnly?.value ?? false,
-        excludeAccountProfileId: excludeAccountProfileId?.value,
       );
       final response = await _dio.get(
         '$_apiBaseUrl/v1/account_profiles',
@@ -99,19 +96,11 @@ class TenantAdminAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? search,
     TenantAdminAccountProfilesRepoString? accountId,
     TenantAdminAccountProfilesRepoString? profileType,
-    TenantAdminAccountProfilesRepoString? contactMode,
-    TenantAdminAccountProfilesRepoBool? contactChannelsEnabledOnly,
-    TenantAdminAccountProfilesRepoBool? queryableOnly,
-    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async {
     try {
       final queryParameters = _requestEncoder.encodeFetchAccountProfilesQuery(
         accountId: accountId?.value,
         profileType: profileType?.value,
-        contactMode: contactMode?.value,
-        contactChannelsEnabledOnly: contactChannelsEnabledOnly?.value ?? false,
-        queryableOnly: queryableOnly?.value ?? false,
-        excludeAccountProfileId: excludeAccountProfileId?.value,
         search: search?.value,
         page: page.value,
         pageSize: pageSize.value,
@@ -419,6 +408,7 @@ class TenantAdminAccountProfilesRepository
     required TenantAdminAccountProfilesRepoString groupId,
     TenantAdminAccountProfilesRepoInt? perPage,
     TenantAdminAccountProfilesRepoString? cursor,
+    TenantAdminAccountProfilesRepoString? search,
   }) async {
     try {
       final response = await _dio.get(
@@ -427,6 +417,7 @@ class TenantAdminAccountProfilesRepository
         queryParameters: _requestEncoder.encodeFetchNestedGroupMembersQuery(
           perPage: cursor == null ? perPage?.value : null,
           cursor: cursor?.value,
+          search: search?.value,
         ),
         options: Options(headers: _buildHeaders()),
       );
@@ -436,39 +427,6 @@ class TenantAdminAccountProfilesRepository
     } on DioException catch (error) {
       throw _wrapError(error, 'load nested group members page');
     }
-  }
-
-  @override
-  Future<TenantAdminNestedGroupMemberPage> fetchAllNestedGroupMembers({
-    required TenantAdminAccountProfilesRepoString accountProfileId,
-    required TenantAdminAccountProfilesRepoString groupId,
-  }) async {
-    final items = <TenantAdminAccountProfileSelectionSummary>[];
-    TenantAdminAccountProfilesRepoString? cursor;
-
-    do {
-      final page = await fetchNestedGroupMembersPage(
-        accountProfileId: accountProfileId,
-        groupId: groupId,
-        perPage: cursor == null
-            ? (TenantAdminAccountProfilesRepoInt(defaultValue: 50)..set(50))
-            : null,
-        cursor: cursor,
-      );
-      items.addAll(page.items);
-      final rawCursor = page.nextCursor;
-      cursor = rawCursor == null || rawCursor.isEmpty
-          ? null
-          : (TenantAdminAccountProfilesRepoString(
-              defaultValue: '',
-              isRequired: true,
-            )..parse(rawCursor));
-    } while (cursor != null);
-
-    return TenantAdminNestedGroupMemberPage(
-      items: items,
-      nextCursorValue: TenantAdminOptionalTextValue(),
-    );
   }
 
   @override
@@ -611,6 +569,42 @@ class TenantAdminAccountProfilesRepository
         throw const TenantAdminUnknownMutationFailure();
       }
       throw _wrapError(error, 'patch nested profile group label');
+    }
+  }
+
+  @override
+  Future<TenantAdminGroupOrderMutationResult> moveNestedProfileGroup({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminGroupMoveDirection direction,
+  }) async {
+    final uri =
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}/nested_profile_groups/${groupId.value}/order';
+    try {
+      final response = await _dio.patch(
+        uri,
+        data: {'direction': direction.name},
+        options: Options(headers: _buildHeaders()),
+      );
+      tenantAdminAssertSuccessfulMutationResponse(
+        response,
+        label: 'move nested profile group',
+        uri: uri,
+      );
+      return _responseDecoder.decodeNestedGroupOrderMutationResult(
+        response.data,
+      );
+    } on DioException catch (error) {
+      if (error.response == null) {
+        throw const TenantAdminUnknownMutationFailure();
+      }
+      throw _wrapError(error, 'move nested profile group');
+    } on FormValidationFailure {
+      rethrow;
+    } on FormApiFailure {
+      rethrow;
+    } catch (_) {
+      throw const TenantAdminUnknownMutationFailure();
     }
   }
 

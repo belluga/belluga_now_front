@@ -848,16 +848,8 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? search,
     TenantAdminAccountProfilesRepoString? accountId,
     TenantAdminAccountProfilesRepoString? profileType,
-    TenantAdminAccountProfilesRepoString? contactMode,
-    TenantAdminAccountProfilesRepoBool? contactChannelsEnabledOnly,
-    TenantAdminAccountProfilesRepoBool? queryableOnly,
-    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async {
-    final profiles = await fetchAccountProfiles(
-      accountId: accountId,
-      queryableOnly: queryableOnly,
-      excludeAccountProfileId: excludeAccountProfileId,
-    );
+    final profiles = await fetchAccountProfiles(accountId: accountId);
     return tenantAdminPagedResultFromRaw(items: profiles, hasMore: false);
   }
 
@@ -922,6 +914,7 @@ class _FakeAccountProfilesRepository
     required TenantAdminAccountProfilesRepoString groupId,
     TenantAdminAccountProfilesRepoInt? perPage,
     TenantAdminAccountProfilesRepoString? cursor,
+    TenantAdminAccountProfilesRepoString? search,
   }) async {
     fetchNestedGroupMembersPageCalls += 1;
     lastNestedGroupMembersGroupId = groupId.value;

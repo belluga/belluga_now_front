@@ -275,7 +275,7 @@ void main() {
   );
 
   test(
-    'fetchNestedGroupMembersByPath parses wrapped event related-profile members payloads',
+    'fetchNestedGroupMembersPageByPath parses wrapped event related-profile members payloads',
     () async {
       final validId = _generateMongoId();
       final adapter = _RecordingAdapter(
@@ -309,12 +309,18 @@ void main() {
 
       final page = await backend.fetchNestedGroupMembersPageByPath(
         '/api/v1/events/festival-de-inverno/related_profile_tabs/bandas/members',
+        cursor: 'cursor-1',
+        search: 'ban',
       );
 
       expect(
         adapter.lastRequest?.uri.path,
         '/api/v1/events/festival-de-inverno/related_profile_tabs/bandas/members',
       );
+      expect(adapter.lastRequest?.uri.queryParameters, <String, String>{
+        'cursor': 'cursor-1',
+        'search': 'ban',
+      });
       expect(page.hasMore, isTrue);
       expect(page.nextCursorValue?.value, 'cursor-2');
       expect(page.items, hasLength(1));
@@ -847,7 +853,7 @@ void main() {
   );
 
   test(
-    'fetchNestedGroupMembersByPath keeps nested members without slug when not navigable',
+    'fetchNestedGroupMembersPageByPath keeps nested members without slug when not navigable',
     () async {
       final partnerId = _generateMongoId();
       final adapter = _RecordingAdapter(
@@ -886,7 +892,7 @@ void main() {
   );
 
   test(
-    'fetchNestedGroupMembersByPath normalizes relative member media urls',
+    'fetchNestedGroupMembersPageByPath normalizes relative member media urls',
     () async {
       final secondPartnerId = _generateMongoId();
       final relativeAvatarPath =
@@ -928,7 +934,7 @@ void main() {
   );
 
   test(
-    'fetchNestedGroupMembersByPath applies short-name and fallback rules to nested members',
+    'fetchNestedGroupMembersPageByPath applies short-name and fallback rules to nested members',
     () async {
       final shortNameId = _generateMongoId();
       final fallbackId = _generateMongoId();

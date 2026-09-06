@@ -9,6 +9,7 @@ import 'package:belluga_now/domain/partner/value_objects/invite_partner_logo_ima
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_name_value.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_tagline_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_gallery_group.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_gallery_player_aspect_ratio_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_fields.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_public_detail_path_value.dart';
@@ -985,6 +986,17 @@ class EventDTO {
       final items = <AccountProfileGalleryItem>[];
       for (var itemIndex = 0; itemIndex < itemsRaw.length; itemIndex++) {
         final item = _asMap(itemsRaw[itemIndex]);
+        final rawType = _asNullableString(item['type'])?.trim().toLowerCase();
+        final type = switch (rawType) {
+          null || '' || 'photo' => AccountProfileGalleryItemType.photo,
+          'youtube' => AccountProfileGalleryItemType.youtube,
+          _ => null,
+        };
+        if (type == null) {
+          continue;
+        }
+        final youtubeVideoId =
+            _asNullableString(item['youtube_video_id'])?.trim() ?? '';
         final imageUrl = normalizeTenantPublicMediaUrl(
           _asNullableString(item['image_url']),
         );
@@ -997,10 +1009,16 @@ class EventDTO {
         final modalUrl = normalizeTenantPublicMediaUrl(
           _asNullableString(item['modal_url']),
         );
-        if (imageUrl == null &&
+        final invalidPhoto =
+            type == AccountProfileGalleryItemType.photo &&
+            imageUrl == null &&
             thumbUrl == null &&
             cardUrl == null &&
-            modalUrl == null) {
+            modalUrl == null;
+        final invalidYoutube =
+            type == AccountProfileGalleryItemType.youtube &&
+            youtubeVideoId.isEmpty;
+        if (invalidPhoto || invalidYoutube) {
           continue;
         }
 
@@ -1009,6 +1027,9 @@ class EventDTO {
             itemIdValue: AccountProfileNestedGroupIdValue(
               _asNullableString(item['item_id'])?.trim() ??
                   'gallery-item-$groupIndex-$itemIndex',
+            ),
+            titleValue: AccountProfileNestedGroupMemberTextValue(
+              _asNullableString(item['title']) ?? '',
             ),
             descriptionValue: AccountProfileNestedGroupMemberTextValue(
               _asNullableString(item['description']) ?? '',
@@ -1020,6 +1041,13 @@ class EventDTO {
             thumbUrlValue: _optionalThumbUriValue(thumbUrl),
             cardUrlValue: _optionalThumbUriValue(cardUrl),
             modalUrlValue: _optionalThumbUriValue(modalUrl),
+            type: type,
+            youtubeVideoIdValue: AccountProfileNestedGroupMemberTextValue(
+              youtubeVideoId,
+            ),
+            playerAspectRatioValue: AccountProfileGalleryPlayerAspectRatioValue(
+              item['player_aspect_ratio'],
+            ),
           ),
         );
       }

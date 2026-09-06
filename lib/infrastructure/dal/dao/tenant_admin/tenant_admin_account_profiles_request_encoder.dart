@@ -49,10 +49,6 @@ class TenantAdminAccountProfilesRequestEncoder {
   Map<String, dynamic> encodeFetchAccountProfilesQuery({
     String? accountId,
     String? profileType,
-    String? contactMode,
-    bool contactChannelsEnabledOnly = false,
-    bool queryableOnly = false,
-    String? excludeAccountProfileId,
     String? search,
     int? page,
     int? pageSize,
@@ -63,19 +59,6 @@ class TenantAdminAccountProfilesRequestEncoder {
     }
     if (profileType != null && profileType.trim().isNotEmpty) {
       payload['profile_type'] = profileType.trim();
-    }
-    if (contactMode != null && contactMode.trim().isNotEmpty) {
-      payload['contact_mode'] = contactMode.trim();
-    }
-    if (contactChannelsEnabledOnly) {
-      payload['contact_channels_enabled_only'] = 1;
-    }
-    if (queryableOnly) {
-      payload['queryable_only'] = 1;
-    }
-    if (excludeAccountProfileId != null &&
-        excludeAccountProfileId.trim().isNotEmpty) {
-      payload['exclude_account_profile_id'] = excludeAccountProfileId.trim();
     }
     if (search != null && search.trim().isNotEmpty) {
       payload['search'] = search.trim();
@@ -113,6 +96,7 @@ class TenantAdminAccountProfilesRequestEncoder {
   Map<String, dynamic> encodeFetchNestedGroupMembersQuery({
     int? perPage,
     String? cursor,
+    String? search,
   }) {
     final payload = <String, dynamic>{};
     if (perPage != null && perPage > 0) {
@@ -120,6 +104,9 @@ class TenantAdminAccountProfilesRequestEncoder {
     }
     if (cursor != null && cursor.trim().isNotEmpty) {
       payload['cursor'] = cursor.trim();
+    }
+    if (search != null && search.trim().isNotEmpty) {
+      payload['search'] = search.trim();
     }
     return payload;
   }

@@ -38,6 +38,7 @@ import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_directions_section.dart';
 import 'package:belluga_now/presentation/shared/widgets/public_rich_text_html.dart';
 import 'package:belluga_now/presentation/shared/widgets/nested_accounts_load_more_indicator.dart';
+import 'package:belluga_now/presentation/shared/widgets/nested_accounts_search_field.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
@@ -3179,38 +3180,42 @@ class _LazyNestedProfileGroupContent extends StatelessWidget {
                     final errorMessage = errorValue?.value;
 
                     if (isLoading && members.isEmpty) {
-                      return const Padding(
-                        padding: EdgeInsets.all(24),
-                        child: Center(child: CircularProgressIndicator()),
+                      return _withSearch(
+                        const Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Center(child: CircularProgressIndicator()),
+                        ),
                       );
                     }
 
                     if (errorMessage != null &&
                         errorMessage.trim().isNotEmpty &&
                         members.isEmpty) {
-                      return Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Text(
-                                'Não foi possível carregar os perfis desta aba.',
-                              ),
-                              const SizedBox(height: 12),
-                              TextButton(
-                                onPressed: () => controller
-                                    .ensureNestedGroupMembersLoaded(group),
-                                child: const Text('Tentar novamente'),
-                              ),
-                            ],
+                      return _withSearch(
+                        Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  'Não foi possível carregar os perfis desta aba.',
+                                ),
+                                const SizedBox(height: 12),
+                                TextButton(
+                                  onPressed: () => controller
+                                      .ensureNestedGroupMembersLoaded(group),
+                                  child: const Text('Tentar novamente'),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       );
                     }
 
                     if (members.isEmpty) {
-                      return const SizedBox.shrink();
+                      return _withSearch(const SizedBox.shrink());
                     }
 
                     final footer = hasMore || isLoading
@@ -3224,12 +3229,35 @@ class _LazyNestedProfileGroupContent extends StatelessWidget {
                           )
                         : null;
 
-                    return itemBuilder(members, footer);
+                    return _withSearch(itemBuilder(members, footer));
                   },
                 );
               },
             );
           },
+        );
+      },
+    );
+  }
+
+  Widget _withSearch(Widget child) {
+    return StreamValueBuilder<AccountProfilesRepositoryContractPrimBool>(
+      streamValue: controller.isNestedGroupMembersSearchAvailableStreamValue(
+        group,
+      ),
+      builder: (context, isAvailable) {
+        if (!isAvailable.value) return child;
+
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            NestedAccountsSearchField(
+              fieldKey: Key('accountProfileNestedGroupSearch_${group.id}'),
+              onSubmitted: (search) =>
+                  controller.searchNestedGroupMembers(group, search),
+            ),
+            child,
+          ],
         );
       },
     );

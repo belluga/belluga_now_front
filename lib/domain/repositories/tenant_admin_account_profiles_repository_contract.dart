@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_account_profile_candidates_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/value_objects/tenant_admin_account_profiles_repository_contract_values.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/partners/account_profile_external_link.dart';
@@ -9,6 +10,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gal
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_snapshot.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_head_mutation_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_group_order_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_label_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
@@ -33,7 +35,8 @@ typedef TenantAdminAccountProfilesRepoInt =
 typedef TenantAdminAccountProfilesRepoBool =
     TenantAdminAccountProfilesRepositoryContractBoolValue;
 
-abstract class TenantAdminAccountProfilesRepositoryContract {
+abstract class TenantAdminAccountProfilesRepositoryContract
+    implements TenantAdminAccountProfileCandidatesRepositoryContract {
   static final Expando<_TenantAdminProfileTypesPaginationState>
   _profileTypesStateByRepository =
       Expando<_TenantAdminProfileTypesPaginationState>();
@@ -44,8 +47,6 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
 
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
     TenantAdminAccountProfilesRepoString? accountId,
-    TenantAdminAccountProfilesRepoBool? queryableOnly,
-    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   });
   Future<TenantAdminPagedResult<TenantAdminAccountProfile>>
   fetchAccountProfilesPage({
@@ -54,10 +55,6 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     TenantAdminAccountProfilesRepoString? search,
     TenantAdminAccountProfilesRepoString? accountId,
     TenantAdminAccountProfilesRepoString? profileType,
-    TenantAdminAccountProfilesRepoString? contactMode,
-    TenantAdminAccountProfilesRepoBool? contactChannelsEnabledOnly,
-    TenantAdminAccountProfilesRepoBool? queryableOnly,
-    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async {
     throw UnimplementedError(
       'fetchAccountProfilesPage must be implemented by paginated '
@@ -65,6 +62,7 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     );
   }
 
+  @override
   Future<TenantAdminAccountProfileCandidatePage>
   fetchAccountProfileCandidatesPage({
     required TenantAdminAccountProfileCandidateScope scope,
@@ -206,19 +204,10 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     required TenantAdminAccountProfilesRepoString groupId,
     TenantAdminAccountProfilesRepoInt? perPage,
     TenantAdminAccountProfilesRepoString? cursor,
+    TenantAdminAccountProfilesRepoString? search,
   }) async {
     throw UnimplementedError(
       'fetchNestedGroupMembersPage must be implemented by tenant-admin '
-      'account-profile repositories.',
-    );
-  }
-
-  Future<TenantAdminNestedGroupMemberPage> fetchAllNestedGroupMembers({
-    required TenantAdminAccountProfilesRepoString accountProfileId,
-    required TenantAdminAccountProfilesRepoString groupId,
-  }) async {
-    throw UnimplementedError(
-      'fetchAllNestedGroupMembers must be implemented by tenant-admin '
       'account-profile repositories.',
     );
   }
@@ -263,6 +252,16 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
   }) async {
     throw UnimplementedError(
       'patchNestedProfileGroupLabel must be implemented by tenant-admin account-profile repositories.',
+    );
+  }
+
+  Future<TenantAdminGroupOrderMutationResult> moveNestedProfileGroup({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminGroupMoveDirection direction,
+  }) async {
+    throw UnimplementedError(
+      'moveNestedProfileGroup must be implemented by tenant-admin account-profile repositories.',
     );
   }
 

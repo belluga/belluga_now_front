@@ -14,6 +14,7 @@ final class TenantAdminNestedGroupMembersPageLoader {
     required String accountProfileId,
     required String groupId,
     String? cursor,
+    String? search,
   }) {
     return profilesRepository.fetchNestedGroupMembersPage(
       accountProfileId: tenantAdminAccountProfilesRepoString(
@@ -36,6 +37,13 @@ final class TenantAdminNestedGroupMembersPageLoader {
           ? null
           : tenantAdminAccountProfilesRepoString(
               cursor,
+              defaultValue: '',
+              isRequired: true,
+            ),
+      search: search == null || search.trim().isEmpty
+          ? null
+          : tenantAdminAccountProfilesRepoString(
+              search,
               defaultValue: '',
               isRequired: true,
             ),

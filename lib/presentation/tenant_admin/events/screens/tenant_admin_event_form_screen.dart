@@ -956,7 +956,15 @@ class _TenantAdminEventFormScreenState
                       groupId: group.id,
                       authoritativeLabel: group.label,
                     ),
-                onMoveGroup: (_, _) {},
+                onMoveGroup: (groupId, delta) => unawaited(
+                  _controller.moveOccurrenceProfileGroupHead(
+                    eventId: eventId!,
+                    occurrenceId: occurrenceId!,
+                    occurrenceKey: occurrenceKey!,
+                    groupId: groupId,
+                    delta: delta,
+                  ),
+                ),
                 onRemoveGroup: (groupId) =>
                     _deletePrimaryOccurrenceGroupHead(formState, groupId),
                 addBlockedReason: _primaryOccurrenceGroupAddBlockedReason(
@@ -964,7 +972,7 @@ class _TenantAdminEventFormScreenState
                 ),
                 groupsMutationBusy: isBusy,
                 enableLabelEditing: canPersistGroupLabel,
-                enableReorder: false,
+                enableReorder: canPersistGroupLabel,
                 onManageGroup: _openPrimaryOccurrenceGroupMembers,
                 manageBlockedReasonBuilder: (_) =>
                     _controller.occurrenceRelatedProfilesManageBlockedReason(

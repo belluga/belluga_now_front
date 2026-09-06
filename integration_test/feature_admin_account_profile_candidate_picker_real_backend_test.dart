@@ -213,13 +213,14 @@ void main() {
           find.text('Parceiros'),
           timeout: const Duration(seconds: 30),
         );
-        final createdGroup = controller.editStateStreamValue.value
-            .nestedProfileGroups
-            .single;
+        final createdGroup =
+            controller.editStateStreamValue.value.nestedProfileGroups.single;
         expect(createdGroup.id.trim(), isNotEmpty);
         expect(createdGroup.memberCount, 0);
 
-        await tester.tap(find.widgetWithText(OutlinedButton, 'Gerenciar perfis'));
+        await tester.tap(
+          find.widgetWithText(OutlinedButton, 'Gerenciar perfis'),
+        );
         await tester.pumpAndSettle();
 
         await _waitForFinder(
@@ -244,8 +245,9 @@ void main() {
         await _pumpFor(tester, const Duration(seconds: 2));
         expect(find.textContaining('Xa Fixture').evaluate().isNotEmpty, isTrue);
 
-        // This owner proves the narrow-flow stability plus persisted selection.
-        // Generic-prefix ranking and pagination remain outside this TODO.
+        // Xapuri sorts after the 21 "Xa Fixture" rows, so resolving it through
+        // the narrower server-side search proves that candidate discovery is
+        // not limited to the first broad-prefix page.
         await tester.enterText(
           find.byKey(const Key('tenantAdminAccountProfilePickerSearchField')),
           'xapuri',
@@ -268,13 +270,18 @@ void main() {
         );
         expect(tester.takeException(), isNull);
 
-        final readback = await profilesRepository.fetchAllNestedGroupMembers(
+        final readback = await profilesRepository.fetchNestedGroupMembersPage(
           accountProfileId: tenantAdminAccountProfilesRepoString(
             parentResult.accountProfile.id,
             isRequired: true,
           ),
           groupId: tenantAdminAccountProfilesRepoString(
             createdGroup.id,
+            isRequired: true,
+          ),
+          perPage: tenantAdminAccountProfilesRepoInt(20, defaultValue: 20),
+          search: tenantAdminAccountProfilesRepoString(
+            xapuriDisplayName,
             isRequired: true,
           ),
         );
@@ -309,8 +316,9 @@ void main() {
           ),
         );
         expect(
-          refreshedParent.nestedProfileGroups
-              .where((group) => group.id == createdGroup.id),
+          refreshedParent.nestedProfileGroups.where(
+            (group) => group.id == createdGroup.id,
+          ),
           isEmpty,
         );
       } finally {
@@ -368,8 +376,8 @@ Future<void> _pumpWithAutoRoute(
         builder: (_, routeData) {
           final args = routeData
               .argsAs<TenantAdminAccountProfileGroupMembersRouteArgs>();
-          final controller =
-              GetIt.I.get<TenantAdminAccountProfilesController>();
+          final controller = GetIt.I
+              .get<TenantAdminAccountProfilesController>();
           final liveGroup = _findCurrentNestedGroup(
             controller: controller,
             groupId: args.groupId,
@@ -397,7 +405,8 @@ TenantAdminNestedProfileGroup _findCurrentNestedGroup({
   required TenantAdminAccountProfilesController controller,
   required String groupId,
 }) {
-  for (final group in controller.editStateStreamValue.value.nestedProfileGroups) {
+  for (final group
+      in controller.editStateStreamValue.value.nestedProfileGroups) {
     if (group.id == groupId) {
       return group;
     }

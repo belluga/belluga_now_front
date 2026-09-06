@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:characters/characters.dart';
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/application/proximity_preferences/account_profile_reference_point_resolver.dart';
 import 'package:belluga_now/application/rich_text/account_profile_rich_text_block.dart';
@@ -107,6 +108,7 @@ class AccountProfileDetailController implements Disposable {
   }
 
   final AccountProfilesRepositoryContract _accountProfilesRepository;
+  final Set<String> _retainedNestedGroupMembersPaths = <String>{};
   final PartnerProfileConfigBuilder _profileConfigBuilder;
   final AuthRepositoryContract? _authRepository;
   final UserEventsRepositoryContract? _userEventsRepository;
@@ -150,6 +152,9 @@ class AccountProfileDetailController implements Disposable {
   Future<void> loadResolvedAccountProfile(
     AccountProfileModel accountProfile,
   ) async {
+    if (_detailStateStreamValue.value.accountProfile?.id != accountProfile.id) {
+      _releaseRetainedNestedGroupMembersPaths();
+    }
     errorMessageStreamValue.addValue('');
     _detailStateStreamValue.addValue(
       AccountProfileDetailState(accountProfile: accountProfile),
@@ -187,13 +192,38 @@ class AccountProfileDetailController implements Disposable {
       return;
     }
 
+    final membersPathValue = _retainNestedGroupMembersPath(membersPath);
     await _accountProfilesRepository.loadNestedGroupMembersByPath(
-      AccountProfilesRepositoryContractPrimString.fromRaw(
-        membersPath,
-        defaultValue: '',
-        isRequired: true,
-      ),
+      membersPathValue,
     );
+  }
+
+  AccountProfilesRepositoryContractPrimString _retainNestedGroupMembersPath(
+    String membersPath,
+  ) {
+    final value = AccountProfilesRepositoryContractPrimString.fromRaw(
+      membersPath,
+      defaultValue: '',
+      isRequired: true,
+    );
+    if (_retainedNestedGroupMembersPaths.add(membersPath)) {
+      _accountProfilesRepository.retainNestedGroupMembersByPath(value);
+    }
+
+    return value;
+  }
+
+  void _releaseRetainedNestedGroupMembersPaths() {
+    for (final membersPath in _retainedNestedGroupMembersPaths) {
+      _accountProfilesRepository.releaseNestedGroupMembersByPath(
+        AccountProfilesRepositoryContractPrimString.fromRaw(
+          membersPath,
+          defaultValue: '',
+          isRequired: true,
+        ),
+      );
+    }
+    _retainedNestedGroupMembersPaths.clear();
   }
 
   Future<void> loadMoreNestedGroupMembers(
@@ -245,6 +275,45 @@ class AccountProfileDetailController implements Disposable {
             isRequired: true,
           ),
         );
+  }
+
+  StreamValue<AccountProfilesRepositoryContractPrimBool>
+  isNestedGroupMembersSearchAvailableStreamValue(
+    AccountProfileNestedGroup group,
+  ) {
+    return _accountProfilesRepository
+        .isNestedGroupMembersSearchAvailableStreamValue(
+          AccountProfilesRepositoryContractPrimString.fromRaw(
+            group.membersPath?.trim() ?? '',
+            defaultValue: '',
+            isRequired: true,
+          ),
+        );
+  }
+
+  Future<void> searchNestedGroupMembers(
+    AccountProfileNestedGroup group,
+    String rawSearch,
+  ) async {
+    final membersPath = group.membersPath?.trim();
+    final search = rawSearch.trim();
+    if (membersPath == null || membersPath.isEmpty) return;
+    if (search.isNotEmpty && search.characters.length < 2) return;
+
+    await _accountProfilesRepository.searchNestedGroupMembersByPath(
+      AccountProfilesRepositoryContractPrimString.fromRaw(
+        membersPath,
+        defaultValue: '',
+        isRequired: true,
+      ),
+      search: search.isEmpty
+          ? null
+          : AccountProfilesRepositoryContractPrimString.fromRaw(
+              search,
+              defaultValue: '',
+              isRequired: true,
+            ),
+    );
   }
 
   StreamValue<AccountProfilesRepositoryContractPrimString?>
@@ -758,6 +827,7 @@ class AccountProfileDetailController implements Disposable {
     _favoriteIdsSubscription?.cancel();
     _confirmedEventIdsSubscription?.cancel();
     _pendingInvitesSubscription?.cancel();
+    _releaseRetainedNestedGroupMembersPaths();
     _detailStateStreamValue.dispose();
     errorMessageStreamValue.dispose();
     favoriteIdsStreamValue.dispose();

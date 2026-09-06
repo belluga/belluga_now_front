@@ -13,6 +13,7 @@ final class TenantAdminEventOccurrenceGroupMembersPageLoader {
     required String occurrenceId,
     required String groupId,
     String? cursor,
+    String? search,
   }) {
     return _eventsRepository.fetchOccurrenceProfileGroupMembersPage(
       eventId: TenantAdminEventsRepoString.fromRaw(
@@ -34,6 +35,13 @@ final class TenantAdminEventOccurrenceGroupMembersPageLoader {
           ? null
           : TenantAdminEventsRepoString.fromRaw(
               cursor,
+              defaultValue: '',
+              isRequired: true,
+            ),
+      search: search == null || search.trim().isEmpty
+          ? null
+          : TenantAdminEventsRepoString.fromRaw(
+              search,
               defaultValue: '',
               isRequired: true,
             ),

@@ -333,44 +333,10 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
   }
 
   @override
-  Future<List<AccountProfileNestedGroupMember>> fetchNestedGroupMembersByPath(
-    String membersPath,
-  ) async {
-    final normalizedPath = membersPath.trim();
-    if (normalizedPath.isEmpty) {
-      return const <AccountProfileNestedGroupMember>[];
-    }
-
-    final members = <AccountProfileNestedGroupMember>[];
-    final seen = <String>{};
-    String? nextCursor;
-
-    while (true) {
-      final page = await fetchNestedGroupMembersPageByPath(
-        normalizedPath,
-        cursor: nextCursor,
-      );
-
-      for (final member in page.items) {
-        if (seen.add(member.id)) {
-          members.add(member);
-        }
-      }
-
-      final cursor = page.nextCursorValue?.value.trim();
-      if (cursor == null || cursor.isEmpty) {
-        break;
-      }
-      nextCursor = cursor;
-    }
-
-    return List<AccountProfileNestedGroupMember>.unmodifiable(members);
-  }
-
-  @override
   Future<AccountProfileNestedGroupMemberPage> fetchNestedGroupMembersPageByPath(
     String membersPath, {
     String? cursor,
+    String? search,
   }) async {
     final normalizedPath = membersPath.trim();
     if (normalizedPath.isEmpty) {
@@ -378,11 +344,17 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     }
 
     final normalizedCursor = cursor?.trim();
+    final normalizedSearch = search?.trim();
+    final queryParameters = <String, String>{};
+    if (normalizedCursor != null && normalizedCursor.isNotEmpty) {
+      queryParameters['cursor'] = normalizedCursor;
+    }
+    if (normalizedSearch != null && normalizedSearch.isNotEmpty) {
+      queryParameters['search'] = normalizedSearch;
+    }
     final uri = _resolveTenantPublicUriFromPath(
       normalizedPath,
-      queryParameters: normalizedCursor == null || normalizedCursor.isEmpty
-          ? null
-          : <String, String>{'cursor': normalizedCursor},
+      queryParameters: queryParameters.isEmpty ? null : queryParameters,
     );
 
     final payload =

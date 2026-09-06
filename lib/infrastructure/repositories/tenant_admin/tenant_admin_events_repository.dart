@@ -4,13 +4,13 @@ import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate_selection_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_head_mutation_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_group_order_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_label_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_unknown_mutation_failure.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_mutation_result.dart';
@@ -246,6 +246,7 @@ class TenantAdminEventsRepository
     required TenantAdminEventsRepoString occurrenceId,
     required TenantAdminEventsRepoString groupId,
     TenantAdminEventsRepoString? cursor,
+    TenantAdminEventsRepoString? search,
   }) async {
     final normalizedCursor = cursor?.value.trim();
     final uri =
@@ -256,6 +257,8 @@ class TenantAdminEventsRepository
         queryParameters: {
           if (normalizedCursor != null && normalizedCursor.isNotEmpty)
             'cursor': normalizedCursor,
+          if (search != null && search.value.trim().isNotEmpty)
+            'search': search.value.trim(),
         },
         options: Options(headers: _buildLandlordHeaders()),
       );
@@ -277,37 +280,6 @@ class TenantAdminEventsRepository
         uri: uri,
       );
     }
-  }
-
-  @override
-  Future<List<TenantAdminAccountProfileSelectionSummary>>
-  fetchAllOccurrenceProfileGroupMembers({
-    required TenantAdminEventsRepoString eventId,
-    required TenantAdminEventsRepoString occurrenceId,
-    required TenantAdminEventsRepoString groupId,
-  }) async {
-    final items = <TenantAdminAccountProfileSelectionSummary>[];
-    TenantAdminEventsRepoString? cursor;
-
-    while (true) {
-      final page = await fetchOccurrenceProfileGroupMembersPage(
-        eventId: eventId,
-        occurrenceId: occurrenceId,
-        groupId: groupId,
-        cursor: cursor,
-      );
-      items.addAll(page.items);
-      final nextCursor = page.nextCursor?.trim();
-      if (nextCursor == null || nextCursor.isEmpty) {
-        break;
-      }
-      cursor = TenantAdminEventsRepoString.fromRaw(
-        nextCursor,
-        defaultValue: nextCursor,
-      );
-    }
-
-    return List<TenantAdminAccountProfileSelectionSummary>.unmodifiable(items);
   }
 
   @override
@@ -475,6 +447,43 @@ class TenantAdminEventsRepository
         throw const TenantAdminUnknownMutationFailure();
       }
       throw _wrapMutationError(error, 'patch occurrence profile group label');
+    }
+  }
+
+  @override
+  Future<TenantAdminGroupOrderMutationResult> moveOccurrenceProfileGroup({
+    required TenantAdminEventsRepoString eventId,
+    required TenantAdminEventsRepoString occurrenceId,
+    required TenantAdminEventsRepoString groupId,
+    required TenantAdminGroupMoveDirection direction,
+  }) async {
+    final uri =
+        '$_apiBaseUrl/v1/events/${eventId.value}/occurrences/${occurrenceId.value}/profile_groups/${groupId.value}/order';
+    try {
+      final response = await _dio.patch(
+        uri,
+        data: {'direction': direction.name},
+        options: Options(headers: _buildLandlordHeaders()),
+      );
+      tenantAdminAssertSuccessfulMutationResponse(
+        response,
+        label: 'move occurrence profile group',
+        uri: uri,
+      );
+      return _responseDecoder.decodeOccurrenceGroupOrderMutationResult(
+        response.data,
+      );
+    } on DioException catch (error) {
+      if (error.response == null) {
+        throw const TenantAdminUnknownMutationFailure();
+      }
+      throw _wrapMutationError(error, 'move occurrence profile group');
+    } on FormValidationFailure {
+      rethrow;
+    } on FormApiFailure {
+      rethrow;
+    } catch (_) {
+      throw const TenantAdminUnknownMutationFailure();
     }
   }
 

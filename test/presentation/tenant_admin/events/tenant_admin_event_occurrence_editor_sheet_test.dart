@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_group_order_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_label_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
@@ -64,6 +65,70 @@ void main() {
       controller.dispose();
     },
   );
+
+  testWidgets('persisted occurrence sheet forwards adjacent group movement', (
+    tester,
+  ) async {
+    final repository = _EventsRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: repository,
+      taxonomiesRepository: _TaxonomiesRepository(),
+    );
+    controller.initEventForm(existingEvent: _event());
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: SizedBox())),
+    );
+
+    unawaited(
+      showTenantAdminEventOccurrenceEditorSheet(
+        context: tester.element(find.byType(Scaffold)),
+        controller: controller,
+        occurrenceKey: controller.occurrenceKeyAt(0)!,
+        title: 'Occurrence',
+        eventId: 'event-1',
+        venues: const [],
+        pickDateTime:
+            ({
+              required initialDateTime,
+              required firstDate,
+              required lastDate,
+            }) async => null,
+        pickRelatedAccountProfile: ({required excludedProfileIds}) async =>
+            null,
+        closeModalSheet: <T>(BuildContext context, [T? result]) async => true,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final firstMoveUpButton = find.ancestor(
+      of: find.byTooltip('Mover para cima').first,
+      matching: find.byType(IconButton),
+    );
+    final lastMoveDownButton = find.ancestor(
+      of: find.byTooltip('Mover para baixo').last,
+      matching: find.byType(IconButton),
+    );
+    expect(tester.widget<IconButton>(firstMoveUpButton).onPressed, isNull);
+    expect(tester.widget<IconButton>(lastMoveDownButton).onPressed, isNull);
+    await tester.tap(find.byTooltip('Mover para baixo').first);
+    await tester.pumpAndSettle();
+
+    expect(repository.moveEventId, 'event-1');
+    expect(repository.moveOccurrenceId, 'occurrence-1');
+    expect(repository.moveGroupId, 'artists');
+    expect(repository.moveDirection, TenantAdminGroupMoveDirection.down);
+    expect(
+      controller
+          .eventFormStateStreamValue
+          .value
+          .occurrences
+          .single
+          .profileGroups
+          .map((group) => group.id),
+      ['partners', 'artists'],
+    );
+    controller.dispose();
+  });
 }
 
 TenantAdminEvent _event() => TenantAdminEvent(
@@ -86,6 +151,12 @@ TenantAdminEvent _event() => TenantAdminEvent(
           orderValue: TenantAdminNestedProfileGroupOrderValue(0),
           memberCountValue: TenantAdminCountValue(0),
         ),
+        TenantAdminNestedProfileGroup(
+          idValue: TenantAdminNestedProfileGroupTextValue('partners'),
+          labelValue: TenantAdminNestedProfileGroupTextValue('Partners'),
+          orderValue: TenantAdminNestedProfileGroupOrderValue(1),
+          memberCountValue: TenantAdminCountValue(0),
+        ),
       ],
     ),
   ],
@@ -98,6 +169,10 @@ class _EventsRepository extends TenantAdminEventsRepositoryContract {
   String? eventId;
   String? occurrenceId;
   String? groupId;
+  String? moveEventId;
+  String? moveOccurrenceId;
+  String? moveGroupId;
+  TenantAdminGroupMoveDirection? moveDirection;
   @override
   Future<TenantAdminNestedGroupLabelMutationResult>
   patchOccurrenceProfileGroupLabel({
@@ -112,6 +187,35 @@ class _EventsRepository extends TenantAdminEventsRepositoryContract {
     return TenantAdminNestedGroupLabelMutationResult(
       idValue: TenantAdminNestedProfileGroupTextValue(groupId.value),
       labelValue: TenantAdminNestedProfileGroupTextValue('Authoritative label'),
+    );
+  }
+
+  @override
+  Future<TenantAdminGroupOrderMutationResult> moveOccurrenceProfileGroup({
+    required TenantAdminEventsRepoString eventId,
+    required TenantAdminEventsRepoString occurrenceId,
+    required TenantAdminEventsRepoString groupId,
+    required TenantAdminGroupMoveDirection direction,
+  }) async {
+    moveEventId = eventId.value;
+    moveOccurrenceId = occurrenceId.value;
+    moveGroupId = groupId.value;
+    moveDirection = direction;
+    return TenantAdminGroupOrderMutationResult(
+      eventIdValue: TenantAdminNestedProfileGroupTextValue(eventId.value),
+      occurrenceIdValue: TenantAdminNestedProfileGroupTextValue(
+        occurrenceId.value,
+      ),
+      groups: [
+        TenantAdminGroupOrderEntry(
+          idValue: TenantAdminNestedProfileGroupTextValue('partners'),
+          orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+        ),
+        TenantAdminGroupOrderEntry(
+          idValue: TenantAdminNestedProfileGroupTextValue('artists'),
+          orderValue: TenantAdminNestedProfileGroupOrderValue(1),
+        ),
+      ],
     );
   }
 

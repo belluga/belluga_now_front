@@ -139,8 +139,6 @@ class _FakeAccountProfilesRepository
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
     TenantAdminAccountProfilesRepoString? accountId,
-    TenantAdminAccountProfilesRepoBool? queryableOnly,
-    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async => [];
 
   @override
@@ -151,16 +149,8 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? search,
     TenantAdminAccountProfilesRepoString? accountId,
     TenantAdminAccountProfilesRepoString? profileType,
-    TenantAdminAccountProfilesRepoString? contactMode,
-    TenantAdminAccountProfilesRepoBool? contactChannelsEnabledOnly,
-    TenantAdminAccountProfilesRepoBool? queryableOnly,
-    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async {
-    final profiles = await fetchAccountProfiles(
-      accountId: accountId,
-      queryableOnly: queryableOnly,
-      excludeAccountProfileId: excludeAccountProfileId,
-    );
+    final profiles = await fetchAccountProfiles(accountId: accountId);
     return tenantAdminPagedResultFromRaw(items: profiles, hasMore: false);
   }
 
