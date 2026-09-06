@@ -2570,6 +2570,67 @@ void main() {
   );
 
   test(
+    'definitive account group move failure preserves local state without reconciliation',
+    () async {
+      final originalGroups = <TenantAdminNestedProfileGroup>[
+        TenantAdminNestedProfileGroup(
+          idValue: TenantAdminNestedProfileGroupTextValue('artists'),
+          labelValue: TenantAdminNestedProfileGroupTextValue('Local Artists'),
+          orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+          memberCountValue: TenantAdminCountValue(7),
+        ),
+        TenantAdminNestedProfileGroup(
+          idValue: TenantAdminNestedProfileGroupTextValue('partners'),
+          labelValue: TenantAdminNestedProfileGroupTextValue('Local Partners'),
+          orderValue: TenantAdminNestedProfileGroupOrderValue(1),
+          memberCountValue: TenantAdminCountValue(11),
+        ),
+      ];
+      final repository = _FakeAccountProfilesRepository([
+        tenantAdminAccountProfileFromRaw(
+          id: 'profile-1',
+          accountId: 'acc-1',
+          profileType: 'venue',
+          displayName: 'Perfil',
+          aggregateRevision: 4,
+          nestedProfileGroups: originalGroups,
+        ),
+      ], const []);
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: repository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+      await controller.loadEditProfile('profile-1');
+      repository.moveNestedProfileGroupError = StateError(
+        'definitive move failure',
+      );
+
+      await controller.moveEditNestedProfileGroupHead(
+        accountProfileId: 'profile-1',
+        groupId: 'partners',
+        delta: -1,
+      );
+
+      final groups = controller.editStateStreamValue.value.nestedProfileGroups;
+      expect(repository.moveNestedProfileGroupCalls, 1);
+      expect(repository.fetchAccountProfileCalls, 1);
+      expect(groups.map((group) => group.id), ['artists', 'partners']);
+      expect(groups.map((group) => group.label), [
+        'Local Artists',
+        'Local Partners',
+      ]);
+      expect(groups.map((group) => group.memberCount), [7, 11]);
+      expect(
+        controller.editErrorMessageStreamValue.value,
+        contains('definitive move failure'),
+      );
+      expect(controller.editNestedGroupMutationBusyStreamValue.value, isFalse);
+    },
+  );
+
+  test(
     'foreign group move success performs one GET reconciliation without PATCH replay',
     () async {
       TenantAdminAccountProfile profileWith(

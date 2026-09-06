@@ -1066,6 +1066,92 @@ void main() {
   );
 
   test(
+    'definitive event group move failure preserves local state without reconciliation',
+    () async {
+      final repository = _OccurrenceGroupMutationTrackingRepository()
+        ..moveOccurrenceProfileGroupError = StateError(
+          'definitive move failure',
+        );
+      final controller = TenantAdminEventsController(
+        eventsRepository: repository,
+        taxonomiesRepository: _NoopTaxonomiesRepository(),
+        landlordAuthRepository: _FakeLandlordAuthRepositoryWithToken('token'),
+      );
+      controller.initEventForm(
+        existingEvent: TenantAdminEvent(
+          eventIdValue: tenantAdminRequiredText('event-1'),
+          slugValue: tenantAdminRequiredText('event-1'),
+          titleValue: tenantAdminRequiredText('Event'),
+          contentValue: tenantAdminOptionalText('Content'),
+          type: TenantAdminEventType(
+            nameValue: tenantAdminRequiredText('Show'),
+            slugValue: tenantAdminRequiredText('show'),
+          ),
+          occurrences: [
+            TenantAdminEventOccurrence(
+              occurrenceIdValue: tenantAdminOptionalText('occ-1'),
+              occurrenceSlugValue: tenantAdminOptionalText('occ-1'),
+              dateTimeStartValue: tenantAdminDateTime(DateTime.utc(2026, 9, 5)),
+              profileGroups: [
+                TenantAdminNestedProfileGroup(
+                  idValue: TenantAdminNestedProfileGroupTextValue('artists'),
+                  labelValue: TenantAdminNestedProfileGroupTextValue(
+                    'Local Artists',
+                  ),
+                  orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+                  memberCountValue: TenantAdminCountValue(7),
+                ),
+                TenantAdminNestedProfileGroup(
+                  idValue: TenantAdminNestedProfileGroupTextValue('partners'),
+                  labelValue: TenantAdminNestedProfileGroupTextValue(
+                    'Local Partners',
+                  ),
+                  orderValue: TenantAdminNestedProfileGroupOrderValue(1),
+                  memberCountValue: TenantAdminCountValue(11),
+                ),
+              ],
+            ),
+          ],
+          publication: TenantAdminEventPublication(
+            statusValue: tenantAdminRequiredText('draft'),
+          ),
+        ),
+      );
+
+      await controller.moveOccurrenceProfileGroupHead(
+        eventId: 'event-1',
+        occurrenceId: 'occ-1',
+        occurrenceKey: controller.occurrenceKeyAt(0)!,
+        groupId: 'partners',
+        delta: -1,
+      );
+
+      final groups = controller
+          .eventFormStateStreamValue
+          .value
+          .occurrences
+          .single
+          .profileGroups;
+      expect(repository.moveOccurrenceProfileGroupCalls, 1);
+      expect(repository.fetchEventCalls, 0);
+      expect(groups.map((group) => group.id), ['artists', 'partners']);
+      expect(groups.map((group) => group.label), [
+        'Local Artists',
+        'Local Partners',
+      ]);
+      expect(groups.map((group) => group.memberCount), [7, 11]);
+      expect(
+        controller.submitErrorMessageStreamValue.value,
+        contains('definitive move failure'),
+      );
+      expect(
+        controller.occurrenceProfileGroupMutationBusyStreamValue.value,
+        isFalse,
+      );
+    },
+  );
+
+  test(
     'occurrence group move single-flights ten triggers across three repetitions',
     () async {
       TenantAdminNestedProfileGroup group(String id, int order) =>
