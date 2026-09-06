@@ -130,7 +130,7 @@ class TenantAdminAccountProfilesRepository
         pageSize: resolvedPageSize,
       );
     } on DioException catch (error) {
-      throw _wrapError(error, 'load account profile candidates page');
+      throw _wrapError(error, 'load account profiles page');
     }
   }
 

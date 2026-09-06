@@ -18,6 +18,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart
 TenantAdminAccountProfile tenantAdminAccountProfileFromRaw({
   required Object? id,
   required Object? accountId,
+  Object? accountSlug,
   required Object? profileType,
   required Object? displayName,
   int? aggregateRevision,
@@ -50,6 +51,7 @@ TenantAdminAccountProfile tenantAdminAccountProfileFromRaw({
   return TenantAdminAccountProfile(
     idValue: tenantAdminRequiredText(id),
     accountIdValue: tenantAdminRequiredText(accountId),
+    accountSlugValue: tenantAdminOptionalText(accountSlug),
     profileTypeValue: tenantAdminRequiredText(profileType),
     displayNameValue: AccountProfileNameValue()..parse(displayName?.toString()),
     aggregateRevisionValue: aggregateRevision == null

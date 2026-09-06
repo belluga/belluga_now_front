@@ -2145,6 +2145,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     return TenantAdminAccountProfile(
       idValue: profile.idValue,
       accountIdValue: profile.accountIdValue,
+      accountSlugValue: profile.accountSlugValue,
       profileTypeValue: profile.profileTypeValue,
       displayNameValue: profile.displayNameValue,
       aggregateRevisionValue: invalidateAggregateRevision

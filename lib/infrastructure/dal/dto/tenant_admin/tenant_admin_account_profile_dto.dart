@@ -23,6 +23,7 @@ class TenantAdminAccountProfileDTO {
   TenantAdminAccountProfileDTO({
     required this.id,
     required this.accountId,
+    this.accountSlug,
     required this.profileType,
     required this.displayName,
     this.aggregateRevision,
@@ -53,6 +54,7 @@ class TenantAdminAccountProfileDTO {
 
   final String id;
   final String accountId;
+  final String? accountSlug;
   final String profileType;
   final String displayName;
   final int? aggregateRevision;
@@ -140,6 +142,7 @@ class TenantAdminAccountProfileDTO {
     return TenantAdminAccountProfileDTO(
       id: json['id']?.toString() ?? '',
       accountId: json['account_id']?.toString() ?? '',
+      accountSlug: json['account_slug']?.toString(),
       profileType: json['profile_type']?.toString() ?? '',
       displayName: json['display_name']?.toString() ?? '',
       aggregateRevision: _toInt(json['aggregate_revision']),
@@ -201,6 +204,7 @@ class TenantAdminAccountProfileDTO {
     return tenantAdminAccountProfileFromRaw(
       id: id,
       accountId: accountId,
+      accountSlug: accountSlug,
       profileType: profileType,
       displayName: displayName,
       aggregateRevision: aggregateRevision,

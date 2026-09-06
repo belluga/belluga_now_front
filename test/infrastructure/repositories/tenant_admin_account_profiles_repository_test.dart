@@ -1165,7 +1165,6 @@ void main() {
     );
   });
 
-
   test(
     'fetchAccountProfilesPage sends pagination and search filters and parses page window',
     () async {
@@ -1239,7 +1238,6 @@ void main() {
       expect(secondCacheBuster, isNot(firstCacheBuster));
     },
   );
-
 
   test(
     'updateAccountProfile sends explicit remove avatar/cover flags',

@@ -2,6 +2,18 @@ import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_acc
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('decodes the bounded account slug enrichment for admin navigation', () {
+    final profile = TenantAdminAccountProfileDTO.fromJson({
+      'id': 'profile-1',
+      'account_id': 'account-1',
+      'account_slug': 'account-one',
+      'profile_type': 'venue',
+      'display_name': 'Venue',
+    }).toDomain();
+
+    expect(profile.accountSlug, 'account-one');
+  });
+
   test('decodes ordered external links and enabled collection limit', () {
     final profile = TenantAdminAccountProfileDTO.fromJson({
       'id': 'profile-1',

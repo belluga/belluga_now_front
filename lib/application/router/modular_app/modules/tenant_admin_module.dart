@@ -34,6 +34,7 @@ import 'package:belluga_now/presentation/tenant_admin/account_profiles/controlle
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_account_create_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_account_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_account_profiles_list_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_location_picker_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/discovery_filters/controllers/tenant_admin_discovery_filters_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
@@ -108,6 +109,9 @@ class TenantAdminModule extends ModuleContract {
     );
     registerFactory<TenantAdminAccountsController>(
       () => TenantAdminAccountsController(),
+    );
+    registerLazySingleton<TenantAdminAccountProfilesListController>(
+      () => TenantAdminAccountProfilesListController(),
     );
     registerFactory<TenantAdminAccountCreateController>(
       () => TenantAdminAccountCreateController(),

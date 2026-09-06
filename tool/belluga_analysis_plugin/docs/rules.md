@@ -199,7 +199,7 @@ Controllers must not inject or resolve other presentation controllers. Controlle
 ## `controller_repository_pagination_arguments_forbidden`
 
 ### Rule intent
-Controllers must not pass raw pagination control arguments (`page`, `pageSize`, `cursor`, `limit`, etc.) into repository calls.
+Controllers must not pass raw pagination control arguments (`page`, `pageSize`, `cursor`, `limit`, etc.) into a Schedule repository call. This rule protects the Schedule repository's canonical ownership of pagination regardless of which presentation controller invokes it; it does not impose that Schedule-specific ownership model on unrelated repositories.
 
 ### Remediation playbook
 1. Remove raw pagination arguments from controller-to-repository calls.

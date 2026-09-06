@@ -21,6 +21,7 @@ class TenantAdminAccountProfile {
   TenantAdminAccountProfile({
     required this.idValue,
     required this.accountIdValue,
+    this.accountSlugValue,
     required this.profileTypeValue,
     required this.displayNameValue,
     this.aggregateRevisionValue,
@@ -75,6 +76,7 @@ class TenantAdminAccountProfile {
 
   final TenantAdminRequiredTextValue idValue;
   final TenantAdminRequiredTextValue accountIdValue;
+  final TenantAdminOptionalTextValue? accountSlugValue;
   final TenantAdminRequiredTextValue profileTypeValue;
   final AccountProfileNameValue displayNameValue;
   final TenantAdminAccountProfileAggregateRevisionValue? aggregateRevisionValue;
@@ -116,6 +118,7 @@ class TenantAdminAccountProfile {
 
   String get id => idValue.value;
   String get accountId => accountIdValue.value;
+  String? get accountSlug => accountSlugValue?.nullableValue;
   String get profileType => profileTypeValue.value;
   String get displayName => displayNameValue.value;
   int? get aggregateRevision => aggregateRevisionValue?.value;
