@@ -32,7 +32,6 @@ import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_ex
 import 'package:belluga_now/presentation/landlord_area/auth/controllers/tenant_admin_landlord_login_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_account_create_controller.dart';
-import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_account_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_account_profiles_list_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_location_picker_controller.dart';
@@ -138,9 +137,6 @@ class TenantAdminModule extends ModuleContract {
     );
     registerLazySingleton<TenantAdminAccountProfilesController>(
       () => TenantAdminAccountProfilesController(),
-    );
-    registerFactory<TenantAdminAccountDetailController>(
-      () => TenantAdminAccountDetailController(),
     );
     registerFactory<TenantAdminOrganizationsController>(
       () => TenantAdminOrganizationsController(),
@@ -277,14 +273,6 @@ class TenantAdminModule extends ModuleContract {
           transitionsBuilder: TransitionsBuilders.slideBottom,
           duration: const Duration(milliseconds: 260),
           reverseDuration: const Duration(milliseconds: 220),
-          meta: canonicalRouteMeta(
-            family: CanonicalRouteFamily.tenantAdminAccountsInternal,
-            chromeMode: RouteChromeMode.fullscreen,
-          ),
-        ),
-        AutoRoute(
-          path: 'accounts/:accountSlug',
-          page: TenantAdminAccountDetailRoute.page,
           meta: canonicalRouteMeta(
             family: CanonicalRouteFamily.tenantAdminAccountsInternal,
             chromeMode: RouteChromeMode.fullscreen,

@@ -19,8 +19,8 @@ void main() {
         router: router,
         routeData: _buildRouteData(
           router: router,
-          routeName: TenantAdminAccountDetailRoute.name,
-          fullPath: '/admin/accounts/account-alpha',
+          routeName: TenantAdminAccountProfileEditRoute.name,
+          fullPath: '/admin/accounts/account-alpha/profiles/profile-1/edit',
           meta: canonicalRouteMeta(
             family: CanonicalRouteFamily.tenantAdminAccountsInternal,
             chromeMode: RouteChromeMode.fullscreen,

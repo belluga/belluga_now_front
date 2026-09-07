@@ -4722,7 +4722,7 @@ void main() {
         locationSelectionService: locationSelectionService,
       );
 
-      await controller.loadAccountDetail('yuri-dias');
+      await controller.loadAccountForEdit('yuri-dias');
       final updated = await controller.updateAccount(
         accountSlug: 'yuri-dias',
         name: 'Conta atualizada',

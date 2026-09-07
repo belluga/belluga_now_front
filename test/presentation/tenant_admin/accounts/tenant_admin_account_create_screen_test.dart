@@ -1241,17 +1241,6 @@ Future<void> _pumpWithAutoRoute(WidgetTester tester, Widget child) async {
         builder: (context, routeData) => child,
       ),
       NamedRouteDef(
-        name: TenantAdminAccountDetailRoute.name,
-        path: '/admin/accounts/:accountSlug',
-        meta: canonicalRouteMeta(
-          family: CanonicalRouteFamily.tenantAdminAccountsInternal,
-          chromeMode: RouteChromeMode.fullscreen,
-        ),
-        builder: (_, data) => Scaffold(
-          body: Text('Detail: ${data.params.getString('accountSlug')}'),
-        ),
-      ),
-      NamedRouteDef(
         name: TenantAdminAccountProfileEditRoute.name,
         path: '/admin/accounts/:accountSlug/profiles/:accountProfileId/edit',
         meta: canonicalRouteMeta(

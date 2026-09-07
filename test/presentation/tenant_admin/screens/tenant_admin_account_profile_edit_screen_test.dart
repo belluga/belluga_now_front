@@ -311,6 +311,145 @@ void main() {
     expect(find.text('Do tenant'), findsOneWidget);
   });
 
+  testWidgets('edits Account name and slug from the Profile edit screen', (
+    tester,
+  ) async {
+    final accountsRepository =
+        GetIt.I.get<TenantAdminAccountsRepositoryContract>()
+            as _FakeAccountsRepository;
+
+    await _pumpScreen(
+      tester,
+      TenantAdminAccountProfileEditScreen(
+        accountSlug: 'route-account',
+        accountProfileId: 'route-profile',
+      ),
+    );
+
+    await tester.tap(find.byTooltip('Editar Nome'));
+    await tester.pumpAndSettle();
+    expect(find.text('Editar nome da conta'), findsOneWidget);
+    await tester.enterText(
+      find.descendant(
+        of: find.byType(BottomSheet),
+        matching: find.byType(TextFormField),
+      ),
+      'Conta atualizada',
+    );
+    await tester.tap(
+      find.descendant(
+        of: find.byType(BottomSheet),
+        matching: find.text('Salvar'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(accountsRepository.lastUpdatedName, 'Conta atualizada');
+    expect(find.text('Conta atualizada'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Editar Slug'));
+    await tester.pumpAndSettle();
+    expect(find.text('Editar slug da conta'), findsOneWidget);
+    await tester.enterText(
+      find.descendant(
+        of: find.byType(BottomSheet),
+        matching: find.byType(TextFormField),
+      ),
+      'conta-atualizada',
+    );
+    await tester.tap(
+      find.descendant(
+        of: find.byType(BottomSheet),
+        matching: find.text('Salvar'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(accountsRepository.updateAccountCalls, 2);
+    expect(accountsRepository.lastUpdatedSlug, 'conta-atualizada');
+  });
+
+  testWidgets(
+    'edits Account publication from the Account section without leaving Profile edit',
+    (tester) async {
+      final accountsRepository =
+          GetIt.I.get<TenantAdminAccountsRepositoryContract>()
+              as _FakeAccountsRepository;
+
+      await _pumpScreen(
+        tester,
+        TenantAdminAccountProfileEditScreen(
+          accountSlug: 'route-account',
+          accountProfileId: 'route-profile',
+        ),
+      );
+
+      await tester.scrollUntilVisible(
+        find.text('Dados da conta'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('Dados da conta'), findsOneWidget);
+      expect(find.text('Rascunho'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('editAccountPublicationButton')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Publicado').last);
+      await tester.pumpAndSettle();
+
+      expect(accountsRepository.updateAccountCalls, 1);
+      expect(accountsRepository.lastPublicationStatus, 'published');
+      expect(find.text('Publicado'), findsOneWidget);
+      expect(find.text('Editar Perfil'), findsOneWidget);
+    },
+  );
+
+  testWidgets('keeps Account deletion hidden for tenant-owned Accounts', (
+    tester,
+  ) async {
+    await _pumpScreen(
+      tester,
+      TenantAdminAccountProfileEditScreen(
+        accountSlug: 'route-account',
+        accountProfileId: 'route-profile',
+      ),
+    );
+
+    expect(find.text('Excluir conta'), findsNothing);
+  });
+
+  testWidgets(
+    'deletes an unmanaged Account from Profile edit after confirmation',
+    (tester) async {
+      final accountsRepository =
+          GetIt.I.get<TenantAdminAccountsRepositoryContract>()
+              as _FakeAccountsRepository;
+      accountsRepository.ownershipState = TenantAdminOwnershipState.unmanaged;
+
+      await _pumpScreen(
+        tester,
+        TenantAdminAccountProfileEditScreen(
+          accountSlug: 'route-account',
+          accountProfileId: 'route-profile',
+        ),
+      );
+
+      await tester.scrollUntilVisible(
+        find.text('Excluir conta'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.text('Excluir conta'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Excluir').last);
+      await tester.pumpAndSettle();
+
+      expect(accountsRepository.deleteAccountCalls, 1);
+      expect(accountsRepository.lastDeletedSlug, 'route-account');
+      expect(find.text('Contas'), findsOneWidget);
+    },
+  );
+
   testWidgets(
     'keeps the profile type selector within a narrow edit form for long labels',
     (tester) async {
@@ -1916,6 +2055,14 @@ Future<void> _pumpScreen(WidgetTester tester, Widget child) async {
           );
         },
       ),
+      NamedRouteDef(
+        name: TenantAdminAccountsListRoute.name,
+        path: '/accounts',
+        meta: canonicalRouteMeta(
+          family: CanonicalRouteFamily.tenantAdminAccountsRoot,
+        ),
+        builder: (_, _) => const Scaffold(body: Text('Contas')),
+      ),
     ],
   )..ignorePopCompleters = true;
 
@@ -1930,6 +2077,15 @@ Future<void> _pumpScreen(WidgetTester tester, Widget child) async {
 }
 
 class _FakeAccountsRepository extends TenantAdminAccountsRepositoryContract {
+  int updateAccountCalls = 0;
+  String? lastUpdatedName;
+  String? lastUpdatedSlug;
+  String? lastPublicationStatus;
+  int deleteAccountCalls = 0;
+  String? lastDeletedSlug;
+  TenantAdminOwnershipState ownershipState =
+      TenantAdminOwnershipState.tenantOwned;
+
   @override
   Future<List<TenantAdminAccount>> fetchAccounts() async {
     return [];
@@ -1944,7 +2100,7 @@ class _FakeAccountsRepository extends TenantAdminAccountsRepositoryContract {
       name: accountSlug.value,
       slug: accountSlug.value,
       document: tenantAdminDocumentFromRaw(type: 'cpf', number: '000'),
-      ownershipState: TenantAdminOwnershipState.tenantOwned,
+      ownershipState: ownershipState,
     );
     accountsStreamValue.addValue([account]);
     return account;
@@ -1992,15 +2148,30 @@ class _FakeAccountsRepository extends TenantAdminAccountsRepositoryContract {
     TenantAdminDocument? document,
     TenantAdminOwnershipState? ownershipState,
     TenantAdminAccountPublication? publication,
-  }) {
-    throw UnimplementedError();
+  }) async {
+    updateAccountCalls += 1;
+    lastUpdatedName = name?.value;
+    lastUpdatedSlug = slug?.value;
+    lastPublicationStatus = publication?.status.value;
+    final currentSlug = accountSlug.value;
+    final updated = tenantAdminAccountFromRaw(
+      id: 'acc-$currentSlug',
+      name: name?.value ?? currentSlug,
+      slug: slug?.value ?? currentSlug,
+      document: tenantAdminDocumentFromRaw(type: 'cpf', number: '000'),
+      ownershipState: ownershipState ?? TenantAdminOwnershipState.tenantOwned,
+      publicationStatus: publication?.status.value ?? 'draft',
+    );
+    accountsStreamValue.addValue([updated]);
+    return updated;
   }
 
   @override
   Future<void> deleteAccount(
     TenantAdminAccountsRepositoryContractPrimString accountSlug,
-  ) {
-    throw UnimplementedError();
+  ) async {
+    deleteAccountCalls += 1;
+    lastDeletedSlug = accountSlug.value;
   }
 
   @override

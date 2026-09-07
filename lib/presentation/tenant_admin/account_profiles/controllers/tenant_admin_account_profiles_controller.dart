@@ -142,9 +142,6 @@ class TenantAdminAccountProfilesController implements Disposable {
       StreamValue<TenantAdminAccount?>();
   final StreamValue<TenantAdminAccountProfile?> accountProfileStreamValue =
       StreamValue<TenantAdminAccountProfile?>();
-  final StreamValue<bool> accountDetailLoadingStreamValue = StreamValue<bool>(
-    defaultValue: false,
-  );
   final StreamValue<String?> accountDetailErrorStreamValue =
       StreamValue<String?>();
   final StreamValue<bool> accountUpdatingStreamValue = StreamValue<bool>(
@@ -1232,22 +1229,6 @@ class TenantAdminAccountProfilesController implements Disposable {
     session.dispose();
   }
 
-  Future<TenantAdminAccountProfile?> fetchProfileForAccount(
-    String accountId,
-  ) async {
-    final profiles = await _profilesRepository.fetchAccountProfiles(
-      accountId: tenantAdminAccountProfilesRepoString(
-        accountId,
-        defaultValue: '',
-        isRequired: true,
-      ),
-    );
-    if (profiles.isEmpty) {
-      return null;
-    }
-    return profiles.first;
-  }
-
   Future<void> loadProfiles(String accountId) async {
     isLoadingStreamValue.addValue(true);
     try {
@@ -1377,27 +1358,6 @@ class TenantAdminAccountProfilesController implements Disposable {
 
   void clearCreateAccountId() {
     createAccountIdStreamValue.addValue(null);
-  }
-
-  Future<void> loadAccountDetail(String accountSlug) async {
-    accountDetailLoadingStreamValue.addValue(true);
-    accountDetailErrorStreamValue.addValue(null);
-    try {
-      await loadProfileTypes();
-      final account = await resolveAccountBySlug(accountSlug);
-      _bindAccountWatch(accountId: account.id, accountSlug: account.slug);
-      final profile = await fetchProfileForAccount(account.id);
-      if (_isDisposed) return;
-      accountProfileStreamValue.addValue(profile);
-      accountDetailErrorStreamValue.addValue(null);
-    } catch (error) {
-      if (_isDisposed) return;
-      accountDetailErrorStreamValue.addValue(error.toString());
-    } finally {
-      if (!_isDisposed) {
-        accountDetailLoadingStreamValue.addValue(false);
-      }
-    }
   }
 
   Future<TenantAdminAccount?> updateAccount({
@@ -3112,22 +3072,6 @@ class TenantAdminAccountProfilesController implements Disposable {
     createStateStreamValue.addValue(state);
   }
 
-  void resetAccountDetail() {
-    if (_isDisposed) {
-      return;
-    }
-    _clearAccountWatch();
-    _watchedAccountId = null;
-    _watchedAccountSlug = null;
-    _accountDetailStreamValue.addValue(null);
-    accountProfileStreamValue.addValue(null);
-    _loadedEditProfileSnapshot = null;
-    accountDetailErrorStreamValue.addValue(null);
-    accountDetailLoadingStreamValue.addValue(false);
-    accountDeletingStreamValue.addValue(false);
-    accountDeletedStreamValue.addValue(false);
-  }
-
   void clearAccountDeletedFlag() {
     if (_isDisposed) {
       return;
@@ -3657,7 +3601,6 @@ class TenantAdminAccountProfilesController implements Disposable {
     errorStreamValue.dispose();
     _accountDetailStreamValue.dispose();
     accountProfileStreamValue.dispose();
-    accountDetailLoadingStreamValue.dispose();
     accountDetailErrorStreamValue.dispose();
     accountUpdatingStreamValue.dispose();
     accountDeletingStreamValue.dispose();

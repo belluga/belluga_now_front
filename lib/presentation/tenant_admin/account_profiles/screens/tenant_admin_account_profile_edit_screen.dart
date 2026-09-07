@@ -70,8 +70,11 @@ class _TenantAdminAccountProfileEditScreenState
   String? _lastAvatarPreloadUrl;
   String? _lastCoverPreloadUrl;
   bool _routeParamNormalized = false;
+  String? _pendingAccountSlugRouteReplacement;
   TenantAdminOwnershipState? _selectedOwnershipState;
   String? _syncedOwnershipAccountId;
+  StreamSubscription<TenantAdminAccount?>? _accountSideEffectsSubscription;
+  StreamSubscription<bool>? _accountDeletedSubscription;
 
   static const List<TenantAdminOwnershipState> _editableOwnershipStates =
       <TenantAdminOwnershipState>[
@@ -83,6 +86,7 @@ class _TenantAdminAccountProfileEditScreenState
   void initState() {
     super.initState();
     _controller.bindEditFlow();
+    _bindAccountSideEffects();
     unawaited(_controller.loadAccountForEdit(_currentAccountSlugForRequests()));
     _controller.loadTaxonomies().whenComplete(
       () => _controller.loadEditProfile(
@@ -94,6 +98,8 @@ class _TenantAdminAccountProfileEditScreenState
 
   @override
   void dispose() {
+    _accountSideEffectsSubscription?.cancel();
+    _accountDeletedSubscription?.cancel();
     _controller.resetFormControllers();
     _controller.resetEditState();
     super.dispose();
@@ -303,6 +309,38 @@ class _TenantAdminAccountProfileEditScreenState
     });
   }
 
+  void _normalizeUpdatedAccountSlugIfNeeded(TenantAdminAccount account) {
+    final resolvedSlug = account.slug.trim();
+    if (!_isResolvedSlug(resolvedSlug) ||
+        resolvedSlug == widget.accountSlug.trim() ||
+        _pendingAccountSlugRouteReplacement == resolvedSlug) {
+      return;
+    }
+    _pendingAccountSlugRouteReplacement = resolvedSlug;
+    context.router.replace(
+      TenantAdminAccountProfileEditRoute(
+        accountSlug: resolvedSlug,
+        accountProfileId: _currentAccountProfileIdForRequests(),
+      ),
+    );
+  }
+
+  void _handleAccountDeleted(bool deleted) {
+    if (!deleted || !mounted) return;
+    _controller.clearAccountDeletedFlag();
+    context.router.replace(const TenantAdminAccountsListRoute());
+  }
+
+  void _bindAccountSideEffects() {
+    _accountSideEffectsSubscription ??= _controller.accountStreamValue.stream
+        .listen((account) {
+          if (account == null || !mounted) return;
+          _normalizeUpdatedAccountSlugIfNeeded(account);
+        });
+    _accountDeletedSubscription ??= _controller.accountDeletedStreamValue.stream
+        .listen(_handleAccountDeleted);
+  }
+
   void _syncFormControllers(TenantAdminAccountProfile profile) {
     _controller.slugController.text = profile.slug ?? '';
     _controller.displayNameController.text = profile.displayName;
@@ -495,6 +533,152 @@ class _TenantAdminAccountProfileEditScreenState
         ),
       ),
     );
+  }
+
+  String _accountPublicationLabel(String status) =>
+      status.trim() == 'published' ? 'Publicado' : 'Rascunho';
+
+  Future<void> _editAccountName(TenantAdminAccount account) async {
+    final result = await showTenantAdminFieldEditSheet(
+      context: context,
+      title: 'Editar nome da conta',
+      label: 'Nome',
+      initialValue: account.name,
+      helperText: 'Atualiza apenas o nome da conta.',
+      textCapitalization: TextCapitalization.words,
+      textInputAction: TextInputAction.done,
+      autocorrect: true,
+      enableSuggestions: true,
+      validator: (value) =>
+          (value?.trim() ?? '').isEmpty ? 'Nome e obrigatorio.' : null,
+    );
+    if (result == null || !mounted) return;
+    final name = result.value.trim();
+    if (name.isEmpty || name == account.name) return;
+
+    final updated = await _controller.updateAccount(
+      accountSlug: account.slug,
+      name: name,
+    );
+    if (!mounted) return;
+    if (updated == null) {
+      _controller.reportEditErrorMessage(
+        'Nao foi possivel atualizar o nome da conta.',
+      );
+      return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Nome da conta atualizado.')));
+  }
+
+  Future<void> _editAccountSlug(TenantAdminAccount account) async {
+    final result = await showTenantAdminFieldEditSheet(
+      context: context,
+      title: 'Editar slug da conta',
+      label: 'Slug',
+      initialValue: account.slug,
+      helperText: 'Deve ser unico no tenant.',
+      textInputAction: TextInputAction.done,
+      inputFormatters: tenantAdminSlugInputFormatters,
+      validator: (value) => tenantAdminValidateRequiredSlug(
+        value,
+        requiredMessage: 'Slug e obrigatorio.',
+      ),
+    );
+    if (result == null || !mounted) return;
+    final slug = result.value.trim();
+    if (slug.isEmpty || slug == account.slug) return;
+
+    final updated = await _controller.updateAccount(
+      accountSlug: account.slug,
+      slug: slug,
+    );
+    if (!mounted) return;
+    if (updated == null) {
+      _controller.reportEditErrorMessage(
+        'Nao foi possivel atualizar o slug da conta.',
+      );
+      return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Slug da conta atualizado.')));
+  }
+
+  Future<void> _editAccountPublication(TenantAdminAccount account) async {
+    final selectedStatus = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final currentStatus = account.publication.status.value;
+        Widget option(String status, String label) => ListTile(
+          title: Text(label),
+          trailing: currentStatus == status ? const Icon(Icons.check) : null,
+          onTap: () => sheetContext.router.maybePop(status),
+        );
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              option('draft', 'Rascunho'),
+              option('published', 'Publicado'),
+            ],
+          ),
+        );
+      },
+    );
+    if (!mounted ||
+        selectedStatus == null ||
+        selectedStatus == account.publication.status.value) {
+      return;
+    }
+
+    final updated = await _controller.updateAccount(
+      accountSlug: account.slug,
+      publication: tenantAdminAccountPublicationFromRaw(status: selectedStatus),
+    );
+    if (!mounted) return;
+    if (updated == null) {
+      _controller.reportEditErrorMessage(
+        'Nao foi possivel atualizar a publicacao da conta.',
+      );
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Publicacao da conta atualizada para ${_accountPublicationLabel(updated.publication.status.value)}.',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteAccount(TenantAdminAccount account) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Excluir conta'),
+        content: Text(
+          'Deseja excluir a conta "${account.name}"? Esta acao remove tambem o perfil associado.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => dialogContext.router.maybePop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton.tonal(
+            onPressed: () => dialogContext.router.maybePop(true),
+            child: const Text('Excluir'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final deleted = await _controller.deleteAccount(accountSlug: account.slug);
+    if (!mounted || deleted) return;
+    _controller.reportEditErrorMessage('Nao foi possivel excluir a conta.');
   }
 
   String _nestedGroupManageBlockedReason(TenantAdminNestedProfileGroup group) {
@@ -897,17 +1081,22 @@ class _TenantAdminAccountProfileEditScreenState
                                             onNullWidget: _buildProfileSection(
                                               context,
                                               state,
-                                              accountOwnership: null,
                                             ),
                                             builder: (context, account) {
                                               _syncOwnershipSelection(
                                                 account.ownershipState,
                                               );
-                                              return _buildProfileSection(
-                                                context,
-                                                state,
-                                                accountOwnership:
-                                                    account.ownershipState,
+                                              return Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.stretch,
+                                                children: [
+                                                  _buildAccountSection(account),
+                                                  const SizedBox(height: 16),
+                                                  _buildProfileSection(
+                                                    context,
+                                                    state,
+                                                  ),
+                                                ],
                                               );
                                             },
                                           ),
@@ -1379,11 +1568,151 @@ class _TenantAdminAccountProfileEditScreenState
     );
   }
 
+  Widget _buildAccountSection(TenantAdminAccount account) {
+    return StreamValueBuilder<bool>(
+      streamValue: _controller.accountUpdatingStreamValue,
+      builder: (context, isUpdating) {
+        return StreamValueBuilder<bool>(
+          streamValue: _controller.accountDeletingStreamValue,
+          builder: (context, isDeleting) {
+            final isBusy = isUpdating || isDeleting;
+            return TenantAdminFormSectionCard(
+              title: 'Dados da conta',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildAccountRow(
+                    label: 'Nome',
+                    value: account.name,
+                    onEdit: isBusy ? null : () => _editAccountName(account),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildAccountRow(
+                    label: 'Slug',
+                    value: account.slug,
+                    onEdit: isBusy ? null : () => _editAccountSlug(account),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildAccountRow(
+                    key: const Key('editAccountPublicationButton'),
+                    label: 'Publicacao',
+                    value: _accountPublicationLabel(
+                      account.publication.status.value,
+                    ),
+                    onEdit: isBusy
+                        ? null
+                        : () => _editAccountPublication(account),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildAccountReadOnlyRow(
+                    label: 'Documento',
+                    value: account.document.number,
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<TenantAdminOwnershipState>(
+                    key: ValueKey(
+                      _selectedOwnershipState ?? account.ownershipState,
+                    ),
+                    initialValue:
+                        _selectedOwnershipState ?? account.ownershipState,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Gestao da conta',
+                    ),
+                    items: _editableOwnershipStates
+                        .map(
+                          (state) =>
+                              DropdownMenuItem<TenantAdminOwnershipState>(
+                                value: state,
+                                child: Text(
+                                  state.label,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                        )
+                        .toList(growable: false),
+                    onChanged: isBusy
+                        ? null
+                        : (value) {
+                            if (value == null) return;
+                            setState(() => _selectedOwnershipState = value);
+                          },
+                    validator: (value) =>
+                        value == null ? 'Gestao da conta e obrigatoria.' : null,
+                  ),
+                  if (account.ownershipState ==
+                      TenantAdminOwnershipState.unmanaged) ...[
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: isBusy
+                            ? null
+                            : () => _confirmDeleteAccount(account),
+                        icon: const Icon(Icons.delete_outline),
+                        label: const Text('Excluir conta'),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildAccountRow({
+    Key? key,
+    required String label,
+    required String value,
+    required VoidCallback? onEdit,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SizedBox(
+          width: 110,
+          child: Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
+        Expanded(child: Text(value)),
+        IconButton(
+          key: key,
+          onPressed: onEdit,
+          tooltip: 'Editar $label',
+          icon: const Icon(Icons.edit_outlined),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAccountReadOnlyRow({
+    required String label,
+    required String value,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 110,
+          child: Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
+        Expanded(child: Text(value)),
+      ],
+    );
+  }
+
   Widget _buildProfileSection(
     BuildContext context,
-    TenantAdminAccountProfileEditDraft state, {
-    required TenantAdminOwnershipState? accountOwnership,
-  }) {
+    TenantAdminAccountProfileEditDraft state,
+  ) {
     return TenantAdminFormSectionCard(
       title: 'Dados do perfil',
       child: Column(
@@ -1440,35 +1769,6 @@ class _TenantAdminAccountProfileEditScreenState
                   return null;
                 },
               );
-            },
-          ),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<TenantAdminOwnershipState>(
-            key: ValueKey(_selectedOwnershipState ?? accountOwnership),
-            initialValue: _selectedOwnershipState ?? accountOwnership,
-            isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Gestao da conta'),
-            items: _editableOwnershipStates
-                .map(
-                  (state) => DropdownMenuItem<TenantAdminOwnershipState>(
-                    value: state,
-                    child: Text(state.label, overflow: TextOverflow.ellipsis),
-                  ),
-                )
-                .toList(growable: false),
-            onChanged: (value) {
-              if (value == null) {
-                return;
-              }
-              setState(() {
-                _selectedOwnershipState = value;
-              });
-            },
-            validator: (value) {
-              if (value == null) {
-                return 'Gestao da conta e obrigatoria.';
-              }
-              return null;
             },
           ),
           const SizedBox(height: 8),

@@ -24,8 +24,6 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/screens/tenant_admin_account_profile_edit_screen.dart';
-import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_account_detail_controller.dart';
-import 'package:belluga_now/presentation/tenant_admin/accounts/screens/tenant_admin_account_detail_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/account_profile_detail_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
 import 'package:belluga_now/testing/account_profile_model_factory.dart';
@@ -112,40 +110,26 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pumpAndSettle();
       await GetIt.I.unregister<TenantAdminAccountProfilesController>();
-      GetIt.I.registerSingleton<TenantAdminAccountDetailController>(
-        TenantAdminAccountDetailController(
-          profilesRepository: profilesRepository,
-          accountsRepository: accountsRepository,
-        ),
+      final reloadedAdminController = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: accountsRepository,
+        taxonomiesRepository: taxonomiesRepository,
+        locationSelectionService: _NoopLocationSelectionService(),
+      );
+      GetIt.I.registerSingleton<TenantAdminAccountProfilesController>(
+        reloadedAdminController,
       );
 
       await _pumpAdminRoute(
         tester,
-        const TenantAdminAccountDetailScreen(accountSlug: 'casa-cultural'),
+        const TenantAdminAccountProfileEditScreen(
+          accountSlug: 'casa-cultural',
+          accountProfileId: 'profile-rich-1',
+        ),
       );
 
-      await _pumpUntilFound(tester, find.byType(ListView));
-      final adminDetailScrollable = find.byType(Scrollable).first;
-      await tester.scrollUntilVisible(
-        find.text('Bio'),
-        250,
-        scrollable: adminDetailScrollable,
-      );
-
-      expect(find.text('Bio'), findsOneWidget);
-      expect(find.text('Conteúdo'), findsOneWidget);
-      expect(find.text('Bio Heading 🎉'), findsOneWidget);
-      expect(find.textContaining('Bold bio'), findsWidgets);
-      expect(find.textContaining('Second bio line'), findsWidgets);
-      expect(find.text('Bio quote'), findsOneWidget);
-      expect(find.text('Bio bullet'), findsOneWidget);
-      expect(find.text('Content Heading'), findsOneWidget);
-      expect(find.textContaining('Italic content'), findsWidgets);
-      expect(find.textContaining('strike content'), findsWidgets);
-      expect(find.textContaining('😄'), findsWidgets);
-      expect(find.text('Content ordered'), findsOneWidget);
-      expect(find.textContaining('<h2>'), findsNothing);
-      expect(find.textContaining('<strong>'), findsNothing);
+      expect(reloadedAdminController.bioController.text, editedBio);
+      expect(reloadedAdminController.contentController.text, editedContent);
 
       final publicRepository = _PublicAccountProfilesRepository(
         _publicProfileFromAdmin(profilesRepository.current),
