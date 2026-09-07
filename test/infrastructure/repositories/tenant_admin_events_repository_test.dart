@@ -178,28 +178,31 @@ void main() {
         tenantScope: _MutableTenantScope('https://tenant-a.test/admin/api'),
       );
 
-      final result = await repository.moveOccurrenceProfileGroup(
-        eventId: _repoText('event-1'),
-        occurrenceId: _repoText('occ-1'),
-        groupId: _repoText('partners'),
-        direction: TenantAdminGroupMoveDirection.down,
-      );
+      for (final direction in TenantAdminGroupMoveDirection.values) {
+        final result = await repository.moveOccurrenceProfileGroup(
+          eventId: _repoText('event-1'),
+          occurrenceId: _repoText('occ-1'),
+          groupId: _repoText('partners'),
+          direction: direction,
+        );
 
-      final request = adapter.requests.single;
-      expect(request.method, 'PATCH');
-      expect(
-        request.path,
-        endsWith(
-          '/v1/events/event-1/occurrences/occ-1/profile_groups/partners/order',
-        ),
-      );
-      expect(request.data, {'direction': 'down'});
-      expect(result.eventId, 'event-1');
-      expect(result.occurrenceId, 'occ-1');
-      expect(result.groups.map((entry) => '${entry.id}:${entry.order}'), [
-        'partners:0',
-        'artists:1',
-      ]);
+        final request = adapter.requests.last;
+        expect(request.method, 'PATCH');
+        expect(
+          request.path,
+          endsWith(
+            '/v1/events/event-1/occurrences/occ-1/profile_groups/partners/order',
+          ),
+        );
+        expect(request.data, {'direction': direction.name});
+        expect(result.eventId, 'event-1');
+        expect(result.occurrenceId, 'occ-1');
+        expect(result.groups.map((entry) => '${entry.id}:${entry.order}'), [
+          'partners:0',
+          'artists:1',
+        ]);
+      }
+      expect(adapter.requests, hasLength(2));
     },
   );
 

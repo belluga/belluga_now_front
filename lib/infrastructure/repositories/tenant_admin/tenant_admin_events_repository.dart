@@ -462,7 +462,7 @@ class TenantAdminEventsRepository
     try {
       final response = await _dio.patch(
         uri,
-        data: {'direction': direction.name},
+        data: _requestEncoder.encodeOccurrenceProfileGroupMove(direction),
         options: Options(headers: _buildLandlordHeaders()),
       );
       tenantAdminAssertSuccessfulMutationResponse(

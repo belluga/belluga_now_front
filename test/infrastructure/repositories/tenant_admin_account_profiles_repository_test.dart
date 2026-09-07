@@ -169,33 +169,36 @@ void main() {
         dio: Dio()..httpClientAdapter = adapter,
       );
 
-      final result = await repository.moveNestedProfileGroup(
-        accountProfileId: tenantAdminAccountProfilesRepoString(
-          'profile-1',
-          defaultValue: '',
-          isRequired: true,
-        ),
-        groupId: tenantAdminAccountProfilesRepoString(
-          'partners',
-          defaultValue: '',
-          isRequired: true,
-        ),
-        direction: TenantAdminGroupMoveDirection.up,
-      );
+      for (final direction in TenantAdminGroupMoveDirection.values) {
+        final result = await repository.moveNestedProfileGroup(
+          accountProfileId: tenantAdminAccountProfilesRepoString(
+            'profile-1',
+            defaultValue: '',
+            isRequired: true,
+          ),
+          groupId: tenantAdminAccountProfilesRepoString(
+            'partners',
+            defaultValue: '',
+            isRequired: true,
+          ),
+          direction: direction,
+        );
 
-      expect(adapter.lastRequest?.method, 'PATCH');
-      expect(
-        adapter.lastRequest?.path,
-        endsWith(
-          '/v1/account_profiles/profile-1/nested_profile_groups/partners/order',
-        ),
-      );
-      expect(adapter.lastRequest?.data, {'direction': 'up'});
-      expect(result.accountProfileId, 'profile-1');
-      expect(result.groups.map((entry) => '${entry.id}:${entry.order}'), [
-        'partners:0',
-        'artists:1',
-      ]);
+        expect(adapter.lastRequest?.method, 'PATCH');
+        expect(
+          adapter.lastRequest?.path,
+          endsWith(
+            '/v1/account_profiles/profile-1/nested_profile_groups/partners/order',
+          ),
+        );
+        expect(adapter.lastRequest?.data, {'direction': direction.name});
+        expect(result.accountProfileId, 'profile-1');
+        expect(result.groups.map((entry) => '${entry.id}:${entry.order}'), [
+          'partners:0',
+          'artists:1',
+        ]);
+      }
+      expect(adapter.requests, hasLength(2));
     },
   );
 

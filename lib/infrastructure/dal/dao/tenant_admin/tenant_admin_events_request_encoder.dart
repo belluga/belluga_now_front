@@ -1,5 +1,6 @@
 import 'package:belluga_now/application/time/timezone_converter.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_group_move_direction.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 
 class TenantAdminEventsRequestEncoder {
@@ -34,6 +35,10 @@ class TenantAdminEventsRequestEncoder {
   Map<String, dynamic> encodePatchOccurrenceProfileGroupLabel({
     required String label,
   }) => <String, dynamic>{'label': label.trim()};
+
+  Map<String, dynamic> encodeOccurrenceProfileGroupMove(
+    TenantAdminGroupMoveDirection direction,
+  ) => <String, dynamic>{'direction': direction.name};
 
   Map<String, dynamic> encodeEventTypePatch({
     String? name,

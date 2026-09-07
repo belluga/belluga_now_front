@@ -1,5 +1,6 @@
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_group_move_direction.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
@@ -129,6 +130,10 @@ class TenantAdminAccountProfilesRequestEncoder {
   Map<String, dynamic> encodePatchNestedProfileGroupLabel({
     required String label,
   }) => <String, dynamic>{'label': label.trim()};
+
+  Map<String, dynamic> encodeNestedProfileGroupMove(
+    TenantAdminGroupMoveDirection direction,
+  ) => <String, dynamic>{'direction': direction.name};
 
   Map<String, dynamic> encodeCreateAccountProfile({
     required String accountId,

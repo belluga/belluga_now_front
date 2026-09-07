@@ -583,7 +583,7 @@ class TenantAdminAccountProfilesRepository
     try {
       final response = await _dio.patch(
         uri,
-        data: {'direction': direction.name},
+        data: _requestEncoder.encodeNestedProfileGroupMove(direction),
         options: Options(headers: _buildHeaders()),
       );
       tenantAdminAssertSuccessfulMutationResponse(
