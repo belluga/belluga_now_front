@@ -18,10 +18,12 @@ class TenantAdminAccountProfileExternalLinkAddRoutePage
     super.key,
     @PathParam('accountSlug') required this.accountSlug,
     @PathParam('accountProfileId') required this.accountProfileId,
+    this.returnToExistingEditor = false,
   });
 
   final String accountSlug;
   final String accountProfileId;
+  final bool returnToExistingEditor;
 
   @override
   RouteResolverParams get resolverParams => {
@@ -66,5 +68,6 @@ class TenantAdminAccountProfileExternalLinkAddRoutePage
     accountSlug: accountSlug,
     accountProfile: model.profile,
     draft: model.draft,
+    returnToExistingEditor: returnToExistingEditor,
   );
 }

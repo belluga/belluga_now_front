@@ -17,11 +17,13 @@ class TenantAdminAccountProfileExternalLinkFormScreen extends StatefulWidget {
     required this.accountSlug,
     required this.accountProfile,
     required this.draft,
+    this.returnToExistingEditor = false,
   });
 
   final String accountSlug;
   final TenantAdminAccountProfile accountProfile;
   final TenantAdminAccountProfileExternalLinkDraft draft;
+  final bool returnToExistingEditor;
 
   @override
   State<TenantAdminAccountProfileExternalLinkFormScreen> createState() =>
@@ -41,9 +43,13 @@ class _TenantAdminAccountProfileExternalLinkFormScreenState
     super.dispose();
   }
 
-  void _replaceWithParent() {
+  void _returnToParent() {
     if (!mounted || _returnedToParent) return;
     _returnedToParent = true;
+    if (widget.returnToExistingEditor) {
+      context.router.pop();
+      return;
+    }
     unawaited(
       context.router.replace(
         TenantAdminAccountProfileEditRoute(
@@ -70,7 +76,7 @@ class _TenantAdminAccountProfileExternalLinkFormScreenState
     _discardDialogVisible = false;
     if (!mounted || !discard) return;
     draft.acceptDiscard();
-    _replaceWithParent();
+    _returnToParent();
   }
 
   List<AccountProfileExternalLinkType> _availableTypes(
@@ -93,7 +99,7 @@ class _TenantAdminAccountProfileExternalLinkFormScreenState
     if (!mounted) return;
     if (outcome == TenantAdminExternalLinkMutationOutcome.saved ||
         outcome == TenantAdminExternalLinkMutationOutcome.capabilityDisabled) {
-      _replaceWithParent();
+      _returnToParent();
     }
   }
 
@@ -111,7 +117,7 @@ class _TenantAdminAccountProfileExternalLinkFormScreenState
     if (!mounted) return;
     if (outcome == TenantAdminExternalLinkMutationOutcome.deleted ||
         outcome == TenantAdminExternalLinkMutationOutcome.capabilityDisabled) {
-      _replaceWithParent();
+      _returnToParent();
     }
   }
 

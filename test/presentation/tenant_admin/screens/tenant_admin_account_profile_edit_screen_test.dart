@@ -8,6 +8,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
+import 'package:belluga_now/domain/partners/account_profile_external_link.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
@@ -126,6 +127,84 @@ void main() {
       expect(profilesRepository.lastFetchedProfileId, 'route-profile');
     },
   );
+
+  testWidgets('marks external-link child routes as warm editor returns', (
+    tester,
+  ) async {
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+    profilesRepository.profileTypesToReturn = [
+      _profileType(
+        hasGallery: false,
+        hasNestedProfileGroups: false,
+        hasExternalLinks: true,
+      ),
+    ];
+    profilesRepository.profileToReturn = _profile(
+      id: 'route-profile',
+      externalLinks: [
+        AccountProfileExternalLink(
+          idValue: AccountProfileExternalLinkIdValue('instagram-link'),
+          type: AccountProfileExternalLinkType.instagram,
+          urlValue: AccountProfileExternalLinkUrlValue(
+            'https://instagram.com/belluga',
+          ),
+          labelValue: AccountProfileExternalLinkLabelValue('Instagram'),
+        ),
+      ],
+      externalLinksLimit: 3,
+    );
+
+    final router = await _pumpScreen(
+      tester,
+      TenantAdminAccountProfileEditScreen(
+        accountSlug: 'route-account',
+        accountProfileId: 'route-profile',
+        initialProfile: profilesRepository.profileToReturn,
+      ),
+    );
+    final scrollable = find.byType(Scrollable).first;
+    expect(
+      find.byKey(
+        const ValueKey('tenantAdminExternalLink-instagram-link'),
+        skipOffstage: false,
+      ),
+      findsOneWidget,
+    );
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('tenantAdminExternalLink-instagram-link')),
+      200,
+      scrollable: scrollable,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('tenantAdminExternalLink-instagram-link')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      router.current
+          .argsAs<TenantAdminAccountProfileExternalLinkEditRouteArgs>()
+          .returnToExistingEditor,
+      isTrue,
+    );
+
+    router.pop();
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('tenantAdminAddExternalLinkButton')),
+      200,
+      scrollable: scrollable,
+    );
+    await tester.tap(find.byKey(const Key('tenantAdminAddExternalLinkButton')));
+    await tester.pumpAndSettle();
+    expect(
+      router.current
+          .argsAs<TenantAdminAccountProfileExternalLinkAddRouteArgs>()
+          .returnToExistingEditor,
+      isTrue,
+    );
+  });
 
   testWidgets(
     'blocks update when display name has fewer than three characters',
@@ -2022,7 +2101,7 @@ void main() {
   );
 }
 
-Future<void> _pumpScreen(WidgetTester tester, Widget child) async {
+Future<RootStackRouter> _pumpScreen(WidgetTester tester, Widget child) async {
   final router = RootStackRouter.build(
     routes: [
       NamedRouteDef(
@@ -2063,6 +2142,16 @@ Future<void> _pumpScreen(WidgetTester tester, Widget child) async {
         ),
         builder: (_, _) => const Scaffold(body: Text('Contas')),
       ),
+      NamedRouteDef(
+        name: TenantAdminAccountProfileExternalLinkAddRoute.name,
+        path: '/external-links/add',
+        builder: (_, _) => const Scaffold(body: Text('Adicionar link')),
+      ),
+      NamedRouteDef(
+        name: TenantAdminAccountProfileExternalLinkEditRoute.name,
+        path: '/external-links/:externalLinkId',
+        builder: (_, _) => const Scaffold(body: Text('Editar link')),
+      ),
     ],
   )..ignorePopCompleters = true;
 
@@ -2074,6 +2163,7 @@ Future<void> _pumpScreen(WidgetTester tester, Widget child) async {
     ),
   );
   await tester.pumpAndSettle();
+  return router;
 }
 
 class _FakeAccountsRepository extends TenantAdminAccountsRepositoryContract {
@@ -2822,6 +2912,9 @@ TenantAdminAccountProfile _profile({
   String? contactBubbleChannelId,
   List<BellugaContactChannel> effectiveContactChannels =
       const <BellugaContactChannel>[],
+  List<AccountProfileExternalLink> externalLinks =
+      const <AccountProfileExternalLink>[],
+  int? externalLinksLimit,
 }) {
   return tenantAdminAccountProfileFromRaw(
     id: id,
@@ -2840,6 +2933,8 @@ TenantAdminAccountProfile _profile({
     contactChannels: contactChannels,
     contactBubbleChannelId: contactBubbleChannelId,
     effectiveContactChannels: effectiveContactChannels,
+    externalLinks: externalLinks,
+    externalLinksLimit: externalLinksLimit,
   );
 }
 
@@ -2874,6 +2969,7 @@ TenantAdminProfileTypeDefinition _profileType({
   required bool hasGallery,
   required bool hasNestedProfileGroups,
   bool hasContactChannels = false,
+  bool hasExternalLinks = false,
   String type = 'poi',
   String label = 'POI',
 }) {
@@ -2893,6 +2989,7 @@ TenantAdminProfileTypeDefinition _profileType({
       hasGallery: TenantAdminFlagValue(hasGallery),
       hasNestedProfileGroups: TenantAdminFlagValue(hasNestedProfileGroups),
       hasContactChannels: TenantAdminFlagValue(hasContactChannels),
+      hasExternalLinks: TenantAdminFlagValue(hasExternalLinks),
     ),
   );
 }

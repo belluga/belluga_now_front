@@ -1530,6 +1530,7 @@ class _TenantAdminAccountProfileEditScreenState
                   accountSlug: _currentAccountSlugForRequests(),
                   accountProfileId: profile.id,
                   externalLinkId: link.id,
+                  returnToExistingEditor: true,
                 ),
               ),
             ),
@@ -1548,6 +1549,7 @@ class _TenantAdminAccountProfileEditScreenState
                     TenantAdminAccountProfileExternalLinkAddRoute(
                       accountSlug: _currentAccountSlugForRequests(),
                       accountProfileId: profile.id,
+                      returnToExistingEditor: true,
                     ),
                   ),
             leading: const CircleAvatar(child: Icon(Icons.add)),

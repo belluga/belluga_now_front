@@ -321,7 +321,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('successful mutation requests exactly one parent replacement', (
+  testWidgets('direct-entry mutation requests exactly one parent replacement', (
     tester,
   ) async {
     final existing = _parseExternalLink(
@@ -364,6 +364,7 @@ void main() {
     await tester.tap(save);
     await tester.pumpAndSettle();
     expect(router.replaceCalls, hasLength(1));
+    expect(router.popCalls, 0);
     expect(
       router.replaceCalls.single.routeName,
       contains('TenantAdminAccountProfileEditRoute'),
@@ -374,10 +375,67 @@ void main() {
     await tester.pumpAndSettle();
     expect(router.replaceCalls, hasLength(1));
   });
+
+  testWidgets('warm mutation returns to the existing parent editor once', (
+    tester,
+  ) async {
+    final existing = _parseExternalLink(
+      id: 'instagram-link',
+      type: AccountProfileExternalLinkType.instagram,
+      url: 'https://instagram.com/belluga',
+    );
+    final profile = tenantAdminAccountProfileFromRaw(
+      id: 'profile-pop-once',
+      accountId: 'account-pop-once',
+      profileType: 'custom',
+      displayName: 'Profile Pop Once',
+      externalLinks: [existing],
+      externalLinksLimit: 3,
+    );
+    profilesRepository.updateExternalLinkResult = profile;
+    controller.adoptExternalLinkRouteProfile(profile);
+    final draft = controller.beginExternalLinkDraft(
+      accountProfileId: profile.id,
+      existingLink: existing,
+    );
+
+    final router = _RecordingStackRouter();
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: TenantAdminAccountProfileExternalLinkFormScreen(
+            accountSlug: 'account-pop-once',
+            accountProfile: profile,
+            draft: draft,
+            returnToExistingEditor: true,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final save = find.byKey(const Key('externalLinkSaveButton'));
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+    expect(router.popCalls, 1);
+    expect(router.replaceCalls, isEmpty);
+
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+    expect(router.popCalls, 1);
+  });
 }
 
 class _RecordingStackRouter extends Fake implements StackRouter {
   final List<PageRouteInfo<dynamic>> replaceCalls = <PageRouteInfo<dynamic>>[];
+  int popCalls = 0;
+
+  @override
+  void pop<T extends Object?>([T? result]) {
+    popCalls += 1;
+  }
 
   @override
   Future<T?> replace<T extends Object?>(

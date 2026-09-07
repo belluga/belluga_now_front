@@ -1347,6 +1347,7 @@ class TenantAdminAccountProfileExternalLinkAddRoute
     _i74.Key? key,
     required String accountSlug,
     required String accountProfileId,
+    bool returnToExistingEditor = false,
     List<_i73.PageRouteInfo>? children,
   }) : super(
          TenantAdminAccountProfileExternalLinkAddRoute.name,
@@ -1354,6 +1355,7 @@ class TenantAdminAccountProfileExternalLinkAddRoute
            key: key,
            accountSlug: accountSlug,
            accountProfileId: accountProfileId,
+           returnToExistingEditor: returnToExistingEditor,
          ),
          rawPathParams: {
            'accountSlug': accountSlug,
@@ -1379,6 +1381,7 @@ class TenantAdminAccountProfileExternalLinkAddRoute
         key: args.key,
         accountSlug: args.accountSlug,
         accountProfileId: args.accountProfileId,
+        returnToExistingEditor: args.returnToExistingEditor,
       );
     },
   );
@@ -1389,6 +1392,7 @@ class TenantAdminAccountProfileExternalLinkAddRouteArgs {
     this.key,
     required this.accountSlug,
     required this.accountProfileId,
+    this.returnToExistingEditor = false,
   });
 
   final _i74.Key? key;
@@ -1397,9 +1401,11 @@ class TenantAdminAccountProfileExternalLinkAddRouteArgs {
 
   final String accountProfileId;
 
+  final bool returnToExistingEditor;
+
   @override
   String toString() {
-    return 'TenantAdminAccountProfileExternalLinkAddRouteArgs{key: $key, accountSlug: $accountSlug, accountProfileId: $accountProfileId}';
+    return 'TenantAdminAccountProfileExternalLinkAddRouteArgs{key: $key, accountSlug: $accountSlug, accountProfileId: $accountProfileId, returnToExistingEditor: $returnToExistingEditor}';
   }
 
   @override
@@ -1409,12 +1415,16 @@ class TenantAdminAccountProfileExternalLinkAddRouteArgs {
       return false;
     return key == other.key &&
         accountSlug == other.accountSlug &&
-        accountProfileId == other.accountProfileId;
+        accountProfileId == other.accountProfileId &&
+        returnToExistingEditor == other.returnToExistingEditor;
   }
 
   @override
   int get hashCode =>
-      key.hashCode ^ accountSlug.hashCode ^ accountProfileId.hashCode;
+      key.hashCode ^
+      accountSlug.hashCode ^
+      accountProfileId.hashCode ^
+      returnToExistingEditor.hashCode;
 }
 
 /// generated route for
@@ -1427,6 +1437,7 @@ class TenantAdminAccountProfileExternalLinkEditRoute
     required String accountSlug,
     required String accountProfileId,
     required String externalLinkId,
+    bool returnToExistingEditor = false,
     List<_i73.PageRouteInfo>? children,
   }) : super(
          TenantAdminAccountProfileExternalLinkEditRoute.name,
@@ -1435,6 +1446,7 @@ class TenantAdminAccountProfileExternalLinkEditRoute
            accountSlug: accountSlug,
            accountProfileId: accountProfileId,
            externalLinkId: externalLinkId,
+           returnToExistingEditor: returnToExistingEditor,
          ),
          rawPathParams: {
            'accountSlug': accountSlug,
@@ -1463,6 +1475,7 @@ class TenantAdminAccountProfileExternalLinkEditRoute
         accountSlug: args.accountSlug,
         accountProfileId: args.accountProfileId,
         externalLinkId: args.externalLinkId,
+        returnToExistingEditor: args.returnToExistingEditor,
       );
     },
   );
@@ -1474,6 +1487,7 @@ class TenantAdminAccountProfileExternalLinkEditRouteArgs {
     required this.accountSlug,
     required this.accountProfileId,
     required this.externalLinkId,
+    this.returnToExistingEditor = false,
   });
 
   final _i74.Key? key;
@@ -1484,9 +1498,11 @@ class TenantAdminAccountProfileExternalLinkEditRouteArgs {
 
   final String externalLinkId;
 
+  final bool returnToExistingEditor;
+
   @override
   String toString() {
-    return 'TenantAdminAccountProfileExternalLinkEditRouteArgs{key: $key, accountSlug: $accountSlug, accountProfileId: $accountProfileId, externalLinkId: $externalLinkId}';
+    return 'TenantAdminAccountProfileExternalLinkEditRouteArgs{key: $key, accountSlug: $accountSlug, accountProfileId: $accountProfileId, externalLinkId: $externalLinkId, returnToExistingEditor: $returnToExistingEditor}';
   }
 
   @override
@@ -1497,7 +1513,8 @@ class TenantAdminAccountProfileExternalLinkEditRouteArgs {
     return key == other.key &&
         accountSlug == other.accountSlug &&
         accountProfileId == other.accountProfileId &&
-        externalLinkId == other.externalLinkId;
+        externalLinkId == other.externalLinkId &&
+        returnToExistingEditor == other.returnToExistingEditor;
   }
 
   @override
@@ -1505,7 +1522,8 @@ class TenantAdminAccountProfileExternalLinkEditRouteArgs {
       key.hashCode ^
       accountSlug.hashCode ^
       accountProfileId.hashCode ^
-      externalLinkId.hashCode;
+      externalLinkId.hashCode ^
+      returnToExistingEditor.hashCode;
 }
 
 /// generated route for

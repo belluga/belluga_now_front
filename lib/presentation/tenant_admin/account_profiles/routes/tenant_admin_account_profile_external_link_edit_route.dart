@@ -19,11 +19,13 @@ class TenantAdminAccountProfileExternalLinkEditRoutePage
     @PathParam('accountSlug') required this.accountSlug,
     @PathParam('accountProfileId') required this.accountProfileId,
     @PathParam('externalLinkId') required this.externalLinkId,
+    this.returnToExistingEditor = false,
   });
 
   final String accountSlug;
   final String accountProfileId;
   final String externalLinkId;
+  final bool returnToExistingEditor;
 
   @override
   RouteResolverParams get resolverParams => {
@@ -69,5 +71,6 @@ class TenantAdminAccountProfileExternalLinkEditRoutePage
     accountSlug: accountSlug,
     accountProfile: model.profile,
     draft: model.draft,
+    returnToExistingEditor: returnToExistingEditor,
   );
 }
