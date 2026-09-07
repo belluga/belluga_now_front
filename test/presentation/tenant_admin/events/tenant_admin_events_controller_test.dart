@@ -2964,7 +2964,7 @@ void main() {
   );
 
   test(
-    'nested group related account profile search backfills later candidate pages into the known cache',
+    'nested group related account profile search renders only the server page without automatic page walking',
     () async {
       final eventsRepository = _NestedGroupLaterPageCandidatesRepository();
       final controller = TenantAdminEventsController(
@@ -2989,13 +2989,9 @@ void main() {
         controller.relatedAccountProfileCandidatesStreamValue.value
             .map((profile) => profile.displayName)
             .toList(growable: false),
-        contains('Legacy Artist Page 2 021'),
+        isNot(contains('Legacy Artist Page 2 021')),
       );
-      expect(eventsRepository.searchRequests, [
-        ('', 1),
-        ('021', 1),
-        ('021', 2),
-      ]);
+      expect(eventsRepository.searchRequests, [('', 1), ('021', 1)]);
     },
   );
 

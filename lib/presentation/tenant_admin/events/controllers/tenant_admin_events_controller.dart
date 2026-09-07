@@ -3089,7 +3089,6 @@ class TenantAdminEventsController implements Disposable {
     await _ensureRelatedAccountProfilePickerReady();
     updateRelatedAccountProfileSearchQuery(query);
     await retryRelatedAccountProfileSearch();
-    await _loadRelatedAccountProfileCandidatePagesUntilQuerySatisfied(query);
   }
 
   Future<void> loadNextRelatedAccountProfileCandidatesForNestedGroups() async {
@@ -3110,21 +3109,6 @@ class TenantAdminEventsController implements Disposable {
     await prepareRelatedAccountProfilePicker(
       accountSlug: normalizedAccountSlug,
     );
-  }
-
-  Future<void> _loadRelatedAccountProfileCandidatePagesUntilQuerySatisfied(
-    String query,
-  ) async {
-    final normalizedQuery = query.trim().toLowerCase();
-    if (normalizedQuery.isEmpty) {
-      return;
-    }
-
-    while (!_isDisposed &&
-        accountProfilePickerHasMoreStreamValue.value &&
-        !_relatedAccountProfileCandidatesContainQuery(normalizedQuery)) {
-      await loadNextRelatedAccountProfileSearchPage();
-    }
   }
 
   TenantAdminAccountProfile? knownVenueCandidate(String? profileId) {
@@ -3174,14 +3158,6 @@ class TenantAdminEventsController implements Disposable {
     return List<TenantAdminAccountProfile>.unmodifiable(
       _mergeAccountProfiles(const <TenantAdminAccountProfile>[], profiles),
     );
-  }
-
-  bool _relatedAccountProfileCandidatesContainQuery(String query) {
-    return relatedAccountProfileCandidatesStreamValue.value.any((profile) {
-      final displayName = profile.displayName.toLowerCase();
-      final profileType = profile.profileType.toLowerCase();
-      return displayName.contains(query) || profileType.contains(query);
-    });
   }
 
   void updateAccountProfilePickerSearchQuery(String query) {
