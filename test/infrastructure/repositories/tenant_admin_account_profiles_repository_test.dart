@@ -169,7 +169,11 @@ void main() {
         dio: Dio()..httpClientAdapter = adapter,
       );
 
-      for (final direction in TenantAdminGroupMoveDirection.values) {
+      const directionCases = {
+        TenantAdminGroupMoveDirection.up: 'up',
+        TenantAdminGroupMoveDirection.down: 'down',
+      };
+      for (final directionCase in directionCases.entries) {
         final result = await repository.moveNestedProfileGroup(
           accountProfileId: tenantAdminAccountProfilesRepoString(
             'profile-1',
@@ -181,7 +185,7 @@ void main() {
             defaultValue: '',
             isRequired: true,
           ),
-          direction: direction,
+          direction: directionCase.key,
         );
 
         expect(adapter.lastRequest?.method, 'PATCH');
@@ -191,7 +195,7 @@ void main() {
             '/v1/account_profiles/profile-1/nested_profile_groups/partners/order',
           ),
         );
-        expect(adapter.lastRequest?.data, {'direction': direction.name});
+        expect(adapter.lastRequest?.data, {'direction': directionCase.value});
         expect(result.accountProfileId, 'profile-1');
         expect(result.groups.map((entry) => '${entry.id}:${entry.order}'), [
           'partners:0',

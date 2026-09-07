@@ -178,12 +178,16 @@ void main() {
         tenantScope: _MutableTenantScope('https://tenant-a.test/admin/api'),
       );
 
-      for (final direction in TenantAdminGroupMoveDirection.values) {
+      const directionCases = {
+        TenantAdminGroupMoveDirection.up: 'up',
+        TenantAdminGroupMoveDirection.down: 'down',
+      };
+      for (final directionCase in directionCases.entries) {
         final result = await repository.moveOccurrenceProfileGroup(
           eventId: _repoText('event-1'),
           occurrenceId: _repoText('occ-1'),
           groupId: _repoText('partners'),
-          direction: direction,
+          direction: directionCase.key,
         );
 
         final request = adapter.requests.last;
@@ -194,7 +198,7 @@ void main() {
             '/v1/events/event-1/occurrences/occ-1/profile_groups/partners/order',
           ),
         );
-        expect(request.data, {'direction': direction.name});
+        expect(request.data, {'direction': directionCase.value});
         expect(result.eventId, 'event-1');
         expect(result.occurrenceId, 'occ-1');
         expect(result.groups.map((entry) => '${entry.id}:${entry.order}'), [
