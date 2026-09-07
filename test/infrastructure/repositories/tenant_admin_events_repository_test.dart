@@ -15,6 +15,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_buck
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_label_mutation_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_group_order_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
@@ -156,6 +157,85 @@ void main() {
       expect(result.label, 'Artists');
     },
   );
+
+  test(
+    'moveOccurrenceProfileGroup sends direction and decodes bounded order',
+    () async {
+      final adapter = _ConfiguredEventLabelAdapter(
+        responseBody: const {
+          'data': {
+            'event_id': 'event-1',
+            'occurrence_id': 'occ-1',
+            'groups': [
+              {'id': 'partners', 'order': 0},
+              {'id': 'artists', 'order': 1},
+            ],
+          },
+        },
+      );
+      final repository = TenantAdminEventsRepository(
+        dio: Dio()..httpClientAdapter = adapter,
+        tenantScope: _MutableTenantScope('https://tenant-a.test/admin/api'),
+      );
+
+      const directionCases = {
+        TenantAdminGroupMoveDirection.up: 'up',
+        TenantAdminGroupMoveDirection.down: 'down',
+      };
+      for (final directionCase in directionCases.entries) {
+        final result = await repository.moveOccurrenceProfileGroup(
+          eventId: _repoText('event-1'),
+          occurrenceId: _repoText('occ-1'),
+          groupId: _repoText('partners'),
+          direction: directionCase.key,
+        );
+
+        final request = adapter.requests.last;
+        expect(request.method, 'PATCH');
+        expect(
+          request.path,
+          endsWith(
+            '/v1/events/event-1/occurrences/occ-1/profile_groups/partners/order',
+          ),
+        );
+        expect(request.data, {'direction': directionCase.value});
+        expect(result.eventId, 'event-1');
+        expect(result.occurrenceId, 'occ-1');
+        expect(result.groups.map((entry) => '${entry.id}:${entry.order}'), [
+          'partners:0',
+          'artists:1',
+        ]);
+      }
+      expect(adapter.requests, hasLength(2));
+    },
+  );
+
+  test('moveOccurrenceProfileGroup keeps a 5xx response definitive', () async {
+    final repository = TenantAdminEventsRepository(
+      dio: Dio()
+        ..httpClientAdapter = _ConfiguredEventLabelAdapter(
+          statusCode: 503,
+          responseBody: const {'message': 'temporarily unavailable'},
+        ),
+      tenantScope: _MutableTenantScope('https://tenant-a.test/admin/api'),
+    );
+
+    await expectLater(
+      repository.moveOccurrenceProfileGroup(
+        eventId: _repoText('event-1'),
+        occurrenceId: _repoText('occ-1'),
+        groupId: _repoText('partners'),
+        direction: TenantAdminGroupMoveDirection.up,
+      ),
+      throwsA(
+        isA<Exception>().having(
+          (error) => error is TenantAdminUnknownMutationFailure,
+          'is unknown mutation failure',
+          isFalse,
+        ),
+      ),
+    );
+  });
 
   test('patchOccurrenceProfileGroupLabel preserves structured 422', () async {
     final adapter = _ConfiguredEventLabelAdapter(

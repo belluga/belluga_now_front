@@ -194,6 +194,7 @@ class _TenantAdminProfileTypesListScreenState
           if (type.capabilities.hasGallery) 'Galeria',
           if (type.capabilities.hasNestedProfileGroups) 'Abas vinculadas',
           if (type.capabilities.hasContactChannels) 'Contato por canais',
+          if (type.capabilities.hasExternalLinks) 'Links externos',
           if (type.allowedTaxonomies.isNotEmpty)
             'Taxonomias: ${type.allowedTaxonomies.join(', ')}',
         ].join(' • ');

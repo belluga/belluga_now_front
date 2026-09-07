@@ -3,7 +3,7 @@ import 'package:belluga_now/domain/invites/invite_inviter_principal.dart';
 import 'package:belluga_now/domain/invites/invite_inviter_type.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_acceptance_status_value.dart';
-import 'package:belluga_now/domain/invites/value_objects/invite_additional_inviter_name_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_additional_sender_display_name_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_attendance_policy_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_event_date_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_event_id_value.dart';
@@ -11,7 +11,8 @@ import 'package:belluga_now/domain/invites/value_objects/invite_host_name_value.
 import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_inviter_avatar_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_inviter_id_value.dart';
-import 'package:belluga_now/domain/invites/value_objects/invite_inviter_name_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_resolved_sender_display_name_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_sender_display_name_candidate_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_location_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_message_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_occurrence_id_value.dart';
@@ -52,49 +53,54 @@ InviteModel buildInviteModelFromPrimitives({
       .toList(growable: false);
   final resolvedInviterName =
       inviterName ?? (inviters.isNotEmpty ? inviters.first.name : null);
-  final resolvedInviterAvatarUrl = inviterAvatarUrl ??
+  final resolvedInviterAvatarUrl =
+      inviterAvatarUrl ??
       (inviters.isNotEmpty ? inviters.first.avatarUrl : null);
-  final resolvedInviterPrincipal = inviterPrincipal ??
+  final resolvedInviterPrincipal =
+      inviterPrincipal ??
       (inviters.isNotEmpty ? inviters.first.principal : null);
   final resolvedInviters = inviters.isNotEmpty
       ? inviters
       : (resolvedInviterName != null && resolvedInviterName.trim().isNotEmpty
-          ? <InviteInviter>[
-              (() {
-                final avatarValue = InviteInviterAvatarValue();
-                final normalizedAvatarUrl = resolvedInviterAvatarUrl?.trim();
-                if (normalizedAvatarUrl != null &&
-                    normalizedAvatarUrl.isNotEmpty) {
-                  avatarValue.parse(normalizedAvatarUrl);
-                }
+            ? <InviteInviter>[
+                (() {
+                  final avatarValue = InviteInviterAvatarValue();
+                  final normalizedAvatarUrl = resolvedInviterAvatarUrl?.trim();
+                  if (normalizedAvatarUrl != null &&
+                      normalizedAvatarUrl.isNotEmpty) {
+                    avatarValue.parse(normalizedAvatarUrl);
+                  }
 
-                return InviteInviter(
-                  inviteIdValue: InviteInviterIdValue()..parse(id),
-                  type:
-                      resolvedInviterPrincipal?.type ?? InviteInviterType.user,
-                  nameValue: InviteInviterNameValue()
-                    ..parse(resolvedInviterName),
-                  principal: resolvedInviterPrincipal,
-                  avatarValue: avatarValue,
-                  statusValue: InviteAcceptanceStatusValue(
-                    defaultValue: 'pending',
-                    isRequired: false,
-                  )..parse('pending'),
-                );
-              })(),
-            ]
-          : const <InviteInviter>[]);
+                  return InviteInviter(
+                    inviteIdValue: InviteInviterIdValue()..parse(id),
+                    type:
+                        resolvedInviterPrincipal?.type ??
+                        InviteInviterType.user,
+                    nameValue: InviteSenderDisplayNameCandidateValue()
+                      ..parse(resolvedInviterName),
+                    principal: resolvedInviterPrincipal,
+                    avatarValue: avatarValue,
+                    statusValue: InviteAcceptanceStatusValue(
+                      defaultValue: 'pending',
+                      isRequired: false,
+                    )..parse('pending'),
+                  );
+                })(),
+              ]
+            : const <InviteInviter>[]);
   final resolvedAdditionalInviters = additionalInviters.isNotEmpty
       ? additionalInviters
       : resolvedInviters
-          .skip(1)
-          .map((inviter) => inviter.name)
-          .toList(growable: false);
+            .skip(1)
+            .map((inviter) => inviter.name)
+            .toList(growable: false);
 
-  InviteInviterNameValue? inviterNameVo;
-  if (resolvedInviterName != null && resolvedInviterName.trim().isNotEmpty) {
-    inviterNameVo = InviteInviterNameValue()..parse(resolvedInviterName);
-  }
+  final inviterNameVo = InviteResolvedSenderDisplayNameValue()
+    ..parse(
+      resolvedInviterName?.trim().isNotEmpty == true
+          ? resolvedInviterName
+          : 'Alguém',
+    );
 
   InviteInviterAvatarValue? inviterAvatarVo;
   if (resolvedInviterAvatarUrl != null &&
@@ -104,13 +110,13 @@ InviteModel buildInviteModelFromPrimitives({
   }
 
   final occurrenceIdValue = InviteOccurrenceIdValue()..parse(occurrenceId);
-  final attendancePolicyValue = InviteAttendancePolicyValue(
-    defaultValue: 'free_confirmation_only',
-  )..parse(
-      attendancePolicy.trim().isEmpty
-          ? 'free_confirmation_only'
-          : attendancePolicy.trim(),
-    );
+  final attendancePolicyValue =
+      InviteAttendancePolicyValue(defaultValue: 'free_confirmation_only')
+        ..parse(
+          attendancePolicy.trim().isEmpty
+              ? 'free_confirmation_only'
+              : attendancePolicy.trim(),
+        );
 
   return InviteModel(
     idValue: InviteIdValue()..parse(id),
@@ -134,13 +140,16 @@ InviteModel buildInviteModelFromPrimitives({
     inviterPrincipal: resolvedInviterPrincipal,
     additionalInviterValues: resolvedAdditionalInviters
         .where((inviter) => inviter.trim().isNotEmpty)
-        .map((inviter) => InviteAdditionalInviterNameValue()..parse(inviter))
+        .map(
+          (inviter) => InviteAdditionalSenderDisplayNameValue()..parse(inviter),
+        )
         .toList(growable: false),
     inviters: resolvedInviters,
     linkedAccountProfiles: linkedAccountProfiles,
     profileGroups: profileGroups,
-    venueAccountProfileIdValue:
-        _eventLinkedAccountProfileTextValueOrNull(venueAccountProfileId),
+    venueAccountProfileIdValue: _eventLinkedAccountProfileTextValueOrNull(
+      venueAccountProfileId,
+    ),
   );
 }
 

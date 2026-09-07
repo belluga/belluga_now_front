@@ -1,6 +1,6 @@
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_update.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_group_move_direction.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
@@ -10,52 +10,46 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 class TenantAdminAccountProfilesRequestEncoder {
   const TenantAdminAccountProfilesRequestEncoder();
 
-  TenantAdminAccountProfileGalleryEncodedPayload
-  encodeUpdateAccountProfileGallery(
-    List<TenantAdminAccountProfileGalleryUpdateGroup> groups,
-  ) {
-    final uploads = <String, TenantAdminMediaUpload>{};
+  Map<String, dynamic> encodeCreateGalleryGroup({required String subtitle}) =>
+      <String, dynamic>{'subtitle': subtitle};
 
-    final payload = groups
-        .map((group) {
-          final items = group.items
-              .map((item) {
-                final upload = item.upload;
-                String? uploadKey;
-                if (upload != null) {
-                  uploadKey = 'upload_${group.groupId}_${item.itemId}'
-                      .replaceAll(RegExp(r'[^a-zA-Z0-9_]+'), '_');
-                  uploads[uploadKey] = upload;
-                }
+  Map<String, dynamic> encodeRenameGalleryGroup({required String subtitle}) =>
+      <String, dynamic>{'subtitle': subtitle};
 
-                return <String, dynamic>{
-                  'item_id': item.itemId,
-                  'description': item.description,
-                  'order': item.order,
-                  'upload': ?uploadKey,
-                };
-              })
-              .toList(growable: false);
+  Map<String, dynamic> encodeGalleryGroupOrder(List<String> groupIds) =>
+      <String, dynamic>{'group_ids': groupIds};
 
-          return <String, dynamic>{
-            'group_id': group.groupId,
-            'subtitle': group.subtitle,
-            'order': group.order,
-            'items': items,
-          };
-        })
-        .toList(growable: false);
+  Map<String, dynamic> encodeCreateYoutubeGalleryItem({
+    required String youtubeUrl,
+    String? title,
+    String? description,
+  }) => <String, dynamic>{
+    'type': 'youtube',
+    'youtube_url': youtubeUrl,
+    'title': ?title,
+    'description': ?description,
+  };
 
-    return (galleryGroups: payload, uploads: uploads);
-  }
+  Map<String, dynamic> encodePatchGalleryItem({
+    String? type,
+    Object? title,
+    bool includeTitle = false,
+    Object? description,
+    bool includeDescription = false,
+    String? youtubeUrl,
+  }) => <String, dynamic>{
+    'type': ?type,
+    if (includeTitle) 'title': title,
+    if (includeDescription) 'description': description,
+    'youtube_url': ?youtubeUrl,
+  };
+
+  Map<String, dynamic> encodeGalleryItemOrder(List<String> itemIds) =>
+      <String, dynamic>{'item_ids': itemIds};
 
   Map<String, dynamic> encodeFetchAccountProfilesQuery({
     String? accountId,
     String? profileType,
-    String? contactMode,
-    bool contactChannelsEnabledOnly = false,
-    bool queryableOnly = false,
-    String? excludeAccountProfileId,
     String? search,
     int? page,
     int? pageSize,
@@ -66,19 +60,6 @@ class TenantAdminAccountProfilesRequestEncoder {
     }
     if (profileType != null && profileType.trim().isNotEmpty) {
       payload['profile_type'] = profileType.trim();
-    }
-    if (contactMode != null && contactMode.trim().isNotEmpty) {
-      payload['contact_mode'] = contactMode.trim();
-    }
-    if (contactChannelsEnabledOnly) {
-      payload['contact_channels_enabled_only'] = 1;
-    }
-    if (queryableOnly) {
-      payload['queryable_only'] = 1;
-    }
-    if (excludeAccountProfileId != null &&
-        excludeAccountProfileId.trim().isNotEmpty) {
-      payload['exclude_account_profile_id'] = excludeAccountProfileId.trim();
     }
     if (search != null && search.trim().isNotEmpty) {
       payload['search'] = search.trim();
@@ -116,6 +97,7 @@ class TenantAdminAccountProfilesRequestEncoder {
   Map<String, dynamic> encodeFetchNestedGroupMembersQuery({
     int? perPage,
     String? cursor,
+    String? search,
   }) {
     final payload = <String, dynamic>{};
     if (perPage != null && perPage > 0) {
@@ -123,6 +105,9 @@ class TenantAdminAccountProfilesRequestEncoder {
     }
     if (cursor != null && cursor.trim().isNotEmpty) {
       payload['cursor'] = cursor.trim();
+    }
+    if (search != null && search.trim().isNotEmpty) {
+      payload['search'] = search.trim();
     }
     return payload;
   }
@@ -145,6 +130,10 @@ class TenantAdminAccountProfilesRequestEncoder {
   Map<String, dynamic> encodePatchNestedProfileGroupLabel({
     required String label,
   }) => <String, dynamic>{'label': label.trim()};
+
+  Map<String, dynamic> encodeNestedProfileGroupMove(
+    TenantAdminGroupMoveDirection direction,
+  ) => <String, dynamic>{'direction': direction.name};
 
   Map<String, dynamic> encodeCreateAccountProfile({
     required String accountId,

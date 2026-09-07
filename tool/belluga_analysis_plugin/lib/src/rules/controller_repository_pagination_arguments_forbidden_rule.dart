@@ -53,7 +53,7 @@ class ControllerRepositoryPaginationArgumentsForbiddenRule
 
     context.registry.addMethodInvocation((node) {
       final targetType = node.realTarget?.staticType;
-      if (!_looksRepositoryTarget(targetType)) {
+      if (!_looksScheduleRepositoryTarget(targetType)) {
         return;
       }
 
@@ -72,13 +72,13 @@ class ControllerRepositoryPaginationArgumentsForbiddenRule
     });
   }
 
-  bool _looksRepositoryTarget(DartType? type) {
+  bool _looksScheduleRepositoryTarget(DartType? type) {
     if (type is! InterfaceType) {
       return false;
     }
 
     final typeName = normalizeTypeName(type.getDisplayString());
-    if (isRepositoryTypeName(typeName)) {
+    if (typeName.contains('ScheduleRepository')) {
       return true;
     }
 
@@ -86,6 +86,6 @@ class ControllerRepositoryPaginationArgumentsForbiddenRule
       return false;
     }
 
-    return type.typeArguments.any(_looksRepositoryTarget);
+    return type.typeArguments.any(_looksScheduleRepositoryTarget);
   }
 }

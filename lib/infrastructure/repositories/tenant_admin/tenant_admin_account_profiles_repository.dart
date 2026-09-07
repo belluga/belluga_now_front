@@ -4,8 +4,12 @@ import 'package:belluga_now/domain/repositories/landlord_auth_repository_contrac
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
+import 'package:belluga_now/domain/partners/account_profile_external_link.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_item.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_snapshot.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_head_mutation_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_group_order_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_label_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_unknown_mutation_failure.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
@@ -67,14 +71,10 @@ class TenantAdminAccountProfilesRepository
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
     TenantAdminAccountProfilesRepoString? accountId,
-    TenantAdminAccountProfilesRepoBool? queryableOnly,
-    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async {
     try {
       final queryParameters = _requestEncoder.encodeFetchAccountProfilesQuery(
         accountId: accountId?.value,
-        queryableOnly: queryableOnly?.value ?? false,
-        excludeAccountProfileId: excludeAccountProfileId?.value,
       );
       final response = await _dio.get(
         '$_apiBaseUrl/v1/account_profiles',
@@ -96,19 +96,11 @@ class TenantAdminAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? search,
     TenantAdminAccountProfilesRepoString? accountId,
     TenantAdminAccountProfilesRepoString? profileType,
-    TenantAdminAccountProfilesRepoString? contactMode,
-    TenantAdminAccountProfilesRepoBool? contactChannelsEnabledOnly,
-    TenantAdminAccountProfilesRepoBool? queryableOnly,
-    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async {
     try {
       final queryParameters = _requestEncoder.encodeFetchAccountProfilesQuery(
         accountId: accountId?.value,
         profileType: profileType?.value,
-        contactMode: contactMode?.value,
-        contactChannelsEnabledOnly: contactChannelsEnabledOnly?.value ?? false,
-        queryableOnly: queryableOnly?.value ?? false,
-        excludeAccountProfileId: excludeAccountProfileId?.value,
         search: search?.value,
         page: page.value,
         pageSize: pageSize.value,
@@ -138,7 +130,7 @@ class TenantAdminAccountProfilesRepository
         pageSize: resolvedPageSize,
       );
     } on DioException catch (error) {
-      throw _wrapError(error, 'load account profile candidates page');
+      throw _wrapError(error, 'load account profiles page');
     }
   }
 
@@ -321,11 +313,102 @@ class TenantAdminAccountProfilesRepository
   }
 
   @override
+  Future<TenantAdminAccountProfile> createExternalLink({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required AccountProfileExternalLinkType type,
+    required AccountProfileExternalLinkUrlValue url,
+    AccountProfileExternalLinkLabelValue? label,
+  }) async {
+    final uri =
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}/external_links';
+    final correlation = TenantAdminRequestCorrelation.create();
+    try {
+      final response = await _dio.post(
+        uri,
+        data: {
+          'type': type.wireValue,
+          'url': url.value.toString(),
+          'label': ?label?.value,
+        },
+        options: Options(
+          headers: {..._buildHeaders(), ...correlation.headers()},
+        ),
+      );
+      return _responseDecoder
+          .decodeAccountProfileItem(response.data)
+          .toDomain();
+    } on DioException catch (error) {
+      if (error.response == null) {
+        throw const TenantAdminUnknownMutationFailure();
+      }
+      throw _wrapError(error, 'create external link');
+    }
+  }
+
+  @override
+  Future<TenantAdminAccountProfile> updateExternalLink({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString externalLinkId,
+    required AccountProfileExternalLinkUrlValue url,
+    AccountProfileExternalLinkLabelValue? label,
+  }) async {
+    final uri =
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}'
+        '/external_links/${externalLinkId.value}';
+    final correlation = TenantAdminRequestCorrelation.create();
+    try {
+      final response = await _dio.patch(
+        uri,
+        data: {'url': url.value.toString(), 'label': ?label?.value},
+        options: Options(
+          headers: {..._buildHeaders(), ...correlation.headers()},
+        ),
+      );
+      return _responseDecoder
+          .decodeAccountProfileItem(response.data)
+          .toDomain();
+    } on DioException catch (error) {
+      if (error.response == null) {
+        throw const TenantAdminUnknownMutationFailure();
+      }
+      throw _wrapError(error, 'update external link');
+    }
+  }
+
+  @override
+  Future<TenantAdminAccountProfile> deleteExternalLink({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString externalLinkId,
+  }) async {
+    final uri =
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}'
+        '/external_links/${externalLinkId.value}';
+    final correlation = TenantAdminRequestCorrelation.create();
+    try {
+      final response = await _dio.delete(
+        uri,
+        options: Options(
+          headers: {..._buildHeaders(), ...correlation.headers()},
+        ),
+      );
+      return _responseDecoder
+          .decodeAccountProfileItem(response.data)
+          .toDomain();
+    } on DioException catch (error) {
+      if (error.response == null) {
+        throw const TenantAdminUnknownMutationFailure();
+      }
+      throw _wrapError(error, 'delete external link');
+    }
+  }
+
+  @override
   Future<TenantAdminNestedGroupMemberPage> fetchNestedGroupMembersPage({
     required TenantAdminAccountProfilesRepoString accountProfileId,
     required TenantAdminAccountProfilesRepoString groupId,
     TenantAdminAccountProfilesRepoInt? perPage,
     TenantAdminAccountProfilesRepoString? cursor,
+    TenantAdminAccountProfilesRepoString? search,
   }) async {
     try {
       final response = await _dio.get(
@@ -334,6 +417,7 @@ class TenantAdminAccountProfilesRepository
         queryParameters: _requestEncoder.encodeFetchNestedGroupMembersQuery(
           perPage: cursor == null ? perPage?.value : null,
           cursor: cursor?.value,
+          search: search?.value,
         ),
         options: Options(headers: _buildHeaders()),
       );
@@ -343,39 +427,6 @@ class TenantAdminAccountProfilesRepository
     } on DioException catch (error) {
       throw _wrapError(error, 'load nested group members page');
     }
-  }
-
-  @override
-  Future<TenantAdminNestedGroupMemberPage> fetchAllNestedGroupMembers({
-    required TenantAdminAccountProfilesRepoString accountProfileId,
-    required TenantAdminAccountProfilesRepoString groupId,
-  }) async {
-    final items = <TenantAdminAccountProfileSelectionSummary>[];
-    TenantAdminAccountProfilesRepoString? cursor;
-
-    do {
-      final page = await fetchNestedGroupMembersPage(
-        accountProfileId: accountProfileId,
-        groupId: groupId,
-        perPage: cursor == null
-            ? (TenantAdminAccountProfilesRepoInt(defaultValue: 50)..set(50))
-            : null,
-        cursor: cursor,
-      );
-      items.addAll(page.items);
-      final rawCursor = page.nextCursor;
-      cursor = rawCursor == null || rawCursor.isEmpty
-          ? null
-          : (TenantAdminAccountProfilesRepoString(
-              defaultValue: '',
-              isRequired: true,
-            )..parse(rawCursor));
-    } while (cursor != null);
-
-    return TenantAdminNestedGroupMemberPage(
-      items: items,
-      nextCursorValue: TenantAdminOptionalTextValue(),
-    );
   }
 
   @override
@@ -522,32 +573,250 @@ class TenantAdminAccountProfilesRepository
   }
 
   @override
-  Future<TenantAdminAccountProfile> updateAccountProfileGallery({
+  Future<TenantAdminGroupOrderMutationResult> moveNestedProfileGroup({
     required TenantAdminAccountProfilesRepoString accountProfileId,
-    List<TenantAdminAccountProfileGalleryUpdateGroup> galleryGroups =
-        const <TenantAdminAccountProfileGalleryUpdateGroup>[],
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminGroupMoveDirection direction,
   }) async {
+    final uri =
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}/nested_profile_groups/${groupId.value}/order';
     try {
-      final encoded = _requestEncoder.encodeUpdateAccountProfileGallery(
-        galleryGroups,
+      final response = await _dio.patch(
+        uri,
+        data: _requestEncoder.encodeNestedProfileGroupMove(direction),
+        options: Options(headers: _buildHeaders()),
       );
-      final formData = _mediaFormDataBuilder.buildGalleryPayload(
-        galleryGroups: encoded.galleryGroups,
-        uploads: encoded.uploads,
+      tenantAdminAssertSuccessfulMutationResponse(
+        response,
+        label: 'move nested profile group',
+        uri: uri,
       );
-
-      final response = await _dio.post(
-        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}/gallery',
-        data: formData,
-        options: Options(
-          headers: _buildHeaders(),
-          contentType: 'multipart/form-data',
-        ),
+      return _responseDecoder.decodeNestedGroupOrderMutationResult(
+        response.data,
       );
-      final dto = _responseDecoder.decodeAccountProfileItem(response.data);
-      return dto.toDomain();
     } on DioException catch (error) {
-      throw _wrapError(error, 'update account profile gallery');
+      if (error.response == null) {
+        throw const TenantAdminUnknownMutationFailure();
+      }
+      throw _wrapError(error, 'move nested profile group');
+    } on FormValidationFailure {
+      rethrow;
+    } on FormApiFailure {
+      rethrow;
+    } catch (_) {
+      throw const TenantAdminUnknownMutationFailure();
+    }
+  }
+
+  @override
+  Future<TenantAdminAccountProfileGallerySnapshot> createGalleryGroup({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString subtitle,
+  }) async {
+    final uri =
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}/gallery/groups';
+    try {
+      final response = await _dio.post(
+        uri,
+        data: _requestEncoder.encodeCreateGalleryGroup(
+          subtitle: subtitle.value,
+        ),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodeGallerySnapshot(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'create gallery group');
+    }
+  }
+
+  @override
+  Future<TenantAdminAccountProfileGallerySnapshot> renameGalleryGroup({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminAccountProfilesRepoString subtitle,
+  }) async {
+    final uri =
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}/gallery/groups/${groupId.value}';
+    try {
+      final response = await _dio.patch(
+        uri,
+        data: _requestEncoder.encodeRenameGalleryGroup(
+          subtitle: subtitle.value,
+        ),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodeGallerySnapshot(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'rename gallery group');
+    }
+  }
+
+  @override
+  Future<TenantAdminAccountProfileGallerySnapshot> deleteGalleryGroup({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+  }) async {
+    final uri =
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}/gallery/groups/${groupId.value}';
+    try {
+      final response = await _dio.delete(
+        uri,
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodeGallerySnapshot(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'delete gallery group');
+    }
+  }
+
+  @override
+  Future<TenantAdminAccountProfileGallerySnapshot> reorderGalleryGroups({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required List<TenantAdminAccountProfilesRepoString> groupIds,
+  }) async {
+    final uri =
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}/gallery/groups/reorder';
+    try {
+      final response = await _dio.patch(
+        uri,
+        data: _requestEncoder.encodeGalleryGroupOrder(
+          groupIds.map((value) => value.value).toList(growable: false),
+        ),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodeGallerySnapshot(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'reorder gallery groups');
+    }
+  }
+
+  @override
+  Future<TenantAdminAccountProfileGallerySnapshot> createGalleryItem({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminAccountProfileGalleryItemType type,
+    TenantAdminOptionalTextValue? title,
+    TenantAdminOptionalTextValue? description,
+    TenantAdminMediaUpload? image,
+    TenantAdminAccountProfilesRepoString? youtubeUrl,
+  }) async {
+    final uri =
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}/gallery/groups/${groupId.value}/items';
+    try {
+      final Object data;
+      if (type == TenantAdminAccountProfileGalleryItemType.photo) {
+        final upload = image;
+        if (upload == null) {
+          throw const FormatException('A gallery photo upload is required.');
+        }
+        data = _mediaFormDataBuilder.buildGalleryPhotoItemPayload(
+          image: upload,
+          title: title?.nullableValue,
+          includeTitle: title != null,
+          description: description?.nullableValue,
+          includeDescription: description != null,
+        );
+      } else {
+        data = _requestEncoder.encodeCreateYoutubeGalleryItem(
+          youtubeUrl: youtubeUrl?.value ?? '',
+          title: title?.nullableValue,
+          description: description?.nullableValue,
+        );
+      }
+      final response = await _dio.post(
+        uri,
+        data: data,
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodeGallerySnapshot(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'create gallery item');
+    }
+  }
+
+  @override
+  Future<TenantAdminAccountProfileGallerySnapshot> updateGalleryItem({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminAccountProfilesRepoString itemId,
+    TenantAdminAccountProfileGalleryItemType? type,
+    TenantAdminOptionalTextValue? title,
+    TenantAdminOptionalTextValue? description,
+    TenantAdminMediaUpload? image,
+    TenantAdminAccountProfilesRepoString? youtubeUrl,
+  }) async {
+    final uri =
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}/gallery/groups/${groupId.value}/items/${itemId.value}';
+    try {
+      final response = image != null
+          ? await _dio.post(
+              uri,
+              data: _mediaFormDataBuilder.buildGalleryPhotoItemPayload(
+                image: image,
+                title: title?.nullableValue,
+                includeTitle: title != null,
+                description: description?.nullableValue,
+                includeDescription: description != null,
+                patch: true,
+              ),
+              options: Options(headers: _buildHeaders()),
+            )
+          : await _dio.patch(
+              uri,
+              data: _requestEncoder.encodePatchGalleryItem(
+                type: type?.name,
+                title: title?.nullableValue,
+                includeTitle: title != null,
+                description: description?.nullableValue,
+                includeDescription: description != null,
+                youtubeUrl: youtubeUrl?.value,
+              ),
+              options: Options(headers: _buildHeaders()),
+            );
+      return _responseDecoder.decodeGallerySnapshot(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'update gallery item');
+    }
+  }
+
+  @override
+  Future<TenantAdminAccountProfileGallerySnapshot> deleteGalleryItem({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminAccountProfilesRepoString itemId,
+  }) async {
+    final uri =
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}/gallery/groups/${groupId.value}/items/${itemId.value}';
+    try {
+      final response = await _dio.delete(
+        uri,
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodeGallerySnapshot(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'delete gallery item');
+    }
+  }
+
+  @override
+  Future<TenantAdminAccountProfileGallerySnapshot> reorderGalleryItems({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required List<TenantAdminAccountProfilesRepoString> itemIds,
+  }) async {
+    final uri =
+        '$_apiBaseUrl/v1/account_profiles/${accountProfileId.value}/gallery/groups/${groupId.value}/items/reorder';
+    try {
+      final response = await _dio.patch(
+        uri,
+        data: _requestEncoder.encodeGalleryItemOrder(
+          itemIds.map((value) => value.value).toList(growable: false),
+        ),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodeGallerySnapshot(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'reorder gallery items');
     }
   }
 

@@ -5,25 +5,26 @@ import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/application/rich_text/account_profile_rich_text_limits.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/icons/account_profile_external_link_icon_registry.dart';
 import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
+import 'package:belluga_now/domain/partners/account_profile_external_link.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_update.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate_scope.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_item.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
-import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/screens/tenant_admin_account_profile_group_members_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
-import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_account_profile_gallery_operations.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_account_profile_gallery_editor.dart';
-import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_account_profile_picker.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_account_profile_candidate_picker.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_canonical_image_upload_field.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_contact_channels_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
@@ -69,8 +70,11 @@ class _TenantAdminAccountProfileEditScreenState
   String? _lastAvatarPreloadUrl;
   String? _lastCoverPreloadUrl;
   bool _routeParamNormalized = false;
+  String? _pendingAccountSlugRouteReplacement;
   TenantAdminOwnershipState? _selectedOwnershipState;
   String? _syncedOwnershipAccountId;
+  StreamSubscription<TenantAdminAccount?>? _accountSideEffectsSubscription;
+  StreamSubscription<bool>? _accountDeletedSubscription;
 
   static const List<TenantAdminOwnershipState> _editableOwnershipStates =
       <TenantAdminOwnershipState>[
@@ -82,6 +86,7 @@ class _TenantAdminAccountProfileEditScreenState
   void initState() {
     super.initState();
     _controller.bindEditFlow();
+    _bindAccountSideEffects();
     unawaited(_controller.loadAccountForEdit(_currentAccountSlugForRequests()));
     _controller.loadTaxonomies().whenComplete(
       () => _controller.loadEditProfile(
@@ -93,6 +98,8 @@ class _TenantAdminAccountProfileEditScreenState
 
   @override
   void dispose() {
+    _accountSideEffectsSubscription?.cancel();
+    _accountDeletedSubscription?.cancel();
     _controller.resetFormControllers();
     _controller.resetEditState();
     super.dispose();
@@ -165,6 +172,11 @@ class _TenantAdminAccountProfileEditScreenState
   bool _hasContactChannels(String? selectedType) {
     final definition = _selectedProfileTypeDefinition(selectedType);
     return definition?.capabilities.hasContactChannels ?? false;
+  }
+
+  bool _hasExternalLinks(String? selectedType) {
+    final definition = _selectedProfileTypeDefinition(selectedType);
+    return definition?.capabilities.hasExternalLinks ?? false;
   }
 
   List<String> _allowedTaxonomies(String? selectedType) {
@@ -295,6 +307,38 @@ class _TenantAdminAccountProfileEditScreenState
         ),
       );
     });
+  }
+
+  void _normalizeUpdatedAccountSlugIfNeeded(TenantAdminAccount account) {
+    final resolvedSlug = account.slug.trim();
+    if (!_isResolvedSlug(resolvedSlug) ||
+        resolvedSlug == widget.accountSlug.trim() ||
+        _pendingAccountSlugRouteReplacement == resolvedSlug) {
+      return;
+    }
+    _pendingAccountSlugRouteReplacement = resolvedSlug;
+    context.router.replace(
+      TenantAdminAccountProfileEditRoute(
+        accountSlug: resolvedSlug,
+        accountProfileId: _currentAccountProfileIdForRequests(),
+      ),
+    );
+  }
+
+  void _handleAccountDeleted(bool deleted) {
+    if (!deleted || !mounted) return;
+    _controller.clearAccountDeletedFlag();
+    context.router.replace(const TenantAdminAccountsListRoute());
+  }
+
+  void _bindAccountSideEffects() {
+    _accountSideEffectsSubscription ??= _controller.accountStreamValue.stream
+        .listen((account) {
+          if (account == null || !mounted) return;
+          _normalizeUpdatedAccountSlugIfNeeded(account);
+        });
+    _accountDeletedSubscription ??= _controller.accountDeletedStreamValue.stream
+        .listen(_handleAccountDeleted);
   }
 
   void _syncFormControllers(TenantAdminAccountProfile profile) {
@@ -491,6 +535,152 @@ class _TenantAdminAccountProfileEditScreenState
     );
   }
 
+  String _accountPublicationLabel(String status) =>
+      status.trim() == 'published' ? 'Publicado' : 'Rascunho';
+
+  Future<void> _editAccountName(TenantAdminAccount account) async {
+    final result = await showTenantAdminFieldEditSheet(
+      context: context,
+      title: 'Editar nome da conta',
+      label: 'Nome',
+      initialValue: account.name,
+      helperText: 'Atualiza apenas o nome da conta.',
+      textCapitalization: TextCapitalization.words,
+      textInputAction: TextInputAction.done,
+      autocorrect: true,
+      enableSuggestions: true,
+      validator: (value) =>
+          (value?.trim() ?? '').isEmpty ? 'Nome e obrigatorio.' : null,
+    );
+    if (result == null || !mounted) return;
+    final name = result.value.trim();
+    if (name.isEmpty || name == account.name) return;
+
+    final updated = await _controller.updateAccount(
+      accountSlug: account.slug,
+      name: name,
+    );
+    if (!mounted) return;
+    if (updated == null) {
+      _controller.reportEditErrorMessage(
+        'Nao foi possivel atualizar o nome da conta.',
+      );
+      return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Nome da conta atualizado.')));
+  }
+
+  Future<void> _editAccountSlug(TenantAdminAccount account) async {
+    final result = await showTenantAdminFieldEditSheet(
+      context: context,
+      title: 'Editar slug da conta',
+      label: 'Slug',
+      initialValue: account.slug,
+      helperText: 'Deve ser unico no tenant.',
+      textInputAction: TextInputAction.done,
+      inputFormatters: tenantAdminSlugInputFormatters,
+      validator: (value) => tenantAdminValidateRequiredSlug(
+        value,
+        requiredMessage: 'Slug e obrigatorio.',
+      ),
+    );
+    if (result == null || !mounted) return;
+    final slug = result.value.trim();
+    if (slug.isEmpty || slug == account.slug) return;
+
+    final updated = await _controller.updateAccount(
+      accountSlug: account.slug,
+      slug: slug,
+    );
+    if (!mounted) return;
+    if (updated == null) {
+      _controller.reportEditErrorMessage(
+        'Nao foi possivel atualizar o slug da conta.',
+      );
+      return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Slug da conta atualizado.')));
+  }
+
+  Future<void> _editAccountPublication(TenantAdminAccount account) async {
+    final selectedStatus = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final currentStatus = account.publication.status.value;
+        Widget option(String status, String label) => ListTile(
+          title: Text(label),
+          trailing: currentStatus == status ? const Icon(Icons.check) : null,
+          onTap: () => sheetContext.router.maybePop(status),
+        );
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              option('draft', 'Rascunho'),
+              option('published', 'Publicado'),
+            ],
+          ),
+        );
+      },
+    );
+    if (!mounted ||
+        selectedStatus == null ||
+        selectedStatus == account.publication.status.value) {
+      return;
+    }
+
+    final updated = await _controller.updateAccount(
+      accountSlug: account.slug,
+      publication: tenantAdminAccountPublicationFromRaw(status: selectedStatus),
+    );
+    if (!mounted) return;
+    if (updated == null) {
+      _controller.reportEditErrorMessage(
+        'Nao foi possivel atualizar a publicacao da conta.',
+      );
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Publicacao da conta atualizada para ${_accountPublicationLabel(updated.publication.status.value)}.',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteAccount(TenantAdminAccount account) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Excluir conta'),
+        content: Text(
+          'Deseja excluir a conta "${account.name}"? Esta acao remove tambem o perfil associado.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => dialogContext.router.maybePop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton.tonal(
+            onPressed: () => dialogContext.router.maybePop(true),
+            child: const Text('Excluir'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final deleted = await _controller.deleteAccount(accountSlug: account.slug);
+    if (!mounted || deleted) return;
+    _controller.reportEditErrorMessage('Nao foi possivel excluir a conta.');
+  }
+
   String _nestedGroupManageBlockedReason(TenantAdminNestedProfileGroup group) {
     final profile = _controller.accountProfileStreamValue.value;
     if (profile == null) {
@@ -677,87 +867,69 @@ class _TenantAdminAccountProfileEditScreenState
     }
   }
 
-  Future<void> _addGalleryItem(String groupId) async {
+  Future<void> _addGalleryGroup() async {
+    final subtitle = await showTenantAdminGroupLabelDialog(
+      context: context,
+      title: 'Nova galeria',
+      confirmLabel: 'Criar galeria',
+    );
+    if (subtitle != null) await _controller.addEditGalleryGroup(subtitle);
+  }
+
+  Future<String?> _promptYoutubeUrl({String initialValue = ''}) async {
+    final result = await showTenantAdminFieldEditSheet(
+      context: context,
+      title: 'Vídeo do YouTube',
+      label: 'URL do YouTube',
+      initialValue: initialValue,
+      helperText: 'Cole uma URL válida do YouTube.',
+      keyboardType: TextInputType.url,
+      textCapitalization: TextCapitalization.none,
+      autocorrect: false,
+      enableSuggestions: false,
+      validator: (value) =>
+          (value?.trim().isEmpty ?? true) ? 'URL obrigatória.' : null,
+    );
+    return result?.value.trim();
+  }
+
+  Future<void> _addGalleryPhoto(String groupId) async {
     final file = await _pickGalleryImage();
-    if (!mounted || file == null) {
-      return;
-    }
-    _controller.addEditGalleryItem(groupId: groupId, uploadFile: file);
+    if (!mounted || file == null) return;
+    await _controller.addEditGalleryPhoto(groupId: groupId, uploadFile: file);
+  }
+
+  Future<void> _addGalleryYoutube(String groupId) async {
+    final url = await _promptYoutubeUrl();
+    if (url == null) return;
+    await _controller.addEditGalleryYoutube(groupId: groupId, youtubeUrl: url);
   }
 
   Future<void> _replaceGalleryItem(String groupId, String itemId) async {
+    final item = _controller.editStateStreamValue.value.galleryGroups
+        .firstWhere((group) => group.groupId == groupId)
+        .items
+        .firstWhere((candidate) => candidate.itemId == itemId);
+    if (item.type == TenantAdminAccountProfileGalleryItemType.youtube) {
+      final url = await _promptYoutubeUrl();
+      if (url != null) {
+        await _controller.replaceEditGalleryYoutube(
+          groupId: groupId,
+          itemId: itemId,
+          youtubeUrl: url,
+        );
+      }
+      return;
+    }
     final file = await _pickGalleryImage();
     if (!mounted || file == null) {
       return;
     }
-    _controller.replaceEditGalleryItemUpload(
+    await _controller.replaceEditGalleryItemUpload(
       groupId: groupId,
       itemId: itemId,
       uploadFile: file,
     );
-  }
-
-  String? _validateGalleryState(TenantAdminAccountProfileEditDraft state) {
-    final groups = state.galleryGroups;
-    if (groups.length > TenantAdminAccountProfileGalleryOperations.maxGroups) {
-      return 'Limite de grupos da galeria atingido.';
-    }
-    final totalItems =
-        TenantAdminAccountProfileGalleryOperations.totalItemCount(groups);
-    if (totalItems > TenantAdminAccountProfileGalleryOperations.maxItems) {
-      return 'Limite total de fotos da galeria atingido.';
-    }
-    for (final group in groups) {
-      if (group.subtitle.trim().isEmpty) {
-        return 'Todos os grupos da galeria precisam de subtítulo.';
-      }
-      if (group.items.isEmpty) {
-        return 'Cada grupo da galeria precisa ter ao menos uma foto.';
-      }
-    }
-    return null;
-  }
-
-  Future<List<TenantAdminAccountProfileGalleryUpdateGroup>>
-  _buildGalleryUpdateGroups(TenantAdminAccountProfileEditDraft state) async {
-    final groups = <TenantAdminAccountProfileGalleryUpdateGroup>[];
-    final orderedGroups = [...state.galleryGroups]
-      ..sort((left, right) => left.order.compareTo(right.order));
-    for (final group in orderedGroups) {
-      final items = <TenantAdminAccountProfileGalleryUpdateItem>[];
-      final orderedItems = [...group.items]
-        ..sort((left, right) => left.order.compareTo(right.order));
-      for (final item in orderedItems) {
-        final upload = await _controller.buildImageUpload(
-          item.uploadFile,
-          slot: TenantAdminImageSlot.accountProfileGallery,
-        );
-        items.add(
-          TenantAdminAccountProfileGalleryUpdateItem(
-            itemIdValue: TenantAdminNestedProfileGroupTextValue(item.itemId),
-            descriptionValue: TenantAdminOptionalTextValue()
-              ..parse(
-                item.description?.trim().isEmpty == true
-                    ? null
-                    : item.description?.trim(),
-              ),
-            orderValue: TenantAdminNestedProfileGroupOrderValue(item.order),
-            upload: upload,
-          ),
-        );
-      }
-      groups.add(
-        TenantAdminAccountProfileGalleryUpdateGroup(
-          groupIdValue: TenantAdminNestedProfileGroupTextValue(group.groupId),
-          subtitleValue: TenantAdminNestedProfileGroupTextValue(
-            group.subtitle.trim(),
-          ),
-          orderValue: TenantAdminNestedProfileGroupOrderValue(group.order),
-          items: items,
-        ),
-      );
-    }
-    return groups;
   }
 
   void _preloadRemoteImage({required String url, required bool isAvatar}) {
@@ -848,6 +1020,9 @@ class _TenantAdminAccountProfileEditScreenState
                                 final hasGallery = _hasGallery(
                                   state.selectedProfileType,
                                 );
+                                final hasExternalLinks = _hasExternalLinks(
+                                  state.selectedProfileType,
+                                );
 
                                 if (loadError?.isNotEmpty ?? false) {
                                   return TenantAdminFormScaffold(
@@ -899,19 +1074,29 @@ class _TenantAdminAccountProfileEditScreenState
                                           if (isLoading)
                                             const SizedBox(height: 12),
                                           StreamValueBuilder<
-                                            TenantAdminAccount?
+                                            TenantAdminAccount
                                           >(
                                             streamValue:
                                                 _controller.accountStreamValue,
+                                            onNullWidget: _buildProfileSection(
+                                              context,
+                                              state,
+                                            ),
                                             builder: (context, account) {
                                               _syncOwnershipSelection(
-                                                account?.ownershipState,
+                                                account.ownershipState,
                                               );
-                                              return _buildProfileSection(
-                                                context,
-                                                state,
-                                                accountOwnership:
-                                                    account?.ownershipState,
+                                              return Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.stretch,
+                                                children: [
+                                                  _buildAccountSection(account),
+                                                  const SizedBox(height: 16),
+                                                  _buildProfileSection(
+                                                    context,
+                                                    state,
+                                                  ),
+                                                ],
                                               );
                                             },
                                           ),
@@ -922,6 +1107,14 @@ class _TenantAdminAccountProfileEditScreenState
                                           if (hasGallery) ...[
                                             const SizedBox(height: 16),
                                             _buildGallerySection(state),
+                                          ],
+                                          if (hasExternalLinks &&
+                                              profile
+                                                  is TenantAdminAccountProfile &&
+                                              profile.externalLinksLimit !=
+                                                  null) ...[
+                                            const SizedBox(height: 16),
+                                            _buildExternalLinksSection(profile),
                                           ],
                                           if (hasContent) ...[
                                             _buildContentSection(
@@ -998,7 +1191,19 @@ class _TenantAdminAccountProfileEditScreenState
                                                             authoritativeLabel:
                                                                 group.label,
                                                           ),
-                                                  onMoveGroup: (_, _) {},
+                                                  onMoveGroup:
+                                                      (
+                                                        groupId,
+                                                        delta,
+                                                      ) => unawaited(
+                                                        _controller
+                                                            .moveEditNestedProfileGroupHead(
+                                                              accountProfileId:
+                                                                  _currentAccountProfileIdForRequests(),
+                                                              groupId: groupId,
+                                                              delta: delta,
+                                                            ),
+                                                      ),
                                                   onRemoveGroup:
                                                       _deleteNestedGroupHead,
                                                   groupsMutationBusy: isBusy,
@@ -1014,7 +1219,11 @@ class _TenantAdminAccountProfileEditScreenState
                                                           .accountProfileStreamValue
                                                           .value !=
                                                       null,
-                                                  enableReorder: false,
+                                                  enableReorder:
+                                                      _controller
+                                                          .accountProfileStreamValue
+                                                          .value !=
+                                                      null,
                                                   onManageGroup: (group) async {
                                                     _controller
                                                         .editNestedGroupMutationBusyStreamValue
@@ -1157,26 +1366,6 @@ class _TenantAdminAccountProfileEditScreenState
                                                                         .cover,
                                                               )
                                                         : null;
-                                                    final galleryValidationError =
-                                                        hasGallery
-                                                        ? _validateGalleryState(
-                                                            state,
-                                                          )
-                                                        : null;
-                                                    if (galleryValidationError !=
-                                                        null) {
-                                                      _controller
-                                                          .reportEditErrorMessage(
-                                                            galleryValidationError,
-                                                          );
-                                                      return;
-                                                    }
-                                                    final galleryGroups =
-                                                        hasGallery
-                                                        ? await _buildGalleryUpdateGroups(
-                                                            state,
-                                                          )
-                                                        : null;
                                                     final accountProfileId =
                                                         _currentAccountProfileIdForRequests();
                                                     final submitState =
@@ -1232,8 +1421,6 @@ class _TenantAdminAccountProfileEditScreenState
                                                       coverUpload: coverUpload,
                                                       avatarUrl: null,
                                                       coverUrl: null,
-                                                      galleryGroups:
-                                                          galleryGroups,
                                                       nestedProfileGroups:
                                                           _hasNestedProfileGroups(
                                                             selectedType,
@@ -1308,11 +1495,226 @@ class _TenantAdminAccountProfileEditScreenState
     });
   }
 
+  Widget _buildExternalLinksSection(TenantAdminAccountProfile profile) {
+    final links = profile.externalLinks;
+    final limit = profile.externalLinksLimit ?? 0;
+    final configuredTypes = links.map((link) => link.type).toSet();
+    final hasAvailableType = AccountProfileExternalLinkType.values.any(
+      (type) => !configuredTypes.contains(type),
+    );
+    final canAdd = links.length < limit && hasAvailableType;
+    return TenantAdminFormSectionCard(
+      title: 'Links externos',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final link in links)
+            ListTile(
+              key: ValueKey('tenantAdminExternalLink-${link.id}'),
+              contentPadding: EdgeInsets.zero,
+              leading: CircleAvatar(
+                child: Icon(
+                  AccountProfileExternalLinkIconRegistry.iconFor(link.type),
+                  size: 21,
+                ),
+              ),
+              title: Text(link.label),
+              subtitle: Text(
+                link.url.toString(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.router.push(
+                TenantAdminAccountProfileExternalLinkEditRoute(
+                  accountSlug: _currentAccountSlugForRequests(),
+                  accountProfileId: profile.id,
+                  externalLinkId: link.id,
+                  returnToExistingEditor: true,
+                ),
+              ),
+            ),
+          if (links.isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: Text('Nenhum link externo configurado.'),
+            ),
+          ListTile(
+            key: const Key('tenantAdminAddExternalLinkButton'),
+            enabled: canAdd,
+            contentPadding: EdgeInsets.zero,
+            onTap: !canAdd
+                ? null
+                : () => context.router.push(
+                    TenantAdminAccountProfileExternalLinkAddRoute(
+                      accountSlug: _currentAccountSlugForRequests(),
+                      accountProfileId: profile.id,
+                      returnToExistingEditor: true,
+                    ),
+                  ),
+            leading: const CircleAvatar(child: Icon(Icons.add)),
+            title: Text(
+              !hasAvailableType
+                  ? 'Todos os tipos de link já foram configurados'
+                  : links.length >= limit
+                  ? 'Limite de $limit links atingido'
+                  : 'Adicionar link',
+            ),
+            subtitle: !canAdd
+                ? null
+                : Text('${links.length} de $limit configurados'),
+            trailing: !canAdd ? null : const Icon(Icons.chevron_right),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAccountSection(TenantAdminAccount account) {
+    return StreamValueBuilder<bool>(
+      streamValue: _controller.accountUpdatingStreamValue,
+      builder: (context, isUpdating) {
+        return StreamValueBuilder<bool>(
+          streamValue: _controller.accountDeletingStreamValue,
+          builder: (context, isDeleting) {
+            final isBusy = isUpdating || isDeleting;
+            return TenantAdminFormSectionCard(
+              title: 'Dados da conta',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildAccountRow(
+                    label: 'Nome',
+                    value: account.name,
+                    onEdit: isBusy ? null : () => _editAccountName(account),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildAccountRow(
+                    label: 'Slug',
+                    value: account.slug,
+                    onEdit: isBusy ? null : () => _editAccountSlug(account),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildAccountRow(
+                    key: const Key('editAccountPublicationButton'),
+                    label: 'Publicacao',
+                    value: _accountPublicationLabel(
+                      account.publication.status.value,
+                    ),
+                    onEdit: isBusy
+                        ? null
+                        : () => _editAccountPublication(account),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildAccountReadOnlyRow(
+                    label: 'Documento',
+                    value: account.document.number,
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<TenantAdminOwnershipState>(
+                    key: ValueKey(
+                      _selectedOwnershipState ?? account.ownershipState,
+                    ),
+                    initialValue:
+                        _selectedOwnershipState ?? account.ownershipState,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Gestao da conta',
+                    ),
+                    items: _editableOwnershipStates
+                        .map(
+                          (state) =>
+                              DropdownMenuItem<TenantAdminOwnershipState>(
+                                value: state,
+                                child: Text(
+                                  state.label,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                        )
+                        .toList(growable: false),
+                    onChanged: isBusy
+                        ? null
+                        : (value) {
+                            if (value == null) return;
+                            setState(() => _selectedOwnershipState = value);
+                          },
+                    validator: (value) =>
+                        value == null ? 'Gestao da conta e obrigatoria.' : null,
+                  ),
+                  if (account.ownershipState ==
+                      TenantAdminOwnershipState.unmanaged) ...[
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: isBusy
+                            ? null
+                            : () => _confirmDeleteAccount(account),
+                        icon: const Icon(Icons.delete_outline),
+                        label: const Text('Excluir conta'),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildAccountRow({
+    Key? key,
+    required String label,
+    required String value,
+    required VoidCallback? onEdit,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SizedBox(
+          width: 110,
+          child: Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
+        Expanded(child: Text(value)),
+        IconButton(
+          key: key,
+          onPressed: onEdit,
+          tooltip: 'Editar $label',
+          icon: const Icon(Icons.edit_outlined),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAccountReadOnlyRow({
+    required String label,
+    required String value,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 110,
+          child: Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
+        Expanded(child: Text(value)),
+      ],
+    );
+  }
+
   Widget _buildProfileSection(
     BuildContext context,
-    TenantAdminAccountProfileEditDraft state, {
-    required TenantAdminOwnershipState? accountOwnership,
-  }) {
+    TenantAdminAccountProfileEditDraft state,
+  ) {
     return TenantAdminFormSectionCard(
       title: 'Dados do perfil',
       child: Column(
@@ -1369,35 +1771,6 @@ class _TenantAdminAccountProfileEditScreenState
                   return null;
                 },
               );
-            },
-          ),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<TenantAdminOwnershipState>(
-            key: ValueKey(_selectedOwnershipState ?? accountOwnership),
-            initialValue: _selectedOwnershipState ?? accountOwnership,
-            isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Gestao da conta'),
-            items: _editableOwnershipStates
-                .map(
-                  (state) => DropdownMenuItem<TenantAdminOwnershipState>(
-                    value: state,
-                    child: Text(state.label, overflow: TextOverflow.ellipsis),
-                  ),
-                )
-                .toList(growable: false),
-            onChanged: (value) {
-              if (value == null) {
-                return;
-              }
-              setState(() {
-                _selectedOwnershipState = value;
-              });
-            },
-            validator: (value) {
-              if (value == null) {
-                return 'Gestao da conta e obrigatoria.';
-              }
-              return null;
             },
           ),
           const SizedBox(height: 8),
@@ -1578,7 +1951,7 @@ class _TenantAdminAccountProfileEditScreenState
       return null;
     }
     for (final profile
-        in _controller.contactSourceCandidatesStreamValue.value) {
+        in _controller.selectedContactSourceProfilesStreamValue.value) {
       if (profile.id == selectedId) {
         return profile;
       }
@@ -1682,8 +2055,8 @@ class _TenantAdminAccountProfileEditScreenState
           if (isMirrored) ...[
             const SizedBox(height: 12),
             StreamValueBuilder<List<TenantAdminAccountProfile>>(
-              streamValue: _controller.contactSourceCandidatesStreamValue,
-              builder: (context, candidates) {
+              streamValue: _controller.selectedContactSourceProfilesStreamValue,
+              builder: (context, _) {
                 final selectedSource = _selectedEditContactSourceCandidate(
                   state,
                 );
@@ -1699,52 +2072,39 @@ class _TenantAdminAccountProfileEditScreenState
                             : selectedSource.displayName,
                       ),
                       onPressed: () async {
-                        final selected = await showTenantAdminAccountProfilePicker(
-                          context: context,
-                          candidatesStreamValue:
-                              _controller.contactSourceCandidatesStreamValue,
-                          isLoadingStreamValue: _controller
-                              .contactSourceCandidatesLoadingStreamValue,
-                          isPageLoadingStreamValue: _controller
-                              .contactSourceCandidatesPageLoadingStreamValue,
-                          hasMoreStreamValue: _controller
-                              .contactSourceCandidatesHasMoreStreamValue,
-                          errorStreamValue: _controller
-                              .contactSourceCandidatesErrorStreamValue,
-                          onSearchChanged:
-                              _controller.searchContactSourceCandidates,
-                          onProfileTypeChanged: _controller
-                              .filterContactSourceCandidatesByProfileType,
-                          profileTypes: _controller
-                              .profileTypesStreamValue
-                              .value
-                              .where(
-                                (profileType) =>
-                                    profileType.capabilities.hasContactChannels,
-                              )
-                              .toList(growable: false),
-                          loadNextPage:
-                              _controller.loadNextContactSourceCandidatesPage,
-                          title: 'Perfil de origem',
-                          emptyMessage:
-                              'Nenhum perfil elegível para espelhar contatos.',
-                          selectedProfileId: selectedSource?.id,
-                        );
-                        if (!context.mounted || selected == null) return;
-                        _controller.updateEditContactSourceAccountProfileId(
-                          selected.id,
-                        );
-                        _controller.updateEditContactBubbleChannelId(null);
+                        final session = _controller
+                            .createCandidatePickerSession(
+                              scope: TenantAdminAccountProfileCandidateScope
+                                  .contactCapable,
+                              maxSelections: 1,
+                              excludeAccountProfileId: widget.accountProfileId,
+                            );
+                        try {
+                          final selected =
+                              await showTenantAdminAccountProfileCandidatePicker(
+                                context: context,
+                                controller: session,
+                                title: 'Perfil de origem',
+                                emptyMessage:
+                                    'Nenhum perfil elegível para espelhar contatos.',
+                                closeOnSelection: true,
+                              );
+                          if (!context.mounted ||
+                              selected == null ||
+                              selected.isEmpty) {
+                            return;
+                          }
+                          _controller.updateEditContactSourceAccountProfileId(
+                            selected.first.id,
+                          );
+                          _controller.updateEditContactBubbleChannelId(null);
+                        } finally {
+                          _controller.disposeCandidatePickerSession(session);
+                        }
                       },
                     ),
-                    if (candidates.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.only(top: 8),
-                        child: Text(
-                          'Nenhum perfil elegível para espelhar contatos está disponível.',
-                        ),
-                      ),
                     const SizedBox(height: 12),
+                    _buildContactSourceHydrationStatus(),
                     if (selectedSource == null)
                       const Text(
                         'Selecione um perfil para visualizar os canais efetivos que serão espelhados.',
@@ -1768,6 +2128,41 @@ class _TenantAdminAccountProfileEditScreenState
     );
   }
 
+  Widget _buildContactSourceHydrationStatus() {
+    return StreamValueBuilder<bool>(
+      streamValue: _controller.selectedContactSourceHydrationLoadingStreamValue,
+      builder: (context, isLoading) => StreamValueBuilder<String>(
+        streamValue: _controller.selectedContactSourceHydrationErrorStreamValue,
+        onNullWidget: isLoading
+            ? const Padding(
+                padding: EdgeInsets.only(bottom: 12),
+                child: LinearProgressIndicator(
+                  key: Key('tenantAdminEditContactSourceHydrationLoading'),
+                ),
+              )
+            : const SizedBox.shrink(),
+        builder: (context, error) => Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  error,
+                  key: const Key('tenantAdminEditContactSourceHydrationError'),
+                ),
+              ),
+              TextButton(
+                key: const Key('tenantAdminEditContactSourceHydrationRetry'),
+                onPressed: _controller.retrySelectedContactSourceHydration,
+                child: const Text('Tentar novamente'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildContactChannelsSection(
     BuildContext context,
     TenantAdminAccountProfileEditDraft state,
@@ -1776,7 +2171,7 @@ class _TenantAdminAccountProfileEditScreenState
       return TenantAdminFormSectionCard(
         title: 'Canais de Contato',
         child: StreamValueBuilder<List<TenantAdminAccountProfile>>(
-          streamValue: _controller.contactSourceCandidatesStreamValue,
+          streamValue: _controller.selectedContactSourceProfilesStreamValue,
           builder: (context, _) {
             final selectedSource = _selectedEditContactSourceCandidate(state);
             if (selectedSource == null) {
@@ -2104,34 +2499,53 @@ class _TenantAdminAccountProfileEditScreenState
   }
 
   Widget _buildGallerySection(TenantAdminAccountProfileEditDraft state) {
-    return TenantAdminAccountProfileGalleryEditor(
-      groups: state.galleryGroups,
-      totalItemCount: _controller.editGalleryItemCount(),
-      maxGroups: TenantAdminAccountProfileGalleryOperations.maxGroups,
-      maxItems: TenantAdminAccountProfileGalleryOperations.maxItems,
-      onAddGroup: _controller.addEditGalleryGroup,
-      onRenameGroup: _controller.renameEditGalleryGroup,
-      onMoveGroup: _controller.moveEditGalleryGroup,
-      onRemoveGroup: _controller.removeEditGalleryGroup,
-      onAddItemRequested: _addGalleryItem,
-      onReplaceItemRequested: _replaceGalleryItem,
-      onMoveItem: (groupId, itemId, delta) {
-        _controller.moveEditGalleryItem(
-          groupId: groupId,
-          itemId: itemId,
-          delta: delta,
-        );
-      },
-      onRemoveItem: (groupId, itemId) {
-        _controller.removeEditGalleryItem(groupId: groupId, itemId: itemId);
-      },
-      onDescriptionChanged: (groupId, itemId, description) {
-        _controller.updateEditGalleryItemDescription(
-          groupId: groupId,
-          itemId: itemId,
-          description: description,
-        );
-      },
+    return StreamValueBuilder<bool>(
+      streamValue: _controller.editGalleryMutationBusyStreamValue,
+      builder: (context, busy) => StreamValueBuilder<Map<String, String>>(
+        streamValue: _controller.editGalleryFieldErrorsStreamValue,
+        builder: (context, fieldErrors) => StreamValueBuilder<String?>(
+          streamValue: _controller.editGalleryOperationErrorStreamValue,
+          builder: (context, operationError) =>
+              TenantAdminAccountProfileGalleryEditor(
+                groups: state.galleryGroups,
+                maxGroups: state.galleryCapabilities.maxGalleries,
+                maxItemsPerGallery:
+                    state.galleryCapabilities.maxItemsPerGallery,
+                busy: busy,
+                fieldErrors: fieldErrors,
+                operationError: operationError,
+                resolveInputValue: _controller.editGalleryInputValue,
+                onInputChanged: _controller.updateEditGalleryInputValue,
+                onAddGroup: _addGalleryGroup,
+                onRenameGroup: _controller.renameEditGalleryGroup,
+                onMoveGroup: _controller.moveEditGalleryGroup,
+                onRemoveGroup: _controller.removeEditGalleryGroup,
+                onAddPhotoRequested: _addGalleryPhoto,
+                onAddYoutubeRequested: _addGalleryYoutube,
+                onReplaceItemRequested: _replaceGalleryItem,
+                onMoveItem: (groupId, itemId, delta) =>
+                    _controller.moveEditGalleryItem(
+                      groupId: groupId,
+                      itemId: itemId,
+                      delta: delta,
+                    ),
+                onRemoveItem: (groupId, itemId) => _controller
+                    .removeEditGalleryItem(groupId: groupId, itemId: itemId),
+                onTitleChanged: (groupId, itemId, title) =>
+                    _controller.updateEditGalleryItemTitle(
+                      groupId: groupId,
+                      itemId: itemId,
+                      title: title,
+                    ),
+                onDescriptionChanged: (groupId, itemId, description) =>
+                    _controller.updateEditGalleryItemDescription(
+                      groupId: groupId,
+                      itemId: itemId,
+                      description: description,
+                    ),
+              ),
+        ),
+      ),
     );
   }
 

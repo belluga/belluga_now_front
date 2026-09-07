@@ -50,8 +50,27 @@ class _FakeScheduleRepository implements _ScheduleRepositoryContract {
   Future<void> fetchNextEventsPage() async {}
 }
 
+abstract class _AdministrativeProfilesRepositoryContract {
+  Future<List<_EventModel>> fetchProfilesPage({
+    required int page,
+    required int pageSize,
+  });
+}
+
+class _FakeAdministrativeProfilesRepository
+    implements _AdministrativeProfilesRepositoryContract {
+  @override
+  Future<List<_EventModel>> fetchProfilesPage({
+    required int page,
+    required int pageSize,
+  }) async =>
+      const <_EventModel>[];
+}
+
 class _RepositoryAsyncFetchCaseController {
   final _scheduleRepository = _FakeScheduleRepository();
+  final _administrativeProfilesRepository =
+      _FakeAdministrativeProfilesRepository();
 
   Future<void> bad() async {
     // expect_lint: controller_repository_async_model_fetch_forbidden
@@ -75,5 +94,9 @@ class _RepositoryAsyncFetchCaseController {
   Future<void> good() async {
     await _scheduleRepository.refreshAgendaEvents();
     await _scheduleRepository.fetchNextEventsPage();
+    await _administrativeProfilesRepository.fetchProfilesPage(
+      page: 1,
+      pageSize: 20,
+    );
   }
 }

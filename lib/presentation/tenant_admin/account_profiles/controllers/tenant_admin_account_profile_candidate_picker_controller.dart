@@ -18,19 +18,22 @@ class TenantAdminAccountProfileCandidatePickerController {
         const <TenantAdminAccountProfileSelectionSummary>[],
     this.searchDebounce = const Duration(milliseconds: 250),
   }) {
-    assert(maxSelections >= 1 && maxSelections <= 50);
+    assert(maxSelections == null || maxSelections! >= 1);
     for (final selection in initialSelections) {
-      if (_selectedById.length >= maxSelections) break;
+      if (maxSelections != null && _selectedById.length >= maxSelections!) {
+        break;
+      }
       _selectedById.putIfAbsent(selection.id, () => selection);
     }
     selectedSummariesStreamValue.addValue(_selectedValues());
   }
 
   static const int pageSize = 20;
+  static const int maxGroupMemberSelectionsPerOperation = 1000;
 
   final TenantAdminAccountProfileCandidateDiscoveryPageLoader pageLoader;
   final TenantAdminAccountProfileCandidateScope scope;
-  final int maxSelections;
+  final int? maxSelections;
   final String? excludeAccountProfileId;
   final Duration searchDebounce;
 
@@ -57,36 +60,56 @@ class TenantAdminAccountProfileCandidatePickerController {
   );
   final StreamValue<String?> errorStreamValue = StreamValue<String?>();
 
-  final Map<String, TenantAdminAccountProfileCandidate> _candidatesById =
+  final Map<String, TenantAdminAccountProfileCandidate> _browseCandidatesById =
+      <String, TenantAdminAccountProfileCandidate>{};
+  final Map<String, TenantAdminAccountProfileCandidate> _searchCandidatesById =
       <String, TenantAdminAccountProfileCandidate>{};
   final Map<String, TenantAdminAccountProfileSelectionSummary> _selectedById =
       <String, TenantAdminAccountProfileSelectionSummary>{};
   Timer? _debounceTimer;
   String _search = '';
   int _generation = 0;
-  int _currentPage = 0;
+  int _browseCurrentPage = 0;
+  int _searchCurrentPage = 0;
+  bool _browseHasMore = false;
+  bool _searchHasMore = false;
+  bool _browseLimitReached = false;
+  bool _searchLimitReached = false;
   bool _isFetching = false;
   bool _queuedInitialRequest = false;
+  bool _initialized = false;
   bool _isDisposed = false;
+
+  Future<void> initialize() async {
+    if (_isDisposed || _initialized) return;
+    _initialized = true;
+    await _requestPage(reset: true);
+  }
 
   void updateSearch(String rawSearch) {
     if (_isDisposed) return;
     _generation += 1;
-    _search = rawSearch.trim();
+    final normalizedSearch = rawSearch.trim();
+    _search = normalizedSearch.characters.length >= 2 ? normalizedSearch : '';
     _debounceTimer?.cancel();
-    _candidatesById.clear();
-    _currentPage = 0;
-    candidatesStreamValue.addValue(const []);
-    hasMoreStreamValue.addValue(false);
-    browseLimitReachedStreamValue.addValue(false);
     errorStreamValue.addValue(null);
     _queuedInitialRequest = false;
 
-    if (!_hasDispatchableSearch) {
+    if (!_isSearchMode) {
+      _publishActiveSnapshot();
       isLoadingStreamValue.addValue(false);
       isPageLoadingStreamValue.addValue(false);
+      if (_initialized && _browseCurrentPage == 0) {
+        unawaited(_requestInitialPage());
+      }
       return;
     }
+
+    _searchCandidatesById.clear();
+    _searchCurrentPage = 0;
+    _searchHasMore = false;
+    _searchLimitReached = false;
+    _publishActiveSnapshot();
 
     final expectedGeneration = _generation;
     _debounceTimer = Timer(searchDebounce, () {
@@ -96,10 +119,7 @@ class TenantAdminAccountProfileCandidatePickerController {
   }
 
   Future<void> loadNextPage() async {
-    if (_isDisposed ||
-        _search.characters.length < 2 ||
-        !hasMoreStreamValue.value ||
-        _isFetching) {
+    if (_isDisposed || !_activeHasMore || _isFetching) {
       return;
     }
     await _requestPage(reset: false);
@@ -111,7 +131,9 @@ class TenantAdminAccountProfileCandidatePickerController {
       selectedSummariesStreamValue.addValue(_selectedValues());
       return true;
     }
-    if (_selectedById.length >= maxSelections) return false;
+    if (maxSelections != null && _selectedById.length >= maxSelections!) {
+      return false;
+    }
     _selectedById[candidate.id] = TenantAdminAccountProfileSelectionSummary(
       idValue: TenantAdminAccountProfileIdValue(candidate.id),
       displayNameValue: TenantAdminOptionalTextValue()
@@ -139,10 +161,6 @@ class TenantAdminAccountProfileCandidatePickerController {
       _selectedValues();
 
   Future<void> _requestInitialPage() async {
-    if (!_hasDispatchableSearch) {
-      _queuedInitialRequest = false;
-      return;
-    }
     if (_isFetching) {
       _queuedInitialRequest = true;
       return;
@@ -153,7 +171,11 @@ class TenantAdminAccountProfileCandidatePickerController {
   Future<void> _requestPage({required bool reset}) async {
     if (_isDisposed || _isFetching) return;
     final generation = _generation;
-    final requestedPage = reset ? 1 : _currentPage + 1;
+    final searchMode = _isSearchMode;
+    final requestSearch = searchMode ? _search : '';
+    final requestedPage = reset
+        ? 1
+        : (searchMode ? _searchCurrentPage : _browseCurrentPage) + 1;
     _isFetching = true;
     if (reset) {
       isLoadingStreamValue.addValue(true);
@@ -164,29 +186,42 @@ class TenantAdminAccountProfileCandidatePickerController {
     try {
       final result = await pageLoader.loadPage(
         scope: scope,
-        search: _search,
+        search: requestSearch,
         pageNumber: requestedPage,
         pageSize: pageSize,
         excludeAccountProfileId: excludeAccountProfileId,
       );
-      if (_isDisposed || generation != _generation) return;
-      if (reset) _candidatesById.clear();
-      for (final candidate in result.items) {
-        _candidatesById.putIfAbsent(candidate.id, () => candidate);
+      if (_isDisposed ||
+          generation != _generation ||
+          searchMode != _isSearchMode ||
+          requestSearch != (_isSearchMode ? _search : '')) {
+        return;
       }
-      _currentPage = result.page == 0 ? requestedPage : result.page;
-      candidatesStreamValue.addValue(
-        List<TenantAdminAccountProfileCandidate>.unmodifiable(
-          _candidatesById.values,
-        ),
-      );
-      hasMoreStreamValue.addValue(result.hasMore);
-      browseLimitReachedStreamValue.addValue(result.browseLimitReached);
+      final candidatesById = searchMode
+          ? _searchCandidatesById
+          : _browseCandidatesById;
+      if (reset) candidatesById.clear();
+      for (final candidate in result.items) {
+        candidatesById.putIfAbsent(candidate.id, () => candidate);
+      }
+      if (searchMode) {
+        _searchCurrentPage = result.page == 0 ? requestedPage : result.page;
+        _searchHasMore = result.hasMore;
+        _searchLimitReached = result.browseLimitReached;
+      } else {
+        _browseCurrentPage = result.page == 0 ? requestedPage : result.page;
+        _browseHasMore = result.hasMore;
+        _browseLimitReached = result.browseLimitReached;
+      }
+      _publishActiveSnapshot();
       errorStreamValue.addValue(null);
     } catch (error) {
       if (_isDisposed || generation != _generation) return;
       if (reset) {
-        _candidatesById.clear();
+        final candidatesById = searchMode
+            ? _searchCandidatesById
+            : _browseCandidatesById;
+        candidatesById.clear();
         candidatesStreamValue.addValue(const []);
       }
       hasMoreStreamValue.addValue(false);
@@ -199,14 +234,29 @@ class TenantAdminAccountProfileCandidatePickerController {
       }
       if (!_isDisposed && _queuedInitialRequest) {
         _queuedInitialRequest = false;
-        if (_hasDispatchableSearch) {
-          unawaited(_requestInitialPage());
-        }
+        unawaited(_requestInitialPage());
       }
     }
   }
 
-  bool get _hasDispatchableSearch => _search.characters.length >= 2;
+  bool get _isSearchMode => _search.characters.length >= 2;
+
+  bool get _activeHasMore => _isSearchMode ? _searchHasMore : _browseHasMore;
+
+  void _publishActiveSnapshot() {
+    final candidatesById = _isSearchMode
+        ? _searchCandidatesById
+        : _browseCandidatesById;
+    candidatesStreamValue.addValue(
+      List<TenantAdminAccountProfileCandidate>.unmodifiable(
+        candidatesById.values,
+      ),
+    );
+    hasMoreStreamValue.addValue(_activeHasMore);
+    browseLimitReachedStreamValue.addValue(
+      _isSearchMode ? _searchLimitReached : _browseLimitReached,
+    );
+  }
 
   List<TenantAdminAccountProfileSelectionSummary> _selectedValues() {
     return List<TenantAdminAccountProfileSelectionSummary>.unmodifiable(

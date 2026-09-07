@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
@@ -1246,6 +1247,152 @@ void main() {
       ]);
     },
   );
+
+  test(
+    'nested-group search is sentinel-gated and a stale response cannot win',
+    () async {
+      const membersPath =
+          '/api/v1/events/festival/related_profile_tabs/artists/members';
+      final burstLevel =
+          int.tryParse(Platform.environment['DELPHI_RACE_BURST_LEVEL'] ?? '') ??
+          2;
+      final queries = List<String>.generate(
+        burstLevel,
+        (index) => 'query-${index.toString().padLeft(2, '0')}',
+      );
+      final staleSearches = <Completer<AccountProfileNestedGroupMemberPage>>[];
+      final outcomesByRequest = <String, List<Object>>{
+        '$membersPath|': <Object>[
+          _nestedGroupMemberPage(
+            items: <AccountProfileNestedGroupMember>[
+              _nestedGroupMember(
+                id: '507f1f77bcf86cd799439081',
+                name: 'Initial Member',
+                slug: 'initial-member',
+              ),
+            ],
+            nextCursor: 'cursor-page-2',
+          ),
+        ],
+      };
+      for (final query in queries.take(queries.length - 1)) {
+        final gate = Completer<AccountProfileNestedGroupMemberPage>();
+        staleSearches.add(gate);
+        outcomesByRequest['$membersPath||$query'] = <Object>[gate.future];
+      }
+      outcomesByRequest['$membersPath||${queries.last}'] = <Object>[
+        _nestedGroupMemberPage(
+          items: <AccountProfileNestedGroupMember>[
+            _nestedGroupMember(
+              id: '507f1f77bcf86cd799439082',
+              name: 'New Result',
+              slug: 'new-result',
+            ),
+          ],
+          nextCursor: null,
+        ),
+      ];
+      final backend = _NestedGroupPaginationBackend(
+        outcomesByRequest: outcomesByRequest,
+      );
+      final repository = AccountProfilesRepository(
+        backend: backend,
+        favoriteBackend: _StubFavoriteBackend(favorites: const []),
+        favoriteAccountProfileIds: const {},
+      );
+      final pathValue = AccountProfilesRepositoryContractPrimString.fromRaw(
+        membersPath,
+        defaultValue: '',
+        isRequired: true,
+      );
+
+      await repository.loadNestedGroupMembersByPath(pathValue);
+      expect(
+        repository
+            .isNestedGroupMembersSearchAvailableStreamValue(pathValue)
+            .value
+            .value,
+        isTrue,
+      );
+
+      final requests = <Future<void>>[];
+      for (final query in queries) {
+        requests.add(
+          repository.searchNestedGroupMembersByPath(
+            pathValue,
+            search: AccountProfilesRepositoryContractPrimString.fromRaw(query),
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
+      }
+      await requests.last;
+      for (final gate in staleSearches.reversed) {
+        gate.complete(
+          _nestedGroupMemberPage(
+            items: <AccountProfileNestedGroupMember>[
+              _nestedGroupMember(
+                id: '507f1f77bcf86cd799439083',
+                name: 'Stale Result',
+                slug: 'stale-result',
+              ),
+            ],
+            nextCursor: null,
+          ),
+        );
+      }
+      await Future.wait(requests);
+
+      expect(
+        repository
+            .nestedGroupMembersStreamValue(pathValue)
+            .value
+            .map((member) => member.name),
+        <String>['New Result'],
+      );
+      expect(backend.requestKeys, <String>[
+        '$membersPath|',
+        ...queries.map((query) => '$membersPath||$query'),
+      ]);
+    },
+  );
+
+  test(
+    'nested-group pagination state is evicted after its final owner releases it',
+    () {
+      const membersPath =
+          '/api/v1/account_profiles/ponta-da-fruta/nested_groups/parceiros/members';
+      final repository = AccountProfilesRepository(
+        backend: _StubAccountProfilesBackend(accountProfiles: const []),
+        favoriteBackend: _StubFavoriteBackend(favorites: const []),
+        favoriteAccountProfileIds: const {},
+      );
+      final pathValue = AccountProfilesRepositoryContractPrimString.fromRaw(
+        membersPath,
+        defaultValue: '',
+        isRequired: true,
+      );
+
+      repository.retainNestedGroupMembersByPath(pathValue);
+      repository.retainNestedGroupMembersByPath(pathValue);
+      final retainedStream = repository.nestedGroupMembersStreamValue(
+        pathValue,
+      );
+
+      repository.releaseNestedGroupMembersByPath(pathValue);
+      expect(
+        repository.nestedGroupMembersStreamValue(pathValue),
+        same(retainedStream),
+        reason: 'One active owner must keep the shared path state alive.',
+      );
+
+      repository.releaseNestedGroupMembersByPath(pathValue);
+      expect(
+        repository.nestedGroupMembersStreamValue(pathValue),
+        isNot(same(retainedStream)),
+        reason: 'The final release must evict the singleton repository state.',
+      );
+    },
+  );
 }
 
 class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
@@ -1307,24 +1454,19 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
   }
 
   @override
-  Future<List<AccountProfileNestedGroupMember>> fetchNestedGroupMembersByPath(
-    String membersPath,
-  ) async => const <AccountProfileNestedGroupMember>[];
-
-  @override
   Future<AccountProfileNestedGroupMemberPage> fetchNestedGroupMembersPageByPath(
     String membersPath, {
     String? cursor,
+    String? search,
   }) async {
     final normalizedCursor = cursor?.trim();
-    if (normalizedCursor != null && normalizedCursor.isNotEmpty) {
+    final normalizedSearch = search?.trim();
+    if ((normalizedCursor != null && normalizedCursor.isNotEmpty) ||
+        (normalizedSearch != null && normalizedSearch.isNotEmpty)) {
       return const AccountProfileNestedGroupMemberPage.empty();
     }
 
-    return AccountProfileNestedGroupMemberPage(
-      items: await fetchNestedGroupMembersByPath(membersPath),
-      nextCursorValue: null,
-    );
+    return const AccountProfileNestedGroupMemberPage.empty();
   }
 
   @override
@@ -1396,8 +1538,12 @@ class _NestedGroupPaginationBackend extends _StubAccountProfilesBackend {
   Future<AccountProfileNestedGroupMemberPage> fetchNestedGroupMembersPageByPath(
     String membersPath, {
     String? cursor,
+    String? search,
   }) async {
-    final key = '$membersPath|${cursor?.trim() ?? ''}';
+    final normalizedSearch = search?.trim() ?? '';
+    final key = normalizedSearch.isEmpty
+        ? '$membersPath|${cursor?.trim() ?? ''}'
+        : '$membersPath|${cursor?.trim() ?? ''}|$normalizedSearch';
     requestKeys.add(key);
     final outcomes = outcomesByRequest[key];
     if (outcomes == null || outcomes.isEmpty) {
@@ -1405,6 +1551,9 @@ class _NestedGroupPaginationBackend extends _StubAccountProfilesBackend {
     }
     final outcome = outcomes.removeAt(0);
     if (outcome is AccountProfileNestedGroupMemberPage) {
+      return outcome;
+    }
+    if (outcome is Future<AccountProfileNestedGroupMemberPage>) {
       return outcome;
     }
     throw outcome;

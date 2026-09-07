@@ -526,15 +526,6 @@ class _FakeAccountProfilesRepository
     );
   }
 
-  @override
-  Future<TenantAdminAccountProfile> updateAccountProfileGallery({
-    required TenantAdminAccountProfilesRepoString accountProfileId,
-    List<TenantAdminAccountProfileGalleryUpdateGroup> galleryGroups =
-        const <TenantAdminAccountProfileGalleryUpdateGroup>[],
-  }) async {
-    return fetchAccountProfile(accountProfileId);
-  }
-
   List<TenantAdminAccountProfile> _filterProfiles({
     String? search,
     String? profileType,
@@ -1248,17 +1239,6 @@ Future<void> _pumpWithAutoRoute(WidgetTester tester, Widget child) async {
           chromeMode: RouteChromeMode.fullscreen,
         ),
         builder: (context, routeData) => child,
-      ),
-      NamedRouteDef(
-        name: TenantAdminAccountDetailRoute.name,
-        path: '/admin/accounts/:accountSlug',
-        meta: canonicalRouteMeta(
-          family: CanonicalRouteFamily.tenantAdminAccountsInternal,
-          chromeMode: RouteChromeMode.fullscreen,
-        ),
-        builder: (_, data) => Scaffold(
-          body: Text('Detail: ${data.params.getString('accountSlug')}'),
-        ),
       ),
       NamedRouteDef(
         name: TenantAdminAccountProfileEditRoute.name,

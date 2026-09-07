@@ -156,25 +156,11 @@ abstract class AccountProfilesRepositoryContract {
     AccountProfilesRepositoryContractPrimString slug,
   );
 
-  Future<List<AccountProfileNestedGroupMember>> getNestedGroupMembersByPath(
-    AccountProfilesRepositoryContractPrimString membersPath,
-  );
-
   Future<AccountProfileNestedGroupMemberPage> fetchNestedGroupMembersPageByPath(
     AccountProfilesRepositoryContractPrimString membersPath, {
     AccountProfilesRepositoryContractPrimString? cursor,
-  }) async {
-    final normalizedCursor = cursor?.value.trim();
-    if (normalizedCursor != null && normalizedCursor.isNotEmpty) {
-      return const AccountProfileNestedGroupMemberPage.empty();
-    }
-
-    final items = await getNestedGroupMembersByPath(membersPath);
-    return AccountProfileNestedGroupMemberPage(
-      items: items,
-      nextCursorValue: null,
-    );
-  }
+    AccountProfilesRepositoryContractPrimString? search,
+  }) async => const AccountProfileNestedGroupMemberPage.empty();
 
   StreamValue<List<AccountProfileNestedGroupMember>>
   nestedGroupMembersStreamValue(
@@ -191,10 +177,27 @@ abstract class AccountProfilesRepositoryContract {
     AccountProfilesRepositoryContractPrimString membersPath,
   ) => _nestedGroupMembersState(membersPath).isPageLoadingStreamValue;
 
+  StreamValue<AccountProfilesRepositoryContractPrimBool>
+  isNestedGroupMembersSearchAvailableStreamValue(
+    AccountProfilesRepositoryContractPrimString membersPath,
+  ) => _nestedGroupMembersState(membersPath).isSearchAvailableStreamValue;
+
   StreamValue<AccountProfilesRepositoryContractPrimString?>
   nestedGroupMembersErrorStreamValue(
     AccountProfilesRepositoryContractPrimString membersPath,
   ) => _nestedGroupMembersState(membersPath).errorStreamValue;
+
+  void retainNestedGroupMembersByPath(
+    AccountProfilesRepositoryContractPrimString membersPath,
+  ) {
+    _nestedGroupPaginationRegistry.retain(membersPath);
+  }
+
+  void releaseNestedGroupMembersByPath(
+    AccountProfilesRepositoryContractPrimString membersPath,
+  ) {
+    _nestedGroupPaginationRegistry.release(membersPath);
+  }
 
   Future<void> loadNestedGroupMembersByPath(
     AccountProfilesRepositoryContractPrimString membersPath,
@@ -203,12 +206,36 @@ abstract class AccountProfilesRepositoryContract {
     if (state.hasLoaded.value || state.isFetching.value) {
       return;
     }
-    await _waitForNestedGroupMembersFetch(state);
     _resetNestedGroupMembersState(state);
     await _fetchNestedGroupMembersPage(
       membersPath: membersPath,
       state: state,
       cursor: null,
+      generation: state.activeGeneration,
+    );
+  }
+
+  Future<void> searchNestedGroupMembersByPath(
+    AccountProfilesRepositoryContractPrimString membersPath, {
+    AccountProfilesRepositoryContractPrimString? search,
+  }) async {
+    final state = _nestedGroupMembersState(membersPath);
+    final normalizedSearch = search?.value.trim();
+    state.search = normalizedSearch == null || normalizedSearch.isEmpty
+        ? null
+        : AccountProfilesRepositoryContractPrimString.fromRaw(
+            normalizedSearch,
+            defaultValue: '',
+            isRequired: true,
+          );
+    _resetNestedGroupMembersState(state);
+    state.itemsStreamValue.addValue(const <AccountProfileNestedGroupMember>[]);
+    state.errorStreamValue.addValue(null);
+    await _fetchNestedGroupMembersPage(
+      membersPath: membersPath,
+      state: state,
+      cursor: null,
+      generation: state.activeGeneration,
     );
   }
 
@@ -224,6 +251,7 @@ abstract class AccountProfilesRepositoryContract {
       membersPath: membersPath,
       state: state,
       cursor: state.nextCursor,
+      generation: state.activeGeneration,
     );
   }
 
@@ -231,8 +259,14 @@ abstract class AccountProfilesRepositoryContract {
     AccountProfilesRepositoryContractPrimString membersPath,
   ) {
     final state = _nestedGroupMembersState(membersPath);
+    state.search = null;
     _resetNestedGroupMembersState(state);
+    state.isSearchAvailable = AccountProfilesRepositoryContractPrimBool.fromRaw(
+      false,
+      defaultValue: false,
+    );
     state.itemsStreamValue.addValue(const <AccountProfileNestedGroupMember>[]);
+    state.isSearchAvailableStreamValue.addValue(state.isSearchAvailable);
     state.errorStreamValue.addValue(null);
   }
 
@@ -288,14 +322,6 @@ abstract class AccountProfilesRepositoryContract {
   /// Get all favorite account profiles
   List<AccountProfileModel> getFavoriteAccountProfiles();
 
-  Future<void> _waitForNestedGroupMembersFetch(
-    _NestedGroupMembersPaginationState state,
-  ) async {
-    while (state.isFetching.value) {
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-    }
-  }
-
   Future<void> _fetchPagedAccountProfiles({
     required AccountProfilesRepositoryContractPrimInt generation,
     required AccountProfilesRepositoryContractPrimInt page,
@@ -329,10 +355,7 @@ abstract class AccountProfilesRepositoryContract {
       if (!_isCurrentPagedAccountProfilesGeneration(generation).value) {
         return;
       }
-      _commitPagedAccountProfilesSuccess(
-        page: page,
-        result: result,
-      );
+      _commitPagedAccountProfilesSuccess(page: page, result: result);
     } catch (error) {
       if (!_isCurrentPagedAccountProfilesGeneration(generation).value) {
         return;
@@ -358,7 +381,8 @@ abstract class AccountProfilesRepositoryContract {
     }
   }
 
-  AccountProfilesRepositoryContractPrimInt _nextPagedAccountProfilesGeneration() {
+  AccountProfilesRepositoryContractPrimInt
+  _nextPagedAccountProfilesGeneration() {
     _paginationState.activeGeneration =
         AccountProfilesRepositoryContractPrimInt.fromRaw(
           _paginationState.activeGeneration.value + 1,
@@ -410,16 +434,22 @@ abstract class AccountProfilesRepositoryContract {
     final accumulatedProfiles = page.value <= 1
         ? List<AccountProfileModel>.from(result.profiles)
         : <AccountProfileModel>[
-            ...?_paginationState.pagedAccountProfilesStreamValue.value?.profiles,
+            ...?_paginationState
+                .pagedAccountProfilesStreamValue
+                .value
+                ?.profiles,
             ...result.profiles,
           ];
     _paginationState.currentPage = page;
-    _paginationState.hasMore = AccountProfilesRepositoryContractPrimBool.fromRaw(
-      result.hasMore,
-      defaultValue: true,
-    );
+    _paginationState.hasMore =
+        AccountProfilesRepositoryContractPrimBool.fromRaw(
+          result.hasMore,
+          defaultValue: true,
+        );
     hasMorePagedAccountProfilesStreamValue.addValue(_paginationState.hasMore);
-    publicDiscoveryFilterFacetsStreamValue.addValue(result.discoveryFilterFacets);
+    publicDiscoveryFilterFacetsStreamValue.addValue(
+      result.discoveryFilterFacets,
+    );
     publicDiscoveryFilterCatalogStreamValue.addValue(
       result.discoveryFilterCatalog,
     );
@@ -440,10 +470,11 @@ abstract class AccountProfilesRepositoryContract {
     required AccountProfilesRepositoryContractPrimString errorMessage,
   }) {
     pagedAccountProfilesErrorStreamValue.addValue(errorMessage);
-    _paginationState.hasMore = AccountProfilesRepositoryContractPrimBool.fromRaw(
-      false,
-      defaultValue: false,
-    );
+    _paginationState.hasMore =
+        AccountProfilesRepositoryContractPrimBool.fromRaw(
+          false,
+          defaultValue: false,
+        );
     hasMorePagedAccountProfilesStreamValue.addValue(_paginationState.hasMore);
     if (page.value == 1) {
       publicDiscoveryFilterFacetsStreamValue.addValue(null);
@@ -508,8 +539,10 @@ abstract class AccountProfilesRepositoryContract {
     required AccountProfilesRepositoryContractPrimString membersPath,
     required _NestedGroupMembersPaginationState state,
     required AccountProfilesRepositoryContractPrimString? cursor,
+    required AccountProfilesRepositoryContractPrimInt generation,
   }) async {
-    if (state.isFetching.value) {
+    if (generation.value != state.activeGeneration.value ||
+        state.isFetching.value) {
       return;
     }
 
@@ -535,7 +568,11 @@ abstract class AccountProfilesRepositoryContract {
                 defaultValue: '',
                 isRequired: true,
               ),
+        search: state.search,
       );
+      if (generation.value != state.activeGeneration.value) {
+        return;
+      }
       final accumulatedItems =
           normalizedCursor == null || normalizedCursor.isEmpty
           ? List<AccountProfileNestedGroupMember>.from(result.items)
@@ -543,6 +580,10 @@ abstract class AccountProfilesRepositoryContract {
               ...(state.itemsStreamValue.value),
               ...result.items,
             ];
+      final seenIds = <String>{};
+      final deduplicatedItems = accumulatedItems
+          .where((item) => seenIds.add(item.id))
+          .toList(growable: false);
       final nextCursor = result.nextCursorValue?.value.trim();
       state.nextCursor = nextCursor == null || nextCursor.isEmpty
           ? null
@@ -559,10 +600,22 @@ abstract class AccountProfilesRepositoryContract {
         true,
         defaultValue: true,
       );
-      state.itemsStreamValue.addValue(accumulatedItems);
+      state.itemsStreamValue.addValue(deduplicatedItems);
       state.hasMoreStreamValue.addValue(state.hasMore);
+      if ((normalizedCursor == null || normalizedCursor.isEmpty) &&
+          state.search == null) {
+        state.isSearchAvailable =
+            AccountProfilesRepositoryContractPrimBool.fromRaw(
+              result.hasMore,
+              defaultValue: result.hasMore,
+            );
+        state.isSearchAvailableStreamValue.addValue(state.isSearchAvailable);
+      }
       state.errorStreamValue.addValue(null);
     } catch (error) {
+      if (generation.value != state.activeGeneration.value) {
+        return;
+      }
       if (normalizedCursor == null || normalizedCursor.isEmpty) {
         state.hasMore = AccountProfilesRepositoryContractPrimBool.fromRaw(
           false,
@@ -582,16 +635,18 @@ abstract class AccountProfilesRepositoryContract {
         AccountProfilesRepositoryContractPrimString.fromRaw(error.toString()),
       );
     } finally {
-      state.isFetching = AccountProfilesRepositoryContractPrimBool.fromRaw(
-        false,
-        defaultValue: false,
-      );
-      state.isPageLoadingStreamValue.addValue(
-        AccountProfilesRepositoryContractPrimBool.fromRaw(
+      if (generation.value == state.activeGeneration.value) {
+        state.isFetching = AccountProfilesRepositoryContractPrimBool.fromRaw(
           false,
           defaultValue: false,
-        ),
-      );
+        );
+        state.isPageLoadingStreamValue.addValue(
+          AccountProfilesRepositoryContractPrimBool.fromRaw(
+            false,
+            defaultValue: false,
+          ),
+        );
+      }
     }
   }
 
@@ -602,6 +657,10 @@ abstract class AccountProfilesRepositoryContract {
   }
 
   void _resetNestedGroupMembersState(_NestedGroupMembersPaginationState state) {
+    state.activeGeneration = AccountProfilesRepositoryContractPrimInt.fromRaw(
+      state.activeGeneration.value + 1,
+      defaultValue: state.activeGeneration.value + 1,
+    );
     state.nextCursor = null;
     state.hasMore = AccountProfilesRepositoryContractPrimBool.fromRaw(
       true,
@@ -678,22 +737,55 @@ class _NestedGroupMembersPaginationRegistry {
   _NestedGroupMembersPaginationState stateFor(
     AccountProfilesRepositoryContractPrimString membersPath,
   ) {
-    final normalizedPath = membersPath.value.trim();
+    final normalizedPath = AccountProfilesRepositoryContractPrimString.fromRaw(
+      membersPath.value.trim(),
+      defaultValue: '',
+      isRequired: true,
+    );
     for (final state in _states) {
-      if (state.membersPath.value == normalizedPath) {
+      if (state.membersPath == normalizedPath) {
         return state;
       }
     }
 
     final createdState = _NestedGroupMembersPaginationState(
-      membersPath: AccountProfilesRepositoryContractPrimString.fromRaw(
-        normalizedPath,
-        defaultValue: '',
-        isRequired: true,
-      ),
+      membersPath: normalizedPath,
     );
     _states.add(createdState);
     return createdState;
+  }
+
+  void retain(AccountProfilesRepositoryContractPrimString membersPath) {
+    final state = stateFor(membersPath);
+    state.retainCount = AccountProfilesRepositoryContractPrimInt.fromRaw(
+      state.retainCount.value + 1,
+      defaultValue: state.retainCount.value + 1,
+    );
+  }
+
+  void release(AccountProfilesRepositoryContractPrimString membersPath) {
+    final normalizedPath = AccountProfilesRepositoryContractPrimString.fromRaw(
+      membersPath.value.trim(),
+      defaultValue: '',
+      isRequired: true,
+    );
+    _NestedGroupMembersPaginationState? state;
+    for (final candidate in _states) {
+      if (candidate.membersPath == normalizedPath) {
+        state = candidate;
+        break;
+      }
+    }
+    if (state == null) return;
+
+    state.retainCount = AccountProfilesRepositoryContractPrimInt.fromRaw(
+      state.retainCount.value - 1,
+      defaultValue: state.retainCount.value - 1,
+    );
+    if (state.retainCount.value > 0) return;
+
+    _states.remove(state);
+    state.dispose();
   }
 }
 
@@ -720,10 +812,26 @@ class _NestedGroupMembersPaginationState {
           defaultValue: false,
         ),
       );
+  final StreamValue<AccountProfilesRepositoryContractPrimBool>
+  isSearchAvailableStreamValue =
+      StreamValue<AccountProfilesRepositoryContractPrimBool>(
+        defaultValue: AccountProfilesRepositoryContractPrimBool.fromRaw(
+          false,
+          defaultValue: false,
+        ),
+      );
   final StreamValue<AccountProfilesRepositoryContractPrimString?>
   errorStreamValue =
       StreamValue<AccountProfilesRepositoryContractPrimString?>();
   AccountProfilesRepositoryContractPrimString? nextCursor;
+  AccountProfilesRepositoryContractPrimString? search;
+  AccountProfilesRepositoryContractPrimInt activeGeneration =
+      AccountProfilesRepositoryContractPrimInt.fromRaw(0, defaultValue: 0);
+  AccountProfilesRepositoryContractPrimBool isSearchAvailable =
+      AccountProfilesRepositoryContractPrimBool.fromRaw(
+        false,
+        defaultValue: false,
+      );
   AccountProfilesRepositoryContractPrimBool hasMore =
       AccountProfilesRepositoryContractPrimBool.fromRaw(
         true,
@@ -739,4 +847,18 @@ class _NestedGroupMembersPaginationState {
         false,
         defaultValue: false,
       );
+  AccountProfilesRepositoryContractPrimInt retainCount =
+      AccountProfilesRepositoryContractPrimInt.fromRaw(0, defaultValue: 0);
+
+  void dispose() {
+    activeGeneration = AccountProfilesRepositoryContractPrimInt.fromRaw(
+      activeGeneration.value + 1,
+      defaultValue: activeGeneration.value + 1,
+    );
+    itemsStreamValue.dispose();
+    hasMoreStreamValue.dispose();
+    isPageLoadingStreamValue.dispose();
+    isSearchAvailableStreamValue.dispose();
+    errorStreamValue.dispose();
+  }
 }

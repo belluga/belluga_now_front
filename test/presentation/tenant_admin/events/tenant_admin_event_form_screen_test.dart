@@ -7955,6 +7955,7 @@ class _FakeEventsRepository extends TenantAdminEventsRepositoryContract
     required TenantAdminEventsRepoString occurrenceId,
     required TenantAdminEventsRepoString groupId,
     TenantAdminEventsRepoString? cursor,
+    TenantAdminEventsRepoString? search,
   }) async {
     final scopeKey = _occurrenceGroupScopeKey(
       eventId: eventId.value,

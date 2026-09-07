@@ -2,6 +2,7 @@ import 'package:belluga_discovery_filters/belluga_discovery_filters.dart';
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/partners/account_profile_gallery_group.dart';
+import 'package:belluga_now/infrastructure/dal/decoders/account_profile_external_link_decoder.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
@@ -11,6 +12,7 @@ import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/partners/projections/value_objects/partner_projection_text_values.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_gallery_player_aspect_ratio_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_public_detail_path_value.dart';
 import 'package:belluga_now/domain/repositories/value_objects/account_profiles_repository_taxonomy_filter.dart';
@@ -331,44 +333,10 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
   }
 
   @override
-  Future<List<AccountProfileNestedGroupMember>> fetchNestedGroupMembersByPath(
-    String membersPath,
-  ) async {
-    final normalizedPath = membersPath.trim();
-    if (normalizedPath.isEmpty) {
-      return const <AccountProfileNestedGroupMember>[];
-    }
-
-    final members = <AccountProfileNestedGroupMember>[];
-    final seen = <String>{};
-    String? nextCursor;
-
-    while (true) {
-      final page = await fetchNestedGroupMembersPageByPath(
-        normalizedPath,
-        cursor: nextCursor,
-      );
-
-      for (final member in page.items) {
-        if (seen.add(member.id)) {
-          members.add(member);
-        }
-      }
-
-      final cursor = page.nextCursorValue?.value.trim();
-      if (cursor == null || cursor.isEmpty) {
-        break;
-      }
-      nextCursor = cursor;
-    }
-
-    return List<AccountProfileNestedGroupMember>.unmodifiable(members);
-  }
-
-  @override
   Future<AccountProfileNestedGroupMemberPage> fetchNestedGroupMembersPageByPath(
     String membersPath, {
     String? cursor,
+    String? search,
   }) async {
     final normalizedPath = membersPath.trim();
     if (normalizedPath.isEmpty) {
@@ -376,11 +344,17 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     }
 
     final normalizedCursor = cursor?.trim();
+    final normalizedSearch = search?.trim();
+    final queryParameters = <String, String>{};
+    if (normalizedCursor != null && normalizedCursor.isNotEmpty) {
+      queryParameters['cursor'] = normalizedCursor;
+    }
+    if (normalizedSearch != null && normalizedSearch.isNotEmpty) {
+      queryParameters['search'] = normalizedSearch;
+    }
     final uri = _resolveTenantPublicUriFromPath(
       normalizedPath,
-      queryParameters: normalizedCursor == null || normalizedCursor.isEmpty
-          ? null
-          : <String, String>{'cursor': normalizedCursor},
+      queryParameters: queryParameters.isEmpty ? null : queryParameters,
     );
 
     final payload =
@@ -554,6 +528,9 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
             effectiveContactSourceProfile: _parseContactSourceSummary(
               json['effective_contact_source'],
             ),
+            externalLinkValues: AccountProfileExternalLinkDecoder.decodeList(
+              json['external_links'],
+            ),
           ),
         );
       } catch (_) {
@@ -700,42 +677,65 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       if (entry is! Map) continue;
       final json = Map<String, dynamic>.from(entry);
       final itemId = json['item_id']?.toString().trim() ?? '';
+      final type = json['type']?.toString().trim().toLowerCase() == 'youtube'
+          ? AccountProfileGalleryItemType.youtube
+          : AccountProfileGalleryItemType.photo;
+      final youtubeVideoId = json['youtube_video_id']?.toString().trim() ?? '';
+      final playerAspectRatio = json['player_aspect_ratio'];
       final imageUrl = json['image_url']?.toString().trim() ?? '';
       final thumbUrl = json['thumb_url']?.toString().trim() ?? '';
       final cardUrl = json['card_url']?.toString().trim() ?? '';
       final modalUrl = json['modal_url']?.toString().trim() ?? '';
-      if (itemId.isEmpty ||
-          imageUrl.isEmpty ||
-          thumbUrl.isEmpty ||
-          cardUrl.isEmpty ||
-          modalUrl.isEmpty) {
+      final invalidPhoto =
+          type == AccountProfileGalleryItemType.photo &&
+          (imageUrl.isEmpty ||
+              thumbUrl.isEmpty ||
+              cardUrl.isEmpty ||
+              modalUrl.isEmpty);
+      final invalidYoutube =
+          type == AccountProfileGalleryItemType.youtube &&
+          youtubeVideoId.isEmpty;
+      if (itemId.isEmpty || invalidPhoto || invalidYoutube) {
         continue;
       }
 
+      final title = json['title']?.toString().trim();
       final description = json['description']?.toString().trim();
       items.add(
         AccountProfileGalleryItem(
           itemIdValue: AccountProfileNestedGroupIdValue(itemId),
+          titleValue: AccountProfileNestedGroupMemberTextValue(
+            title == null || title.isEmpty ? '' : title,
+          ),
           descriptionValue: AccountProfileNestedGroupMemberTextValue(
             description == null || description.isEmpty ? '' : description,
           ),
           orderValue: AccountProfileNestedGroupOrderValue(
             _parsePageValue(json['order']) ?? items.length,
           ),
-          imageUrlValue: ThumbUriValue(defaultValue: Uri.parse(imageUrl))
-            ..parse(imageUrl),
-          thumbUrlValue: ThumbUriValue(defaultValue: Uri.parse(thumbUrl))
-            ..parse(thumbUrl),
-          cardUrlValue: ThumbUriValue(defaultValue: Uri.parse(cardUrl))
-            ..parse(cardUrl),
-          modalUrlValue: ThumbUriValue(defaultValue: Uri.parse(modalUrl))
-            ..parse(modalUrl),
+          imageUrlValue: _galleryUri(imageUrl),
+          thumbUrlValue: _galleryUri(thumbUrl),
+          cardUrlValue: _galleryUri(cardUrl),
+          modalUrlValue: _galleryUri(modalUrl),
+          type: type,
+          youtubeVideoIdValue: AccountProfileNestedGroupMemberTextValue(
+            youtubeVideoId,
+          ),
+          playerAspectRatioValue: AccountProfileGalleryPlayerAspectRatioValue(
+            playerAspectRatio,
+          ),
         ),
       );
     }
 
     items.sort((left, right) => left.order.compareTo(right.order));
     return List<AccountProfileGalleryItem>.unmodifiable(items);
+  }
+
+  ThumbUriValue _galleryUri(String raw) {
+    final value = ThumbUriValue(defaultValue: Uri());
+    if (raw.isNotEmpty) value.parse(raw);
+    return value;
   }
 
   List<AccountProfileNestedGroup> _extractNestedProfileGroups(dynamic raw) {

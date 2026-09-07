@@ -1,0 +1,24 @@
+name: belluga_gallery
+description: Reusable Belluga gallery previews, viewer, YouTube playback, and playback tracking.
+publish_to: none
+version: 0.0.1
+
+environment:
+  sdk: ">=3.12.0 <4.0.0"
+
+resolution: workspace
+
+dependencies:
+  event_tracker_handler: ^0.2.0
+  flutter:
+    sdk: flutter
+  get_it: ^9.0.5
+  youtube_player_iframe: ^6.0.2
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

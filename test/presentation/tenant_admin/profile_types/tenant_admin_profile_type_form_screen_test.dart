@@ -916,8 +916,6 @@ class _FakeAccountProfilesRepository
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
     TenantAdminAccountProfilesRepoString? accountId,
-    TenantAdminAccountProfilesRepoBool? queryableOnly,
-    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async {
     return const <TenantAdminAccountProfile>[];
   }
@@ -930,16 +928,8 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? search,
     TenantAdminAccountProfilesRepoString? accountId,
     TenantAdminAccountProfilesRepoString? profileType,
-    TenantAdminAccountProfilesRepoString? contactMode,
-    TenantAdminAccountProfilesRepoBool? contactChannelsEnabledOnly,
-    TenantAdminAccountProfilesRepoBool? queryableOnly,
-    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async {
-    final profiles = await fetchAccountProfiles(
-      accountId: accountId,
-      queryableOnly: queryableOnly,
-      excludeAccountProfileId: excludeAccountProfileId,
-    );
+    final profiles = await fetchAccountProfiles(accountId: accountId);
     return tenantAdminPagedResultFromRaw(items: profiles, hasMore: false);
   }
 
@@ -1007,15 +997,6 @@ class _FakeAccountProfilesRepository
     List<BellugaContactChannelDraft>? contactChannelDrafts,
     BellugaContactBubbleSelectionMutation bubbleSelection =
         const BellugaContactBubbleSelectionMutation.omit(),
-  }) async {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<TenantAdminAccountProfile> updateAccountProfileGallery({
-    required TenantAdminAccountProfilesRepoString accountProfileId,
-    List<TenantAdminAccountProfileGalleryUpdateGroup> galleryGroups =
-        const <TenantAdminAccountProfileGalleryUpdateGroup>[],
   }) async {
     throw UnimplementedError();
   }

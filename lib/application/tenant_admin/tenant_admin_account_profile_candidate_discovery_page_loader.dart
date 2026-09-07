@@ -1,4 +1,5 @@
-import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_account_profile_candidates_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/value_objects/tenant_admin_account_profiles_repository_contract_values.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate.dart';
 
 final class TenantAdminAccountProfileCandidateDiscoveryPageLoader {
@@ -6,7 +7,7 @@ final class TenantAdminAccountProfileCandidateDiscoveryPageLoader {
     required this.repository,
   });
 
-  final TenantAdminAccountProfilesRepositoryContract repository;
+  final TenantAdminAccountProfileCandidatesRepositoryContract repository;
 
   Future<TenantAdminAccountProfileCandidatePage> loadPage({
     required TenantAdminAccountProfileCandidateScope scope,
@@ -17,11 +18,7 @@ final class TenantAdminAccountProfileCandidateDiscoveryPageLoader {
   }) {
     return repository.fetchAccountProfileCandidatesPage(
       scope: scope,
-      search: tenantAdminAccountProfilesRepoString(
-        search,
-        defaultValue: '',
-        isRequired: true,
-      ),
+      search: tenantAdminAccountProfilesRepoString(search, defaultValue: ''),
       page: tenantAdminAccountProfilesRepoInt(pageNumber, defaultValue: 1),
       pageSize: tenantAdminAccountProfilesRepoInt(
         pageSize,

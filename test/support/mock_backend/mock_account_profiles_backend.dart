@@ -1,5 +1,4 @@
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
-import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group_member_page.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
@@ -49,27 +48,20 @@ class MockAccountProfilesBackend implements AccountProfilesBackendContract {
   }
 
   @override
-  Future<List<AccountProfileNestedGroupMember>> fetchNestedGroupMembersByPath(
-    String membersPath,
-  ) async {
-    await Future.delayed(const Duration(milliseconds: 50));
-    return const <AccountProfileNestedGroupMember>[];
-  }
-
-  @override
   Future<AccountProfileNestedGroupMemberPage> fetchNestedGroupMembersPageByPath(
     String membersPath, {
     String? cursor,
+    String? search,
   }) async {
     final normalizedCursor = cursor?.trim();
-    if (normalizedCursor != null && normalizedCursor.isNotEmpty) {
+    final normalizedSearch = search?.trim();
+    if ((normalizedCursor != null && normalizedCursor.isNotEmpty) ||
+        (normalizedSearch != null && normalizedSearch.isNotEmpty)) {
       return const AccountProfileNestedGroupMemberPage.empty();
     }
 
-    return AccountProfileNestedGroupMemberPage(
-      items: await fetchNestedGroupMembersByPath(membersPath),
-      nextCursorValue: null,
-    );
+    await Future.delayed(const Duration(milliseconds: 50));
+    return const AccountProfileNestedGroupMemberPage.empty();
   }
 
   @override

@@ -14,6 +14,7 @@ import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_onboarding_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
@@ -21,6 +22,9 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_id_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/screens/tenant_admin_account_profile_create_screen.dart';
@@ -442,6 +446,164 @@ void main() {
       ),
     );
   });
+
+  testWidgets(
+    'opens create contact source picker through canonical candidates',
+    (tester) async {
+      final repository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+      repository.profileTypesToReturn = [
+        _profileType(hasNestedProfileGroups: false, hasContactChannels: true),
+      ];
+      repository.profilesToReturn = [
+        _profile(
+          id: '507f1f77bcf86cd799439111',
+          displayName: 'Origem canônica',
+        ),
+      ];
+
+      await _pumpScreen(
+        tester,
+        const TenantAdminAccountProfileCreateScreen(
+          accountSlug: 'route-account',
+        ),
+      );
+      await _selectProfileType(tester, 'Venue');
+      final controller = GetIt.I.get<TenantAdminAccountProfilesController>();
+      controller.updateCreateContactMode(
+        BellugaContactSourceMode.mirroredAccountProfile,
+      );
+      await tester.pumpAndSettle();
+
+      final pickerButton = find.byKey(
+        const Key('tenantAdminCreateContactSourcePicker'),
+      );
+      await tester.ensureVisible(pickerButton);
+      await tester.tap(pickerButton);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Origem canônica'), findsOneWidget);
+      expect(repository.fetchAccountProfilesPageCalls, 0);
+      expect(repository.fetchAccountProfileCandidatesPageCalls, 1);
+      expect(
+        repository.lastCandidateScope,
+        TenantAdminAccountProfileCandidateScope.contactCapable,
+      );
+
+      await tester.tap(
+        find.byKey(
+          const Key(
+            'tenantAdminAccountProfileCandidate_507f1f77bcf86cd799439111',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final nameField = find.byWidgetPredicate(
+        (widget) =>
+            widget is TextFormField &&
+            widget.controller == controller.displayNameController,
+      );
+      await tester.enterText(nameField, 'Perfil espelhado');
+      await tester.scrollUntilVisible(
+        find.text('Salvar perfil'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.text('Salvar perfil'));
+      await tester.pumpAndSettle();
+
+      expect(repository.createAccountProfileCalls, 1);
+      expect(
+        repository.lastCreatedContactMode,
+        BellugaContactSourceMode.mirroredAccountProfile,
+      );
+      expect(
+        repository.lastCreatedContactSourceAccountProfileId,
+        '507f1f77bcf86cd799439111',
+      );
+    },
+  );
+
+  testWidgets('shows and retries a failed create contact-source hydration', (
+    tester,
+  ) async {
+    final repository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+    repository.profileTypesToReturn = [
+      _profileType(hasNestedProfileGroups: false, hasContactChannels: true),
+    ];
+    repository.profilesToReturn = [
+      _profile(id: '507f1f77bcf86cd799439111', displayName: 'Origem canônica'),
+    ];
+    repository.fetchAccountProfileError = StateError('detail unavailable');
+
+    await _pumpScreen(
+      tester,
+      const TenantAdminAccountProfileCreateScreen(accountSlug: 'route-account'),
+    );
+    await _selectProfileType(tester, 'Venue');
+    final controller = GetIt.I.get<TenantAdminAccountProfilesController>();
+    controller.updateCreateContactMode(
+      BellugaContactSourceMode.mirroredAccountProfile,
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.byKey(const Key('tenantAdminCreateContactSourcePicker')),
+    );
+    await tester.tap(
+      find.byKey(const Key('tenantAdminCreateContactSourcePicker')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(
+        const Key(
+          'tenantAdminAccountProfileCandidate_507f1f77bcf86cd799439111',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('tenantAdminCreateContactSourceHydrationError')),
+      findsOneWidget,
+    );
+    final nameField = find.byWidgetPredicate(
+      (widget) =>
+          widget is TextFormField &&
+          widget.controller == controller.displayNameController,
+    );
+    await tester.enterText(nameField, 'Perfil espelhado');
+    await tester.scrollUntilVisible(
+      find.text('Salvar perfil'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Salvar perfil'));
+    await tester.pumpAndSettle();
+    expect(repository.createAccountProfileCalls, 0);
+    expect(controller.selectedContactSourceProfilesStreamValue.value, isEmpty);
+
+    repository.fetchAccountProfileError = null;
+    await tester.ensureVisible(
+      find.byKey(const Key('tenantAdminCreateContactSourceHydrationRetry')),
+    );
+    await tester.tap(
+      find.byKey(const Key('tenantAdminCreateContactSourceHydrationRetry')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('tenantAdminCreateContactSourceHydrationError')),
+      findsNothing,
+    );
+    expect(
+      find.widgetWithText(OutlinedButton, 'Origem canônica'),
+      findsOneWidget,
+    );
+  });
 }
 
 Future<void> _pumpScreen(WidgetTester tester, Widget child) async {
@@ -584,8 +746,13 @@ class _FakeAccountProfilesRepository
     _profileType(hasNestedProfileGroups: true),
   ];
   int fetchAccountProfilesPageCalls = 0;
+  int fetchAccountProfileCandidatesPageCalls = 0;
+  TenantAdminAccountProfileCandidateScope? lastCandidateScope;
   int createAccountProfileCalls = 0;
   String? lastCreatedDisplayName;
+  BellugaContactSourceMode? lastCreatedContactMode;
+  String? lastCreatedContactSourceAccountProfileId;
+  Object? fetchAccountProfileError;
 
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
@@ -644,10 +811,46 @@ class _FakeAccountProfilesRepository
   }
 
   @override
+  Future<TenantAdminAccountProfileCandidatePage>
+  fetchAccountProfileCandidatesPage({
+    required TenantAdminAccountProfileCandidateScope scope,
+    required TenantAdminAccountProfilesRepoString search,
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
+  }) async {
+    fetchAccountProfileCandidatesPageCalls += 1;
+    lastCandidateScope = scope;
+    final items = profilesToReturn
+        .where((profile) => profile.id != excludeAccountProfileId?.value)
+        .map(
+          (profile) => TenantAdminAccountProfileCandidate(
+            idValue: TenantAdminAccountProfileIdValue(profile.id),
+            displayNameValue: TenantAdminRequiredTextValue()
+              ..parse(profile.displayName),
+          ),
+        )
+        .toList(growable: false);
+    return TenantAdminAccountProfileCandidatePage(
+      items: items,
+      pageValue: TenantAdminCountValue(page.value),
+      perPageValue: TenantAdminCountValue(pageSize.value),
+      hasMoreValue: TenantAdminFlagValue(false),
+      browseLimitReachedValue: TenantAdminFlagValue(false),
+    );
+  }
+
+  @override
   Future<TenantAdminAccountProfile> fetchAccountProfile(
     TenantAdminAccountProfilesRepoString accountProfileId,
-  ) {
-    throw UnimplementedError();
+  ) async {
+    final error = fetchAccountProfileError;
+    if (error != null) {
+      throw error;
+    }
+    return profilesToReturn.firstWhere(
+      (profile) => profile.id == accountProfileId.value,
+    );
   }
 
   @override
@@ -687,6 +890,9 @@ class _FakeAccountProfilesRepository
   }) async {
     createAccountProfileCalls += 1;
     lastCreatedDisplayName = displayName.value;
+    lastCreatedContactMode = contactMode;
+    lastCreatedContactSourceAccountProfileId =
+        contactSourceAccountProfileId?.value;
     return _profile(
       id: 'created-profile',
       displayName: displayName.value,

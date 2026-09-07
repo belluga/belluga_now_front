@@ -29,6 +29,54 @@ class _FakeInviteContactImportCacheStorage
 
 void main() {
   test(
+    'invite contact-match cache treats invalid optional avatar as absent',
+    () {
+      final dto = InviteContactMatchCacheDto(
+        contactHash: 'hash-1',
+        type: 'phone',
+        userId: 'user-1',
+        receiverAccountProfileId: 'profile-1',
+        displayName: 'A',
+        avatarUrl: 'http://[not-valid',
+        profileExposureLevel: 'full_profile',
+        inviteableReasons: const <String>['contact_match'],
+        isInviteable: true,
+      );
+
+      final match = dto.toDomain();
+
+      expect(match.displayName, 'A');
+      expect(match.avatarUrl, isNull);
+    },
+  );
+
+  test(
+    'invite contact-match cache resolves relative avatar against tenant origin',
+    () {
+      final dto = InviteContactMatchCacheDto(
+        contactHash: 'hash-1',
+        type: 'phone',
+        userId: 'user-1',
+        receiverAccountProfileId: 'profile-1',
+        displayName: 'Ana',
+        avatarUrl: '/storage/avatars/ana.png',
+        profileExposureLevel: 'full_profile',
+        inviteableReasons: const <String>['contact_match'],
+        isInviteable: true,
+      );
+
+      final match = dto.toDomain(
+        tenantOrigin: Uri.parse('https://guarapari.belluga.com'),
+      );
+
+      expect(
+        match.avatarUrl,
+        'https://guarapari.belluga.com/storage/avatars/ana.png',
+      );
+    },
+  );
+
+  test(
     'invite contact import cache rehydrates large payloads after chunked write',
     () async {
       final storage = _FakeInviteContactImportCacheStorage();

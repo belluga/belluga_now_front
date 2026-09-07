@@ -18,7 +18,7 @@ import 'package:belluga_now/domain/invites/inviteable_reasons.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_account_profile_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_hash_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_type_value.dart';
-import 'package:belluga_now/domain/invites/value_objects/invite_inviter_name_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_recipient_display_name_candidate_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_profile_exposure_level_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/inviteable_reason_value.dart';
 import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
@@ -1598,7 +1598,8 @@ InviteContactMatch _buildInviteContactMatch({
     userIdValue: UserIdValue()..parse(userId),
     receiverAccountProfileIdValue: InviteAccountProfileIdValue()
       ..parse(accountProfileId),
-    displayNameValue: InviteInviterNameValue()..parse(displayName),
+    displayNameValue: InviteRecipientDisplayNameCandidateValue()
+      ..parse(displayName),
     profileExposureLevelValue: InviteProfileExposureLevelValue()
       ..parse('capped_profile'),
     inviteableReasons: InviteableReasons([

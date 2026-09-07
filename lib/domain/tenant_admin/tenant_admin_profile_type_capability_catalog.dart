@@ -28,9 +28,7 @@ class TenantAdminProfileTypeCapabilityCatalog {
     ),
     _TenantAdminProfileTypeCapabilityDefinition(
       keyValue: TenantAdminProfileTypeCapabilityKey.isReferenceLocationEnabled,
-      requiredKeys: {
-        TenantAdminProfileTypeCapabilityKey.isPoiEnabled,
-      },
+      requiredKeys: {TenantAdminProfileTypeCapabilityKey.isPoiEnabled},
     ),
     _TenantAdminProfileTypeCapabilityDefinition(
       keyValue: TenantAdminProfileTypeCapabilityKey.hasBio,
@@ -58,6 +56,9 @@ class TenantAdminProfileTypeCapabilityCatalog {
     ),
     _TenantAdminProfileTypeCapabilityDefinition(
       keyValue: TenantAdminProfileTypeCapabilityKey.hasContactChannels,
+    ),
+    _TenantAdminProfileTypeCapabilityDefinition(
+      keyValue: TenantAdminProfileTypeCapabilityKey.hasExternalLinks,
     ),
   ];
 
@@ -88,10 +89,10 @@ class _TenantAdminProfileTypeCapabilityDefinition {
     required this.keyValue,
     TenantAdminFlagValue? defaultValue,
     Set<TenantAdminProfileTypeCapabilityKey>? requiredKeys,
-  })  : defaultValue = defaultValue ?? TenantAdminFlagValue(false),
-        requiredKeys = Set<TenantAdminProfileTypeCapabilityKey>.unmodifiable(
-          requiredKeys ?? const <TenantAdminProfileTypeCapabilityKey>{},
-        );
+  }) : defaultValue = defaultValue ?? TenantAdminFlagValue(false),
+       requiredKeys = Set<TenantAdminProfileTypeCapabilityKey>.unmodifiable(
+         requiredKeys ?? const <TenantAdminProfileTypeCapabilityKey>{},
+       );
 
   final TenantAdminProfileTypeCapabilityKey keyValue;
   final TenantAdminFlagValue defaultValue;

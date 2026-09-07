@@ -8,6 +8,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/canonical_route_family.dart';
 import 'package:belluga_now/application/router/support/canonical_route_meta.dart';
+import 'package:belluga_now/domain/partners/account_profile_external_link.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
@@ -17,8 +18,10 @@ import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_onboarding_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate_selection_summary.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_group.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_capabilities.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_snapshot.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
@@ -34,6 +37,7 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_accou
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_account_profile_dto.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
@@ -123,6 +127,84 @@ void main() {
       expect(profilesRepository.lastFetchedProfileId, 'route-profile');
     },
   );
+
+  testWidgets('marks external-link child routes as warm editor returns', (
+    tester,
+  ) async {
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+    profilesRepository.profileTypesToReturn = [
+      _profileType(
+        hasGallery: false,
+        hasNestedProfileGroups: false,
+        hasExternalLinks: true,
+      ),
+    ];
+    profilesRepository.profileToReturn = _profile(
+      id: 'route-profile',
+      externalLinks: [
+        AccountProfileExternalLink(
+          idValue: AccountProfileExternalLinkIdValue('instagram-link'),
+          type: AccountProfileExternalLinkType.instagram,
+          urlValue: AccountProfileExternalLinkUrlValue(
+            'https://instagram.com/belluga',
+          ),
+          labelValue: AccountProfileExternalLinkLabelValue('Instagram'),
+        ),
+      ],
+      externalLinksLimit: 3,
+    );
+
+    final router = await _pumpScreen(
+      tester,
+      TenantAdminAccountProfileEditScreen(
+        accountSlug: 'route-account',
+        accountProfileId: 'route-profile',
+        initialProfile: profilesRepository.profileToReturn,
+      ),
+    );
+    final scrollable = find.byType(Scrollable).first;
+    expect(
+      find.byKey(
+        const ValueKey('tenantAdminExternalLink-instagram-link'),
+        skipOffstage: false,
+      ),
+      findsOneWidget,
+    );
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('tenantAdminExternalLink-instagram-link')),
+      200,
+      scrollable: scrollable,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('tenantAdminExternalLink-instagram-link')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      router.current
+          .argsAs<TenantAdminAccountProfileExternalLinkEditRouteArgs>()
+          .returnToExistingEditor,
+      isTrue,
+    );
+
+    router.pop();
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('tenantAdminAddExternalLinkButton')),
+      200,
+      scrollable: scrollable,
+    );
+    await tester.tap(find.byKey(const Key('tenantAdminAddExternalLinkButton')));
+    await tester.pumpAndSettle();
+    expect(
+      router.current
+          .argsAs<TenantAdminAccountProfileExternalLinkAddRouteArgs>()
+          .returnToExistingEditor,
+      isTrue,
+    );
+  });
 
   testWidgets(
     'blocks update when display name has fewer than three characters',
@@ -264,7 +346,7 @@ void main() {
           GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
               as _FakeAccountProfilesRepository;
       profilesRepository.profileToReturn = _profile(
-        id: 'route-profile',
+        id: '507f1f77bcf86cd799439101',
         avatarUrl: avatarUrl,
         coverUrl: coverUrl,
       );
@@ -273,7 +355,7 @@ void main() {
         tester,
         TenantAdminAccountProfileEditScreen(
           accountSlug: 'route-account',
-          accountProfileId: 'route-profile',
+          accountProfileId: '507f1f77bcf86cd799439101',
         ),
       );
 
@@ -307,6 +389,145 @@ void main() {
     expect(find.text('Gestao da conta'), findsOneWidget);
     expect(find.text('Do tenant'), findsOneWidget);
   });
+
+  testWidgets('edits Account name and slug from the Profile edit screen', (
+    tester,
+  ) async {
+    final accountsRepository =
+        GetIt.I.get<TenantAdminAccountsRepositoryContract>()
+            as _FakeAccountsRepository;
+
+    await _pumpScreen(
+      tester,
+      TenantAdminAccountProfileEditScreen(
+        accountSlug: 'route-account',
+        accountProfileId: 'route-profile',
+      ),
+    );
+
+    await tester.tap(find.byTooltip('Editar Nome'));
+    await tester.pumpAndSettle();
+    expect(find.text('Editar nome da conta'), findsOneWidget);
+    await tester.enterText(
+      find.descendant(
+        of: find.byType(BottomSheet),
+        matching: find.byType(TextFormField),
+      ),
+      'Conta atualizada',
+    );
+    await tester.tap(
+      find.descendant(
+        of: find.byType(BottomSheet),
+        matching: find.text('Salvar'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(accountsRepository.lastUpdatedName, 'Conta atualizada');
+    expect(find.text('Conta atualizada'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Editar Slug'));
+    await tester.pumpAndSettle();
+    expect(find.text('Editar slug da conta'), findsOneWidget);
+    await tester.enterText(
+      find.descendant(
+        of: find.byType(BottomSheet),
+        matching: find.byType(TextFormField),
+      ),
+      'conta-atualizada',
+    );
+    await tester.tap(
+      find.descendant(
+        of: find.byType(BottomSheet),
+        matching: find.text('Salvar'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(accountsRepository.updateAccountCalls, 2);
+    expect(accountsRepository.lastUpdatedSlug, 'conta-atualizada');
+  });
+
+  testWidgets(
+    'edits Account publication from the Account section without leaving Profile edit',
+    (tester) async {
+      final accountsRepository =
+          GetIt.I.get<TenantAdminAccountsRepositoryContract>()
+              as _FakeAccountsRepository;
+
+      await _pumpScreen(
+        tester,
+        TenantAdminAccountProfileEditScreen(
+          accountSlug: 'route-account',
+          accountProfileId: 'route-profile',
+        ),
+      );
+
+      await tester.scrollUntilVisible(
+        find.text('Dados da conta'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('Dados da conta'), findsOneWidget);
+      expect(find.text('Rascunho'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('editAccountPublicationButton')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Publicado').last);
+      await tester.pumpAndSettle();
+
+      expect(accountsRepository.updateAccountCalls, 1);
+      expect(accountsRepository.lastPublicationStatus, 'published');
+      expect(find.text('Publicado'), findsOneWidget);
+      expect(find.text('Editar Perfil'), findsOneWidget);
+    },
+  );
+
+  testWidgets('keeps Account deletion hidden for tenant-owned Accounts', (
+    tester,
+  ) async {
+    await _pumpScreen(
+      tester,
+      TenantAdminAccountProfileEditScreen(
+        accountSlug: 'route-account',
+        accountProfileId: 'route-profile',
+      ),
+    );
+
+    expect(find.text('Excluir conta'), findsNothing);
+  });
+
+  testWidgets(
+    'deletes an unmanaged Account from Profile edit after confirmation',
+    (tester) async {
+      final accountsRepository =
+          GetIt.I.get<TenantAdminAccountsRepositoryContract>()
+              as _FakeAccountsRepository;
+      accountsRepository.ownershipState = TenantAdminOwnershipState.unmanaged;
+
+      await _pumpScreen(
+        tester,
+        TenantAdminAccountProfileEditScreen(
+          accountSlug: 'route-account',
+          accountProfileId: 'route-profile',
+        ),
+      );
+
+      await tester.scrollUntilVisible(
+        find.text('Excluir conta'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.text('Excluir conta'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Excluir').last);
+      await tester.pumpAndSettle();
+
+      expect(accountsRepository.deleteAccountCalls, 1);
+      expect(accountsRepository.lastDeletedSlug, 'route-account');
+      expect(find.text('Contas'), findsOneWidget);
+    },
+  );
 
   testWidgets(
     'keeps the profile type selector within a narrow edit form for long labels',
@@ -700,11 +921,16 @@ void main() {
 
       expect(find.text('Perfil de origem'), findsOneWidget);
       expect(
-        find.byKey(const Key('tenantAdminAccountProfilePickerList')),
+        find.byKey(const Key('tenantAdminAccountProfileCandidatePickerList')),
         findsOneWidget,
       );
       expect(find.text('Perfil Fonte Picker'), findsOneWidget);
-      expect(find.text('venue'), findsOneWidget);
+      expect(profilesRepository.fetchAccountProfilesPageCalls, 0);
+      expect(profilesRepository.fetchAccountProfileCandidatesPageCalls, 1);
+      expect(
+        profilesRepository.lastCandidateScope,
+        TenantAdminAccountProfileCandidateScope.contactCapable,
+      );
       expect(
         find.text('Nenhum perfil elegível para espelhar contatos.'),
         findsNothing,
@@ -738,7 +964,7 @@ void main() {
       ];
       profilesRepository.profilesToReturn = [sourceProfile];
       profilesRepository.profileToReturn = _profile(
-        id: 'route-profile',
+        id: '507f1f77bcf86cd799439102',
         contactMode: BellugaContactSourceMode.mirroredAccountProfile,
       );
 
@@ -746,7 +972,7 @@ void main() {
         tester,
         const TenantAdminAccountProfileEditScreen(
           accountSlug: 'route-account',
-          accountProfileId: 'route-profile',
+          accountProfileId: '507f1f77bcf86cd799439102',
         ),
       );
 
@@ -763,7 +989,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final searchField = find.byKey(
-        const Key('tenantAdminAccountProfilePickerSearchField'),
+        const Key('tenantAdminAccountProfileCandidatePickerSearchField'),
       );
       expect(searchField, findsOneWidget);
 
@@ -777,7 +1003,7 @@ void main() {
 
       expect(searchField, findsOneWidget);
       expect(
-        find.byKey(const Key('tenantAdminAccountProfilePickerList')),
+        find.byKey(const Key('tenantAdminAccountProfileCandidatePickerList')),
         findsOneWidget,
       );
       expect(tester.takeException(), isNull);
@@ -821,7 +1047,7 @@ void main() {
       profilesRepository.accountProfileFetchOverrides[sourceProfile.id] =
           sourceProfile;
       profilesRepository.profileToReturn = _profile(
-        id: 'route-profile',
+        id: '507f1f77bcf86cd799439103',
         contactMode: BellugaContactSourceMode.mirroredAccountProfile,
         contactSourceAccountProfileId: sourceProfile.id,
         contactBubbleChannelId: whatsappChannel.id,
@@ -920,6 +1146,10 @@ void main() {
     profilesRepository.profileToReturn = _profile(
       id: 'route-profile',
       galleryGroups: [_galleryGroup()],
+      galleryCapabilities: TenantAdminAccountProfileGalleryCapabilities(
+        maxGalleriesValue: TenantAdminCountValue(0),
+        maxItemsPerGalleryValue: TenantAdminCountValue(0),
+      ),
     );
 
     await _pumpScreen(
@@ -932,19 +1162,144 @@ void main() {
 
     final scrollable = find.byType(Scrollable).first;
     await tester.scrollUntilVisible(
-      find.text('Galerias de fotos'),
+      find.text('Galerias'),
       200,
       scrollable: scrollable,
     );
 
-    expect(find.text('Galerias de fotos'), findsOneWidget);
+    expect(find.text('Galerias'), findsOneWidget);
     expect(
       find.byKey(const Key('tenantAdminGalleryGroup_group-1')),
       findsOneWidget,
     );
     expect(find.text('Ambiente'), findsOneWidget);
     expect(find.text('Vista para o palco'), findsOneWidget);
+    expect(find.textContaining('Remova pelo menos 1 galeria'), findsOneWidget);
+    expect(find.textContaining('Remova pelo menos 1 item'), findsOneWidget);
   });
+
+  testWidgets(
+    'gallery title failure keeps entered text and retries once from confirmed state',
+    (tester) async {
+      final profilesRepository =
+          GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+              as _FakeAccountProfilesRepository;
+      profilesRepository.profileTypesToReturn = [
+        _profileType(hasGallery: true, hasNestedProfileGroups: false),
+      ];
+      profilesRepository.profileToReturn = _profile(
+        id: 'route-profile',
+        galleryGroups: [_galleryGroup(title: 'Título confirmado')],
+      );
+      profilesRepository.gallerySnapshotToReturn =
+          TenantAdminAccountProfileGallerySnapshot(
+            groups: [_galleryGroup(title: 'Título canônico')],
+            capabilities: TenantAdminAccountProfileGalleryCapabilities(
+              maxGalleriesValue: TenantAdminCountValue(6),
+              maxItemsPerGalleryValue: TenantAdminCountValue(12),
+            ),
+          );
+      profilesRepository.updateGalleryItemError = FormValidationFailure(
+        statusCode: 422,
+        message: 'Falha persistente ao atualizar o título.',
+        fieldErrors: const {
+          'global': ['O item mudou no servidor.'],
+        },
+      );
+
+      await _pumpScreen(
+        tester,
+        const TenantAdminAccountProfileEditScreen(
+          accountSlug: 'route-account',
+          accountProfileId: 'route-profile',
+        ),
+      );
+
+      final titleField = find.byKey(
+        const Key('tenantAdminGalleryItemTitle_item-1'),
+      );
+      await tester.scrollUntilVisible(
+        titleField,
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.enterText(titleField, 'Título corrigido');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+      await tester.pump();
+
+      expect(profilesRepository.updateGalleryItemCalls, 1);
+      expect(
+        tester
+            .widget<EditableText>(
+              find.descendant(
+                of: titleField,
+                matching: find.byType(EditableText),
+              ),
+            )
+            .controller
+            .text,
+        'Título corrigido',
+      );
+      expect(
+        GetIt.I
+            .get<TenantAdminAccountProfilesController>()
+            .editStateStreamValue
+            .value
+            .galleryGroups
+            .single
+            .items
+            .single
+            .title,
+        'Título confirmado',
+      );
+      expect(
+        find.textContaining('Falha persistente ao atualizar o título.'),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('tenantAdminGalleryOperationError')),
+        findsOneWidget,
+      );
+      expect(find.byType(SnackBar), findsNothing);
+
+      profilesRepository.updateGalleryItemError = null;
+      await tester.tap(titleField);
+      await tester.enterText(titleField, 'Título corrigido');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+      expect(profilesRepository.updateGalleryItemCalls, 2);
+      expect(
+        GetIt.I
+            .get<TenantAdminAccountProfilesController>()
+            .editStateStreamValue
+            .value
+            .galleryGroups
+            .single
+            .items
+            .single
+            .title,
+        'Título canônico',
+      );
+      expect(
+        tester
+            .widget<EditableText>(
+              find.descendant(
+                of: titleField,
+                matching: find.byType(EditableText),
+              ),
+            )
+            .controller
+            .text,
+        'Título canônico',
+      );
+      expect(
+        find.byKey(const Key('tenantAdminGalleryOperationError')),
+        findsNothing,
+      );
+    },
+  );
 
   testWidgets(
     'hides gallery editor and omits gallery payload when capability is disabled',
@@ -982,8 +1337,6 @@ void main() {
       );
       await tester.tap(find.text('Salvar alteracoes'));
       await tester.pumpAndSettle();
-
-      expect(profilesRepository.lastGalleryGroups, isNull);
     },
   );
 
@@ -1142,7 +1495,6 @@ void main() {
       await tester.tap(find.text('Salvar alteracoes'));
       await tester.pumpAndSettle();
 
-      expect(profilesRepository.fetchAllNestedGroupMembersCalls, 0);
       expect(profilesRepository.lastNestedProfileGroups, isNull);
     },
   );
@@ -1170,12 +1522,12 @@ void main() {
       profilesRepository.pagedProfilesToReturnByRequest = [
         [
           _profile(
-            id: 'route-profile',
+            id: '507f1f77bcf86cd799439103',
             displayName: 'Perfil atual',
             profileType: 'poi',
           ),
           _profile(
-            id: 'profile-partner',
+            id: '507f1f77bcf86cd799439104',
             displayName: 'Conta Parceira',
             profileType: 'poi',
           ),
@@ -1186,7 +1538,7 @@ void main() {
         tester,
         TenantAdminAccountProfileEditScreen(
           accountSlug: 'route-account',
-          accountProfileId: 'route-profile',
+          accountProfileId: '507f1f77bcf86cd799439103',
         ),
       );
 
@@ -1197,7 +1549,7 @@ void main() {
         scrollable: scrollable,
       );
       final baselineFetchCalls =
-          profilesRepository.fetchAccountProfilesPageCalls;
+          profilesRepository.fetchAccountProfileCandidatesPageCalls;
       await tester.tap(
         find.byKey(const Key('tenantAdminEditManageGroup_partners')),
       );
@@ -1208,8 +1560,13 @@ void main() {
       expect(find.text('Conta Parceira'), findsOneWidget);
       expect(find.text('Perfil atual'), findsNothing);
       expect(
-        profilesRepository.fetchAccountProfilesPageCalls,
+        profilesRepository.fetchAccountProfileCandidatesPageCalls,
         baselineFetchCalls + 1,
+      );
+      expect(profilesRepository.fetchAccountProfilesPageCalls, 0);
+      expect(
+        profilesRepository.lastCandidateExcludeAccountProfileId,
+        '507f1f77bcf86cd799439103',
       );
     },
   );
@@ -1227,7 +1584,7 @@ void main() {
       _profileType(hasGallery: false, hasNestedProfileGroups: true),
     ];
     profilesRepository.profileToReturn = _profile(
-      id: 'route-profile',
+      id: '507f1f77bcf86cd799439105',
       nestedProfileGroups: [_nestedGroupMetadataOnly(memberCount: 0)],
     );
     profilesRepository.nestedGroupMemberPagesByGroupId['partners'] =
@@ -1237,12 +1594,12 @@ void main() {
     profilesRepository.pagedProfilesToReturnByRequest = [
       [
         _profile(
-          id: 'route-profile',
+          id: '507f1f77bcf86cd799439105',
           displayName: 'Perfil atual',
           profileType: 'poi',
         ),
         _profile(
-          id: 'profile-partner',
+          id: '507f1f77bcf86cd799439106',
           displayName:
               'Conta Parceira com nome suficientemente grande para pressionar o layout do picker',
           profileType: 'poi',
@@ -1256,7 +1613,7 @@ void main() {
         data: MediaQueryData(textScaler: TextScaler.linear(1.4)),
         child: TenantAdminAccountProfileEditScreen(
           accountSlug: 'route-account',
-          accountProfileId: 'route-profile',
+          accountProfileId: '507f1f77bcf86cd799439105',
         ),
       ),
     );
@@ -1276,7 +1633,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.byKey(const Key('tenantAdminAccountProfilePickerSearchField')),
+      find.byKey(
+        const Key('tenantAdminAccountProfileCandidatePickerSearchField'),
+      ),
       findsOneWidget,
     );
     expect(find.textContaining('Conta Parceira com nome'), findsOneWidget);
@@ -1742,7 +2101,7 @@ void main() {
   );
 }
 
-Future<void> _pumpScreen(WidgetTester tester, Widget child) async {
+Future<RootStackRouter> _pumpScreen(WidgetTester tester, Widget child) async {
   final router = RootStackRouter.build(
     routes: [
       NamedRouteDef(
@@ -1775,6 +2134,24 @@ Future<void> _pumpScreen(WidgetTester tester, Widget child) async {
           );
         },
       ),
+      NamedRouteDef(
+        name: TenantAdminAccountsListRoute.name,
+        path: '/accounts',
+        meta: canonicalRouteMeta(
+          family: CanonicalRouteFamily.tenantAdminAccountsRoot,
+        ),
+        builder: (_, _) => const Scaffold(body: Text('Contas')),
+      ),
+      NamedRouteDef(
+        name: TenantAdminAccountProfileExternalLinkAddRoute.name,
+        path: '/external-links/add',
+        builder: (_, _) => const Scaffold(body: Text('Adicionar link')),
+      ),
+      NamedRouteDef(
+        name: TenantAdminAccountProfileExternalLinkEditRoute.name,
+        path: '/external-links/:externalLinkId',
+        builder: (_, _) => const Scaffold(body: Text('Editar link')),
+      ),
     ],
   )..ignorePopCompleters = true;
 
@@ -1786,9 +2163,19 @@ Future<void> _pumpScreen(WidgetTester tester, Widget child) async {
     ),
   );
   await tester.pumpAndSettle();
+  return router;
 }
 
 class _FakeAccountsRepository extends TenantAdminAccountsRepositoryContract {
+  int updateAccountCalls = 0;
+  String? lastUpdatedName;
+  String? lastUpdatedSlug;
+  String? lastPublicationStatus;
+  int deleteAccountCalls = 0;
+  String? lastDeletedSlug;
+  TenantAdminOwnershipState ownershipState =
+      TenantAdminOwnershipState.tenantOwned;
+
   @override
   Future<List<TenantAdminAccount>> fetchAccounts() async {
     return [];
@@ -1803,7 +2190,7 @@ class _FakeAccountsRepository extends TenantAdminAccountsRepositoryContract {
       name: accountSlug.value,
       slug: accountSlug.value,
       document: tenantAdminDocumentFromRaw(type: 'cpf', number: '000'),
-      ownershipState: TenantAdminOwnershipState.tenantOwned,
+      ownershipState: ownershipState,
     );
     accountsStreamValue.addValue([account]);
     return account;
@@ -1851,15 +2238,30 @@ class _FakeAccountsRepository extends TenantAdminAccountsRepositoryContract {
     TenantAdminDocument? document,
     TenantAdminOwnershipState? ownershipState,
     TenantAdminAccountPublication? publication,
-  }) {
-    throw UnimplementedError();
+  }) async {
+    updateAccountCalls += 1;
+    lastUpdatedName = name?.value;
+    lastUpdatedSlug = slug?.value;
+    lastPublicationStatus = publication?.status.value;
+    final currentSlug = accountSlug.value;
+    final updated = tenantAdminAccountFromRaw(
+      id: 'acc-$currentSlug',
+      name: name?.value ?? currentSlug,
+      slug: slug?.value ?? currentSlug,
+      document: tenantAdminDocumentFromRaw(type: 'cpf', number: '000'),
+      ownershipState: ownershipState ?? TenantAdminOwnershipState.tenantOwned,
+      publicationStatus: publication?.status.value ?? 'draft',
+    );
+    accountsStreamValue.addValue([updated]);
+    return updated;
   }
 
   @override
   Future<void> deleteAccount(
     TenantAdminAccountsRepositoryContractPrimString accountSlug,
-  ) {
-    throw UnimplementedError();
+  ) async {
+    deleteAccountCalls += 1;
+    lastDeletedSlug = accountSlug.value;
   }
 
   @override
@@ -1891,6 +2293,9 @@ class _FakeAccountProfilesRepository
   String? lastDeleteNestedProfileGroupProfileId;
   String? lastDeleteNestedProfileGroupGroupId;
   Object? deleteNestedProfileGroupError;
+  TenantAdminAccountProfileGallerySnapshot? gallerySnapshotToReturn;
+  Object? updateGalleryItemError;
+  int updateGalleryItemCalls = 0;
   TenantAdminAccountProfile profileToReturn = _profile(id: 'default-profile');
   bool? lastRemoveAvatar;
   bool? lastRemoveCover;
@@ -1902,13 +2307,14 @@ class _FakeAccountProfilesRepository
       const [];
   final Map<String, TenantAdminAccountProfile> accountProfileFetchOverrides =
       <String, TenantAdminAccountProfile>{};
-  List<TenantAdminAccountProfileGalleryUpdateGroup>? lastGalleryGroups;
   List<TenantAdminNestedProfileGroup>? lastNestedProfileGroups;
   final Map<String, List<TenantAdminNestedGroupMemberPage>>
   nestedGroupMemberPagesByGroupId =
       <String, List<TenantAdminNestedGroupMemberPage>>{};
   int fetchAccountProfilesPageCalls = 0;
-  int fetchAllNestedGroupMembersCalls = 0;
+  int fetchAccountProfileCandidatesPageCalls = 0;
+  TenantAdminAccountProfileCandidateScope? lastCandidateScope;
+  String? lastCandidateExcludeAccountProfileId;
   String? lastPatchNestedGroupProfileId;
   String? lastPatchNestedGroupId;
 
@@ -1965,6 +2371,50 @@ class _FakeAccountProfilesRepository
       hasMore: end < filtered.length,
       currentPage: page.value,
       pageSize: pageSize.value,
+    );
+  }
+
+  @override
+  Future<TenantAdminAccountProfileCandidatePage>
+  fetchAccountProfileCandidatesPage({
+    required TenantAdminAccountProfileCandidateScope scope,
+    required TenantAdminAccountProfilesRepoString search,
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
+    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
+  }) async {
+    fetchAccountProfileCandidatesPageCalls += 1;
+    lastCandidateScope = scope;
+    lastCandidateExcludeAccountProfileId = excludeAccountProfileId?.value;
+    final normalizedSearch = search.value.trim().toLowerCase();
+    final requestIndex = fetchAccountProfileCandidatesPageCalls - 1;
+    final sourceProfiles = pagedProfilesToReturnByRequest.isEmpty
+        ? profilesToReturn
+        : pagedProfilesToReturnByRequest[requestIndex <
+                  pagedProfilesToReturnByRequest.length
+              ? requestIndex
+              : pagedProfilesToReturnByRequest.length - 1];
+    final items = sourceProfiles
+        .where(
+          (profile) =>
+              profile.id != excludeAccountProfileId?.value &&
+              (normalizedSearch.isEmpty ||
+                  profile.displayName.toLowerCase().contains(normalizedSearch)),
+        )
+        .map(
+          (profile) => TenantAdminAccountProfileCandidate(
+            idValue: TenantAdminAccountProfileIdValue(profile.id),
+            displayNameValue: TenantAdminRequiredTextValue()
+              ..parse(profile.displayName),
+          ),
+        )
+        .toList(growable: false);
+    return TenantAdminAccountProfileCandidatePage(
+      items: items,
+      pageValue: TenantAdminCountValue(page.value),
+      perPageValue: TenantAdminCountValue(pageSize.value),
+      hasMoreValue: TenantAdminFlagValue(false),
+      browseLimitReachedValue: TenantAdminFlagValue(false),
     );
   }
 
@@ -2130,13 +2580,19 @@ class _FakeAccountProfilesRepository
   }
 
   @override
-  Future<TenantAdminAccountProfile> updateAccountProfileGallery({
+  Future<TenantAdminAccountProfileGallerySnapshot> updateGalleryItem({
     required TenantAdminAccountProfilesRepoString accountProfileId,
-    List<TenantAdminAccountProfileGalleryUpdateGroup> galleryGroups =
-        const <TenantAdminAccountProfileGalleryUpdateGroup>[],
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminAccountProfilesRepoString itemId,
+    TenantAdminAccountProfileGalleryItemType? type,
+    TenantAdminOptionalTextValue? title,
+    TenantAdminOptionalTextValue? description,
+    TenantAdminMediaUpload? image,
+    TenantAdminAccountProfilesRepoString? youtubeUrl,
   }) async {
-    lastGalleryGroups = galleryGroups;
-    return profileToReturn;
+    updateGalleryItemCalls += 1;
+    if (updateGalleryItemError != null) throw updateGalleryItemError!;
+    return gallerySnapshotToReturn!;
   }
 
   @override
@@ -2152,6 +2608,7 @@ class _FakeAccountProfilesRepository
     required TenantAdminAccountProfilesRepoString groupId,
     TenantAdminAccountProfilesRepoInt? perPage,
     TenantAdminAccountProfilesRepoString? cursor,
+    TenantAdminAccountProfilesRepoString? search,
   }) async {
     final pages =
         nestedGroupMemberPagesByGroupId[groupId.value] ??
@@ -2169,27 +2626,6 @@ class _FakeAccountProfilesRepository
       return pages.last;
     }
     return pages[index + 1];
-  }
-
-  @override
-  Future<TenantAdminNestedGroupMemberPage> fetchAllNestedGroupMembers({
-    required TenantAdminAccountProfilesRepoString accountProfileId,
-    required TenantAdminAccountProfilesRepoString groupId,
-  }) async {
-    fetchAllNestedGroupMembersCalls += 1;
-    final pages =
-        nestedGroupMemberPagesByGroupId[groupId.value] ??
-        <TenantAdminNestedGroupMemberPage>[
-          TenantAdminNestedGroupMemberPage(
-            items: const <TenantAdminAccountProfileSelectionSummary>[],
-            nextCursorValue: TenantAdminOptionalTextValue(),
-          ),
-        ];
-    final allItems = pages.expand((page) => page.items).toList(growable: false);
-    return TenantAdminNestedGroupMemberPage(
-      items: allItems,
-      nextCursorValue: TenantAdminOptionalTextValue(),
-    );
   }
 
   @override
@@ -2467,6 +2903,7 @@ TenantAdminAccountProfile _profile({
   String? coverUrl,
   List<TenantAdminAccountProfileGalleryGroup> galleryGroups =
       const <TenantAdminAccountProfileGalleryGroup>[],
+  TenantAdminAccountProfileGalleryCapabilities? galleryCapabilities,
   List<TenantAdminNestedProfileGroup> nestedProfileGroups =
       const <TenantAdminNestedProfileGroup>[],
   BellugaContactSourceMode contactMode = BellugaContactSourceMode.own,
@@ -2475,6 +2912,9 @@ TenantAdminAccountProfile _profile({
   String? contactBubbleChannelId,
   List<BellugaContactChannel> effectiveContactChannels =
       const <BellugaContactChannel>[],
+  List<AccountProfileExternalLink> externalLinks =
+      const <AccountProfileExternalLink>[],
+  int? externalLinksLimit,
 }) {
   return tenantAdminAccountProfileFromRaw(
     id: id,
@@ -2485,6 +2925,7 @@ TenantAdminAccountProfile _profile({
     avatarUrl: avatarUrl,
     coverUrl: coverUrl,
     galleryGroups: galleryGroups,
+    galleryCapabilities: galleryCapabilities,
     nestedProfileGroups: nestedProfileGroups,
     ownershipState: TenantAdminOwnershipState.tenantOwned,
     contactMode: contactMode,
@@ -2492,21 +2933,24 @@ TenantAdminAccountProfile _profile({
     contactChannels: contactChannels,
     contactBubbleChannelId: contactBubbleChannelId,
     effectiveContactChannels: effectiveContactChannels,
+    externalLinks: externalLinks,
+    externalLinksLimit: externalLinksLimit,
   );
 }
 
-TenantAdminAccountProfileGalleryGroup _galleryGroup() {
+TenantAdminAccountProfileGalleryGroup _galleryGroup({String? title}) {
   return TenantAdminAccountProfileGalleryGroup(
     groupIdValue: TenantAdminNestedProfileGroupTextValue('group-1'),
     subtitleValue: TenantAdminNestedProfileGroupTextValue('Ambiente'),
     orderValue: TenantAdminNestedProfileGroupOrderValue(0),
-    items: [_galleryItem()],
+    items: [_galleryItem(title: title)],
   );
 }
 
-TenantAdminAccountProfileGalleryItem _galleryItem() {
+TenantAdminAccountProfileGalleryItem _galleryItem({String? title}) {
   return TenantAdminAccountProfileGalleryItem(
     itemIdValue: TenantAdminNestedProfileGroupTextValue('item-1'),
+    titleValue: TenantAdminOptionalTextValue()..parse(title),
     descriptionValue: TenantAdminOptionalTextValue()
       ..parse('Vista para o palco'),
     orderValue: TenantAdminNestedProfileGroupOrderValue(0),
@@ -2525,6 +2969,7 @@ TenantAdminProfileTypeDefinition _profileType({
   required bool hasGallery,
   required bool hasNestedProfileGroups,
   bool hasContactChannels = false,
+  bool hasExternalLinks = false,
   String type = 'poi',
   String label = 'POI',
 }) {
@@ -2544,6 +2989,7 @@ TenantAdminProfileTypeDefinition _profileType({
       hasGallery: TenantAdminFlagValue(hasGallery),
       hasNestedProfileGroups: TenantAdminFlagValue(hasNestedProfileGroups),
       hasContactChannels: TenantAdminFlagValue(hasContactChannels),
+      hasExternalLinks: TenantAdminFlagValue(hasExternalLinks),
     ),
   );
 }

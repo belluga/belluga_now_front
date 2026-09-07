@@ -21,9 +21,7 @@ class TenantAdminAccountProfileCreateRoutePage
   @override
   Widget buildScreen(BuildContext context, TenantAdminAccount model) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Fluxo indisponível'),
-      ),
+      appBar: AppBar(title: const Text('Fluxo indisponível')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -39,10 +37,9 @@ class TenantAdminAccountProfileCreateRoutePage
             ),
             const SizedBox(height: 16),
             FilledButton(
-              onPressed: () => context.router.replace(
-                TenantAdminAccountDetailRoute(accountSlug: model.slug),
-              ),
-              child: const Text('Voltar para conta'),
+              onPressed: () =>
+                  context.router.replace(const TenantAdminAccountsListRoute()),
+              child: const Text('Voltar'),
             ),
           ],
         ),

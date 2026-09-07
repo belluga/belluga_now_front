@@ -36,6 +36,39 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   final fixedRealtimeCursor = DateTime.utc(2026, 05, 14, 14, 12, 00);
 
+  test(
+    'fetchInvites retains invites with malformed optional sender avatar',
+    () async {
+      final backend = _FakeInvitesBackend(
+        fetchInvitesResponse: {
+          'invites': [
+            _buildInvitePayload(id: 'invite-bad-avatar')
+              ..['inviter_candidates'] = [
+                {
+                  'invite_id': 'invite-bad-avatar',
+                  'display_name': '',
+                  'avatar_url': 'http://[invalid',
+                  'status': 'pending',
+                },
+              ],
+            _buildInvitePayload(id: 'invite-valid-avatar'),
+          ],
+        },
+      );
+      final repository = InvitesRepository(backend: backend);
+
+      final invites = await repository.fetchInvites();
+
+      expect(invites, hasLength(2));
+      expect(
+        invites
+            .firstWhere((invite) => invite.id == 'invite-bad-avatar')
+            .inviterName,
+        'Alguém',
+      );
+    },
+  );
+
   test('init binds realtime stream and upserts invite deltas', () async {
     final firstStream = StreamController<InviteRealtimeDeltaDto>();
     final backend = _FakeInvitesBackend(

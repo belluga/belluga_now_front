@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_legacy_event_parties_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_head_mutation_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_group_order_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_label_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
@@ -144,6 +145,57 @@ class TenantAdminEventsResponseDecoder {
     return TenantAdminNestedGroupLabelMutationResult(
       idValue: TenantAdminNestedProfileGroupTextValue(id),
       labelValue: TenantAdminNestedProfileGroupTextValue(label),
+    );
+  }
+
+  TenantAdminGroupOrderMutationResult decodeOccurrenceGroupOrderMutationResult(
+    Object? rawResponse,
+  ) {
+    final item = _envelopeDecoder.decodeItemMap(
+      rawResponse,
+      label: 'occurrence group order mutation result',
+    );
+    const requiredKeys = {'event_id', 'occurrence_id', 'groups'};
+    if (item.keys.toSet().difference(requiredKeys).isNotEmpty ||
+        !item.keys.toSet().containsAll(requiredKeys)) {
+      throw const FormatException('Invalid occurrence group order response.');
+    }
+    final eventId = _asString(item['event_id']);
+    final occurrenceId = _asString(item['occurrence_id']);
+    final rawGroups = item['groups'];
+    if (eventId == null ||
+        eventId.trim().isEmpty ||
+        occurrenceId == null ||
+        occurrenceId.trim().isEmpty ||
+        rawGroups is! List) {
+      throw const FormatException('Invalid occurrence group order response.');
+    }
+    final groups = <TenantAdminGroupOrderEntry>[];
+    for (final rawGroup in rawGroups) {
+      if (rawGroup is! Map) {
+        throw const FormatException('Invalid occurrence group order response.');
+      }
+      final group = Map<String, dynamic>.from(rawGroup);
+      if (group.keys.toSet().difference({'id', 'order'}).isNotEmpty ||
+          !group.keys.toSet().containsAll({'id', 'order'})) {
+        throw const FormatException('Invalid occurrence group order response.');
+      }
+      final id = _asString(group['id']);
+      final order = group['order'];
+      if (id == null || id.trim().isEmpty || order is! int || order < 0) {
+        throw const FormatException('Invalid occurrence group order response.');
+      }
+      groups.add(
+        TenantAdminGroupOrderEntry(
+          idValue: TenantAdminNestedProfileGroupTextValue(id),
+          orderValue: TenantAdminNestedProfileGroupOrderValue(order),
+        ),
+      );
+    }
+    return TenantAdminGroupOrderMutationResult(
+      eventIdValue: TenantAdminNestedProfileGroupTextValue(eventId),
+      occurrenceIdValue: TenantAdminNestedProfileGroupTextValue(occurrenceId),
+      groups: groups,
     );
   }
 

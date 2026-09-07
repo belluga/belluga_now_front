@@ -11,6 +11,7 @@ import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/screens/tenant_admin_event_occurrence_group_members_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/widgets/tenant_admin_account_profile_location_picker_sheet.dart';
+import 'package:belluga_now/presentation/tenant_admin/events/widgets/tenant_admin_occurrence_related_profile_picker_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_profile_groups_summary_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/widgets/tenant_admin_programming_item_card.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_group_label_dialog.dart';
@@ -608,7 +609,15 @@ class _TenantAdminEventOccurrenceEditorSheetState
                             groupId: group.id,
                             authoritativeLabel: group.label,
                           ),
-                      onMoveGroup: (_, _) {},
+                      onMoveGroup: (groupId, delta) => unawaited(
+                        widget.controller.moveOccurrenceProfileGroupHead(
+                          eventId: eventId!,
+                          occurrenceId: occurrenceId!,
+                          occurrenceKey: widget.occurrenceKey,
+                          groupId: groupId,
+                          delta: delta,
+                        ),
+                      ),
                       onRemoveGroup: _deleteOccurrenceGroupHead,
                       addBlockedReason: widget.controller
                           .occurrenceRelatedProfilesManageBlockedReason(
@@ -616,7 +625,7 @@ class _TenantAdminEventOccurrenceEditorSheetState
                           ),
                       groupsMutationBusy: isBusy,
                       enableLabelEditing: canPersistGroupLabel,
-                      enableReorder: false,
+                      enableReorder: canPersistGroupLabel,
                       onManageGroup: _openOccurrenceGroupMembers,
                       manageBlockedReasonBuilder: (_) => widget.controller
                           .occurrenceRelatedProfilesManageBlockedReason(
@@ -1036,60 +1045,33 @@ class _TenantAdminEventProgrammingItemEditorSheetState
       return null;
     }
     final occurrence = widget.controller.occurrenceForKey(widget.occurrenceKey);
-    final candidates = await widget.controller
-        .fetchOccurrenceRelatedProfilesForProgramming(
+    final session = widget.controller
+        .createOccurrenceRelatedProfilePickerSession(
           eventId: eventId,
           occurrenceId: occurrenceId,
           profileGroups:
               occurrence?.profileGroups ??
               const <TenantAdminNestedProfileGroup>[],
+          excludedProfileIds: excludedProfileIds,
         );
-    final filteredCandidates = candidates
-        .where((profile) => !excludedProfileIds.contains(profile.id))
-        .toList(growable: false);
-
+    await session.initialize();
     if (!mounted) {
+      widget.controller.disposeOccurrenceRelatedProfilePickerSession(session);
       return null;
     }
-    if (filteredCandidates.isEmpty) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = 'Nenhum perfil próprio disponível nesta data.';
-        });
-      }
-      return null;
+    try {
+      return await showModalBottomSheet<TenantAdminAccountProfile>(
+        context: context,
+        useSafeArea: true,
+        isScrollControlled: true,
+        builder: (context) => TenantAdminOccurrenceRelatedProfilePickerSheet(
+          controller: session,
+          closeModalSheet: widget.closeModalSheet,
+        ),
+      );
+    } finally {
+      widget.controller.disposeOccurrenceRelatedProfilePickerSession(session);
     }
-
-    return showModalBottomSheet<TenantAdminAccountProfile>(
-      context: context,
-      useSafeArea: true,
-      builder: (context) {
-        return SafeArea(
-          child: ListView(
-            shrinkWrap: true,
-            children: [
-              const ListTile(
-                title: Text('Perfis próprios da data'),
-                subtitle: Text(
-                  'Selecione um participante já vinculado a esta ocorrência.',
-                ),
-              ),
-              for (final profile in filteredCandidates)
-                ListTile(
-                  key: Key(
-                    'tenantAdminOccurrenceProgrammingCandidate_${profile.id}',
-                  ),
-                  leading: const Icon(Icons.person_outline),
-                  title: Text(profile.displayName),
-                  subtitle: Text(profile.slug ?? profile.id),
-                  onTap: () =>
-                      unawaited(widget.closeModalSheet(context, profile)),
-                ),
-            ],
-          ),
-        );
-      },
-    );
   }
 
   Future<void> _pickProgrammingLocation() async {

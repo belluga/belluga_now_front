@@ -23,7 +23,7 @@ import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_inviter_id_value.dart';
-import 'package:belluga_now/domain/invites/value_objects/invite_inviter_name_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_sender_display_name_candidate_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
@@ -1918,7 +1918,8 @@ InviteModel _buildInviteWithEmptyCandidateIds(String id) {
           isRequired: false,
         ),
         type: InviteInviterType.user,
-        nameValue: InviteInviterNameValue()..parse('Convidador A'),
+        nameValue: InviteSenderDisplayNameCandidateValue()
+          ..parse('Convidador A'),
       ),
       InviteInviter(
         inviteIdValue: InviteInviterIdValue(
@@ -1926,7 +1927,8 @@ InviteModel _buildInviteWithEmptyCandidateIds(String id) {
           isRequired: false,
         ),
         type: InviteInviterType.user,
-        nameValue: InviteInviterNameValue()..parse('Convidador B'),
+        nameValue: InviteSenderDisplayNameCandidateValue()
+          ..parse('Convidador B'),
       ),
     ],
   );
@@ -1947,12 +1949,14 @@ InviteModel _buildInviteWithSelectableCandidates(String id) {
       InviteInviter(
         inviteIdValue: InviteInviterIdValue()..parse('$id-a'),
         type: InviteInviterType.user,
-        nameValue: InviteInviterNameValue()..parse('Convidador A'),
+        nameValue: InviteSenderDisplayNameCandidateValue()
+          ..parse('Convidador A'),
       ),
       InviteInviter(
         inviteIdValue: InviteInviterIdValue()..parse('$id-b'),
         type: InviteInviterType.user,
-        nameValue: InviteInviterNameValue()..parse('Convidador B'),
+        nameValue: InviteSenderDisplayNameCandidateValue()
+          ..parse('Convidador B'),
       ),
     ],
   );
