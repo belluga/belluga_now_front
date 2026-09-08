@@ -12,8 +12,10 @@ import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.da
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_gallery_item.dart';
+import 'package:belluga_now/infrastructure/dal/decoders/account_profile_external_link_decoder.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group_member_page.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
@@ -32,7 +34,6 @@ import 'package:belluga_now/presentation/tenant_public/partners/account_profile_
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_state.dart';
 import 'package:belluga_now/presentation/shared/widgets/account_profile_overlapping_identity_card.dart';
-import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/shared/widgets/public_rich_text_html.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/upcoming_ocurrence_card.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
@@ -133,7 +134,7 @@ void main() {
     expect(find.text('Falha ao preparar o perfil'), findsOneWidget);
   });
 
-  testWidgets('renders grouped gallery and opens modal with description', (
+  testWidgets('renders gallery row and opens viewer at selected item', (
     tester,
   ) async {
     final repository = _FakeAccountProfilesRepository();
@@ -143,8 +144,7 @@ void main() {
     GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
 
     await tester.pumpWidget(
-      _buildRoutedTestApp(
-        router: _RecordingStackRouter(),
+      _buildAutoRouteTestApp(
         child: AccountProfileDetailScreen(
           accountProfile: buildAccountProfileModelFromPrimitives(
             id: '507f1f77bcf86cd799439011',
@@ -158,6 +158,7 @@ void main() {
                 items: [
                   _buildGalleryItemWithOptionalPreviewVariants(
                     itemId: 'gallery-item-1',
+                    title: 'Palco principal',
                     description: 'Vista para o palco',
                     imageUrl: 'https://tenant.test/gallery/image.jpg',
                     cardUrl: 'https://tenant.test/gallery/card.jpg',
@@ -177,19 +178,21 @@ void main() {
       find.byKey(const Key('accountProfileGroupedGallery')),
       findsOneWidget,
     );
+    expect(find.text('Galeria'), findsOneWidget);
     expect(find.text('Ambiente'), findsOneWidget);
+    expect(find.text('Ver tudo'), findsOneWidget);
 
     final galleryItem = find.byKey(
-      const Key('accountProfileGalleryItem_gallery-item-1'),
+      const Key('bellugaGalleryPreview_gallery-item-1'),
     );
-    final galleryPreview = tester.widget<BellugaNetworkImage>(
-      find.descendant(
-        of: galleryItem,
-        matching: find.byType(BellugaNetworkImage),
-      ),
+    final galleryPreview = tester.widget<Image>(
+      find.descendant(of: galleryItem, matching: find.byType(Image)),
     );
 
-    expect(galleryPreview.url, 'https://tenant.test/gallery/image.jpg');
+    expect(
+      (galleryPreview.image as NetworkImage).url,
+      'https://tenant.test/gallery/thumb.jpg',
+    );
 
     await tester.drag(find.byType(NestedScrollView), const Offset(0, -320));
     await tester.pumpAndSettle();
@@ -204,17 +207,48 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.byKey(const Key('accountProfileGalleryModal_gallery-item-1')),
+      find.byKey(const Key('accountProfileGalleryViewer_group-1')),
       findsOneWidget,
     );
-    final modalPreview = tester.widget<BellugaNetworkImage>(
-      find.descendant(
-        of: find.byKey(const Key('accountProfileGalleryModal_gallery-item-1')),
-        matching: find.byType(BellugaNetworkImage),
-      ),
+    final modalPreview = tester.widget<Image>(
+      find.byKey(const Key('bellugaGalleryViewerPhoto_gallery-item-1')),
     );
-    expect(modalPreview.url, 'https://tenant.test/gallery/modal.jpg');
+    expect(
+      (modalPreview.image as NetworkImage).url,
+      'https://tenant.test/gallery/modal.jpg',
+    );
+    expect(find.text('1/1'), findsOneWidget);
+    expect(find.text('Ambiente'), findsWidgets);
+    expect(find.text('FOTO'), findsOneWidget);
+    expect(find.text('Palco principal'), findsOneWidget);
     expect(find.text('Vista para o palco'), findsOneWidget);
+    expect(
+      find.byKey(const Key('bellugaGalleryViewerSlideRow')),
+      findsOneWidget,
+    );
+    expect(find.text('Anterior'), findsNothing);
+    expect(find.text('Próximo'), findsNothing);
+
+    await tester.tap(find.byKey(const Key('bellugaGalleryViewerClose')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('accountProfileGalleryViewer_group-1')),
+      findsNothing,
+    );
+
+    final openGroupButton = find.byKey(
+      const Key('accountProfileGalleryOpenGroup_group-1'),
+    );
+    await tester.ensureVisible(openGroupButton);
+    await tester.pumpAndSettle();
+    await tester.tap(openGroupButton);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('accountProfileGalleryViewer_group-1')),
+      findsOneWidget,
+    );
+    expect(find.text('1/1'), findsOneWidget);
   });
 
   testWidgets(
@@ -951,6 +985,59 @@ void main() {
       expect(launchedUris, hasLength(1));
       expect(launchedUris.single.host, 'wa.me');
       expect(launchedUris.single.path, '/5527999999999');
+    },
+  );
+
+  testWidgets(
+    'external link strip is capability-gated and launches externally',
+    (tester) async {
+      final repository = _FakeAccountProfilesRepository();
+      final controller = AccountProfileDetailController(
+        accountProfilesRepository: repository,
+      );
+      final profile = _buildArtistProfile().copyWith(
+        externalLinkValues: AccountProfileExternalLinkDecoder.decodeList([
+          {
+            'id': 'instagram',
+            'type': 'instagram',
+            'url': 'https://instagram.com/profile',
+          },
+        ]),
+      );
+      final launched = <({Uri uri, LaunchMode mode})>[];
+      await GetIt.I.reset(dispose: false);
+      GetIt.I.registerSingleton<AppData>(
+        _buildAppData(artistExternalLinksEnabled: true),
+      );
+      GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
+
+      await tester.pumpWidget(
+        _buildRoutedTestApp(
+          router: _RecordingStackRouter(),
+          child: AccountProfileDetailScreen(
+            accountProfile: profile,
+            externalUrlLauncher: (uri, {required mode}) async {
+              launched.add((uri: uri, mode: mode));
+              return true;
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final button = find.byKey(
+        const ValueKey('accountProfileExternalLink-instagram'),
+      );
+      expect(button, findsOneWidget);
+      final heroAppBar = tester.widget<SliverAppBar>(find.byType(SliverAppBar));
+      expect(heroAppBar.elevation, 0);
+      expect(heroAppBar.scrolledUnderElevation, 0);
+      expect(heroAppBar.shadowColor, Colors.transparent);
+      expect(heroAppBar.surfaceTintColor, Colors.transparent);
+      await tester.tap(button);
+      await tester.pump();
+      expect(launched.single.uri.host, 'instagram.com');
+      expect(launched.single.mode, LaunchMode.externalApplication);
     },
   );
 
@@ -2053,6 +2140,63 @@ void main() {
         find.byKey(const Key('accountProfileNestedGroup_parceiros')),
         findsOneWidget,
       );
+      expect(find.text('Ananda Torres'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'shows server-side nested-group search only after the first page has more',
+    (tester) async {
+      final membersPath =
+          '/api/v1/account_profiles/ponta-da-fruta/nested_groups/parceiros/members';
+      final lazyMembers = _buildNestedAccountProfileGroup().profiles;
+      final repository = _FakeAccountProfilesRepository(
+        nestedGroupMembersByPath:
+            <String, List<AccountProfileNestedGroupMember>>{
+              membersPath: lazyMembers,
+            },
+        nestedGroupHasMore: true,
+      );
+      GetIt.I.registerFactory<AccountProfileDetailController>(
+        () => AccountProfileDetailController(
+          accountProfilesRepository: repository,
+        ),
+      );
+      final lazyGroup = AccountProfileNestedGroup(
+        idValue: AccountProfileNestedGroupIdValue('parceiros'),
+        labelValue: AccountProfileNestedGroupLabelValue('Parceiros'),
+        orderValue: AccountProfileNestedGroupOrderValue(0),
+        membersPathValue: AccountProfileNestedGroupMembersPathValue(
+          membersPath,
+        ),
+        memberCountValue: AccountProfileNestedGroupMemberCountValue(21),
+        profiles: const <AccountProfileNestedGroupMember>[],
+      );
+
+      await tester.pumpWidget(
+        _buildRoutedTestApp(
+          router: _RecordingStackRouter(),
+          child: AccountProfileDetailScreen(
+            accountProfile: _buildVenueFullProfile().copyWith(
+              nestedProfileGroupValues: [lazyGroup],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(const Key('immersiveTabLabel_3')));
+      await tester.tap(find.byKey(const Key('immersiveTabLabel_3')));
+      await tester.pumpAndSettle();
+
+      final searchField = find.byKey(
+        const Key('accountProfileNestedGroupSearch_parceiros'),
+      );
+      expect(searchField, findsOneWidget);
+      await tester.enterText(searchField, 'ana');
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pumpAndSettle();
+
+      expect(repository.lastNestedGroupMembersSearch, 'ana');
       expect(find.text('Ananda Torres'), findsOneWidget);
     },
   );
@@ -3600,6 +3744,7 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
     Map<String, List<AccountProfileNestedGroupMember>>
         nestedGroupMembersByPath =
         const <String, List<AccountProfileNestedGroupMember>>{},
+    this.nestedGroupHasMore = false,
   }) : _favoriteIds = Set<String>.from(initialFavoriteIds),
        _profiles = List<AccountProfileModel>.from(profiles),
        _nestedGroupMembersByPath =
@@ -3628,7 +3773,9 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   final List<AccountProfileModel> _profiles;
   final Map<String, List<AccountProfileNestedGroupMember>>
   _nestedGroupMembersByPath;
+  final bool nestedGroupHasMore;
   String? lastNestedGroupMembersPath;
+  String? lastNestedGroupMembersSearch;
 
   @override
   Future<void> init() async {}
@@ -3661,12 +3808,26 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   }
 
   @override
-  Future<List<AccountProfileNestedGroupMember>> getNestedGroupMembersByPath(
-    AccountProfilesRepositoryContractPrimString membersPath,
-  ) async {
+  Future<AccountProfileNestedGroupMemberPage> fetchNestedGroupMembersPageByPath(
+    AccountProfilesRepositoryContractPrimString membersPath, {
+    AccountProfilesRepositoryContractPrimString? cursor,
+    AccountProfilesRepositoryContractPrimString? search,
+  }) async {
     lastNestedGroupMembersPath = membersPath.value;
-    return _nestedGroupMembersByPath[membersPath.value] ??
+    lastNestedGroupMembersSearch = search?.value;
+    if (cursor?.value.trim().isNotEmpty == true) {
+      return const AccountProfileNestedGroupMemberPage.empty();
+    }
+
+    final items =
+        _nestedGroupMembersByPath[membersPath.value] ??
         const <AccountProfileNestedGroupMember>[];
+    return AccountProfileNestedGroupMemberPage(
+      items: items,
+      nextCursorValue: search == null && nestedGroupHasMore
+          ? AccountProfileNestedGroupMemberTextValue('next-page')
+          : null,
+    );
   }
 
   @override
@@ -4270,6 +4431,7 @@ AppData _buildAppData({
   bool artistHasBio = false,
   bool restaurantReferenceLocationEnabled = false,
   bool artistContactChannelsEnabled = false,
+  bool artistExternalLinksEnabled = false,
 }) {
   final remoteData = {
     'name': 'Tenant Test',
@@ -4293,6 +4455,7 @@ AppData _buildAppData({
           'has_bio': artistHasBio,
           'has_gallery': true,
           'has_contact_channels': artistContactChannelsEnabled,
+          'has_external_links': artistExternalLinksEnabled,
         },
       },
       {
@@ -4362,6 +4525,7 @@ AppData _buildAppData({
 
 AccountProfileGalleryItem _buildGalleryItemWithOptionalPreviewVariants({
   required String itemId,
+  String title = '',
   String description = '',
   String? imageUrl,
   String? thumbUrl,
@@ -4370,6 +4534,7 @@ AccountProfileGalleryItem _buildGalleryItemWithOptionalPreviewVariants({
 }) {
   return AccountProfileGalleryItem(
     itemIdValue: AccountProfileNestedGroupIdValue(itemId),
+    titleValue: AccountProfileNestedGroupMemberTextValue(title),
     descriptionValue: AccountProfileNestedGroupMemberTextValue(description),
     orderValue: AccountProfileNestedGroupOrderValue(0),
     imageUrlValue: _buildOptionalThumbUriValue(imageUrl),

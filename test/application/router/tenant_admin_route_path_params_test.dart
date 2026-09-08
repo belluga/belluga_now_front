@@ -14,8 +14,7 @@ void main() {
       _expectResolvedRawParams(eventEdit.rawPathParams);
     });
 
-    test('account detail/create/edit routes encode required path params', () {
-      final detail = TenantAdminAccountDetailRoute(accountSlug: 'john-doe');
+    test('account profile create/edit routes encode required path params', () {
       final create = TenantAdminAccountProfileCreateRoute(
         accountSlug: 'john-doe',
       );
@@ -24,13 +23,11 @@ void main() {
         accountProfileId: 'profile-123',
       );
 
-      expect(detail.rawPathParams, {'accountSlug': 'john-doe'});
       expect(create.rawPathParams, {'accountSlug': 'john-doe'});
       expect(edit.rawPathParams, {
         'accountSlug': 'john-doe',
         'accountProfileId': 'profile-123',
       });
-      _expectResolvedRawParams(detail.rawPathParams);
       _expectResolvedRawParams(create.rawPathParams);
       _expectResolvedRawParams(edit.rawPathParams);
     });

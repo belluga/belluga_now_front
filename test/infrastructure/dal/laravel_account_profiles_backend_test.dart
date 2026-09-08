@@ -17,6 +17,7 @@ import 'package:belluga_now/domain/repositories/value_objects/auth_repository_co
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_duration_value.dart';
 import 'package:belluga_now/domain/repositories/value_objects/user_location_repository_contract_text_value.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
+import 'package:belluga_gallery/belluga_gallery.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/partners_backend/laravel_account_profiles_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/services/location_origin_service.dart';
@@ -128,6 +129,73 @@ void main() {
   );
 
   test(
+    'fetchAccountProfiles parses mixed photo and YouTube galleries',
+    () async {
+      final adapter = _RecordingAdapter(
+        response: {
+          'data': [
+            {
+              'id': _generateMongoId(),
+              'display_name': 'Galeria Mista',
+              'slug': 'galeria-mista',
+              'profile_type': 'venue',
+              'taxonomy_terms': const [],
+              'gallery_groups': [
+                {
+                  'group_id': 'group-1',
+                  'subtitle': 'Destaques',
+                  'order': 0,
+                  'items': [
+                    {
+                      'item_id': 'photo-1',
+                      'type': 'photo',
+                      'order': 0,
+                      'image_url': 'https://tenant.test/image.jpg',
+                      'thumb_url': 'https://tenant.test/thumb.jpg',
+                      'card_url': 'https://tenant.test/card.jpg',
+                      'modal_url': 'https://tenant.test/modal.jpg',
+                    },
+                    {
+                      'item_id': 'video-1',
+                      'type': 'youtube',
+                      'title': 'Um minuto na praia',
+                      'description': 'O caminho da pousada até o mar.',
+                      'order': 1,
+                      'youtube_video_id': 'abc123',
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      );
+      final backend = LaravelAccountProfilesBackend(
+        dio: Dio()..httpClientAdapter = adapter,
+        locationOriginService: LocationOriginService(
+          appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+        ),
+      );
+
+      final page = await backend.fetchAccountProfilesPage(
+        page: 1,
+        pageSize: 30,
+      );
+      final items = page.profiles.single.galleryGroups.single.items;
+
+      expect(items, hasLength(2));
+      expect(items.first.toGalleryItem(), isA<GalleryPhoto>());
+      expect(items.last.toGalleryItem(), isA<GalleryYoutubePlayer>());
+      expect(items.last.title, 'Um minuto na praia');
+      expect(items.last.description, 'O caminho da pousada até o mar.');
+      expect(
+        (items.last.toGalleryItem() as GalleryYoutubePlayer).youtubeVideoId,
+        'abc123',
+      );
+    },
+  );
+
+  test(
     'fetchAccountProfiles falls back to humanized slug when persisted display_name is too short',
     () async {
       final validId = _generateMongoId();
@@ -207,7 +275,7 @@ void main() {
   );
 
   test(
-    'fetchNestedGroupMembersByPath parses wrapped event related-profile members payloads',
+    'fetchNestedGroupMembersPageByPath parses wrapped event related-profile members payloads',
     () async {
       final validId = _generateMongoId();
       final adapter = _RecordingAdapter(
@@ -241,12 +309,18 @@ void main() {
 
       final page = await backend.fetchNestedGroupMembersPageByPath(
         '/api/v1/events/festival-de-inverno/related_profile_tabs/bandas/members',
+        cursor: 'cursor-1',
+        search: 'ban',
       );
 
       expect(
         adapter.lastRequest?.uri.path,
         '/api/v1/events/festival-de-inverno/related_profile_tabs/bandas/members',
       );
+      expect(adapter.lastRequest?.uri.queryParameters, <String, String>{
+        'cursor': 'cursor-1',
+        'search': 'ban',
+      });
       expect(page.hasMore, isTrue);
       expect(page.nextCursorValue?.value, 'cursor-2');
       expect(page.items, hasLength(1));
@@ -548,6 +622,56 @@ void main() {
   );
 
   test(
+    'fetchAccountProfileBySlug decodes valid external links and omits malformed or ambiguous items',
+    () async {
+      final adapter = _RecordingAdapter(
+        response: {
+          'data': {
+            'id': _generateMongoId(),
+            'display_name': 'Profile Links',
+            'slug': 'profile-links',
+            'profile_type': 'custom',
+            'taxonomy_terms': const [],
+            'external_links': const [
+              {
+                'id': 'instagram-link',
+                'type': 'instagram',
+                'url': 'https://instagram.com/profilelinks',
+              },
+              {
+                'id': 'unsafe-facebook',
+                'type': 'facebook',
+                'url': 'http://facebook.com/profilelinks',
+              },
+              {
+                'id': 'youtube-one',
+                'type': 'youtube',
+                'url': 'https://youtube.com/@profilelinks',
+              },
+              {
+                'id': 'youtube-two',
+                'type': 'youtube',
+                'url': 'https://youtube.com/@profilelinks2',
+              },
+            ],
+          },
+        },
+      );
+      final backend = LaravelAccountProfilesBackend(
+        dio: Dio()..httpClientAdapter = adapter,
+        locationOriginService: LocationOriginService(
+          appDataRepository: _FakeAppDataRepository(GetIt.I.get<AppData>()),
+        ),
+      );
+
+      final profile = await backend.fetchAccountProfileBySlug('profile-links');
+
+      expect(profile, isNotNull);
+      expect(profile?.externalLinks.map((link) => link.id), ['instagram-link']);
+    },
+  );
+
+  test(
     'fetchAccountProfileBySlug falls back to humanized slug when persisted display_name is invalid',
     () async {
       final validId = _generateMongoId();
@@ -729,7 +853,7 @@ void main() {
   );
 
   test(
-    'fetchNestedGroupMembersByPath keeps nested members without slug when not navigable',
+    'fetchNestedGroupMembersPageByPath keeps nested members without slug when not navigable',
     () async {
       final partnerId = _generateMongoId();
       final adapter = _RecordingAdapter(
@@ -768,7 +892,7 @@ void main() {
   );
 
   test(
-    'fetchNestedGroupMembersByPath normalizes relative member media urls',
+    'fetchNestedGroupMembersPageByPath normalizes relative member media urls',
     () async {
       final secondPartnerId = _generateMongoId();
       final relativeAvatarPath =
@@ -810,7 +934,7 @@ void main() {
   );
 
   test(
-    'fetchNestedGroupMembersByPath applies short-name and fallback rules to nested members',
+    'fetchNestedGroupMembersPageByPath applies short-name and fallback rules to nested members',
     () async {
       final shortNameId = _generateMongoId();
       final fallbackId = _generateMongoId();

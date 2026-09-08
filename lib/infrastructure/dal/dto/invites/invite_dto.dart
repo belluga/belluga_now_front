@@ -3,7 +3,7 @@ import 'package:belluga_now/domain/invites/invite_inviter_principal.dart';
 import 'package:belluga_now/domain/invites/invite_inviter_type.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_acceptance_status_value.dart';
-import 'package:belluga_now/domain/invites/value_objects/invite_additional_inviter_name_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_additional_sender_display_name_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_attendance_policy_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_event_date_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_event_id_value.dart';
@@ -11,7 +11,8 @@ import 'package:belluga_now/domain/invites/value_objects/invite_host_name_value.
 import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_inviter_avatar_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_inviter_id_value.dart';
-import 'package:belluga_now/domain/invites/value_objects/invite_inviter_name_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_resolved_sender_display_name_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_sender_display_name_candidate_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_inviter_type_raw_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_location_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_message_value.dart';
@@ -25,6 +26,7 @@ import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_inviter_candidate_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_public_profile_payload_decoder.dart';
+import 'package:belluga_now/infrastructure/dal/dto/schedule/support/public_media_url_normalizer.dart';
 
 class InviteDto {
   static final Uri _transparentPixelUri = Uri.parse(
@@ -101,8 +103,7 @@ class InviteDto {
     final legacyInviterName = json['inviter_name']?.toString();
     if (candidates.isEmpty &&
         legacyInviteId.isNotEmpty &&
-        legacyInviterName != null &&
-        legacyInviterName.trim().isNotEmpty) {
+        legacyInviterName != null) {
       candidates.add(
         InviteInviterCandidateDto(
           inviteId: legacyInviteId,
@@ -241,7 +242,7 @@ class InviteDto {
     };
   }
 
-  InviteModel toDomain() {
+  InviteModel toDomain({Uri? tenantOrigin}) {
     final inviterPrincipal = _parseInviterPrincipal(
       inviterKind: inviterPrincipalKind,
       inviterId: inviterPrincipalId,
@@ -249,11 +250,10 @@ class InviteDto {
     final inviters = inviterCandidates
         .where((candidate) => candidate.inviteId.trim().isNotEmpty)
         .map((candidate) {
-          final avatarValue = InviteInviterAvatarValue();
-          final normalizedAvatarUrl = candidate.avatarUrl?.trim();
-          if (normalizedAvatarUrl != null && normalizedAvatarUrl.isNotEmpty) {
-            avatarValue.parse(normalizedAvatarUrl);
-          }
+          final avatarValue = _optionalSenderAvatarValue(
+            candidate.avatarUrl,
+            tenantOrigin: tenantOrigin,
+          );
 
           final statusValue =
               InviteAcceptanceStatusValue(
@@ -270,7 +270,8 @@ class InviteDto {
                   InviteInviterTypeRawValue()..parse(candidate.principalKind),
                 ) ??
                 InviteInviterType.user,
-            nameValue: InviteInviterNameValue()..parse(candidate.displayName),
+            nameValue: InviteSenderDisplayNameCandidateValue()
+              ..parse(candidate.displayName),
             principal: _parseInviterPrincipal(
               inviterKind: candidate.principalKind,
               inviterId: candidate.principalId,
@@ -286,8 +287,11 @@ class InviteDto {
         .where((tag) => tag.trim().isNotEmpty)
         .map((tag) => InviteTagValue()..parse(tag))
         .toList(growable: false);
-    final resolvedInviterName =
+    final rawInviterName =
         inviterName ?? (inviters.isNotEmpty ? inviters.first.name : null);
+    final resolvedInviterName = rawInviterName?.trim().isNotEmpty == true
+        ? rawInviterName!.trim()
+        : 'Alguém';
     final resolvedInviterAvatarUrl =
         inviterAvatarUrl ??
         (inviters.isNotEmpty ? inviters.first.avatarUrl : null);
@@ -296,24 +300,21 @@ class InviteDto {
         (inviters.isNotEmpty ? inviters.first.principal : null);
     final resolvedInviters = inviters.isNotEmpty
         ? inviters
-        : (resolvedInviterName != null && resolvedInviterName.trim().isNotEmpty
+        : (rawInviterName != null
               ? <InviteInviter>[
                   (() {
-                    final avatarValue = InviteInviterAvatarValue();
-                    final normalizedAvatarUrl = resolvedInviterAvatarUrl
-                        ?.trim();
-                    if (normalizedAvatarUrl != null &&
-                        normalizedAvatarUrl.isNotEmpty) {
-                      avatarValue.parse(normalizedAvatarUrl);
-                    }
+                    final avatarValue = _optionalSenderAvatarValue(
+                      resolvedInviterAvatarUrl,
+                      tenantOrigin: tenantOrigin,
+                    );
 
                     return InviteInviter(
                       inviteIdValue: InviteInviterIdValue()..parse(id),
                       type:
                           resolvedInviterPrincipal?.type ??
                           InviteInviterType.user,
-                      nameValue: InviteInviterNameValue()
-                        ..parse(resolvedInviterName),
+                      nameValue: InviteSenderDisplayNameCandidateValue()
+                        ..parse(rawInviterName),
                       principal: resolvedInviterPrincipal,
                       avatarValue: avatarValue,
                     );
@@ -327,17 +328,12 @@ class InviteDto {
               .map((inviter) => inviter.name)
               .toList(growable: false);
 
-    InviteInviterNameValue? inviterNameVo;
-    if (resolvedInviterName != null && resolvedInviterName.trim().isNotEmpty) {
-      inviterNameVo = InviteInviterNameValue()..parse(resolvedInviterName);
-    }
-
-    InviteInviterAvatarValue? inviterAvatarVo;
-    if (resolvedInviterAvatarUrl != null &&
-        resolvedInviterAvatarUrl.trim().isNotEmpty) {
-      inviterAvatarVo = InviteInviterAvatarValue()
-        ..parse(resolvedInviterAvatarUrl);
-    }
+    final inviterNameVo = InviteResolvedSenderDisplayNameValue()
+      ..parse(resolvedInviterName);
+    final inviterAvatarVo = _optionalSenderAvatarValue(
+      resolvedInviterAvatarUrl,
+      tenantOrigin: tenantOrigin,
+    );
 
     final occurrenceIdValue = InviteOccurrenceIdValue()..parse(occurrenceId);
     final attendancePolicyValue =
@@ -374,7 +370,10 @@ class InviteDto {
       inviterPrincipal: resolvedInviterPrincipal,
       additionalInviterValues: resolvedAdditionalInviters
           .where((inviter) => inviter.trim().isNotEmpty)
-          .map((inviter) => InviteAdditionalInviterNameValue()..parse(inviter))
+          .map(
+            (inviter) =>
+                InviteAdditionalSenderDisplayNameValue()..parse(inviter),
+          )
           .toList(growable: false),
       inviters: resolvedInviters,
       linkedAccountProfiles: linkedAccountProfiles,
@@ -384,6 +383,19 @@ class InviteDto {
           ? null
           : EventLinkedAccountProfileTextValue(venueAccountProfileId!.trim()),
     );
+  }
+
+  static InviteInviterAvatarValue _optionalSenderAvatarValue(
+    String? rawUrl, {
+    Uri? tenantOrigin,
+  }) {
+    final normalized = normalizeTenantPublicMediaUrl(
+      rawUrl,
+      tenantOrigin: tenantOrigin,
+    );
+    final parsed = normalized == null ? null : Uri.tryParse(normalized);
+    if (parsed == null || !parsed.isAbsolute) return InviteInviterAvatarValue();
+    return InviteInviterAvatarValue()..parse(parsed.toString());
   }
 
   static String _groupKey(String eventId, String occurrenceId) {

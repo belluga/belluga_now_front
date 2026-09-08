@@ -441,6 +441,20 @@ class _TenantAdminProfileTypeFormScreenState
                                 SwitchListTile(
                                   contentPadding: EdgeInsets.zero,
                                   title: const Text(
+                                    'Links externos habilitados',
+                                  ),
+                                  subtitle: const Text(
+                                    'Permite configurar links externos no perfil e exibir seus atalhos públicos.',
+                                  ),
+                                  value: capabilities.hasExternalLinks,
+                                  onChanged: (value) =>
+                                      _controller.updateCapabilities(
+                                        hasExternalLinks: value,
+                                      ),
+                                ),
+                                SwitchListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  title: const Text(
                                     'Contato por canais habilitado',
                                   ),
                                   subtitle: const Text(

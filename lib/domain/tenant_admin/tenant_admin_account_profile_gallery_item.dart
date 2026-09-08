@@ -1,6 +1,10 @@
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_nested_profile_group_values.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_gallery_player_aspect_ratio_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
+import 'package:belluga_gallery/belluga_gallery.dart';
+
+enum TenantAdminAccountProfileGalleryItemType { photo, youtube }
 
 class TenantAdminAccountProfileGalleryItem {
   TenantAdminAccountProfileGalleryItem({
@@ -11,25 +15,62 @@ class TenantAdminAccountProfileGalleryItem {
     required this.thumbUrlValue,
     required this.cardUrlValue,
     required this.modalUrlValue,
-  });
+    this.type = TenantAdminAccountProfileGalleryItemType.photo,
+    TenantAdminOptionalTextValue? titleValue,
+    TenantAdminOptionalTextValue? youtubeVideoIdValue,
+    TenantAdminGalleryPlayerAspectRatioValue? playerAspectRatioValue,
+  }) : titleValue = titleValue ?? TenantAdminOptionalTextValue(),
+       youtubeVideoIdValue =
+           youtubeVideoIdValue ?? TenantAdminOptionalTextValue(),
+       playerAspectRatioValue =
+           playerAspectRatioValue ?? TenantAdminGalleryPlayerAspectRatioValue();
 
   final TenantAdminNestedProfileGroupTextValue itemIdValue;
+  final TenantAdminOptionalTextValue titleValue;
   final TenantAdminOptionalTextValue descriptionValue;
   final TenantAdminNestedProfileGroupOrderValue orderValue;
   final TenantAdminOptionalUrlValue imageUrlValue;
   final TenantAdminOptionalUrlValue thumbUrlValue;
   final TenantAdminOptionalUrlValue cardUrlValue;
   final TenantAdminOptionalUrlValue modalUrlValue;
+  final TenantAdminAccountProfileGalleryItemType type;
+  final TenantAdminOptionalTextValue youtubeVideoIdValue;
+  final TenantAdminGalleryPlayerAspectRatioValue playerAspectRatioValue;
 
   String get itemId => itemIdValue.value;
+  String? get title => titleValue.nullableValue;
   String? get description => descriptionValue.nullableValue;
   int get order => orderValue.value;
   String get imageUrl => imageUrlValue.nullableValue ?? '';
   String get thumbUrl => thumbUrlValue.nullableValue ?? '';
   String get cardUrl => cardUrlValue.nullableValue ?? '';
   String get modalUrl => modalUrlValue.nullableValue ?? '';
+  String? get youtubeVideoId => youtubeVideoIdValue.nullableValue;
+  double get playerAspectRatio => playerAspectRatioValue.value;
+
+  GalleryItem toGalleryItem() => switch (type) {
+    TenantAdminAccountProfileGalleryItemType.photo => GalleryPhoto(
+      itemId: itemId,
+      title: title,
+      description: description,
+      imageUrl: imageUrl,
+      thumbUrl: thumbUrl,
+      cardUrl: cardUrl,
+      modalUrl: modalUrl,
+    ),
+    TenantAdminAccountProfileGalleryItemType.youtube => GalleryYoutubePlayer(
+      itemId: itemId,
+      title: title,
+      description: description,
+      youtubeVideoId: youtubeVideoId ?? '',
+      playerAspectRatio: playerAspectRatio,
+    ),
+  };
 
   String get previewUrl {
+    if (type == TenantAdminAccountProfileGalleryItemType.youtube) {
+      return (toGalleryItem() as GalleryYoutubePlayer).thumbnailUrl;
+    }
     if (thumbUrl.trim().isNotEmpty) {
       return thumbUrl;
     }

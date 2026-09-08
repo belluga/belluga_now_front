@@ -13,6 +13,12 @@ const __progressLabel = window.__appProgressLabel || function () { };
 const __bellugaBuildSha = typeof window.__WEB_BUILD_SHA__ === 'string'
   ? window.__WEB_BUILD_SHA__.trim()
   : '';
+const __bellugaEngineConfig = __bellugaBuildSha.length > 0
+  ? {
+      assetBase:
+        `assets/releases/${encodeURIComponent(__bellugaBuildSha)}/`,
+    }
+  : {};
 
 if (
   __bellugaBuildSha.length > 0
@@ -43,7 +49,7 @@ _flutter.loader.load({
     __progressLabel('Inicializando engine...');
     __progressUpdate(40);
 
-    const appRunner = await engineInitializer.initializeEngine();
+    const appRunner = await engineInitializer.initializeEngine(__bellugaEngineConfig);
 
     __progressLabel('Iniciando interface...');
     __progressUpdate(70);

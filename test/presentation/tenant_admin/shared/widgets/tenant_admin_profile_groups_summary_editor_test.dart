@@ -7,6 +7,81 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 void main() {
+  testWidgets(
+    'moves only eligible adjacent groups and blocks every arrow while busy',
+    (tester) async {
+      final moves = <(String, int)>[];
+      final groups = <TenantAdminNestedProfileGroup>[
+        TenantAdminNestedProfileGroup(
+          idValue: TenantAdminNestedProfileGroupTextValue('first'),
+          labelValue: TenantAdminNestedProfileGroupTextValue('First'),
+          orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+        ),
+        TenantAdminNestedProfileGroup(
+          idValue: TenantAdminNestedProfileGroupTextValue('second'),
+          labelValue: TenantAdminNestedProfileGroupTextValue('Second'),
+          orderValue: TenantAdminNestedProfileGroupOrderValue(1),
+        ),
+      ];
+      final labelStates =
+          <String, StreamValue<TenantAdminGroupLabelMutationState>>{
+            for (final group in groups)
+              group.id: StreamValue<TenantAdminGroupLabelMutationState>(
+                defaultValue: TenantAdminGroupLabelMutationState(
+                  draft: group.label,
+                ),
+              ),
+          };
+
+      Widget buildEditor({required bool busy}) => MaterialApp(
+        home: Scaffold(
+          body: TenantAdminProfileGroupsSummaryEditor(
+            keyPrefix: 'moveTest',
+            groups: groups,
+            addButtonKey: const Key('add'),
+            onAddGroup: () async {},
+            groupLabelState: (group) => labelStates[group.id]!,
+            onBeginGroupLabelEdit: (_) {},
+            onChangeGroupLabelDraft: (_, _) {},
+            onSaveGroupLabel: (_) async {},
+            onMoveGroup: (groupId, delta) => moves.add((groupId, delta)),
+            onRemoveGroup: (_) async {},
+            groupsMutationBusy: busy,
+            enableReorder: true,
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(buildEditor(busy: false));
+
+      final upButtons = find.byWidgetPredicate(
+        (widget) => widget is IconButton && widget.tooltip == 'Mover para cima',
+      );
+      final downButtons = find.byWidgetPredicate(
+        (widget) =>
+            widget is IconButton && widget.tooltip == 'Mover para baixo',
+      );
+      expect(tester.widget<IconButton>(upButtons.at(0)).onPressed, isNull);
+      expect(tester.widget<IconButton>(downButtons.at(1)).onPressed, isNull);
+
+      await tester.tap(downButtons.at(0));
+      await tester.tap(upButtons.at(1));
+      expect(moves, <(String, int)>[('first', 1), ('second', -1)]);
+
+      await tester.pumpWidget(buildEditor(busy: true));
+      for (final button in tester.widgetList<IconButton>(upButtons)) {
+        expect(button.onPressed, isNull);
+      }
+      for (final button in tester.widgetList<IconButton>(downButtons)) {
+        expect(button.onPressed, isNull);
+      }
+
+      for (final state in labelStates.values) {
+        state.dispose();
+      }
+    },
+  );
+
   testWidgets('delegates inline label edit, draft, save, and field error', (
     tester,
   ) async {

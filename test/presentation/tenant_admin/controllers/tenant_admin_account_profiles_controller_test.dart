@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:belluga_form_validation/belluga_form_validation.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
+import 'package:belluga_now/domain/partners/account_profile_external_link.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
@@ -12,10 +13,13 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_onboarding_
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate_selection_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_group.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_capabilities.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_snapshot.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_head_mutation_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_group_order_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_label_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_member_page.dart';
@@ -32,6 +36,7 @@ import 'package:belluga_now/domain/services/tenant_admin_location_selection_cont
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
+import 'package:belluga_now/application/router/resolvers/tenant_admin_account_profile_edit_route_resolver.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_unknown_mutation_failure.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -248,23 +253,19 @@ class _FakeAccountProfilesRepository
   int? lastUpdateAggregateRevision;
   int fetchAccountProfileCalls = 0;
   String? lastFetchedProfileId;
-  bool? lastFetchQueryableOnly;
-  String? lastFetchExcludeAccountProfileId;
   int? lastFetchPage;
   int? lastFetchPageSize;
   String? lastFetchSearch;
   String? lastFetchProfileType;
-  String? lastFetchContactMode;
-  bool? lastFetchContactChannelsEnabledOnly;
   int fetchAccountProfilesPageCalls = 0;
   int fetchAccountProfilesCalls = 0;
   final Map<String, TenantAdminAccountProfile> accountProfileFetchOverrides =
       <String, TenantAdminAccountProfile>{};
+  final Map<String, Object> accountProfileFetchErrors = <String, Object>{};
+  final Map<String, Future<TenantAdminAccountProfile>>
+  accountProfileFetchFutures = <String, Future<TenantAdminAccountProfile>>{};
   TenantAdminAccountProfile? updateAccountProfileOverride;
-  final List<String?> fetchAccountProfilesPageExclusions = [];
   final List<String?> fetchAccountProfilesPageProfileTypes = [];
-  final List<String?> fetchAccountProfilesPageContactModes = [];
-  final List<bool?> fetchAccountProfilesPageContactChannelsEnabledOnly = [];
   Completer<void>? fetchAccountProfilesPageGate;
   final Set<int> fetchAccountProfilesPageFailingPages = <int>{};
   final Map<int, TenantAdminPagedResult<TenantAdminAccountProfile>>
@@ -272,7 +273,14 @@ class _FakeAccountProfilesRepository
       <int, TenantAdminPagedResult<TenantAdminAccountProfile>>{};
   List<TenantAdminNestedProfileGroup>? lastCreateNestedProfileGroups;
   List<TenantAdminNestedProfileGroup>? lastUpdateNestedProfileGroups;
-  List<TenantAdminAccountProfileGalleryUpdateGroup>? lastGalleryGroups;
+  TenantAdminAccountProfileGallerySnapshot? gallerySnapshotToReturn;
+  Object? createGalleryGroupError;
+  Object? reorderGalleryGroupsError;
+  Object? reorderGalleryItemsError;
+  Object? updateGalleryItemError;
+  int createGalleryGroupCalls = 0;
+  int reorderGalleryGroupsCalls = 0;
+  final List<String> galleryMutationCalls = <String>[];
   Object? createAccountProfileError;
   int createNestedProfileGroupCalls = 0;
   String? lastCreateNestedProfileGroupProfileId;
@@ -284,6 +292,11 @@ class _FakeAccountProfilesRepository
   String? lastDeleteNestedProfileGroupGroupId;
   Completer<void>? deleteNestedProfileGroupGate;
   Object? deleteNestedProfileGroupError;
+  int moveNestedProfileGroupCalls = 0;
+  TenantAdminGroupMoveDirection? lastMoveNestedProfileGroupDirection;
+  Completer<TenantAdminGroupOrderMutationResult>? moveNestedProfileGroupGate;
+  TenantAdminGroupOrderMutationResult? moveNestedProfileGroupResult;
+  Object? moveNestedProfileGroupError;
   String? lastNestedGroupMembersProfileId;
   String? lastNestedGroupMembersGroupId;
   int? lastNestedGroupMembersPerPage;
@@ -307,19 +320,16 @@ class _FakeAccountProfilesRepository
   patchNestedGroupLabelGate;
   Object? patchNestedGroupLabelError;
   TenantAdminNestedGroupLabelMutationResult? patchNestedGroupLabelResult;
+  Object? externalLinkMutationError;
+  Completer<TenantAdminAccountProfile>? externalLinkMutationGate;
+  int externalLinkMutationCalls = 0;
 
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
     TenantAdminAccountProfilesRepoString? accountId,
-    TenantAdminAccountProfilesRepoBool? queryableOnly,
-    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async => () {
     fetchAccountProfilesCalls += 1;
-    lastFetchQueryableOnly = queryableOnly?.value;
-    lastFetchExcludeAccountProfileId = excludeAccountProfileId?.value;
-    return _filterProfiles(
-      excludeAccountProfileId: excludeAccountProfileId?.value,
-    );
+    return _filterProfiles();
   }();
 
   @override
@@ -330,26 +340,13 @@ class _FakeAccountProfilesRepository
     TenantAdminAccountProfilesRepoString? search,
     TenantAdminAccountProfilesRepoString? accountId,
     TenantAdminAccountProfilesRepoString? profileType,
-    TenantAdminAccountProfilesRepoString? contactMode,
-    TenantAdminAccountProfilesRepoBool? contactChannelsEnabledOnly,
-    TenantAdminAccountProfilesRepoBool? queryableOnly,
-    TenantAdminAccountProfilesRepoString? excludeAccountProfileId,
   }) async {
     fetchAccountProfilesPageCalls += 1;
     lastFetchPage = page.value;
     lastFetchPageSize = pageSize.value;
     lastFetchSearch = search?.value;
     lastFetchProfileType = profileType?.value;
-    lastFetchContactMode = contactMode?.value;
-    lastFetchContactChannelsEnabledOnly = contactChannelsEnabledOnly?.value;
-    lastFetchQueryableOnly = queryableOnly?.value;
-    lastFetchExcludeAccountProfileId = excludeAccountProfileId?.value;
-    fetchAccountProfilesPageExclusions.add(excludeAccountProfileId?.value);
     fetchAccountProfilesPageProfileTypes.add(profileType?.value);
-    fetchAccountProfilesPageContactModes.add(contactMode?.value);
-    fetchAccountProfilesPageContactChannelsEnabledOnly.add(
-      contactChannelsEnabledOnly?.value,
-    );
     final gate = fetchAccountProfilesPageGate;
     if (gate != null) {
       await gate.future;
@@ -364,10 +361,6 @@ class _FakeAccountProfilesRepository
     final filtered = _filterProfiles(
       search: search?.value,
       profileType: profileType?.value,
-      contactMode: contactMode?.value,
-      contactChannelsEnabledOnly: contactChannelsEnabledOnly?.value ?? false,
-      queryableOnly: queryableOnly?.value ?? false,
-      excludeAccountProfileId: excludeAccountProfileId?.value,
     );
     final start = (page.value - 1) * pageSize.value;
     if (page.value <= 0 || pageSize.value <= 0 || start >= filtered.length) {
@@ -475,6 +468,14 @@ class _FakeAccountProfilesRepository
   ) async {
     fetchAccountProfileCalls += 1;
     lastFetchedProfileId = accountProfileId.value;
+    final future = accountProfileFetchFutures[accountProfileId.value];
+    if (future != null) {
+      return future;
+    }
+    final error = accountProfileFetchErrors[accountProfileId.value];
+    if (error != null) {
+      throw error;
+    }
     final override = accountProfileFetchOverrides[accountProfileId.value];
     if (override != null) {
       return override;
@@ -522,14 +523,137 @@ class _FakeAccountProfilesRepository
     return updateAccountProfileOverride ?? _profiles.first;
   }
 
-  @override
-  Future<TenantAdminAccountProfile> updateAccountProfileGallery({
-    required TenantAdminAccountProfilesRepoString accountProfileId,
-    List<TenantAdminAccountProfileGalleryUpdateGroup> galleryGroups =
-        const <TenantAdminAccountProfileGalleryUpdateGroup>[],
-  }) async {
-    lastGalleryGroups = galleryGroups;
+  Future<TenantAdminAccountProfile> _externalLinkMutation() async {
+    externalLinkMutationCalls += 1;
+    final gate = externalLinkMutationGate;
+    if (gate != null) return gate.future;
+    final error = externalLinkMutationError;
+    if (error != null) throw error;
     return _profiles.first;
+  }
+
+  @override
+  Future<TenantAdminAccountProfile> createExternalLink({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required AccountProfileExternalLinkType type,
+    required AccountProfileExternalLinkUrlValue url,
+    AccountProfileExternalLinkLabelValue? label,
+  }) => _externalLinkMutation();
+
+  @override
+  Future<TenantAdminAccountProfile> updateExternalLink({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString externalLinkId,
+    required AccountProfileExternalLinkUrlValue url,
+    AccountProfileExternalLinkLabelValue? label,
+  }) => _externalLinkMutation();
+
+  @override
+  Future<TenantAdminAccountProfile> deleteExternalLink({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString externalLinkId,
+  }) => _externalLinkMutation();
+
+  @override
+  Future<TenantAdminAccountProfileGallerySnapshot> createGalleryGroup({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString subtitle,
+  }) async {
+    createGalleryGroupCalls += 1;
+    if (createGalleryGroupError != null) throw createGalleryGroupError!;
+    return gallerySnapshotToReturn!;
+  }
+
+  @override
+  Future<TenantAdminAccountProfileGallerySnapshot> reorderGalleryGroups({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required List<TenantAdminAccountProfilesRepoString> groupIds,
+  }) async {
+    reorderGalleryGroupsCalls += 1;
+    if (reorderGalleryGroupsError != null) throw reorderGalleryGroupsError!;
+    return gallerySnapshotToReturn!;
+  }
+
+  @override
+  Future<TenantAdminAccountProfileGallerySnapshot> renameGalleryGroup({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminAccountProfilesRepoString subtitle,
+  }) async {
+    galleryMutationCalls.add(
+      'rename:${accountProfileId.value}:${groupId.value}:${subtitle.value}',
+    );
+    return gallerySnapshotToReturn!;
+  }
+
+  @override
+  Future<TenantAdminAccountProfileGallerySnapshot> deleteGalleryGroup({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+  }) async {
+    galleryMutationCalls.add(
+      'delete-group:${accountProfileId.value}:${groupId.value}',
+    );
+    return gallerySnapshotToReturn!;
+  }
+
+  @override
+  Future<TenantAdminAccountProfileGallerySnapshot> createGalleryItem({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminAccountProfileGalleryItemType type,
+    TenantAdminOptionalTextValue? title,
+    TenantAdminOptionalTextValue? description,
+    TenantAdminMediaUpload? image,
+    TenantAdminAccountProfilesRepoString? youtubeUrl,
+  }) async {
+    galleryMutationCalls.add(
+      'create-item:${accountProfileId.value}:${groupId.value}:${type.name}:${youtubeUrl?.value}',
+    );
+    return gallerySnapshotToReturn!;
+  }
+
+  @override
+  Future<TenantAdminAccountProfileGallerySnapshot> updateGalleryItem({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminAccountProfilesRepoString itemId,
+    TenantAdminAccountProfileGalleryItemType? type,
+    TenantAdminOptionalTextValue? title,
+    TenantAdminOptionalTextValue? description,
+    TenantAdminMediaUpload? image,
+    TenantAdminAccountProfilesRepoString? youtubeUrl,
+  }) async {
+    galleryMutationCalls.add(
+      'update-item:${accountProfileId.value}:${groupId.value}:${itemId.value}:${title?.nullableValue}:${description?.nullableValue}:${youtubeUrl?.value}',
+    );
+    if (updateGalleryItemError != null) throw updateGalleryItemError!;
+    return gallerySnapshotToReturn!;
+  }
+
+  @override
+  Future<TenantAdminAccountProfileGallerySnapshot> deleteGalleryItem({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminAccountProfilesRepoString itemId,
+  }) async {
+    galleryMutationCalls.add(
+      'delete-item:${accountProfileId.value}:${groupId.value}:${itemId.value}',
+    );
+    return gallerySnapshotToReturn!;
+  }
+
+  @override
+  Future<TenantAdminAccountProfileGallerySnapshot> reorderGalleryItems({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required List<TenantAdminAccountProfilesRepoString> itemIds,
+  }) async {
+    galleryMutationCalls.add(
+      'reorder-items:${accountProfileId.value}:${groupId.value}:${itemIds.map((item) => item.value).join(',')}',
+    );
+    if (reorderGalleryItemsError != null) throw reorderGalleryItemsError!;
+    return gallerySnapshotToReturn!;
   }
 
   @override
@@ -538,6 +662,7 @@ class _FakeAccountProfilesRepository
     required TenantAdminAccountProfilesRepoString groupId,
     TenantAdminAccountProfilesRepoInt? perPage,
     TenantAdminAccountProfilesRepoString? cursor,
+    TenantAdminAccountProfilesRepoString? search,
   }) async {
     lastNestedGroupMembersProfileId = accountProfileId.value;
     lastNestedGroupMembersGroupId = groupId.value;
@@ -559,32 +684,6 @@ class _FakeAccountProfilesRepository
       return pages.last;
     }
     return pages[index + 1];
-  }
-
-  @override
-  Future<TenantAdminNestedGroupMemberPage> fetchAllNestedGroupMembers({
-    required TenantAdminAccountProfilesRepoString accountProfileId,
-    required TenantAdminAccountProfilesRepoString groupId,
-  }) async {
-    lastNestedGroupMembersProfileId = accountProfileId.value;
-    lastNestedGroupMembersGroupId = groupId.value;
-    lastNestedGroupMembersPerPage = 50;
-    final pages =
-        nestedGroupMemberPagesByGroupId[groupId.value] ??
-        <TenantAdminNestedGroupMemberPage>[
-          TenantAdminNestedGroupMemberPage(
-            items: const <TenantAdminAccountProfileSelectionSummary>[],
-            nextCursorValue: TenantAdminOptionalTextValue(),
-          ),
-        ];
-    final allItems = pages.expand((page) => page.items).toList(growable: false);
-    lastNestedGroupMembersCursor = pages.length > 1
-        ? pages.first.nextCursor
-        : null;
-    return TenantAdminNestedGroupMemberPage(
-      items: allItems,
-      nextCursorValue: TenantAdminOptionalTextValue(),
-    );
   }
 
   @override
@@ -675,6 +774,37 @@ class _FakeAccountProfilesRepository
   }
 
   @override
+  Future<TenantAdminGroupOrderMutationResult> moveNestedProfileGroup({
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    required TenantAdminAccountProfilesRepoString groupId,
+    required TenantAdminGroupMoveDirection direction,
+  }) async {
+    moveNestedProfileGroupCalls += 1;
+    lastMoveNestedProfileGroupDirection = direction;
+    if (moveNestedProfileGroupError != null) throw moveNestedProfileGroupError!;
+    if (moveNestedProfileGroupGate != null) {
+      return moveNestedProfileGroupGate!.future;
+    }
+    return moveNestedProfileGroupResult ??
+        TenantAdminGroupOrderMutationResult(
+          accountProfileIdValue: TenantAdminNestedProfileGroupTextValue(
+            accountProfileId.value,
+          ),
+          groups: [
+            for (final group in _profileById(
+              accountProfileId.value,
+            ).nestedProfileGroups)
+              TenantAdminGroupOrderEntry(
+                idValue: TenantAdminNestedProfileGroupTextValue(group.id),
+                orderValue: TenantAdminNestedProfileGroupOrderValue(
+                  group.order,
+                ),
+              ),
+          ],
+        );
+  }
+
+  @override
   Future<void> deleteAccountProfile(
     TenantAdminAccountProfilesRepoString accountProfileId,
   ) async {
@@ -731,47 +861,14 @@ class _FakeAccountProfilesRepository
   List<TenantAdminAccountProfile> _filterProfiles({
     String? search,
     String? profileType,
-    String? contactMode,
-    bool queryableOnly = false,
-    bool contactChannelsEnabledOnly = false,
-    String? excludeAccountProfileId,
   }) {
     final normalizedSearch = search?.trim().toLowerCase() ?? '';
     final normalizedProfileType = profileType?.trim();
-    final normalizedContactMode = contactMode?.trim();
-    final queryableTypes = _types
-        .where((profileType) => profileType.capabilities.isQueryable)
-        .map((profileType) => profileType.type)
-        .toSet();
-    final contactEnabledTypes = _types
-        .where((profileType) => profileType.capabilities.hasContactChannels)
-        .map((profileType) => profileType.type)
-        .toSet();
     return _profiles
         .where((profile) {
-          if (excludeAccountProfileId != null &&
-              excludeAccountProfileId.isNotEmpty &&
-              profile.id == excludeAccountProfileId) {
-            return false;
-          }
           if (normalizedProfileType != null &&
               normalizedProfileType.isNotEmpty &&
               profile.profileType != normalizedProfileType) {
-            return false;
-          }
-          if (normalizedContactMode != null &&
-              normalizedContactMode.isNotEmpty &&
-              profile.contactMode.rawValue != normalizedContactMode) {
-            return false;
-          }
-          if (queryableOnly &&
-              queryableTypes.isNotEmpty &&
-              !queryableTypes.contains(profile.profileType)) {
-            return false;
-          }
-          if (contactChannelsEnabledOnly &&
-              contactEnabledTypes.isNotEmpty &&
-              !contactEnabledTypes.contains(profile.profileType)) {
             return false;
           }
           if (normalizedSearch.isEmpty) {
@@ -994,6 +1091,8 @@ class _FakeTaxonomiesRepository
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   TenantAdminAccountProfilesController labelController(
     _FakeAccountProfilesRepository repository, {
     TenantAdminTenantScopeContract? tenantScope,
@@ -1003,6 +1102,444 @@ void main() {
     taxonomiesRepository: _FakeTaxonomiesRepository(),
     locationSelectionService: TenantAdminLocationSelectionService(),
     tenantScope: tenantScope,
+  );
+
+  TenantAdminAccountProfile externalLinkProfile(
+    String id, {
+    int? limit = 3,
+    List<AccountProfileExternalLink>? externalLinks,
+  }) => tenantAdminAccountProfileFromRaw(
+    id: id,
+    accountId: 'account-$id',
+    profileType: 'custom',
+    displayName: 'Profile $id',
+    externalLinks: externalLinks ?? const <AccountProfileExternalLink>[],
+    externalLinksLimit: limit,
+  );
+
+  test(
+    'external link completion is ignored after route generation changes',
+    () async {
+      final firstProfile = externalLinkProfile('profile-1');
+      final secondProfile = externalLinkProfile('profile-2');
+      final repository = _FakeAccountProfilesRepository([
+        firstProfile,
+        secondProfile,
+      ], const []);
+      final controller = labelController(repository);
+      controller.adoptExternalLinkRouteProfile(firstProfile);
+      final firstDraft = controller.beginExternalLinkDraft(
+        accountProfileId: firstProfile.id,
+      );
+      firstDraft.urlController.text = 'https://instagram.com/first';
+      final gate = Completer<TenantAdminAccountProfile>();
+      repository.externalLinkMutationGate = gate;
+
+      final pending = controller.saveExternalLinkDraft(firstDraft);
+      controller.adoptExternalLinkRouteProfile(secondProfile);
+      final secondDraft = controller.beginExternalLinkDraft(
+        accountProfileId: secondProfile.id,
+      );
+      gate.complete(firstProfile);
+
+      expect(await pending, TenantAdminExternalLinkMutationOutcome.ignored);
+      expect(controller.accountProfileStreamValue.value?.id, 'profile-2');
+      controller.endExternalLinkDraft(firstDraft);
+      controller.endExternalLinkDraft(secondDraft);
+      controller.dispose();
+    },
+  );
+
+  test(
+    'external link draft tracks dirty and valid state from canonical input',
+    () {
+      final profile = externalLinkProfile('profile-dirty');
+      final controller = labelController(
+        _FakeAccountProfilesRepository([profile], const []),
+      );
+      controller.adoptExternalLinkRouteProfile(profile);
+      final existing = _parseExternalLink(
+        id: 'instagram-link',
+        type: AccountProfileExternalLinkType.instagram,
+        url: 'https://instagram.com/belluga',
+      );
+      final draft = controller.beginExternalLinkDraft(
+        accountProfileId: profile.id,
+        existingLink: existing,
+      );
+
+      expect(draft.dirtyStreamValue.value, isFalse);
+      expect(draft.canSubmitStreamValue.value, isTrue);
+
+      draft.urlController.text = 'not-a-url';
+      expect(draft.dirtyStreamValue.value, isTrue);
+      expect(draft.canSubmitStreamValue.value, isFalse);
+
+      draft.urlController.text = 'https://instagram.com/belluga';
+      expect(draft.dirtyStreamValue.value, isFalse);
+      expect(draft.canSubmitStreamValue.value, isTrue);
+
+      controller.endExternalLinkDraft(draft);
+      controller.dispose();
+    },
+  );
+
+  test(
+    'external link profile reconciliation preserves unrelated parent edits',
+    () {
+      final profile = externalLinkProfile('profile-parent-draft');
+      final updated = externalLinkProfile('profile-parent-draft');
+      final controller = labelController(
+        _FakeAccountProfilesRepository([profile, updated], const []),
+      );
+      controller.adoptExternalLinkRouteProfile(profile);
+      controller.editStateStreamValue.addValue(
+        controller.editStateStreamValue.value.copyWith(
+          contactSourceAccountProfileId: 'unsaved-contact-source',
+          nestedProfileGroups: const [],
+        ),
+      );
+
+      controller.adoptExternalLinkRouteProfile(updated);
+
+      expect(
+        controller.editStateStreamValue.value.contactSourceAccountProfileId,
+        'unsaved-contact-source',
+      );
+      controller.dispose();
+    },
+  );
+
+  test(
+    'successful external link mutation primes the parent resolver without a GET',
+    () async {
+      final profile = externalLinkProfile('profile-parent-prefetch');
+      final updatedLink = _parseExternalLink(
+        id: 'instagram-link',
+        type: AccountProfileExternalLinkType.instagram,
+        url: 'https://instagram.com/belluga',
+      );
+      final updated = tenantAdminAccountProfileFromRaw(
+        id: profile.id,
+        accountId: profile.accountId,
+        profileType: profile.profileType,
+        displayName: profile.displayName,
+        externalLinks: [updatedLink],
+        externalLinksLimit: 3,
+      );
+      final repository = _FakeAccountProfilesRepository([updated], const []);
+      final controller = labelController(repository);
+      controller.adoptExternalLinkRouteProfile(profile);
+      final draft = controller.beginExternalLinkDraft(
+        accountProfileId: profile.id,
+      );
+      draft.urlController.text = 'https://instagram.com/belluga';
+
+      expect(
+        await controller.saveExternalLinkDraft(draft),
+        TenantAdminExternalLinkMutationOutcome.saved,
+      );
+      expect(repository.fetchAccountProfileCalls, 0);
+
+      final resolver = TenantAdminAccountProfileEditRouteResolver(
+        accountProfilesRepository: repository,
+        accountProfilesController: controller,
+      );
+      final resolved = await resolver.resolve({
+        'accountSlug': 'account-one',
+        'accountProfileId': profile.id,
+      });
+
+      expect(resolved, same(updated));
+      expect(repository.fetchAccountProfileCalls, 0);
+      controller.endExternalLinkDraft(draft);
+      controller.dispose();
+    },
+  );
+
+  test(
+    'new external link draft becomes submittable only after valid input',
+    () {
+      final profile = externalLinkProfile('profile-new');
+      final controller = labelController(
+        _FakeAccountProfilesRepository([profile], const []),
+      );
+      controller.adoptExternalLinkRouteProfile(profile);
+      final draft = controller.beginExternalLinkDraft(
+        accountProfileId: profile.id,
+      );
+
+      expect(draft.dirtyStreamValue.value, isFalse);
+      expect(draft.canSubmitStreamValue.value, isFalse);
+
+      draft.urlController.text = 'https://instagram.com/belluga';
+      expect(draft.dirtyStreamValue.value, isTrue);
+      expect(draft.canSubmitStreamValue.value, isTrue);
+
+      controller.endExternalLinkDraft(draft);
+      controller.dispose();
+    },
+  );
+
+  test(
+    'new external link draft skips configured Instagram and starts at the first free type',
+    () {
+      final profile = externalLinkProfile(
+        'profile-available-type',
+        externalLinks: [
+          _parseExternalLink(
+            id: 'instagram-link',
+            type: AccountProfileExternalLinkType.instagram,
+            url: 'https://instagram.com/belluga',
+          ),
+        ],
+      );
+      final controller = labelController(
+        _FakeAccountProfilesRepository([profile], const []),
+      );
+      controller.adoptExternalLinkRouteProfile(profile);
+
+      final draft = controller.beginExternalLinkDraft(
+        accountProfileId: profile.id,
+      );
+
+      expect(
+        draft.selectedTypeStreamValue.value,
+        AccountProfileExternalLinkType.facebook,
+      );
+      controller.endExternalLinkDraft(draft);
+      controller.dispose();
+    },
+  );
+
+  test(
+    'new external link draft is rejected when every registry type is configured',
+    () {
+      final links = <AccountProfileExternalLink>[
+        _parseExternalLink(
+          id: 'instagram-link',
+          type: AccountProfileExternalLinkType.instagram,
+          url: 'https://instagram.com/belluga',
+        ),
+        _parseExternalLink(
+          id: 'facebook-link',
+          type: AccountProfileExternalLinkType.facebook,
+          url: 'https://facebook.com/belluga',
+        ),
+        _parseExternalLink(
+          id: 'youtube-link',
+          type: AccountProfileExternalLinkType.youtube,
+          url: 'https://youtu.be/dQw4w9WgXcQ',
+        ),
+        _parseExternalLink(
+          id: 'tiktok-link',
+          type: AccountProfileExternalLinkType.tiktok,
+          url: 'https://www.tiktok.com/@belluga',
+        ),
+        _parseExternalLink(
+          id: 'spotify-link',
+          type: AccountProfileExternalLinkType.spotify,
+          url: 'https://open.spotify.com/artist/belluga',
+        ),
+        _parseExternalLink(
+          id: 'website-link',
+          type: AccountProfileExternalLinkType.website,
+          url: 'https://belluga.example',
+          label: 'Belluga',
+        ),
+      ];
+      final profile = externalLinkProfile(
+        'profile-no-available-type',
+        limit: 8,
+        externalLinks: links,
+      );
+      final controller = labelController(
+        _FakeAccountProfilesRepository([profile], const []),
+      );
+      controller.adoptExternalLinkRouteProfile(profile);
+
+      expect(
+        () => controller.beginExternalLinkDraft(accountProfileId: profile.id),
+        throwsA(isA<StateError>()),
+      );
+      controller.dispose();
+    },
+  );
+
+  test(
+    'external link mutation single-flights ten triggers across three repetitions',
+    () async {
+      for (var repetition = 0; repetition < 3; repetition++) {
+        final profile = externalLinkProfile('profile-burst-$repetition');
+        final repository = _FakeAccountProfilesRepository([profile], const []);
+        final controller = labelController(repository);
+        controller.adoptExternalLinkRouteProfile(profile);
+        final draft = controller.beginExternalLinkDraft(
+          accountProfileId: profile.id,
+        );
+        draft.urlController.text = 'https://instagram.com/burst-$repetition';
+        final gate = Completer<TenantAdminAccountProfile>();
+        repository.externalLinkMutationGate = gate;
+
+        final outcomes = List.generate(
+          10,
+          (_) => controller.saveExternalLinkDraft(draft),
+        );
+        expect(repository.externalLinkMutationCalls, 1);
+        gate.complete(profile);
+
+        expect(
+          await outcomes.first,
+          TenantAdminExternalLinkMutationOutcome.saved,
+        );
+        expect(
+          await Future.wait(outcomes.skip(1)),
+          everyElement(TenantAdminExternalLinkMutationOutcome.ignored),
+        );
+        controller.endExternalLinkDraft(draft);
+        controller.dispose();
+      }
+    },
+  );
+
+  test(
+    'unknown external link outcome fences retries until explicit reload',
+    () async {
+      final profile = externalLinkProfile('profile-1');
+      final repository = _FakeAccountProfilesRepository([profile], const []);
+      repository.externalLinkMutationError =
+          const TenantAdminUnknownMutationFailure();
+      final controller = labelController(repository);
+      controller.adoptExternalLinkRouteProfile(profile);
+      final draft = controller.beginExternalLinkDraft(
+        accountProfileId: profile.id,
+      );
+      draft.urlController.text = 'https://instagram.com/profile';
+
+      expect(
+        await controller.saveExternalLinkDraft(draft),
+        TenantAdminExternalLinkMutationOutcome.failed,
+      );
+      expect(draft.requiresReloadStreamValue.value, isTrue);
+      expect(
+        await controller.saveExternalLinkDraft(draft),
+        TenantAdminExternalLinkMutationOutcome.ignored,
+      );
+      expect(repository.externalLinkMutationCalls, 1);
+
+      repository.externalLinkMutationError = null;
+      expect(await controller.reloadExternalLinkBaseline(draft), isTrue);
+      expect(draft.requiresReloadStreamValue.value, isFalse);
+      controller.endExternalLinkDraft(draft);
+      controller.dispose();
+    },
+  );
+
+  test(
+    'ordinary external link validation failure stays on the draft and remains retryable',
+    () async {
+      final profile = externalLinkProfile('profile-validation');
+      final repository = _FakeAccountProfilesRepository([profile], const []);
+      repository.externalLinkMutationError = FormValidationFailure(
+        statusCode: 422,
+        message: 'URL inválida.',
+        fieldErrors: const {
+          'url': ['URL inválida.'],
+        },
+      );
+      final controller = labelController(repository);
+      controller.adoptExternalLinkRouteProfile(profile);
+      final draft = controller.beginExternalLinkDraft(
+        accountProfileId: profile.id,
+      );
+      draft.urlController.text = 'https://instagram.com/profile';
+
+      expect(
+        await controller.saveExternalLinkDraft(draft),
+        TenantAdminExternalLinkMutationOutcome.failed,
+      );
+      expect(draft.errorStreamValue.value, 'URL inválida.');
+      expect(draft.requiresReloadStreamValue.value, isFalse);
+      expect(draft.busyStreamValue.value, isFalse);
+      expect(repository.externalLinkMutationCalls, 1);
+
+      repository.externalLinkMutationError = null;
+      expect(
+        await controller.saveExternalLinkDraft(draft),
+        TenantAdminExternalLinkMutationOutcome.saved,
+      );
+      expect(repository.externalLinkMutationCalls, 2);
+      controller.endExternalLinkDraft(draft);
+      controller.dispose();
+    },
+  );
+
+  test('late external link failure after route disposal is ignored', () async {
+    final profile = externalLinkProfile('profile-late-failure');
+    final repository = _FakeAccountProfilesRepository([profile], const []);
+    final controller = labelController(repository);
+    controller.adoptExternalLinkRouteProfile(profile);
+    final draft = controller.beginExternalLinkDraft(
+      accountProfileId: profile.id,
+    );
+    draft.urlController.text = 'https://instagram.com/profile';
+    final gate = Completer<TenantAdminAccountProfile>();
+    repository.externalLinkMutationGate = gate;
+
+    final pending = controller.saveExternalLinkDraft(draft);
+    controller.endExternalLinkDraft(draft);
+    gate.completeError(
+      FormValidationFailure(
+        statusCode: 422,
+        message: 'URL inválida.',
+        fieldErrors: const {
+          'url': ['URL inválida.'],
+        },
+      ),
+    );
+
+    expect(await pending, TenantAdminExternalLinkMutationOutcome.ignored);
+    expect(controller.accountProfileStreamValue.value?.id, profile.id);
+    controller.dispose();
+  });
+
+  test(
+    'capability-disabled mutation refreshes and invalidates matching draft',
+    () async {
+      final enabled = externalLinkProfile('profile-1');
+      final disabled = externalLinkProfile('profile-1', limit: null);
+      final repository = _FakeAccountProfilesRepository([enabled], const []);
+      repository.externalLinkMutationError = FormValidationFailure(
+        statusCode: 422,
+        message: 'Capability disabled.',
+        errorCode: 'account_profile_external_links_capability_disabled',
+        fieldErrors: const {
+          'external_links': ['Capability disabled.'],
+        },
+      );
+      repository.accountProfileFetchOverrides[enabled.id] = disabled;
+      final controller = labelController(repository);
+      controller.adoptExternalLinkRouteProfile(enabled);
+      final draft = controller.beginExternalLinkDraft(
+        accountProfileId: enabled.id,
+      );
+      draft.urlController.text = 'https://instagram.com/profile';
+
+      expect(
+        await controller.saveExternalLinkDraft(draft),
+        TenantAdminExternalLinkMutationOutcome.capabilityDisabled,
+      );
+      expect(
+        controller.accountProfileStreamValue.value?.externalLinksLimit,
+        isNull,
+      );
+      expect(
+        await controller.saveExternalLinkDraft(draft),
+        TenantAdminExternalLinkMutationOutcome.ignored,
+      );
+      draft.dispose();
+      controller.dispose();
+    },
   );
 
   test(
@@ -1952,6 +2489,319 @@ void main() {
   );
 
   test(
+    'moveEditNestedProfileGroupHead applies only authoritative order',
+    () async {
+      final originalGroups = <TenantAdminNestedProfileGroup>[
+        TenantAdminNestedProfileGroup(
+          idValue: TenantAdminNestedProfileGroupTextValue('artists'),
+          labelValue: TenantAdminNestedProfileGroupTextValue('Artists'),
+          orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+          memberCountValue: TenantAdminCountValue(7),
+        ),
+        TenantAdminNestedProfileGroup(
+          idValue: TenantAdminNestedProfileGroupTextValue('partners'),
+          labelValue: TenantAdminNestedProfileGroupTextValue('Partners'),
+          orderValue: TenantAdminNestedProfileGroupOrderValue(1),
+          memberCountValue: TenantAdminCountValue(11),
+        ),
+      ];
+      final repository = _FakeAccountProfilesRepository([
+        tenantAdminAccountProfileFromRaw(
+          id: 'profile-1',
+          accountId: 'acc-1',
+          profileType: 'venue',
+          displayName: 'Perfil',
+          aggregateRevision: 4,
+          nestedProfileGroups: originalGroups,
+        ),
+      ], const []);
+      repository.moveNestedProfileGroupResult =
+          TenantAdminGroupOrderMutationResult(
+            accountProfileIdValue: TenantAdminNestedProfileGroupTextValue(
+              'profile-1',
+            ),
+            groups: [
+              TenantAdminGroupOrderEntry(
+                idValue: TenantAdminNestedProfileGroupTextValue('partners'),
+                orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+              ),
+              TenantAdminGroupOrderEntry(
+                idValue: TenantAdminNestedProfileGroupTextValue('artists'),
+                orderValue: TenantAdminNestedProfileGroupOrderValue(1),
+              ),
+            ],
+          );
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: repository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+      await controller.loadEditProfile('profile-1');
+
+      await controller.moveEditNestedProfileGroupHead(
+        accountProfileId: 'profile-1',
+        groupId: 'partners',
+        delta: -1,
+      );
+
+      expect(repository.moveNestedProfileGroupCalls, 1);
+      expect(
+        repository.lastMoveNestedProfileGroupDirection,
+        TenantAdminGroupMoveDirection.up,
+      );
+      expect(
+        controller.editStateStreamValue.value.nestedProfileGroups.map(
+          (group) => group.id,
+        ),
+        ['partners', 'artists'],
+      );
+      expect(
+        controller.editStateStreamValue.value.nestedProfileGroups.map(
+          (group) => group.memberCount,
+        ),
+        [11, 7],
+      );
+      expect(
+        controller.accountProfileStreamValue.value?.aggregateRevision,
+        isNull,
+      );
+    },
+  );
+
+  test(
+    'definitive account group move failure preserves local state without reconciliation',
+    () async {
+      final originalGroups = <TenantAdminNestedProfileGroup>[
+        TenantAdminNestedProfileGroup(
+          idValue: TenantAdminNestedProfileGroupTextValue('artists'),
+          labelValue: TenantAdminNestedProfileGroupTextValue('Local Artists'),
+          orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+          memberCountValue: TenantAdminCountValue(7),
+        ),
+        TenantAdminNestedProfileGroup(
+          idValue: TenantAdminNestedProfileGroupTextValue('partners'),
+          labelValue: TenantAdminNestedProfileGroupTextValue('Local Partners'),
+          orderValue: TenantAdminNestedProfileGroupOrderValue(1),
+          memberCountValue: TenantAdminCountValue(11),
+        ),
+      ];
+      final repository = _FakeAccountProfilesRepository([
+        tenantAdminAccountProfileFromRaw(
+          id: 'profile-1',
+          accountId: 'acc-1',
+          profileType: 'venue',
+          displayName: 'Perfil',
+          aggregateRevision: 4,
+          nestedProfileGroups: originalGroups,
+        ),
+      ], const []);
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: repository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+      await controller.loadEditProfile('profile-1');
+      repository.moveNestedProfileGroupError = StateError(
+        'definitive move failure',
+      );
+
+      await controller.moveEditNestedProfileGroupHead(
+        accountProfileId: 'profile-1',
+        groupId: 'partners',
+        delta: -1,
+      );
+
+      final groups = controller.editStateStreamValue.value.nestedProfileGroups;
+      expect(repository.moveNestedProfileGroupCalls, 1);
+      expect(repository.fetchAccountProfileCalls, 1);
+      expect(groups.map((group) => group.id), ['artists', 'partners']);
+      expect(groups.map((group) => group.label), [
+        'Local Artists',
+        'Local Partners',
+      ]);
+      expect(groups.map((group) => group.memberCount), [7, 11]);
+      expect(
+        controller.editErrorMessageStreamValue.value,
+        contains('definitive move failure'),
+      );
+      expect(controller.editNestedGroupMutationBusyStreamValue.value, isFalse);
+    },
+  );
+
+  test(
+    'foreign group move success performs one GET reconciliation without PATCH replay',
+    () async {
+      TenantAdminAccountProfile profileWith(
+        List<TenantAdminNestedProfileGroup> groups,
+        int revision,
+      ) => tenantAdminAccountProfileFromRaw(
+        id: 'profile-1',
+        accountId: 'acc-1',
+        profileType: 'venue',
+        displayName: 'Perfil',
+        aggregateRevision: revision,
+        nestedProfileGroups: groups,
+      );
+      final localGroups = <TenantAdminNestedProfileGroup>[
+        TenantAdminNestedProfileGroup(
+          idValue: TenantAdminNestedProfileGroupTextValue('artists'),
+          labelValue: TenantAdminNestedProfileGroupTextValue('Local Artists'),
+          orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+          memberCountValue: TenantAdminCountValue(7),
+        ),
+        TenantAdminNestedProfileGroup(
+          idValue: TenantAdminNestedProfileGroupTextValue('partners'),
+          labelValue: TenantAdminNestedProfileGroupTextValue('Local Partners'),
+          orderValue: TenantAdminNestedProfileGroupOrderValue(1),
+          memberCountValue: TenantAdminCountValue(11),
+        ),
+      ];
+      final repository = _FakeAccountProfilesRepository([
+        profileWith(localGroups, 4),
+      ], const []);
+      repository.moveNestedProfileGroupResult =
+          TenantAdminGroupOrderMutationResult(
+            accountProfileIdValue: TenantAdminNestedProfileGroupTextValue(
+              'foreign-profile',
+            ),
+            groups: [
+              TenantAdminGroupOrderEntry(
+                idValue: TenantAdminNestedProfileGroupTextValue('partners'),
+                orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+              ),
+              TenantAdminGroupOrderEntry(
+                idValue: TenantAdminNestedProfileGroupTextValue('artists'),
+                orderValue: TenantAdminNestedProfileGroupOrderValue(1),
+              ),
+            ],
+          );
+      final reconciledProfile = profileWith([
+        localGroups[1].copyWith(
+          orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+        ),
+        localGroups[0].copyWith(
+          orderValue: TenantAdminNestedProfileGroupOrderValue(1),
+        ),
+      ], 5);
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: repository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+      await controller.loadEditProfile('profile-1');
+      repository.accountProfileFetchOverrides['profile-1'] = reconciledProfile;
+
+      await controller.moveEditNestedProfileGroupHead(
+        accountProfileId: 'profile-1',
+        groupId: 'partners',
+        delta: -1,
+      );
+
+      expect(repository.moveNestedProfileGroupCalls, 1);
+      expect(repository.fetchAccountProfileCalls, 2);
+      expect(
+        controller.editStateStreamValue.value.nestedProfileGroups.map(
+          (group) => group.id,
+        ),
+        ['partners', 'artists'],
+      );
+      expect(
+        controller.editStateStreamValue.value.nestedProfileGroups.map(
+          (group) => group.label,
+        ),
+        ['Local Partners', 'Local Artists'],
+      );
+      expect(controller.accountProfileStreamValue.value?.aggregateRevision, 5);
+    },
+  );
+
+  test(
+    'group move single-flights ten triggers across three repetitions',
+    () async {
+      for (var repetition = 0; repetition < 3; repetition++) {
+        final groups = <TenantAdminNestedProfileGroup>[
+          TenantAdminNestedProfileGroup(
+            idValue: TenantAdminNestedProfileGroupTextValue('artists'),
+            labelValue: TenantAdminNestedProfileGroupTextValue('Artists'),
+            orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+            memberCountValue: TenantAdminCountValue(7),
+          ),
+          TenantAdminNestedProfileGroup(
+            idValue: TenantAdminNestedProfileGroupTextValue('partners'),
+            labelValue: TenantAdminNestedProfileGroupTextValue('Partners'),
+            orderValue: TenantAdminNestedProfileGroupOrderValue(1),
+            memberCountValue: TenantAdminCountValue(11),
+          ),
+        ];
+        final repository = _FakeAccountProfilesRepository([
+          tenantAdminAccountProfileFromRaw(
+            id: 'profile-$repetition',
+            accountId: 'acc-$repetition',
+            profileType: 'venue',
+            displayName: 'Perfil',
+            nestedProfileGroups: groups,
+          ),
+        ], const []);
+        final gate = Completer<TenantAdminGroupOrderMutationResult>();
+        repository.moveNestedProfileGroupGate = gate;
+        final controller = TenantAdminAccountProfilesController(
+          profilesRepository: repository,
+          accountsRepository: _FakeAccountsRepository(),
+          taxonomiesRepository: _FakeTaxonomiesRepository(),
+          locationSelectionService: TenantAdminLocationSelectionService(),
+        );
+        await controller.loadEditProfile('profile-$repetition');
+
+        final attempts = List.generate(
+          10,
+          (_) => controller.moveEditNestedProfileGroupHead(
+            accountProfileId: 'profile-$repetition',
+            groupId: 'partners',
+            delta: -1,
+          ),
+        );
+        await Future.wait(attempts.skip(1));
+
+        expect(repository.moveNestedProfileGroupCalls, 1);
+        expect(controller.editNestedGroupMutationBusyStreamValue.value, isTrue);
+        gate.complete(
+          TenantAdminGroupOrderMutationResult(
+            accountProfileIdValue: TenantAdminNestedProfileGroupTextValue(
+              'profile-$repetition',
+            ),
+            groups: [
+              TenantAdminGroupOrderEntry(
+                idValue: TenantAdminNestedProfileGroupTextValue('partners'),
+                orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+              ),
+              TenantAdminGroupOrderEntry(
+                idValue: TenantAdminNestedProfileGroupTextValue('artists'),
+                orderValue: TenantAdminNestedProfileGroupOrderValue(1),
+              ),
+            ],
+          ),
+        );
+        await attempts.first;
+
+        expect(
+          controller.editNestedGroupMutationBusyStreamValue.value,
+          isFalse,
+        );
+        expect(
+          controller.editStateStreamValue.value.nestedProfileGroups.map(
+            (group) => group.id,
+          ),
+          ['partners', 'artists'],
+        );
+        controller.dispose();
+      }
+    },
+  );
+
+  test(
     'switching create contact mode to mirrored clears draft bubble selection and omits local drafts from save payload',
     () {
       final controller = TenantAdminAccountProfilesController(
@@ -2068,7 +2918,7 @@ void main() {
   );
 
   test(
-    'loadEditProfile does not preload mirrored contact candidates when persisted mode is own',
+    'loadEditProfile does not open a candidate query when persisted mode is own',
     () async {
       final profilesRepository = _FakeAccountProfilesRepository([
         tenantAdminAccountProfileFromRaw(
@@ -2089,29 +2939,31 @@ void main() {
       await controller.loadEditProfile('profile-1');
       await Future<void>.delayed(Duration.zero);
 
-      expect(
-        profilesRepository.fetchAccountProfilesPageContactModes,
-        isNot(contains('own')),
-      );
-      expect(
-        profilesRepository.fetchAccountProfilesPageContactChannelsEnabledOnly,
-        isNot(contains(isTrue)),
-      );
+      expect(profilesRepository.fetchAccountProfilesPageCalls, 0);
     },
   );
 
   test(
-    'loadEditProfile preloads mirrored contact candidates only when persisted mode is mirrored',
+    'loadEditProfile hydrates only the selected mirrored contact source',
     () async {
       final profilesRepository = _FakeAccountProfilesRepository([
         tenantAdminAccountProfileFromRaw(
-          id: 'profile-1',
+          id: '507f1f77bcf86cd799439011',
           accountId: 'acc-1',
           profileType: 'venue',
           displayName: 'Perfil',
           contactMode: BellugaContactSourceMode.mirroredAccountProfile,
+          contactSourceAccountProfileId: '507f1f77bcf86cd799439012',
         ),
       ], const []);
+      profilesRepository
+              .accountProfileFetchOverrides['507f1f77bcf86cd799439012'] =
+          tenantAdminAccountProfileFromRaw(
+            id: '507f1f77bcf86cd799439012',
+            accountId: 'acc-source',
+            profileType: 'venue',
+            displayName: 'Origem',
+          );
       final controller = TenantAdminAccountProfilesController(
         profilesRepository: profilesRepository,
         accountsRepository: _FakeAccountsRepository(),
@@ -2119,16 +2971,17 @@ void main() {
         locationSelectionService: TenantAdminLocationSelectionService(),
       );
 
-      await controller.loadEditProfile('profile-1');
+      await controller.loadEditProfile('507f1f77bcf86cd799439011');
       await Future<void>.delayed(Duration.zero);
 
+      expect(profilesRepository.fetchAccountProfilesPageCalls, 0);
       expect(
-        profilesRepository.fetchAccountProfilesPageContactModes,
-        contains('own'),
+        profilesRepository.lastFetchedProfileId,
+        '507f1f77bcf86cd799439012',
       );
       expect(
-        profilesRepository.fetchAccountProfilesPageContactChannelsEnabledOnly,
-        contains(isTrue),
+        controller.selectedContactSourceProfilesStreamValue.value.single.id,
+        '507f1f77bcf86cd799439012',
       );
     },
   );
@@ -2609,7 +3462,7 @@ void main() {
   );
 
   test(
-    'applyEditNestedGroupSelectionDelta uses canonical members subresource and refreshes profile',
+    'applyEditNestedGroupSelectionDelta sends only the explicit bounded delta',
     () async {
       final refreshedProfile = tenantAdminAccountProfileFromRaw(
         id: 'profile-1',
@@ -2636,32 +3489,6 @@ void main() {
               aggregateRevision: 4,
             ),
           ], const <TenantAdminProfileTypeDefinition>[]);
-      profilesRepository.nestedGroupMemberPagesByGroupId['parceiros'] =
-          <TenantAdminNestedGroupMemberPage>[
-            TenantAdminNestedGroupMemberPage(
-              items: <TenantAdminAccountProfileSelectionSummary>[
-                TenantAdminAccountProfileSelectionSummary(
-                  idValue: TenantAdminAccountProfileIdValue('profile-a'),
-                  displayNameValue: TenantAdminOptionalTextValue()
-                    ..parse('Perfil A'),
-                  isQueryableCandidateValue: TenantAdminFlagValue(true),
-                ),
-              ],
-              nextCursorValue: TenantAdminOptionalTextValue()
-                ..parse('cursor-2'),
-            ),
-            TenantAdminNestedGroupMemberPage(
-              items: <TenantAdminAccountProfileSelectionSummary>[
-                TenantAdminAccountProfileSelectionSummary(
-                  idValue: TenantAdminAccountProfileIdValue('profile-b'),
-                  displayNameValue: TenantAdminOptionalTextValue()
-                    ..parse('Perfil B'),
-                  isQueryableCandidateValue: TenantAdminFlagValue(true),
-                ),
-              ],
-              nextCursorValue: TenantAdminOptionalTextValue(),
-            ),
-          ];
       profilesRepository.accountProfileFetchOverrides['profile-1'] =
           refreshedProfile;
       final controller = TenantAdminAccountProfilesController(
@@ -2671,22 +3498,20 @@ void main() {
         locationSelectionService: TenantAdminLocationSelectionService(),
       );
 
-      final baseline = await controller.loadEditNestedGroupMemberBaseline(
-        accountProfileId: 'profile-1',
-        groupId: 'parceiros',
+      final current = TenantAdminAccountProfileSelectionSummary(
+        idValue: TenantAdminAccountProfileIdValue('profile-a'),
+        displayNameValue: TenantAdminOptionalTextValue()..parse('Perfil A'),
+        isQueryableCandidateValue: TenantAdminFlagValue(true),
       );
-
-      expect(baseline.map((entry) => entry.id).toList(), <String>[
-        'profile-a',
-        'profile-b',
-      ]);
 
       final saved = await controller.applyEditNestedGroupSelectionDelta(
         accountProfileId: 'profile-1',
         groupId: 'parceiros',
-        previousSelections: baseline,
+        previousSelections: <TenantAdminAccountProfileSelectionSummary>[
+          current,
+        ],
         nextSelections: <TenantAdminAccountProfileSelectionSummary>[
-          baseline.first,
+          current,
           TenantAdminAccountProfileSelectionSummary(
             idValue: TenantAdminAccountProfileIdValue('profile-c'),
             displayNameValue: TenantAdminOptionalTextValue()..parse('Perfil C'),
@@ -2696,10 +3521,6 @@ void main() {
       );
 
       expect(saved, isTrue);
-      expect(profilesRepository.lastNestedGroupMembersProfileId, 'profile-1');
-      expect(profilesRepository.lastNestedGroupMembersGroupId, 'parceiros');
-      expect(profilesRepository.lastNestedGroupMembersPerPage, 50);
-      expect(profilesRepository.lastNestedGroupMembersCursor, 'cursor-2');
       expect(
         profilesRepository.lastPatchNestedGroupMembersProfileId,
         'profile-1',
@@ -2715,9 +3536,7 @@ void main() {
       expect(profilesRepository.lastPatchNestedGroupAddIds, <String>[
         'profile-c',
       ]);
-      expect(profilesRepository.lastPatchNestedGroupRemoveIds, <String>[
-        'profile-b',
-      ]);
+      expect(profilesRepository.lastPatchNestedGroupRemoveIds, isEmpty);
       expect(controller.accountProfileStreamValue.value?.aggregateRevision, 5);
       expect(
         controller.editSuccessMessageStreamValue.value,
@@ -2727,35 +3546,46 @@ void main() {
   );
 
   test(
-    'submitUpdateProfile forwards gallery groups to gallery update',
+    'submitUpdateProfile preserves independently loaded gallery state',
     () async {
-      final profilesRepository = _FakeAccountProfilesRepository(
-        [
-          tenantAdminAccountProfileFromRaw(
-            id: 'profile-1',
-            accountId: 'acc-1',
-            profileType: 'venue',
-            displayName: 'Perfil',
-          ),
-        ],
-        [
-          tenantAdminProfileTypeDefinitionFromRaw(
-            type: 'venue',
-            label: 'Venue',
-            allowedTaxonomies: [],
-            capabilities: TenantAdminProfileTypeCapabilities(
-              isFavoritable: TenantAdminFlagValue(true),
-              isPoiEnabled: TenantAdminFlagValue(true),
-              hasBio: TenantAdminFlagValue(false),
-              hasContent: TenantAdminFlagValue(false),
-              hasTaxonomies: TenantAdminFlagValue(false),
-              hasAvatar: TenantAdminFlagValue(false),
-              hasCover: TenantAdminFlagValue(false),
-              hasEvents: TenantAdminFlagValue(false),
-            ),
-          ),
-        ],
+      final loadedProfile = tenantAdminAccountProfileFromRaw(
+        id: 'profile-1',
+        accountId: 'acc-1',
+        profileType: 'venue',
+        displayName: 'Perfil',
+        galleryGroups: [_galleryGroup()],
+        galleryCapabilities: TenantAdminAccountProfileGalleryCapabilities(
+          maxGalleriesValue: TenantAdminCountValue(6),
+          maxItemsPerGalleryValue: TenantAdminCountValue(12),
+        ),
       );
+      final profilesRepository =
+          _FakeAccountProfilesRepository(
+              [loadedProfile],
+              [
+                tenantAdminProfileTypeDefinitionFromRaw(
+                  type: 'venue',
+                  label: 'Venue',
+                  allowedTaxonomies: [],
+                  capabilities: TenantAdminProfileTypeCapabilities(
+                    isFavoritable: TenantAdminFlagValue(true),
+                    isPoiEnabled: TenantAdminFlagValue(true),
+                    hasBio: TenantAdminFlagValue(false),
+                    hasContent: TenantAdminFlagValue(false),
+                    hasTaxonomies: TenantAdminFlagValue(false),
+                    hasAvatar: TenantAdminFlagValue(false),
+                    hasCover: TenantAdminFlagValue(false),
+                    hasEvents: TenantAdminFlagValue(false),
+                  ),
+                ),
+              ],
+            )
+            ..updateAccountProfileOverride = tenantAdminAccountProfileFromRaw(
+              id: 'profile-1',
+              accountId: 'acc-1',
+              profileType: 'venue',
+              displayName: 'Perfil atualizado',
+            );
       final controller = TenantAdminAccountProfilesController(
         profilesRepository: profilesRepository,
         accountsRepository: _FakeAccountsRepository(),
@@ -2763,6 +3593,7 @@ void main() {
         locationSelectionService: TenantAdminLocationSelectionService(),
       );
 
+      await controller.loadEditProfile('profile-1');
       await controller.submitUpdateProfile(
         accountProfileId: 'profile-1',
         profileType: 'venue',
@@ -2774,31 +3605,437 @@ void main() {
         taxonomyTerms: const TenantAdminTaxonomyTerms.empty(),
         avatarUpload: null,
         coverUpload: null,
-        galleryGroups: <TenantAdminAccountProfileGalleryUpdateGroup>[
-          TenantAdminAccountProfileGalleryUpdateGroup(
-            groupIdValue: TenantAdminNestedProfileGroupTextValue('group-1'),
-            subtitleValue: TenantAdminNestedProfileGroupTextValue('Ambiente'),
-            orderValue: TenantAdminNestedProfileGroupOrderValue(0),
-            items: <TenantAdminAccountProfileGalleryUpdateItem>[
-              TenantAdminAccountProfileGalleryUpdateItem(
-                itemIdValue: TenantAdminNestedProfileGroupTextValue(
-                  'gallery-item-1',
-                ),
-                descriptionValue: TenantAdminOptionalTextValue()
-                  ..parse('Vista para o palco'),
-                orderValue: TenantAdminNestedProfileGroupOrderValue(0),
-              ),
-            ],
-          ),
-        ],
       );
 
-      expect(profilesRepository.lastGalleryGroups, hasLength(1));
-      expect(profilesRepository.lastGalleryGroups!.first.subtitle, 'Ambiente');
+      expect(controller.editStateStreamValue.value.galleryGroups, hasLength(1));
       expect(
-        profilesRepository.lastGalleryGroups!.first.items.first.description,
-        'Vista para o palco',
+        controller.editStateStreamValue.value.galleryCapabilities.maxGalleries,
+        6,
       );
+      expect(
+        controller
+            .editStateStreamValue
+            .value
+            .galleryCapabilities
+            .maxItemsPerGallery,
+        12,
+      );
+    },
+  );
+
+  test(
+    'submitAutoSaveImages preserves independently loaded gallery state',
+    () async {
+      final loadedProfile = tenantAdminAccountProfileFromRaw(
+        id: 'profile-1',
+        accountId: 'acc-1',
+        profileType: 'venue',
+        displayName: 'Perfil',
+        galleryGroups: [_galleryGroup()],
+        galleryCapabilities: TenantAdminAccountProfileGalleryCapabilities(
+          maxGalleriesValue: TenantAdminCountValue(7),
+          maxItemsPerGalleryValue: TenantAdminCountValue(13),
+        ),
+      );
+      final profilesRepository =
+          _FakeAccountProfilesRepository([loadedProfile], const [])
+            ..updateAccountProfileOverride = tenantAdminAccountProfileFromRaw(
+              id: 'profile-1',
+              accountId: 'acc-1',
+              profileType: 'venue',
+              displayName: 'Perfil',
+              avatarUrl: 'https://tenant.test/avatar.png',
+            );
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+
+      await controller.loadEditProfile('profile-1');
+      await controller.submitAutoSaveImages(
+        accountProfileId: 'profile-1',
+        avatarUpload: null,
+        coverUpload: null,
+        avatarUrl: 'https://tenant.test/avatar.png',
+      );
+
+      expect(
+        controller.editStateStreamValue.value.galleryGroups.single.groupId,
+        'group-1',
+      );
+      expect(
+        controller.editStateStreamValue.value.galleryCapabilities.maxGalleries,
+        7,
+      );
+      expect(
+        controller
+            .editStateStreamValue
+            .value
+            .galleryCapabilities
+            .maxItemsPerGallery,
+        13,
+      );
+    },
+  );
+
+  test('gallery create applies the authoritative mutation snapshot', () async {
+    final profilesRepository =
+        _FakeAccountProfilesRepository([
+            tenantAdminAccountProfileFromRaw(
+              id: 'profile-1',
+              accountId: 'acc-1',
+              profileType: 'venue',
+              displayName: 'Perfil',
+            ),
+          ], const [])
+          ..gallerySnapshotToReturn = TenantAdminAccountProfileGallerySnapshot(
+            groups: [_galleryGroup()],
+            capabilities: TenantAdminAccountProfileGalleryCapabilities(
+              maxGalleriesValue: TenantAdminCountValue(6),
+              maxItemsPerGalleryValue: TenantAdminCountValue(12),
+            ),
+          );
+    final controller = TenantAdminAccountProfilesController(
+      profilesRepository: profilesRepository,
+      accountsRepository: _FakeAccountsRepository(),
+      taxonomiesRepository: _FakeTaxonomiesRepository(),
+      locationSelectionService: TenantAdminLocationSelectionService(),
+    );
+
+    await controller.loadEditProfile('profile-1');
+    await controller.addEditGalleryGroup('Ambiente');
+
+    expect(profilesRepository.createGalleryGroupCalls, 1);
+    expect(controller.editStateStreamValue.value.galleryGroups, hasLength(1));
+    expect(
+      controller.editStateStreamValue.value.galleryCapabilities.maxGalleries,
+      6,
+    );
+  });
+
+  test('gallery controller delegates independent CRUD mutations', () async {
+    final snapshot = TenantAdminAccountProfileGallerySnapshot(
+      groups: [_galleryGroup()],
+      capabilities: TenantAdminAccountProfileGalleryCapabilities(
+        maxGalleriesValue: TenantAdminCountValue(6),
+        maxItemsPerGalleryValue: TenantAdminCountValue(12),
+      ),
+    );
+    final profilesRepository = _FakeAccountProfilesRepository([
+      tenantAdminAccountProfileFromRaw(
+        id: 'profile-1',
+        accountId: 'acc-1',
+        profileType: 'venue',
+        displayName: 'Perfil',
+        galleryGroups: [_galleryGroup()],
+      ),
+    ], const [])..gallerySnapshotToReturn = snapshot;
+    final controller = TenantAdminAccountProfilesController(
+      profilesRepository: profilesRepository,
+      accountsRepository: _FakeAccountsRepository(),
+      taxonomiesRepository: _FakeTaxonomiesRepository(),
+      locationSelectionService: TenantAdminLocationSelectionService(),
+    );
+
+    await controller.loadEditProfile('profile-1');
+    await controller.renameEditGalleryGroup('group-1', 'Palco');
+    await controller.addEditGalleryYoutube(
+      groupId: 'group-1',
+      youtubeUrl: 'https://youtu.be/dQw4w9WgXcQ',
+    );
+    await controller.replaceEditGalleryYoutube(
+      groupId: 'group-1',
+      itemId: 'item-1',
+      youtubeUrl: 'https://youtube.com/shorts/69ePBThnsVg',
+    );
+    await controller.updateEditGalleryItemDescription(
+      groupId: 'group-1',
+      itemId: 'item-1',
+      description: 'Vista principal',
+    );
+    await controller.updateEditGalleryItemTitle(
+      groupId: 'group-1',
+      itemId: 'item-1',
+      title: 'Um minuto na praia',
+    );
+    await controller.removeEditGalleryItem(
+      groupId: 'group-1',
+      itemId: 'item-1',
+    );
+    await controller.removeEditGalleryGroup('group-1');
+
+    expect(profilesRepository.galleryMutationCalls, [
+      'rename:profile-1:group-1:Palco',
+      'create-item:profile-1:group-1:youtube:https://youtu.be/dQw4w9WgXcQ',
+      'update-item:profile-1:group-1:item-1:null:null:https://youtube.com/shorts/69ePBThnsVg',
+      'update-item:profile-1:group-1:item-1:null:Vista principal:null',
+      'update-item:profile-1:group-1:item-1:Um minuto na praia:null:null',
+      'delete-item:profile-1:group-1:item-1',
+      'delete-group:profile-1:group-1',
+    ]);
+    expect(controller.editStateStreamValue.value.galleryGroups, hasLength(1));
+  });
+
+  test(
+    'gallery reorder restores the prior row after a transport failure',
+    () async {
+      final profilesRepository =
+          _FakeAccountProfilesRepository([
+              tenantAdminAccountProfileFromRaw(
+                id: 'profile-1',
+                accountId: 'acc-1',
+                profileType: 'venue',
+                displayName: 'Perfil',
+                galleryGroups: [
+                  _galleryGroup(),
+                  _galleryGroup(
+                    groupId: 'group-2',
+                    subtitle: 'Palco',
+                    order: 1,
+                  ),
+                ],
+              ),
+            ], const [])
+            ..reorderGalleryGroupsError = FormValidationFailure(
+              statusCode: 422,
+              message: 'A ordem mudou no servidor.',
+              fieldErrors: const {
+                'group_ids': ['A lista de grupos está desatualizada.'],
+                'title': ['Não existe campo de título neste reorder.'],
+              },
+            );
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+
+      await controller.loadEditProfile('profile-1');
+      await controller.moveEditGalleryGroup('group-1', 1);
+
+      expect(profilesRepository.reorderGalleryGroupsCalls, 1);
+      expect(
+        controller.editStateStreamValue.value.galleryGroups.map(
+          (group) => group.groupId,
+        ),
+        ['group-1', 'group-2'],
+      );
+      expect(controller.editGalleryFieldErrorsStreamValue.value, isEmpty);
+      expect(
+        controller.editGalleryOperationErrorStreamValue.value,
+        'A ordem mudou no servidor.',
+      );
+      expect(controller.editErrorMessageStreamValue.value, isNull);
+    },
+  );
+
+  test(
+    'capability-loss validation remains visible as an operation error',
+    () async {
+      final profilesRepository =
+          _FakeAccountProfilesRepository([
+              tenantAdminAccountProfileFromRaw(
+                id: 'profile-1',
+                accountId: 'acc-1',
+                profileType: 'venue',
+                displayName: 'Perfil',
+              ),
+            ], const [])
+            ..createGalleryGroupError = FormValidationFailure(
+              statusCode: 422,
+              message: 'Galerias não estão disponíveis para este perfil.',
+              fieldErrors: const {
+                'gallery_groups': ['A capability de galeria foi removida.'],
+              },
+            );
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+
+      await controller.loadEditProfile('profile-1');
+      await controller.addEditGalleryGroup('Ambiente');
+
+      expect(controller.editGalleryFieldErrorsStreamValue.value, isEmpty);
+      expect(
+        controller.editGalleryOperationErrorStreamValue.value,
+        'Galerias não estão disponíveis para este perfil.',
+      );
+      expect(controller.editErrorMessageStreamValue.value, isNull);
+    },
+  );
+
+  test('gallery item reorder restores the prior row after failure', () async {
+    final profilesRepository = _FakeAccountProfilesRepository([
+      tenantAdminAccountProfileFromRaw(
+        id: 'profile-1',
+        accountId: 'acc-1',
+        profileType: 'venue',
+        displayName: 'Perfil',
+        galleryGroups: [_galleryGroup(includeSecondItem: true)],
+      ),
+    ], const [])..reorderGalleryItemsError = StateError('offline');
+    final controller = TenantAdminAccountProfilesController(
+      profilesRepository: profilesRepository,
+      accountsRepository: _FakeAccountsRepository(),
+      taxonomiesRepository: _FakeTaxonomiesRepository(),
+      locationSelectionService: TenantAdminLocationSelectionService(),
+    );
+
+    await controller.loadEditProfile('profile-1');
+    await controller.moveEditGalleryItem(
+      groupId: 'group-1',
+      itemId: 'item-1',
+      delta: 1,
+    );
+
+    expect(
+      profilesRepository.galleryMutationCalls.single,
+      'reorder-items:profile-1:group-1:item-2,item-1',
+    );
+    expect(
+      controller.editStateStreamValue.value.galleryGroups.single.items.map(
+        (item) => item.itemId,
+      ),
+      ['item-1', 'item-2'],
+    );
+  });
+
+  test(
+    'capacity rejection refreshes once and never replays the mutation',
+    () async {
+      final profilesRepository =
+          _FakeAccountProfilesRepository([
+              tenantAdminAccountProfileFromRaw(
+                id: 'profile-1',
+                accountId: 'acc-1',
+                profileType: 'venue',
+                displayName: 'Perfil',
+                galleryCapabilities:
+                    TenantAdminAccountProfileGalleryCapabilities(
+                      maxGalleriesValue: TenantAdminCountValue(2),
+                      maxItemsPerGalleryValue: TenantAdminCountValue(3),
+                    ),
+              ),
+            ], const [])
+            ..createGalleryGroupError = FormValidationFailure(
+              statusCode: 422,
+              message: 'Limite do plano atingido.',
+              fieldErrors: const {
+                'gallery_capabilities.max_galleries': ['Limite atingido.'],
+              },
+            );
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+
+      await controller.loadEditProfile('profile-1');
+      await controller.addEditGalleryGroup('Outra');
+
+      expect(profilesRepository.createGalleryGroupCalls, 1);
+      expect(profilesRepository.fetchAccountProfileCalls, 2);
+      expect(
+        controller.editGalleryFieldErrorsStreamValue.value,
+        contains('gallery_capabilities.max_galleries'),
+      );
+      expect(controller.editGalleryOperationErrorStreamValue.value, isNull);
+    },
+  );
+
+  test('gallery item validation is scoped to the addressed control', () async {
+    final profilesRepository =
+        _FakeAccountProfilesRepository([
+            tenantAdminAccountProfileFromRaw(
+              id: 'profile-1',
+              accountId: 'acc-1',
+              profileType: 'venue',
+              displayName: 'Perfil',
+              galleryGroups: [_galleryGroup()],
+            ),
+          ], const [])
+          ..updateGalleryItemError = FormValidationFailure(
+            statusCode: 422,
+            message: 'Título inválido.',
+            fieldErrors: const {
+              'title': ['Use no máximo 255 caracteres.'],
+            },
+          );
+    final controller = TenantAdminAccountProfilesController(
+      profilesRepository: profilesRepository,
+      accountsRepository: _FakeAccountsRepository(),
+      taxonomiesRepository: _FakeTaxonomiesRepository(),
+      locationSelectionService: TenantAdminLocationSelectionService(),
+    );
+
+    await controller.loadEditProfile('profile-1');
+    await controller.updateEditGalleryItemTitle(
+      groupId: 'group-1',
+      itemId: 'item-1',
+      title: 'Título corrigível',
+    );
+
+    expect(controller.editGalleryFieldErrorsStreamValue.value, {
+      'group.group-1.item.item-1.title': 'Use no máximo 255 caracteres.',
+    });
+    expect(controller.editGalleryOperationErrorStreamValue.value, isNull);
+    expect(controller.editErrorMessageStreamValue.value, isNull);
+  });
+
+  test(
+    'gallery operation failure stays section-owned until the next mutation',
+    () async {
+      final profile = tenantAdminAccountProfileFromRaw(
+        id: 'profile-1',
+        accountId: 'acc-1',
+        profileType: 'venue',
+        displayName: 'Perfil',
+        galleryGroups: [_galleryGroup()],
+      );
+      final profilesRepository = _FakeAccountProfilesRepository([
+        profile,
+      ], const [])..updateGalleryItemError = Exception('Falha de rede');
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+
+      await controller.loadEditProfile('profile-1');
+      await controller.updateEditGalleryItemTitle(
+        groupId: 'group-1',
+        itemId: 'item-1',
+        title: 'Título corrigível',
+      );
+
+      expect(
+        controller.editGalleryOperationErrorStreamValue.value,
+        contains('Falha de rede'),
+      );
+      expect(controller.editGalleryFieldErrorsStreamValue.value, isEmpty);
+      expect(controller.editErrorMessageStreamValue.value, isNull);
+
+      profilesRepository
+        ..updateGalleryItemError = null
+        ..gallerySnapshotToReturn = TenantAdminAccountProfileGallerySnapshot(
+          groups: profile.galleryGroups,
+          capabilities: profile.galleryCapabilities,
+        );
+      await controller.updateEditGalleryItemTitle(
+        groupId: 'group-1',
+        itemId: 'item-1',
+        title: 'Título confirmado',
+      );
+
+      expect(controller.editGalleryOperationErrorStreamValue.value, isNull);
     },
   );
 
@@ -2852,71 +4089,62 @@ void main() {
         taxonomyTerms: const TenantAdminTaxonomyTerms.empty(),
         avatarUpload: null,
         coverUpload: null,
-        galleryGroups: const <TenantAdminAccountProfileGalleryUpdateGroup>[],
       );
-
-      expect(profilesRepository.lastGalleryGroups, isNull);
     },
   );
 
-  test(
-    'submitUpdateProfile still forwards empty gallery groups when loaded persisted gallery had content',
-    () async {
-      final profilesRepository = _FakeAccountProfilesRepository(
-        [
-          tenantAdminAccountProfileFromRaw(
-            id: 'profile-1',
-            accountId: 'acc-1',
-            profileType: 'venue',
-            displayName: 'Perfil',
-            galleryGroups: <TenantAdminAccountProfileGalleryGroup>[
-              _galleryGroup(),
-            ],
+  test('submitUpdateProfile preserves persisted gallery content', () async {
+    final profilesRepository = _FakeAccountProfilesRepository(
+      [
+        tenantAdminAccountProfileFromRaw(
+          id: 'profile-1',
+          accountId: 'acc-1',
+          profileType: 'venue',
+          displayName: 'Perfil',
+          galleryGroups: <TenantAdminAccountProfileGalleryGroup>[
+            _galleryGroup(),
+          ],
+        ),
+      ],
+      [
+        tenantAdminProfileTypeDefinitionFromRaw(
+          type: 'venue',
+          label: 'Venue',
+          allowedTaxonomies: [],
+          capabilities: TenantAdminProfileTypeCapabilities(
+            isFavoritable: TenantAdminFlagValue(true),
+            isPoiEnabled: TenantAdminFlagValue(true),
+            hasBio: TenantAdminFlagValue(false),
+            hasContent: TenantAdminFlagValue(false),
+            hasTaxonomies: TenantAdminFlagValue(false),
+            hasAvatar: TenantAdminFlagValue(false),
+            hasCover: TenantAdminFlagValue(false),
+            hasEvents: TenantAdminFlagValue(false),
           ),
-        ],
-        [
-          tenantAdminProfileTypeDefinitionFromRaw(
-            type: 'venue',
-            label: 'Venue',
-            allowedTaxonomies: [],
-            capabilities: TenantAdminProfileTypeCapabilities(
-              isFavoritable: TenantAdminFlagValue(true),
-              isPoiEnabled: TenantAdminFlagValue(true),
-              hasBio: TenantAdminFlagValue(false),
-              hasContent: TenantAdminFlagValue(false),
-              hasTaxonomies: TenantAdminFlagValue(false),
-              hasAvatar: TenantAdminFlagValue(false),
-              hasCover: TenantAdminFlagValue(false),
-              hasEvents: TenantAdminFlagValue(false),
-            ),
-          ),
-        ],
-      );
-      final controller = TenantAdminAccountProfilesController(
-        profilesRepository: profilesRepository,
-        accountsRepository: _FakeAccountsRepository(),
-        taxonomiesRepository: _FakeTaxonomiesRepository(),
-        locationSelectionService: TenantAdminLocationSelectionService(),
-      );
+        ),
+      ],
+    );
+    final controller = TenantAdminAccountProfilesController(
+      profilesRepository: profilesRepository,
+      accountsRepository: _FakeAccountsRepository(),
+      taxonomiesRepository: _FakeTaxonomiesRepository(),
+      locationSelectionService: TenantAdminLocationSelectionService(),
+    );
 
-      await controller.loadEditProfile('profile-1');
-      await controller.submitUpdateProfile(
-        accountProfileId: 'profile-1',
-        profileType: 'venue',
-        displayName: 'Perfil atualizado',
-        contactMode: BellugaContactSourceMode.own,
-        location: null,
-        bio: null,
-        content: null,
-        taxonomyTerms: const TenantAdminTaxonomyTerms.empty(),
-        avatarUpload: null,
-        coverUpload: null,
-        galleryGroups: const <TenantAdminAccountProfileGalleryUpdateGroup>[],
-      );
-
-      expect(profilesRepository.lastGalleryGroups, isEmpty);
-    },
-  );
+    await controller.loadEditProfile('profile-1');
+    await controller.submitUpdateProfile(
+      accountProfileId: 'profile-1',
+      profileType: 'venue',
+      displayName: 'Perfil atualizado',
+      contactMode: BellugaContactSourceMode.own,
+      location: null,
+      bio: null,
+      content: null,
+      taxonomyTerms: const TenantAdminTaxonomyTerms.empty(),
+      avatarUpload: null,
+      coverUpload: null,
+    );
+  });
 
   test(
     'loadEditProfile reuses the route-resolved profile when provided',
@@ -3031,228 +4259,11 @@ void main() {
   );
 
   test(
-    'loadNestedProfileCandidates requests backend queryable-only candidates and excludes current profile',
-    () async {
-      final profilesRepository = _FakeAccountProfilesRepository([
-        tenantAdminAccountProfileFromRaw(
-          id: 'profile-1',
-          accountId: 'acc-1',
-          profileType: 'venue',
-          displayName: 'Perfil atual',
-          slug: 'perfil-atual',
-        ),
-        tenantAdminAccountProfileFromRaw(
-          id: 'profile-2',
-          accountId: 'acc-2',
-          profileType: 'artist',
-          displayName: 'Perfil candidato',
-          slug: 'perfil-candidato',
-        ),
-      ], const []);
-      final controller = TenantAdminAccountProfilesController(
-        profilesRepository: profilesRepository,
-        accountsRepository: _FakeAccountsRepository(),
-        taxonomiesRepository: _FakeTaxonomiesRepository(),
-        locationSelectionService: TenantAdminLocationSelectionService(),
-      );
-
-      await controller.loadNestedProfileCandidates(
-        excludeProfileId: 'profile-1',
-      );
-
-      expect(profilesRepository.fetchAccountProfilesPageCalls, 1);
-      expect(profilesRepository.lastFetchPage, 1);
-      expect(profilesRepository.lastFetchPageSize, 20);
-      expect(profilesRepository.lastFetchQueryableOnly, isTrue);
-      expect(profilesRepository.lastFetchExcludeAccountProfileId, 'profile-1');
-      expect(
-        controller.nestedProfileCandidatesStreamValue.value
-            .map((profile) => profile.id)
-            .toList(growable: false),
-        ['profile-2'],
-      );
-    },
-  );
-
-  test(
-    'loadContactSourceCandidates uses only the canonical generic page query',
-    () async {
-      final profilesRepository = _FakeAccountProfilesRepository([
-        tenantAdminAccountProfileFromRaw(
-          id: 'profile-current',
-          accountId: 'acc-1',
-          profileType: 'venue',
-          displayName: 'Perfil atual',
-        ),
-        tenantAdminAccountProfileFromRaw(
-          id: 'profile-source',
-          accountId: 'acc-2',
-          profileType: 'contact_source',
-          displayName: 'Perfil de origem',
-        ),
-      ], const []);
-      final controller = TenantAdminAccountProfilesController(
-        profilesRepository: profilesRepository,
-        accountsRepository: _FakeAccountsRepository(),
-        taxonomiesRepository: _FakeTaxonomiesRepository(),
-        locationSelectionService: TenantAdminLocationSelectionService(),
-      );
-
-      await controller.loadContactSourceCandidates(
-        excludeProfileId: 'profile-current',
-      );
-
-      expect(profilesRepository.fetchAccountProfilesPageCalls, 1);
-      expect(profilesRepository.fetchAccountProfilesCalls, 0);
-      expect(profilesRepository.lastFetchContactMode, 'own');
-      expect(profilesRepository.lastFetchContactChannelsEnabledOnly, isTrue);
-      expect(
-        profilesRepository.lastFetchExcludeAccountProfileId,
-        'profile-current',
-      );
-      expect(
-        controller.contactSourceCandidatesStreamValue.value
-            .map((profile) => profile.id)
-            .toList(growable: false),
-        ['profile-source'],
-      );
-    },
-  );
-
-  test(
-    'loadContactSourceCandidates reruns the latest initial canonical page request after an in-flight request',
-    () async {
-      final burstLevel =
-          int.tryParse(Platform.environment['DELPHI_RACE_BURST_LEVEL'] ?? '') ??
-          2;
-      final profilesRepository = _FakeAccountProfilesRepository([
-        tenantAdminAccountProfileFromRaw(
-          id: 'profile-a',
-          accountId: 'acc-1',
-          profileType: 'contact_source',
-          displayName: 'Perfil A',
-        ),
-        tenantAdminAccountProfileFromRaw(
-          id: 'profile-b',
-          accountId: 'acc-2',
-          profileType: 'contact_source',
-          displayName: 'Perfil B',
-        ),
-        tenantAdminAccountProfileFromRaw(
-          id: 'profile-c',
-          accountId: 'acc-3',
-          profileType: 'contact_source',
-          displayName: 'Perfil C',
-        ),
-      ], const []);
-      final gate = Completer<void>();
-      profilesRepository.fetchAccountProfilesPageGate = gate;
-      final controller = TenantAdminAccountProfilesController(
-        profilesRepository: profilesRepository,
-        accountsRepository: _FakeAccountsRepository(),
-        taxonomiesRepository: _FakeTaxonomiesRepository(),
-        locationSelectionService: TenantAdminLocationSelectionService(),
-      );
-
-      final first = controller.loadContactSourceCandidates(
-        excludeProfileId: 'profile-a',
-      );
-      await Future<void>.delayed(Duration.zero);
-      final pendingExclusions = List<String>.generate(
-        burstLevel - 1,
-        (index) => index.isEven ? 'profile-b' : 'profile-c',
-      );
-      for (final exclusion in pendingExclusions) {
-        await controller.loadContactSourceCandidates(
-          excludeProfileId: exclusion,
-        );
-      }
-      final latestExclusion = pendingExclusions.last;
-      gate.complete();
-      await first;
-      await Future<void>.delayed(Duration.zero);
-      await Future<void>.delayed(Duration.zero);
-
-      expect(profilesRepository.fetchAccountProfilesPageCalls, 2);
-      expect(profilesRepository.fetchAccountProfilesPageExclusions, [
-        'profile-a',
-        latestExclusion,
-      ]);
-      expect(
-        profilesRepository.fetchAccountProfilesPageContactModes,
-        everyElement('own'),
-      );
-      expect(
-        profilesRepository.fetchAccountProfilesPageContactChannelsEnabledOnly,
-        everyElement(isTrue),
-      );
-      expect(
-        controller.contactSourceCandidatesStreamValue.value
-            .map((profile) => profile.id)
-            .toList(growable: false),
-        latestExclusion == 'profile-b'
-            ? ['profile-a', 'profile-c']
-            : ['profile-a', 'profile-b'],
-      );
-    },
-  );
-
-  test(
-    'loadContactSourceCandidates preserves loaded candidates when a later page fails',
-    () async {
-      final profilesRepository = _FakeAccountProfilesRepository(
-        const <TenantAdminAccountProfile>[],
-        const <TenantAdminProfileTypeDefinition>[],
-      );
-      final source = tenantAdminAccountProfileFromRaw(
-        id: 'profile-source',
-        accountId: 'acc-source',
-        profileType: 'contact_source',
-        displayName: 'Perfil de origem',
-      );
-      profilesRepository.fetchAccountProfilesPageOverrides[1] =
-          tenantAdminPagedResultFromRaw(
-            items: [source],
-            hasMore: true,
-            currentPage: 1,
-            pageSize: 50,
-          );
-      profilesRepository.fetchAccountProfilesPageFailingPages.add(2);
-      final controller = TenantAdminAccountProfilesController(
-        profilesRepository: profilesRepository,
-        accountsRepository: _FakeAccountsRepository(),
-        taxonomiesRepository: _FakeTaxonomiesRepository(),
-        locationSelectionService: TenantAdminLocationSelectionService(),
-      );
-
-      await controller.loadContactSourceCandidates();
-      await controller.loadNextContactSourceCandidatesPage();
-
-      expect(controller.contactSourceCandidatesStreamValue.value, [source]);
-      expect(
-        controller.contactSourceCandidatesHasMoreStreamValue.value,
-        isFalse,
-      );
-      expect(
-        controller.contactSourceCandidatesErrorStreamValue.value,
-        contains('account-profiles page 2 failed'),
-      );
-    },
-  );
-
-  test(
     'selecting a mirrored contact source hydrates the full profile detail for bubble preview',
     () async {
       final profilesRepository = _FakeAccountProfilesRepository(
         const <TenantAdminAccountProfile>[],
         const <TenantAdminProfileTypeDefinition>[],
-      );
-      final candidateRow = tenantAdminAccountProfileFromRaw(
-        id: 'profile-source',
-        accountId: 'acc-source',
-        profileType: 'contact_source',
-        displayName: 'Perfil de origem',
-        contactMode: BellugaContactSourceMode.own,
       );
       final hydratedSource = tenantAdminAccountProfileFromRaw(
         id: 'profile-source',
@@ -3268,13 +4279,6 @@ void main() {
           ),
         ],
       );
-      profilesRepository.fetchAccountProfilesPageOverrides[1] =
-          tenantAdminPagedResultFromRaw(
-            items: <TenantAdminAccountProfile>[candidateRow],
-            hasMore: false,
-            currentPage: 1,
-            pageSize: 20,
-          );
       profilesRepository.accountProfileFetchOverrides['profile-source'] =
           hydratedSource;
       final controller = TenantAdminAccountProfilesController(
@@ -3284,9 +4288,6 @@ void main() {
         locationSelectionService: TenantAdminLocationSelectionService(),
       );
 
-      await controller.loadContactSourceCandidates(
-        excludeProfileId: 'profile-current',
-      );
       controller.updateCreateContactMode(
         BellugaContactSourceMode.mirroredAccountProfile,
       );
@@ -3296,13 +4297,147 @@ void main() {
 
       expect(profilesRepository.fetchAccountProfileCalls, 1);
       expect(profilesRepository.lastFetchedProfileId, 'profile-source');
-      final selectedSource = controller.contactSourceCandidatesStreamValue.value
+      final selectedSource = controller
+          .selectedContactSourceProfilesStreamValue
+          .value
           .singleWhere((profile) => profile.id == 'profile-source');
       expect(selectedSource.effectiveContactChannels, hasLength(1));
       expect(
         selectedSource.effectiveContactChannels.single.id,
         'whatsapp-source',
       );
+    },
+  );
+
+  test(
+    'failed create contact-source hydration exposes retry and recovers',
+    () async {
+      final profilesRepository = _FakeAccountProfilesRepository(
+        const <TenantAdminAccountProfile>[],
+        const <TenantAdminProfileTypeDefinition>[],
+      );
+      profilesRepository.accountProfileFetchErrors['profile-source'] =
+          StateError('detail unavailable');
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+
+      controller.updateCreateContactMode(
+        BellugaContactSourceMode.mirroredAccountProfile,
+      );
+      controller.updateCreateContactSourceAccountProfileId('profile-source');
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        controller.selectedContactSourceProfilesStreamValue.value,
+        isEmpty,
+      );
+      expect(
+        controller.selectedContactSourceHydrationErrorStreamValue.value,
+        'Não foi possível carregar o perfil de origem.',
+      );
+
+      profilesRepository.accountProfileFetchErrors.remove('profile-source');
+      profilesRepository.accountProfileFetchOverrides['profile-source'] =
+          tenantAdminAccountProfileFromRaw(
+            id: 'profile-source',
+            accountId: 'acc-source',
+            profileType: 'contact_source',
+            displayName: 'Perfil recuperado',
+          );
+      await controller.retrySelectedContactSourceHydration();
+
+      expect(
+        controller.selectedContactSourceProfilesStreamValue.value.single.id,
+        'profile-source',
+      );
+      expect(
+        controller.selectedContactSourceHydrationErrorStreamValue.value,
+        isNull,
+      );
+      controller.dispose();
+    },
+  );
+
+  test(
+    'failed edit contact-source hydration exposes retryable error',
+    () async {
+      final profilesRepository = _FakeAccountProfilesRepository(
+        const <TenantAdminAccountProfile>[],
+        const <TenantAdminProfileTypeDefinition>[],
+      );
+      profilesRepository.accountProfileFetchErrors['profile-source'] =
+          StateError('detail unavailable');
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+
+      controller.updateEditContactMode(
+        BellugaContactSourceMode.mirroredAccountProfile,
+      );
+      controller.updateEditContactSourceAccountProfileId('profile-source');
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        controller.selectedContactSourceHydrationErrorStreamValue.value,
+        'Não foi possível carregar o perfil de origem.',
+      );
+      controller.dispose();
+    },
+  );
+
+  test(
+    'superseded contact-source failure does not replace current success',
+    () async {
+      final profilesRepository = _FakeAccountProfilesRepository(
+        const <TenantAdminAccountProfile>[],
+        const <TenantAdminProfileTypeDefinition>[],
+      );
+      final stale = Completer<TenantAdminAccountProfile>();
+      profilesRepository.accountProfileFetchFutures['profile-stale'] =
+          stale.future;
+      profilesRepository.accountProfileFetchOverrides['profile-current'] =
+          tenantAdminAccountProfileFromRaw(
+            id: 'profile-current',
+            accountId: 'acc-current',
+            profileType: 'contact_source',
+            displayName: 'Perfil atual',
+          );
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+
+      controller.updateCreateContactMode(
+        BellugaContactSourceMode.mirroredAccountProfile,
+      );
+      controller.updateCreateContactSourceAccountProfileId('profile-stale');
+      controller.updateCreateContactSourceAccountProfileId('profile-current');
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+      stale.completeError(StateError('stale failure'));
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        controller.selectedContactSourceProfilesStreamValue.value.single.id,
+        'profile-current',
+      );
+      expect(
+        controller.selectedContactSourceHydrationErrorStreamValue.value,
+        isNull,
+      );
+      controller.dispose();
     },
   );
 
@@ -3380,196 +4515,6 @@ void main() {
         'Limite de CTAs do WhatsApp atingido.',
       );
       controller.dispose();
-    },
-  );
-
-  test(
-    'searchNestedProfileCandidates keeps selected profiles published across query windows',
-    () async {
-      final profilesRepository = _FakeAccountProfilesRepository([
-        tenantAdminAccountProfileFromRaw(
-          id: 'profile-selected',
-          accountId: 'acc-1',
-          profileType: 'venue',
-          displayName: 'Conta Parceira',
-          slug: 'conta-parceira',
-        ),
-        tenantAdminAccountProfileFromRaw(
-          id: 'profile-runtime',
-          accountId: 'acc-2',
-          profileType: 'artist',
-          displayName: 'Runtime Sender',
-          slug: 'runtime-sender',
-        ),
-        tenantAdminAccountProfileFromRaw(
-          id: 'profile-other',
-          accountId: 'acc-3',
-          profileType: 'publisher',
-          displayName: 'Outra Conta',
-          slug: 'outra-conta',
-        ),
-      ], const []);
-      final controller = TenantAdminAccountProfilesController(
-        profilesRepository: profilesRepository,
-        accountsRepository: _FakeAccountsRepository(),
-        taxonomiesRepository: _FakeTaxonomiesRepository(),
-        locationSelectionService: TenantAdminLocationSelectionService(),
-      );
-
-      controller.addCreateNestedProfileGroup();
-      final groupId =
-          controller.createStateStreamValue.value.nestedProfileGroups.single.id;
-
-      await controller.loadNestedProfileCandidates();
-      controller.toggleCreateNestedProfileGroupMember(
-        groupId: groupId,
-        profileId: 'profile-selected',
-        selected: true,
-      );
-
-      controller.searchNestedProfileCandidates('runtime');
-      await Future<void>.delayed(const Duration(milliseconds: 300));
-      await Future<void>.delayed(Duration.zero);
-
-      expect(profilesRepository.lastFetchSearch, 'runtime');
-      expect(
-        controller.nestedProfileCandidatesStreamValue.value
-            .map((profile) => profile.id)
-            .toList(growable: false),
-        containsAll(<String>['profile-selected', 'profile-runtime']),
-      );
-      expect(
-        controller.nestedProfileCandidatesStreamValue.value.map(
-          (profile) => profile.id,
-        ),
-        isNot(contains('profile-other')),
-      );
-    },
-  );
-
-  test(
-    'searchContactSourceCandidates returns filtered results after initial load completes [RED]',
-    () async {
-      final profilesRepository = _FakeAccountProfilesRepository([
-        tenantAdminAccountProfileFromRaw(
-          id: 'profile-alvo',
-          accountId: 'acc-1',
-          profileType: 'venue',
-          displayName: 'Alvo de Contato',
-          slug: 'alvo-contato',
-        ),
-        tenantAdminAccountProfileFromRaw(
-          id: 'profile-outro',
-          accountId: 'acc-2',
-          profileType: 'venue',
-          displayName: 'Outro Perfil',
-          slug: 'outro-perfil',
-        ),
-      ], const []);
-      final controller = TenantAdminAccountProfilesController(
-        profilesRepository: profilesRepository,
-        accountsRepository: _FakeAccountsRepository(),
-        taxonomiesRepository: _FakeTaxonomiesRepository(),
-        locationSelectionService: TenantAdminLocationSelectionService(),
-      );
-
-      await controller.loadContactSourceCandidates();
-      controller.searchContactSourceCandidates('alvo');
-      await Future<void>.delayed(const Duration(milliseconds: 300));
-      await Future<void>.delayed(Duration.zero);
-
-      expect(profilesRepository.lastFetchSearch, 'alvo');
-      expect(
-        controller.contactSourceCandidatesStreamValue.value
-            .map((profile) => profile.id)
-            .toList(growable: false),
-        contains('profile-alvo'),
-      );
-      expect(
-        controller.contactSourceCandidatesStreamValue.value.map(
-          (profile) => profile.id,
-        ),
-        isNot(contains('profile-outro')),
-      );
-      expect(
-        controller.contactSourceCandidatesLoadingStreamValue.value,
-        isFalse,
-      );
-    },
-  );
-
-  test(
-    'searchNestedProfileCandidates loading clears and results show when filterNestedProfileCandidatesByProfileType fires while initial load is in flight [RED]',
-    () async {
-      final profilesRepository = _FakeAccountProfilesRepository([
-        tenantAdminAccountProfileFromRaw(
-          id: 'profile-artist-alvo',
-          accountId: 'acc-1',
-          profileType: 'artist',
-          displayName: 'Alvo Artista',
-          slug: 'alvo-artista',
-        ),
-        tenantAdminAccountProfileFromRaw(
-          id: 'profile-venue-alvo',
-          accountId: 'acc-2',
-          profileType: 'venue',
-          displayName: 'Alvo Venue',
-          slug: 'alvo-venue',
-        ),
-        tenantAdminAccountProfileFromRaw(
-          id: 'profile-outro',
-          accountId: 'acc-3',
-          profileType: 'artist',
-          displayName: 'Outro Perfil',
-          slug: 'outro-perfil',
-        ),
-      ], const []);
-      final gate = Completer<void>();
-      profilesRepository.fetchAccountProfilesPageGate = gate;
-      final controller = TenantAdminAccountProfilesController(
-        profilesRepository: profilesRepository,
-        accountsRepository: _FakeAccountsRepository(),
-        taxonomiesRepository: _FakeTaxonomiesRepository(),
-        locationSelectionService: TenantAdminLocationSelectionService(),
-      );
-
-      // Initial load starts but is blocked by gate
-      final initial = controller.loadNestedProfileCandidates();
-      await Future<void>.delayed(Duration.zero);
-
-      // Type filter fires before initial load completes (token supersession)
-      controller.filterNestedProfileCandidatesByProfileType('artist');
-      await Future<void>.delayed(Duration.zero);
-
-      // Release gate — both initial (stale) and filter loads now complete
-      gate.complete();
-      await initial;
-      await Future<void>.delayed(Duration.zero);
-      await Future<void>.delayed(Duration.zero);
-
-      // Remove gate so subsequent loads are immediate
-      profilesRepository.fetchAccountProfilesPageGate = null;
-
-      // User now types slowly (filter load has already completed)
-      controller.searchNestedProfileCandidates('alvo');
-      await Future<void>.delayed(const Duration(milliseconds: 300));
-      await Future<void>.delayed(Duration.zero);
-
-      expect(profilesRepository.lastFetchSearch, 'alvo');
-      expect(
-        controller.nestedProfileCandidatesStreamValue.value
-            .map((profile) => profile.id)
-            .toList(growable: false),
-        containsAll(<String>['profile-artist-alvo']),
-      );
-      expect(
-        controller.nestedProfileCandidatesStreamValue.value.map(
-          (profile) => profile.id,
-        ),
-        isNot(contains('profile-outro')),
-      );
-      // Loading must be cleared — stuck loading is the "empty results even with slow typing" failure mode
-      expect(controller.nestedProfileSearchLoadingStreamValue.value, isFalse);
     },
   );
 
@@ -3665,6 +4610,81 @@ void main() {
     },
   );
 
+  test(
+    'submitTaxonomySelectionUpdate preserves independently loaded gallery state',
+    () async {
+      final loadedProfile = tenantAdminAccountProfileFromRaw(
+        id: 'profile-1',
+        accountId: 'acc-1',
+        profileType: 'artist',
+        displayName: 'Perfil',
+        galleryGroups: [_galleryGroup()],
+        galleryCapabilities: TenantAdminAccountProfileGalleryCapabilities(
+          maxGalleriesValue: TenantAdminCountValue(8),
+          maxItemsPerGalleryValue: TenantAdminCountValue(14),
+        ),
+      );
+      final profilesRepository =
+          _FakeAccountProfilesRepository(
+              [loadedProfile],
+              [
+                tenantAdminProfileTypeDefinitionFromRaw(
+                  type: 'artist',
+                  label: 'Artist',
+                  allowedTaxonomies: ['music-style'],
+                  capabilities: TenantAdminProfileTypeCapabilities(
+                    isFavoritable: TenantAdminFlagValue(true),
+                    isPoiEnabled: TenantAdminFlagValue(false),
+                    hasBio: TenantAdminFlagValue(true),
+                    hasContent: TenantAdminFlagValue(true),
+                    hasTaxonomies: TenantAdminFlagValue(true),
+                    hasAvatar: TenantAdminFlagValue(true),
+                    hasCover: TenantAdminFlagValue(true),
+                    hasEvents: TenantAdminFlagValue(true),
+                  ),
+                ),
+              ],
+            )
+            ..updateAccountProfileOverride = tenantAdminAccountProfileFromRaw(
+              id: 'profile-1',
+              accountId: 'acc-1',
+              profileType: 'artist',
+              displayName: 'Perfil',
+            );
+      final controller = TenantAdminAccountProfilesController(
+        profilesRepository: profilesRepository,
+        accountsRepository: _FakeAccountsRepository(),
+        taxonomiesRepository: _FakeTaxonomiesRepository(),
+        locationSelectionService: TenantAdminLocationSelectionService(),
+      );
+
+      await controller.loadEditProfile('profile-1');
+      final saved = await controller.submitTaxonomySelectionUpdate(
+        accountProfileId: 'profile-1',
+        profileType: 'artist',
+        taxonomyTerms: const TenantAdminTaxonomyTerms.empty(),
+      );
+
+      expect(saved, isTrue);
+      expect(
+        controller.editStateStreamValue.value.galleryGroups.single.groupId,
+        'group-1',
+      );
+      expect(
+        controller.editStateStreamValue.value.galleryCapabilities.maxGalleries,
+        8,
+      );
+      expect(
+        controller
+            .editStateStreamValue
+            .value
+            .galleryCapabilities
+            .maxItemsPerGallery,
+        14,
+      );
+    },
+  );
+
   test('loadAccountForCreate stores resolved account slug in stream', () async {
     final profilesRepository = _FakeAccountProfilesRepository([], []);
     final accountsRepository = _FakeAccountsRepository();
@@ -3702,7 +4722,7 @@ void main() {
         locationSelectionService: locationSelectionService,
       );
 
-      await controller.loadAccountDetail('yuri-dias');
+      await controller.loadAccountForEdit('yuri-dias');
       final updated = await controller.updateAccount(
         accountSlug: 'yuri-dias',
         name: 'Conta atualizada',
@@ -3746,11 +4766,28 @@ class _FakeTenantScope implements TenantAdminTenantScopeContract {
       selectedTenantDomainStreamValue.addValue(tenantDomain as String);
 }
 
-TenantAdminAccountProfileGalleryGroup _galleryGroup() {
+AccountProfileExternalLink _parseExternalLink({
+  required String id,
+  required AccountProfileExternalLinkType type,
+  required String url,
+  String? label,
+}) => AccountProfileExternalLinkRegistry.validateMutation(
+  id: AccountProfileExternalLinkIdValue(id),
+  type: type,
+  url: AccountProfileExternalLinkUrlValue(url),
+  label: label == null ? null : AccountProfileExternalLinkLabelValue(label),
+);
+
+TenantAdminAccountProfileGalleryGroup _galleryGroup({
+  String groupId = 'group-1',
+  String subtitle = 'Ambiente',
+  int order = 0,
+  bool includeSecondItem = false,
+}) {
   return TenantAdminAccountProfileGalleryGroup(
-    groupIdValue: TenantAdminNestedProfileGroupTextValue('group-1'),
-    subtitleValue: TenantAdminNestedProfileGroupTextValue('Ambiente'),
-    orderValue: TenantAdminNestedProfileGroupOrderValue(0),
+    groupIdValue: TenantAdminNestedProfileGroupTextValue(groupId),
+    subtitleValue: TenantAdminNestedProfileGroupTextValue(subtitle),
+    orderValue: TenantAdminNestedProfileGroupOrderValue(order),
     items: <TenantAdminAccountProfileGalleryItem>[
       TenantAdminAccountProfileGalleryItem(
         itemIdValue: TenantAdminNestedProfileGroupTextValue('item-1'),
@@ -3766,6 +4803,17 @@ TenantAdminAccountProfileGalleryGroup _galleryGroup() {
         modalUrlValue: TenantAdminOptionalUrlValue()
           ..parse('https://tenant.test/gallery/modal.png'),
       ),
+      if (includeSecondItem)
+        TenantAdminAccountProfileGalleryItem(
+          itemIdValue: TenantAdminNestedProfileGroupTextValue('item-2'),
+          descriptionValue: TenantAdminOptionalTextValue(),
+          orderValue: TenantAdminNestedProfileGroupOrderValue(1),
+          imageUrlValue: TenantAdminOptionalUrlValue()
+            ..parse('https://tenant.test/gallery/image-2.png'),
+          thumbUrlValue: TenantAdminOptionalUrlValue(),
+          cardUrlValue: TenantAdminOptionalUrlValue(),
+          modalUrlValue: TenantAdminOptionalUrlValue(),
+        ),
     ],
   );
 }

@@ -138,6 +138,7 @@ class _TenantAdminProfileTypeDetailScreenState
           if (definition.capabilities.hasGallery) 'Galeria',
           if (definition.capabilities.hasNestedProfileGroups) 'Abas vinculadas',
           if (definition.capabilities.hasContactChannels) 'Contato por canais',
+          if (definition.capabilities.hasExternalLinks) 'Links externos',
         ];
 
         return StreamValueBuilder<bool>(

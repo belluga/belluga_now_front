@@ -35,7 +35,7 @@ void main() {
   );
 
   test(
-    'buildInviteFlowPageDescription falls back to host and tenant naming',
+    'buildInviteFlowPageDescription uses the resolved anonymous inviter name',
     () {
       final invite = buildInviteModelFromPrimitives(
         id: 'invite-2',
@@ -55,7 +55,7 @@ void main() {
         tenantName: 'Guarapari',
       );
 
-      expect(description, 'Convite para Feira Noturna em Anchieta.');
+      expect(description, 'Alguém te convidou para Feira Noturna.');
     },
   );
 }

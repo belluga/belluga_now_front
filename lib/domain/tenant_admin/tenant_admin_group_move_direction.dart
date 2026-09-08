@@ -1,0 +1,1 @@
+enum TenantAdminGroupMoveDirection { up, down }

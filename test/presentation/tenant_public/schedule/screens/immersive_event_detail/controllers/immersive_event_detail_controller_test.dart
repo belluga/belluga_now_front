@@ -12,6 +12,7 @@ import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_type_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
+import 'package:belluga_now/domain/partners/account_profile_nested_group_member_page.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_tag_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_nested_group_member_text_value.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_name_value.dart';
@@ -169,6 +170,20 @@ void main() {
       expect(profiles.single.profileType, 'band');
       expect(profiles.single.publicDetailPath, '/parceiro/banda-azul');
       expect(profiles.single.taxonomyTerms.single.labelValue.value, 'Rock');
+
+      final pathValue = AccountProfilesRepositoryContractPrimString.fromRaw(
+        membersPath,
+        defaultValue: '',
+        isRequired: true,
+      );
+      final retainedStream = accountProfilesRepository
+          .nestedGroupMembersStreamValue(pathValue);
+      controller.onDispose();
+      expect(
+        accountProfilesRepository.nestedGroupMembersStreamValue(pathValue),
+        isNot(same(retainedStream)),
+        reason: 'Route disposal must evict the final retained member page.',
+      );
     },
   );
 
@@ -1289,12 +1304,18 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   ) async => null;
 
   @override
-  Future<List<AccountProfileNestedGroupMember>> getNestedGroupMembersByPath(
-    AccountProfilesRepositoryContractPrimString membersPath,
-  ) async {
+  Future<AccountProfileNestedGroupMemberPage> fetchNestedGroupMembersPageByPath(
+    AccountProfilesRepositoryContractPrimString membersPath, {
+    AccountProfilesRepositoryContractPrimString? cursor,
+    AccountProfilesRepositoryContractPrimString? search,
+  }) async {
     lastNestedGroupMembersPath = membersPath.value;
-    return nestedGroupMembersByPath[membersPath.value] ??
-        const <AccountProfileNestedGroupMember>[];
+    return AccountProfileNestedGroupMemberPage(
+      items:
+          nestedGroupMembersByPath[membersPath.value] ??
+          const <AccountProfileNestedGroupMember>[],
+      nextCursorValue: null,
+    );
   }
 
   @override

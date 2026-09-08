@@ -16,7 +16,7 @@ void main() {
         .setMockMethodCallHandler(packageInfoChannel, (call) async {
       return <String, dynamic>{
         'appName': 'Belluga Now',
-        'packageName': 'com.boora.app',
+        'packageName': 'com.guarappari.app',
         'version': '1.0.0',
         'buildNumber': '1',
       };
@@ -29,11 +29,12 @@ void main() {
   });
 
   test('fetch parses JSON string payload from /environment', () async {
+    final adapter = _StringEnvironmentAdapter();
     final dio = Dio(
       BaseOptions(
         baseUrl: 'https://guarappari.belluga.space',
       ),
-    )..httpClientAdapter = _StringEnvironmentAdapter();
+    )..httpClientAdapter = adapter;
 
     final backend = AppDataBackend(dio: dio);
     final dto = await backend.fetch();
@@ -42,6 +43,7 @@ void main() {
     expect(dto.mainDomain, 'https://guarappari.belluga.space');
     expect(dto.name, 'Guarappari');
     expect(dto.themeDataSettings['primary_seed_color'], '#A36CE3');
+    expect(adapter.seenAppDomain, 'com.guarappari.app');
   });
 
   test('fetch retries without X-App-Domain when response is HTML', () async {
@@ -100,6 +102,8 @@ void main() {
 }
 
 class _StringEnvironmentAdapter implements HttpClientAdapter {
+  String? seenAppDomain;
+
   @override
   void close({bool force = false}) {}
 
@@ -109,6 +113,7 @@ class _StringEnvironmentAdapter implements HttpClientAdapter {
     Stream<List<int>>? requestStream,
     Future<void>? cancelFuture,
   ) async {
+    seenAppDomain = options.headers['X-App-Domain']?.toString();
     final payload = <String, Object?>{
       'type': 'tenant',
       'tenant_id': 'tenant-id',

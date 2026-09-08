@@ -1,5 +1,4 @@
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
-import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group_member_page.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
@@ -119,20 +118,15 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
   }
 
   @override
-  Future<List<AccountProfileNestedGroupMember>> getNestedGroupMembersByPath(
-    AccountProfilesRepositoryContractPrimString membersPath,
-  ) async {
-    return _backend.fetchNestedGroupMembersByPath(membersPath.value);
-  }
-
-  @override
   Future<AccountProfileNestedGroupMemberPage> fetchNestedGroupMembersPageByPath(
     AccountProfilesRepositoryContractPrimString membersPath, {
     AccountProfilesRepositoryContractPrimString? cursor,
+    AccountProfilesRepositoryContractPrimString? search,
   }) async {
     return _backend.fetchNestedGroupMembersPageByPath(
       membersPath.value,
       cursor: cursor?.value,
+      search: search?.value,
     );
   }
 

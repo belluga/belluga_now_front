@@ -23,13 +23,14 @@ analysis_backup="$(mktemp)"
 output_file="$(mktemp)"
 expected_codes_file="$(mktemp)"
 found_codes_file="$(mktemp)"
+positive_expectations_file="$(mktemp)"
 negative_expectations_file="$(mktemp)"
 cp "$analysis_options_file" "$analysis_backup"
 
 temp_files=()
 cleanup() {
   cp "$analysis_backup" "$analysis_options_file" || true
-  rm -f "$analysis_backup" "$output_file" "$expected_codes_file" "$found_codes_file" "$negative_expectations_file"
+  rm -f "$analysis_backup" "$output_file" "$expected_codes_file" "$found_codes_file" "$positive_expectations_file" "$negative_expectations_file"
   for f in "${temp_files[@]}"; do
     rm -f "$f" || true
   done
@@ -246,6 +247,91 @@ if [[ -n "$missing_codes" ]]; then
   exit 1
 fi
 
+while IFS=: read -r source_file source_line marker; do
+  [[ -z "$source_file" ]] && continue
+  codes="$(sed -E 's/.*expect_lint:[[:space:]]*//' <<<"$marker")"
+  IFS=',' read -ra code_items <<<"$codes"
+  for code in "${code_items[@]}"; do
+    code="${code//[[:space:]]/}"
+    [[ -z "$code" ]] && continue
+    printf '%s\t%s\t%s\n' "$source_file" "$source_line" "$code" >> "$positive_expectations_file"
+  done
+done < <(grep -RIn --include='*.dart' 'expect_lint:' "$fixture_dir/lib" "$fixture_dir/integration_test")
+
+if ! python3 - "$positive_expectations_file" "$output_file" <<'PY'
+import os
+import sys
+
+
+def unmatched_expectations(expectations, diagnostics):
+    candidates = []
+    for expected_file, expected_line, expected_code in expectations:
+        matching = [
+            index
+            for index, (diagnostic_file, diagnostic_line, diagnostic_code) in enumerate(diagnostics)
+            if diagnostic_file == expected_file
+            and diagnostic_code == expected_code
+            and abs(diagnostic_line - expected_line) <= 3
+        ]
+        matching.sort(key=lambda index: abs(diagnostics[index][1] - expected_line))
+        candidates.append(matching)
+
+    diagnostic_owner = {}
+
+    def assign(expectation_index, visited):
+        for diagnostic_index in candidates[expectation_index]:
+            if diagnostic_index in visited:
+                continue
+            visited.add(diagnostic_index)
+            current_owner = diagnostic_owner.get(diagnostic_index)
+            if current_owner is None or assign(current_owner, visited):
+                diagnostic_owner[diagnostic_index] = expectation_index
+                return True
+        return False
+
+    matched = set()
+    for expectation_index in range(len(expectations)):
+        if assign(expectation_index, set()):
+            matched.add(expectation_index)
+    return [
+        expectation
+        for index, expectation in enumerate(expectations)
+        if index not in matched
+    ]
+
+
+synthetic_expectations = [('/fixture.dart', 17, 'same_code'), ('/fixture.dart', 20, 'same_code')]
+synthetic_diagnostics = [('/fixture.dart', 18, 'same_code')]
+assert len(unmatched_expectations(synthetic_expectations, synthetic_diagnostics)) == 1
+
+expectations = []
+with open(sys.argv[1], encoding='utf-8') as expectation_file:
+    for line in expectation_file:
+        source_file, source_line, code = line.rstrip('\n').split('\t')
+        expectations.append((os.path.realpath(source_file), int(source_line), code.lower()))
+
+diagnostics = []
+with open(sys.argv[2], encoding='utf-8') as analyzer_output:
+    for line in analyzer_output:
+        fields = line.rstrip('\n').split('|')
+        if len(fields) < 6 or fields[0] not in {'INFO', 'WARNING', 'ERROR'}:
+            continue
+        try:
+            diagnostics.append((fields[3], int(fields[4]), fields[2].lower()))
+        except ValueError:
+            continue
+
+missing = unmatched_expectations(expectations, diagnostics)
+for source_file, source_line, code in missing:
+    print(f'[validate_rule_matrix] missing unique expected lint {code} near {source_file}:{source_line}')
+sys.exit(1 if missing else 0)
+PY
+then
+  echo "[validate_rule_matrix] analyzer output (first 200 lines):"
+  sed -n '1,200p' "$output_file"
+  exit 1
+fi
+
 grep -RIn --include='*.dart' 'expect_no_lint:' \
   "$fixture_dir/lib" "$fixture_dir/integration_test" |
   sed -E 's#^(.+):([0-9]+):.*expect_no_lint:[[:space:]]*([a-z0-9_]+).*#\1\t\2\t\3#' \
@@ -256,7 +342,7 @@ while IFS=$'\t' read -r source_file source_line code; do
   [[ -z "$source_file" ]] && continue
   resolved_source_file="$(realpath "$source_file")"
   target_line="$((source_line + 1))"
-  if grep -Fq "|$code|$resolved_source_file|$target_line|" "$output_file"; then
+  if grep -Fiq "|$code|$resolved_source_file|$target_line|" "$output_file"; then
     echo "[validate_rule_matrix] unexpected lint $code at $source_file:$target_line"
     negative_failures=1
   fi
@@ -280,5 +366,6 @@ fi
 
 total_expected="$(wc -l < "$expected_codes_file")"
 total_found="$(wc -l < "$found_codes_file")"
-echo "[validate_rule_matrix] success: expected $total_expected lint codes were detected."
+total_positive_expectations="$(wc -l < "$positive_expectations_file")"
+echo "[validate_rule_matrix] success: $total_positive_expectations unique expectation bindings across $total_expected lint codes were detected."
 echo "[validate_rule_matrix] total distinct codes emitted: $total_found"

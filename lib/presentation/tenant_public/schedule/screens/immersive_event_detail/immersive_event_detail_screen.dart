@@ -39,6 +39,7 @@ import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/d
 import 'package:belluga_now/presentation/shared/widgets/directions_app_chooser/route_start_point_resolution.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/controllers/immersive_event_detail_controller.dart';
 import 'package:belluga_now/presentation/shared/widgets/nested_accounts_load_more_indicator.dart';
+import 'package:belluga_now/presentation/shared/widgets/nested_accounts_search_field.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/dynamic_footer.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/event_local_section.dart';
@@ -1144,40 +1145,44 @@ class _LazyEventRelatedProfileGroupContent extends StatelessWidget {
                     final errorMessage = errorValue?.value;
 
                     if (isLoading && members.isEmpty) {
-                      return const Padding(
-                        padding: EdgeInsets.all(24),
-                        child: Center(child: CircularProgressIndicator()),
+                      return _withSearch(
+                        const Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Center(child: CircularProgressIndicator()),
+                        ),
                       );
                     }
 
                     if (errorMessage != null &&
                         errorMessage.trim().isNotEmpty &&
                         members.isEmpty) {
-                      return Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Text(
-                                'Não foi possível carregar os perfis desta aba.',
-                              ),
-                              const SizedBox(height: 12),
-                              TextButton(
-                                onPressed: () => controller
-                                    .ensureRelatedProfileGroupMembersLoaded(
-                                      group,
-                                    ),
-                                child: const Text('Tentar novamente'),
-                              ),
-                            ],
+                      return _withSearch(
+                        Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  'Não foi possível carregar os perfis desta aba.',
+                                ),
+                                const SizedBox(height: 12),
+                                TextButton(
+                                  onPressed: () => controller
+                                      .ensureRelatedProfileGroupMembersLoaded(
+                                        group,
+                                      ),
+                                  child: const Text('Tentar novamente'),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       );
                     }
 
                     if (members.isEmpty) {
-                      return const SizedBox.shrink();
+                      return _withSearch(const SizedBox.shrink());
                     }
 
                     final profiles = members
@@ -1196,12 +1201,34 @@ class _LazyEventRelatedProfileGroupContent extends StatelessWidget {
                           )
                         : null;
 
-                    return itemBuilder(profiles, footer);
+                    return _withSearch(itemBuilder(profiles, footer));
                   },
                 );
               },
             );
           },
+        );
+      },
+    );
+  }
+
+  Widget _withSearch(Widget child) {
+    return StreamValueBuilder<AccountProfilesRepositoryContractPrimBool>(
+      streamValue: controller
+          .isRelatedProfileGroupMembersSearchAvailableStreamValue(group),
+      builder: (context, isAvailable) {
+        if (!isAvailable.value) return child;
+
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            NestedAccountsSearchField(
+              fieldKey: Key('eventRelatedProfileGroupSearch_${group.id}'),
+              onSubmitted: (search) =>
+                  controller.searchRelatedProfileGroupMembers(group, search),
+            ),
+            child,
+          ],
         );
       },
     );
