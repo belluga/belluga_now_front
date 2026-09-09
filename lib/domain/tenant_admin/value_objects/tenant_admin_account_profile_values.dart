@@ -26,7 +26,6 @@ TenantAdminAccountProfile tenantAdminAccountProfileFromRaw({
   Object? avatarUrl,
   Object? coverUrl,
   Object? bio,
-  Object? content,
   TenantAdminLocation? location,
   TenantAdminTaxonomyTerms taxonomyTerms =
       const TenantAdminTaxonomyTerms.empty(),
@@ -61,7 +60,6 @@ TenantAdminAccountProfile tenantAdminAccountProfileFromRaw({
     avatarUrlValue: tenantAdminOptionalUrl(avatarUrl),
     coverUrlValue: tenantAdminOptionalUrl(coverUrl),
     bioValue: tenantAdminOptionalText(bio),
-    contentValue: tenantAdminOptionalText(content),
     location: location,
     taxonomyTerms: taxonomyTerms,
     galleryGroups: galleryGroups,

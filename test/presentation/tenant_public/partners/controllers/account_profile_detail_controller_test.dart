@@ -807,7 +807,6 @@ Future<void> _registerReferenceAppData({
 Future<void> _registerGalleryAppData({
   required bool galleryEnabled,
   bool hasBio = false,
-  bool hasContent = false,
 }) async {
   await GetIt.I.reset(dispose: false);
   GetIt.I.registerSingleton<AppData>(
@@ -826,7 +825,6 @@ Future<void> _registerGalleryAppData({
               'is_poi_enabled': false,
               'has_events': false,
               'has_bio': hasBio,
-              'has_content': hasContent,
               'has_gallery': galleryEnabled,
             },
           },

@@ -190,7 +190,6 @@ class TenantAdminAccountsRepository
     TenantAdminTaxonomyTerms taxonomyTerms =
         const TenantAdminTaxonomyTerms.empty(),
     TenantAdminAccountsRepositoryContractPrimString? bio,
-    TenantAdminAccountsRepositoryContractPrimString? content,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
@@ -204,7 +203,6 @@ class TenantAdminAccountsRepository
         location: location,
         taxonomyTerms: taxonomyTerms,
         bio: bio?.value,
-        content: content?.value,
         nestedProfileGroups: nestedProfileGroups,
       );
 

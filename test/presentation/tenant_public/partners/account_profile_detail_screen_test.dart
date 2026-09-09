@@ -3115,71 +3115,6 @@ void main() {
     expect(find.textContaining('<strong>'), findsNothing);
   });
 
-  testWidgets(
-    'renders account profile bio and content as independent Sobre blocks',
-    (tester) async {
-      final repository = _FakeAccountProfilesRepository();
-      final controller = AccountProfileDetailController(
-        accountProfilesRepository: repository,
-      );
-      GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
-
-      await tester.pumpWidget(
-        _buildRoutedTestApp(
-          router: _RecordingStackRouter(),
-          child: AccountProfileDetailScreen(
-            accountProfile: _buildVenueWithBioAndContentProfile(),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text('Sobre'), findsNWidgets(2));
-      expect(find.text('Conteúdo'), findsOneWidget);
-      expect(find.text('Resumo da casa'), findsOneWidget);
-      expect(find.text('Programação curatorial'), findsOneWidget);
-      expect(find.text('Conteúdo principal do perfil 😄'), findsOneWidget);
-      final richTextBlocks = tester
-          .widgetList<PublicRichTextHtml>(find.byType(PublicRichTextHtml))
-          .toList();
-      expect(richTextBlocks, hasLength(2));
-      expect(
-        richTextBlocks.first.html,
-        contains('<a href="https://example.com/bio">Bio HTTPS link</a>'),
-      );
-      expect(
-        richTextBlocks.last.html,
-        contains(
-          '<a href="https://example.com/content">Content HTTPS link</a>',
-        ),
-      );
-      expect(richTextBlocks.last.html, isNot(contains('href="http://')));
-    },
-  );
-
-  testWidgets('renders content-only profile without redundant nested heading', (
-    tester,
-  ) async {
-    final repository = _FakeAccountProfilesRepository();
-    final controller = AccountProfileDetailController(
-      accountProfilesRepository: repository,
-    );
-    GetIt.I.registerSingleton<AccountProfileDetailController>(controller);
-
-    await tester.pumpWidget(
-      _buildRoutedTestApp(
-        router: _RecordingStackRouter(),
-        child: AccountProfileDetailScreen(
-          accountProfile: _buildVenueWithContentOnlyProfile(),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('Sobre'), findsOneWidget);
-    expect(find.text('Conteúdo'), findsNothing);
-    expect(find.text('Conteúdo institucional sem bio'), findsOneWidget);
-  });
 
   testWidgets('projects legacy plain text newlines to canonical html once', (
     tester,
@@ -4071,32 +4006,6 @@ AccountProfileModel _buildVenueWithBioProfile() {
   );
 }
 
-AccountProfileModel _buildVenueWithBioAndContentProfile() {
-  return buildAccountProfileModelFromPrimitives(
-    id: '507f1f77bcf86cd799439024',
-    name: 'Casa de Cultura',
-    slug: 'casa-de-cultura',
-    type: 'venue',
-    bio:
-        '<p><strong>Resumo da casa</strong></p>'
-        '<p><a href="https://example.com/bio">Bio HTTPS link</a></p>',
-    content:
-        '<h2>Programação curatorial</h2><p>Conteúdo principal do perfil 😄</p>'
-        '<p><a href="https://example.com/content">Content HTTPS link</a></p>'
-        '<p><a href="http://example.com/unsafe">Unsafe profile link</a></p>',
-  );
-}
-
-AccountProfileModel _buildVenueWithContentOnlyProfile() {
-  return buildAccountProfileModelFromPrimitives(
-    id: '507f1f77bcf86cd799439025',
-    name: 'Ateliê Aberto',
-    slug: 'atelie-aberto',
-    type: 'venue',
-    content: '<p>Conteúdo institucional sem bio</p>',
-  );
-}
-
 AccountProfileModel _buildVenueWithPlainTextBioProfile() {
   return buildAccountProfileModelFromPrimitives(
     id: '507f1f77bcf86cd799439026',
@@ -4473,7 +4382,6 @@ AppData _buildAppData({
           'is_poi_enabled': true,
           'has_events': true,
           'has_bio': true,
-          'has_content': true,
           'has_gallery': true,
         },
       },

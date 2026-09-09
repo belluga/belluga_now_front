@@ -25,7 +25,6 @@ class AccountProfileModel {
   final ThumbUriValue? avatarValue;
   final ThumbUriValue? coverValue;
   final DescriptionValue? bioValue;
-  final DescriptionValue? contentValue;
   final List<AccountProfileGalleryGroup> galleryGroupValues;
   final List<AccountProfileTagValue> tagValues;
   final List<PartnerEventView> agendaEventViews;
@@ -58,7 +57,6 @@ class AccountProfileModel {
     this.avatarValue,
     this.coverValue,
     this.bioValue,
-    this.contentValue,
     List<AccountProfileGalleryGroup>? galleryGroupValues,
     List<AccountProfileTagValue>? tagValues,
     List<PartnerEventView>? agendaEventViews,
@@ -128,7 +126,6 @@ class AccountProfileModel {
   Uri? get coverUri => coverValue?.value;
   String? get coverUrl => coverUri?.toString();
   String? get bio => bioValue?.value;
-  String? get content => contentValue?.value;
   List<AccountProfileGalleryGroup> get galleryGroups =>
       List<AccountProfileGalleryGroup>.unmodifiable(galleryGroupValues);
   List<AccountProfileTagValue> get tags =>
@@ -197,7 +194,6 @@ class AccountProfileModel {
     ThumbUriValue? avatarValue,
     ThumbUriValue? coverValue,
     DescriptionValue? bioValue,
-    DescriptionValue? contentValue,
     List<AccountProfileGalleryGroup>? galleryGroupValues,
     List<AccountProfileTagValue>? tagValues,
     List<PartnerEventView>? agendaEventViews,
@@ -230,7 +226,6 @@ class AccountProfileModel {
       avatarValue: avatarValue ?? this.avatarValue,
       coverValue: coverValue ?? this.coverValue,
       bioValue: bioValue ?? this.bioValue,
-      contentValue: contentValue ?? this.contentValue,
       galleryGroupValues: galleryGroupValues ?? this.galleryGroupValues,
       tagValues: tagValues ?? this.tagValues,
       agendaEventViews: agendaEventViews ?? this.agendaEventViews,

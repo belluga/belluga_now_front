@@ -3,14 +3,13 @@ import 'package:belluga_now/testing/account_profile_model_factory.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('builds authenticated share copy using content before bio', () {
+  test('builds authenticated share copy using bio', () {
     final profile = buildAccountProfileModelFromPrimitives(
       id: '507f1f77bcf86cd799439099',
       name: 'Casa Marracini',
       slug: 'casa-marracini',
       type: 'restaurant',
-      bio: 'Bio fallback',
-      content: '<p>Conteúdo principal do perfil.</p>',
+      bio: '<p>Resumo principal do perfil.</p>',
     );
 
     final payload = AccountProfilePublicSharePayloadBuilder.build(
@@ -26,7 +25,7 @@ void main() {
       payload.message,
       contains('Ananda está te convidando para conhecer Casa Marracini.'),
     );
-    expect(payload.message, contains('Conteúdo principal do perfil.'));
+    expect(payload.message, contains('Resumo principal do perfil.'));
     expect(payload.message, contains('https://tenant.test/parceiro/casa-marracini'));
     expect(payload.message, isNot(contains('Descrição fallback')));
   });

@@ -191,18 +191,14 @@ void main() {
     },
   );
 
-  testWidgets('enables explicit HTTPS links only for profile bio and content', (
+  testWidgets('enables explicit HTTPS links only for the profile bio editor', (
     tester,
   ) async {
     final profilesRepository =
         GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
             as _FakeAccountProfilesRepository;
     profilesRepository.profileTypesToReturn = [
-      _profileType(
-        hasNestedProfileGroups: false,
-        hasBio: true,
-        hasContent: true,
-      ),
+      _profileType(hasNestedProfileGroups: false, hasBio: true),
     ];
 
     await _pumpScreen(
@@ -214,12 +210,9 @@ void main() {
     final editors = tester.widgetList<TenantAdminRichTextEditor>(
       find.byType(TenantAdminRichTextEditor),
     );
-    expect(editors, hasLength(2));
-    expect(
-      editors.map((editor) => editor.label),
-      containsAll(<String>['Bio', 'Conteudo']),
-    );
-    expect(editors.every((editor) => editor.allowExplicitHttpsLinks), isTrue);
+    expect(editors, hasLength(1));
+    expect(editors.single.label, 'Bio');
+    expect(editors.single.allowExplicitHttpsLinks, isTrue);
   });
 
   testWidgets('shows save-first guidance for nested groups on create', (
@@ -688,7 +681,6 @@ class _FakeAccountsRepository extends TenantAdminAccountsRepositoryContract {
     TenantAdminTaxonomyTerms taxonomyTerms =
         const TenantAdminTaxonomyTerms.empty(),
     TenantAdminAccountsRepositoryContractPrimString? bio,
-    TenantAdminAccountsRepositoryContractPrimString? content,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
@@ -874,7 +866,6 @@ class _FakeAccountProfilesRepository
     TenantAdminTaxonomyTerms taxonomyTerms =
         const TenantAdminTaxonomyTerms.empty(),
     TenantAdminAccountProfilesRepoString? bio,
-    TenantAdminAccountProfilesRepoString? content,
     TenantAdminAccountProfilesRepoString? avatarUrl,
     TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
@@ -910,7 +901,6 @@ class _FakeAccountProfilesRepository
     TenantAdminLocation? location,
     TenantAdminTaxonomyTerms? taxonomyTerms,
     TenantAdminAccountProfilesRepoString? bio,
-    TenantAdminAccountProfilesRepoString? content,
     TenantAdminAccountProfilesRepoString? avatarUrl,
     TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminAccountProfilesRepoBool? removeAvatar,
@@ -1113,7 +1103,6 @@ TenantAdminProfileTypeDefinition _profileType({
   required bool hasNestedProfileGroups,
   bool hasContactChannels = false,
   bool hasBio = false,
-  bool hasContent = false,
   String type = 'venue',
   String label = 'Venue',
 }) {
@@ -1125,7 +1114,6 @@ TenantAdminProfileTypeDefinition _profileType({
       isFavoritable: TenantAdminFlagValue(false),
       isPoiEnabled: TenantAdminFlagValue(false),
       hasBio: TenantAdminFlagValue(hasBio),
-      hasContent: TenantAdminFlagValue(hasContent),
       hasTaxonomies: TenantAdminFlagValue(false),
       hasAvatar: TenantAdminFlagValue(false),
       hasCover: TenantAdminFlagValue(false),

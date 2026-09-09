@@ -51,7 +51,7 @@ void main() {
   });
 
   testWidgets(
-    'tenant admin edit persists rich bio/content and admin/public readback remains faithful',
+    'tenant admin edit persists rich bio and admin/public readback remains faithful',
     (tester) async {
       final accountsRepository = _RichTextAccountsRepository();
       final profilesRepository = _RichTextProfilesRepository();
@@ -79,13 +79,7 @@ void main() {
           '<p><strong>Bold bio</strong><br />Second bio line</p>'
           '<blockquote>Bio quote</blockquote>'
           '<ul><li>Bio bullet</li></ul>';
-      const editedContent =
-          '<h3>Content Heading</h3>'
-          '<p><em>Italic content</em> and <s>strike content</s> 😄</p>'
-          '<ol><li>Content ordered</li></ol>';
-
       adminController.bioController.text = editedBio;
-      adminController.contentController.text = editedContent;
       await tester.pumpAndSettle();
 
       await tester.scrollUntilVisible(
@@ -101,11 +95,6 @@ void main() {
       expect(profilesRepository.current.bio, contains('Bold bio'));
       expect(profilesRepository.current.bio, contains('Bio quote'));
       expect(profilesRepository.current.bio, contains('Bio bullet'));
-      expect(profilesRepository.current.content, contains('Content Heading'));
-      expect(profilesRepository.current.content, contains('Italic content'));
-      expect(profilesRepository.current.content, contains('strike content'));
-      expect(profilesRepository.current.content, contains('😄'));
-      expect(profilesRepository.current.content, contains('Content ordered'));
 
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pumpAndSettle();
@@ -129,7 +118,6 @@ void main() {
       );
 
       expect(reloadedAdminController.bioController.text, editedBio);
-      expect(reloadedAdminController.contentController.text, editedContent);
 
       final publicRepository = _PublicAccountProfilesRepository(
         _publicProfileFromAdmin(profilesRepository.current),
@@ -158,19 +146,11 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Sobre'), findsWidgets);
-      expect(find.text('Conteúdo'), findsOneWidget);
       expect(find.text('Bio Heading 🎉'), findsOneWidget);
       expect(find.textContaining('Bold bio'), findsWidgets);
       expect(find.textContaining('Second bio line'), findsWidgets);
       expect(find.text('Bio quote'), findsOneWidget);
       expect(find.text('Bio bullet'), findsOneWidget);
-      expect(find.text('Content Heading'), findsOneWidget);
-      expect(find.textContaining('Italic content'), findsWidgets);
-      expect(find.textContaining('strike content'), findsWidgets);
-      expect(find.textContaining('😄'), findsWidgets);
-      expect(find.text('Content ordered'), findsOneWidget);
-      expect(find.textContaining('<h3>'), findsNothing);
-      expect(find.textContaining('<em>'), findsNothing);
     },
     timeout: const Timeout(Duration(minutes: 3)),
   );
@@ -367,7 +347,6 @@ class _RichTextAccountsRepository
     TenantAdminTaxonomyTerms taxonomyTerms =
         const TenantAdminTaxonomyTerms.empty(),
     TenantAdminAccountsRepositoryContractPrimString? bio,
-    TenantAdminAccountsRepositoryContractPrimString? content,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
@@ -416,7 +395,6 @@ class _RichTextProfilesRepository
         displayName: 'Casa Cultural',
         slug: 'casa-cultural',
         bio: '<p>Bio inicial</p>',
-        content: '<p>Conteudo inicial</p>',
       );
 
   TenantAdminAccountProfile current;
@@ -447,7 +425,6 @@ class _RichTextProfilesRepository
     TenantAdminTaxonomyTerms taxonomyTerms =
         const TenantAdminTaxonomyTerms.empty(),
     TenantAdminAccountProfilesRepoString? bio,
-    TenantAdminAccountProfilesRepoString? content,
     TenantAdminAccountProfilesRepoString? avatarUrl,
     TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
@@ -474,7 +451,6 @@ class _RichTextProfilesRepository
     TenantAdminLocation? location,
     TenantAdminTaxonomyTerms? taxonomyTerms,
     TenantAdminAccountProfilesRepoString? bio,
-    TenantAdminAccountProfilesRepoString? content,
     TenantAdminAccountProfilesRepoString? avatarUrl,
     TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminAccountProfilesRepoBool? removeAvatar,
@@ -498,7 +474,6 @@ class _RichTextProfilesRepository
       location: location,
       taxonomyTerms: taxonomyTerms ?? current.taxonomyTerms,
       bio: bio?.value ?? current.bio,
-      content: content?.value ?? current.content,
       avatarUrl: avatarUrl?.value ?? current.avatarUrl,
       coverUrl: coverUrl?.value ?? current.coverUrl,
     );
@@ -533,7 +508,6 @@ class _RichTextProfilesRepository
           isFavoritable: TenantAdminFlagValue(true),
           isPoiEnabled: TenantAdminFlagValue(false),
           hasBio: TenantAdminFlagValue(true),
-          hasContent: TenantAdminFlagValue(true),
           hasTaxonomies: TenantAdminFlagValue(false),
           hasAvatar: TenantAdminFlagValue(false),
           hasCover: TenantAdminFlagValue(false),
@@ -588,7 +562,6 @@ class _RichTextProfilesRepository
             isFavoritable: TenantAdminFlagValue(true),
             isPoiEnabled: TenantAdminFlagValue(false),
             hasBio: TenantAdminFlagValue(true),
-            hasContent: TenantAdminFlagValue(true),
             hasTaxonomies: TenantAdminFlagValue(false),
             hasAvatar: TenantAdminFlagValue(false),
             hasCover: TenantAdminFlagValue(false),
@@ -789,7 +762,6 @@ AccountProfileModel _publicProfileFromAdmin(TenantAdminAccountProfile profile) {
     slug: profile.slug ?? 'casa-cultural',
     type: profile.profileType,
     bio: profile.bio,
-    content: profile.content,
   );
 }
 
@@ -814,7 +786,6 @@ AppData _buildAppData() {
           'is_poi_enabled': false,
           'has_events': false,
           'has_bio': true,
-          'has_content': true,
         },
       },
     ],

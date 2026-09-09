@@ -7,7 +7,6 @@ class ProfileTypeCapabilities {
     required this.isPoiEnabledValue,
     ProfileTypeFlagValue? isReferenceLocationEnabledValue,
     required this.hasBioValue,
-    required this.hasContentValue,
     required this.hasTaxonomiesValue,
     required this.hasAvatarValue,
     required this.hasCoverValue,
@@ -31,7 +30,6 @@ class ProfileTypeCapabilities {
   final ProfileTypeFlagValue isPoiEnabledValue;
   final ProfileTypeFlagValue isReferenceLocationEnabledValue;
   final ProfileTypeFlagValue hasBioValue;
-  final ProfileTypeFlagValue hasContentValue;
   final ProfileTypeFlagValue hasTaxonomiesValue;
   final ProfileTypeFlagValue hasAvatarValue;
   final ProfileTypeFlagValue hasCoverValue;
@@ -47,7 +45,6 @@ class ProfileTypeCapabilities {
   bool get isReferenceLocationEnabled =>
       isPoiEnabled && isReferenceLocationEnabledValue.value;
   bool get hasBio => hasBioValue.value;
-  bool get hasContent => hasContentValue.value;
   bool get hasTaxonomies => hasTaxonomiesValue.value;
   bool get hasAvatar => hasAvatarValue.value;
   bool get hasCover => hasCoverValue.value;

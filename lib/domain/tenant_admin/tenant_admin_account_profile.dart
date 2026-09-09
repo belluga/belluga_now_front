@@ -29,7 +29,6 @@ class TenantAdminAccountProfile {
     TenantAdminOptionalUrlValue? avatarUrlValue,
     TenantAdminOptionalUrlValue? coverUrlValue,
     TenantAdminOptionalTextValue? bioValue,
-    TenantAdminOptionalTextValue? contentValue,
     this.location,
     TenantAdminTaxonomyTerms? taxonomyTerms,
     List<TenantAdminAccountProfileGalleryGroup>? galleryGroups,
@@ -50,7 +49,6 @@ class TenantAdminAccountProfile {
        avatarUrlValue = avatarUrlValue ?? TenantAdminOptionalUrlValue(),
        coverUrlValue = coverUrlValue ?? TenantAdminOptionalUrlValue(),
        bioValue = bioValue ?? TenantAdminOptionalTextValue(),
-       contentValue = contentValue ?? TenantAdminOptionalTextValue(),
        taxonomyTerms = taxonomyTerms ?? const TenantAdminTaxonomyTerms.empty(),
        galleryGroups = List<TenantAdminAccountProfileGalleryGroup>.unmodifiable(
          galleryGroups ?? const <TenantAdminAccountProfileGalleryGroup>[],
@@ -84,7 +82,6 @@ class TenantAdminAccountProfile {
   final TenantAdminOptionalUrlValue avatarUrlValue;
   final TenantAdminOptionalUrlValue coverUrlValue;
   final TenantAdminOptionalTextValue bioValue;
-  final TenantAdminOptionalTextValue contentValue;
   final TenantAdminLocation? location;
   final TenantAdminTaxonomyTerms taxonomyTerms;
   final List<TenantAdminAccountProfileGalleryGroup> galleryGroups;
@@ -126,7 +123,6 @@ class TenantAdminAccountProfile {
   String? get avatarUrl => avatarUrlValue.nullableValue;
   String? get coverUrl => coverUrlValue.nullableValue;
   String? get bio => bioValue.nullableValue;
-  String? get content => contentValue.nullableValue;
   String? get contactSourceAccountProfileId {
     final raw = contactSourceAccountProfileIdValue?.value.trim();
     if (raw == null || raw.isEmpty) {

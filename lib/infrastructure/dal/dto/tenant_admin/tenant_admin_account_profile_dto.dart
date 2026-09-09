@@ -31,7 +31,6 @@ class TenantAdminAccountProfileDTO {
     this.avatarUrl,
     this.coverUrl,
     this.bio,
-    this.content,
     this.locationLat,
     this.locationLng,
     this.taxonomyTerms = const [],
@@ -62,7 +61,6 @@ class TenantAdminAccountProfileDTO {
   final String? avatarUrl;
   final String? coverUrl;
   final String? bio;
-  final String? content;
   final double? locationLat;
   final double? locationLng;
   final List<TenantAdminTaxonomyTermDTO> taxonomyTerms;
@@ -150,7 +148,6 @@ class TenantAdminAccountProfileDTO {
       avatarUrl: json['avatar_url']?.toString(),
       coverUrl: json['cover_url']?.toString(),
       bio: json['bio']?.toString(),
-      content: json['content']?.toString(),
       locationLat: lat,
       locationLng: lng,
       taxonomyTerms: terms,
@@ -212,7 +209,6 @@ class TenantAdminAccountProfileDTO {
       avatarUrl: avatarUrl,
       coverUrl: coverUrl,
       bio: bio,
-      content: content,
       location: location,
       taxonomyTerms: taxonomy,
       galleryGroups: galleryGroups,

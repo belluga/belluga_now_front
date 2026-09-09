@@ -681,33 +681,16 @@ class AccountProfileDetailController implements Disposable {
     ProfileTypeCapabilities? capabilities,
   }) {
     final canRenderBio = capabilities?.hasBio ?? true;
-    final canRenderContent = capabilities?.hasContent ?? true;
     final rawBio = accountProfile.bio?.trim() ?? '';
-    final rawContent = accountProfile.content?.trim() ?? '';
     final canonicalBio = canRenderBio
         ? SafeRichHtml.canonicalize(rawBio, allowExplicitHttpsLinks: true)
         : '';
-    final canonicalContent = canRenderContent
-        ? SafeRichHtml.canonicalize(rawContent, allowExplicitHttpsLinks: true)
-        : '';
-    final hasBio = canonicalBio.isNotEmpty;
-    final hasContent = canonicalContent.isNotEmpty;
-
-    if (!hasBio && !hasContent) {
+    if (canonicalBio.isEmpty) {
       return const <AccountProfileRichTextBlock>[];
     }
 
-    if (hasBio && hasContent) {
-      return [
-        AccountProfileRichTextBlock(title: 'Sobre', html: canonicalBio),
-        AccountProfileRichTextBlock(title: 'Conteúdo', html: canonicalContent),
-      ];
-    }
-
     return [
-      AccountProfileRichTextBlock(
-        html: hasBio ? canonicalBio : canonicalContent,
-      ),
+      AccountProfileRichTextBlock(html: canonicalBio),
     ];
   }
 

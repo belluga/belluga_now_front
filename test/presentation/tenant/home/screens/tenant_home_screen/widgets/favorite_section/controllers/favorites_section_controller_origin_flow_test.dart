@@ -971,7 +971,6 @@ class _FakeAppData extends Fake implements AppData {
             isFavoritableValue: _flag(true),
             isPoiEnabledValue: _flag(false),
             hasBioValue: _flag(true),
-            hasContentValue: _flag(false),
             hasTaxonomiesValue: _flag(true),
             hasAvatarValue: _flag(true),
             hasCoverValue: _flag(true),

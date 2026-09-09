@@ -2215,7 +2215,6 @@ class _FakeAccountsRepository extends TenantAdminAccountsRepositoryContract {
     TenantAdminTaxonomyTerms taxonomyTerms =
         const TenantAdminTaxonomyTerms.empty(),
     TenantAdminAccountsRepositoryContractPrimString? bio,
-    TenantAdminAccountsRepositoryContractPrimString? content,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
@@ -2468,7 +2467,6 @@ class _FakeAccountProfilesRepository
     TenantAdminTaxonomyTerms taxonomyTerms =
         const TenantAdminTaxonomyTerms.empty(),
     TenantAdminAccountProfilesRepoString? bio,
-    TenantAdminAccountProfilesRepoString? content,
     TenantAdminAccountProfilesRepoString? avatarUrl,
     TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
@@ -2495,7 +2493,6 @@ class _FakeAccountProfilesRepository
     TenantAdminLocation? location,
     TenantAdminTaxonomyTerms? taxonomyTerms,
     TenantAdminAccountProfilesRepoString? bio,
-    TenantAdminAccountProfilesRepoString? content,
     TenantAdminAccountProfilesRepoString? avatarUrl,
     TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminAccountProfilesRepoBool? removeAvatar,
@@ -2558,7 +2555,6 @@ class _FakeAccountProfilesRepository
           ? null
           : (coverUrl?.value ?? profileToReturn.coverUrl),
       bio: bio?.value ?? profileToReturn.bio,
-      content: content?.value ?? profileToReturn.content,
       location: location ?? profileToReturn.location,
       taxonomyTerms: taxonomyTerms ?? profileToReturn.taxonomyTerms,
       galleryGroups: profileToReturn.galleryGroups,
@@ -2788,7 +2784,6 @@ class _FakeAccountProfilesRepository
       avatarUrl: profileToReturn.avatarUrl,
       coverUrl: profileToReturn.coverUrl,
       bio: profileToReturn.bio,
-      content: profileToReturn.content,
       location: profileToReturn.location,
       taxonomyTerms: profileToReturn.taxonomyTerms,
       galleryGroups: profileToReturn.galleryGroups,
@@ -2981,7 +2976,6 @@ TenantAdminProfileTypeDefinition _profileType({
       isFavoritable: TenantAdminFlagValue(false),
       isPoiEnabled: TenantAdminFlagValue(false),
       hasBio: TenantAdminFlagValue(false),
-      hasContent: TenantAdminFlagValue(false),
       hasTaxonomies: TenantAdminFlagValue(false),
       hasAvatar: TenantAdminFlagValue(true),
       hasCover: TenantAdminFlagValue(true),

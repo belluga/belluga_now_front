@@ -70,14 +70,6 @@ final class AccountProfilePublicSharePayloadBuilder {
     required AccountProfileModel? profile,
     required String? fallbackDescription,
   }) {
-    final profileContent = profile?.content?.trim();
-    if (profileContent != null && profileContent.isNotEmpty) {
-      final excerpt = InviteFromEventFactory.stripHtml(profileContent);
-      if (excerpt.isNotEmpty) {
-        return excerpt;
-      }
-    }
-
     final profileBio = profile?.bio?.trim();
     if (profileBio != null && profileBio.isNotEmpty) {
       final excerpt = InviteFromEventFactory.stripHtml(profileBio);

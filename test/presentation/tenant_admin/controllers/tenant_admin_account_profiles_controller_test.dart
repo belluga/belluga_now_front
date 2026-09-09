@@ -165,7 +165,6 @@ class _FakeAccountsRepository
     TenantAdminTaxonomyTerms taxonomyTerms =
         const TenantAdminTaxonomyTerms.empty(),
     TenantAdminAccountsRepositoryContractPrimString? bio,
-    TenantAdminAccountsRepositoryContractPrimString? content,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
     List<TenantAdminNestedProfileGroup> nestedProfileGroups =
@@ -191,7 +190,6 @@ class _FakeAccountsRepository
         location: location,
         taxonomyTerms: taxonomyTerms,
         bio: bio?.value,
-        content: content?.value,
       ),
     );
   }
@@ -249,7 +247,6 @@ class _FakeAccountProfilesRepository
   String? lastUpdateProfileType;
   String? lastUpdateDisplayName;
   String? lastUpdateBio;
-  String? lastUpdateContent;
   int? lastUpdateAggregateRevision;
   int fetchAccountProfileCalls = 0;
   String? lastFetchedProfileId;
@@ -391,7 +388,6 @@ class _FakeAccountProfilesRepository
     TenantAdminTaxonomyTerms taxonomyTerms =
         const TenantAdminTaxonomyTerms.empty(),
     TenantAdminAccountProfilesRepoString? bio,
-    TenantAdminAccountProfilesRepoString? content,
     TenantAdminAccountProfilesRepoString? avatarUrl,
     TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
@@ -496,7 +492,6 @@ class _FakeAccountProfilesRepository
     TenantAdminLocation? location,
     TenantAdminTaxonomyTerms? taxonomyTerms,
     TenantAdminAccountProfilesRepoString? bio,
-    TenantAdminAccountProfilesRepoString? content,
     TenantAdminAccountProfilesRepoString? avatarUrl,
     TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminAccountProfilesRepoBool? removeAvatar,
@@ -517,7 +512,6 @@ class _FakeAccountProfilesRepository
     lastUpdateProfileType = profileType?.value;
     lastUpdateDisplayName = displayName?.value;
     lastUpdateBio = bio?.value;
-    lastUpdateContent = content?.value;
     lastUpdateAggregateRevision = aggregateRevision?.value;
     lastUpdateNestedProfileGroups = nestedProfileGroups;
     return updateAccountProfileOverride ?? _profiles.first;
@@ -905,7 +899,6 @@ class _FakeAccountProfilesRepository
       avatarUrl: current.avatarUrl,
       coverUrl: current.coverUrl,
       bio: current.bio,
-      content: current.content,
       location: current.location,
       taxonomyTerms: current.taxonomyTerms,
       galleryGroups: current.galleryGroups,
@@ -2178,7 +2171,6 @@ void main() {
             isFavoritable: TenantAdminFlagValue(true),
             isPoiEnabled: TenantAdminFlagValue(true),
             hasBio: TenantAdminFlagValue(false),
-            hasContent: TenantAdminFlagValue(false),
             hasTaxonomies: TenantAdminFlagValue(false),
             hasAvatar: TenantAdminFlagValue(false),
             hasCover: TenantAdminFlagValue(false),
@@ -2216,7 +2208,6 @@ void main() {
           isFavoritable: TenantAdminFlagValue(true),
           isPoiEnabled: TenantAdminFlagValue(true),
           hasBio: TenantAdminFlagValue(false),
-          hasContent: TenantAdminFlagValue(false),
           hasTaxonomies: TenantAdminFlagValue(false),
           hasAvatar: TenantAdminFlagValue(false),
           hasCover: TenantAdminFlagValue(false),
@@ -2261,7 +2252,6 @@ void main() {
               isFavoritable: TenantAdminFlagValue(true),
               isPoiEnabled: TenantAdminFlagValue(true),
               hasBio: TenantAdminFlagValue(false),
-              hasContent: TenantAdminFlagValue(false),
               hasTaxonomies: TenantAdminFlagValue(false),
               hasAvatar: TenantAdminFlagValue(false),
               hasCover: TenantAdminFlagValue(false),
@@ -2323,7 +2313,6 @@ void main() {
               isFavoritable: TenantAdminFlagValue(true),
               isPoiEnabled: TenantAdminFlagValue(true),
               hasBio: TenantAdminFlagValue(false),
-              hasContent: TenantAdminFlagValue(false),
               hasTaxonomies: TenantAdminFlagValue(false),
               hasAvatar: TenantAdminFlagValue(false),
               hasCover: TenantAdminFlagValue(false),
@@ -3017,7 +3006,6 @@ void main() {
           displayName: 'Novo perfil',
           location: null,
           bio: null,
-          content: null,
           taxonomyTerms: const TenantAdminTaxonomyTerms.empty(),
           avatarUpload: null,
           coverUpload: null,
@@ -3040,7 +3028,6 @@ void main() {
           displayName: 'Perfil atualizado',
           location: null,
           bio: null,
-          content: null,
           taxonomyTerms: const TenantAdminTaxonomyTerms.empty(),
           avatarUpload: null,
           coverUpload: null,
@@ -3080,7 +3067,6 @@ void main() {
             isFavoritable: TenantAdminFlagValue(true),
             isPoiEnabled: TenantAdminFlagValue(true),
             hasBio: TenantAdminFlagValue(false),
-            hasContent: TenantAdminFlagValue(false),
             hasTaxonomies: TenantAdminFlagValue(false),
             hasAvatar: TenantAdminFlagValue(false),
             hasCover: TenantAdminFlagValue(false),
@@ -3109,7 +3095,6 @@ void main() {
       slug: 'perfil-atualizado',
       location: null,
       bio: null,
-      content: null,
       taxonomyTerms: const TenantAdminTaxonomyTerms.empty(),
       avatarUpload: null,
       coverUpload: null,
@@ -3166,7 +3151,6 @@ void main() {
               isFavoritable: TenantAdminFlagValue(true),
               isPoiEnabled: TenantAdminFlagValue(true),
               hasBio: TenantAdminFlagValue(false),
-              hasContent: TenantAdminFlagValue(false),
               hasTaxonomies: TenantAdminFlagValue(false),
               hasAvatar: TenantAdminFlagValue(false),
               hasCover: TenantAdminFlagValue(false),
@@ -3222,7 +3206,6 @@ void main() {
         slug: 'perfil-atualizado',
         location: null,
         bio: null,
-        content: null,
         taxonomyTerms: const TenantAdminTaxonomyTerms.empty(),
         avatarUpload: null,
         coverUpload: null,
@@ -3281,7 +3264,6 @@ void main() {
               isFavoritable: TenantAdminFlagValue(true),
               isPoiEnabled: TenantAdminFlagValue(true),
               hasBio: TenantAdminFlagValue(false),
-              hasContent: TenantAdminFlagValue(false),
               hasTaxonomies: TenantAdminFlagValue(false),
               hasAvatar: TenantAdminFlagValue(false),
               hasCover: TenantAdminFlagValue(false),
@@ -3328,7 +3310,6 @@ void main() {
         slug: 'perfil-atualizado',
         location: null,
         bio: null,
-        content: null,
         taxonomyTerms: const TenantAdminTaxonomyTerms.empty(),
         avatarUpload: null,
         coverUpload: null,
@@ -3399,7 +3380,6 @@ void main() {
               isFavoritable: TenantAdminFlagValue(true),
               isPoiEnabled: TenantAdminFlagValue(true),
               hasBio: TenantAdminFlagValue(false),
-              hasContent: TenantAdminFlagValue(false),
               hasTaxonomies: TenantAdminFlagValue(false),
               hasAvatar: TenantAdminFlagValue(false),
               hasCover: TenantAdminFlagValue(false),
@@ -3436,7 +3416,6 @@ void main() {
         slug: 'perfil-atualizado',
         location: null,
         bio: null,
-        content: null,
         taxonomyTerms: const TenantAdminTaxonomyTerms.empty(),
         avatarUpload: null,
         coverUpload: null,
@@ -3571,7 +3550,6 @@ void main() {
                     isFavoritable: TenantAdminFlagValue(true),
                     isPoiEnabled: TenantAdminFlagValue(true),
                     hasBio: TenantAdminFlagValue(false),
-                    hasContent: TenantAdminFlagValue(false),
                     hasTaxonomies: TenantAdminFlagValue(false),
                     hasAvatar: TenantAdminFlagValue(false),
                     hasCover: TenantAdminFlagValue(false),
@@ -3601,7 +3579,6 @@ void main() {
         contactMode: BellugaContactSourceMode.own,
         location: null,
         bio: null,
-        content: null,
         taxonomyTerms: const TenantAdminTaxonomyTerms.empty(),
         avatarUpload: null,
         coverUpload: null,
@@ -4061,7 +4038,6 @@ void main() {
               isFavoritable: TenantAdminFlagValue(true),
               isPoiEnabled: TenantAdminFlagValue(true),
               hasBio: TenantAdminFlagValue(false),
-              hasContent: TenantAdminFlagValue(false),
               hasTaxonomies: TenantAdminFlagValue(false),
               hasAvatar: TenantAdminFlagValue(false),
               hasCover: TenantAdminFlagValue(false),
@@ -4085,7 +4061,6 @@ void main() {
         contactMode: BellugaContactSourceMode.own,
         location: null,
         bio: null,
-        content: null,
         taxonomyTerms: const TenantAdminTaxonomyTerms.empty(),
         avatarUpload: null,
         coverUpload: null,
@@ -4115,7 +4090,6 @@ void main() {
             isFavoritable: TenantAdminFlagValue(true),
             isPoiEnabled: TenantAdminFlagValue(true),
             hasBio: TenantAdminFlagValue(false),
-            hasContent: TenantAdminFlagValue(false),
             hasTaxonomies: TenantAdminFlagValue(false),
             hasAvatar: TenantAdminFlagValue(false),
             hasCover: TenantAdminFlagValue(false),
@@ -4139,7 +4113,6 @@ void main() {
       contactMode: BellugaContactSourceMode.own,
       location: null,
       bio: null,
-      content: null,
       taxonomyTerms: const TenantAdminTaxonomyTerms.empty(),
       avatarUpload: null,
       coverUpload: null,
@@ -4174,7 +4147,6 @@ void main() {
               isFavoritable: TenantAdminFlagValue(true),
               isPoiEnabled: TenantAdminFlagValue(true),
               hasBio: TenantAdminFlagValue(false),
-              hasContent: TenantAdminFlagValue(false),
               hasTaxonomies: TenantAdminFlagValue(false),
               hasAvatar: TenantAdminFlagValue(false),
               hasCover: TenantAdminFlagValue(false),
@@ -4519,7 +4491,7 @@ void main() {
   );
 
   test(
-    'submitTaxonomySelectionUpdate resolves profileType and sends string bio/content',
+    'submitTaxonomySelectionUpdate resolves profileType and sends bio',
     () async {
       final profilesRepository = _FakeAccountProfilesRepository(
         [
@@ -4530,7 +4502,6 @@ void main() {
             displayName: 'Perfil',
             slug: 'perfil',
             bio: null,
-            content: null,
           ),
         ],
         [
@@ -4542,7 +4513,6 @@ void main() {
               isFavoritable: TenantAdminFlagValue(true),
               isPoiEnabled: TenantAdminFlagValue(false),
               hasBio: TenantAdminFlagValue(true),
-              hasContent: TenantAdminFlagValue(true),
               hasTaxonomies: TenantAdminFlagValue(true),
               hasAvatar: TenantAdminFlagValue(true),
               hasCover: TenantAdminFlagValue(true),
@@ -4580,7 +4550,6 @@ void main() {
             isFavoritable: TenantAdminFlagValue(true),
             isPoiEnabled: TenantAdminFlagValue(false),
             hasBio: TenantAdminFlagValue(true),
-            hasContent: TenantAdminFlagValue(true),
             hasTaxonomies: TenantAdminFlagValue(true),
             hasAvatar: TenantAdminFlagValue(true),
             hasCover: TenantAdminFlagValue(true),
@@ -4600,13 +4569,11 @@ void main() {
           return terms;
         })(),
         bio: null,
-        content: null,
       );
 
       expect(saved, isTrue);
       expect(profilesRepository.lastUpdateProfileType, 'artist');
       expect(profilesRepository.lastUpdateBio, '');
-      expect(profilesRepository.lastUpdateContent, '');
     },
   );
 
@@ -4636,7 +4603,6 @@ void main() {
                     isFavoritable: TenantAdminFlagValue(true),
                     isPoiEnabled: TenantAdminFlagValue(false),
                     hasBio: TenantAdminFlagValue(true),
-                    hasContent: TenantAdminFlagValue(true),
                     hasTaxonomies: TenantAdminFlagValue(true),
                     hasAvatar: TenantAdminFlagValue(true),
                     hasCover: TenantAdminFlagValue(true),

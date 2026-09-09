@@ -435,11 +435,6 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
         if (bio != null && bio.isNotEmpty) {
           bioValue = DescriptionValue()..parse(bio);
         }
-        DescriptionValue? contentValue;
-        final content = json['content']?.toString();
-        if (content != null && content.isNotEmpty) {
-          contentValue = DescriptionValue()..parse(content);
-        }
         final publicDetailPath =
             json['public_detail_path']?.toString().trim().isNotEmpty == true
             ? json['public_detail_path']?.toString().trim()
@@ -490,7 +485,6 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
             avatarValue: avatarValue,
             coverValue: coverValue,
             bioValue: bioValue,
-            contentValue: contentValue,
             galleryGroupValues: galleryGroups,
             tagValues: tags
                 .map(AccountProfileTagValue.new)

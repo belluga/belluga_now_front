@@ -199,8 +199,7 @@ class PartnerProfileConfigBuilder {
     AccountProfileModel partner,
     ProfileTypeCapabilities capabilities,
   ) {
-    return (capabilities.hasBio && _hasBio(partner)) ||
-        (capabilities.hasContent && _hasContent(partner));
+    return capabilities.hasBio && _hasBio(partner);
   }
 
   bool _hasAboutContentForCapabilities(
@@ -216,14 +215,10 @@ class PartnerProfileConfigBuilder {
   }
 
   bool _hasAnyRichText(AccountProfileModel partner) {
-    return _hasBio(partner) || _hasContent(partner);
+    return _hasBio(partner);
   }
 
   bool _hasBio(AccountProfileModel partner) {
     return partner.bioValue?.value.trim().isNotEmpty ?? false;
-  }
-
-  bool _hasContent(AccountProfileModel partner) {
-    return partner.contentValue?.value.trim().isNotEmpty ?? false;
   }
 }

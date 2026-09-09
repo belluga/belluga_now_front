@@ -432,9 +432,6 @@ class AppDataDTO {
             hasBioValue: ProfileTypeFlagValue(
               capabilitiesMap['has_bio'] == true,
             ),
-            hasContentValue: ProfileTypeFlagValue(
-              capabilitiesMap['has_content'] == true,
-            ),
             hasTaxonomiesValue: ProfileTypeFlagValue(
               capabilitiesMap['has_taxonomies'] == true,
             ),

@@ -199,7 +199,6 @@ class TenantAdminAccountProfilesController implements Disposable {
   final TextEditingController slugController = TextEditingController();
   final TextEditingController displayNameController = TextEditingController();
   final TextEditingController bioController = TextEditingController();
-  final TextEditingController contentController = TextEditingController();
   final TextEditingController latitudeController = TextEditingController();
   final TextEditingController longitudeController = TextEditingController();
   TenantAdminAccountProfileExternalLinkDraft? _externalLinkDraft;
@@ -1795,7 +1794,6 @@ class TenantAdminAccountProfilesController implements Disposable {
     required String displayName,
     required TenantAdminLocation? location,
     required String? bio,
-    required String? content,
     required TenantAdminTaxonomyTerms taxonomyTerms,
     required TenantAdminMediaUpload? avatarUpload,
     required TenantAdminMediaUpload? coverUpload,
@@ -1818,7 +1816,6 @@ class TenantAdminAccountProfilesController implements Disposable {
         displayName: displayName,
         location: location,
         bio: bio,
-        content: content,
         taxonomyTerms: taxonomyTerms,
         avatarUpload: avatarUpload,
         coverUpload: coverUpload,
@@ -1900,7 +1897,6 @@ class TenantAdminAccountProfilesController implements Disposable {
     String? slug,
     required TenantAdminLocation? location,
     required String? bio,
-    required String? content,
     required TenantAdminTaxonomyTerms? taxonomyTerms,
     required TenantAdminMediaUpload? avatarUpload,
     required TenantAdminMediaUpload? coverUpload,
@@ -1925,7 +1921,6 @@ class TenantAdminAccountProfilesController implements Disposable {
         slug: slug,
         location: location,
         bio: bio,
-        content: content,
         taxonomyTerms: taxonomyTerms,
         avatarUpload: avatarUpload,
         coverUpload: coverUpload,
@@ -2000,7 +1995,6 @@ class TenantAdminAccountProfilesController implements Disposable {
     required String? profileType,
     required TenantAdminTaxonomyTerms taxonomyTerms,
     String? bio,
-    String? content,
   }) async {
     taxonomyAutosavingStreamValue.addValue(true);
     editSubmittingStreamValue.addValue(true);
@@ -2020,15 +2014,11 @@ class TenantAdminAccountProfilesController implements Disposable {
       final resolvedBio = capabilities?.hasBio == true
           ? (bio ?? currentProfile?.bio ?? '')
           : null;
-      final resolvedContent = capabilities?.hasContent == true
-          ? (content ?? currentProfile?.content ?? '')
-          : null;
       final updated = await updateProfile(
         accountProfileId: accountProfileId,
         profileType: resolvedProfileType,
         taxonomyTerms: taxonomyTerms,
         bio: resolvedBio,
-        content: resolvedContent,
       );
       if (_isDisposed) return false;
       updateEditProfile(updated, preserveGalleryState: true);
@@ -2115,7 +2105,6 @@ class TenantAdminAccountProfilesController implements Disposable {
       avatarUrlValue: profile.avatarUrlValue,
       coverUrlValue: profile.coverUrlValue,
       bioValue: profile.bioValue,
-      contentValue: profile.contentValue,
       location: profile.location,
       taxonomyTerms: profile.taxonomyTerms,
       galleryGroups: profile.galleryGroups,
@@ -3008,7 +2997,6 @@ class TenantAdminAccountProfilesController implements Disposable {
     slugController.clear();
     displayNameController.clear();
     bioController.clear();
-    contentController.clear();
     latitudeController.clear();
     longitudeController.clear();
     resetTaxonomySelection();
@@ -3137,7 +3125,6 @@ class TenantAdminAccountProfilesController implements Disposable {
     TenantAdminTaxonomyTerms taxonomyTerms =
         const TenantAdminTaxonomyTerms.empty(),
     String? bio,
-    String? content,
     String? avatarUrl,
     String? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
@@ -3155,7 +3142,6 @@ class TenantAdminAccountProfilesController implements Disposable {
       location: location,
       taxonomyTerms: taxonomyTerms,
       bio: bio,
-      content: content,
       avatarUrl: avatarUrl,
       coverUrl: coverUrl,
       avatarUpload: avatarUpload,
@@ -3190,9 +3176,6 @@ class TenantAdminAccountProfilesController implements Disposable {
       bio: filtered.bio == null
           ? null
           : tenantAdminAccountProfilesRepoString(filtered.bio),
-      content: filtered.content == null
-          ? null
-          : tenantAdminAccountProfilesRepoString(filtered.content),
       avatarUrl: filtered.avatarUrl == null
           ? null
           : tenantAdminAccountProfilesRepoString(filtered.avatarUrl),
@@ -3222,7 +3205,6 @@ class TenantAdminAccountProfilesController implements Disposable {
     TenantAdminLocation? location,
     TenantAdminTaxonomyTerms? taxonomyTerms,
     String? bio,
-    String? content,
     String? avatarUrl,
     String? coverUrl,
     bool? removeAvatar,
@@ -3242,7 +3224,6 @@ class TenantAdminAccountProfilesController implements Disposable {
             taxonomyTerms:
                 taxonomyTerms ?? const TenantAdminTaxonomyTerms.empty(),
             bio: bio,
-            content: content,
             avatarUrl: avatarUrl,
             coverUrl: coverUrl,
             avatarUpload: avatarUpload,
@@ -3254,7 +3235,6 @@ class TenantAdminAccountProfilesController implements Disposable {
             taxonomyTerms:
                 taxonomyTerms ?? const TenantAdminTaxonomyTerms.empty(),
             bio: bio,
-            content: content,
             avatarUrl: avatarUrl,
             coverUrl: coverUrl,
             avatarUpload: avatarUpload,
@@ -3284,9 +3264,6 @@ class TenantAdminAccountProfilesController implements Disposable {
       bio: filtered.bio == null
           ? null
           : tenantAdminAccountProfilesRepoString(filtered.bio),
-      content: filtered.content == null
-          ? null
-          : tenantAdminAccountProfilesRepoString(filtered.content),
       avatarUrl: filtered.avatarUrl == null
           ? null
           : tenantAdminAccountProfilesRepoString(filtered.avatarUrl),
@@ -3531,7 +3508,6 @@ class TenantAdminAccountProfilesController implements Disposable {
     required TenantAdminLocation? location,
     required TenantAdminTaxonomyTerms taxonomyTerms,
     required String? bio,
-    required String? content,
     required String? avatarUrl,
     required String? coverUrl,
     required TenantAdminMediaUpload? avatarUpload,
@@ -3543,7 +3519,6 @@ class TenantAdminAccountProfilesController implements Disposable {
         location: location,
         taxonomyTerms: taxonomyTerms,
         bio: bio,
-        content: content,
         avatarUrl: avatarUrl,
         coverUrl: coverUrl,
         avatarUpload: avatarUpload,
@@ -3567,7 +3542,6 @@ class TenantAdminAccountProfilesController implements Disposable {
       location: capabilities.isPoiEnabled ? location : null,
       taxonomyTerms: filteredTerms,
       bio: capabilities.hasBio ? bio : null,
-      content: capabilities.hasContent ? content : null,
       avatarUrl: capabilities.hasAvatar ? avatarUrl : null,
       coverUrl: capabilities.hasCover ? coverUrl : null,
       avatarUpload: capabilities.hasAvatar ? avatarUpload : null,
@@ -3586,7 +3560,6 @@ class TenantAdminAccountProfilesController implements Disposable {
     slugController.dispose();
     displayNameController.dispose();
     bioController.dispose();
-    contentController.dispose();
     latitudeController.dispose();
     longitudeController.dispose();
     profilesStreamValue.dispose();
@@ -3635,7 +3608,6 @@ class _CapabilityFilter {
     required this.location,
     required this.taxonomyTerms,
     required this.bio,
-    required this.content,
     required this.avatarUrl,
     required this.coverUrl,
     required this.avatarUpload,
@@ -3645,7 +3617,6 @@ class _CapabilityFilter {
   final TenantAdminLocation? location;
   final TenantAdminTaxonomyTerms taxonomyTerms;
   final String? bio;
-  final String? content;
   final String? avatarUrl;
   final String? coverUrl;
   final TenantAdminMediaUpload? avatarUpload;

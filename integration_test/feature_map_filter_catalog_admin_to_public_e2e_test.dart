@@ -110,8 +110,10 @@ void main() {
     (tester) async {
       await GetIt.I.reset(dispose: true);
 
-      final adminEmail =
-          requireDefine('LANDLORD_ADMIN_EMAIL', adminEmailDefine);
+      final adminEmail = requireDefine(
+        'LANDLORD_ADMIN_EMAIL',
+        adminEmailDefine,
+      );
       final adminPassword = requireDefine(
         'LANDLORD_ADMIN_PASSWORD',
         adminPasswordDefine,
@@ -131,11 +133,7 @@ void main() {
       final assetDisplayName = 'Praia Automatizada $uniqueSeed';
 
       final adminAuthRepository = LandlordAuthRepository(
-        dio: Dio(
-          BaseOptions(
-            baseUrl: '$landlordOrigin/admin/api',
-          ),
-        ),
+        dio: Dio(BaseOptions(baseUrl: '$landlordOrigin/admin/api')),
       );
       GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
         adminAuthRepository,
@@ -177,8 +175,8 @@ void main() {
         tenantScopeRepository.setAvailableTenants(tenants);
         tenantScopeRepository.selectTenant(tenantOption);
 
-        originalDiscoveryFilters =
-            await settingsRepository.fetchDiscoveryFiltersSettings();
+        originalDiscoveryFilters = await settingsRepository
+            .fetchDiscoveryFiltersSettings();
 
         await staticAssetsRepository.createStaticProfileType(
           type: TenantAdminStaticAssetsRepoString.fromRaw(assetType),
@@ -338,37 +336,26 @@ void main() {
 
         expect(
           find.byKey(
-            TenantAdminDiscoveryFiltersKeys.filterRow(
-              'public_map.primary',
-              0,
-            ),
+            TenantAdminDiscoveryFiltersKeys.filterRow('public_map.primary', 0),
           ),
           findsOneWidget,
         );
         expect(
           find.byKey(
-            TenantAdminDiscoveryFiltersKeys.filterRow(
-              'public_map.primary',
-              1,
-            ),
+            TenantAdminDiscoveryFiltersKeys.filterRow('public_map.primary', 1),
           ),
           findsOneWidget,
         );
         expect(find.text(assetFilterLabel), findsOneWidget);
         expect(find.text(eventFilterLabel), findsOneWidget);
-        final filterAfterPreviewPump =
-            discoveryFiltersController.filtersForSurface(mapSurface).elementAt(
-                  0,
-                );
+        final filterAfterPreviewPump = discoveryFiltersController
+            .filtersForSurface(mapSurface)
+            .elementAt(0);
         expect(
           filterAfterPreviewPump.imageUri,
           secondImageUri,
           reason:
-              'admin preview controller filter after pump: ${filterAfterPreviewPump.toJson(
-                    surface: mapSurface.key,
-                    target: mapSurface.target,
-                    primarySelectionMode: mapSurface.primarySelectionMode,
-                  ).value}',
+              'admin preview controller filter after pump: ${filterAfterPreviewPump.toJson(surface: mapSurface.key, target: mapSurface.target, primarySelectionMode: mapSurface.primarySelectionMode).value}',
         );
 
         final persistedSettings = await waitForDiscoveryFiltersSettings(
@@ -387,8 +374,9 @@ void main() {
           expectationLabel: 'persisted discovery filter catalog',
         );
         expect(
-          _readSurfaceFilters(persistedSettings)
-              .firstWhere((item) => item['key'] == assetFilterKey)['image_uri'],
+          _readSurfaceFilters(
+            persistedSettings,
+          ).firstWhere((item) => item['key'] == assetFilterKey)['image_uri'],
           secondImageUri,
         );
 
@@ -444,20 +432,21 @@ void main() {
           assetDisplayName: assetDisplayName,
         );
         final publicAssetFilter = mapController
-            .filterOptionsStreamValue.value!.sortedCategories
+            .filterOptionsStreamValue
+            .value!
+            .sortedCategories
             .firstWhere((category) => category.label == assetFilterLabel);
         expect(publicAssetFilter.imageUri, secondImageUri);
-        final publicImageBytes =
-            await fetchImageBytes(publicAssetFilter.imageUri!);
+        final publicImageBytes = await fetchImageBytes(
+          publicAssetFilter.imageUri!,
+        );
         expect(publicImageBytes, equals(secondImageBytes));
 
         mapController.showFiltersTray();
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
-              body: Center(
-                child: MapAdaptiveTray(controller: mapController),
-              ),
+              body: Center(child: MapAdaptiveTray(controller: mapController)),
             ),
           ),
         );
@@ -493,7 +482,9 @@ void main() {
         expect(find.text(assetFilterLabel), findsOneWidget);
         expect(mapController.filterModeStreamValue.value, PoiFilterMode.server);
         expect(
-            mapController.activeFilterLabelStreamValue.value, assetFilterLabel);
+          mapController.activeFilterLabelStreamValue.value,
+          assetFilterLabel,
+        );
         expect(
           (mapController.filteredPoisStreamValue.value ?? <CityPoiModel>[])
               .map((poi) => poi.name)
@@ -554,8 +545,9 @@ String requireDefine(String key, String value) {
 
 Uri requireOriginUri(String raw) {
   final trimmed = raw.trim();
-  final uri =
-      Uri.tryParse(trimmed.contains('://') ? trimmed : 'https://$trimmed');
+  final uri = Uri.tryParse(
+    trimmed.contains('://') ? trimmed : 'https://$trimmed',
+  );
   if (uri == null || uri.host.trim().isEmpty) {
     fail('Invalid origin/domain value: "$raw"');
   }
@@ -573,8 +565,9 @@ String deriveLandlordOriginFromTenantHost(String tenantHost) {
   if (labels.length < 2) {
     fail('Invalid tenant host for landlord derivation: "$tenantHost"');
   }
-  final landlordHost =
-      labels.length >= 3 ? labels.sublist(1).join('.') : labels.join('.');
+  final landlordHost = labels.length >= 3
+      ? labels.sublist(1).join('.')
+      : labels.join('.');
   return 'https://$landlordHost';
 }
 
@@ -594,10 +587,10 @@ LandlordTenantOption resolveTenantByDomain(
 }
 
 Future<TenantAdminDiscoveryFiltersSettingsValue>
-    waitForDiscoveryFiltersSettings({
+waitForDiscoveryFiltersSettings({
   required TenantAdminSettingsRepository repository,
   required bool Function(TenantAdminDiscoveryFiltersSettingsValue value)
-      predicate,
+  predicate,
   required String expectationLabel,
   Duration timeout = const Duration(seconds: 40),
   Duration step = const Duration(seconds: 2),
@@ -671,9 +664,7 @@ Future<List<int>> fetchImageBytes(String imageUri) async {
     imageUri,
     options: Options(
       responseType: ResponseType.bytes,
-      headers: {
-        'Accept': 'image/*,*/*;q=0.8',
-      },
+      headers: {'Accept': 'image/*,*/*;q=0.8'},
     ),
   );
 
@@ -717,10 +708,7 @@ Future<String> registerPublicUser({
     return registration.token.trim();
   }
 
-  final loginResult = await authBackend.loginWithEmailPassword(
-    email,
-    password,
-  );
+  final loginResult = await authBackend.loginWithEmailPassword(email, password);
   return loginResult.$2.trim();
 }
 
@@ -806,18 +794,20 @@ Future<void> waitForCatalogAndPois({
     await mapController.loadPois(query);
 
     final options = mapController.filterOptionsStreamValue.value;
-    final hasAssetFilter = options?.categories.any(
+    final hasAssetFilter =
+        options?.categories.any(
           (category) => category.label == assetFilterLabel,
         ) ??
         false;
-    final hasEventFilter = options?.categories.any(
+    final hasEventFilter =
+        options?.categories.any(
           (category) => category.label == eventFilterLabel,
         ) ??
         false;
     final hasAssetPoi =
         (mapController.filteredPoisStreamValue.value ?? <CityPoiModel>[]).any(
-      (poi) => poi.name == assetDisplayName,
-    );
+          (poi) => poi.name == assetDisplayName,
+        );
 
     if (hasAssetFilter && hasEventFilter && hasAssetPoi) {
       return;
@@ -863,18 +853,11 @@ Future<void> waitForFilterApplication(
   throw TestFailure('Timed out waiting for asset filter application.');
 }
 
-XFile _buildImageFile({
-  required String name,
-  required img.ColorRgb8 color,
-}) {
+XFile _buildImageFile({required String name, required img.ColorRgb8 color}) {
   final image = img.Image(width: 256, height: 256);
   img.fill(image, color: color);
   final bytes = img.encodePng(image);
-  return XFile.fromData(
-    bytes,
-    name: name,
-    mimeType: 'image/png',
-  );
+  return XFile.fromData(bytes, name: name, mimeType: 'image/png');
 }
 
 class _StubAuthRepository extends AuthRepositoryContract<UserBelluga> {
@@ -910,8 +893,10 @@ class _StubAuthRepository extends AuthRepositoryContract<UserBelluga> {
   Future<void> autoLogin() async {}
 
   @override
-  Future<void> loginWithEmailPassword(AuthRepositoryContractParamString email,
-      AuthRepositoryContractParamString password) async {}
+  Future<void> loginWithEmailPassword(
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString password,
+  ) async {}
 
   @override
   Future<void> signUpWithEmailPassword(
@@ -922,8 +907,9 @@ class _StubAuthRepository extends AuthRepositoryContract<UserBelluga> {
 
   @override
   Future<void> sendTokenRecoveryPassword(
-      AuthRepositoryContractParamString email,
-      AuthRepositoryContractParamString codigoEnviado) async {}
+    AuthRepositoryContractParamString email,
+    AuthRepositoryContractParamString codigoEnviado,
+  ) async {}
 
   @override
   Future<void> logout() async {}
@@ -936,7 +922,8 @@ class _StubAuthRepository extends AuthRepositoryContract<UserBelluga> {
 
   @override
   Future<void> sendPasswordResetEmail(
-      AuthRepositoryContractParamString email) async {}
+    AuthRepositoryContractParamString email,
+  ) async {}
 
   @override
   Future<void> updateUser(UserCustomData data) async {}
@@ -975,7 +962,7 @@ class _StaticUserLocationRepository implements UserLocationRepositoryContract {
   @override
   @override
   final StreamValue<LocationResolutionPhase>
-      locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
+  locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
     defaultValue: LocationResolutionPhase.unknown,
   );
 
@@ -983,17 +970,13 @@ class _StaticUserLocationRepository implements UserLocationRepositoryContract {
   Future<void> ensureLoaded() async {}
 
   @override
-  Future<bool> refreshIfPermitted({
-    Object? minInterval,
-  }) async =>
-      false;
+  Future<bool> refreshIfPermitted({Object? minInterval}) async => false;
 
   @override
   Future<String?> resolveUserLocation({
     Object? timeout,
     UserLocationRepositoryContractBoolValue? requestPermissionIfNeededValue,
-  }) async =>
-      null;
+  }) async => null;
 
   @override
   Future<void> setLastKnownAddress(Object? address) async {}
@@ -1001,8 +984,7 @@ class _StaticUserLocationRepository implements UserLocationRepositoryContract {
   @override
   Future<bool> startTracking({
     LocationTrackingMode mode = LocationTrackingMode.mapForeground,
-  }) async =>
-      true;
+  }) async => true;
 
   @override
   Future<void> stopTracking() async {}
@@ -1023,8 +1005,9 @@ class _MapIntegrationAppDataRepository extends AppDataRepositoryContract {
   Future<void> init() async {}
 
   @override
-  final StreamValue<ThemeMode?> themeModeStreamValue =
-      StreamValue<ThemeMode?>(defaultValue: ThemeMode.light);
+  final StreamValue<ThemeMode?> themeModeStreamValue = StreamValue<ThemeMode?>(
+    defaultValue: ThemeMode.light,
+  );
 
   @override
   ThemeMode get themeMode => themeModeStreamValue.value ?? ThemeMode.light;
@@ -1037,8 +1020,8 @@ class _MapIntegrationAppDataRepository extends AppDataRepositoryContract {
   @override
   final StreamValue<DistanceInMetersValue> maxRadiusMetersStreamValue =
       StreamValue<DistanceInMetersValue>(
-    defaultValue: DistanceInMetersValue.fromRaw(50000, defaultValue: 50000),
-  );
+        defaultValue: DistanceInMetersValue.fromRaw(50000, defaultValue: 50000),
+      );
 
   @override
   DistanceInMetersValue get maxRadiusMeters => maxRadiusMetersStreamValue.value;
@@ -1055,8 +1038,8 @@ class _NoopTelemetryRepository implements TelemetryRepositoryContract {
 
   @override
   Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
-          EventTrackerTimedEventHandle handle) async =>
-      telemetryRepoBool(true);
+    EventTrackerTimedEventHandle handle,
+  ) async => telemetryRepoBool(true);
 
   @override
   Future<TelemetryRepositoryContractPrimBool> flushTimedEvents() async =>
@@ -1067,14 +1050,12 @@ class _NoopTelemetryRepository implements TelemetryRepositoryContract {
     EventTrackerEvents event, {
     TelemetryRepositoryContractPrimString? eventName,
     TelemetryRepositoryContractPrimMap? properties,
-  }) async =>
-      telemetryRepoBool(true);
+  }) async => telemetryRepoBool(true);
 
   @override
-  Future<TelemetryRepositoryContractPrimBool> mergeIdentity(
-          {required TelemetryRepositoryContractPrimString
-              previousUserId}) async =>
-      telemetryRepoBool(true);
+  Future<TelemetryRepositoryContractPrimBool> mergeIdentity({
+    required TelemetryRepositoryContractPrimString previousUserId,
+  }) async => telemetryRepoBool(true);
 
   @override
   void setScreenContext(TelemetryRepositoryContractPrimMap? screenContext) {}
@@ -1084,8 +1065,7 @@ class _NoopTelemetryRepository implements TelemetryRepositoryContract {
     EventTrackerEvents event, {
     TelemetryRepositoryContractPrimString? eventName,
     TelemetryRepositoryContractPrimMap? properties,
-  }) async =>
-      null;
+  }) async => null;
 }
 
 class _TestGeolocatorPlatform extends GeolocatorPlatform {
@@ -1116,31 +1096,26 @@ class _TestGeolocatorPlatform extends GeolocatorPlatform {
   @override
   Future<Position?> getLastKnownPosition({
     bool forceLocationManager = false,
-  }) async =>
-      _position;
+  }) async => _position;
 
   @override
   Future<Position> getCurrentPosition({
     LocationSettings? locationSettings,
-  }) async =>
-      _position;
+  }) async => _position;
 
   @override
   Stream<ServiceStatus> getServiceStatusStream() =>
       Stream.value(ServiceStatus.enabled);
 
   @override
-  Stream<Position> getPositionStream({
-    LocationSettings? locationSettings,
-  }) {
+  Stream<Position> getPositionStream({LocationSettings? locationSettings}) {
     return Stream<Position>.value(_position);
   }
 
   @override
   Future<LocationAccuracyStatus> requestTemporaryFullAccuracy({
     required String purposeKey,
-  }) async =>
-      LocationAccuracyStatus.precise;
+  }) async => LocationAccuracyStatus.precise;
 
   @override
   Future<LocationAccuracyStatus> getLocationAccuracy() async =>
