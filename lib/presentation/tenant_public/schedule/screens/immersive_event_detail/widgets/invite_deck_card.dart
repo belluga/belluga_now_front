@@ -19,6 +19,7 @@ class InviteDeckCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final inviter = invite.inviterName ?? 'Alguém';
 
     return Card(
       elevation: 4,
@@ -27,10 +28,7 @@ class InviteDeckCard extends StatelessWidget {
       child: Stack(
         children: [
           Positioned.fill(
-            child: BellugaNetworkImage(
-              invite.eventImageUrl,
-              fit: BoxFit.cover,
-            ),
+            child: BellugaNetworkImage(invite.eventImageUrl, fit: BoxFit.cover),
           ),
           Positioned.fill(
             child: DecoratedBox(
@@ -69,8 +67,8 @@ class InviteDeckCard extends StatelessWidget {
                         children: [
                           Text(
                             invite.additionalInviters.isNotEmpty
-                                ? '${invite.inviterName} e mais ${invite.additionalInviters.length} pessoas'
-                                : '${invite.inviterName} te convidou',
+                                ? '$inviter e mais ${invite.additionalInviters.length} pessoas'
+                                : '$inviter te convidou',
                             style: theme.textTheme.titleMedium?.copyWith(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,

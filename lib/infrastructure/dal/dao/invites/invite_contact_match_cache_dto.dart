@@ -4,11 +4,12 @@ import 'package:belluga_now/domain/invites/value_objects/invite_account_profile_
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_hash_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_contact_type_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_inviter_avatar_value.dart';
-import 'package:belluga_now/domain/invites/value_objects/invite_inviter_name_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_recipient_display_name_candidate_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_profile_exposure_level_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/inviteable_reason_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
 import 'package:belluga_now/domain/value_objects/domain_boolean_value.dart';
+import 'package:belluga_now/infrastructure/dal/dto/schedule/support/public_media_url_normalizer.dart';
 
 class InviteContactMatchCacheDto {
   const InviteContactMatchCacheDto({
@@ -83,11 +84,17 @@ class InviteContactMatchCacheDto {
     };
   }
 
-  InviteContactMatch toDomain() {
+  InviteContactMatch toDomain({Uri? tenantOrigin}) {
+    final normalizedAvatar = normalizeTenantPublicMediaUrl(
+      avatarUrl,
+      tenantOrigin: tenantOrigin,
+    );
+    final parsedAvatar = normalizedAvatar == null
+        ? null
+        : Uri.tryParse(normalizedAvatar);
     final avatarValue = InviteInviterAvatarValue();
-    final normalizedAvatar = avatarUrl?.trim();
-    if (normalizedAvatar != null && normalizedAvatar.isNotEmpty) {
-      avatarValue.parse(normalizedAvatar);
+    if (parsedAvatar != null && parsedAvatar.isAbsolute) {
+      avatarValue.parse(parsedAvatar.toString());
     }
 
     return InviteContactMatch(
@@ -96,7 +103,8 @@ class InviteContactMatchCacheDto {
       userIdValue: UserIdValue()..parse(userId),
       receiverAccountProfileIdValue: InviteAccountProfileIdValue()
         ..parse(receiverAccountProfileId),
-      displayNameValue: InviteInviterNameValue()..parse(displayName),
+      displayNameValue: InviteRecipientDisplayNameCandidateValue()
+        ..parse(displayName),
       avatarValue: avatarValue,
       profileExposureLevelValue: InviteProfileExposureLevelValue()
         ..parse(profileExposureLevel),

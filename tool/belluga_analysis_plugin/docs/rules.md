@@ -199,7 +199,7 @@ Controllers must not inject or resolve other presentation controllers. Controlle
 ## `controller_repository_pagination_arguments_forbidden`
 
 ### Rule intent
-Controllers must not pass raw pagination control arguments (`page`, `pageSize`, `cursor`, `limit`, etc.) into repository calls.
+Controllers must not pass raw pagination control arguments (`page`, `pageSize`, `cursor`, `limit`, etc.) into a Schedule repository call. This rule protects the Schedule repository's canonical ownership of pagination regardless of which presentation controller invokes it; it does not impose that Schedule-specific ownership model on unrelated repositories.
 
 ### Remediation playbook
 1. Remove raw pagination arguments from controller-to-repository calls.
@@ -266,6 +266,32 @@ UI must not manually dispose controllers whose lifecycle is owned above the widg
 1. If the controller is module-scoped or screen-scoped, remove manual `dispose()` / `onDispose()` calls from UI and rely on the owning scope teardown.
 2. If the controller is a widget-local controller under `widgets/**/controllers/**`, the owning widget subtree may dispose it locally.
 3. If disposal intent is unclear, fix ownership first instead of suppressing the warning.
+
+## `nested_group_members_full_list_forbidden`
+
+### Rule intent
+Nested Account/Event group members are an unbounded server-paged relation. Flutter must not restore a full-list repository/DAO API or synchronously drain every cursor page into memory.
+
+### Remediation playbook
+1. Keep the DAO method page-shaped and forward `cursor` plus optional `search` to Laravel.
+2. Expose semantic repository `load`, `load-more`, and `search` intents with first-seen-ID de-duplication and stale-generation rejection.
+3. Let list widgets request continuation from scroll state; never walk every page in `while` or offer `get/fetch...NestedGroupMembers` without a page contract.
+
+## `account_profile_candidate_generic_endpoint_forbidden`
+
+### Rule intent
+Account Profile selector/search flows must use the scoped `/account_profiles/candidates` contract. The generic administrative Account Profile listing must not regain candidate-only flags or shared candidate-session methods. Detection includes candidate/picker/selection ownership and the governed contact-source/mirrored-profile selection contexts. The candidate page loader also depends on the narrow candidate repository contract, so the generic administrative listing operation is unavailable at the selector dependency boundary.
+
+### Remediation playbook
+1. Create an independent candidate-picker session for each modal.
+2. Select the explicit `queryable` or `contact_capable` scope.
+3. Keep search, pagination, stale-request rejection, and selected summaries inside that session.
+4. Use the generic listing only for administrative list screens and never pass candidate-only arguments to it.
+
+The Rule matrix binds every annotated expectation one-to-one to a unique nearby
+AST diagnostic, in addition to checking the registered code inventory; one
+diagnostic cannot satisfy two expectations and one unrelated occurrence of a
+Rule code cannot satisfy a missing positive fixture.
 
 ## `screen_descendant_widget_controller_resolution_forbidden`
 

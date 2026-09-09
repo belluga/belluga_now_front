@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:belluga_gallery/belluga_gallery.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/testing/domain_factories.dart';
 import 'dart:io';
@@ -26,6 +27,7 @@ import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/partner/partner_resume.dart';
 import 'package:belluga_now/domain/partners/account_profile_gallery_group.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_gallery_player_aspect_ratio_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group_member_page.dart';
@@ -419,7 +421,7 @@ void main() {
       var allowRetryRecovery = false;
       final repository = _FakeAccountProfilesRepository()
         ..fetchNestedGroupMembersPageHandler =
-            (String membersPath, String cursor) async {
+            (String membersPath, String cursor, String search) async {
               if (membersPath != artistsMembersPath) {
                 return const AccountProfileNestedGroupMemberPage.empty();
               }
@@ -508,7 +510,6 @@ void main() {
         find.byKey(const Key('eventRelatedProfileGroupLoadMore_artists')),
         findsOneWidget,
       );
-
       final failedRetryAttempts = repository.requestedNestedGroupMemberPageKeys
           .where((key) => key == '$artistsMembersPath|$retryCursor')
           .length;
@@ -547,6 +548,17 @@ void main() {
       expect(
         find.byKey(const Key('eventRelatedProfileGroupLoadMore_artists')),
         findsNothing,
+      );
+      final searchField = find.byKey(
+        const Key('eventRelatedProfileGroupSearch_artists'),
+      );
+      expect(searchField, findsOneWidget);
+      await tester.enterText(searchField, 'art');
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pumpAndSettle();
+      expect(
+        repository.requestedNestedGroupMemberPageKeys,
+        contains('$artistsMembersPath||art'),
       );
       expect(_takeAllExceptions(tester), isEmpty);
     },
@@ -3861,6 +3873,13 @@ void main() {
                     ],
                     galleryGroups: <AccountProfileGalleryGroup>[
                       _buildGalleryGroup(
+                        groupId: 'gallery-group-empty',
+                        subtitle: 'Vazia',
+                        items: const <AccountProfileGalleryItem>[],
+                      ),
+                      _buildGalleryGroup(
+                        groupId: 'gallery-group-primary',
+                        subtitle: 'Ambientes',
                         items: <AccountProfileGalleryItem>[
                           _buildGalleryItem(
                             itemId: 'gallery-1',
@@ -3870,11 +3889,10 @@ void main() {
                             modalUrl: 'https://tenant.test/gallery/modal-1.jpg',
                           ),
                           _buildGalleryItem(
-                            itemId: 'gallery-2',
-                            imageUrl: 'https://tenant.test/gallery/image-2.jpg',
-                            thumbUrl: 'https://tenant.test/gallery/thumb-2.jpg',
-                            cardUrl: 'https://tenant.test/gallery/card-2.jpg',
-                            modalUrl: 'https://tenant.test/gallery/modal-2.jpg',
+                            itemId: 'gallery-youtube',
+                            type: AccountProfileGalleryItemType.youtube,
+                            youtubeVideoId: 'dQw4w9WgXcQ',
+                            playerAspectRatio: 1.5,
                           ),
                           _buildGalleryItem(
                             itemId: 'gallery-3',
@@ -3883,6 +3901,17 @@ void main() {
                             cardUrl: null,
                             modalUrl: 'https://tenant.test/gallery/modal-3.jpg',
                           ),
+                          _buildGalleryItem(
+                            itemId: 'gallery-4',
+                            imageUrl: 'https://tenant.test/gallery/image-4.jpg',
+                          ),
+                        ],
+                      ),
+                      _buildGalleryGroup(
+                        groupId: 'gallery-group-secondary',
+                        subtitle: 'Não deve aparecer',
+                        items: <AccountProfileGalleryItem>[
+                          _buildGalleryItem(itemId: 'gallery-secondary'),
                         ],
                       ),
                     ],
@@ -3900,27 +3929,24 @@ void main() {
 
       expect(find.byKey(const Key('eventLocalHeroWithCover')), findsOneWidget);
       expect(find.byKey(const Key('eventLocalDescription')), findsOneWidget);
-      expect(find.byKey(const Key('eventLocalGalleryStrip')), findsOneWidget);
-      final galleryPreviewImages = tester
-          .widgetList<BellugaNetworkImage>(
-            find.descendant(
-              of: find.byKey(const Key('eventLocalGalleryStrip')),
-              matching: find.byType(BellugaNetworkImage),
-            ),
-          )
-          .toList(growable: false);
-      expect(galleryPreviewImages, hasLength(3));
-      expect(
-        galleryPreviewImages[0].url,
-        'https://tenant.test/gallery/card-1.jpg',
+      expect(find.byKey(const Key('eventLocalGalleryStrip')), findsNothing);
+      expect(find.text('Ambientes'), findsOneWidget);
+      expect(find.text('Vazia'), findsNothing);
+      expect(find.text('Não deve aparecer'), findsNothing);
+      final galleryRow = tester.widget<BellugaGalleryPreviewRow>(
+        find.byKey(const Key('eventLocalGalleryPreviewRow')),
       );
+      expect(galleryRow.items.map((item) => item.itemId), <String>[
+        'gallery-1',
+        'gallery-youtube',
+        'gallery-3',
+        'gallery-4',
+      ]);
+      expect(galleryRow.items[0], isA<GalleryPhoto>());
+      expect(galleryRow.items[1], isA<GalleryYoutubePlayer>());
       expect(
-        galleryPreviewImages[1].url,
-        'https://tenant.test/gallery/image-2.jpg',
-      );
-      expect(
-        galleryPreviewImages[2].url,
-        'https://tenant.test/gallery/modal-3.jpg',
+        (galleryRow.items[1] as GalleryYoutubePlayer).youtubeVideoId,
+        'dQw4w9WgXcQ',
       );
       expect(
         find.byKey(const Key('eventLocalPrimaryDirectionsMapTile')),
@@ -3928,10 +3954,6 @@ void main() {
       );
       expect(find.text('Beach Club'), findsOneWidget);
       expect(find.text('Acessível'), findsOneWidget);
-      expect(
-        tester.getSize(find.byKey(const Key('eventLocalGalleryStrip'))).height,
-        88,
-      );
       expect(
         tester
             .getSize(
@@ -3951,7 +3973,9 @@ void main() {
         ),
       );
       expect(
-        tester.getTopLeft(find.byKey(const Key('eventLocalGalleryStrip'))).dy,
+        tester
+            .getTopLeft(find.byKey(const Key('eventLocalGalleryPreviewRow')))
+            .dy,
         greaterThan(
           tester.getTopLeft(find.byKey(const Key('eventLocalDescription'))).dy,
         ),
@@ -3963,9 +3987,23 @@ void main() {
             )
             .dy,
         greaterThan(
-          tester.getTopLeft(find.byKey(const Key('eventLocalGalleryStrip'))).dy,
+          tester
+              .getTopLeft(find.byKey(const Key('eventLocalGalleryPreviewRow')))
+              .dy,
         ),
       );
+
+      galleryRow.onItemSelected(2);
+      await tester.pumpAndSettle();
+
+      final viewer = tester.widget<BellugaGalleryViewer>(
+        find.byKey(const Key('eventLocalGalleryViewer_gallery-group-primary')),
+      );
+      expect(viewer.galleryTitle, 'Ambientes');
+      expect(viewer.initialIndex, 2);
+      expect(viewer.items, hasLength(4));
+      expect(viewer.items[0], isA<GalleryPhoto>());
+      expect(viewer.items[1], isA<GalleryYoutubePlayer>());
     },
   );
 
@@ -7179,6 +7217,9 @@ AccountProfileGalleryItem _buildGalleryItem({
   String? cardUrl = 'https://tenant.test/gallery/card.jpg',
   String? modalUrl = 'https://tenant.test/gallery/modal.jpg',
   String description = 'Vista principal',
+  AccountProfileGalleryItemType type = AccountProfileGalleryItemType.photo,
+  String? youtubeVideoId,
+  double? playerAspectRatio,
 }) {
   return AccountProfileGalleryItem(
     itemIdValue: AccountProfileNestedGroupIdValue(itemId),
@@ -7188,6 +7229,13 @@ AccountProfileGalleryItem _buildGalleryItem({
     thumbUrlValue: _buildOptionalThumbUriValue(thumbUrl),
     cardUrlValue: _buildOptionalThumbUriValue(cardUrl),
     modalUrlValue: _buildOptionalThumbUriValue(modalUrl),
+    type: type,
+    youtubeVideoIdValue: AccountProfileNestedGroupMemberTextValue(
+      youtubeVideoId ?? '',
+    ),
+    playerAspectRatioValue: AccountProfileGalleryPlayerAspectRatioValue(
+      playerAspectRatio,
+    ),
   );
 }
 
@@ -7643,6 +7691,7 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   Future<AccountProfileNestedGroupMemberPage> Function(
     String membersPath,
     String cursor,
+    String search,
   )?
   fetchNestedGroupMembersPageHandler;
   final Map<String, List<AccountProfileNestedGroupMember>>
@@ -7676,31 +7725,41 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   }
 
   @override
-  Future<List<AccountProfileNestedGroupMember>> getNestedGroupMembersByPath(
-    AccountProfilesRepositoryContractPrimString membersPath,
-  ) async {
-    lastNestedGroupMembersPath = membersPath.value;
-    requestedNestedGroupMembersPaths.add(membersPath.value);
-    return nestedGroupMembersByPath[membersPath.value] ??
-        const <AccountProfileNestedGroupMember>[];
-  }
-
-  @override
   Future<AccountProfileNestedGroupMemberPage> fetchNestedGroupMembersPageByPath(
     AccountProfilesRepositoryContractPrimString membersPath, {
     AccountProfilesRepositoryContractPrimString? cursor,
+    AccountProfilesRepositoryContractPrimString? search,
   }) async {
     final normalizedCursor = cursor?.value.trim() ?? '';
-    final requestKey = '${membersPath.value}|$normalizedCursor';
+    final normalizedSearch = search?.value.trim() ?? '';
+    final requestKey = normalizedSearch.isEmpty
+        ? '${membersPath.value}|$normalizedCursor'
+        : '${membersPath.value}|$normalizedCursor|$normalizedSearch';
     requestedNestedGroupMemberPageKeys.add(requestKey);
     final handler = fetchNestedGroupMembersPageHandler;
     if (handler != null) {
       lastNestedGroupMembersPath = membersPath.value;
       requestedNestedGroupMembersPaths.add(membersPath.value);
-      return handler(membersPath.value, normalizedCursor);
+      return handler(membersPath.value, normalizedCursor, normalizedSearch);
     }
 
-    return super.fetchNestedGroupMembersPageByPath(membersPath, cursor: cursor);
+    final fixtureMembers = nestedGroupMembersByPath[membersPath.value];
+    if (fixtureMembers != null &&
+        normalizedCursor.isEmpty &&
+        normalizedSearch.isEmpty) {
+      lastNestedGroupMembersPath = membersPath.value;
+      requestedNestedGroupMembersPaths.add(membersPath.value);
+      return AccountProfileNestedGroupMemberPage(
+        items: fixtureMembers,
+        nextCursorValue: null,
+      );
+    }
+
+    return super.fetchNestedGroupMembersPageByPath(
+      membersPath,
+      cursor: cursor,
+      search: search,
+    );
   }
 
   @override

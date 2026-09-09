@@ -185,11 +185,13 @@ AccountProfileGalleryItem buildAccountProfileGalleryItemFromPrimitives({
   required String thumbUrl,
   required String cardUrl,
   required String modalUrl,
+  String? title,
   String? description,
   int order = 0,
 }) {
   return AccountProfileGalleryItem(
     itemIdValue: AccountProfileNestedGroupIdValue(itemId),
+    titleValue: AccountProfileNestedGroupMemberTextValue(title ?? ''),
     descriptionValue: AccountProfileNestedGroupMemberTextValue(
       description ?? '',
     ),

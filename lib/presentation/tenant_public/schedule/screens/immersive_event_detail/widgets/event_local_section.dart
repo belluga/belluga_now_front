@@ -1,8 +1,11 @@
+import 'package:auto_route/auto_route.dart';
+import 'package:belluga_gallery/belluga_gallery.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
-import 'package:belluga_now/domain/partners/account_profile_gallery_item.dart';
+import 'package:belluga_now/domain/partners/account_profile_gallery_group.dart';
 import 'package:belluga_now/domain/schedule/event_linked_account_profile.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/application/rich_text/safe_rich_html.dart';
+import 'package:belluga_now/application/router/support/route_instance_scope.dart';
 import 'package:belluga_now/presentation/shared/visuals/account_profile_visual_resolver.dart';
 import 'package:belluga_now/presentation/shared/visuals/resolved_account_profile_visual.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
@@ -62,9 +65,7 @@ class EventLocalSection extends StatelessWidget {
     final relatedDestinations = showNavigation
         ? _buildDestinations(event)
         : const <_LocationDestination>[];
-    final galleryItems = [
-      for (final group in venue.galleryGroups) ...group.items,
-    ].take(3).toList(growable: false);
+    final firstGallery = _firstNonEmptyGallery(venue.galleryGroups);
     final venueBioHtml = SafeRichHtml.canonicalize(venue.bio?.trim() ?? '');
     final hasVenueBio = !SafeRichHtml.isEffectivelyEmpty(venueBioHtml);
     final tags = venue.taxonomyLabels
@@ -116,9 +117,27 @@ class EventLocalSection extends StatelessWidget {
               },
             ),
           ],
-          if (galleryItems.isNotEmpty) ...[
+          if (firstGallery != null) ...[
             const SizedBox(height: 20),
-            _EventLocalGalleryStrip(items: galleryItems),
+            Text(
+              firstGallery.subtitle,
+              key: const Key('eventLocalGallerySubtitle'),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 12),
+            BellugaGalleryPreviewRow(
+              key: const Key('eventLocalGalleryPreviewRow'),
+              items: firstGallery.items
+                  .map((item) => item.toGalleryItem())
+                  .toList(growable: false),
+              onItemSelected: (itemIndex) => _openGalleryViewer(
+                context,
+                group: firstGallery,
+                initialIndex: itemIndex,
+              ),
+            ),
           ],
           if (showNavigation && directionsTarget != null) ...[
             const SizedBox(height: 24),
@@ -170,6 +189,38 @@ class EventLocalSection extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  AccountProfileGalleryGroup? _firstNonEmptyGallery(
+    List<AccountProfileGalleryGroup> groups,
+  ) {
+    for (final group in groups) {
+      if (group.items.isNotEmpty) {
+        return group;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _openGalleryViewer(
+    BuildContext context, {
+    required AccountProfileGalleryGroup group,
+    required int initialIndex,
+  }) {
+    return showRouteScopedDialog<void>(
+      context: context,
+      useSafeArea: false,
+      useRootNavigator: false,
+      builder: (dialogContext) => BellugaGalleryViewer(
+        key: Key('eventLocalGalleryViewer_${group.groupId}'),
+        items: group.items
+            .map((item) => item.toGalleryItem())
+            .toList(growable: false),
+        galleryTitle: group.subtitle,
+        initialIndex: initialIndex,
+        onClose: () => dialogContext.router.maybePop(),
       ),
     );
   }
@@ -304,36 +355,6 @@ class _EventLocalHero extends StatelessWidget {
     return KeyedSubtree(
       key: const Key('eventLocalHeroWithoutCover'),
       child: identityCard,
-    );
-  }
-}
-
-class _EventLocalGalleryStrip extends StatelessWidget {
-  const _EventLocalGalleryStrip({required this.items});
-
-  final List<AccountProfileGalleryItem> items;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      key: const Key('eventLocalGalleryStrip'),
-      height: 88,
-      child: Row(
-        children: [
-          for (var index = 0; index < items.length; index++) ...[
-            if (index > 0) const SizedBox(width: 10),
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(18),
-                child: BellugaNetworkImage(
-                  items[index].previewUrl,
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
     );
   }
 }

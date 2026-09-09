@@ -1,6 +1,7 @@
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profile_gallery_group_draft.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_capabilities.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -28,11 +29,12 @@ class TenantAdminAccountProfileEditDraft {
         const BellugaContactBubbleSelectionMutation.omit(),
     this.contactSourceAccountProfileId,
     this.galleryGroups = const <TenantAdminAccountProfileGalleryGroupDraft>[],
+    required this.galleryCapabilities,
     this.nestedProfileGroups = const <TenantAdminNestedProfileGroup>[],
   });
 
   factory TenantAdminAccountProfileEditDraft.initial() =>
-      const TenantAdminAccountProfileEditDraft(
+      TenantAdminAccountProfileEditDraft(
         selectedProfileType: null,
         avatarFile: null,
         coverFile: null,
@@ -52,6 +54,8 @@ class TenantAdminAccountProfileEditDraft {
         contactBubbleSelection: BellugaContactBubbleSelectionMutation.omit(),
         contactSourceAccountProfileId: null,
         galleryGroups: <TenantAdminAccountProfileGalleryGroupDraft>[],
+        galleryCapabilities:
+            TenantAdminAccountProfileGalleryCapabilities.empty(),
         nestedProfileGroups: <TenantAdminNestedProfileGroup>[],
       );
 
@@ -74,6 +78,7 @@ class TenantAdminAccountProfileEditDraft {
   final BellugaContactBubbleSelectionMutation contactBubbleSelection;
   final String? contactSourceAccountProfileId;
   final List<TenantAdminAccountProfileGalleryGroupDraft> galleryGroups;
+  final TenantAdminAccountProfileGalleryCapabilities galleryCapabilities;
   final List<TenantAdminNestedProfileGroup> nestedProfileGroups;
 
   TenantAdminAccountProfileEditDraft copyWith({
@@ -96,6 +101,7 @@ class TenantAdminAccountProfileEditDraft {
     BellugaContactBubbleSelectionMutation? contactBubbleSelection,
     Object? contactSourceAccountProfileId = _unset,
     List<TenantAdminAccountProfileGalleryGroupDraft>? galleryGroups,
+    TenantAdminAccountProfileGalleryCapabilities? galleryCapabilities,
     List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
   }) {
     final nextSelectedProfileType = selectedProfileType == _unset
@@ -145,6 +151,7 @@ class TenantAdminAccountProfileEditDraft {
           ? this.contactSourceAccountProfileId
           : contactSourceAccountProfileId as String?,
       galleryGroups: galleryGroups ?? this.galleryGroups,
+      galleryCapabilities: galleryCapabilities ?? this.galleryCapabilities,
       nestedProfileGroups: nestedProfileGroups ?? this.nestedProfileGroups,
     );
   }
@@ -178,6 +185,7 @@ class TenantAdminAccountProfileEditDraft {
       galleryGroups: updated.galleryGroups
           .map(TenantAdminAccountProfileGalleryGroupDraft.fromRead)
           .toList(growable: false),
+      galleryCapabilities: updated.galleryCapabilities,
       nestedProfileGroups: updated.nestedProfileGroups,
     );
   }

@@ -5,6 +5,8 @@ import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_nes
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_nested_group_member_page_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_profile_type_dto.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_head_mutation_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_group_order_mutation_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_snapshot.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_group_label_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
@@ -20,6 +22,14 @@ class TenantAdminAccountProfilesResponseDecoder {
   TenantAdminAccountProfileDTO decodeAccountProfileItem(Object? rawResponse) {
     return TenantAdminAccountProfileDTO.fromJson(
       _envelopeDecoder.decodeItemMap(rawResponse, label: 'account profile'),
+    );
+  }
+
+  TenantAdminAccountProfileGallerySnapshot decodeGallerySnapshot(
+    Object? rawResponse,
+  ) {
+    return tenantAdminAccountProfileGallerySnapshotFromJson(
+      _envelopeDecoder.decodeItemMap(rawResponse, label: 'gallery mutation'),
     );
   }
 
@@ -118,6 +128,63 @@ class TenantAdminAccountProfilesResponseDecoder {
       idValue: TenantAdminNestedProfileGroupTextValue(id),
       labelValue: TenantAdminNestedProfileGroupTextValue(label),
     );
+  }
+
+  TenantAdminGroupOrderMutationResult decodeNestedGroupOrderMutationResult(
+    Object? rawResponse,
+  ) {
+    final item = _envelopeDecoder.decodeItemMap(
+      rawResponse,
+      label: 'nested group order mutation result',
+    );
+    if (item.keys.toSet().difference({
+          'account_profile_id',
+          'groups',
+        }).isNotEmpty ||
+        !item.keys.toSet().containsAll({'account_profile_id', 'groups'})) {
+      throw const FormatException('Invalid nested group order response.');
+    }
+    final accountProfileId = _asString(item['account_profile_id']);
+    final rawGroups = item['groups'];
+    if (accountProfileId == null ||
+        accountProfileId.trim().isEmpty ||
+        rawGroups is! List) {
+      throw const FormatException('Invalid nested group order response.');
+    }
+
+    return TenantAdminGroupOrderMutationResult(
+      accountProfileIdValue: TenantAdminNestedProfileGroupTextValue(
+        accountProfileId,
+      ),
+      groups: _decodeOrderEntries(rawGroups, 'nested group order response'),
+    );
+  }
+
+  List<TenantAdminGroupOrderEntry> _decodeOrderEntries(
+    List<dynamic> rawGroups,
+    String label,
+  ) {
+    final entries = <TenantAdminGroupOrderEntry>[];
+    for (final rawGroup in rawGroups) {
+      if (rawGroup is! Map) throw FormatException('Invalid $label.');
+      final group = Map<String, dynamic>.from(rawGroup);
+      if (group.keys.toSet().difference({'id', 'order'}).isNotEmpty ||
+          !group.keys.toSet().containsAll({'id', 'order'})) {
+        throw FormatException('Invalid $label.');
+      }
+      final id = _asString(group['id']);
+      final order = group['order'];
+      if (id == null || id.trim().isEmpty || order is! int || order < 0) {
+        throw FormatException('Invalid $label.');
+      }
+      entries.add(
+        TenantAdminGroupOrderEntry(
+          idValue: TenantAdminNestedProfileGroupTextValue(id),
+          orderValue: TenantAdminNestedProfileGroupOrderValue(order),
+        ),
+      );
+    }
+    return entries;
   }
 
   TenantAdminProfileTypeDTO decodeProfileTypeItem(Object? rawResponse) {

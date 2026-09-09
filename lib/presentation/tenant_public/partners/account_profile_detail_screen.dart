@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
+import 'package:belluga_gallery/belluga_gallery.dart';
 import 'package:belluga_now/application/extensions/compute_on_color.dart';
 import 'package:belluga_now/application/sharing/account_profile_public_share_payload.dart';
 import 'package:belluga_now/application/rich_text/account_profile_rich_text_block.dart';
@@ -11,6 +12,7 @@ import 'package:belluga_now/application/router/support/route_redirect_path.dart'
 import 'package:belluga_now/application/router/support/route_instance_scope.dart';
 import 'package:belluga_now/application/telemetry/auth_wall_telemetry.dart';
 import 'package:belluga_now/domain/partners/account_profile_gallery_group.dart';
+import 'package:belluga_now/domain/partners/account_profile_external_link.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
@@ -36,10 +38,12 @@ import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/tabs/immersive_directions_section.dart';
 import 'package:belluga_now/presentation/shared/widgets/public_rich_text_html.dart';
 import 'package:belluga_now/presentation/shared/widgets/nested_accounts_load_more_indicator.dart';
+import 'package:belluga_now/presentation/shared/widgets/nested_accounts_search_field.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/presentation/tenant_public/widgets/invite_status_icon.dart';
+import 'package:belluga_now/presentation/tenant_public/partners/widgets/account_profile_external_link_strip.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart' hide Marker;
@@ -206,7 +210,10 @@ class _AccountProfileDetailScreenState
                                               context,
                                             ),
                                         tabs: effectiveTabs,
-                                        betweenHeroAndTabs: null,
+                                        betweenHeroAndTabs:
+                                            _buildExternalLinkStrip(
+                                              resolvedAccountProfile,
+                                            ),
                                       );
                                     },
                                   );
@@ -1275,6 +1282,33 @@ class _AccountProfileDetailScreenState
 
   Future<bool> _launchExternalUrl(Uri uri, {required LaunchMode mode}) {
     return launchUrl(uri, mode: mode);
+  }
+
+  Widget? _buildExternalLinkStrip(AccountProfileModel accountProfile) {
+    final links = _controller.availableExternalLinksFor(accountProfile);
+    if (links.isEmpty) return null;
+
+    return AccountProfileExternalLinkStrip(
+      links: links,
+      onOpen: (link) => unawaited(_openExternalLink(link)),
+    );
+  }
+
+  Future<void> _openExternalLink(AccountProfileExternalLink link) async {
+    try {
+      final launcher = widget.externalUrlLauncher ?? _launchExternalUrl;
+      final launched = await launcher(
+        link.url,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched && mounted) {
+        _showStatusMessage('Não foi possível abrir ${link.label}.');
+      }
+    } catch (_) {
+      if (mounted) {
+        _showStatusMessage('Não foi possível abrir ${link.label}.');
+      }
+    }
   }
 
   Future<void> _shareAccountProfile(AccountProfileModel accountProfile) async {
@@ -2601,7 +2635,12 @@ class _AccountProfileDetailScreenState
   }
 
   Widget _groupedPhotoGallery(List<AccountProfileGalleryGroup>? groups) {
-    if (groups == null || groups.isEmpty) {
+    final visibleGroups =
+        groups
+            ?.where((group) => group.items.isNotEmpty)
+            .toList(growable: false) ??
+        const <AccountProfileGalleryGroup>[];
+    if (visibleGroups.isEmpty) {
       return const SizedBox.shrink();
     }
 
@@ -2611,64 +2650,61 @@ class _AccountProfileDetailScreenState
         key: const Key('accountProfileGroupedGallery'),
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(
+            'Galeria',
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 8),
+          Divider(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.45),
+          ),
+          const SizedBox(height: 12),
           for (
             var groupIndex = 0;
-            groupIndex < groups.length;
+            groupIndex < visibleGroups.length;
             groupIndex++
           ) ...[
             if (groupIndex > 0) const SizedBox(height: 24),
-            Text(
-              groups[groupIndex].subtitle,
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 12),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-                childAspectRatio: 1.1,
-              ),
-              itemCount: groups[groupIndex].items.length,
-              itemBuilder: (context, itemIndex) {
-                final item = groups[groupIndex].items[itemIndex];
-                return Material(
-                  color: Colors.transparent,
-                  child: Semantics(
-                    container: true,
-                    button: true,
-                    label: _galleryItemSemanticLabel(
-                      group: groups[groupIndex],
-                      item: item,
-                    ),
-                    child: InkWell(
-                      key: Key('accountProfileGalleryItem_${item.itemId}'),
-                      borderRadius: BorderRadius.circular(14),
-                      onTap: () => _openGalleryItemModal(
-                        group: groups[groupIndex],
-                        item: item,
-                      ),
-                      child: Ink(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(14),
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerHighest,
-                        ),
-                        child: BellugaNetworkImage(
-                          item.previewUrl,
-                          fit: BoxFit.cover,
-                          clipBorderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    visibleGroups[groupIndex].subtitle,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                );
-              },
+                ),
+                TextButton(
+                  key: Key(
+                    'accountProfileGalleryOpenGroup_${visibleGroups[groupIndex].groupId}',
+                  ),
+                  onPressed: () => _openGalleryViewer(
+                    group: visibleGroups[groupIndex],
+                    initialIndex: 0,
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('Ver tudo'),
+                      SizedBox(width: 2),
+                      Icon(Icons.chevron_right_rounded, size: 20),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            BellugaGalleryPreviewRow(
+              items: visibleGroups[groupIndex].items
+                  .map((item) => item.toGalleryItem())
+                  .toList(growable: false),
+              onItemSelected: (itemIndex) => _openGalleryViewer(
+                group: visibleGroups[groupIndex],
+                initialIndex: itemIndex,
+              ),
             ),
           ],
         ],
@@ -2676,100 +2712,25 @@ class _AccountProfileDetailScreenState
     );
   }
 
-  Future<void> _openGalleryItemModal({
+  Future<void> _openGalleryViewer({
     required AccountProfileGalleryGroup group,
-    required AccountProfileGalleryItem item,
-  }) async {
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        final viewport = MediaQuery.sizeOf(dialogContext);
-        return Dialog(
-          key: Key('accountProfileGalleryModal_${item.itemId}'),
-          insetPadding: const EdgeInsets.all(16),
-          clipBehavior: Clip.antiAlias,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: 720,
-              maxHeight: viewport.height - 32,
-            ),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Stack(
-                    children: [
-                      AspectRatio(
-                        aspectRatio: 1,
-                        child: InteractiveViewer(
-                          child: BellugaNetworkImage(
-                            item.modalUrl,
-                            fit: BoxFit.contain,
-                            placeholder: Container(
-                              color: Theme.of(
-                                dialogContext,
-                              ).colorScheme.surfaceContainerHighest,
-                              child: const Center(
-                                child: CircularProgressIndicator(),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: IconButton.filledTonal(
-                          onPressed: () => dialogContext.router.maybePop(),
-                          tooltip: 'Fechar galeria',
-                          icon: const Icon(Icons.close),
-                        ),
-                      ),
-                    ],
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          group.subtitle,
-                          style: Theme.of(dialogContext).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w800),
-                        ),
-                        if (item.description?.trim().isNotEmpty == true) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            item.description!.trim(),
-                            key: Key(
-                              'accountProfileGalleryModalDescription_${item.itemId}',
-                            ),
-                            style: Theme.of(dialogContext).textTheme.bodyLarge,
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  String _galleryItemSemanticLabel({
-    required AccountProfileGalleryGroup group,
-    required AccountProfileGalleryItem item,
+    required int initialIndex,
   }) {
-    final description = item.description?.trim();
-    if (description != null && description.isNotEmpty) {
-      return 'Abrir foto da galeria ${group.subtitle}: $description';
-    }
-    return 'Abrir foto da galeria ${group.subtitle}';
+    final items = group.items
+        .map((item) => item.toGalleryItem())
+        .toList(growable: false);
+    return showRouteScopedDialog<void>(
+      context: context,
+      useSafeArea: false,
+      useRootNavigator: false,
+      builder: (dialogContext) => BellugaGalleryViewer(
+        key: Key('accountProfileGalleryViewer_${group.groupId}'),
+        items: items,
+        galleryTitle: group.subtitle,
+        initialIndex: initialIndex,
+        onClose: () => dialogContext.router.maybePop(),
+      ),
+    );
   }
 
   Widget _affinityCarousel(List<PartnerRecommendationView>? recommendations) {
@@ -3219,38 +3180,42 @@ class _LazyNestedProfileGroupContent extends StatelessWidget {
                     final errorMessage = errorValue?.value;
 
                     if (isLoading && members.isEmpty) {
-                      return const Padding(
-                        padding: EdgeInsets.all(24),
-                        child: Center(child: CircularProgressIndicator()),
+                      return _withSearch(
+                        const Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Center(child: CircularProgressIndicator()),
+                        ),
                       );
                     }
 
                     if (errorMessage != null &&
                         errorMessage.trim().isNotEmpty &&
                         members.isEmpty) {
-                      return Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Text(
-                                'Não foi possível carregar os perfis desta aba.',
-                              ),
-                              const SizedBox(height: 12),
-                              TextButton(
-                                onPressed: () => controller
-                                    .ensureNestedGroupMembersLoaded(group),
-                                child: const Text('Tentar novamente'),
-                              ),
-                            ],
+                      return _withSearch(
+                        Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  'Não foi possível carregar os perfis desta aba.',
+                                ),
+                                const SizedBox(height: 12),
+                                TextButton(
+                                  onPressed: () => controller
+                                      .ensureNestedGroupMembersLoaded(group),
+                                  child: const Text('Tentar novamente'),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       );
                     }
 
                     if (members.isEmpty) {
-                      return const SizedBox.shrink();
+                      return _withSearch(const SizedBox.shrink());
                     }
 
                     final footer = hasMore || isLoading
@@ -3264,12 +3229,35 @@ class _LazyNestedProfileGroupContent extends StatelessWidget {
                           )
                         : null;
 
-                    return itemBuilder(members, footer);
+                    return _withSearch(itemBuilder(members, footer));
                   },
                 );
               },
             );
           },
+        );
+      },
+    );
+  }
+
+  Widget _withSearch(Widget child) {
+    return StreamValueBuilder<AccountProfilesRepositoryContractPrimBool>(
+      streamValue: controller.isNestedGroupMembersSearchAvailableStreamValue(
+        group,
+      ),
+      builder: (context, isAvailable) {
+        if (!isAvailable.value) return child;
+
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            NestedAccountsSearchField(
+              fieldKey: Key('accountProfileNestedGroupSearch_${group.id}'),
+              onSubmitted: (search) =>
+                  controller.searchNestedGroupMembers(group, search),
+            ),
+            child,
+          ],
         );
       },
     );

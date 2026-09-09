@@ -5,7 +5,6 @@ import 'package:belluga_now/infrastructure/services/push/push_transport_configur
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
-import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group_member_page.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
@@ -182,24 +181,19 @@ class _NoopAccountProfilesBackend implements AccountProfilesBackendContract {
       throw UnimplementedError();
 
   @override
-  Future<List<AccountProfileNestedGroupMember>> fetchNestedGroupMembersByPath(
-    String membersPath,
-  ) => throw UnimplementedError();
-
-  @override
   Future<AccountProfileNestedGroupMemberPage> fetchNestedGroupMembersPageByPath(
     String membersPath, {
     String? cursor,
+    String? search,
   }) async {
     final normalizedCursor = cursor?.trim();
-    if (normalizedCursor != null && normalizedCursor.isNotEmpty) {
+    final normalizedSearch = search?.trim();
+    if ((normalizedCursor != null && normalizedCursor.isNotEmpty) ||
+        (normalizedSearch != null && normalizedSearch.isNotEmpty)) {
       return const AccountProfileNestedGroupMemberPage.empty();
     }
 
-    return AccountProfileNestedGroupMemberPage(
-      items: await fetchNestedGroupMembersByPath(membersPath),
-      nextCursorValue: null,
-    );
+    return const AccountProfileNestedGroupMemberPage.empty();
   }
 
   @override

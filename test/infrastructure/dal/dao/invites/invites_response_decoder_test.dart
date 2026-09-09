@@ -5,6 +5,145 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   const decoder = InvitesResponseDecoder();
 
+  test('InviteDto keeps empty sender candidate and resolves unknown label', () {
+    final payload = _buildInvitePayload()
+      ..['inviter_candidates'] = [
+        {
+          'invite_id': 'invite-1',
+          'display_name': '',
+          'avatar_url': '/storage/avatars/sender.png',
+          'status': 'pending',
+        },
+      ];
+
+    final invite = decoder
+        .decodeRequiredInviteDto(payload, context: 'feed')
+        .toDomain(tenantOrigin: Uri.parse('https://guarapari.belluga.com'));
+
+    expect(invite.primaryInviter?.candidateName, isEmpty);
+    expect(invite.primaryInviter?.name, 'Alguém');
+    expect(invite.inviterName, 'Alguém');
+    expect('${invite.inviterName} te convidou', 'Alguém te convidou');
+    expect(
+      invite.inviterAvatarUrl,
+      'https://guarapari.belluga.com/storage/avatars/sender.png',
+    );
+  });
+
+  test('InviteDto retains one-character sender names and omits bad avatar', () {
+    final payload = _buildInvitePayload()
+      ..['inviter_name'] = 'A'
+      ..['additional_inviters'] = ['B']
+      ..['inviter_candidates'] = [
+        {
+          'invite_id': 'invite-1',
+          'display_name': 'A',
+          'avatar_url': 'http://[invalid',
+          'status': 'pending',
+        },
+        {'invite_id': 'invite-2', 'display_name': 'B', 'status': 'pending'},
+      ];
+
+    final invite = decoder
+        .decodeRequiredInviteDto(payload, context: 'preview')
+        .toDomain();
+
+    expect(invite.inviterName, 'A');
+    expect(invite.secondaryInviters.single.name, 'B');
+    expect(invite.additionalInviters.single.value, 'B');
+    expect(invite.inviterAvatarUrl, isNull);
+  });
+
+  test(
+    'decodeInviteableRecipients resolves relative avatar and keeps empty or one-character name candidates',
+    () {
+      final recipients =
+          InvitesResponseDecoder(
+            tenantOrigin: Uri.parse('https://guarapari.belluga.com'),
+          ).decodeInviteableRecipients([
+            {
+              'user_id': 'user-empty',
+              'receiver_account_profile_id': 'profile-empty',
+              'display_name': '',
+              'avatar_url': '/storage/avatars/empty.png',
+              'profile_exposure_level': 'full_profile',
+              'inviteable_reasons': ['contact_match'],
+              'is_inviteable': true,
+            },
+            {
+              'user_id': 'user-one-character',
+              'receiver_account_profile_id': 'profile-one-character',
+              'display_name': 'A',
+              'profile_exposure_level': 'full_profile',
+              'inviteable_reasons': ['contact_match'],
+              'is_inviteable': true,
+            },
+          ]);
+
+      expect(recipients, hasLength(2));
+      expect(recipients.first.displayName, isEmpty);
+      expect(
+        recipients.first.avatarUrl,
+        'https://guarapari.belluga.com/storage/avatars/empty.png',
+      );
+      expect(recipients.last.displayName, 'A');
+    },
+  );
+
+  test(
+    'decodeInviteableRecipients omits malformed optional avatar without dropping recipient',
+    () {
+      final recipients = decoder.decodeInviteableRecipients([
+        {
+          'user_id': 'user-1',
+          'receiver_account_profile_id': 'profile-1',
+          'display_name': 'Ana',
+          'avatar_url': 'http://[not-valid',
+          'profile_exposure_level': 'full_profile',
+          'inviteable_reasons': ['contact_match'],
+          'is_inviteable': true,
+        },
+      ]);
+
+      expect(recipients, hasLength(1));
+      expect(recipients.single.avatarUrl, isNull);
+    },
+  );
+
+  test(
+    'decodeContactMatches isolates malformed rows and retains valid matches',
+    () {
+      final matches = decoder.decodeContactMatches([
+        {
+          'user_id': 'user-malformed',
+          'receiver_account_profile_id': 'profile-invalid',
+          'display_name': const _ThrowingStringValue(),
+          'contact_hash': 'hash-invalid',
+          'type': 'phone',
+          'profile_exposure_level': 'full_profile',
+          'inviteable_reasons': [''],
+          'is_inviteable': true,
+        },
+        {
+          'user_id': 'user-valid',
+          'receiver_account_profile_id': 'profile-valid',
+          'display_name': 'A',
+          'avatar_url': 'http://[not-valid',
+          'contact_hash': 'hash-valid',
+          'type': 'phone',
+          'profile_exposure_level': 'full_profile',
+          'inviteable_reasons': ['contact_match'],
+          'is_inviteable': true,
+        },
+      ]);
+
+      expect(matches, hasLength(1));
+      expect(matches.single.userId, 'user-valid');
+      expect(matches.single.displayName, 'A');
+      expect(matches.single.avatarUrl, isNull);
+    },
+  );
+
   test('decodeRequiredInviteDto returns dto for canonical payload', () {
     final dto = decoder.decodeRequiredInviteDto(
       _buildInvitePayload(),
@@ -30,26 +169,28 @@ void main() {
     expect(domain.eventId, 'event-1');
   });
 
-  test('decodeRequiredInviteDto hydrates linked profiles and profile groups',
-      () {
-    final dto = decoder.decodeRequiredInviteDto(
-      _buildInvitePayload(),
-      context: 'preview',
-    );
-    final domain = dto.toDomain();
+  test(
+    'decodeRequiredInviteDto hydrates linked profiles and profile groups',
+    () {
+      final dto = decoder.decodeRequiredInviteDto(
+        _buildInvitePayload(),
+        context: 'preview',
+      );
+      final domain = dto.toDomain();
 
-    expect(domain.venueAccountProfileId, 'venue-1');
-    expect(domain.linkedAccountProfiles, hasLength(3));
-    expect(domain.profileGroups, hasLength(2));
-    expect(domain.profileGroups.first.label, 'Bandas');
-    expect(
-      domain.profileGroups.first.accountProfileIdValues.first.value,
-      'band-1',
-    );
-    expect(domain.linkedAccountProfiles[1].displayName, 'Du Jorge');
-    expect(domain.primaryInviter?.principal?.type, InviteInviterType.user);
-    expect(domain.primaryInviter?.principal?.id, 'user-1');
-  });
+      expect(domain.venueAccountProfileId, 'venue-1');
+      expect(domain.linkedAccountProfiles, hasLength(3));
+      expect(domain.profileGroups, hasLength(2));
+      expect(domain.profileGroups.first.label, 'Bandas');
+      expect(
+        domain.profileGroups.first.accountProfileIdValues.first.value,
+        'band-1',
+      );
+      expect(domain.linkedAccountProfiles[1].displayName, 'Du Jorge');
+      expect(domain.primaryInviter?.principal?.type, InviteInviterType.user);
+      expect(domain.primaryInviter?.principal?.id, 'user-1');
+    },
+  );
 
   test('decodeRequiredInviteDto tolerates missing event image url', () {
     final dto = decoder.decodeRequiredInviteDto(
@@ -72,10 +213,7 @@ void main() {
 
   test('decodeRequiredInviteDto rejects non-object payload', () {
     expect(
-      () => decoder.decodeRequiredInviteDto(
-        'invalid',
-        context: 'preview',
-      ),
+      () => decoder.decodeRequiredInviteDto('invalid', context: 'preview'),
       throwsA(
         isA<FormatException>().having(
           (error) => error.message,
@@ -92,10 +230,7 @@ void main() {
       ..remove('host_name');
 
     expect(
-      () => decoder.decodeRequiredInviteDto(
-        payload,
-        context: 'preview',
-      ),
+      () => decoder.decodeRequiredInviteDto(payload, context: 'preview'),
       throwsA(
         isA<FormatException>().having(
           (error) => error.message,
@@ -144,7 +279,7 @@ void main() {
   );
 
   test(
-    'decodeInviteableRecipients keeps valid recipients when one top-level payload is malformed',
+    'decodeInviteableRecipients keeps one-character name candidates with other recipients',
     () {
       final recipients = decoder.decodeInviteableRecipients([
         {
@@ -165,29 +300,31 @@ void main() {
         },
       ]);
 
-      expect(recipients, hasLength(1));
-      expect(recipients.single.receiverAccountProfileId, 'profile-2');
+      expect(recipients, hasLength(2));
+      expect(
+        recipients.map((recipient) => recipient.receiverAccountProfileId),
+        containsAll(<String>['profile-bad', 'profile-2']),
+      );
     },
   );
 
-  test('decodeRequiredInviteDto rejects payload missing occurrence identity',
-      () {
-    final payload = _buildInvitePayload()..remove('occurrence_id');
+  test(
+    'decodeRequiredInviteDto rejects payload missing occurrence identity',
+    () {
+      final payload = _buildInvitePayload()..remove('occurrence_id');
 
-    expect(
-      () => decoder.decodeRequiredInviteDto(
-        payload,
-        context: 'preview',
-      ),
-      throwsA(
-        isA<FormatException>().having(
-          (error) => error.message,
-          'message',
-          contains('missing occurrence_id'),
+      expect(
+        () => decoder.decodeRequiredInviteDto(payload, context: 'preview'),
+        throwsA(
+          isA<FormatException>().having(
+            (error) => error.message,
+            'message',
+            contains('missing occurrence_id'),
+          ),
         ),
-      ),
-    );
-  });
+      );
+    },
+  );
 }
 
 Map<String, dynamic> _buildInvitePayload({
@@ -207,12 +344,7 @@ Map<String, dynamic> _buildInvitePayload({
     'host_name': 'Belluga',
     'message': 'Bora?',
     'taxonomy_terms': [
-      {
-        'type': 'genre',
-        'value': 'music',
-        'name': 'Music',
-        'label': 'Music',
-      },
+      {'type': 'genre', 'value': 'music', 'name': 'Music', 'label': 'Music'},
     ],
     'counterpart_preview': [
       {
@@ -220,11 +352,7 @@ Map<String, dynamic> _buildInvitePayload({
         'display_name': 'Promotion Smoke Perfil Público',
         'profile_type': 'venue',
       },
-      {
-        'id': 'band-1',
-        'display_name': 'Du Jorge',
-        'profile_type': 'artist',
-      },
+      {'id': 'band-1', 'display_name': 'Du Jorge', 'profile_type': 'artist'},
       {
         'id': 'exhibitor-1',
         'display_name': 'QA Discovery Tag Sem Tags',
@@ -253,15 +381,16 @@ Map<String, dynamic> _buildInvitePayload({
         'display_name': 'Invite Sender',
         'avatar_url': 'https://example.com/avatar.png',
         'status': 'pending',
-        'inviter_principal': {
-          'kind': 'user',
-          'id': 'user-1',
-        },
-      }
+        'inviter_principal': {'kind': 'user', 'id': 'user-1'},
+      },
     ],
-    'inviter_principal': {
-      'kind': 'user',
-      'id': 'user-1',
-    },
+    'inviter_principal': {'kind': 'user', 'id': 'user-1'},
   };
+}
+
+class _ThrowingStringValue {
+  const _ThrowingStringValue();
+
+  @override
+  String toString() => throw StateError('malformed string payload');
 }

@@ -81,11 +81,11 @@ void main() {
     });
   }
 
-  const ValueKey<String> ownershipSegmentedKey = ValueKey<String>(
-    'tenant_admin_accounts_segmented_filter',
+  const ValueKey<String> accountsControlsPanelKey = ValueKey<String>(
+    'tenant_admin_accounts_controls_panel',
   );
 
-  testWidgets('Admin accounts list/detail/create routes', (tester) async {
+  testWidgets('Admin Account Profile list/create/edit routes', (tester) async {
     if (GetIt.I.isRegistered<ApplicationContract>()) {
       GetIt.I.unregister<ApplicationContract>();
     }
@@ -140,11 +140,10 @@ void main() {
       const TenantAdminShellRoute(children: [TenantAdminAccountsListRoute()]),
     );
     await _pumpFor(tester, const Duration(seconds: 2));
-    await _waitForFinder(tester, find.byKey(ownershipSegmentedKey));
-    await _waitForFinder(tester, find.text('Do tenant'));
+    await _waitForFinder(tester, find.byKey(accountsControlsPanelKey));
     await _waitForAny(tester, [
-      find.byType(ListTile),
-      find.text('Nenhuma conta neste segmento ainda.'),
+      find.byType(Card),
+      find.text('Nenhum perfil encontrado'),
     ]);
 
     await _tapFirstMatch(tester, [
@@ -161,14 +160,6 @@ void main() {
     await _pumpFor(tester, const Duration(seconds: 1));
     await _waitForFinder(tester, _tenantAdminShellRouterFinder());
     app.appRouter.push(
-      TenantAdminAccountDetailRoute(accountSlug: 'detalhes-tecnicos'),
-    );
-    await _pumpFor(tester, const Duration(seconds: 1));
-    expect(app.appRouter.currentPath, '/admin/accounts/detalhes-tecnicos');
-    expect(app.appRouter.currentPath.contains(':'), isFalse);
-    await _waitForFinder(tester, find.textContaining('Conta:'));
-
-    app.appRouter.push(
       TenantAdminAccountProfileEditRoute(
         accountSlug: 'detalhes-tecnicos',
         accountProfileId: 'profile-123',
@@ -184,13 +175,10 @@ void main() {
       const TenantAdminShellRoute(children: [TenantAdminAccountsListRoute()]),
     ]);
     await _pumpFor(tester, const Duration(seconds: 2));
-    await _waitForFinder(tester, find.byKey(ownershipSegmentedKey));
-
-    await tester.tap(find.text('Nao gerenciadas'));
-    await _pumpFor(tester, const Duration(seconds: 1));
+    await _waitForFinder(tester, find.byKey(accountsControlsPanelKey));
     await _waitForAny(tester, [
-      find.byType(ListTile),
-      find.text('Nenhuma conta neste segmento ainda.'),
+      find.byType(Card),
+      find.text('Nenhum perfil encontrado'),
     ]);
   });
 }

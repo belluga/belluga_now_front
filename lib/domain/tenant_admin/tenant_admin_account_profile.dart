@@ -1,13 +1,16 @@
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_group.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_capabilities.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/shared/account_profile_contact_source_summary.dart';
 import 'package:belluga_now/domain/partners/value_objects/account_profile_name_value.dart';
+import 'package:belluga_now/domain/partners/account_profile_external_link.dart';
 import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_channel_id_value.dart';
 import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_source_account_profile_id_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_aggregate_revision_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_account_profile_external_links_limit_value.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
@@ -18,6 +21,7 @@ class TenantAdminAccountProfile {
   TenantAdminAccountProfile({
     required this.idValue,
     required this.accountIdValue,
+    this.accountSlugValue,
     required this.profileTypeValue,
     required this.displayNameValue,
     this.aggregateRevisionValue,
@@ -29,6 +33,7 @@ class TenantAdminAccountProfile {
     this.location,
     TenantAdminTaxonomyTerms? taxonomyTerms,
     List<TenantAdminAccountProfileGalleryGroup>? galleryGroups,
+    TenantAdminAccountProfileGalleryCapabilities? galleryCapabilities,
     List<TenantAdminNestedProfileGroup>? nestedProfileGroups,
     this.ownershipState,
     BellugaContactSourceMode? contactModeValue,
@@ -39,6 +44,8 @@ class TenantAdminAccountProfile {
     List<BellugaContactChannel>? effectiveContactChannels,
     this.contactSourceProfile,
     this.effectiveContactSourceProfile,
+    List<AccountProfileExternalLink>? externalLinks,
+    this.externalLinksLimitValue,
   }) : slugValue = slugValue ?? TenantAdminOptionalTextValue(),
        avatarUrlValue = avatarUrlValue ?? TenantAdminOptionalUrlValue(),
        coverUrlValue = coverUrlValue ?? TenantAdminOptionalUrlValue(),
@@ -48,6 +55,9 @@ class TenantAdminAccountProfile {
        galleryGroups = List<TenantAdminAccountProfileGalleryGroup>.unmodifiable(
          galleryGroups ?? const <TenantAdminAccountProfileGalleryGroup>[],
        ),
+       galleryCapabilities =
+           galleryCapabilities ??
+           TenantAdminAccountProfileGalleryCapabilities.empty(),
        nestedProfileGroups = List<TenantAdminNestedProfileGroup>.unmodifiable(
          nestedProfileGroups ?? const <TenantAdminNestedProfileGroup>[],
        ),
@@ -59,10 +69,14 @@ class TenantAdminAccountProfile {
        contactBubbleChannelIdValue = contactBubbleChannelId,
        effectiveContactChannelsValue = List<BellugaContactChannel>.unmodifiable(
          effectiveContactChannels ?? contactChannels ?? const [],
+       ),
+       externalLinkValues = List<AccountProfileExternalLink>.unmodifiable(
+         externalLinks ?? const <AccountProfileExternalLink>[],
        );
 
   final TenantAdminRequiredTextValue idValue;
   final TenantAdminRequiredTextValue accountIdValue;
+  final TenantAdminOptionalTextValue? accountSlugValue;
   final TenantAdminRequiredTextValue profileTypeValue;
   final AccountProfileNameValue displayNameValue;
   final TenantAdminAccountProfileAggregateRevisionValue? aggregateRevisionValue;
@@ -74,6 +88,7 @@ class TenantAdminAccountProfile {
   final TenantAdminLocation? location;
   final TenantAdminTaxonomyTerms taxonomyTerms;
   final List<TenantAdminAccountProfileGalleryGroup> galleryGroups;
+  final TenantAdminAccountProfileGalleryCapabilities galleryCapabilities;
   final List<TenantAdminNestedProfileGroup> nestedProfileGroups;
   final TenantAdminOwnershipState? ownershipState;
   final BellugaContactSourceMode contactModeValue;
@@ -84,6 +99,14 @@ class TenantAdminAccountProfile {
   final List<BellugaContactChannel> effectiveContactChannelsValue;
   final AccountProfileContactSourceSummary? contactSourceProfile;
   final AccountProfileContactSourceSummary? effectiveContactSourceProfile;
+  final List<AccountProfileExternalLink> externalLinkValues;
+  final TenantAdminAccountProfileExternalLinksLimitValue?
+  externalLinksLimitValue;
+
+  int? get externalLinksLimit => externalLinksLimitValue?.value;
+
+  List<AccountProfileExternalLink> get externalLinks =>
+      List<AccountProfileExternalLink>.unmodifiable(externalLinkValues);
 
   BellugaContactSourceMode get contactMode => contactModeValue;
 
@@ -95,6 +118,7 @@ class TenantAdminAccountProfile {
 
   String get id => idValue.value;
   String get accountId => accountIdValue.value;
+  String? get accountSlug => accountSlugValue?.nullableValue;
   String get profileType => profileTypeValue.value;
   String get displayName => displayNameValue.value;
   int? get aggregateRevision => aggregateRevisionValue?.value;

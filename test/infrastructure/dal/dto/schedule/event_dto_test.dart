@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/testing/app_data_test_factory.dart';
+import 'package:belluga_gallery/belluga_gallery.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 
@@ -74,6 +75,55 @@ void main() {
       {'type': 'genre', 'value': 'music', 'name': 'Music'},
     ]);
   });
+
+  test(
+    'maps embedded received invite with empty sender and relative avatar',
+    () {
+      final dto = EventDTO.fromJson({
+        'event_id': '507f1f77bcf86cd799439011',
+        'occurrence_id': 'occ-1',
+        'slug': 'rock-night-occ-1',
+        'title': 'Rock Night',
+        'content': 'Live concert',
+        'type': {'id': 'type-1', 'name': 'Show', 'slug': 'show'},
+        'location': 'Guarapari',
+        'date_time_start': '2026-03-03T20:00:00+00:00',
+        'received_invites': [
+          {
+            'id': 'invite-1',
+            'event_id': '507f1f77bcf86cd799439011',
+            'occurrence_id': 'occ-1',
+            'event_name': 'Rock Night',
+            'event_date': '2026-03-03T20:00:00+00:00',
+            'hero_image_url': 'https://example.com/event.png',
+            'location': 'Guarapari',
+            'host_name': 'Belluga',
+            'message': 'Bora?',
+            'attendance_policy': 'free_confirmation_only',
+            'inviter_candidates': [
+              {
+                'invite_id': 'invite-1',
+                'display_name': '',
+                'avatar_url': '/storage/avatars/sender.png',
+                'status': 'pending',
+              },
+            ],
+          },
+        ],
+      });
+
+      final event = dto.toDomain(
+        tenantOrigin: Uri.parse('https://guarapari.belluga.com'),
+      );
+      final invite = event.receivedInvites!.single;
+
+      expect(invite.inviterName, 'Alguém');
+      expect(
+        invite.inviterAvatarUrl,
+        'https://guarapari.belluga.com/storage/avatars/sender.png',
+      );
+    },
+  );
 
   test('uses occurrence_id as fallback id when event_id is missing', () {
     final dto = EventDTO.fromJson({
@@ -222,15 +272,28 @@ void main() {
             'items': [
               {
                 'item_id': 'gallery-1',
+                'type': 'photo',
                 'image_url': 'https://tenant.test/gallery/image.jpg',
                 'thumb_url': 'https://tenant.test/gallery/thumb.jpg',
                 'card_url': 'https://tenant.test/gallery/card.jpg',
                 'modal_url': 'https://tenant.test/gallery/modal.jpg',
               },
               {
+                'item_id': 'gallery-youtube',
+                'type': 'youtube',
+                'title': 'Vista em video',
+                'youtube_video_id': 'dQw4w9WgXcQ',
+                'player_aspect_ratio': 1.5,
+              },
+              {
                 'item_id': 'gallery-2',
                 'thumb_url': 'https://tenant.test/gallery/thumb-2.jpg',
                 'modal_url': 'https://tenant.test/gallery/modal-2.jpg',
+              },
+              {
+                'item_id': 'gallery-unknown',
+                'type': 'unsupported',
+                'image_url': 'https://tenant.test/gallery/unknown.jpg',
               },
             ],
           },
@@ -249,7 +312,7 @@ void main() {
       ['Beach Club'],
     );
     expect(venue.galleryGroups, hasLength(1));
-    expect(venue.galleryGroups.first.items, hasLength(2));
+    expect(venue.galleryGroups.first.items, hasLength(3));
     expect(
       venue.galleryGroups.first.items.first.imageUrl,
       'https://tenant.test/gallery/image.jpg',
@@ -269,6 +332,14 @@ void main() {
     expect(
       venue.galleryGroups.first.items.first.previewUrl,
       'https://tenant.test/gallery/image.jpg',
+    );
+    final youtube = venue.galleryGroups.first.items[1].toGalleryItem();
+    expect(youtube, isA<GalleryYoutubePlayer>());
+    expect((youtube as GalleryYoutubePlayer).youtubeVideoId, 'dQw4w9WgXcQ');
+    expect(youtube.playerAspectRatio, 1.5);
+    expect(
+      venue.galleryGroups.first.items.last.toGalleryItem(),
+      isA<GalleryPhoto>(),
     );
     expect(venue.galleryGroups.first.items.last.imageUrl, '');
     expect(

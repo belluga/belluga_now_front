@@ -3,21 +3,27 @@ import 'package:belluga_now/domain/partners/value_objects/account_profile_fields
 import 'package:belluga_now/domain/shared/value_objects/account_profile_contact_source_account_profile_id_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_group.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_capabilities.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_gallery_snapshot.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_taxonomy_term_dto.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/shared/account_profile_contact_source_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
+import 'package:belluga_now/domain/partners/account_profile_external_link.dart';
+import 'package:belluga_now/infrastructure/dal/decoders/account_profile_external_link_decoder.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_terms.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_count_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_gallery_player_aspect_ratio_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 
 class TenantAdminAccountProfileDTO {
-  const TenantAdminAccountProfileDTO({
+  TenantAdminAccountProfileDTO({
     required this.id,
     required this.accountId,
+    this.accountSlug,
     required this.profileType,
     required this.displayName,
     this.aggregateRevision,
@@ -30,6 +36,7 @@ class TenantAdminAccountProfileDTO {
     this.locationLng,
     this.taxonomyTerms = const [],
     this.galleryGroups = const [],
+    TenantAdminAccountProfileGalleryCapabilities? galleryCapabilities,
     this.nestedProfileGroups = const [],
     this.ownershipState,
     this.contactMode,
@@ -39,10 +46,15 @@ class TenantAdminAccountProfileDTO {
     this.effectiveContactChannels = const [],
     this.contactSourceProfile,
     this.effectiveContactSourceProfile,
-  });
+    this.externalLinks = const [],
+    this.externalLinksLimit,
+  }) : galleryCapabilities =
+           galleryCapabilities ??
+           TenantAdminAccountProfileGalleryCapabilities.empty();
 
   final String id;
   final String accountId;
+  final String? accountSlug;
   final String profileType;
   final String displayName;
   final int? aggregateRevision;
@@ -55,6 +67,7 @@ class TenantAdminAccountProfileDTO {
   final double? locationLng;
   final List<TenantAdminTaxonomyTermDTO> taxonomyTerms;
   final List<TenantAdminAccountProfileGalleryGroup> galleryGroups;
+  final TenantAdminAccountProfileGalleryCapabilities galleryCapabilities;
   final List<TenantAdminNestedProfileGroup> nestedProfileGroups;
   final String? ownershipState;
   final String? contactMode;
@@ -64,6 +77,8 @@ class TenantAdminAccountProfileDTO {
   final List<BellugaContactChannel> effectiveContactChannels;
   final AccountProfileContactSourceSummary? contactSourceProfile;
   final AccountProfileContactSourceSummary? effectiveContactSourceProfile;
+  final List<AccountProfileExternalLink> externalLinks;
+  final int? externalLinksLimit;
 
   factory TenantAdminAccountProfileDTO.fromJson(Map<String, dynamic> json) {
     final location = json['location'];
@@ -123,9 +138,11 @@ class TenantAdminAccountProfileDTO {
         );
       }
     }
+    final externalLinksLimit = _toInt(json['external_links_limit']);
     return TenantAdminAccountProfileDTO(
       id: json['id']?.toString() ?? '',
       accountId: json['account_id']?.toString() ?? '',
+      accountSlug: json['account_slug']?.toString(),
       profileType: json['profile_type']?.toString() ?? '',
       displayName: json['display_name']?.toString() ?? '',
       aggregateRevision: _toInt(json['aggregate_revision']),
@@ -138,6 +155,9 @@ class TenantAdminAccountProfileDTO {
       locationLng: lng,
       taxonomyTerms: terms,
       galleryGroups: galleryGroups,
+      galleryCapabilities: _galleryCapabilitiesFromRaw(
+        json['gallery_capabilities'],
+      ),
       nestedProfileGroups: nestedGroups,
       ownershipState: json['ownership_state']?.toString(),
       contactMode: json['contact_mode']?.toString(),
@@ -156,6 +176,11 @@ class TenantAdminAccountProfileDTO {
       effectiveContactSourceProfile: _contactSourceSummaryFromRaw(
         json['effective_contact_source'],
       ),
+      externalLinks: AccountProfileExternalLinkDecoder.decodeList(
+        json['external_links'],
+        limit: externalLinksLimit,
+      ),
+      externalLinksLimit: externalLinksLimit,
     );
   }
 
@@ -179,6 +204,7 @@ class TenantAdminAccountProfileDTO {
     return tenantAdminAccountProfileFromRaw(
       id: id,
       accountId: accountId,
+      accountSlug: accountSlug,
       profileType: profileType,
       displayName: displayName,
       aggregateRevision: aggregateRevision,
@@ -190,6 +216,7 @@ class TenantAdminAccountProfileDTO {
       location: location,
       taxonomyTerms: taxonomy,
       galleryGroups: galleryGroups,
+      galleryCapabilities: galleryCapabilities,
       nestedProfileGroups: nestedProfileGroups,
       ownershipState: ownershipState == null
           ? null
@@ -201,9 +228,54 @@ class TenantAdminAccountProfileDTO {
       effectiveContactChannels: effectiveContactChannels,
       contactSourceProfile: contactSourceProfile,
       effectiveContactSourceProfile: effectiveContactSourceProfile,
+      externalLinks: externalLinks,
+      externalLinksLimit: externalLinksLimit,
     );
   }
 }
+
+final class _TenantAdminAccountProfileGallerySnapshotDTO {
+  const _TenantAdminAccountProfileGallerySnapshotDTO({
+    required this.groups,
+    required this.capabilities,
+  });
+
+  final List<TenantAdminAccountProfileGalleryGroup> groups;
+  final TenantAdminAccountProfileGalleryCapabilities capabilities;
+
+  factory _TenantAdminAccountProfileGallerySnapshotDTO.fromJson(
+    Map<String, dynamic> json,
+  ) {
+    final groups = <TenantAdminAccountProfileGalleryGroup>[];
+    final rawGroups = json['gallery_groups'];
+    if (rawGroups is List) {
+      for (final entry in rawGroups) {
+        if (entry is! Map) {
+          continue;
+        }
+        final group = _galleryGroupFromRaw(Map<String, dynamic>.from(entry));
+        if (group != null) {
+          groups.add(group);
+        }
+      }
+    }
+    groups.sort((left, right) => left.order.compareTo(right.order));
+    return _TenantAdminAccountProfileGallerySnapshotDTO(
+      groups: groups,
+      capabilities: _galleryCapabilitiesFromRaw(json['gallery_capabilities']),
+    );
+  }
+
+  TenantAdminAccountProfileGallerySnapshot toDomain() =>
+      TenantAdminAccountProfileGallerySnapshot(
+        groups: groups,
+        capabilities: capabilities,
+      );
+}
+
+TenantAdminAccountProfileGallerySnapshot
+tenantAdminAccountProfileGallerySnapshotFromJson(Map<String, dynamic> json) =>
+    _TenantAdminAccountProfileGallerySnapshotDTO.fromJson(json).toDomain();
 
 AccountProfileContactSourceSummary? _contactSourceSummaryFromRaw(Object? raw) {
   if (raw is! Map) {
@@ -246,10 +318,6 @@ TenantAdminAccountProfileGalleryGroup? _galleryGroupFromRaw(
     }
   }
 
-  if (items.isEmpty) {
-    return null;
-  }
-
   items.sort((left, right) => left.order.compareTo(right.order));
 
   return TenantAdminAccountProfileGalleryGroup(
@@ -266,30 +334,66 @@ TenantAdminAccountProfileGalleryItem? _galleryItemFromRaw(
   Map<String, dynamic> json,
 ) {
   final itemId = json['item_id']?.toString().trim() ?? '';
+  final type = json['type']?.toString().trim() == 'youtube'
+      ? TenantAdminAccountProfileGalleryItemType.youtube
+      : TenantAdminAccountProfileGalleryItemType.photo;
+  final youtubeVideoId = json['youtube_video_id']?.toString().trim() ?? '';
+  final playerAspectRatio = json['player_aspect_ratio'];
   final imageUrl = json['image_url']?.toString().trim() ?? '';
   final thumbUrl = json['thumb_url']?.toString().trim() ?? '';
   final cardUrl = json['card_url']?.toString().trim() ?? '';
   final modalUrl = json['modal_url']?.toString().trim() ?? '';
-  if (itemId.isEmpty ||
-      imageUrl.isEmpty ||
-      thumbUrl.isEmpty ||
-      cardUrl.isEmpty ||
-      modalUrl.isEmpty) {
+  final photoIsInvalid =
+      type == TenantAdminAccountProfileGalleryItemType.photo &&
+      (imageUrl.isEmpty ||
+          thumbUrl.isEmpty ||
+          cardUrl.isEmpty ||
+          modalUrl.isEmpty);
+  final youtubeIsInvalid =
+      type == TenantAdminAccountProfileGalleryItemType.youtube &&
+      youtubeVideoId.isEmpty;
+  if (itemId.isEmpty || photoIsInvalid || youtubeIsInvalid) {
     return null;
   }
 
+  final title = json['title']?.toString().trim();
   final description = json['description']?.toString().trim();
   return TenantAdminAccountProfileGalleryItem(
     itemIdValue: TenantAdminNestedProfileGroupTextValue(itemId),
+    titleValue: TenantAdminOptionalTextValue()
+      ..parse(title == null || title.isEmpty ? null : title),
     descriptionValue: TenantAdminOptionalTextValue()
       ..parse(description == null || description.isEmpty ? null : description),
     orderValue: TenantAdminNestedProfileGroupOrderValue(
       _toInt(json['order']) ?? 0,
     ),
-    imageUrlValue: TenantAdminOptionalUrlValue()..parse(imageUrl),
-    thumbUrlValue: TenantAdminOptionalUrlValue()..parse(thumbUrl),
-    cardUrlValue: TenantAdminOptionalUrlValue()..parse(cardUrl),
-    modalUrlValue: TenantAdminOptionalUrlValue()..parse(modalUrl),
+    imageUrlValue: TenantAdminOptionalUrlValue()
+      ..parse(imageUrl.isEmpty ? null : imageUrl),
+    thumbUrlValue: TenantAdminOptionalUrlValue()
+      ..parse(thumbUrl.isEmpty ? null : thumbUrl),
+    cardUrlValue: TenantAdminOptionalUrlValue()
+      ..parse(cardUrl.isEmpty ? null : cardUrl),
+    modalUrlValue: TenantAdminOptionalUrlValue()
+      ..parse(modalUrl.isEmpty ? null : modalUrl),
+    type: type,
+    youtubeVideoIdValue: TenantAdminOptionalTextValue()..parse(youtubeVideoId),
+    playerAspectRatioValue: TenantAdminGalleryPlayerAspectRatioValue(
+      playerAspectRatio,
+    ),
+  );
+}
+
+TenantAdminAccountProfileGalleryCapabilities _galleryCapabilitiesFromRaw(
+  Object? raw,
+) {
+  if (raw is! Map) {
+    return TenantAdminAccountProfileGalleryCapabilities.empty();
+  }
+  return TenantAdminAccountProfileGalleryCapabilities(
+    maxGalleriesValue: TenantAdminCountValue(_toInt(raw['max_galleries']) ?? 0),
+    maxItemsPerGalleryValue: TenantAdminCountValue(
+      _toInt(raw['max_items_per_gallery']) ?? 0,
+    ),
   );
 }
 

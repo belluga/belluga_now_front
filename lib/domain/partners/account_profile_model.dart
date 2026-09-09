@@ -1,5 +1,6 @@
 import 'package:belluga_contact_channels/belluga_contact_channels.dart';
 import 'package:belluga_now/domain/partners/account_profile_gallery_group.dart';
+import 'package:belluga_now/domain/partners/account_profile_external_link.dart';
 import 'package:belluga_now/domain/partners/engagement_data.dart';
 import 'package:belluga_now/domain/partners/account_profile_nested_group.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
@@ -47,6 +48,7 @@ class AccountProfileModel {
   final BellugaContactChannel? effectiveContactBubbleChannelValue;
   final AccountProfileContactSourceSummary? contactSourceProfile;
   final AccountProfileContactSourceSummary? effectiveContactSourceProfile;
+  final List<AccountProfileExternalLink> externalLinkValues;
 
   AccountProfileModel({
     required this.idValue,
@@ -79,6 +81,7 @@ class AccountProfileModel {
     this.effectiveContactBubbleChannelValue,
     this.contactSourceProfile,
     this.effectiveContactSourceProfile,
+    List<AccountProfileExternalLink>? externalLinkValues,
   }) : tagValues = List<AccountProfileTagValue>.unmodifiable(
          tagValues ?? const <AccountProfileTagValue>[],
        ),
@@ -99,6 +102,9 @@ class AccountProfileModel {
        contactBubbleChannelIdValue = contactBubbleChannelId,
        effectiveContactChannelValues = List<BellugaContactChannel>.unmodifiable(
          effectiveContactChannelValues ?? contactChannelValues ?? const [],
+       ),
+       externalLinkValues = List<AccountProfileExternalLink>.unmodifiable(
+         externalLinkValues ?? const <AccountProfileExternalLink>[],
        ),
        canOpenPublicDetailValue =
            canOpenPublicDetailValue ??
@@ -157,6 +163,8 @@ class AccountProfileModel {
       List<BellugaContactChannel>.unmodifiable(contactChannelValues);
   List<BellugaContactChannel> get effectiveContactChannels =>
       List<BellugaContactChannel>.unmodifiable(effectiveContactChannelValues);
+  List<AccountProfileExternalLink> get externalLinks =>
+      List<AccountProfileExternalLink>.unmodifiable(externalLinkValues);
   String? get contactBubbleChannelId {
     final raw = contactBubbleChannelIdValue?.value.trim();
     if (raw == null || raw.isEmpty) {
@@ -212,6 +220,7 @@ class AccountProfileModel {
     BellugaContactChannel? effectiveContactBubbleChannelValue,
     AccountProfileContactSourceSummary? contactSourceProfile,
     AccountProfileContactSourceSummary? effectiveContactSourceProfile,
+    List<AccountProfileExternalLink>? externalLinkValues,
   }) {
     return AccountProfileModel(
       idValue: idValue ?? this.idValue,
@@ -254,6 +263,7 @@ class AccountProfileModel {
       contactSourceProfile: contactSourceProfile ?? this.contactSourceProfile,
       effectiveContactSourceProfile:
           effectiveContactSourceProfile ?? this.effectiveContactSourceProfile,
+      externalLinkValues: externalLinkValues ?? this.externalLinkValues,
     );
   }
 }

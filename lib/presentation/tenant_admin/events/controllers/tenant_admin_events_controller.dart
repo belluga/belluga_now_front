@@ -17,7 +17,6 @@ import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_c
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate_selection_summary.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_account_profile_candidate_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event_temporal_bucket.dart';
@@ -29,6 +28,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_group_order_mutation_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_unknown_mutation_failure.dart';
@@ -38,6 +38,7 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optio
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_form_state.dart';
+import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_occurrence_related_profile_picker_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/models/tenant_admin_event_form_validation_config.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_type_form_state.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
@@ -202,6 +203,8 @@ class TenantAdminEventsController implements Disposable {
   );
   final StreamValue<bool> occurrenceProfileGroupMutationBusyStreamValue =
       StreamValue<bool>(defaultValue: false);
+  int _eventFormGeneration = 0;
+  final Set<String> _occurrenceGroupOrderReconciliationRequired = {};
   final StreamValue<String?> submitErrorMessageStreamValue =
       StreamValue<String?>();
   final StreamValue<String?> submitSuccessMessageStreamValue =
@@ -818,6 +821,8 @@ class TenantAdminEventsController implements Disposable {
   }
 
   void initEventForm({TenantAdminEvent? existingEvent}) {
+    _eventFormGeneration += 1;
+    _occurrenceGroupOrderReconciliationRequired.clear();
     clearEventValidation();
     occurrenceProfileGroupMutationBusyStreamValue.addValue(false);
     _eventFormLocalIdSerial = 0;
@@ -1479,60 +1484,37 @@ class TenantAdminEventsController implements Disposable {
     required String occurrenceId,
     required String groupId,
     String? cursor,
+    String? search,
   }) {
     return _occurrenceGroupMembersPageLoader.loadPage(
       eventId: eventId,
       occurrenceId: occurrenceId,
       groupId: groupId,
       cursor: cursor,
+      search: search,
     );
   }
 
-  Future<List<TenantAdminAccountProfileSelectionSummary>>
-  fetchAllOccurrenceProfileGroupMembers({
-    required String eventId,
-    required String occurrenceId,
-    required String groupId,
-  }) {
-    return _eventsRepository.fetchAllOccurrenceProfileGroupMembers(
-      eventId: _toEventsText(eventId),
-      occurrenceId: _toEventsText(occurrenceId),
-      groupId: _toEventsText(groupId),
-    );
-  }
-
-  Future<List<TenantAdminAccountProfile>>
-  fetchOccurrenceRelatedProfilesForProgramming({
+  TenantAdminOccurrenceRelatedProfilePickerController
+  createOccurrenceRelatedProfilePickerSession({
     required String eventId,
     required String occurrenceId,
     required List<TenantAdminNestedProfileGroup> profileGroups,
-  }) async {
-    final profilesById = <String, TenantAdminAccountProfile>{};
-    final orderedGroups = profileGroups.toList(growable: false)
-      ..sort((left, right) => left.order.compareTo(right.order));
+    required Set<String> excludedProfileIds,
+  }) {
+    return TenantAdminOccurrenceRelatedProfilePickerController(
+      pageLoader: _occurrenceGroupMembersPageLoader,
+      eventId: eventId,
+      occurrenceId: occurrenceId,
+      groups: profileGroups,
+      excludedProfileIds: excludedProfileIds,
+    );
+  }
 
-    for (final group in orderedGroups) {
-      final members = await fetchAllOccurrenceProfileGroupMembers(
-        eventId: eventId,
-        occurrenceId: occurrenceId,
-        groupId: group.id,
-      );
-      for (final member in members) {
-        profilesById.putIfAbsent(
-          member.id,
-          () => tenantAdminAccountProfileFromRaw(
-            id: member.id,
-            accountId: member.id,
-            profileType: 'account_profile',
-            displayName: (member.displayName?.trim().isNotEmpty ?? false)
-                ? member.displayName!.trim()
-                : member.id,
-          ),
-        );
-      }
-    }
-
-    return List<TenantAdminAccountProfile>.unmodifiable(profilesById.values);
+  void disposeOccurrenceRelatedProfilePickerSession(
+    TenantAdminOccurrenceRelatedProfilePickerController session,
+  ) {
+    session.dispose();
   }
 
   Future<TenantAdminNestedGroupMemberMutationResult>
@@ -1657,6 +1639,156 @@ class TenantAdminEventsController implements Disposable {
         occurrenceProfileGroupMutationBusyStreamValue.addValue(false);
       }
     }
+  }
+
+  Future<void> moveOccurrenceProfileGroupHead({
+    required String eventId,
+    required String occurrenceId,
+    required String occurrenceKey,
+    required String groupId,
+    required int delta,
+  }) async {
+    if (occurrenceProfileGroupMutationBusyStreamValue.value || delta == 0) {
+      return;
+    }
+    final generation = _eventFormGeneration;
+    final reconciliationKey = '$eventId::$occurrenceId';
+    occurrenceProfileGroupMutationBusyStreamValue.addValue(true);
+    try {
+      if (_occurrenceGroupOrderReconciliationRequired.contains(
+        reconciliationKey,
+      )) {
+        await _reconcileOccurrenceGroupOrder(
+          eventId: eventId,
+          occurrenceId: occurrenceId,
+          occurrenceKey: occurrenceKey,
+          generation: generation,
+        );
+        return;
+      }
+      final result = await _eventsRepository.moveOccurrenceProfileGroup(
+        eventId: _toEventsText(eventId),
+        occurrenceId: _toEventsText(occurrenceId),
+        groupId: _toEventsText(groupId),
+        direction: delta < 0
+            ? TenantAdminGroupMoveDirection.up
+            : TenantAdminGroupMoveDirection.down,
+      );
+      if (_isDisposed || generation != _eventFormGeneration) return;
+      if (result.eventId != eventId || result.occurrenceId != occurrenceId) {
+        throw const TenantAdminUnknownMutationFailure();
+      }
+      _replaceOccurrenceByKey(occurrenceKey, (occurrence) {
+        if (occurrence.occurrenceId != occurrenceId) {
+          throw const TenantAdminUnknownMutationFailure();
+        }
+        return _copyOccurrence(
+          occurrence,
+          profileGroups: _mergeValidatedOccurrenceGroupOrder(
+            occurrence.profileGroups,
+            result.groups,
+          ),
+        );
+      }, sort: false);
+      _occurrenceGroupOrderReconciliationRequired.remove(reconciliationKey);
+      submitErrorMessageStreamValue.addValue(null);
+    } on TenantAdminUnknownMutationFailure {
+      if (_isDisposed || generation != _eventFormGeneration) return;
+      _occurrenceGroupOrderReconciliationRequired.add(reconciliationKey);
+      await _reconcileOccurrenceGroupOrder(
+        eventId: eventId,
+        occurrenceId: occurrenceId,
+        occurrenceKey: occurrenceKey,
+        generation: generation,
+      );
+    } catch (error) {
+      if (!_isDisposed && generation == _eventFormGeneration) {
+        submitErrorMessageStreamValue.addValue(
+          _describeControllerError(error, 'Não foi possível mover o grupo.'),
+        );
+      }
+    } finally {
+      if (!_isDisposed && generation == _eventFormGeneration) {
+        occurrenceProfileGroupMutationBusyStreamValue.addValue(false);
+      }
+    }
+  }
+
+  Future<void> _reconcileOccurrenceGroupOrder({
+    required String eventId,
+    required String occurrenceId,
+    required String occurrenceKey,
+    required int generation,
+  }) async {
+    final reconciliationKey = '$eventId::$occurrenceId';
+    try {
+      final event = await _eventsRepository.fetchEvent(_toEventsText(eventId));
+      if (_isDisposed ||
+          generation != _eventFormGeneration ||
+          event.eventId != eventId) {
+        return;
+      }
+      final remoteOccurrence = event.occurrences
+          .where((entry) => entry.occurrenceId == occurrenceId)
+          .firstOrNull;
+      if (remoteOccurrence == null) {
+        throw const FormatException('Occurrence missing from reconciliation.');
+      }
+      _replaceOccurrenceByKey(occurrenceKey, (occurrence) {
+        if (occurrence.occurrenceId != occurrenceId) {
+          throw const FormatException('Occurrence identity changed.');
+        }
+        return _copyOccurrence(
+          occurrence,
+          profileGroups:
+              _mergeValidatedOccurrenceGroupOrder(occurrence.profileGroups, [
+                for (final group in remoteOccurrence.profileGroups)
+                  TenantAdminGroupOrderEntry(
+                    idValue: TenantAdminNestedProfileGroupTextValue(group.id),
+                    orderValue: TenantAdminNestedProfileGroupOrderValue(
+                      group.order,
+                    ),
+                  ),
+              ]),
+        );
+      }, sort: false);
+      _occurrenceGroupOrderReconciliationRequired.remove(reconciliationKey);
+      submitErrorMessageStreamValue.addValue(null);
+    } catch (_) {
+      if (!_isDisposed && generation == _eventFormGeneration) {
+        submitErrorMessageStreamValue.addValue(
+          'Não foi possível confirmar a ordem. Tente recarregar.',
+        );
+      }
+    }
+  }
+
+  List<TenantAdminNestedProfileGroup> _mergeValidatedOccurrenceGroupOrder(
+    List<TenantAdminNestedProfileGroup> current,
+    List<TenantAdminGroupOrderEntry> order,
+  ) {
+    final currentById = {for (final group in current) group.id: group};
+    final ids = order.map((entry) => entry.id).toList(growable: false);
+    final orders = order.map((entry) => entry.order).toList(growable: false)
+      ..sort();
+    if (currentById.length != current.length ||
+        ids.length != current.length ||
+        ids.toSet().length != ids.length ||
+        !ids.toSet().containsAll(currentById.keys) ||
+        !List.generate(
+          orders.length,
+          (index) => index,
+        ).every((value) => orders[value] == value)) {
+      throw const TenantAdminUnknownMutationFailure();
+    }
+    final sorted = order.toList(growable: false)
+      ..sort((left, right) => left.order.compareTo(right.order));
+    return List.unmodifiable([
+      for (final entry in sorted)
+        currentById[entry.id]!.copyWith(
+          orderValue: TenantAdminNestedProfileGroupOrderValue(entry.order),
+        ),
+    ]);
   }
 
   void removeOccurrenceRelatedProfile(String occurrenceKey, String profileId) {
@@ -2957,7 +3089,6 @@ class TenantAdminEventsController implements Disposable {
     await _ensureRelatedAccountProfilePickerReady();
     updateRelatedAccountProfileSearchQuery(query);
     await retryRelatedAccountProfileSearch();
-    await _loadRelatedAccountProfileCandidatePagesUntilQuerySatisfied(query);
   }
 
   Future<void> loadNextRelatedAccountProfileCandidatesForNestedGroups() async {
@@ -2978,21 +3109,6 @@ class TenantAdminEventsController implements Disposable {
     await prepareRelatedAccountProfilePicker(
       accountSlug: normalizedAccountSlug,
     );
-  }
-
-  Future<void> _loadRelatedAccountProfileCandidatePagesUntilQuerySatisfied(
-    String query,
-  ) async {
-    final normalizedQuery = query.trim().toLowerCase();
-    if (normalizedQuery.isEmpty) {
-      return;
-    }
-
-    while (!_isDisposed &&
-        accountProfilePickerHasMoreStreamValue.value &&
-        !_relatedAccountProfileCandidatesContainQuery(normalizedQuery)) {
-      await loadNextRelatedAccountProfileSearchPage();
-    }
   }
 
   TenantAdminAccountProfile? knownVenueCandidate(String? profileId) {
@@ -3042,14 +3158,6 @@ class TenantAdminEventsController implements Disposable {
     return List<TenantAdminAccountProfile>.unmodifiable(
       _mergeAccountProfiles(const <TenantAdminAccountProfile>[], profiles),
     );
-  }
-
-  bool _relatedAccountProfileCandidatesContainQuery(String query) {
-    return relatedAccountProfileCandidatesStreamValue.value.any((profile) {
-      final displayName = profile.displayName.toLowerCase();
-      final profileType = profile.profileType.toLowerCase();
-      return displayName.contains(query) || profileType.contains(query);
-    });
   }
 
   void updateAccountProfilePickerSearchQuery(String query) {

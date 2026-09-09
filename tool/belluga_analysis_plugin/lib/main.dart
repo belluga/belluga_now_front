@@ -1,6 +1,7 @@
 import 'package:analysis_server_plugin/plugin.dart';
 import 'package:analysis_server_plugin/registry.dart';
 import 'package:belluga_analysis_plugin/src/rules/controller_buildcontext_dependency_forbidden_rule.dart';
+import 'package:belluga_analysis_plugin/src/rules/account_profile_candidate_generic_endpoint_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/controller_canonical_state_repair_after_mutation_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/controller_controller_dependency_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/controller_delegated_streamvalue_snapshot_field_forbidden_rule.dart';
@@ -26,6 +27,7 @@ import 'package:belluga_analysis_plugin/src/rules/module_direct_getit_registrati
 import 'package:belluga_analysis_plugin/src/rules/module_scoped_controller_dispose_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/multi_public_class_file_warning_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/multi_widget_file_warning_rule.dart';
+import 'package:belluga_analysis_plugin/src/rules/nested_group_members_full_list_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/permission_handler_import_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/repository_inline_dto_to_domain_mapper_forbidden_rule.dart';
 import 'package:belluga_analysis_plugin/src/rules/repository_contract_pagination_controls_forbidden_rule.dart';
@@ -68,6 +70,9 @@ class BellugaAnalysisPlugin extends Plugin {
 
   @override
   void register(PluginRegistry registry) {
+    registry.registerWarningRule(
+      AccountProfileCandidateGenericEndpointForbiddenRule(),
+    );
     registry.registerWarningRule(UiGetItNonControllerForbiddenRule());
     registry.registerWarningRule(
       UiDirectRepositoryServiceResolutionForbiddenRule(),
@@ -158,6 +163,7 @@ class BellugaAnalysisPlugin extends Plugin {
     registry.registerWarningRule(UiRouteParamHydrationForbiddenRule());
     registry.registerWarningRule(MultiPublicClassFileWarningRule());
     registry.registerWarningRule(MultiWidgetFileWarningRule());
+    registry.registerWarningRule(NestedGroupMembersFullListForbiddenRule());
     registry.registerWarningRule(
       WidgetControllerSingletonRegistrationForbiddenRule(),
     );

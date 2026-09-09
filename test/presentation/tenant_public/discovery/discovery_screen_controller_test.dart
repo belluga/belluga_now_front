@@ -15,7 +15,6 @@ import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.da
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
-import 'package:belluga_now/domain/partners/account_profile_nested_group_member.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
@@ -2874,11 +2873,6 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
   }
 
   @override
-  Future<List<AccountProfileNestedGroupMember>> getNestedGroupMembersByPath(
-    AccountProfilesRepositoryContractPrimString membersPath,
-  ) async => const <AccountProfileNestedGroupMember>[];
-
-  @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
     AccountProfilesRepositoryContractPrimInt? pageSize,
     List<AccountProfilesRepositoryContractPrimString>? typeFilters,
@@ -2985,11 +2979,6 @@ class _FailingAccountProfilesRepository
   }
 
   @override
-  Future<List<AccountProfileNestedGroupMember>> getNestedGroupMembersByPath(
-    AccountProfilesRepositoryContractPrimString membersPath,
-  ) async => const <AccountProfileNestedGroupMember>[];
-
-  @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({
     AccountProfilesRepositoryContractPrimInt? pageSize,
     List<AccountProfilesRepositoryContractPrimString>? typeFilters,
@@ -3057,11 +3046,6 @@ class _InitFailingAccountProfilesRepository
   ) async {
     return null;
   }
-
-  @override
-  Future<List<AccountProfileNestedGroupMember>> getNestedGroupMembersByPath(
-    AccountProfilesRepositoryContractPrimString membersPath,
-  ) async => const <AccountProfileNestedGroupMember>[];
 
   @override
   Future<List<AccountProfileModel>> fetchNearbyAccountProfiles({

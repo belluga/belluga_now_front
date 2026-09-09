@@ -7,6 +7,7 @@ import 'package:belluga_now/application/rich_text/account_profile_rich_text_limi
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/tenant_admin_safe_back.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile_candidate_scope.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_nested_profile_group.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
@@ -18,7 +19,7 @@ import 'package:belluga_now/presentation/tenant_admin/account_profiles/controlle
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_canonical_image_upload_field.dart';
-import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_account_profile_picker.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_account_profile_candidate_picker.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_contact_channels_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
@@ -55,11 +56,7 @@ class _TenantAdminAccountProfileCreateScreenState
     _controller.bindCreateFlow();
     _controller.resetCreateState();
     _controller.resetFormControllers();
-    unawaited(
-      _controller.loadProfileTypes().whenComplete(
-        () => _controller.loadContactSourceCandidates(),
-      ),
-    );
+    unawaited(_controller.loadProfileTypes());
     _controller.loadTaxonomies();
     _controller.loadAccountForCreate(_currentAccountSlugForRequests());
   }
@@ -738,7 +735,7 @@ class _TenantAdminAccountProfileCreateScreenState
       return null;
     }
     for (final profile
-        in _controller.contactSourceCandidatesStreamValue.value) {
+        in _controller.selectedContactSourceProfilesStreamValue.value) {
       if (profile.id == selectedId) {
         return profile;
       }
@@ -842,8 +839,8 @@ class _TenantAdminAccountProfileCreateScreenState
           if (isMirrored) ...[
             const SizedBox(height: 12),
             StreamValueBuilder<List<TenantAdminAccountProfile>>(
-              streamValue: _controller.contactSourceCandidatesStreamValue,
-              builder: (context, candidates) {
+              streamValue: _controller.selectedContactSourceProfilesStreamValue,
+              builder: (context, _) {
                 final selectedSource = _selectedCreateContactSourceCandidate(
                   state,
                 );
@@ -859,52 +856,38 @@ class _TenantAdminAccountProfileCreateScreenState
                             : selectedSource.displayName,
                       ),
                       onPressed: () async {
-                        final selected = await showTenantAdminAccountProfilePicker(
-                          context: context,
-                          candidatesStreamValue:
-                              _controller.contactSourceCandidatesStreamValue,
-                          isLoadingStreamValue: _controller
-                              .contactSourceCandidatesLoadingStreamValue,
-                          isPageLoadingStreamValue: _controller
-                              .contactSourceCandidatesPageLoadingStreamValue,
-                          hasMoreStreamValue: _controller
-                              .contactSourceCandidatesHasMoreStreamValue,
-                          errorStreamValue: _controller
-                              .contactSourceCandidatesErrorStreamValue,
-                          onSearchChanged:
-                              _controller.searchContactSourceCandidates,
-                          onProfileTypeChanged: _controller
-                              .filterContactSourceCandidatesByProfileType,
-                          profileTypes: _controller
-                              .profileTypesStreamValue
-                              .value
-                              .where(
-                                (profileType) =>
-                                    profileType.capabilities.hasContactChannels,
-                              )
-                              .toList(growable: false),
-                          loadNextPage:
-                              _controller.loadNextContactSourceCandidatesPage,
-                          title: 'Perfil de origem',
-                          emptyMessage:
-                              'Nenhum perfil elegível para espelhar contatos.',
-                          selectedProfileId: selectedSource?.id,
-                        );
-                        if (!context.mounted || selected == null) return;
-                        _controller.updateCreateContactSourceAccountProfileId(
-                          selected.id,
-                        );
-                        _controller.updateCreateContactBubbleChannelId(null);
+                        final session = _controller
+                            .createCandidatePickerSession(
+                              scope: TenantAdminAccountProfileCandidateScope
+                                  .contactCapable,
+                              maxSelections: 1,
+                            );
+                        try {
+                          final selected =
+                              await showTenantAdminAccountProfileCandidatePicker(
+                                context: context,
+                                controller: session,
+                                title: 'Perfil de origem',
+                                emptyMessage:
+                                    'Nenhum perfil elegível para espelhar contatos.',
+                                closeOnSelection: true,
+                              );
+                          if (!context.mounted ||
+                              selected == null ||
+                              selected.isEmpty) {
+                            return;
+                          }
+                          _controller.updateCreateContactSourceAccountProfileId(
+                            selected.first.id,
+                          );
+                          _controller.updateCreateContactBubbleChannelId(null);
+                        } finally {
+                          _controller.disposeCandidatePickerSession(session);
+                        }
                       },
                     ),
-                    if (candidates.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.only(top: 8),
-                        child: Text(
-                          'Nenhum perfil elegível para espelhar contatos está disponível.',
-                        ),
-                      ),
                     const SizedBox(height: 12),
+                    _buildContactSourceHydrationStatus(),
                     if (selectedSource == null)
                       const Text(
                         'Selecione um perfil para visualizar os canais efetivos que serão espelhados.',
@@ -928,6 +911,43 @@ class _TenantAdminAccountProfileCreateScreenState
     );
   }
 
+  Widget _buildContactSourceHydrationStatus() {
+    return StreamValueBuilder<bool>(
+      streamValue: _controller.selectedContactSourceHydrationLoadingStreamValue,
+      builder: (context, isLoading) => StreamValueBuilder<String>(
+        streamValue: _controller.selectedContactSourceHydrationErrorStreamValue,
+        onNullWidget: isLoading
+            ? const Padding(
+                padding: EdgeInsets.only(bottom: 12),
+                child: LinearProgressIndicator(
+                  key: Key('tenantAdminCreateContactSourceHydrationLoading'),
+                ),
+              )
+            : const SizedBox.shrink(),
+        builder: (context, error) => Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  error,
+                  key: const Key(
+                    'tenantAdminCreateContactSourceHydrationError',
+                  ),
+                ),
+              ),
+              TextButton(
+                key: const Key('tenantAdminCreateContactSourceHydrationRetry'),
+                onPressed: _controller.retrySelectedContactSourceHydration,
+                child: const Text('Tentar novamente'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildContactChannelsSection(
     BuildContext context,
     TenantAdminAccountProfileCreateDraft state,
@@ -936,7 +956,7 @@ class _TenantAdminAccountProfileCreateScreenState
       return TenantAdminFormSectionCard(
         title: 'Canais de Contato',
         child: StreamValueBuilder<List<TenantAdminAccountProfile>>(
-          streamValue: _controller.contactSourceCandidatesStreamValue,
+          streamValue: _controller.selectedContactSourceProfilesStreamValue,
           builder: (context, _) {
             final selectedSource = _selectedCreateContactSourceCandidate(state);
             if (selectedSource == null) {
